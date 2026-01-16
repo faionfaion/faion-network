@@ -1,5 +1,5 @@
 ---
-user-invocable: true
+user-invocable: false
 name: faion-dev-docs
 description: Creates or updates CLAUDE.md documentation for any module/folder. Use when user asks to create docs, document module, add CLAUDE.md. Triggers on "CLAUDE.md", "documentation", "document this", "create docs".
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(ls:*), Bash(wc:*)
