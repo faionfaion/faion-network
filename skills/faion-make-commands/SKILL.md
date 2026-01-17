@@ -1,7 +1,7 @@
 ---
 name: faion-make-commands
 description: Creates, edits, updates, or modifies Claude Code slash commands. Use when user asks to create command, edit command, update command, change command, modify command, fix command, improve command, add to command. Triggers on "command", "/command", "slash command".
-user-invocable: true
+user-invocable: false
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: faion-make-agents
 description: Creates, edits, updates, or modifies Claude Code custom agents (subagents). Use when user asks to create agent, edit agent, update agent, subagent. Triggers on "agent", "subagent", "autonomous worker".
-user-invocable: true
+user-invocable: false
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: faion-make-skills
 description: Creates, edits, updates, or modifies Claude Code skills. Use when user asks to create skill, edit skill, update skill, change skill, modify skill, fix skill, improve skill, add to skill. Triggers on "skill", "SKILL.md", "agent skill".
-user-invocable: true
+user-invocable: false
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
 ---
 
@@ -62,7 +62,7 @@ skill-name/
 ---
 name: skill-name              # lowercase, hyphens, max 64 chars
 description: Third-person description with trigger keywords. Max 1024 chars.
-user-invocable: true          # Show in / menu (default: true)
+user-invocable: false          # Show in / menu (default: true)
 disable-model-invocation: false  # Block programmatic Skill tool calls
 context: fork                 # Isolated context (optional)
 agent: general-purpose        # Agent type for forked context
