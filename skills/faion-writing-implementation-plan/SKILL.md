@@ -94,4 +94,4 @@ Call `faion-impl-plan-reviewer` agent. Checks: 100k compliance, deps, coverage.
 
 ## Output
 
-`implementation-plan.md` → Next: `/maketasks` to create TASK_*.md files
+`implementation-plan.md` → Next: `faion-make-tasks` skill (via `/faion-net` → create tasks)

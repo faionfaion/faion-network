@@ -45,12 +45,19 @@ Read all SDD documents in order:
 
 ```
 1. aidocs/sdd/{PROJECT}/constitution.md - project standards
-2. {FEATURE_DIR}/spec.md - requirements (FR-X with full text)
-3. {FEATURE_DIR}/design.md - technical approach (AD-X decisions)
-4. {FEATURE_DIR}/implementation-plan.md - task context
+2. aidocs/sdd/{PROJECT}/contracts.md - API contracts (if exists)
+3. {FEATURE_DIR}/spec.md - requirements (FR-X with full text)
+4. {FEATURE_DIR}/design.md - technical approach (AD-X decisions)
+5. {FEATURE_DIR}/implementation-plan.md - task context
 ```
 
-**For standalone tasks:** Only constitution.md required.
+**For standalone tasks:** constitution.md + contracts.md (if exists).
+
+**For API-related tasks:** contracts.md is REQUIRED - extract:
+- Endpoint definitions
+- Request/response schemas
+- Auth requirements
+- Error format
 
 Extract for this task:
 - Relevant FR-X requirements (full text)
@@ -145,6 +152,7 @@ Create task file with full context:
 ## SDD References
 - **Spec:** {FEATURE_DIR}/spec.md
 - **Design:** {FEATURE_DIR}/design.md
+- **Contracts:** aidocs/sdd/{PROJECT}/contracts.md (for API tasks)
 - **Implementation Plan:** {FEATURE_DIR}/implementation-plan.md
 
 ## Requirements Coverage

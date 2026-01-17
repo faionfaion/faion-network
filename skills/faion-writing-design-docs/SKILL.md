@@ -23,7 +23,7 @@ This skill is part of the **Spec-Driven Development (SDD)** framework.
 
 1. **SPECIFICATION** → faion-writing-specifications → spec.md (approved)
 2. **DESIGN** ← YOU ARE HERE → Read spec + constitution → Research codebase → Write design.md
-3. **TASK CREATION** → /maketasks → TASK_*.md
+3. **TASK CREATION** → `faion-make-tasks` skill → TASK_*.md
 4. **EXECUTION** → /faion-execute-task, /faion-do-all-tasks → Code + Tests
 
 ### SDD Directory Structure
@@ -52,10 +52,13 @@ aidocs/sdd/
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| `constitution.md` | Project principles | READ before design |
+| `constitution.md` | Project principles (WHAT) | READ before design |
+| `contracts.md` | API contracts (HOW interfaces) | READ for API features |
 | `spec.md` | WHAT and WHY | READ, must be approved |
 | `design.md` | HOW to implement | CREATING with this skill |
 | `TASK_*.md` | Atomic tasks | Created after design |
+
+**contracts.md** is the single source of truth for all APIs. For features with API endpoints, design.md MUST reference contracts.md, not redefine endpoints.
 
 ---
 
@@ -103,8 +106,10 @@ cat ${SDD_BASE}/{project}/constitution.md
 **Required files:**
 1. `spec.md` exists with status `approved`
 2. Project `constitution.md` exists at `aidocs/sdd/{project}/constitution.md`
+3. Project `contracts.md` exists at `aidocs/sdd/{project}/contracts.md` (for API features)
 
 **If constitution.md doesn't exist:** Use skill `faion-writing-constitutions` to create it first.
+**If contracts.md doesn't exist:** Use agent `faion-api-designer` with MODE=init to create it.
 
 ## Workflow
 
@@ -124,6 +129,23 @@ Read project principles from constitution.md and extract:
 - Architecture patterns
 - Code standards
 - Testing requirements
+
+### Phase 2.5: Read API Contracts (if API feature)
+
+Read contracts.md and extract:
+- Relevant endpoint definitions
+- Request/response schemas
+- Auth requirements
+- Error format standard
+
+**IMPORTANT:** Do NOT redefine API endpoints in design.md. Reference contracts.md instead:
+```markdown
+## API Endpoints
+
+This feature implements endpoints from [contracts.md](../../contracts.md):
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - User login
+```
 
 ### Phase 3: Research Codebase
 
@@ -259,7 +281,7 @@ File `design.md` at:
 aidocs/sdd/{project}/features/{feature}/design.md
 ```
 
-**Next step:** After approving design.md → use `/maketasks` to create TASK_*.md files
+**Next step:** After approving design.md → use `faion-make-tasks` skill (via `/faion-net` → create tasks)
 
 ## Checklist Before Completion
 
@@ -269,10 +291,12 @@ aidocs/sdd/{project}/features/{feature}/design.md
 - Testing strategy defined
 - Risks identified
 - Follows constitution
+- API endpoints reference contracts.md (not redefined)
 - User approved
 
 ## Sources
 
 - Project spec.md
 - Project constitution.md
+- Project contracts.md (for API features)
 - Template: `templates/DESIGN_TEMPLATE.md` (in this skill directory)

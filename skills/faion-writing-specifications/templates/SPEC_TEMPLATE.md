@@ -36,7 +36,7 @@
 □ Functional Requirements конкретні (не "має працювати швидко")
 □ Out of Scope визначений
 □ Open Questions вирішені
-□ API Contract є (якщо є endpoints)
+□ API Contract references contracts.md (не дублює endpoints)
 □ Data Model є (якщо є зміни в БД)
 ```
 
@@ -120,27 +120,27 @@
 
 ## API Contract
 
-### {METHOD} /api/v1/{resource}/
+**Note:** Full API definitions are in [contracts.md](../../contracts.md). This section lists endpoints this feature uses/adds.
 
-**Request:**
-```json
-{
-  "field": "value"
-}
-```
+### Endpoints Used
 
-**Response (200):**
-```json
-{
-  "id": 1,
-  "status": "created"
-}
-```
+See [contracts.md](../../contracts.md) for full specifications:
 
-**Errors:**
-- `400` — Validation error
-- `404` — Resource not found
-- `409` — Conflict
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/{resource}/` | GET | List resources |
+| `/api/v1/{resource}/` | POST | Create resource |
+| `/api/v1/{resource}/{id}/` | GET | Get resource |
+
+### New Endpoints (to be added to contracts.md)
+
+If this feature requires NEW endpoints not yet in contracts.md:
+
+| Endpoint | Method | Description | Schema |
+|----------|--------|-------------|--------|
+| `/api/v1/{new}/` | POST | {description} | See FR-X |
+
+**After spec approval:** Run `faion-api-designer` with MODE=update to add new endpoints to contracts.md.
 
 ## Data Model
 

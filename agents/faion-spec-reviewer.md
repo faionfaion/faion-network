@@ -58,6 +58,11 @@ Communicate in user language.
 - [ ] No contradicting requirements
 - [ ] Aligned with constitution.md
 
+### 7. API References (if API feature)
+- [ ] API endpoints reference contracts.md
+- [ ] No duplicate endpoint definitions (use contracts.md)
+- [ ] Schemas reference contracts.md where applicable
+
 ## Review Process
 
 ### Step 1: Read Constitution

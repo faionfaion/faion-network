@@ -145,6 +145,19 @@ Anthropic recommends gerund form (verb + -ing):
 - Good: `pdf-processing`, `code-review`
 - Bad: `CodeReview`, `my_skill`, `helper`, `utils`
 
+### Faion Network Convention
+
+For faion-network framework skills:
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Domain | `faion-{domain}-domain-skill` | `faion-sdd-domain-skill` |
+| Technical | `faion-{tech}-skill` | `faion-python-skill` |
+| AI/LLM | `faion-{capability}-skill` | `faion-langchain-skill` |
+
+**Description:** Minimal. Name must be self-explanatory.
+**Details:** Put in SKILL.md body, templates/, reference.md, methodologies/
+
 ---
 
 ## SKILL.md Body Template

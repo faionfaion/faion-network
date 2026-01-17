@@ -66,15 +66,21 @@ TOTAL:                            100k
 - [ ] Foundation before integration
 - [ ] Tests after implementation
 
+### 6. API Contracts Coverage (if contracts.md exists)
+- [ ] API tasks reference contracts.md endpoints
+- [ ] Schema implementations match contracts.md
+- [ ] All API endpoints from spec have corresponding tasks
+
 ## Review Process
 
 ### Step 1: Load Context
 
 Read:
 ```
-1. {FEATURE_DIR}/design.md - source of truth for files
-2. {FEATURE_DIR}/spec.md - source of truth for FR-X
-3. {FEATURE_DIR}/implementation-plan.md - document to review
+1. aidocs/sdd/{PROJECT}/contracts.md - API contracts (if exists)
+2. {FEATURE_DIR}/design.md - source of truth for files
+3. {FEATURE_DIR}/spec.md - source of truth for FR-X
+4. {FEATURE_DIR}/implementation-plan.md - document to review
 ```
 
 ### Step 2: Verify Design Coverage

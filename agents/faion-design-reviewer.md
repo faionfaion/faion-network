@@ -53,6 +53,12 @@ Communicate in user language.
 - [ ] Error handling considered
 - [ ] Security implications addressed
 
+### 6. API Contracts Alignment (if contracts.md exists)
+- [ ] All API endpoints match contracts.md
+- [ ] Schemas match contracts.md definitions
+- [ ] Auth requirements match contracts.md
+- [ ] Error format follows contracts.md standard
+
 ### 6. Implementability
 - [ ] Can be broken into tasks
 - [ ] No hidden complexity
@@ -66,8 +72,9 @@ Communicate in user language.
 Read in order:
 ```
 1. aidocs/sdd/{PROJECT}/constitution.md - project standards
-2. {FEATURE_DIR}/spec.md - requirements (FR-X, user stories)
-3. {FEATURE_DIR}/design.md - document to review
+2. aidocs/sdd/{PROJECT}/contracts.md - API contracts (if exists)
+3. {FEATURE_DIR}/spec.md - requirements (FR-X, user stories)
+4. {FEATURE_DIR}/design.md - document to review
 ```
 
 ### Step 2: Verify FR Coverage

@@ -149,7 +149,7 @@ Validate readiness before major SDD phases. Prevents 5-50K tokens of wrong-direc
 Call before:
 - `/spec` → pre-spec check
 - `/design` → pre-design check
-- `/maketasks` → pre-task check
+- `faion-make-tasks` → pre-task check
 - `/faion-execute-task` → pre-impl check
 
 ## Anti-Patterns to Catch

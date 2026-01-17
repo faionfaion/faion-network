@@ -2,97 +2,55 @@
 
 ## Git Commits
 
-- Keep commit messages concise (50 chars title, optional body)
-- NO "Co-Authored-By: Claude" or any Claude mentions
-- NO emojis in commits
-- Format: `type: short description` (feat, fix, refactor, docs, chore)
+- 50 chars title, optional body
+- NO "Co-Authored-By: Claude"
+- NO emojis
+- Format: `type: short description`
 
-## Language Rules
+## Language
 
-**User communication:** Ukrainian (користувач спілкується українською)
+- **User:** Ukrainian
+- **Docs/code:** English (saves ~30% tokens)
+- **Subagent prompts:** English
 
-**Documentation & code:** English (saves ~30% tokens)
+## Documentation
 
-**Subagent context:** English — when calling Task tool, provide prompts in English for token efficiency
-
-## Documentation Rules
-
-**NO ASCII ART.** Save context.
-
-### Allowed:
-- Tables
-- Numbered/bulleted lists
-- Inline arrows: `A → B → C`
-- Directory trees (├── format)
-
-### Forbidden:
-- Box diagrams (┌─────┐)
-- ASCII flowcharts
-- Unicode box-drawing for diagrams
+**NO ASCII ART.** Allowed: tables, lists, arrows (`→`), directory trees.
 
 ## SDD Structure
 
 ```
 aidocs/sdd/{project}/
-├── constitution.md                  # Project principles
-├── roadmap.md                       # Milestones, progress, risks
-├── product_docs/                    # PRD, personas, etc.
-├── tasks/                           # Standalone tasks (no feature)
-│   └── {backlog,todo,in-progress,done}/
-└── features/
-    ├── backlog/                     # Features waiting for grooming
-    │   └── {NN}-{feature}/
-    │       └── spec.md              # Draft spec
-    ├── todo/                        # Features ready for execution
-    │   └── {NN}-{feature}/
-    │       ├── spec.md
-    │       ├── design.md
-    │       ├── implementation-plan.md
-    │       └── tasks/{backlog,todo,in-progress,done}/
-    ├── in-progress/                 # Features being executed
-    │   └── {NN}-{feature}/
-    └── done/                        # Completed features
-        └── {NN}-{feature}/
+├── constitution.md
+├── roadmap.md
+├── product_docs/
+├── tasks/{backlog,todo,in-progress,done}/
+└── features/{backlog,todo,in-progress,done}/{NN}-{feature}/
+    ├── spec.md
+    ├── design.md
+    ├── implementation-plan.md
+    └── tasks/{backlog,todo,in-progress,done}/
 ```
 
-**Feature Lifecycle:**
-`backlog/ → todo/ → in-progress/ → done/`
-
-**Task Lifecycle:**
-`tasks/backlog/ → tasks/todo/ → tasks/in-progress/ → tasks/done/`
+**Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
 
 ## Token Efficiency
 
-### Symbols (30-50% compression)
-- `→` leads to | `⇒` transforms | `←` rollback
-- `✅` done | `❌` failed | `⚠️` warning | `🔄` in progress
-- `⚡` perf | `🛡️` security | `🏗️` architecture
+**Symbols:** `→` leads to | `⇒` transforms | `✅` done | `❌` failed | `⚠️` warning
 
-### Abbreviations
-`cfg` config | `impl` implementation | `perf` performance | `sec` security | `val` validation | `req` requirement | `dep` dependency
+**Abbrev:** `cfg` config | `impl` impl | `perf` perf | `sec` security | `dep` dependency
 
-### Progressive Context Loading
-- Layer 0: Bootstrap (50 tokens) - minimal start
-- Layer 1: Intent (100 tokens) - what are we doing
-- Layer 2: Selective (500-3K) - load what's needed
-- Layer 3: Deep (10-20K) - full architecture
-- Layer 4: External (20-50K) - docs, research
-
-## SDD Memory System
+## SDD Memory
 
 ```
 ~/.sdd/memory/
-├── patterns_learned.jsonl    # Successful patterns
-├── mistakes_learned.jsonl    # Errors + solutions
-├── workflow_metrics.jsonl    # Execution metrics
-└── session_context.md        # Current state
+├── patterns_learned.jsonl
+├── mistakes_learned.jsonl
+└── session_context.md
 ```
-
-Use `/faion-reflexion` to record patterns and learn from mistakes.
 
 ## References
 
 - [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code)
-- [Custom Slash Commands](https://docs.anthropic.com/en/docs/claude-code/slash-commands)
+- [Skills](https://docs.anthropic.com/en/docs/claude-code/skills)
 - [Sub-agents](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
-- [Private Skills](docs/PRIVATE_SKILLS.md) - how to add project-specific skills not synced to faion-network

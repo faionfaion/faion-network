@@ -167,6 +167,6 @@ With more parallelizable tasks: up to 3.5x
 
 ## Integration
 
-- After `/maketasks` → Auto-analyze parallelization
+- After `faion-make-tasks` → Auto-analyze parallelization
 - In implementation-plan.md → Add wave structure
 - With `/faion-do-all-tasks` → Execute in wave order

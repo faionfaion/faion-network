@@ -116,6 +116,23 @@ Project overrides personal with same name.
 
 ---
 
+## Faion Network Naming Convention
+
+For faion-network framework agents:
+
+**Pattern:** `faion-{name}-agent` — always ends with `-agent`
+
+| Type | Example |
+|------|---------|
+| Role-based | `faion-pm-agent`, `faion-ba-agent` |
+| Action-based | `faion-rag-agent`, `faion-tts-agent` |
+| Builder | `faion-agent-builder-agent`, `faion-voice-agent-builder-agent` |
+
+**Description:** Minimal. Name must be self-explanatory.
+**Details:** Put in agent body, referenced skills, methodologies/
+
+---
+
 ## Best Practices
 
 **Design:**
