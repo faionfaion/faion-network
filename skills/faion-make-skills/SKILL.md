@@ -1,5 +1,5 @@
 ---
-name: make-skills
+name: faion-make-skills
 description: Creates, edits, updates, or modifies Claude Code skills. Use when user asks to create skill, edit skill, update skill, change skill, modify skill, fix skill, improve skill, add to skill. Triggers on "skill", "SKILL.md", "agent skill".
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
@@ -68,25 +68,17 @@ context: fork                 # Isolated context (optional)
 agent: general-purpose        # Agent type for forked context
 allowed-tools: Read, Grep, Glob, Bash(cmd:*)  # Optional
 model: claude-sonnet-4-20250514               # Optional
-hooks:                        # Optional lifecycle hooks
-  PreToolUse:
-    command: "echo 'Before tool'"
-  PostToolUse:
-    command: "echo 'After tool'"
-  Stop:
-    command: "echo 'Skill finished'"
 ---
 ```
 
 **Required:** name, description
-**Optional:** user-invocable, disable-model-invocation, context, agent, allowed-tools, model, hooks
+**Optional:** user-invocable, disable-model-invocation, context, agent, allowed-tools, model
 
 **New fields (Jan 2026):**
 - `user-invocable: false` - hide from / menu, Claude can still invoke via Skill tool
 - `disable-model-invocation: true` - completely block programmatic invocation
 - `context: fork` - run in isolated context with own history
 - `agent` - specify agent type: Explore, Plan, general-purpose
-- `hooks` - lifecycle hooks: PreToolUse, PostToolUse, Stop
 
 ---
 
@@ -283,6 +275,35 @@ This skill can update itself. To update:
 3. Changes apply immediately (hot-reload in Jan 2026+)
 
 Repository: `~/.claude/claudedm/` (faionfaion/claudedm on GitHub)
+
+---
+
+## Automation Scripts
+
+Skills can include helper scripts for automation:
+
+**Locations:**
+- `~/.claude/scripts/` — global scripts for all skills
+- `~/.claude/skills/{skill-name}/scripts/` — skill-specific scripts
+
+**Use cases:**
+- Pre/post processing
+- Data transformation
+- API calls
+- File generation
+- Build/deploy automation
+
+**Example structure:**
+```
+~/.claude/skills/faion-my-skill/
+├── SKILL.md
+├── reference.md
+└── scripts/
+    ├── generate-template.sh
+    └── validate-output.py
+```
+
+Scripts can be called from skill instructions via Bash tool.
 
 ---
 

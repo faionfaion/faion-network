@@ -1,5 +1,5 @@
 ---
-name: make-agents
+name: faion-make-agents
 description: Creates, edits, updates, or modifies Claude Code custom agents (subagents). Use when user asks to create agent, edit agent, update agent, subagent. Triggers on "agent", "subagent", "autonomous worker".
 user-invocable: true
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
@@ -104,10 +104,6 @@ Instructions for the agent...
 **UI:**
 - `color` - CSS color for identification
 - `version` - version string
-
-**Hooks:**
-- `pre-hook` - script before agent runs
-- `post-hook` - script after agent finishes
 
 ---
 
@@ -296,6 +292,25 @@ This skill can update itself. To update:
 1. Edit `~/.claude/claudedm/skills/make-agents/SKILL.md`
 2. Sync: `cp -r ~/.claude/claudedm/skills/make-agents ~/.claude/skills/`
 3. Changes apply immediately (hot-reload)
+
+---
+
+## Automation Scripts
+
+Agents can use helper scripts for automation:
+
+**Locations:**
+- `~/.claude/scripts/` — global scripts for all agents
+- `~/.claude/skills/{skill-name}/scripts/` — skill-specific scripts
+
+**Use cases:**
+- Pre/post processing
+- Data transformation
+- API calls
+- File generation
+- Build/deploy automation
+
+Scripts can be called from agent prompts via Bash tool.
 
 ---
 

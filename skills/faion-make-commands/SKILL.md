@@ -1,7 +1,7 @@
 ---
-user-invocable: true
-name: make-commands
+name: faion-make-commands
 description: Creates, edits, updates, or modifies Claude Code slash commands. Use when user asks to create command, edit command, update command, change command, modify command, fix command, improve command, add to command. Triggers on "command", "/command", "slash command".
+user-invocable: true
 allowed-tools: Read, Write, Edit, Bash(mkdir:*), Bash(rm:*), Bash(ls:*), Glob
 ---
 
@@ -71,17 +71,6 @@ Instructions using $1, $2, or $ARGUMENTS
 
 **Visibility (Jan 2026):**
 - `disable-model-invocation: true` - prevent Skill tool from calling
-
-**Hooks (Jan 2026):**
-```yaml
-hooks:
-  PreToolUse:
-    command: "echo 'Before tool'"
-  PostToolUse:
-    command: "echo 'After tool'"
-  Stop:
-    command: "echo 'Command finished'"
-```
 
 All fields optional.
 
@@ -238,6 +227,25 @@ This skill can update itself. To update:
 3. Changes apply immediately (hot-reload in Jan 2026+)
 
 Repository: `~/.claude/claudedm/` (faionfaion/claudedm on GitHub)
+
+---
+
+## Automation Scripts
+
+Commands can use helper scripts for automation:
+
+**Locations:**
+- `~/.claude/scripts/` — global scripts for all commands
+- `~/.claude/skills/{skill-name}/scripts/` — skill-specific scripts
+
+**Use cases:**
+- Pre/post processing
+- Data transformation
+- API calls
+- File generation
+- Build/deploy automation
+
+Scripts can be called from command body via Bash tool with `!` prefix.
 
 ---
 
