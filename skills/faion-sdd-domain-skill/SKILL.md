@@ -1737,6 +1737,763 @@ faion-pm-agent, faion-task-creator
 
 ---
 
-*SDD Domain Skill v1.2 - Complete*
-*Sections 1-8: Full SDD Workflow*
+# Section 9: Backlog Grooming
+
+## Purpose
+
+Interactive grooming session: prioritize features, refine specs, create designs, generate tasks. Ensures features are ready before execution.
+
+## Workflow
+
+```
+READ BACKLOG → PRIORITIZE → SELECT FEATURE → REFINE SPEC → CREATE DESIGN → GENERATE TASKS → MOVE TO TODO
+```
+
+## Phase 1: Load Context
+
+Read: `roadmap.md`, `constitution.md`
+List features by status: backlog, todo, in-progress, done
+
+## Phase 2: Display Status
+
+```markdown
+## Feature Status
+
+### In Progress ({n})
+- {feature} — {summary}
+
+### Todo ({n})
+- {feature} — {summary}
+
+### Backlog ({n})
+- {feature} — {summary} [P0/P1/P2]
+```
+
+## Phase 3: Action Selection
+
+AskUserQuestion: "What do you want to do?"
+1. Review priorities
+2. Take feature to work
+3. Add new feature
+4. Remove feature
+5. Finish grooming
+
+## Phase 4: Feature Selection
+
+Show backlog with: Name, Spec status, Design status, Dependencies
+
+```markdown
+| # | Feature | Spec | Design | Dependencies |
+|---|---------|------|--------|--------------|
+| 1 | auth | Done | Missing | none |
+| 2 | transactions | Done | Missing | auth |
+```
+
+## Phase 5: Spec Refinement
+
+If no spec or needs update:
+- Show existing spec
+- Ask clarifying questions
+- Use Section 2 (Writing Specifications) if needed
+
+## Phase 6: Design Creation
+
+If spec approved:
+- Use Section 3 (Writing Design Documents)
+- Present for review
+
+## Phase 7: Task Generation
+
+If design approved:
+- Use Section 4 (Writing Implementation Plans)
+- Use Section 5 (Task Creation)
+- Present tasks for review
+
+## Phase 8: Move to Todo
+
+If approved:
+```bash
+mv features/backlog/{feature}/ features/todo/{feature}/
+```
+
+Report: "Feature ready! Execute with Section 6 or 7"
+
+## Feature Lifecycle
+
+```
+backlog/ → todo/ → in-progress/ → done/
+   ↓         ↓           ↓           ↓
+spec.md  +design.md  executing    archived
+         +impl-plan
+         +tasks/
+```
+
+## Definition of Ready
+
+Before moving feature to todo/:
+- [ ] Problem/need clear
+- [ ] Acceptance criteria defined
+- [ ] Estimated (story points or t-shirt size)
+- [ ] Dependencies identified
+- [ ] Small enough for one sprint
+- [ ] No blockers
+- [ ] Spec approved
+- [ ] Design approved
+- [ ] Tasks created
+
+## Anti-patterns
+
+- Skip spec refinement
+- Create tasks without design
+- Move to todo without all artifacts
+- Take feature with unsatisfied dependencies
+
+**Output:** Feature with complete artifacts in `todo/` → Next: Execute with Section 6 or 7
+
+---
+
+# Section 10: Roadmapping
+
+## Purpose
+
+Analyze progress, reprioritize backlog, add features, maintain roadmap. Connects daily work to long-term goals.
+
+## When to Use
+
+- After completing features → progress review
+- New ideas → add to backlog
+- Priorities changed → reprioritize
+- Weekly/sprint → roadmap sync
+
+## Workflow
+
+```
+ANALYZE → REVIEW PRIORITIES → ADD FEATURES → UPDATE ROADMAP
+```
+
+## Phase 1: Analyze Progress
+
+```bash
+# Count features by status
+ls aidocs/sdd/{project}/features/done/
+ls aidocs/sdd/{project}/features/backlog/
+ls aidocs/sdd/{project}/features/*/tasks/done/
+```
+
+Report: done, in-progress, backlog counts
+
+## Phase 2: Review Priorities
+
+AskUserQuestion: "Are priorities current?"
+- Yes → Continue
+- Need change → Reprioritize
+
+If change needed → reorder features
+
+## Phase 3: Add New Features
+
+For each new idea:
+1. Discuss scope via Socratic dialogue
+2. Create `backlog/{NN}-{name}/spec.md`
+3. Add to roadmap.md
+
+## Phase 4: Update Roadmap
+
+```markdown
+# Roadmap: {project}
+
+## Now (commit) - This quarter
+- [ ] {feature} — {status}
+
+## Next (plan) - Next quarter
+- {feature}: {one-liner}
+
+## Later (vision) - Future
+- {theme}
+
+## Done
+- {NN}-{feature}
+
+## Risks
+- {risk}: {mitigation}
+```
+
+## Roadmap Principles
+
+| Timeframe | Confidence | Detail Level |
+|-----------|------------|--------------|
+| Now | 90% | Detailed, committed |
+| Next | 70% | Planned, flexible |
+| Later | 50% | Thematic, vision |
+
+- Include 20% buffer for unknowns
+- Review weekly during active development
+- Review monthly for strategic alignment
+
+## Output
+
+Updated `roadmap.md` with priorities, milestones, risks
+
+**Output:** `roadmap.md` → Next: Backlog Grooming (Section 9)
+
+---
+
+# Section 11: Quality Gates and Reviews
+
+## Purpose
+
+Perform code review or SDD document review using specialized agents. Ensures quality at each stage of development.
+
+## Modes
+
+### Code Review Mode
+Review git diff for a project directory.
+
+### SDD Review Mode
+Review SDD documents (spec, design, impl-plan, tasks) for a feature.
+
+## Mode Detection
+
+```
+Input contains "sdd:" prefix → SDD Review
+Input is directory path → Code Review
+Ask user if unclear
+```
+
+---
+
+## Code Review Mode
+
+### Workflow
+
+```
+1. Get git diff for directory
+   ↓
+2. Analyze changes against standards
+   ↓
+3. Report findings
+```
+
+### Review Criteria
+
+**Critical (must fix):**
+- Correctness issues
+- Missing/broken tests
+- Security vulnerabilities
+- Breaking changes
+
+**Style (should fix):**
+- Convention violations
+- Pattern deviations
+- Naming issues
+
+**Quality (consider):**
+- Complexity
+- Error handling
+- Edge cases
+
+**Performance (check):**
+- N+1 queries
+- Missing indexes
+- Resource leaks
+
+### Output Format
+
+```markdown
+## Code Review: {directory}
+
+### Summary
+{overall assessment}
+
+### Critical Issues
+1. {issue}: {file:line} - {description}
+
+### Style Issues
+1. {issue}: {file:line}
+
+### Suggestions
+- {suggestion}
+
+### Pre-Merge Checklist
+- [ ] All critical issues fixed
+- [ ] Tests passing
+- [ ] No security issues
+```
+
+---
+
+## SDD Review Mode
+
+### Workflow
+
+```
+1. Parse project/feature from input
+   ↓
+2. Run reviewers in sequence:
+   - faion-spec-reviewer
+   - faion-design-reviewer
+   - faion-impl-plan-reviewer
+   - faion-tasks-reviewer (if tasks exist)
+   ↓
+3. Aggregate results
+   ↓
+4. Report overall verdict
+```
+
+### Output Format
+
+```markdown
+## SDD Review: {project}/{feature}
+
+### Document Status
+| Document | Status | Issues |
+|----------|--------|--------|
+| spec.md | Pass/Warn/Fail | {count} |
+| design.md | Pass/Warn/Fail | {count} |
+| implementation-plan.md | Pass/Warn/Fail | {count} |
+| tasks/ | Pass/Warn/Fail | {count} |
+
+### Overall Verdict: APPROVED / NEEDS_WORK / REJECTED
+
+### Issues Found
+{detailed issues per document}
+
+### Recommendations
+{what to fix before proceeding}
+```
+
+## Quality Gate Levels
+
+| Level | Check | Pass Criteria |
+|-------|-------|---------------|
+| L1 | Syntax | Linting zero errors |
+| L2 | Types | Type checking zero errors |
+| L3 | Tests | Unit tests 100% pass |
+| L4 | Integration | Integration tests 100% pass |
+| L5 | Review | Code review approved |
+| L6 | Acceptance | All AC criteria met |
+
+**Output:** Review report with verdict → Next: Fix issues or proceed
+
+---
+
+# Section 12: Confidence Checks
+
+## Purpose
+
+Validate readiness before major SDD phases. Prevents 5-50K tokens of wrong-direction work by spending 100-200 tokens on verification.
+
+**ROI: 25-250x token savings**
+
+## When to Use
+
+- Before writing spec.md (idea validation)
+- Before writing design.md (requirements clarity)
+- Before creating tasks (design completeness)
+- Before executing tasks (implementation readiness)
+
+## Confidence Thresholds
+
+| Score | Action |
+|-------|--------|
+| >=90% | Proceed confidently |
+| 70-89% | Present alternatives, clarify gaps |
+| <70% | Stop, ask questions first |
+
+---
+
+## Phase-Specific Checklists
+
+### Pre-Spec Confidence (Idea → Spec)
+
+| Check | Weight | Question |
+|-------|--------|----------|
+| Problem validated | 25% | Is there evidence people have this problem? |
+| Market gap | 25% | Is there room for new solution? |
+| Target audience | 20% | Do we know WHO specifically? |
+| Value proposition | 15% | Why would they switch/pay? |
+| Your fit | 15% | Can you build this? |
+
+**Evidence required:**
+- Pain point quotes from Reddit/forums/interviews
+- Competitor analysis showing gaps
+- User persona with real data
+
+---
+
+### Pre-Design Confidence (Spec → Design)
+
+| Check | Weight | Question |
+|-------|--------|----------|
+| Requirements clear | 25% | All FR-XX unambiguous? |
+| AC testable | 25% | All AC-XX measurable? |
+| No contradictions | 20% | Requirements don't conflict? |
+| Scope defined | 15% | Clear what's NOT included? |
+| Dependencies known | 15% | External systems identified? |
+
+**Evidence required:**
+- Spec.md with all sections complete
+- No TBD or unclear items
+- User has approved spec
+
+---
+
+### Pre-Task Confidence (Design → Tasks)
+
+| Check | Weight | Question |
+|-------|--------|----------|
+| Architecture decided | 25% | No open technical questions? |
+| Patterns established | 25% | Following codebase conventions? |
+| No duplicate work | 20% | Checked existing implementations? |
+| Dependencies mapped | 15% | Task order clear? |
+| Estimates reasonable | 15% | Complexity understood? |
+
+**Evidence required:**
+- Design.md approved
+- Implementation-plan.md complete
+- No TBD in technical decisions
+
+---
+
+### Pre-Implementation Confidence (Task → Code)
+
+| Check | Weight | Question |
+|-------|--------|----------|
+| Task requirements clear | 25% | Know exactly what to build? |
+| Approach decided | 25% | Know HOW to build it? |
+| No blockers | 20% | All dependencies available? |
+| Tests defined | 15% | Know how to verify? |
+| Rollback plan | 15% | Can revert if fails? |
+
+**Evidence required:**
+- Task file read and understood
+- Related code explored
+- No open questions
+
+---
+
+## Workflow
+
+```
+1. Identify phase (spec/design/task/impl)
+     ↓
+2. Run phase-specific checklist
+     ↓
+3. Calculate confidence score
+     ↓
+4. Present results with evidence
+     ↓
+5. Decision:
+   - >=90%: "Proceed"
+   - 70-89%: "Clarify these gaps first"
+   - <70%: "Stop - answer these questions"
+```
+
+## Output Format
+
+```markdown
+## Confidence Check: {phase}
+
+### Score: {X}%
+
+| Check | Status | Evidence |
+|-------|--------|----------|
+| {check1} | Pass/Warn/Fail | {evidence or gap} |
+| {check2} | Pass/Warn/Fail | {evidence or gap} |
+
+### Verdict: Proceed / Clarify / Stop
+
+{If not proceed:}
+### Questions to Answer First
+1. {question1}
+2. {question2}
+
+### Recommended Actions
+- {action1}
+- {action2}
+```
+
+## Anti-Patterns to Catch
+
+| Pattern | Risk | Action |
+|---------|------|--------|
+| "I think users want..." | Assumption without evidence | Require user research |
+| "Should be easy..." | Underestimated complexity | Require technical spike |
+| "Similar to X..." | Missed differences | Require detailed comparison |
+| "We can figure it out later" | Deferred decisions | Require decision now |
+| "Obviously..." | Hidden assumptions | Make explicit |
+
+**Output:** Confidence report → Proceed or address gaps
+
+---
+
+# Section 13: Reflexion and Learning
+
+## Purpose
+
+Implement PDCA (Plan-Do-Check-Act) learning cycle. Store patterns and mistakes for future reference. Prevents repeating mistakes.
+
+**ROI: Prevent 5-50K tokens of repeated mistakes**
+
+## Memory Structure
+
+```
+~/.sdd/memory/
+├── patterns_learned.jsonl    # Successful patterns
+├── mistakes_learned.jsonl    # Errors and solutions
+├── workflow_metrics.jsonl    # Execution metrics
+└── session_context.md        # Current session state
+```
+
+## PDCA Cycle
+
+```
+Plan (hypothesis)
+  ↓
+Do (experiment)
+  ↓
+Check (self-evaluation)
+  ↓
+Act (improvement)
+  ↓
+Store (memory update)
+```
+
+---
+
+## When to Use
+
+### After Task Success
+```
+1. Extract what worked
+2. Identify reusable patterns
+3. Store in patterns_learned.jsonl
+4. Update workflow_metrics.jsonl
+```
+
+### After Task Failure
+```
+1. Analyze root cause
+2. Check if similar error exists in mistakes_learned.jsonl
+3. If exists: Show previous solution
+4. If new: Store error + solution
+5. Update workflow_metrics.jsonl
+```
+
+### Before Task Start
+```
+1. Check mistakes_learned.jsonl for similar task types
+2. If found: Show warnings and prevention tips
+3. Check patterns_learned.jsonl for best practices
+4. If found: Suggest approach
+```
+
+---
+
+## Data Formats
+
+### patterns_learned.jsonl
+```json
+{
+  "id": "PAT-001",
+  "timestamp": "2026-01-18T10:00:00Z",
+  "project": "faion-net",
+  "task_type": "skill_creation",
+  "pattern_name": "methodology_embedding",
+  "description": "Embed full methodology content in SKILL.md",
+  "context": "When creating domain skills",
+  "code_example": "## M-SDD-001: Methodology Name\n...",
+  "success_count": 5,
+  "tags": ["skill", "methodology", "documentation"]
+}
+```
+
+### mistakes_learned.jsonl
+```json
+{
+  "id": "ERR-001",
+  "timestamp": "2026-01-18T10:00:00Z",
+  "project": "faion-net",
+  "task_type": "task_execution",
+  "error_type": "context_overflow",
+  "description": "Task exceeded 100k token limit",
+  "root_cause": "Task scope too large, not split properly",
+  "solution": "Split task into 2-3 smaller tasks",
+  "prevention": "Always estimate tokens before execution",
+  "occurrence_count": 2,
+  "tags": ["token", "planning", "split"]
+}
+```
+
+### workflow_metrics.jsonl
+```json
+{
+  "timestamp": "2026-01-18T10:00:00Z",
+  "project": "faion-net",
+  "feature": "01-framework-content",
+  "task_id": "TASK_003",
+  "task_type": "skill_merge",
+  "complexity": "medium",
+  "estimated_tokens": 50000,
+  "actual_tokens": 42000,
+  "success": true,
+  "duration_minutes": 15,
+  "patterns_used": ["PAT-001"],
+  "errors_encountered": []
+}
+```
+
+---
+
+## Workflow
+
+### Recording Success
+```
+1. User says task completed successfully
+2. AskUserQuestion: "What worked well?"
+   - Code pattern
+   - Architecture decision
+   - Tool usage
+   - Process improvement
+3. Extract pattern details
+4. Write to patterns_learned.jsonl
+5. Update workflow_metrics.jsonl
+```
+
+### Recording Failure
+```
+1. User reports error or failure
+2. AskUserQuestion: "What went wrong?"
+   - Code error
+   - Architecture mistake
+   - Missing requirement
+   - Tool issue
+3. Analyze root cause
+4. Check existing mistakes for similar
+5. If new: Store in mistakes_learned.jsonl
+6. Suggest solution
+7. Update workflow_metrics.jsonl
+```
+
+### Pre-Task Check
+```
+1. Read task type from TASK_*.md
+2. Search mistakes_learned.jsonl for matching tags
+3. If found: Show warnings
+4. Search patterns_learned.jsonl for matching tags
+5. If found: Show recommendations
+```
+
+---
+
+## Output Format
+
+### Pattern Recorded
+```markdown
+## Pattern Recorded
+
+**ID:** PAT-{NNN}
+**Type:** {task_type}
+**Pattern:** {pattern_name}
+
+### Description
+{description}
+
+### When to Use
+{context}
+
+### Example
+```{language}
+{code_example}
+```
+
+Stored in `~/.sdd/memory/patterns_learned.jsonl`
+```
+
+### Mistake Recorded
+```markdown
+## Mistake Recorded
+
+**ID:** ERR-{NNN}
+**Type:** {error_type}
+
+### What Happened
+{description}
+
+### Root Cause
+{root_cause}
+
+### Solution
+{solution}
+
+### Prevention
+{prevention}
+
+Stored in `~/.sdd/memory/mistakes_learned.jsonl`
+```
+
+### Pre-Task Warnings
+```markdown
+## Pre-Task Check: {task_type}
+
+### Known Pitfalls
+1. **ERR-{NNN}:** {description}
+   - Prevention: {prevention}
+
+### Recommended Patterns
+1. **PAT-{NNN}:** {pattern_name}
+   - Context: {context}
+```
+
+---
+
+## Metrics Analysis
+
+Monthly analysis of workflow_metrics.jsonl:
+- Most common error types
+- Most used patterns
+- Token efficiency trends
+- Success rate by task type
+- Estimation accuracy
+
+**Output:** Lessons stored in memory → Better future performance
+
+---
+
+# Agents Called (Complete List)
+
+| Agent | Purpose | Used In |
+|-------|---------|---------|
+| faion-spec-reviewer | Review spec before save | Section 2, 11 |
+| faion-design-reviewer | Review design for architecture decisions | Section 3, 11 |
+| faion-impl-plan-reviewer | Review impl-plan for 100k token compliance | Section 4, 11 |
+| faion-task-creator | Create individual tasks with deep research | Section 5 |
+| faion-task-executor | Execute tasks autonomously | Section 6, 7 |
+| faion-tasks-reviewer | Review completed tasks (4-pass) | Section 5, 7, 11 |
+| faion-hallucination-checker | Verify task completion with evidence | Section 11, 12 |
+
+---
+
+# Quick Reference (Complete)
+
+| Section | Purpose | Input | Output |
+|---------|---------|-------|--------|
+| 1 | Constitutions | Project analysis/dialogue | constitution.md |
+| 2 | Specifications | Problem + requirements | spec.md |
+| 3 | Design Documents | Approved spec | design.md |
+| 4 | Implementation Plans | Design + 100k rule | implementation-plan.md |
+| 5 | Task Creation | Impl-plan + codebase | Task files in todo/ |
+| 6 | Task Execution | Single task | Task in done/ + commit |
+| 7 | Batch Execution | All tasks | All tasks done/ |
+| 8 | Parallelization | Task dependencies | Optimized wave plan |
+| 9 | Backlog Grooming | Backlog features | Features ready in todo/ |
+| 10 | Roadmapping | Progress + priorities | roadmap.md |
+| 11 | Quality Gates | Code or SDD docs | Review report |
+| 12 | Confidence Checks | Pre-phase validation | Confidence score |
+| 13 | Reflexion | Task outcomes | Lessons in memory |
+
+---
+
+*SDD Domain Skill v2.0 - Complete*
+*Sections 1-13: Full SDD Workflow with Quality Gates, Grooming, Roadmapping, and Reflexion*
 *Methodologies: M-SDD-001 to M-SDD-008 embedded*
