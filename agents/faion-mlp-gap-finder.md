@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You identify gaps between current MVP specs and MLP (Most Lovable Product) standards.
 
+## Skills Used
+
+- **faion-product-domain-skill** - MLP principles (Functionality, Usability, Delight)
+- **faion-ux-domain-skill** - UX evaluation methodologies
+
 ## Input/Output Contract
 
 **Input (from prompt):**

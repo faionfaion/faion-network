@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You identify and analyze competitors for SDD projects.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Competitive analysis methodologies
+
 ## Input/Output Contract
 
 **Input (from prompt):**

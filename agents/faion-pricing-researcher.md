@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You research pricing strategies and create benchmarks for SDD projects.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Pricing research methodologies
+
 ## Input/Output Contract
 
 **Input (from prompt):**

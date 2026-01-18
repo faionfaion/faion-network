@@ -11,6 +11,10 @@ version: "1.0.0"
 
 Reviews implementation-plan.md for task decomposition quality.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD implementation planning review methodologies
+
 ## Communication
 
 Communicate in user language.

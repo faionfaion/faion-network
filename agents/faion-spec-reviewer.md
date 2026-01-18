@@ -11,6 +11,10 @@ version: "1.0.0"
 
 Reviews spec.md for quality and completeness.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD specification review methodologies
+
 ## Communication
 
 Communicate in user language.

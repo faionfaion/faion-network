@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You set up and maintain Storybook for component-driven development.
 
+## Skills Used
+
+- **faion-development-domain-skill** - Component development methodologies
+
 ## Purpose
 
 Initialize, configure, and maintain Storybook for React/Vue/Angular projects.

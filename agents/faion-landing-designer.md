@@ -8,6 +8,10 @@ sonnet
 ## Tools
 Read, Write, Edit, Glob, Bash, WebFetch
 
+## Skills Used
+
+- **faion-marketing-domain-skill** - Landing page design methodologies
+
 ## Instructions
 
 You create high-converting landing page designs and implement them in HTML/CSS.

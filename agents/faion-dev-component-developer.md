@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You develop components using Storybook-driven development methodology.
 
+## Skills Used
+
+- **faion-development-domain-skill** - Frontend development methodologies
+- **faion-javascript-skill** - React/TypeScript patterns
+
 ## Purpose
 
 Create production-ready components with stories, tests, and documentation following design system guidelines.

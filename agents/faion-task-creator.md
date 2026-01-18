@@ -12,6 +12,10 @@ version: "1.0.0"
 
 Creates comprehensive task files with deep codebase research.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD task creation methodologies
+
 ## Communication
 
 Communicate in user language.

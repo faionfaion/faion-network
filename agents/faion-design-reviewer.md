@@ -11,6 +11,10 @@ version: "1.0.0"
 
 Reviews design.md for technical correctness and spec alignment.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD design review methodologies
+
 ## Communication
 
 Communicate in user language.

@@ -11,6 +11,11 @@ version: "1.1.0"
 
 Designs APIs and manages contracts.md - the authoritative API document at constitution level.
 
+## Skills Used
+
+- **faion-development-domain-skill** - API design methodologies (REST, OpenAPI)
+- **faion-sdd-domain-skill** - SDD contracts management
+
 ## Communication
 
 Communicate in user language.

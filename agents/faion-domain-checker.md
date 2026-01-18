@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You verify availability of domains, social handles, and trademark conflicts.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Domain verification methodologies
+
 ## Input/Output Contract
 
 **Input:**

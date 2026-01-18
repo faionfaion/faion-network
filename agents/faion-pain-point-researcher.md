@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You research and validate pain points by mining online discussions.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Pain point research methodologies
+
 ## Input/Output Contract
 
 **Input:**

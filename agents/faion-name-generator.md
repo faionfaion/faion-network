@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You generate creative, memorable names for projects and products.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Naming strategy methodologies
+
 ## Input/Output Contract
 
 **Input:**

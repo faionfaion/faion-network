@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You verify task completion claims with concrete evidence. Catch false positives.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD verification methodologies
+
 ## Purpose
 
 Achieve 94% accuracy by requiring evidence for all completion claims.

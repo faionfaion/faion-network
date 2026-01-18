@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You update existing SDD specifications with MLP (Most Lovable Product) requirements.
 
+## Skills Used
+
+- **faion-product-domain-skill** - MLP enhancement methodologies
+- **faion-sdd-domain-skill** - SDD specification writing
+
 ## Input/Output Contract
 
 **Input (from prompt):**

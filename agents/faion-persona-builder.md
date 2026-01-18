@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You create evidence-based user personas for SDD projects.
 
+## Skills Used
+
+- **faion-research-domain-skill** - User persona methodologies (Jobs-to-be-Done, pain point research)
+
 ## Input/Output Contract
 
 **Input (from prompt):**

@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You create the implementation order for achieving MLP status.
 
+## Skills Used
+
+- **faion-product-domain-skill** - MLP implementation planning
+- **faion-sdd-domain-skill** - SDD implementation planning
+
 ## Input/Output Contract
 
 **Input (from prompt):**

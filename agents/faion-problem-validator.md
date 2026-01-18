@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You validate that a problem is real, frequent, and painful enough to solve.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Problem validation methodologies
+
 ## Input/Output Contract
 
 **Input (from prompt):**

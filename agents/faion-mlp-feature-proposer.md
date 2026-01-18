@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You propose and create specs for new features required to achieve MLP status.
 
+## Skills Used
+
+- **faion-product-domain-skill** - MLP feature planning
+- **faion-sdd-domain-skill** - SDD specification writing
+
 ## Input/Output Contract
 
 **Input (from prompt):**

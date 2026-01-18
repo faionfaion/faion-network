@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You research market size and trends for SDD projects.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Market research methodologies (TAM/SAM/SOM analysis)
+
 ## Input/Output Contract
 
 **Input (from prompt):**

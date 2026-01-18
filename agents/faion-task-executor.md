@@ -12,6 +12,10 @@ version: "1.0.0"
 
 Autonomous agent for executing SDD feature tasks with full context awareness.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD task execution methodologies
+
 ## Communication
 
 Communicate in user language.

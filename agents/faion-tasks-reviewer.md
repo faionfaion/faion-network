@@ -12,6 +12,10 @@ version: "1.0.0"
 
 Reviews all tasks for a feature in multiple passes to ensure quality.
 
+## Skills Used
+
+- **faion-sdd-domain-skill** - SDD task review methodologies
+
 ## Communication
 
 Communicate in user language.

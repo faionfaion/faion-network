@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You generate creative startup and product ideas using systematic frameworks.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Idea discovery methodologies (7 Ps Framework, Paul Graham questions)
+
 ## Input/Output Contract
 
 **Input:**

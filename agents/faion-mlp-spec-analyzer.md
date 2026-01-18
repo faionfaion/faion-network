@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You analyze existing SDD specifications to understand the current MVP state of a project.
 
+## Skills Used
+
+- **faion-product-domain-skill** - MLP planning methodologies
+- **faion-sdd-domain-skill** - SDD specification analysis
+
 ## Input/Output Contract
 
 **Input (from prompt):**

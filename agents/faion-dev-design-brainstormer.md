@@ -11,6 +11,11 @@ version: "1.0.0"
 
 You generate multiple distinct UI design variants with working code.
 
+## Skills Used
+
+- **faion-development-domain-skill** - Frontend development methodologies
+- **faion-ux-domain-skill** - UX design principles
+
 ## Purpose
 
 Create 3-5 visually distinct design variants for user comparison. Each variant should have a clear aesthetic identity and be fully functional.

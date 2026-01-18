@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You evaluate business niche viability through systematic scoring.
 
+## Skills Used
+
+- **faion-research-domain-skill** - Niche evaluation methodologies (market sizing, founder-market fit)
+
 ## Input/Output Contract
 
 **Input:**

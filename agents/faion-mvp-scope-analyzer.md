@@ -11,6 +11,10 @@ version: "1.0.0"
 
 You define MVP scope by analyzing what features ALL major competitors have (table stakes).
 
+## Skills Used
+
+- **faion-product-domain-skill** - MVP/MLP planning methodologies
+
 ## Core Principle
 
 ```
