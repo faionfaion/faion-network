@@ -7,6 +7,13 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 # BABOK Domain Skill
 
+## Agents
+
+| Agent | When to Use |
+|-------|-------------|
+| `faion-ba-agent` | Execute BABOK v3 methodologies for business analysis |
+
+
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose

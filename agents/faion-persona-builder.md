@@ -1,6 +1,6 @@
 ---
 name: faion-persona-builder
-description: "Creates user personas based on real feedback from Reddit, reviews, forums. Includes pain points, jobs-to-be-done, and real quotes. Writes user-personas.md."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#722ED1"

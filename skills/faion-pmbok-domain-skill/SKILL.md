@@ -7,6 +7,13 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 # PMBOK Domain Skill
 
+## Agents
+
+| Agent | When to Use |
+|-------|-------------|
+| `faion-pm-agent` | Execute PMBOK 7/8 methodologies for project management |
+
+
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose

@@ -1,6 +1,6 @@
 ---
 name: faion-mlp-impl-planner
-description: "Creates MLP implementation order with phases, dependencies, and WOW moments per phase. Defines MLP milestone criteria. Outputs mlp-implementation-order.md document."
+description: ""
 model: opus
 tools: [Read, Write, Glob]
 color: "#EB2F96"

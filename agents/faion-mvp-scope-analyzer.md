@@ -1,6 +1,6 @@
 ---
 name: faion-mvp-scope-analyzer
-description: "Analyzes competitor features to define MVP scope. Features present in ALL competitors = table stakes (must-have). Features in SOME = differentiators. Writes mvp-scope-analysis.md."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#52C41A"

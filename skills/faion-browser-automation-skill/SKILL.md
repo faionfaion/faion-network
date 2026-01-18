@@ -1,7 +1,7 @@
 ---
 name: faion-browser-automation-skill
 user-invocable: false
-description: "Browser Automation Skill: Puppeteer and Playwright patterns for web automation, scraping, testing, screenshot/PDF generation, form automation, and headless browser operations."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task
 ---
 

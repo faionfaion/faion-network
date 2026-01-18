@@ -1,6 +1,6 @@
 ---
 name: faion-rag-agent
-description: "Build and query knowledge bases using RAG pipelines. Document ingestion, vector indexing, semantic/hybrid search, and source-cited responses. Use for document Q&A, knowledge base construction, and retrieval-augmented generation."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task, WebFetch]
 color: "#8B5CF6"

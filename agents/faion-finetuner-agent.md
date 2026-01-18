@@ -1,6 +1,6 @@
 ---
 name: faion-finetuner-agent
-description: "LLM fine-tuning agent for dataset preparation, LoRA/QLoRA training, and model evaluation. Supports OpenAI fine-tuning API and local training with LLaMA-Factory/Unsloth. Handles dataset conversion, validation, hyperparameter selection, and adapter merging."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 color: "#8B5CF6"

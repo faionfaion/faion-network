@@ -1,6 +1,6 @@
 ---
 name: faion-design-reviewer
-description: Reviews SDD design documents for architecture decisions, spec coverage, and technical correctness. Use after design.md is drafted.
+description: ""
 model: opus
 tools: [Read, Grep, Glob]
 color: "#722ED1"

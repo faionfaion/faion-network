@@ -1,7 +1,7 @@
 ---
 name: faion-terraform-skill
 user-invocable: true
-description: "Terraform Infrastructure as Code skill. HCL syntax, providers (AWS, GCP, Azure), resources, data sources, variables, outputs, modules, state management, workspaces, and best practices."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(terraform:*, ls:*, mkdir:*, cat:*)
 ---
 

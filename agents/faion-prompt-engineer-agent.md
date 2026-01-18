@@ -1,6 +1,6 @@
 ---
 name: faion-prompt-engineer-agent
-description: "Crafts, optimizes, and tests prompts for LLMs. Implements chain-of-thought, few-shot learning, role-based prompting, and A/B testing. Optimizes for specific models (OpenAI, Claude, Gemini) and handles prompt compression for context limits."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 color: "#8B5CF6"

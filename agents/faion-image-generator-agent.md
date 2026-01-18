@@ -1,6 +1,6 @@
 ---
 name: faion-image-generator-agent
-description: "AI image generation from text descriptions. Supports DALL-E 3, FLUX, and Stable Diffusion with prompt optimization, provider selection, size/style control, and iterative refinement based on feedback."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#8B5CF6"

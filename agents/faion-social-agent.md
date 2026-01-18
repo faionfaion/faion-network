@@ -1,6 +1,6 @@
 ---
 name: faion-social-agent
-description: "Social media marketing specialist. Develops platform strategies, content scheduling, engagement tactics, and analytics. Builds brand presence and community across social channels."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch]
 color: "#3B82F6"

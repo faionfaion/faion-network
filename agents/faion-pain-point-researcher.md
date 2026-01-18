@@ -1,6 +1,6 @@
 ---
 name: faion-pain-point-researcher
-description: "Researches pain points via Reddit, forums, app reviews, and social media. Finds evidence of problems people complain about. Use for validating startup ideas."
+description: ""
 model: sonnet
 tools: [WebSearch, WebFetch]
 color: "#FA8C16"

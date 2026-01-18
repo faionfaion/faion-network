@@ -1,6 +1,6 @@
 ---
 name: faion-impl-plan-reviewer
-description: Reviews SDD implementation plans for 100k token compliance, dependency correctness, and design coverage. Use after implementation-plan.md is drafted.
+description: ""
 model: opus
 tools: [Read, Grep, Glob]
 color: "#13C2C2"

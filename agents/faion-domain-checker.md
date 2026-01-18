@@ -1,6 +1,6 @@
 ---
 name: faion-domain-checker
-description: "Checks domain availability, GitHub/Twitter handles, and basic trademark search for name candidates. Returns comprehensive availability report. Use for name verification."
+description: ""
 model: sonnet
 tools: [WebSearch, WebFetch]
 color: "#52C41A"

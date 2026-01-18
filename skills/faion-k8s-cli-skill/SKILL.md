@@ -1,7 +1,7 @@
 ---
 name: faion-k8s-cli-skill
 user-invocable: false
-description: Kubernetes CLI operations including kubectl, Helm, Kustomize, and debugging patterns. Use when managing deployments, services, pods, configmaps, secrets, ingress, and troubleshooting K8s clusters.
+description: ""
 ---
 
 # Kubernetes CLI Skill
@@ -523,7 +523,7 @@ mychart/
 ```yaml
 apiVersion: v2
 name: mychart
-description: A Helm chart for Kubernetes
+description: ""
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

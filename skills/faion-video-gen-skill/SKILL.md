@@ -1,7 +1,7 @@
 ---
 name: faion-video-gen-skill
 user-invocable: true
-description: AI video generation skill covering Sora, Runway Gen-3/Gen-4, Pika Labs, Kling. Text-to-video, image-to-video workflows, storyboarding, style consistency, video editing automation. Use for video content creation, marketing assets, and multimodal pipelines.
+description: ""
 ---
 
 # AI Video Generation Mastery

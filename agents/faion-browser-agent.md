@@ -1,6 +1,6 @@
 ---
 name: faion-browser-agent
-description: "Browser automation agent for web scraping, testing, and automated workflows. Uses Puppeteer and Playwright patterns for screenshots, PDF generation, form automation, and E2E testing support."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#7C3AED"

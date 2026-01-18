@@ -1,6 +1,6 @@
 ---
 name: faion-api-agent
-description: "API design, contract generation, and OpenAPI specification agent. Designs REST and GraphQL APIs, generates OpenAPI specs, validates contracts, and implements API best practices. Use for API design tasks."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 color: "#8B5CF6"

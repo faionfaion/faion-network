@@ -1,6 +1,6 @@
 ---
 name: faion-dev-component-developer
-description: "Develops React/Vue components using Storybook-driven development. Creates components with stories, tests, and documentation. Use for component implementation."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#61DAFB"

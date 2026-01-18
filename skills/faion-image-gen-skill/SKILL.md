@@ -1,7 +1,7 @@
 ---
 name: faion-image-gen-skill
 user-invocable: true
-description: "AI image generation skill covering DALL-E 3, Midjourney API, Stable Diffusion 3.5, FLUX, Ideogram. Text-to-image, image-to-image, inpainting, outpainting, prompt engineering. Includes cost comparison, API examples, and production workflows."
+description: ""
 ---
 
 # AI Image Generation Mastery

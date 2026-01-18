@@ -1,7 +1,7 @@
 ---
 name: faion-api-skill
 user-invocable: true
-description: API design and contract management. REST API design, GraphQL patterns, OpenAPI specification, API versioning, authentication, rate limiting, error handling, documentation, testing, monitoring, gateway patterns, and contract-first development. 12 methodologies for building production-ready APIs.
+description: ""
 ---
 
 # API Design Mastery

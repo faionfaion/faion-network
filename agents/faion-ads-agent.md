@@ -1,6 +1,6 @@
 ---
 name: faion-ads-agent
-description: "Marketing and ads agent for campaign management. Manages Meta Ads and Google Ads campaigns, sets up analytics tracking, creates reports and metrics, handles audience management and budget optimization."
+description: ""
 model: sonnet
 tools: [Bash, Read, Write, Edit, Grep, Glob]
 color: "#F59E0B"

@@ -1,7 +1,7 @@
 ---
 name: faion-openai-api-skill
 user-invocable: true
-description: "Complete OpenAI API guide: GPT-4/GPT-4o chat completions, function calling, vision, DALL-E image generation, Whisper transcription, TTS speech synthesis, embeddings, Assistants API, Batch API, Realtime API, error handling, rate limiting, and cost tracking."
+description: ""
 ---
 
 # OpenAI API Mastery

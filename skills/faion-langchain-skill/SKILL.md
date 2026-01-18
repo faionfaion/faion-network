@@ -1,7 +1,7 @@
 ---
 name: faion-langchain-skill
 user-invocable: true
-description: "LangChain/LangGraph orchestration skill: chain patterns (sequential, router, mapreduce), agent architectures (ReAct, Plan-and-Execute, LATS), memory types, prompt templates, output parsers, tool integration, multi-agent systems."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(python:*), Bash(pip:*)
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: faion-finetuning-skill
 user-invocable: true
-description: Comprehensive LLM fine-tuning skill. LoRA/QLoRA, LLaMA-Factory, Unsloth, dataset preparation, training configuration, hyperparameter tuning, evaluation metrics, model merging, deployment, cost optimization. Use for customizing LLMs for domain-specific tasks.
+description: ""
 ---
 
 # LLM Fine-tuning Mastery

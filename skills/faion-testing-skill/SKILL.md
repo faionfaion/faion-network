@@ -1,7 +1,7 @@
 ---
 name: faion-testing-skill
 user-invocable: false
-description: "Testing Skill: Comprehensive testing patterns for pytest, Jest/Vitest, Go testing, E2E testing (Playwright/Cypress), mocking, fixtures, coverage reporting, and TDD workflow."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(pytest:*, jest:*, vitest:*, go test:*, npx playwright:*, npx cypress:*, coverage:*)
 ---
 

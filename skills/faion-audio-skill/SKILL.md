@@ -1,7 +1,7 @@
 ---
 name: faion-audio-skill
 user-invocable: false
-description: Audio and speech processing including TTS (ElevenLabs, OpenAI, Azure), STT (Whisper, Deepgram, AssemblyAI), voice cloning, speaker diarization, real-time streaming, and audio editing. Use when building voice agents, transcription systems, or audio content generation.
+description: ""
 ---
 
 # Audio/Speech Processing Skill

@@ -1,7 +1,7 @@
 ---
 name: faion-backend-skill
 user-invocable: false
-description: "Multi-language backend development skill covering Go (Gin, Echo, stdlib), Ruby (Rails, Sinatra), PHP (Laravel, Symfony), Java (Spring Boot), C# (.NET Core, ASP.NET), and Rust (Actix, Axum). 24 methodologies for backend architecture, API design, database patterns, and testing."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 

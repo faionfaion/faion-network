@@ -1,6 +1,6 @@
 ---
 name: faion-cost-optimizer-agent
-description: "AI/LLM cost optimization agent. Tracks API spending across providers (OpenAI, Anthropic, Google), recommends optimal models for tasks, implements caching strategies, identifies batch processing opportunities, and generates cost reports."
+description: ""
 model: sonnet
 tools: [Bash, Read, Write, Edit, Grep, Glob]
 color: "#10B981"

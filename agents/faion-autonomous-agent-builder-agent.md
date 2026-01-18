@@ -1,6 +1,6 @@
 ---
 name: faion-autonomous-agent-builder-agent
-description: "Build autonomous AI agents using LangGraph. Creates multi-agent systems with ReAct/Plan-and-Execute/LATS architectures, memory management, custom tools, state machines, and evaluation. From simple chatbots to complex hierarchical teams."
+description: ""
 model: opus
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 color: "#8B5CF6"

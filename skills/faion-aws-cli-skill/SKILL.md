@@ -1,7 +1,7 @@
 ---
 name: faion-aws-cli-skill
 user-invocable: true
-description: "AWS CLI operations: EC2, S3, Lambda, RDS, ECS/EKS, CloudFormation, IAM, CloudWatch. Patterns for infrastructure management, deployment, and security."
+description: ""
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---
 

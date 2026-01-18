@@ -1,6 +1,6 @@
 ---
 name: faion-api-designer
-description: Designs APIs and manages contracts.md (core project document). Creates/updates API contracts at constitution level, reconciles interfaces across specs, generates OpenAPI schemas. Use for API design, interface contracts, and system integration.
+description: ""
 model: opus
 tools: [Read, Write, Edit, Grep, Glob]
 color: "#1890FF"

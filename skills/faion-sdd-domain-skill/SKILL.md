@@ -7,6 +7,19 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 # SDD Domain Skill
 
+## Agents
+
+| Agent | When to Use |
+|-------|-------------|
+| `faion-task-executor` | Execute SDD tasks autonomously from task files |
+| `faion-task-creator` | Create detailed TASK_*.md files from specs |
+| `faion-spec-reviewer` | Review specifications for completeness and clarity |
+| `faion-design-reviewer` | Review design documents for architecture decisions |
+| `faion-impl-plan-reviewer` | Review implementation plans for correctness |
+| `faion-tasks-reviewer` | Multi-pass review of all tasks for a feature |
+| `faion-hallucination-checker` | Validate task completion claims with evidence |
+
+
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose

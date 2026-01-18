@@ -1,6 +1,6 @@
 ---
 name: faion-dev-storybook-manager
-description: "Sets up and maintains Storybook for component libraries. Configures addons, creates structure, manages design tokens. Use for Storybook initialization and maintenance."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#FF4785"

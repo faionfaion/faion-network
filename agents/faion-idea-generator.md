@@ -1,6 +1,6 @@
 ---
 name: faion-idea-generator
-description: "Generates startup/product ideas using multiple frameworks (7 Ps, Paul Graham, personal pain points). Returns 15-20 categorized ideas with rationale. Use for brainstorming new projects."
+description: ""
 model: opus
 tools: [Read, WebSearch, WebFetch]
 color: "#722ED1"

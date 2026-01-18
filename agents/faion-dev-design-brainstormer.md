@@ -1,6 +1,6 @@
 ---
 name: faion-dev-design-brainstormer
-description: "Generates multiple distinct UI design variants using different aesthetics. Creates working HTML/React prototypes. Use for design exploration and brainstorming."
+description: ""
 model: opus
 tools: [Read, Write, Glob, Bash, Skill]
 color: "#EB2F96"

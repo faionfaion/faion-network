@@ -1,6 +1,6 @@
 ---
 name: faion-content-agent
-description: "Content marketing and SEO specialist. Develops blog strategy, content calendars, keyword research, SEO optimization, and content audits. Creates high-converting content aligned with buyer journey."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch]
 color: "#8B5CF6"

@@ -1,6 +1,6 @@
 ---
 name: faion-stt-agent
-description: "Speech-to-text transcription agent. Supports Whisper, Deepgram, AssemblyAI, and ElevenLabs Scribe for batch and real-time transcription with timestamps, speaker diarization, and language detection. Selects optimal provider based on accuracy, latency, and cost requirements."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#3B82F6"

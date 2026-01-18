@@ -1,6 +1,6 @@
 ---
 name: faion-task-executor
-description: Executes SDD feature tasks autonomously. Reads constitution, spec, design, then implements. Use when executing tasks from aidocs/sdd/{project}/features/{feature}/tasks/.
+description: ""
 model: opus
 tools: [Read, Write, Edit, Bash, Grep, Glob, TodoWrite]
 permissionMode: acceptEdits

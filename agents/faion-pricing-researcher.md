@@ -1,6 +1,6 @@
 ---
 name: faion-pricing-researcher
-description: "Researches pricing strategies - competitor pricing, models (freemium/subscription/usage), benchmarks. Creates pricing recommendations. Writes pricing-research.md."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#EB2F96"

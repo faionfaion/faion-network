@@ -1,6 +1,6 @@
 ---
 name: faion-tts-agent
-description: "Text-to-speech synthesis using ElevenLabs, OpenAI TTS, and Azure Speech. Handles voice selection, customization, streaming, and long text chunking. Selects optimal provider based on quality, latency, and cost requirements."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#8B5CF6"

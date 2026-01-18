@@ -1,6 +1,6 @@
 ---
 name: faion-competitor-analyzer
-description: "Analyzes competitors - features, pricing, strengths, weaknesses, positioning. Creates feature comparison matrix. Writes competitive-analysis.md."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#FA541C"

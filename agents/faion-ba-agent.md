@@ -1,6 +1,6 @@
 ---
 name: faion-ba-agent
-description: "Business analysis agent executing BABOK v3 methodologies. Performs requirements elicitation, analysis, modeling, traceability, and solution evaluation following IIBA standards. Use for stakeholder analysis, requirements gathering, and business process improvement."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 color: "#7C3AED"

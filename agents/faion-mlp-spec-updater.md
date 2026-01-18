@@ -1,6 +1,6 @@
 ---
 name: faion-mlp-spec-updater
-description: "Updates existing specs with MLP requirements. Adds MLP Level, Problem Statement, MLP Enhancements section, and Success Metrics comparing MVP vs MLP targets. Preserves existing content."
+description: ""
 model: sonnet
 tools: [Read, Edit, Write, Glob]
 color: "#52C41A"

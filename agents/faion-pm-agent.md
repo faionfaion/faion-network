@@ -1,6 +1,6 @@
 ---
 name: faion-pm-agent
-description: "Project management agent executing PMBOK 7/8 methodologies. Manages stakeholders, teams, planning, delivery, measurement, and risk following PMI standards. Use for project planning, status reporting, risk management, and team coordination."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 color: "#2563EB"

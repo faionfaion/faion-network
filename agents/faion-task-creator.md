@@ -1,6 +1,6 @@
 ---
 name: faion-task-creator
-description: Creates individual SDD task files with deep codebase research. Reads spec, design, implementation-plan and researches existing code to create comprehensive TASK_*.md files.
+description: ""
 model: opus
 tools: [Read, Write, Grep, Glob, Bash]
 permissionMode: acceptEdits

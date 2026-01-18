@@ -1,7 +1,7 @@
 ---
 name: faion-javascript-skill
 user-invocable: false
-description: JavaScript/TypeScript ecosystem development patterns. React hooks and component architecture, Node.js/Express middleware, Bun runtime, TypeScript strict mode, Jest/Vitest testing, ESLint/Prettier formatting, npm/yarn/pnpm package management.
+description: ""
 ---
 
 # JavaScript/TypeScript Coding Standards

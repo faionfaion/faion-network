@@ -1,7 +1,7 @@
 ---
 name: faion-pm-tools-skill
 user-invocable: true
-description: Project management tools mastery. Jira, ClickUp, Linear, GitHub Projects, GitLab Boards, Azure DevOps, Notion, Trello. Cross-tool migration, tool selection framework, agile ceremonies, reporting & dashboards.
+description: ""
 ---
 
 # PM Tools Mastery
@@ -603,7 +603,7 @@ Zoom: Months
 **.github/ISSUE_TEMPLATE/bug_report.yml:**
 ```yaml
 name: Bug Report
-description: Report a bug
+description: ""
 labels: [bug, triage]
 body:
   - type: textarea

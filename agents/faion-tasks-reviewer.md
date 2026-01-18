@@ -1,6 +1,6 @@
 ---
 name: faion-tasks-reviewer
-description: Multi-pass review of all SDD tasks for a feature. Checks completeness, consistency, coverage, and executability. Use after all TASK_*.md files are created.
+description: ""
 model: opus
 tools: [Read, Write, Edit, Grep, Glob]
 permissionMode: acceptEdits

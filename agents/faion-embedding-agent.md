@@ -1,6 +1,6 @@
 ---
 name: faion-embedding-agent
-description: "Embedding generation and management agent. Generates vector embeddings for documents and queries with batch processing, model selection, caching, and dimension reduction. Use for RAG pipelines, semantic search, and document indexing."
+description: ""
 model: sonnet
 tools: [Read, Write, Bash, Grep, Glob]
 color: "#8B5CF6"

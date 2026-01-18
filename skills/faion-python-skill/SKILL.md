@@ -1,7 +1,7 @@
 ---
 name: faion-python-skill
 user-invocable: false
-description: "Python Ecosystem Technical Skill: Django, FastAPI, pytest, Poetry, type hints, mypy, Black/isort/flake8, virtual environments. Layer 3 technical skill used by faion-code-agent."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(python:*, pip:*, poetry:*, pytest:*, mypy:*, black:*, isort:*, flake8:*)
 ---
 

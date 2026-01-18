@@ -1,7 +1,7 @@
 ---
 name: faion-claude-api-skill
 user-invocable: true
-description: "Complete Anthropic Claude API guide: Messages API (Claude Opus 4.5, Sonnet 4, Haiku 3.5), tool use, vision (images, PDFs), extended thinking, computer use, prompt caching, Batch API, streaming, MCP, rate limiting, and cost optimization."
+description: ""
 ---
 
 # Claude API Mastery

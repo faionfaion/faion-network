@@ -1,6 +1,6 @@
 ---
 name: faion-devops-agent
-description: "DevOps automation agent for CI/CD pipelines, infrastructure management, and deployment automation. Handles GitHub Actions, GitLab CI, Docker, Kubernetes, AWS, and Terraform."
+description: ""
 model: sonnet
 tools: [Bash, Read, Write, Edit, Grep, Glob]
 color: "#7C3AED"

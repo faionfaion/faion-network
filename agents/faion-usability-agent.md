@@ -1,6 +1,6 @@
 ---
 name: faion-usability-agent
-description: "Usability testing and evaluation specialist. Conducts heuristic evaluations using Nielsen Norman 10 Heuristics, plans and executes usability tests, identifies severity of issues, and prioritizes UX improvements."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch]
 color: "#F97316"

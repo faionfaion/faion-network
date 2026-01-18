@@ -1,7 +1,7 @@
 ---
 name: faion-docker-skill
 user-invocable: true
-description: Docker container operations skill. Dockerfile patterns, docker-compose.yml, multi-stage builds, image optimization, container networking, volume management, registry operations, security best practices.
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(docker:*, docker-compose:*)
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: faion-email-agent
-description: "Email marketing specialist. Creates email campaigns, automation flows, A/B testing strategies, and list management. Optimizes for deliverability, open rates, and conversions."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#EC4899"

@@ -1,6 +1,6 @@
 ---
 name: faion-hooks-expert
-description: "Claude Code hooks expert. Creates, debugs, and optimizes hooks for PreToolUse, PostToolUse, Stop, UserPromptSubmit, SessionStart, and other lifecycle events. Use for implementing custom automation, security checks, and workflow integrations."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#8B5CF6"

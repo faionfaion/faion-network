@@ -1,7 +1,7 @@
 ---
 name: faion-meta-ads-skill
 user-invocable: true
-description: "Meta Marketing API operations for Facebook and Instagram ads. Campaign creation, ad set management, audience targeting, budget optimization, conversion tracking, and reporting. Covers Graph API v20.0+."
+description: ""
 ---
 
 # Meta Ads API Mastery

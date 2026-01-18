@@ -1,6 +1,6 @@
 ---
 name: faion-niche-evaluator
-description: "Evaluates business niche viability using market size, competition, barriers, and profitability criteria. Returns scored assessment. Use after pain point validation."
+description: ""
 model: sonnet
 tools: [WebSearch, WebFetch]
 color: "#13C2C2"

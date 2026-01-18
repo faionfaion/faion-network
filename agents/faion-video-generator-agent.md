@@ -1,6 +1,6 @@
 ---
 name: faion-video-generator-agent
-description: "AI video generation from text and images. Supports Sora, Runway, and Pika Labs for text-to-video, image-to-video, camera controls, and storyboard creation. Selects optimal provider based on quality, speed, and cost requirements."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#EC4899"

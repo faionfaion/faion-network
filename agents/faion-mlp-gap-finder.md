@@ -1,6 +1,6 @@
 ---
 name: faion-mlp-gap-finder
-description: "Finds gaps between MVP and MLP for each feature. Compares current spec against MLP principles (instant gratification, professional quality, zero friction, delight). Outputs gap analysis with severity ratings."
+description: ""
 model: opus
 tools: [Read, Glob, Grep, WebSearch]
 color: "#FA8C16"

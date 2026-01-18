@@ -1,6 +1,6 @@
 ---
 name: faion-problem-validator
-description: "Validates problem with evidence - frequency, severity, workarounds, willingness to pay. Issues verdict: Validated/Partially/Not Validated. Writes problem-validation.md."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#13C2C2"

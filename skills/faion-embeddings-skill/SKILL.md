@@ -1,7 +1,7 @@
 ---
 name: faion-embeddings-skill
 user-invocable: true
-description: "Text embeddings expert. Generate and manage vector embeddings using OpenAI, Mistral, Cohere, and local models (sentence-transformers). Includes batch processing, dimensionality selection, caching strategies, benchmarking, and cost optimization."
+description: ""
 ---
 
 # Text Embeddings Expert

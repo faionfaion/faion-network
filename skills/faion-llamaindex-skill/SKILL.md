@@ -1,7 +1,7 @@
 ---
 name: faion-llamaindex-skill
 user-invocable: true
-description: LlamaIndex RAG framework for document Q&A and knowledge bases. Document loaders, node parsers, index types (vector/keyword/graph), query engines, retrievers, response synthesizers, agents, evaluation. Use for building production RAG pipelines.
+description: ""
 ---
 
 # LlamaIndex RAG Framework

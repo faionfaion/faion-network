@@ -1,6 +1,6 @@
 ---
 name: faion-test-agent
-description: "Test creation, execution, and coverage analysis agent. Generates unit, integration, and E2E tests. Analyzes coverage gaps and suggests improvements. Use for testing tasks."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 color: "#22C55E"

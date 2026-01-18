@@ -1,7 +1,7 @@
 ---
 name: faion-analytics-skill
 user-invocable: false
-description: "Analytics Skill: GA4 and Plausible integration, event tracking, custom dimensions, conversion goals, funnel analysis, reporting API, and privacy compliance."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(npm:*, npx:*, curl:*)
 ---
 

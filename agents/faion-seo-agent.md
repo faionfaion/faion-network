@@ -1,6 +1,6 @@
 ---
 name: faion-seo-agent
-description: "Comprehensive SEO audits, optimization, and implementation. Analyzes sites for technical SEO, accessibility, Core Web Vitals, schema markup, multilingual setup, and AI visibility. Creates actionable reports with fixes."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch]
 color: "#10B981"

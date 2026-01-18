@@ -1,6 +1,6 @@
 ---
 name: faion-name-generator
-description: "Generates creative project/product name candidates using multiple naming strategies. Returns list of 15-20 names with rationale. Use for brainstorming product names."
+description: ""
 model: opus
 tools: [Read, WebSearch, WebFetch]
 color: "#722ED1"

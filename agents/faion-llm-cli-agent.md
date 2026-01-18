@@ -1,6 +1,6 @@
 ---
 name: faion-llm-cli-agent
-description: "LLM CLI automation agent for Claude Code, OpenAI Codex CLI, Google Gemini CLI, and Aider. Documents patterns, creates automation scripts, handles multi-tool workflows."
+description: ""
 model: sonnet
 tools: [Bash, Read, Write, Edit, Grep, Glob]
 color: "#10B981"
@@ -109,7 +109,7 @@ Create in `~/.claude/commands/`:
 # my-command.md
 ---
 name: my-command
-description: "My custom command description"
+description: ""
 ---
 
 Your prompt instructions here.
@@ -127,7 +127,7 @@ Create in `~/.claude/skills/my-skill/`:
 ---
 name: my-skill
 user-invocable: true
-description: "Skill description"
+description: ""
 allowed-tools: Read, Write, Edit, Bash
 ---
 
@@ -150,7 +150,7 @@ Create in `~/.claude/agents/`:
 # my-agent.md
 ---
 name: my-agent
-description: "Agent description"
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 color: "#3B82F6"

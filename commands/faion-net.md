@@ -301,16 +301,16 @@ Layer 3: Technical Skills (25) ─ tools
 
 Route requests to appropriate domain skill based on user intent:
 
-| Skill | Purpose | Methodologies |
-|-------|---------|---------------|
-| faion-sdd-domain-skill | SDD workflow: specs, design, tasks, quality gates | 8 |
-| faion-research-domain-skill | Research: ideas, market, competitors, personas | 20 |
-| faion-product-domain-skill | Product: roadmap, MVP/MLP, prioritization | 18 |
-| faion-development-domain-skill | Development: Python, JS, backend, DevOps | 68 |
-| faion-marketing-domain-skill | Marketing: GTM, landing, content, ads | 72 |
-| faion-pmbok-domain-skill | PMBOK 7/8: performance domains, principles | 20 |
-| faion-babok-domain-skill | BABOK v3: knowledge areas, techniques | 18 |
-| faion-ux-domain-skill | UX: Nielsen Norman, research, usability | 32 |
+| Skill | When to Use |
+|-------|-------------|
+| `faion-sdd-domain-skill` | Writing specs, designs, implementation plans. Task creation and execution. Quality gates, confidence checks, reflexion learning. |
+| `faion-research-domain-skill` | Brainstorming ideas, validating problems, researching markets. Competitor analysis, persona building, pricing research. |
+| `faion-product-domain-skill` | MVP/MLP planning, feature prioritization (RICE/MoSCoW), roadmapping. Gap analysis between current state and target. |
+| `faion-development-domain-skill` | Writing code (Python, JS, Go, etc.), code review, refactoring. CI/CD, testing, API design, DevOps. |
+| `faion-marketing-domain-skill` | GTM strategy, landing pages, content marketing. Ads (Meta/Google), email campaigns, social media, SEO. |
+| `faion-pmbok-domain-skill` | Project management using PMBOK 7/8. Stakeholder management, risk management, EVM, change control. |
+| `faion-babok-domain-skill` | Business analysis using BABOK v3. Requirements elicitation, traceability, solution assessment. |
+| `faion-ux-domain-skill` | UX research, usability testing, heuristic evaluation (Nielsen Norman 10). Personas, journey mapping, wireframing. |
 
 ## Technical Skills (Layer 3) - Tools
 

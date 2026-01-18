@@ -1,7 +1,7 @@
 ---
 name: faion-vector-db-skill
 user-invocable: false
-description: "Vector database operations for semantic search and RAG. Covers Qdrant, Weaviate, pgvector, Chroma, Pinecone with schema design, indexing strategies, query patterns, and performance optimization."
+description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(pip:*, docker:*, curl:*, psql:*, ls:*, cat:*)
 ---
 

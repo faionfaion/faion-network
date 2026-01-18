@@ -1,7 +1,7 @@
 ---
 name: faion-google-ads-skill
 user-invocable: false
-description: "Google Ads API Skill: Campaign management, keyword research, ad groups, bidding strategies, conversion tracking, Analytics integration, reporting, and automation patterns for Google Ads API v18."
+description: ""
 allowed-tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 

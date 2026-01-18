@@ -1,6 +1,6 @@
 ---
 name: faion-image-editor-agent
-description: "AI image transformation and editing. Handles image-to-image transformation, inpainting, outpainting, variations, style transfer, and batch processing using DALL-E, Stability AI, and FLUX APIs."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Glob, Grep]
 color: "#8B5CF6"

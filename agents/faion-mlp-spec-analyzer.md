@@ -1,6 +1,6 @@
 ---
 name: faion-mlp-spec-analyzer
-description: "Analyzes existing SDD specs to understand current MVP state. Reads specs from features/backlog/, extracts requirements, acceptance criteria, and identifies what each feature does. Use as first step in MLP planning."
+description: ""
 model: sonnet
 tools: [Read, Glob, Grep]
 color: "#1890FF"

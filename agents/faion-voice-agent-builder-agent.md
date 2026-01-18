@@ -1,6 +1,6 @@
 ---
 name: faion-voice-agent-builder-agent
-description: "Build real-time voice assistants with STT, LLM, and TTS pipelines. Handles turn-taking, interruption detection, latency optimization (<500ms), and conversation state management. Supports Deepgram, ElevenLabs, OpenAI, and Azure providers."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash]
 color: "#8B5CF6"

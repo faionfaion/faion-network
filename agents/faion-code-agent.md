@@ -1,6 +1,6 @@
 ---
 name: faion-code-agent
-description: "Code generation, review, and refactoring agent for multiple languages. Generates clean, tested code following project standards. Use for implementing features, code reviews, and refactoring."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 color: "#3B82F6"

@@ -1,6 +1,6 @@
 ---
 name: faion-spec-reviewer
-description: Reviews SDD specifications for completeness, testability, and clarity. Use after spec.md is drafted to validate quality before approval.
+description: ""
 model: sonnet
 tools: [Read, Grep, Glob]
 color: "#FA8C16"

@@ -1,7 +1,7 @@
 ---
 name: faion-gemini-api-skill
 user-invocable: true
-description: Complete Google Gemini API skill. Gemini 2.0/1.5 Pro/Flash models, multimodal input (text, images, video, audio), function calling, code execution, streaming, safety settings, embeddings, context caching, grounding with Google Search, Vertex AI integration.
+description: ""
 ---
 
 # Google Gemini API Mastery

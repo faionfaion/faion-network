@@ -1,6 +1,6 @@
 ---
 name: faion-multimodal-agent
-description: "Multimodal AI pipeline orchestrator for text, image, video, and audio processing. Chains generation models for complex content workflows (blog→video, script→podcast). Manages state, costs, and error recovery across modalities."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Bash, Grep, Glob, Task]
 color: "#8B5CF6"

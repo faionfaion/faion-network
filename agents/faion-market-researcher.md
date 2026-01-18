@@ -1,6 +1,6 @@
 ---
 name: faion-market-researcher
-description: "Researches market size (TAM/SAM/SOM), market trends, growth drivers, and risks. Writes market-research.md with cited sources."
+description: ""
 model: sonnet
 tools: [Read, Write, Glob, WebSearch, WebFetch]
 color: "#1890FF"

@@ -1,6 +1,6 @@
 ---
 name: faion-ux-researcher-agent
-description: "UX research specialist. Conducts user interviews, contextual inquiry, surveys, persona development, journey mapping, and competitive UX analysis. Synthesizes research into actionable insights."
+description: ""
 model: sonnet
 tools: [Read, Write, Edit, Glob, Grep, Bash, WebSearch, AskUserQuestion]
 color: "#EC4899"
