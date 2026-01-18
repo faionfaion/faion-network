@@ -456,7 +456,7 @@ Call `faion-impl-plan-reviewer` agent. Checks: 100k compliance, deps, coverage.
 
 **Rule:** If uncertain, estimate higher and split.
 
-**Output:** `implementation-plan.md` → Next: Task Creation (faion-make-tasks skill)
+**Output:** `implementation-plan.md` → Next: Task Creation (via faion-sdd-domain-skill)
 
 ---
 
@@ -1076,7 +1076,667 @@ aidocs/sdd/{project}/
 
 ---
 
-*SDD Domain Skill v1.1 - Part 1+2 of 3*
-*Sections 1-4: Constitutions, Specifications, Design, Implementation Plans*
-*Sections 5-8: Task Creation, Execution, Batch Execution, Parallelization*
-*Next: Part 3 (Quality Gates, Reflexion, Workflows)*
+---
+
+# Methodologies Reference
+
+## M-SDD-001: SDD Workflow Overview
+
+### Problem
+Teams lack a structured approach to translate ideas into working software, leading to scope creep, miscommunication, and wasted effort.
+
+### Framework
+```
+CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
+      ↓          ↓        ↓         ↓          ↓        ↓        ↓
+   project    feature  technical  100k rule  atomic   agent    learn
+   principles  intent   approach  compliance  units  execution  reflect
+```
+
+**Step 1: Constitution** - Define immutable project principles
+- Tech stack, coding standards, architecture patterns
+- Source of truth for ALL features
+
+**Step 2: Specification** - Define WHAT and WHY
+- Problem statement, user stories, requirements
+- Socratic dialogue to extract real needs
+
+**Step 3: Design** - Define HOW
+- Architecture decisions with rationale
+- File mappings, data flows, integration points
+
+**Step 4: Implementation Plan** - Break into tasks
+- Apply 100k token rule per task
+- Dependencies, parallelization opportunities
+
+**Step 5: Tasks** - Execute atomically
+- One task = one agent execution
+- Clear acceptance criteria
+
+**Step 6: Done** - Verify and reflect
+- Quality gates passed
+- Lessons learned captured
+
+### Templates
+
+**Directory Structure:**
+```
+aidocs/sdd/{project}/
+├── constitution.md           # Project principles
+├── contracts.md              # API contracts
+├── roadmap.md                # Milestones
+└── features/{status}/{NN}-{feature}/
+    ├── spec.md               # WHAT and WHY
+    ├── design.md             # HOW
+    ├── implementation-plan.md # Task breakdown
+    └── tasks/{status}/       # Task files
+```
+
+### Examples
+
+**E-commerce MVP:**
+1. Constitution: Django + PostgreSQL + Tailwind
+2. Spec: User can browse products, add to cart, checkout
+3. Design: Product model, Cart service, Stripe integration
+4. Plan: 12 tasks across 3 phases
+5. Execute: 1 week to MVP
+
+### Agent
+faion-task-executor, faion-task-creator
+
+---
+
+## M-SDD-002: Writing Specifications
+
+### Problem
+Requirements are vague, incomplete, or based on assumptions rather than validated user needs.
+
+### Framework
+
+**Phase 1: Brainstorming**
+- Start with: "Tell me about the problem. Who suffers and how?"
+- Apply Five Whys to reach root cause
+- Challenge assumptions: "Is this needed for v1?"
+
+**Phase 2: Research Codebase**
+- Search existing patterns: `Glob **/models.py`
+- Find related specs: `Glob aidocs/sdd/**/spec.md`
+- Share findings with user
+
+**Phase 3: Clarify Details**
+- User stories: As {role}, I want {goal}, so that {benefit}
+- Edge cases through questions (not assumptions)
+
+**Phase 4: Draft Section by Section**
+- Problem Statement → validate
+- User Stories with AC → validate
+- Functional Requirements → validate
+- Out of Scope → validate
+
+**Phase 5: Review**
+- Call faion-spec-reviewer agent
+- Check: Problem clear? Stories specific? Requirements testable?
+
+**Phase 6: Save**
+- `aidocs/sdd/{project}/features/backlog/{NN}-{feature}/spec.md`
+
+### Templates
+
+**Spec Template:**
+```markdown
+# Feature: {Name}
+
+## Problem Statement
+{Clear description of the problem}
+
+## User Stories
+
+### US-01: {Story Name}
+**As a** {role}
+**I want** {goal}
+**So that** {benefit}
+
+**Acceptance Criteria:**
+- [ ] AC-01.1: {criterion}
+- [ ] AC-01.2: {criterion}
+
+## Functional Requirements
+- FR-01: {requirement}
+- FR-02: {requirement}
+
+## Out of Scope
+- {explicitly excluded item}
+```
+
+### Examples
+
+**User Authentication Spec:**
+- Problem: Users cannot securely access their accounts
+- US-01: As a user, I want to register with email
+- FR-01: System shall validate email format
+- Out of Scope: Social login (v2)
+
+### Agent
+faion-spec-reviewer
+
+---
+
+## M-SDD-003: Writing Design Documents
+
+### Problem
+Developers lack clear technical guidance, leading to inconsistent implementations and architectural drift.
+
+### Framework
+
+**Phase 1: Read Specification**
+- Extract problem, user stories, requirements
+- Identify API contracts (if any)
+
+**Phase 2: Read Constitution**
+- Extract architecture patterns, code standards
+- Note testing requirements
+
+**Phase 3: Research Codebase**
+- Find similar implementations
+- Identify reusable components
+- Determine where new code fits
+
+**Phase 4: Architecture Decisions (AD)**
+- For each key decision: context, options, rationale
+- Minimum 2 alternatives per decision
+
+**Phase 5: Technical Approach**
+- Components and interactions
+- Data flow and validation
+- File mappings (CREATE/MODIFY)
+
+**Phase 6: Testing Strategy**
+- Unit tests, integration tests
+- Test data requirements
+
+**Phase 7: Risk Assessment**
+- Impact, mitigation for each risk
+
+**Phase 8: Review**
+- Call faion-design-reviewer agent
+
+### Templates
+
+**Architecture Decision Template:**
+```markdown
+### AD-{N}: {Decision Name}
+
+**Context:**
+{Problem being solved}
+
+**Options:**
+- **A: {Option}**
+  - Pros: {benefits}
+  - Cons: {drawbacks}
+- **B: {Option}**
+  - Pros: {benefits}
+  - Cons: {drawbacks}
+
+**Decision:** {Chosen option}
+
+**Rationale:** {Why this choice}
+```
+
+**Files Section:**
+```markdown
+## Files
+
+| File | Action | Description |
+|------|--------|-------------|
+| app/models/user.py | CREATE | User model |
+| app/services/auth.py | CREATE | Auth service |
+| app/views/auth.py | MODIFY | Add login endpoint |
+```
+
+### Examples
+
+**Payment Integration Design:**
+- AD-1: Use Stripe vs PayPal → Stripe (better API)
+- AD-2: Store card tokens vs redirect → Tokens (better UX)
+- Files: payment_service.py (CREATE), checkout_view.py (MODIFY)
+
+### Agent
+faion-design-reviewer
+
+---
+
+## M-SDD-004: Writing Implementation Plans
+
+### Problem
+Tasks are too large, unclear, or have hidden dependencies, causing blocked work and context overflow.
+
+### Framework
+
+**Key Principle:** Each task MUST fit 100k token context
+
+**Token Budget:**
+```
+Research: ~20k (read existing code)
+Task file: ~5k
+Implementation: ~50k
+Buffer: ~25k
+TOTAL < 100k
+```
+
+**Phase 1: Load Context**
+- Read constitution, spec, design
+
+**Phase 2: Analyze Complexity**
+- Estimate tokens per file
+- Identify high-complexity areas
+
+**Phase 3: Define Work Units**
+- Group related work
+- Apply 100k rule
+
+**Phase 4: Map Dependencies**
+- Explicit: task file references
+- Implicit: file modifications, imports
+
+**Phase 5: Optimize Parallelization**
+- Identify independent tasks
+- Create execution waves
+
+**Phase 6: Review**
+- Call faion-impl-plan-reviewer
+
+### Templates
+
+**Implementation Plan:**
+```markdown
+# Implementation Plan: {Feature}
+
+## Overview
+- **Total tasks:** {N}
+- **Estimated effort:** {X} hours
+- **Critical path:** TASK_001 → TASK_003 → TASK_005
+
+## Tasks
+
+### TASK_001: {Name}
+- **Complexity:** Low/Medium/High
+- **Est. tokens:** ~{X}k
+- **Depends on:** —
+- **Enables:** TASK_003
+
+### TASK_002: {Name}
+- **Complexity:** Medium
+- **Est. tokens:** ~{X}k
+- **Depends on:** —
+- **Enables:** TASK_003
+
+## Execution Order
+
+### Wave 1 (Parallel)
+- TASK_001, TASK_002
+
+### Wave 2 (Sequential)
+- TASK_003 (depends on Wave 1)
+```
+
+**Token Estimation:**
+| Component | Tokens |
+|-----------|--------|
+| Django model (simple) | 5-10k |
+| Django model (complex) | 15-25k |
+| Service class | 20-40k |
+| ViewSet | 15-30k |
+| Test file | 20-40k |
+
+### Examples
+
+**Auth Feature Plan:**
+- TASK_001: User model (10k) - independent
+- TASK_002: Auth service (30k) - depends on 001
+- TASK_003: Login endpoint (20k) - depends on 002
+- TASK_004: Tests (25k) - depends on 002, 003
+
+### Agent
+faion-impl-plan-reviewer
+
+---
+
+## M-SDD-005: Task Creation and Parallelization
+
+### Problem
+Tasks are created inconsistently, dependencies are unclear, and parallelization opportunities are missed.
+
+### Framework
+
+**Task Creation:**
+1. Parse implementation plan
+2. Create task file with standard format
+3. Include acceptance criteria
+4. Estimate tokens
+
+**Task File Format:**
+```markdown
+# TASK_{NNN}: {Short Name}
+
+**Feature:** {feature}
+**Status:** todo
+**Created:** {date}
+
+## Objective
+{Clear, single-agent executable goal}
+
+## Dependencies
+- {TASK_XXX if any}
+
+## Acceptance Criteria
+- [ ] AC-{NNN}.1: {criterion}
+- [ ] AC-{NNN}.2: {criterion}
+
+## Technical Approach
+{Step-by-step plan}
+
+## Files
+| File | Action | Description |
+|------|--------|-------------|
+
+## Estimated Tokens
+~{XX}k
+```
+
+**Parallelization Analysis:**
+1. Build dependency graph
+2. Identify independent tasks
+3. Group into waves
+4. Calculate speedup
+
+**Wave Pattern:**
+```
+Wave 1: [Independent tasks - parallel]
+    ↓
+Checkpoint 1: Verify, merge
+    ↓
+Wave 2: [Dependent tasks - parallel]
+    ↓
+Final Checkpoint: Integration
+```
+
+### Templates
+
+**Dependency Graph:**
+```
+TASK_001 ──┬──→ TASK_004 ──┐
+           │               │
+TASK_002 ──┼──→ TASK_005 ──┼──→ TASK_006
+           │               │
+TASK_003 ──┴───────────────┘
+```
+
+**Speedup Calculation:**
+```
+Sequential = Sum(task times)
+Parallel = Sum(max task per wave) + checkpoints
+Speedup = Sequential / Parallel
+```
+
+### Examples
+
+**6 tasks, 30 min each:**
+- Sequential: 180 min
+- Parallel (3 waves): 100 min
+- Speedup: 1.8x
+
+### Agent
+faion-task-creator, faion-tasks-reviewer
+
+---
+
+## M-SDD-006: Quality Gates and Confidence Checks
+
+### Problem
+Work is marked complete without proper verification, leading to bugs, incomplete features, and technical debt.
+
+### Framework
+
+**Quality Gate Levels:**
+
+| Level | Check | Pass Criteria |
+|-------|-------|---------------|
+| L1: Syntax | Linting | Zero errors |
+| L2: Types | Type checking | Zero errors |
+| L3: Tests | Unit tests | 100% pass |
+| L4: Integration | Integration tests | 100% pass |
+| L5: Review | Code review | Approved |
+| L6: Acceptance | AC verification | All criteria met |
+
+**Confidence Check Process:**
+1. List all acceptance criteria
+2. For each AC, provide evidence
+3. Rate confidence (0-100%)
+4. If <90%, identify gaps
+
+**Evidence Types:**
+- Test passing (link to test)
+- Screenshot/recording
+- Manual verification steps
+- Code reference
+
+### Templates
+
+**Confidence Check:**
+```markdown
+## Confidence Check: TASK_{NNN}
+
+| AC | Evidence | Confidence |
+|----|----------|------------|
+| AC-001.1 | test_user_registration passes | 95% |
+| AC-001.2 | Screenshot attached | 90% |
+| AC-001.3 | Manual verification: steps 1-5 | 85% |
+
+**Overall Confidence:** 90%
+
+**Gaps:**
+- AC-001.3: Edge case X not covered
+
+**Recommendation:** Address gaps before marking done
+```
+
+### Examples
+
+**Auth Task Confidence:**
+- AC-001.1: test_login_success → 100%
+- AC-001.2: test_login_failure → 100%
+- AC-001.3: Password reset email → 80% (email not verified in staging)
+- Overall: 93% → Proceed with note
+
+### Agent
+faion-hallucination-checker
+
+---
+
+## M-SDD-007: Reflexion and Learning
+
+### Problem
+Teams repeat mistakes, don't capture lessons learned, and fail to improve processes over time.
+
+### Framework
+
+**Reflexion Process:**
+1. After task completion, review outcomes
+2. Identify what worked well
+3. Identify what could improve
+4. Document lessons learned
+5. Update patterns/anti-patterns
+
+**Learning Categories:**
+- **Patterns:** Reusable approaches that worked
+- **Anti-patterns:** Approaches to avoid
+- **Tools:** New tools or techniques discovered
+- **Estimates:** Calibration of time/complexity estimates
+
+**Storage:**
+```
+~/.sdd/memory/
+├── patterns_learned.jsonl
+├── mistakes_learned.jsonl
+└── session_context.md
+```
+
+### Templates
+
+**Lesson Learned:**
+```json
+{
+  "date": "2026-01-18",
+  "project": "faion-net",
+  "task": "TASK_030",
+  "type": "pattern",
+  "title": "Methodology embedding",
+  "description": "Embedding full methodology content in SKILL.md provides better context than separate files",
+  "impact": "high"
+}
+```
+
+**Session Context:**
+```markdown
+# Session: 2026-01-18
+
+## What Worked
+- Breaking methodologies into clear sections
+- Including examples for each
+
+## What to Improve
+- Estimate complexity more accurately
+- Add cross-references between skills
+
+## Action Items
+- [ ] Update estimation guide
+- [ ] Create methodology cross-reference
+```
+
+### Examples
+
+**Pattern Learned:**
+- Title: "Socratic Requirements"
+- Description: Ask questions instead of assuming
+- Impact: Reduced rework by 40%
+
+**Anti-pattern:**
+- Title: "Large Tasks"
+- Description: Tasks >50k tokens often fail
+- Solution: Split at 30k threshold
+
+### Agent
+faion-task-executor (reflexion phase)
+
+---
+
+## M-SDD-008: Backlog Grooming and Roadmapping
+
+### Problem
+Backlog is disorganized, priorities unclear, and there's no connection between daily work and long-term goals.
+
+### Framework
+
+**Backlog Grooming:**
+1. Review items for next 2-3 sprints
+2. Ensure each item has:
+   - Clear description
+   - Acceptance criteria
+   - Estimate
+   - Dependencies identified
+3. Split large items (>13 story points)
+4. Prioritize by value/effort
+
+**Definition of Ready:**
+- [ ] Problem/need clear
+- [ ] Acceptance criteria defined
+- [ ] Estimated (story points or t-shirt size)
+- [ ] Dependencies identified
+- [ ] Small enough for one sprint
+- [ ] No blockers
+
+**Roadmap Structure:**
+```
+## Now (commit) - This quarter
+- Feature A: In progress
+- Feature B: Next up
+
+## Next (plan) - Next quarter
+- Feature C: Planned
+- Feature D: Planned
+
+## Later (vision) - Future
+- Theme X
+- Theme Y
+```
+
+**Roadmap Principles:**
+- Now: 90% confident, detailed
+- Next: 70% confident, planned
+- Later: 50% confident, thematic
+- Include 20% buffer
+
+### Templates
+
+**Backlog Item:**
+```markdown
+## BL-{NNN}: {Title}
+
+**Priority:** P0/P1/P2/P3
+**Estimate:** {points} pts / {size}
+**Status:** grooming | ready | in-progress | done
+
+### Problem
+{What need does this address}
+
+### Acceptance Criteria
+- [ ] {criterion 1}
+- [ ] {criterion 2}
+
+### Dependencies
+- Requires: {BL-XXX}
+- Blocks: {BL-YYY}
+```
+
+**Roadmap:**
+```markdown
+# Roadmap: {Project}
+
+## Now (Q1 2026)
+| Feature | Status | Target |
+|---------|--------|--------|
+| Auth system | In progress | Jan 31 |
+| Payment integration | Next | Feb 15 |
+
+## Next (Q2 2026)
+| Feature | Description |
+|---------|-------------|
+| Localization | 8 languages |
+| Mobile app | iOS + Android |
+
+## Later (H2 2026)
+- Theme: Scale infrastructure
+- Theme: Enterprise features
+```
+
+### Examples
+
+**E-commerce Roadmap:**
+- Now: Core shopping (browse, cart, checkout)
+- Next: User accounts, order history
+- Later: Recommendations, subscriptions
+
+**Grooming Session:**
+- Review 12 items
+- Split 3 large items
+- Mark 8 as ready
+- Defer 4 to next quarter
+
+### Agent
+faion-pm-agent, faion-task-creator
+
+---
+
+*SDD Domain Skill v1.2 - Complete*
+*Sections 1-8: Full SDD Workflow*
+*Methodologies: M-SDD-001 to M-SDD-008 embedded*

@@ -127,7 +127,7 @@ Before accepting "task complete":
 ## Integration
 
 Call this agent:
-- Before `/faion-execute-task` marks task done
+- Before task executor marks task done
 - When user claims completion
 - During code review
 - Before merging PRs
