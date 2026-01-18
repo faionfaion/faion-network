@@ -99,10 +99,10 @@ Ask user if unclear
 1. Parse project/feature from input
    ↓
 2. Run reviewers in sequence:
-   - faion-spec-reviewer
-   - faion-design-reviewer
-   - faion-impl-plan-reviewer
-   - faion-tasks-reviewer (if tasks exist)
+   - faion-spec-reviewer-agent
+   - faion-design-reviewer-agent
+   - faion-impl-plan-reviewer-agent
+   - faion-tasks-reviewer-agent (if tasks exist)
    ↓
 3. Aggregate results
    ↓
@@ -114,25 +114,25 @@ Ask user if unclear
 ```python
 # Spec review
 Task(
-    subagent_type="faion-spec-reviewer",
+    subagent_type="faion-spec-reviewer-agent",
     prompt=f"Review spec for {project}/{feature}"
 )
 
 # Design review
 Task(
-    subagent_type="faion-design-reviewer",
+    subagent_type="faion-design-reviewer-agent",
     prompt=f"Review design for {project}/{feature}"
 )
 
 # Implementation plan review
 Task(
-    subagent_type="faion-impl-plan-reviewer",
+    subagent_type="faion-impl-plan-reviewer-agent",
     prompt=f"Review impl-plan for {project}/{feature}"
 )
 
 # Tasks review (if exist)
 Task(
-    subagent_type="faion-tasks-reviewer",
+    subagent_type="faion-tasks-reviewer-agent",
     prompt=f"Review tasks for {project}/{feature}"
 )
 ```
@@ -166,7 +166,7 @@ Task(
 | Agent | Mode | Purpose |
 |-------|------|---------|
 | general-purpose | Code | Git diff analysis |
-| faion-spec-reviewer | SDD | Spec completeness, testability |
-| faion-design-reviewer | SDD | Architecture, FR coverage |
-| faion-impl-plan-reviewer | SDD | 100k token rule, dependencies |
-| faion-tasks-reviewer | SDD | Multi-pass task quality |
+| faion-spec-reviewer-agent | SDD | Spec completeness, testability |
+| faion-design-reviewer-agent | SDD | Architecture, FR coverage |
+| faion-impl-plan-reviewer-agent | SDD | 100k token rule, dependencies |
+| faion-tasks-reviewer-agent | SDD | Multi-pass task quality |

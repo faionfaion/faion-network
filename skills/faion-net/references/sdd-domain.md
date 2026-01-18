@@ -8,13 +8,13 @@ Writing specs, designs, implementation plans. Task creation and execution. Quali
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-task-executor` | Execute SDD tasks autonomously from task files |
-| `faion-task-creator` | Create detailed TASK_*.md files from specs |
-| `faion-spec-reviewer` | Review specifications for completeness and clarity |
-| `faion-design-reviewer` | Review design documents for architecture decisions |
-| `faion-impl-plan-reviewer` | Review implementation plans for correctness |
-| `faion-tasks-reviewer` | Multi-pass review of all tasks for a feature |
-| `faion-hallucination-checker` | Validate task completion claims with evidence |
+| `faion-task-executor-agent` | Execute SDD tasks autonomously from task files |
+| `faion-task-creator-agent` | Create detailed TASK_*.md files from specs |
+| `faion-spec-reviewer-agent` | Review specifications for completeness and clarity |
+| `faion-design-reviewer-agent` | Review design documents for architecture decisions |
+| `faion-impl-plan-reviewer-agent` | Review implementation plans for correctness |
+| `faion-tasks-reviewer-agent` | Multi-pass review of all tasks for a feature |
+| `faion-hallucination-checker-agent` | Validate task completion claims with evidence |
 
 ## Technical Skills
 

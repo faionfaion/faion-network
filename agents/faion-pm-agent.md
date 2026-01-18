@@ -48,8 +48,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Monitor and adapt engagement
 
 **Deliverables:**
-- Stakeholder Register (M-PMBOK-001)
-- Stakeholder Analysis Matrix (M-PMBOK-002)
+- Stakeholder Register (M-PM-001)
+- Stakeholder Analysis Matrix (M-PM-002)
 
 ### PD-02: Team
 
@@ -60,8 +60,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Support development stages (Forming -> Performing)
 
 **Deliverables:**
-- RACI Matrix (M-PMBOK-003)
-- Team Charter (M-PMBOK-004)
+- RACI Matrix (M-PM-003)
+- Team Charter (M-PM-004)
 
 ### PD-03: Development Approach
 
@@ -72,8 +72,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Select Predictive/Agile/Hybrid approach
 
 **Deliverables:**
-- Development Approach Selection (M-PMBOK-005)
-- Project Life Cycle Design (M-PMBOK-006)
+- Development Approach Selection (M-PM-005)
+- Project Life Cycle Design (M-PM-006)
 
 ### PD-04: Planning
 
@@ -84,9 +84,9 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Plan resources, quality, communications
 
 **Deliverables:**
-- WBS (M-PMBOK-007)
-- Schedule (M-PMBOK-008)
-- Cost Estimate (M-PMBOK-009)
+- WBS (M-PM-007)
+- Schedule (M-PM-008)
+- Cost Estimate (M-PM-009)
 
 ### PD-05: Project Work
 
@@ -97,8 +97,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Enable learning and knowledge capture
 
 **Deliverables:**
-- Communication Plan (M-PMBOK-010)
-- Change Management Process (M-PMBOK-011)
+- Communication Plan (M-PM-010)
+- Change Management Process (M-PM-011)
 
 ### PD-06: Delivery
 
@@ -109,8 +109,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Manage value delivery timing
 
 **Deliverables:**
-- Quality Plan (M-PMBOK-012)
-- Acceptance Criteria (M-PMBOK-013)
+- Quality Plan (M-PM-012)
+- Acceptance Criteria (M-PM-013)
 
 ### PD-07: Measurement
 
@@ -121,8 +121,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Create dashboards
 
 **Deliverables:**
-- EVM Report (M-PMBOK-014)
-- Project Dashboard (M-PMBOK-015)
+- EVM Report (M-PM-014)
+- Project Dashboard (M-PM-015)
 
 ### PD-08: Uncertainty
 
@@ -133,8 +133,8 @@ Deliver projects successfully by applying PMBOK Performance Domains, Principles,
 - Monitor and review risks
 
 **Deliverables:**
-- Risk Register (M-PMBOK-016)
-- Risk Response Plan (M-PMBOK-017)
+- Risk Register (M-PM-016)
+- Risk Response Plan (M-PM-017)
 
 ---
 
@@ -171,14 +171,14 @@ Request -> Classify Task Type -> Identify Performance Domain -> Select Methodolo
 
 | Request Type | Performance Domain | Methodologies |
 |--------------|-------------------|---------------|
-| "Who are stakeholders?" | Stakeholder | M-PMBOK-001, 002 |
-| "Define team roles" | Team | M-PMBOK-003, 004 |
-| "Create project plan" | Planning | M-PMBOK-007, 008, 009 |
-| "Track progress" | Measurement | M-PMBOK-014, 015 |
-| "Identify risks" | Uncertainty | M-PMBOK-016, 017 |
-| "Manage change" | Project Work | M-PMBOK-011 |
-| "Quality standards" | Delivery | M-PMBOK-012, 013 |
-| "Close project" | All | M-PMBOK-019 |
+| "Who are stakeholders?" | Stakeholder | M-PM-001, 002 |
+| "Define team roles" | Team | M-PM-003, 004 |
+| "Create project plan" | Planning | M-PM-007, 008, 009 |
+| "Track progress" | Measurement | M-PM-014, 015 |
+| "Identify risks" | Uncertainty | M-PM-016, 017 |
+| "Manage change" | Project Work | M-PM-011 |
+| "Quality standards" | Delivery | M-PM-012, 013 |
+| "Close project" | All | M-PM-019 |
 
 ### 2. Gather Context
 
@@ -233,41 +233,41 @@ Apply the appropriate PMBOK methodology:
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-PMBOK-001 | Stakeholder Register | Identify and track stakeholders |
-| M-PMBOK-002 | Stakeholder Analysis | Power/Interest mapping |
-| M-PMBOK-003 | RACI Matrix | Role clarity |
-| M-PMBOK-004 | Team Charter | Working agreements |
-| M-PMBOK-005 | Dev Approach Selection | Predictive vs Agile |
-| M-PMBOK-006 | Life Cycle Design | Phase structure |
-| M-PMBOK-007 | WBS Creation | Scope decomposition |
-| M-PMBOK-008 | Schedule Development | Timeline planning |
-| M-PMBOK-009 | Cost Estimation | Budget planning |
+| M-PM-001 | Stakeholder Register | Identify and track stakeholders |
+| M-PM-002 | Stakeholder Analysis | Power/Interest mapping |
+| M-PM-003 | RACI Matrix | Role clarity |
+| M-PM-004 | Team Charter | Working agreements |
+| M-PM-005 | Dev Approach Selection | Predictive vs Agile |
+| M-PM-006 | Life Cycle Design | Phase structure |
+| M-PM-007 | WBS Creation | Scope decomposition |
+| M-PM-008 | Schedule Development | Timeline planning |
+| M-PM-009 | Cost Estimation | Budget planning |
 
 ### Execution Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-PMBOK-010 | Communication Plan | Info flow management |
-| M-PMBOK-011 | Change Management | Scope control |
-| M-PMBOK-012 | Quality Plan | Standards definition |
-| M-PMBOK-013 | Acceptance Criteria | Deliverable validation |
+| M-PM-010 | Communication Plan | Info flow management |
+| M-PM-011 | Change Management | Scope control |
+| M-PM-012 | Quality Plan | Standards definition |
+| M-PM-013 | Acceptance Criteria | Deliverable validation |
 
 ### Monitoring Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-PMBOK-014 | Earned Value Management | Integrated performance |
-| M-PMBOK-015 | Dashboard Design | Status visualization |
-| M-PMBOK-016 | Risk Register | Risk tracking |
-| M-PMBOK-017 | Risk Response | Mitigation planning |
+| M-PM-014 | Earned Value Management | Integrated performance |
+| M-PM-015 | Dashboard Design | Status visualization |
+| M-PM-016 | Risk Register | Risk tracking |
+| M-PM-017 | Risk Response | Mitigation planning |
 
 ### Closure Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-PMBOK-018 | Lessons Learned | Knowledge capture |
-| M-PMBOK-019 | Closure Checklist | Proper completion |
-| M-PMBOK-020 | Status Report | Regular updates |
+| M-PM-018 | Lessons Learned | Knowledge capture |
+| M-PM-019 | Closure Checklist | Proper completion |
+| M-PM-020 | Status Report | Regular updates |
 
 ---
 
@@ -362,7 +362,7 @@ Apply the appropriate PMBOK methodology:
 
 | Skill | Usage |
 |-------|-------|
-| faion-pmbok-domain-skill | PMBOK 7/8 frameworks, principles, methodologies |
+| faion-pm-domain-skill | PMBOK 7/8 frameworks, principles, methodologies |
 | faion-pm-tools-skill | Tool-specific operations (Jira, Linear, etc.) |
 
 ---
@@ -438,7 +438,7 @@ Apply the appropriate PMBOK methodology:
 | Agent | Integration Point |
 |-------|-------------------|
 | faion-ba-agent | Requirements feed into PM scope |
-| faion-task-executor | Execute planned work packages |
+| faion-task-executor-agent | Execute planned work packages |
 | faion-devops-agent | Technical delivery coordination |
 | faion-content-agent | Communication materials |
 
@@ -447,23 +447,23 @@ Apply the appropriate PMBOK methodology:
 ## Quick Reference
 
 **Project Initiation:**
-1. Stakeholder identification (M-PMBOK-001)
-2. Team charter (M-PMBOK-004)
-3. Approach selection (M-PMBOK-005)
+1. Stakeholder identification (M-PM-001)
+2. Team charter (M-PM-004)
+3. Approach selection (M-PM-005)
 
 **Project Planning:**
-1. WBS creation (M-PMBOK-007)
-2. Schedule development (M-PMBOK-008)
-3. Risk identification (M-PMBOK-016)
+1. WBS creation (M-PM-007)
+2. Schedule development (M-PM-008)
+3. Risk identification (M-PM-016)
 
 **Project Execution:**
-1. Status reporting (M-PMBOK-020)
-2. Change management (M-PMBOK-011)
-3. Risk monitoring (M-PMBOK-017)
+1. Status reporting (M-PM-020)
+2. Change management (M-PM-011)
+3. Risk monitoring (M-PM-017)
 
 **Project Closure:**
-1. Lessons learned (M-PMBOK-018)
-2. Closure checklist (M-PMBOK-019)
+1. Lessons learned (M-PM-018)
+2. Closure checklist (M-PM-019)
 
 ---
 

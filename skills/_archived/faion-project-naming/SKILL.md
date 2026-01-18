@@ -13,8 +13,8 @@ allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Ta
 
 | Agent | Purpose |
 |-------|---------|
-| faion-name-generator | Creative brainstorming (opus) |
-| faion-domain-checker | Domain verification (sonnet) |
+| faion-name-generator-agent | Creative brainstorming (opus) |
+| faion-domain-checker-agent | Domain verification (sonnet) |
 
 ## Workflow
 
@@ -40,7 +40,7 @@ Extract: product type, benefits, audience, constraints
 - Portmanteau (Pinterest)
 - Alliteration (PayPal)
 
-Call `faion-name-generator` agent with context + rejected names.
+Call `faion-name-generator-agent` agent with context + rejected names.
 
 ## Phase 3: User Selection
 
@@ -50,7 +50,7 @@ If "generate more" → add to rejected, loop to Phase 2.
 
 ## Phase 4: Check Selected
 
-Call `faion-domain-checker` for: .com, .io, .co, GitHub, Twitter
+Call `faion-domain-checker-agent` for: .com, .io, .co, GitHub, Twitter
 
 ## Phase 5: Present Results
 

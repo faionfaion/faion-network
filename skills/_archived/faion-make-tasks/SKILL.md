@@ -1,6 +1,6 @@
 ---
 name: faion-make-tasks
-description: "Create tasks from SDD documents (spec + design + implementation plan). Uses faion-task-creator agent for deep research."
+description: "Create tasks from SDD documents (spec + design + implementation plan). Uses faion-task-creator-agent agent for deep research."
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
 ---
@@ -11,7 +11,7 @@ allowed-tools: Read, Write, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
 
 ## Purpose
 
-Create implementation tasks from SDD documents using the `faion-task-creator` agent.
+Create implementation tasks from SDD documents using the `faion-task-creator-agent` agent.
 
 ## Input
 
@@ -26,7 +26,7 @@ When project/feature specified:
 1. Load spec, design, implementation-plan
 2. Verify documents approved
 3. Create tasks per implementation-plan
-4. Review with faion-tasks-reviewer
+4. Review with faion-tasks-reviewer-agent
 
 ### Free Mode (Legacy)
 When description provided:
@@ -46,9 +46,9 @@ When description provided:
    ↓
 4. For each task in plan:
    ↓
-   Call faion-task-creator agent
+   Call faion-task-creator-agent agent
    ↓
-5. Run faion-tasks-reviewer (4-pass)
+5. Run faion-tasks-reviewer-agent (4-pass)
    ↓
 6. Report results
 ```
@@ -71,7 +71,7 @@ For each task in implementation-plan:
 
 ```python
 Task(
-    subagent_type="faion-task-creator",
+    subagent_type="faion-task-creator-agent",
     description=f"Create {task_name}",
     prompt=f"""
 PROJECT: {project}
@@ -98,7 +98,7 @@ After all tasks created:
 
 ```python
 Task(
-    subagent_type="faion-tasks-reviewer",
+    subagent_type="faion-tasks-reviewer-agent",
     prompt=f"""
 Multi-pass review for {project}/{feature}:
 
@@ -127,7 +127,7 @@ Pass 4: Executability - can be implemented as written?
 | TASK_003 | {desc} | High |
 
 ### Review Notes
-{from faion-tasks-reviewer}
+{from faion-tasks-reviewer-agent}
 
 ### Next Steps
 - Run `/sdd` → Execute tasks
@@ -138,5 +138,5 @@ Pass 4: Executability - can be implemented as written?
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| faion-task-creator | opus | Deep research + task creation |
-| faion-tasks-reviewer | opus | Multi-pass quality review |
+| faion-task-creator-agent | opus | Deep research + task creation |
+| faion-tasks-reviewer-agent | opus | Multi-pass quality review |

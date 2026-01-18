@@ -79,7 +79,7 @@ Each section → show → validate → next:
 - [ ] Requirements testable
 - [ ] Out of Scope defined
 
-Call `faion-spec-reviewer` agent before save.
+Call `faion-spec-reviewer-agent` agent before save.
 
 ## Phase 6: Save
 

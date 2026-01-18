@@ -33,7 +33,7 @@ Execute all tasks for a feature in sequence, with intelligent failure handling.
    ↓
 6. Execute each task via faion-execute-task skill
    ↓
-7. Run post-execution review (faion-tasks-reviewer)
+7. Run post-execution review (faion-tasks-reviewer-agent)
    ↓
 8. Quality checks (tests, lint)
    ↓
@@ -96,7 +96,7 @@ for task in sorted_tasks:
 
 ```python
 Task(
-    subagent_type="faion-tasks-reviewer",
+    subagent_type="faion-tasks-reviewer-agent",
     prompt=f"Review completed tasks for {project}/{feature}"
 )
 ```
@@ -130,5 +130,5 @@ Task(
 
 | Agent | Purpose |
 |-------|---------|
-| faion-task-executor | Individual task execution |
-| faion-tasks-reviewer | Post-execution review |
+| faion-task-executor-agent | Individual task execution |
+| faion-tasks-reviewer-agent | Post-execution review |

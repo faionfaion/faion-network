@@ -74,7 +74,7 @@ Show section by section:
 
 ## Phase 7: Review
 
-Call `faion-impl-plan-reviewer` agent. Checks: 100k compliance, deps, coverage.
+Call `faion-impl-plan-reviewer-agent` agent. Checks: 100k compliance, deps, coverage.
 
 ## Phase 8: Save
 

@@ -140,7 +140,7 @@ If this feature requires NEW endpoints not yet in contracts.md:
 |----------|--------|-------------|--------|
 | `/api/v1/{new}/` | POST | {description} | See FR-X |
 
-**After spec approval:** Run `faion-api-designer` with MODE=update to add new endpoints to contracts.md.
+**After spec approval:** Run `faion-api-designer-agent` with MODE=update to add new endpoints to contracts.md.
 
 ## Data Model
 

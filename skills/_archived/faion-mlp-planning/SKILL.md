@@ -22,12 +22,12 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, TodoWrite
 
 | Agent | Purpose |
 |-------|---------|
-| faion-mvp-scope-analyzer | MVP scope via competitor analysis |
-| faion-mlp-spec-analyzer | Extract current MVP state from specs |
-| faion-mlp-gap-finder | Compare MVP vs MLP, find gaps |
-| faion-mlp-spec-updater | Add MLP requirements to specs |
-| faion-mlp-feature-proposer | Propose WOW features (web research) |
-| faion-mlp-impl-planner | Create phased implementation plan |
+| faion-mvp-scope-analyzer-agent | MVP scope via competitor analysis |
+| faion-mlp-spec-analyzer-agent | Extract current MVP state from specs |
+| faion-mlp-gap-finder-agent | Compare MVP vs MLP, find gaps |
+| faion-mlp-spec-updater-agent | Add MLP requirements to specs |
+| faion-mlp-feature-proposer-agent | Propose WOW features (web research) |
+| faion-mlp-impl-planner-agent | Create phased implementation plan |
 
 ## Workflow
 
@@ -44,22 +44,22 @@ allowed-tools: Read, Write, Edit, Grep, Glob, Task, AskUserQuestion, TodoWrite
 
 ```python
 # Sequential agent execution
-Task(subagent_type="faion-mvp-scope-analyzer",
+Task(subagent_type="faion-mvp-scope-analyzer-agent",
      prompt=f"Analyze {product_type} competitors for MVP scope")
 
-Task(subagent_type="faion-mlp-spec-analyzer",
+Task(subagent_type="faion-mlp-spec-analyzer-agent",
      prompt=f"Read specs in {features_path}")
 
-Task(subagent_type="faion-mlp-gap-finder",
+Task(subagent_type="faion-mlp-gap-finder-agent",
      prompt=f"Compare MVP vs MLP requirements")
 
-Task(subagent_type="faion-mlp-feature-proposer",
+Task(subagent_type="faion-mlp-feature-proposer-agent",
      prompt=f"Propose WOW features for {product}")
 
-Task(subagent_type="faion-mlp-spec-updater",
+Task(subagent_type="faion-mlp-spec-updater-agent",
      prompt=f"Update specs with MLP requirements")
 
-Task(subagent_type="faion-mlp-impl-planner",
+Task(subagent_type="faion-mlp-impl-planner-agent",
      prompt=f"Create MLP implementation phases")
 ```
 

@@ -74,7 +74,7 @@ AskUserQuestion: "Що хочеш зробити?" options:
 ## Phase 6: Feature Execution
 
 1. Move to in-progress/
-2. Execute tasks using faion-task-executor agent
+2. Execute tasks using faion-task-executor-agent agent
 
 ## Phase 7: Feature Completion
 

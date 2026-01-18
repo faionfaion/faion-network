@@ -88,8 +88,8 @@ Only want specific skills?
 ```bash
 # Example: Install only SEO and Django skills
 git clone --depth 1 https://github.com/faionfaion/faion-network.git temp
-cp -r temp/skills/faion-seo ~/.claude/skills/
-cp -r temp/skills/faion-dev-django ~/.claude/skills/
+cp -r temp/skills/faion-seo-skill ~/.claude/skills/
+cp -r temp/skills/faion-dev-django-skill ~/.claude/skills/
 rm -rf temp
 ```
 
@@ -177,18 +177,20 @@ Creates high-converting landing with:
 - Pricing sections
 - SEO optimization
 
-### Execute Tasks
+### Execute Feature
 
 ```bash
 claude
-# Type: /faion-do-all-tasks
+# Type: /faion-net
+# Then: "Execute feature 01-auth in cashflow-planner"
 ```
 
-Autonomously executes all tasks from your backlog:
-- Reads specs and designs
-- Implements code
-- Runs tests
-- Moves completed tasks to done/
+Triggers `faion-feature-executor-skill` (internal) which:
+- Loads project constitution and feature context
+- Executes tasks sequentially via faion-task-executor-agent
+- Runs tests after each task, verifies coverage
+- Code review cycle until all issues fixed
+- Moves completed feature to done/
 
 ---
 
@@ -198,12 +200,8 @@ Autonomously executes all tasks from your backlog:
 
 | Skill | Purpose |
 |-------|---------|
-| `faion-writing-specifications` | Create spec.md through dialogue |
-| `faion-writing-design-docs` | Technical implementation design |
-| `faion-writing-implementation-plan` | Task breakdown for execution |
-| `faion-make-tasks` | Generate task files from plans |
-| `faion-execute-task` | Run single task via agent |
-| `faion-do-all-tasks` | Execute entire backlog |
+| `faion-sdd-domain-skill` | SDD orchestrator (specs, design, tasks) |
+| `faion-feature-executor-skill` | Execute all tasks in feature with quality gates |
 
 ### Research & Discovery
 
@@ -217,15 +215,15 @@ Autonomously executes all tasks from your backlog:
 
 | Skill | Purpose |
 |-------|---------|
-| `faion-dev-django` | Django 5.x patterns and architecture |
-| `faion-dev-ui-design` | Component libraries, Storybook |
+| `faion-dev-django-skill` | Django 5.x patterns and architecture |
+| `faion-dev-frontend-skill` | Component libraries, Storybook |
 | `faion-landing-page` | High-converting landing pages |
 
 ### Optimization
 
 | Skill | Purpose |
 |-------|---------|
-| `faion-seo` | Technical SEO, hreflang, schemas |
+| `faion-seo-skill` | Technical SEO, hreflang, schemas |
 | `faion-review` | Code and document reviews |
 | `faion-reflexion` | Learn from mistakes |
 
@@ -237,28 +235,28 @@ Agents are autonomous workers. They execute complex tasks independently.
 
 ### Research Agents
 
-- `faion-market-researcher` — TAM/SAM/SOM analysis
-- `faion-competitor-analyzer` — Feature and pricing comparison
-- `faion-persona-builder` — User personas from real feedback
-- `faion-pain-point-researcher` — Reddit, forums, reviews
+- `faion-market-researcher-agent` — TAM/SAM/SOM analysis
+- `faion-competitor-analyzer-agent` — Feature and pricing comparison
+- `faion-persona-builder-agent` — User personas from real feedback
+- `faion-pain-point-researcher-agent` — Reddit, forums, reviews
 
 ### Implementation Agents
 
-- `faion-task-executor` — Execute SDD tasks
-- `faion-task-creator` — Create task files with context
-- `faion-api-designer` — API contracts and OpenAPI specs
+- `faion-task-executor-agent` — Execute SDD tasks
+- `faion-task-creator-agent` — Create task files with context
+- `faion-api-designer-agent` — API contracts and OpenAPI specs
 
 ### Review Agents
 
-- `faion-spec-reviewer` — Specification quality check
-- `faion-design-reviewer` — Technical design validation
-- `faion-hallucination-checker` — Verify task completion
+- `faion-spec-reviewer-agent` — Specification quality check
+- `faion-design-reviewer-agent` — Technical design validation
+- `faion-hallucination-checker-agent` — Verify task completion
 
 ### Specialized
 
 - `faion-seo-agent` — SEO audits and optimization
-- `faion-hooks-expert` — Claude Code hooks creation
-- `faion-landing-designer` — Landing page design
+- `faion-hooks-agent` — Claude Code hooks creation
+- `faion-landing-designer-agent` — Landing page design
 
 ---
 

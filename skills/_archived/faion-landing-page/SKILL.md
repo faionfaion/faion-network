@@ -13,9 +13,9 @@ allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite
 
 | Agent | Purpose |
 |-------|---------|
-| faion-landing-copywriter | AIDA/PAS copy, headlines |
-| faion-landing-designer | HTML/Tailwind, mobile-first |
-| faion-landing-analyzer | Conversion audit, A/B tests |
+| faion-landing-copywriter-agent | AIDA/PAS copy, headlines |
+| faion-landing-designer-agent | HTML/Tailwind, mobile-first |
+| faion-landing-analyzer-agent | Conversion audit, A/B tests |
 
 ## Workflow
 
@@ -37,15 +37,15 @@ Discovery → Copy (AIDA/PAS) → Design → Implementation → Analysis
 
 ```python
 # Copywriting
-Task(subagent_type="faion-landing-copywriter",
+Task(subagent_type="faion-landing-copywriter-agent",
      prompt=f"PRODUCT: {p}, AUDIENCE: {a}, FRAMEWORK: AIDA")
 
 # Design
-Task(subagent_type="faion-landing-designer",
+Task(subagent_type="faion-landing-designer-agent",
      prompt=f"COPY: {copy}, STYLE: {modern|minimal|bold}")
 
 # Analysis
-Task(subagent_type="faion-landing-analyzer",
+Task(subagent_type="faion-landing-analyzer-agent",
      prompt=f"Analyze {url_or_code} for conversion")
 ```
 

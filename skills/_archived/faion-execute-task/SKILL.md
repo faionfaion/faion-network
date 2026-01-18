@@ -1,6 +1,6 @@
 ---
 name: faion-execute-task
-description: "Execute specific SDD task via faion-task-executor agent. Loads context, runs agent, moves task through lifecycle."
+description: "Execute specific SDD task via faion-task-executor-agent agent. Loads context, runs agent, moves task through lifecycle."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite
 ---
@@ -11,7 +11,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite
 
 ## Purpose
 
-Execute a single SDD task using the `faion-task-executor` agent.
+Execute a single SDD task using the `faion-task-executor-agent` agent.
 
 ## Input
 
@@ -28,7 +28,7 @@ Execute a single SDD task using the `faion-task-executor` agent.
    ↓
 3. Load SDD context (constitution, spec, design, impl-plan)
    ↓
-4. Call faion-task-executor agent
+4. Call faion-task-executor-agent agent
    ↓
 5. Report results
 ```
@@ -56,7 +56,7 @@ aidocs/sdd/{project}/features/{status}/{feature}/implementation-plan.md
 
 ```python
 Task(
-    subagent_type="faion-task-executor",
+    subagent_type="faion-task-executor-agent",
     description=f"Execute {task_name}",
     prompt=f"""
 PROJECT: {project}

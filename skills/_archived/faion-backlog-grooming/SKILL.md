@@ -77,7 +77,7 @@ If spec approved:
 
 If design approved:
 - Call `faion-writing-implementation-plan`
-- Call `faion-task-creator` for each task
+- Call `faion-task-creator-agent` for each task
 - Present tasks for review
 
 ## Phase 8: Move to Todo
@@ -102,7 +102,7 @@ spec.md  +design.md  executing    archived
 ## Integration
 
 Called from `/faion-net` or directly.
-Calls: faion-writing-specifications, faion-writing-design-docs, faion-writing-implementation-plan, faion-task-creator
+Calls: faion-writing-specifications, faion-writing-design-docs, faion-writing-implementation-plan, faion-task-creator-agent
 
 ## Anti-patterns
 

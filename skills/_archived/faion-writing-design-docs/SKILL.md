@@ -109,7 +109,7 @@ cat ${SDD_BASE}/{project}/constitution.md
 3. Project `contracts.md` exists at `aidocs/sdd/{project}/contracts.md` (for API features)
 
 **If constitution.md doesn't exist:** Use skill `faion-writing-constitutions` to create it first.
-**If contracts.md doesn't exist:** Use agent `faion-api-designer` with MODE=init to create it.
+**If contracts.md doesn't exist:** Use agent `faion-api-designer-agent` with MODE=init to create it.
 
 ## Workflow
 
@@ -204,11 +204,11 @@ Present key decisions:
 
 ### Phase 9: Agent Review
 
-Before saving, call `faion-design-reviewer` agent:
+Before saving, call `faion-design-reviewer-agent` agent:
 
 ```
 Task tool:
-  subagent_type: "faion-design-reviewer"
+  subagent_type: "faion-design-reviewer-agent"
   prompt: "Review design for {project}/{feature}"
 ```
 

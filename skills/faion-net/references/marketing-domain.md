@@ -20,7 +20,7 @@ GTM strategy, landing pages, content marketing. Ads (Meta/Google), email campaig
 |-------|-------------|
 | `faion-google-ads-skill` | Google Ads campaigns, keywords, bidding |
 | `faion-meta-ads-skill` | Meta (Facebook/Instagram) ads, audiences |
-| `faion-seo` | Technical SEO, schema markup, llms.txt |
+| `faion-seo-skill` | Technical SEO, schema markup, llms.txt |
 | `faion-analytics-skill` | GA4, tracking, conversion funnels |
 
 ## Methodologies

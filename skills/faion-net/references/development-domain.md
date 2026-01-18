@@ -13,7 +13,7 @@ Writing code (Python, JS, Go, etc.), code review, refactoring. CI/CD, testing, A
 | `faion-devops-agent` | CI/CD pipelines, infrastructure, deployment |
 | `faion-browser-agent` | Browser automation, scraping, E2E testing |
 | `faion-api-agent` | API design, OpenAPI specs, contract validation |
-| `faion-api-designer` | Design APIs and manage contracts.md |
+| `faion-api-designer-agent` | Design APIs and manage contracts.md |
 
 ## Technical Skills
 

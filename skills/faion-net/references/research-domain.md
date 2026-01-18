@@ -8,16 +8,16 @@ Brainstorming ideas, validating problems, researching markets. Competitor analys
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-idea-generator` | Brainstorm startup/product ideas using 7 frameworks |
-| `faion-market-researcher` | Research TAM/SAM/SOM, trends, growth drivers |
-| `faion-competitor-analyzer` | Analyze competitor features, pricing, positioning |
-| `faion-persona-builder` | Create user personas from real feedback |
-| `faion-pricing-researcher` | Research pricing strategies and models |
-| `faion-problem-validator` | Validate problem with evidence (frequency, severity) |
-| `faion-niche-evaluator` | Evaluate niche viability (market, competition, profit) |
-| `faion-pain-point-researcher` | Research pain points via Reddit, forums, reviews |
-| `faion-name-generator` | Generate creative product/project names |
-| `faion-domain-checker` | Check domain availability and handles |
+| `faion-idea-generator-agent` | Brainstorm startup/product ideas using 7 frameworks |
+| `faion-market-researcher-agent` | Research TAM/SAM/SOM, trends, growth drivers |
+| `faion-competitor-analyzer-agent` | Analyze competitor features, pricing, positioning |
+| `faion-persona-builder-agent` | Create user personas from real feedback |
+| `faion-pricing-researcher-agent` | Research pricing strategies and models |
+| `faion-problem-validator-agent` | Validate problem with evidence (frequency, severity) |
+| `faion-niche-evaluator-agent` | Evaluate niche viability (market, competition, profit) |
+| `faion-pain-point-researcher-agent` | Research pain points via Reddit, forums, reviews |
+| `faion-name-generator-agent` | Generate creative product/project names |
+| `faion-domain-checker-agent` | Check domain availability and handles |
 
 ## Technical Skills
 

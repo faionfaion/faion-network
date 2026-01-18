@@ -13,11 +13,11 @@ allowed-tools: Read, Write, Glob, Task, AskUserQuestion, TodoWrite
 
 | Agent | Output |
 |-------|--------|
-| faion-market-researcher | market-research.md |
-| faion-competitor-analyzer | competitive-analysis.md |
-| faion-persona-builder | user-personas.md |
-| faion-problem-validator | problem-validation.md |
-| faion-pricing-researcher | pricing-research.md |
+| faion-market-researcher-agent | market-research.md |
+| faion-competitor-analyzer-agent | competitive-analysis.md |
+| faion-persona-builder-agent | user-personas.md |
+| faion-problem-validator-agent | problem-validation.md |
+| faion-pricing-researcher-agent | pricing-research.md |
 
 ## Workflow
 
@@ -33,11 +33,11 @@ allowed-tools: Read, Write, Glob, Task, AskUserQuestion, TodoWrite
 
 ```python
 AGENTS = {
-    "market": "faion-market-researcher",
-    "competitors": "faion-competitor-analyzer",
-    "personas": "faion-persona-builder",
-    "validation": "faion-problem-validator",
-    "pricing": "faion-pricing-researcher"
+    "market": "faion-market-researcher-agent",
+    "competitors": "faion-competitor-analyzer-agent",
+    "personas": "faion-persona-builder-agent",
+    "validation": "faion-problem-validator-agent",
+    "pricing": "faion-pricing-researcher-agent"
 }
 
 for module in selected_modules:

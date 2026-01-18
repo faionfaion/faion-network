@@ -8,12 +8,12 @@ MVP/MLP planning, feature prioritization (RICE/MoSCoW), roadmapping. Gap analysi
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-mvp-scope-analyzer` | Define MVP scope from competitor analysis |
-| `faion-mlp-spec-analyzer` | Analyze existing specs for MLP planning |
-| `faion-mlp-gap-finder` | Find gaps between MVP and MLP |
-| `faion-mlp-spec-updater` | Update specs with MLP requirements |
-| `faion-mlp-feature-proposer` | Propose new MLP features |
-| `faion-mlp-impl-planner` | Create MLP implementation order |
+| `faion-mvp-scope-analyzer-agent` | Define MVP scope from competitor analysis |
+| `faion-mlp-spec-analyzer-agent` | Analyze existing specs for MLP planning |
+| `faion-mlp-gap-finder-agent` | Find gaps between MVP and MLP |
+| `faion-mlp-spec-updater-agent` | Update specs with MLP requirements |
+| `faion-mlp-feature-proposer-agent` | Propose new MLP features |
+| `faion-mlp-impl-planner-agent` | Create MLP implementation order |
 
 ## Technical Skills
 

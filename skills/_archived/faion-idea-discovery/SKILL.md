@@ -17,9 +17,9 @@ Generate and validate startup/product ideas through systematic research.
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| faion-idea-generator | opus | Creative idea brainstorming |
-| faion-pain-point-researcher | sonnet | Research pain points via Reddit/forums |
-| faion-niche-evaluator | sonnet | Evaluate niche viability |
+| faion-idea-generator-agent | opus | Creative idea brainstorming |
+| faion-pain-point-researcher-agent | sonnet | Research pain points via Reddit/forums |
+| faion-niche-evaluator-agent | sonnet | Evaluate niche viability |
 
 ## Workflow
 
@@ -28,16 +28,16 @@ Generate and validate startup/product ideas through systematic research.
 │  1. Gather Context (AskUserQuestion)                    │
 │     - Skills, interests, resources                      │
 │     ↓                                                   │
-│  2. Generate Ideas (faion-idea-generator)                 │
+│  2. Generate Ideas (faion-idea-generator-agent)                 │
 │     - Apply 7 Ps framework + other methods              │
 │     ↓                                                   │
 │  3. User Selection (AskUserQuestion)                    │
 │     - Pick 3-5 ideas to research                        │
 │     ↓                                                   │
-│  4. Pain Point Research (faion-pain-point-researcher)     │
+│  4. Pain Point Research (faion-pain-point-researcher-agent)     │
 │     - Reddit, forums, reviews mining                    │
 │     ↓                                                   │
-│  5. Niche Evaluation (faion-niche-evaluator)              │
+│  5. Niche Evaluation (faion-niche-evaluator-agent)              │
 │     - Market size, competition, barriers                │
 │     ↓                                                   │
 │  6. Present Results                                     │
@@ -83,11 +83,11 @@ Options:
 
 ## Phase 2: Generate Ideas
 
-Call faion-idea-generator agent:
+Call faion-idea-generator-agent agent:
 
 ```python
 Task(
-    subagent_type="faion-idea-generator",
+    subagent_type="faion-idea-generator-agent",
     prompt=f"""Generate startup ideas for:
     Skills: {skills}
     Motivation: {motivation}
@@ -121,11 +121,11 @@ Options:
 
 ## Phase 4: Pain Point Research
 
-For each selected idea, call faion-pain-point-researcher:
+For each selected idea, call faion-pain-point-researcher-agent:
 
 ```python
 Task(
-    subagent_type="faion-pain-point-researcher",
+    subagent_type="faion-pain-point-researcher-agent",
     prompt=f"""Research pain points for: {idea}
 
     Search:
@@ -143,11 +143,11 @@ Task(
 
 ## Phase 5: Niche Evaluation
 
-For ideas with validated pain points, call faion-niche-evaluator:
+For ideas with validated pain points, call faion-niche-evaluator-agent:
 
 ```python
 Task(
-    subagent_type="faion-niche-evaluator",
+    subagent_type="faion-niche-evaluator-agent",
     prompt=f"""Evaluate niche for: {idea}
 
     Criteria:

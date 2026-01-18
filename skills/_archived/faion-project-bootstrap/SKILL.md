@@ -59,7 +59,7 @@ AskUserQuestion([
 
 ### Phase 3: MVP Definition
 
-Use agent: `faion-mvp-scope-analyzer`
+Use agent: `faion-mvp-scope-analyzer-agent`
 
 Rules: Max 3-5 features, each solves a problem, cut 50% nice-to-haves.
 

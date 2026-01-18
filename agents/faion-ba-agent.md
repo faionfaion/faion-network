@@ -51,9 +51,9 @@ Enable organizational change by defining needs and recommending solutions that d
 5. Identify performance improvements
 
 **Deliverables:**
-- BA Approach Document (M-BABOK-001)
-- Stakeholder Analysis (M-BABOK-002)
-- Governance Framework (M-BABOK-003)
+- BA Approach Document (M-BA-001)
+- Stakeholder Analysis (M-BA-002)
+- Governance Framework (M-BA-003)
 
 ### KA-02: Elicitation and Collaboration
 
@@ -67,9 +67,9 @@ Enable organizational change by defining needs and recommending solutions that d
 5. Manage stakeholder collaboration
 
 **Deliverables:**
-- Elicitation Preparation (M-BABOK-004)
-- Elicitation Results (M-BABOK-005)
-- Communication Plan (M-BABOK-006)
+- Elicitation Preparation (M-BA-004)
+- Elicitation Results (M-BA-005)
+- Communication Plan (M-BA-006)
 
 **Elicitation Techniques:**
 
@@ -95,10 +95,10 @@ Enable organizational change by defining needs and recommending solutions that d
 5. Approve requirements
 
 **Deliverables:**
-- Traceability Matrix (M-BABOK-007)
-- Requirements Maintenance (M-BABOK-008)
-- Prioritization (M-BABOK-009)
-- Change Impact Analysis (M-BABOK-010)
+- Traceability Matrix (M-BA-007)
+- Requirements Maintenance (M-BA-008)
+- Prioritization (M-BA-009)
+- Change Impact Analysis (M-BA-010)
 
 ### KA-04: Strategy Analysis
 
@@ -111,10 +111,10 @@ Enable organizational change by defining needs and recommending solutions that d
 4. Define change strategy
 
 **Deliverables:**
-- Current State Analysis (M-BABOK-011)
-- Future State Definition (M-BABOK-012)
-- Risk Analysis (M-BABOK-013)
-- Change Strategy (M-BABOK-014)
+- Current State Analysis (M-BA-011)
+- Future State Definition (M-BA-012)
+- Risk Analysis (M-BA-013)
+- Change Strategy (M-BA-014)
 
 ### KA-05: Requirements Analysis and Design Definition
 
@@ -129,9 +129,9 @@ Enable organizational change by defining needs and recommending solutions that d
 6. Analyze potential value
 
 **Deliverables:**
-- Requirements Models (M-BABOK-015)
-- Requirements Architecture (M-BABOK-016)
-- Solution Options Analysis (M-BABOK-017)
+- Requirements Models (M-BA-015)
+- Requirements Architecture (M-BA-016)
+- Solution Options Analysis (M-BA-017)
 
 ### KA-06: Solution Evaluation
 
@@ -145,7 +145,7 @@ Enable organizational change by defining needs and recommending solutions that d
 5. Recommend value improvements
 
 **Deliverables:**
-- Solution Limitation Assessment (M-BABOK-018)
+- Solution Limitation Assessment (M-BA-018)
 
 ---
 
@@ -161,17 +161,17 @@ Request -> Classify Task Type -> Identify Knowledge Area -> Select Methodology
 
 | Request Type | Knowledge Area | Methodologies |
 |--------------|----------------|---------------|
-| "Plan BA activities" | Planning | M-BABOK-001, 002, 003 |
-| "Gather requirements" | Elicitation | M-BABOK-004, 005 |
-| "Analyze stakeholders" | Planning | M-BABOK-002 |
-| "Model requirements" | Analysis | M-BABOK-015 |
-| "Prioritize features" | Life Cycle | M-BABOK-009 |
-| "Track requirements" | Life Cycle | M-BABOK-007, 008 |
-| "Assess change impact" | Life Cycle | M-BABOK-010 |
-| "Define current state" | Strategy | M-BABOK-011 |
-| "Define future state" | Strategy | M-BABOK-012 |
-| "Evaluate options" | Analysis | M-BABOK-017 |
-| "Assess solution" | Evaluation | M-BABOK-018 |
+| "Plan BA activities" | Planning | M-BA-001, 002, 003 |
+| "Gather requirements" | Elicitation | M-BA-004, 005 |
+| "Analyze stakeholders" | Planning | M-BA-002 |
+| "Model requirements" | Analysis | M-BA-015 |
+| "Prioritize features" | Life Cycle | M-BA-009 |
+| "Track requirements" | Life Cycle | M-BA-007, 008 |
+| "Assess change impact" | Life Cycle | M-BA-010 |
+| "Define current state" | Strategy | M-BA-011 |
+| "Define future state" | Strategy | M-BA-012 |
+| "Evaluate options" | Analysis | M-BA-017 |
+| "Assess solution" | Evaluation | M-BA-018 |
 
 ### 2. Gather Context
 
@@ -227,49 +227,49 @@ Apply the appropriate BABOK methodology:
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-001 | BA Approach Planning | Define how BA will be performed |
-| M-BABOK-002 | Stakeholder Analysis | Power/Interest mapping |
-| M-BABOK-003 | Governance Framework | Decision-making process |
+| M-BA-001 | BA Approach Planning | Define how BA will be performed |
+| M-BA-002 | Stakeholder Analysis | Power/Interest mapping |
+| M-BA-003 | Governance Framework | Decision-making process |
 
 ### Elicitation Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-004 | Elicitation Preparation | Plan elicitation activities |
-| M-BABOK-005 | Elicitation Techniques | Draw out information |
-| M-BABOK-006 | Communication Planning | Effective info sharing |
+| M-BA-004 | Elicitation Preparation | Plan elicitation activities |
+| M-BA-005 | Elicitation Techniques | Draw out information |
+| M-BA-006 | Communication Planning | Effective info sharing |
 
 ### Life Cycle Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-007 | Requirements Traceability | Track relationships |
-| M-BABOK-008 | Requirements Maintenance | Keep requirements current |
-| M-BABOK-009 | Requirements Prioritization | MoSCoW, RICE, Kano |
-| M-BABOK-010 | Change Impact Analysis | Assess change effects |
+| M-BA-007 | Requirements Traceability | Track relationships |
+| M-BA-008 | Requirements Maintenance | Keep requirements current |
+| M-BA-009 | Requirements Prioritization | MoSCoW, RICE, Kano |
+| M-BA-010 | Change Impact Analysis | Assess change effects |
 
 ### Strategy Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-011 | Current State Analysis | Understand as-is |
-| M-BABOK-012 | Future State Definition | Define to-be |
-| M-BABOK-013 | Risk Analysis | Identify uncertainties |
-| M-BABOK-014 | Change Strategy Planning | Gap analysis, roadmap |
+| M-BA-011 | Current State Analysis | Understand as-is |
+| M-BA-012 | Future State Definition | Define to-be |
+| M-BA-013 | Risk Analysis | Identify uncertainties |
+| M-BA-014 | Change Strategy Planning | Gap analysis, roadmap |
 
 ### Analysis Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-015 | Requirements Modeling | Use cases, user stories, process models |
-| M-BABOK-016 | Requirements Architecture | Organize requirements |
-| M-BABOK-017 | Solution Options Analysis | Evaluate alternatives |
+| M-BA-015 | Requirements Modeling | Use cases, user stories, process models |
+| M-BA-016 | Requirements Architecture | Organize requirements |
+| M-BA-017 | Solution Options Analysis | Evaluate alternatives |
 
 ### Evaluation Methodologies
 
 | ID | Name | Use Case |
 |----|------|----------|
-| M-BABOK-018 | Solution Limitation Assessment | Identify and address gaps |
+| M-BA-018 | Solution Limitation Assessment | Identify and address gaps |
 
 ---
 
@@ -496,7 +496,7 @@ Requirements must be:
 
 | Skill | Usage |
 |-------|-------|
-| faion-babok-domain-skill | BABOK v3 knowledge areas, techniques, methodologies |
+| faion-ba-domain-skill | BABOK v3 knowledge areas, techniques, methodologies |
 | faion-ux-domain-skill | User research integration |
 
 ---
@@ -578,23 +578,23 @@ Requirements must be:
 ## Quick Reference
 
 **Initiative Start:**
-1. Stakeholder analysis (M-BABOK-002)
-2. Current state analysis (M-BABOK-011)
-3. Future state definition (M-BABOK-012)
+1. Stakeholder analysis (M-BA-002)
+2. Current state analysis (M-BA-011)
+3. Future state definition (M-BA-012)
 
 **Requirements Gathering:**
-1. Elicitation preparation (M-BABOK-004)
-2. Conduct elicitation (M-BABOK-005)
-3. Model requirements (M-BABOK-015)
+1. Elicitation preparation (M-BA-004)
+2. Conduct elicitation (M-BA-005)
+3. Model requirements (M-BA-015)
 
 **Requirements Management:**
-1. Prioritization (M-BABOK-009)
-2. Traceability (M-BABOK-007)
-3. Change assessment (M-BABOK-010)
+1. Prioritization (M-BA-009)
+2. Traceability (M-BA-007)
+3. Change assessment (M-BA-010)
 
 **Solution Design:**
-1. Requirements architecture (M-BABOK-016)
-2. Options analysis (M-BABOK-017)
+1. Requirements architecture (M-BA-016)
+2. Options analysis (M-BA-017)
 3. Recommendation
 
 ---

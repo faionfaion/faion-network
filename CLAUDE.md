@@ -17,19 +17,23 @@
 
 **NO ASCII ART.** Allowed: tables, lists, arrows (`→`), directory trees.
 
-## SDD Structure
+## Directory Structure
+
+**Full documentation:** [docs/directory-structure.md](docs/directory-structure.md)
 
 ```
-aidocs/sdd/{project}/
-├── constitution.md
-├── roadmap.md
-├── product_docs/
-├── tasks/{backlog,todo,in-progress,done}/
-└── features/{backlog,todo,in-progress,done}/{NN}-{feature}/
-    ├── spec.md
-    ├── design.md
-    ├── implementation-plan.md
-    └── tasks/{backlog,todo,in-progress,done}/
+~/.claude/                    # Global framework (faion-network)
+├── skills/faion-*-skill/
+├── agents/faion-*-agent.md
+└── docs/
+
+{project}/                    # Project root
+├── .claude/                  # Project-specific config
+│   └── {project}-*-skill/   # Project skills (gitignored)
+└── aidocs/sdd/{project}/    # SDD documentation
+    ├── constitution.md
+    ├── features/{status}/{NN}-{feature}/
+    └── tasks/{status}/
 ```
 
 **Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
