@@ -1103,3 +1103,39 @@ docker run -it --rm myapp:debug sh
 - [Docker Security](https://docs.docker.com/engine/security/)
 - [OWASP Docker Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html)
 - [Hadolint Rules](https://github.com/hadolint/hadolint#rules)
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-DO-001 | Cicd Github Actions | [methodologies/M-DO-001_cicd_github_actions.md](methodologies/M-DO-001_cicd_github_actions.md) |
+| M-DO-002 | Cicd Gitlab Ci | [methodologies/M-DO-002_cicd_gitlab_ci.md](methodologies/M-DO-002_cicd_gitlab_ci.md) |
+| M-DO-003 | Docker Basics | [methodologies/M-DO-003_docker_basics.md](methodologies/M-DO-003_docker_basics.md) |
+| M-DO-004 | Docker Compose | [methodologies/M-DO-004_docker_compose.md](methodologies/M-DO-004_docker_compose.md) |
+| M-DO-005 | Kubernetes Basics | [methodologies/M-DO-005_kubernetes_basics.md](methodologies/M-DO-005_kubernetes_basics.md) |
+| M-DO-006 | Helm Charts | [methodologies/M-DO-006_helm_charts.md](methodologies/M-DO-006_helm_charts.md) |
+| M-DO-007 | Aws Ec2 | [methodologies/M-DO-007_aws_ec2.md](methodologies/M-DO-007_aws_ec2.md) |
+| M-DO-008 | Aws Lambda | [methodologies/M-DO-008_aws_lambda.md](methodologies/M-DO-008_aws_lambda.md) |
+| M-DO-009 | Terraform Basics | [methodologies/M-DO-009_terraform_basics.md](methodologies/M-DO-009_terraform_basics.md) |
+| M-DO-010 | Infrastructure Patterns | [methodologies/M-DO-010_infrastructure_patterns.md](methodologies/M-DO-010_infrastructure_patterns.md) |
+| M-DO-011 | Monitoring Prometheus | [methodologies/M-DO-011_monitoring_prometheus.md](methodologies/M-DO-011_monitoring_prometheus.md) |
+| M-DO-012 | Logging Elk | [methodologies/M-DO-012_logging_elk.md](methodologies/M-DO-012_logging_elk.md) |
+| M-DO-013 | Tracing Jaeger | [methodologies/M-DO-013_tracing_jaeger.md](methodologies/M-DO-013_tracing_jaeger.md) |
+| M-DO-014 | Secrets Management | [methodologies/M-DO-014_secrets_management.md](methodologies/M-DO-014_secrets_management.md) |
+| M-DO-015 | Ssl Certificates | [methodologies/M-DO-015_ssl_certificates.md](methodologies/M-DO-015_ssl_certificates.md) |
+| M-DO-016 | Backup Recovery | [methodologies/M-DO-016_backup_recovery.md](methodologies/M-DO-016_backup_recovery.md) |
+| M-DO-017 | Networking Basics | [methodologies/M-DO-017_networking_basics.md](methodologies/M-DO-017_networking_basics.md) |
+| M-DO-018 | Dns Route53 | [methodologies/M-DO-018_dns_route53.md](methodologies/M-DO-018_dns_route53.md) |
+| M-DO-019 | Cdn Cloudfront | [methodologies/M-DO-019_cdn_cloudfront.md](methodologies/M-DO-019_cdn_cloudfront.md) |
+| M-DO-020 | Container Registry | [methodologies/M-DO-020_container_registry.md](methodologies/M-DO-020_container_registry.md) |
+| M-DO-021 | Security Scanning | [methodologies/M-DO-021_security_scanning.md](methodologies/M-DO-021_security_scanning.md) |
+| M-DO-022 | Cost Optimization | [methodologies/M-DO-022_cost_optimization.md](methodologies/M-DO-022_cost_optimization.md) |
+| M-DO-023 | Database Operations | [methodologies/M-DO-023_database_operations.md](methodologies/M-DO-023_database_operations.md) |
+| M-DO-024 | Feature Flags | [methodologies/M-DO-024_feature_flags.md](methodologies/M-DO-024_feature_flags.md) |
+| M-DO-025 | Incident Management | [methodologies/M-DO-025_incident_management.md](methodologies/M-DO-025_incident_management.md) |
+| M-DO-026 | Gitops | [methodologies/M-DO-026_gitops.md](methodologies/M-DO-026_gitops.md) |
+| M-DO-027 | Service Mesh | [methodologies/M-DO-027_service_mesh.md](methodologies/M-DO-027_service_mesh.md) |
+| M-DO-028 | Slo Sli | [methodologies/M-DO-028_slo_sli.md](methodologies/M-DO-028_slo_sli.md) |

@@ -1284,6 +1284,9 @@ afterAll(() => server.close());
 - [ ] react-virtual for long lists
 - [ ] Bundle analyzer configured
 
+
+> **Note:** Full methodology details available in `methodologies/` folder.
+
 ---
 
 ## Decision Tree: Where to Put Code

@@ -1743,3 +1743,19 @@ Executed by: faion-code-agent
 *Python Ecosystem Skill v1.0*
 *Layer 3 Technical Skill*
 *8 Methodologies | Used by faion-code-agent, faion-test-agent*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-PY-001 | Project Setup Poetry | [methodologies/M-PY-001_project_setup_poetry.md](methodologies/M-PY-001_project_setup_poetry.md) |
+| M-PY-002 | Django Patterns | [methodologies/M-PY-002_django_patterns.md](methodologies/M-PY-002_django_patterns.md) |
+| M-PY-003 | Fastapi Patterns | [methodologies/M-PY-003_fastapi_patterns.md](methodologies/M-PY-003_fastapi_patterns.md) |
+| M-PY-004 | Pytest Testing | [methodologies/M-PY-004_pytest_testing.md](methodologies/M-PY-004_pytest_testing.md) |
+| M-PY-005 | Asyncio Patterns | [methodologies/M-PY-005_asyncio_patterns.md](methodologies/M-PY-005_asyncio_patterns.md) |
+| M-PY-006 | Type Hints | [methodologies/M-PY-006_type_hints.md](methodologies/M-PY-006_type_hints.md) |
+| M-PY-007 | Packaging | [methodologies/M-PY-007_packaging.md](methodologies/M-PY-007_packaging.md) |
+| M-PY-008 | Code Quality | [methodologies/M-PY-008_code_quality.md](methodologies/M-PY-008_code_quality.md) |

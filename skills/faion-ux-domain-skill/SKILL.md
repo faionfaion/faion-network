@@ -2290,3 +2290,43 @@ You need to measure UX quality objectively.
 *UX Domain Skill v1.0*
 *32 Methodologies (M-UX-001 to M-UX-032)*
 *Agents: faion-ux-researcher-agent, faion-usability-agent*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-UX-001 | Visibility Of System Status | [methodologies/M-UX-001_visibility_of_system_status.md](methodologies/M-UX-001_visibility_of_system_status.md) |
+| M-UX-002 | Match Real World | [methodologies/M-UX-002_match_real_world.md](methodologies/M-UX-002_match_real_world.md) |
+| M-UX-003 | User Control Freedom | [methodologies/M-UX-003_user_control_freedom.md](methodologies/M-UX-003_user_control_freedom.md) |
+| M-UX-004 | Consistency Standards | [methodologies/M-UX-004_consistency_standards.md](methodologies/M-UX-004_consistency_standards.md) |
+| M-UX-005 | Error Prevention | [methodologies/M-UX-005_error_prevention.md](methodologies/M-UX-005_error_prevention.md) |
+| M-UX-006 | Recognition Over Recall | [methodologies/M-UX-006_recognition_over_recall.md](methodologies/M-UX-006_recognition_over_recall.md) |
+| M-UX-007 | Flexibility Efficiency | [methodologies/M-UX-007_flexibility_efficiency.md](methodologies/M-UX-007_flexibility_efficiency.md) |
+| M-UX-008 | Aesthetic Minimalist | [methodologies/M-UX-008_aesthetic_minimalist.md](methodologies/M-UX-008_aesthetic_minimalist.md) |
+| M-UX-009 | Error Recovery | [methodologies/M-UX-009_error_recovery.md](methodologies/M-UX-009_error_recovery.md) |
+| M-UX-010 | Help Documentation | [methodologies/M-UX-010_help_documentation.md](methodologies/M-UX-010_help_documentation.md) |
+| M-UX-011 | User Interviews | [methodologies/M-UX-011_user_interviews.md](methodologies/M-UX-011_user_interviews.md) |
+| M-UX-012 | Usability Testing | [methodologies/M-UX-012_usability_testing.md](methodologies/M-UX-012_usability_testing.md) |
+| M-UX-013 | Surveys | [methodologies/M-UX-013_surveys.md](methodologies/M-UX-013_surveys.md) |
+| M-UX-014 | Card Sorting | [methodologies/M-UX-014_card_sorting.md](methodologies/M-UX-014_card_sorting.md) |
+| M-UX-015 | Personas | [methodologies/M-UX-015_personas.md](methodologies/M-UX-015_personas.md) |
+| M-UX-016 | Journey Mapping | [methodologies/M-UX-016_journey_mapping.md](methodologies/M-UX-016_journey_mapping.md) |
+| M-UX-017 | Wireframing | [methodologies/M-UX-017_wireframing.md](methodologies/M-UX-017_wireframing.md) |
+| M-UX-018 | Prototyping | [methodologies/M-UX-018_prototyping.md](methodologies/M-UX-018_prototyping.md) |
+| M-UX-019 | Ab Testing | [methodologies/M-UX-019_ab_testing.md](methodologies/M-UX-019_ab_testing.md) |
+| M-UX-020 | Heuristic Evaluation | [methodologies/M-UX-020_heuristic_evaluation.md](methodologies/M-UX-020_heuristic_evaluation.md) |
+| M-UX-021 | Contextual Inquiry | [methodologies/M-UX-021_contextual_inquiry.md](methodologies/M-UX-021_contextual_inquiry.md) |
+| M-UX-022 | Focus Groups | [methodologies/M-UX-022_focus_groups.md](methodologies/M-UX-022_focus_groups.md) |
+| M-UX-023 | Tree Testing | [methodologies/M-UX-023_tree_testing.md](methodologies/M-UX-023_tree_testing.md) |
+| M-UX-024 | Accessibility Evaluation | [methodologies/M-UX-024_accessibility_evaluation.md](methodologies/M-UX-024_accessibility_evaluation.md) |
+| M-UX-025 | Design Critique | [methodologies/M-UX-025_design_critique.md](methodologies/M-UX-025_design_critique.md) |
+| M-UX-026 | Competitive Analysis | [methodologies/M-UX-026_competitive_analysis.md](methodologies/M-UX-026_competitive_analysis.md) |
+| M-UX-027 | Content Audit | [methodologies/M-UX-027_content_audit.md](methodologies/M-UX-027_content_audit.md) |
+| M-UX-028 | Cognitive Walkthrough | [methodologies/M-UX-028_cognitive_walkthrough.md](methodologies/M-UX-028_cognitive_walkthrough.md) |
+| M-UX-029 | Information Architecture | [methodologies/M-UX-029_information_architecture.md](methodologies/M-UX-029_information_architecture.md) |
+| M-UX-030 | Mobile Ux | [methodologies/M-UX-030_mobile_ux.md](methodologies/M-UX-030_mobile_ux.md) |
+| M-UX-031 | Voice Ui | [methodologies/M-UX-031_voice_ui.md](methodologies/M-UX-031_voice_ui.md) |
+| M-UX-032 | Diary Studies | [methodologies/M-UX-032_diary_studies.md](methodologies/M-UX-032_diary_studies.md) |

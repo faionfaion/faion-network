@@ -1284,3 +1284,19 @@ Before using generated images:
 *Skill Version: 1.0*
 *Last Updated: 2026-01-18*
 *Part of Faion Network AI/LLM Skills*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-GEN-001-image-prompting | M-GEN-001-image-prompting | [methodologies/M-GEN-001-image-prompting.md](methodologies/M-GEN-001-image-prompting.md) |
+| M-GEN-002-video-generation-workflow | M-GEN-002-video-generation-workflow | [methodologies/M-GEN-002-video-generation-workflow.md](methodologies/M-GEN-002-video-generation-workflow.md) |
+| M-GEN-003-voice-synthesis | M-GEN-003-voice-synthesis | [methodologies/M-GEN-003-voice-synthesis.md](methodologies/M-GEN-003-voice-synthesis.md) |
+| M-GEN-004-audio-transcription | M-GEN-004-audio-transcription | [methodologies/M-GEN-004-audio-transcription.md](methodologies/M-GEN-004-audio-transcription.md) |
+| M-GEN-005-multimodal-pipelines | M-GEN-005-multimodal-pipelines | [methodologies/M-GEN-005-multimodal-pipelines.md](methodologies/M-GEN-005-multimodal-pipelines.md) |
+| M-GEN-006-finetuning-workflow | M-GEN-006-finetuning-workflow | [methodologies/M-GEN-006-finetuning-workflow.md](methodologies/M-GEN-006-finetuning-workflow.md) |
+| M-GEN-007-content-moderation | M-GEN-007-content-moderation | [methodologies/M-GEN-007-content-moderation.md](methodologies/M-GEN-007-content-moderation.md) |
+| M-GEN-008-asset-management | M-GEN-008-asset-management | [methodologies/M-GEN-008-asset-management.md](methodologies/M-GEN-008-asset-management.md) |

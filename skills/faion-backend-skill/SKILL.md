@@ -3147,3 +3147,35 @@ async fn test_list_users_pagination() {
 - [ASP.NET Core Documentation](https://docs.microsoft.com/en-us/aspnet/core/)
 - [Rust Axum](https://docs.rs/axum/latest/axum/)
 - [Rust Actix](https://actix.rs/docs/)
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-CS-001 | Project Setup | [methodologies/M-CS-001_project_setup.md](methodologies/M-CS-001_project_setup.md) |
+| M-CS-002 | Aspnet Patterns | [methodologies/M-CS-002_aspnet_patterns.md](methodologies/M-CS-002_aspnet_patterns.md) |
+| M-CS-003 | Testing Xunit | [methodologies/M-CS-003_testing_xunit.md](methodologies/M-CS-003_testing_xunit.md) |
+| M-CS-004 | Code Quality | [methodologies/M-CS-004_code_quality.md](methodologies/M-CS-004_code_quality.md) |
+| M-GO-001 | Project Setup | [methodologies/M-GO-001_project_setup.md](methodologies/M-GO-001_project_setup.md) |
+| M-GO-002 | Web Frameworks | [methodologies/M-GO-002_web_frameworks.md](methodologies/M-GO-002_web_frameworks.md) |
+| M-GO-003 | Testing | [methodologies/M-GO-003_testing.md](methodologies/M-GO-003_testing.md) |
+| M-GO-004 | Error Handling | [methodologies/M-GO-004_error_handling.md](methodologies/M-GO-004_error_handling.md) |
+| M-JAVA-001 | Project Setup | [methodologies/M-JAVA-001_project_setup.md](methodologies/M-JAVA-001_project_setup.md) |
+| M-JAVA-002 | Spring Patterns | [methodologies/M-JAVA-002_spring_patterns.md](methodologies/M-JAVA-002_spring_patterns.md) |
+| M-JAVA-003 | Testing | [methodologies/M-JAVA-003_testing.md](methodologies/M-JAVA-003_testing.md) |
+| M-JAVA-004 | Code Quality | [methodologies/M-JAVA-004_code_quality.md](methodologies/M-JAVA-004_code_quality.md) |
+| M-PHP-001 | Project Setup | [methodologies/M-PHP-001_project_setup.md](methodologies/M-PHP-001_project_setup.md) |
+| M-PHP-002 | Laravel Patterns | [methodologies/M-PHP-002_laravel_patterns.md](methodologies/M-PHP-002_laravel_patterns.md) |
+| M-PHP-003 | Testing Phpunit | [methodologies/M-PHP-003_testing_phpunit.md](methodologies/M-PHP-003_testing_phpunit.md) |
+| M-PHP-004 | Code Quality | [methodologies/M-PHP-004_code_quality.md](methodologies/M-PHP-004_code_quality.md) |
+| M-RB-001 | Project Setup | [methodologies/M-RB-001_project_setup.md](methodologies/M-RB-001_project_setup.md) |
+| M-RB-002 | Rails Patterns | [methodologies/M-RB-002_rails_patterns.md](methodologies/M-RB-002_rails_patterns.md) |
+| M-RB-003 | Testing Rspec | [methodologies/M-RB-003_testing_rspec.md](methodologies/M-RB-003_testing_rspec.md) |
+| M-RB-004 | Code Quality | [methodologies/M-RB-004_code_quality.md](methodologies/M-RB-004_code_quality.md) |
+| M-RS-001 | Project Setup | [methodologies/M-RS-001_project_setup.md](methodologies/M-RS-001_project_setup.md) |
+| M-RS-002 | Axum Patterns | [methodologies/M-RS-002_axum_patterns.md](methodologies/M-RS-002_axum_patterns.md) |
+| M-RS-003 | Testing | [methodologies/M-RS-003_testing.md](methodologies/M-RS-003_testing.md) |
+| M-RS-004 | Error Handling | [methodologies/M-RS-004_error_handling.md](methodologies/M-RS-004_error_handling.md) |

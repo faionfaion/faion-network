@@ -1910,3 +1910,23 @@ Widgets:
 - [Azure DevOps Docs](https://learn.microsoft.com/en-us/azure/devops/)
 - [Notion Templates](https://www.notion.so/templates)
 - [Agile Alliance](https://www.agilealliance.org/agile101/)
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-PMT-001 | Jira Workflow Management | [methodologies/M-PMT-001_jira_workflow_management.md](methodologies/M-PMT-001_jira_workflow_management.md) |
+| M-PMT-002 | Clickup Setup | [methodologies/M-PMT-002_clickup_setup.md](methodologies/M-PMT-002_clickup_setup.md) |
+| M-PMT-003 | Linear Issue Tracking | [methodologies/M-PMT-003_linear_issue_tracking.md](methodologies/M-PMT-003_linear_issue_tracking.md) |
+| M-PMT-004 | Github Projects | [methodologies/M-PMT-004_github_projects.md](methodologies/M-PMT-004_github_projects.md) |
+| M-PMT-005 | Gitlab Boards | [methodologies/M-PMT-005_gitlab_boards.md](methodologies/M-PMT-005_gitlab_boards.md) |
+| M-PMT-006 | Azure Devops Boards | [methodologies/M-PMT-006_azure_devops_boards.md](methodologies/M-PMT-006_azure_devops_boards.md) |
+| M-PMT-007 | Notion Pm | [methodologies/M-PMT-007_notion_pm.md](methodologies/M-PMT-007_notion_pm.md) |
+| M-PMT-008 | Trello Kanban | [methodologies/M-PMT-008_trello_kanban.md](methodologies/M-PMT-008_trello_kanban.md) |
+| M-PMT-009 | Cross Tool Migration | [methodologies/M-PMT-009_cross_tool_migration.md](methodologies/M-PMT-009_cross_tool_migration.md) |
+| M-PMT-010 | Pm Tool Selection | [methodologies/M-PMT-010_pm_tool_selection.md](methodologies/M-PMT-010_pm_tool_selection.md) |
+| M-PMT-011 | Agile Ceremonies Setup | [methodologies/M-PMT-011_agile_ceremonies_setup.md](methodologies/M-PMT-011_agile_ceremonies_setup.md) |
+| M-PMT-012 | Reporting Dashboards | [methodologies/M-PMT-012_reporting_dashboards.md](methodologies/M-PMT-012_reporting_dashboards.md) |

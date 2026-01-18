@@ -64,6 +64,9 @@ This skill references 20 research methodologies:
 | M-RES-019 | Pricing Model Selection | Freemium, subscription, one-time, usage-based | faion-pricing-researcher |
 | M-RES-020 | Customer Interview Framework | Discovery interviews, problem interviews | faion-problem-validator |
 
+
+> **Note:** Full methodology details available in `methodologies/` folder.
+
 ---
 
 ## Section 1: Idea Discovery

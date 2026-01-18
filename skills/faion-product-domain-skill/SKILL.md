@@ -431,6 +431,9 @@ Goal: Increase revenue 20%
 
 **Agent:** faion-pm-agent
 
+
+> **Note:** Full methodology details available in `methodologies/` folder.
+
 ---
 
 ## Execution

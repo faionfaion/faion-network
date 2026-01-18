@@ -287,60 +287,105 @@ Pre-Impl:     Task clear? Approach decided? No blockers?
 
 Use `/faion-reflexion` to record and learn.
 
-## Skills & Agents
+## 3-Layer Architecture
 
-| Type | Name | Purpose |
-|------|------|---------|
-| Skill | **faion-project-bootstrap** | Full project bootstrap (brainstorm → constitution → backlog → TASK_000) |
-| Skill | **faion-idea-discovery** | **Brainstorm ideas, research pain points, evaluate niches** |
-| Skill | **faion-backlog-grooming** | **Interactive grooming: prioritize, refine specs, create designs & tasks** |
-| Skill | **faion-product-research** | Market research, competitor analysis, personas, problem validation, pricing |
-| Skill | **faion-gtm-manifest** | Go-to-market strategy from research data (12 sections) |
-| Skill | **faion-mlp-planning** | Transform MVP to MLP - gap analysis, WOW moments, implementation order |
-| Skill | **faion-project-naming** | Generate & validate project names, check domains, write to constitution |
-| Skill | **faion-roadmap** | Review progress, reprioritize, add new features |
-| Skill | **faion-confidence-check** | Pre-execution validation (≥90% to proceed, prevents wrong-direction work) |
-| Skill | **faion-reflexion** | Learn from mistakes, store patterns in ~/.sdd/memory/ |
-| Skill | **faion-task-parallelizer** | Analyze dependencies, create parallel execution waves (3.5x speedup) |
-| Skill | **faion-dev-ui-design** | UI brainstorming, prototyping, Storybook-driven development |
-| Skill | **faion-landing-page** | Create high-converting landing pages (copy + design + implementation) |
-| Skill | **faion-execute-task** | Execute single task via faion-task-executor agent |
-| Skill | **faion-do-all-tasks** | Execute all tasks for feature sequentially |
-| Skill | **faion-make-tasks** | Create tasks from SDD documents (spec + design + impl-plan) |
-| Skill | **faion-review** | Code review or SDD document review |
-| Skill | faion-writing-constitutions | Create constitution (for existing codebase) |
-| Skill | faion-writing-specifications | Create/refine spec |
-| Skill | faion-writing-design-docs | Create design |
-| Skill | faion-writing-implementation-plan | Create implementation plan |
-| Agent | faion-task-creator | Create individual tasks |
-| Agent | faion-task-executor | Execute tasks autonomously |
-| Agent | faion-tasks-reviewer | Review tasks quality |
-| Agent | faion-spec-reviewer | Review spec quality before approval |
-| Agent | faion-design-reviewer | Review design for architecture decisions |
-| Agent | faion-impl-plan-reviewer | Review impl-plan for 100k token compliance |
-| Agent | faion-market-researcher | TAM/SAM/SOM, trends, growth drivers |
-| Agent | faion-competitor-analyzer | Competitor features, pricing, positioning |
-| Agent | faion-persona-builder | User personas from real feedback |
-| Agent | faion-problem-validator | Problem validation with evidence |
-| Agent | faion-pricing-researcher | Pricing benchmarks and strategies |
-| Agent | faion-mvp-scope-analyzer | Define MVP via competitor feature analysis |
-| Agent | faion-mlp-spec-analyzer | Analyze specs for MLP gaps |
-| Agent | faion-mlp-gap-finder | Compare MVP vs MLP |
-| Agent | faion-mlp-spec-updater | Add MLP requirements to specs |
-| Agent | faion-mlp-feature-proposer | Propose new MLP features |
-| Agent | faion-mlp-impl-planner | Create MLP implementation order |
-| Agent | faion-name-generator | Creative project name brainstorming |
-| Agent | faion-domain-checker | Verify domains, handles, trademarks |
-| Agent | faion-idea-generator | Generate startup/product ideas using frameworks |
-| Agent | faion-pain-point-researcher | Research pain points via Reddit/forums |
-| Agent | faion-niche-evaluator | Evaluate niche viability (market, competition, barriers) |
-| Agent | faion-hallucination-checker | Verify task completion with evidence (94% accuracy protocol) |
-| Agent | faion-dev-design-brainstormer | Generate multiple UI design variants (HTML/React) |
-| Agent | faion-dev-storybook-manager | Setup and maintain Storybook |
-| Agent | faion-landing-copywriter | Landing page copy using AIDA/PAS frameworks |
-| Agent | faion-landing-designer | Landing page design and HTML/Tailwind implementation |
-| Agent | faion-landing-analyzer | Landing page conversion analysis and A/B test suggestions |
-| Agent | faion-dev-component-developer | Develop components with stories and tests |
+```
+Layer 1: Domain Skills (8) ─ orchestrators
+    ↓ call
+Layer 2: Agents (58) ─ executors
+    ↓ use
+Layer 3: Technical Skills (25) ─ tools
+```
+
+## Domain Skills (Layer 1) - Orchestrators
+
+Route requests to appropriate domain skill based on user intent:
+
+| Skill | Purpose | Methodologies |
+|-------|---------|---------------|
+| faion-sdd-domain-skill | SDD workflow: specs, design, tasks, quality gates | 8 |
+| faion-research-domain-skill | Research: ideas, market, competitors, personas | 20 |
+| faion-product-domain-skill | Product: roadmap, MVP/MLP, prioritization | 18 |
+| faion-development-domain-skill | Development: Python, JS, backend, DevOps | 68 |
+| faion-marketing-domain-skill | Marketing: GTM, landing, content, ads | 72 |
+| faion-pmbok-domain-skill | PMBOK 7/8: performance domains, principles | 20 |
+| faion-babok-domain-skill | BABOK v3: knowledge areas, techniques | 18 |
+| faion-ux-domain-skill | UX: Nielsen Norman, research, usability | 32 |
+
+## Technical Skills (Layer 3) - Tools
+
+### Development (5)
+- faion-python-skill (Django, FastAPI, pytest)
+- faion-javascript-skill (React, Node, TypeScript)
+- faion-backend-skill (Go, Ruby, PHP, Java, C#, Rust)
+- faion-api-skill (REST, GraphQL, OpenAPI)
+- faion-testing-skill (Unit, Integration, E2E)
+
+### DevOps (4)
+- faion-aws-cli-skill (S3, EC2, Lambda, etc.)
+- faion-k8s-cli-skill (Kubernetes operations)
+- faion-terraform-skill (Infrastructure as code)
+- faion-docker-skill (Containers, compose)
+
+### Marketing (3)
+- faion-meta-ads-skill (Meta Ads API)
+- faion-google-ads-skill (Google Ads API)
+- faion-analytics-skill (GA4, Plausible)
+
+### AI/LLM (11)
+- faion-langchain-skill (LangChain/LangGraph)
+- faion-llamaindex-skill (RAG, indexing)
+- faion-vector-db-skill (Qdrant, Weaviate, pgvector)
+- faion-embeddings-skill (OpenAI, Mistral)
+- faion-openai-api-skill (GPT-4, DALL-E, Whisper)
+- faion-claude-api-skill (Claude, tool use)
+- faion-gemini-api-skill (Gemini multimodal)
+- faion-image-gen-skill (DALL-E, FLUX, SD)
+- faion-video-gen-skill (Sora, Runway)
+- faion-audio-skill (TTS/STT, ElevenLabs, Whisper)
+- faion-finetuning-skill (LoRA/QLoRA)
+
+### Other (2)
+- faion-browser-automation-skill (Puppeteer, Playwright)
+- faion-pm-tools-skill (Jira, ClickUp, Linear, GitHub)
+
+## Agents (Layer 2) - Executors (58 total)
+
+### Research & Discovery (10)
+faion-idea-generator, faion-market-researcher, faion-competitor-analyzer, faion-persona-builder, faion-pricing-researcher, faion-niche-evaluator, faion-pain-point-researcher, faion-problem-validator, faion-name-generator, faion-domain-checker
+
+### SDD & Review (6)
+faion-task-creator, faion-task-executor, faion-tasks-reviewer, faion-spec-reviewer, faion-design-reviewer, faion-impl-plan-reviewer
+
+### MLP (6)
+faion-mvp-scope-analyzer, faion-mlp-spec-analyzer, faion-mlp-gap-finder, faion-mlp-spec-updater, faion-mlp-feature-proposer, faion-mlp-impl-planner
+
+### Development (7)
+faion-code-agent, faion-test-agent, faion-devops-agent, faion-browser-agent, faion-api-agent, faion-api-designer, faion-dev-component-developer, faion-dev-design-brainstormer, faion-dev-storybook-manager
+
+### Marketing (7)
+faion-ads-agent, faion-content-agent, faion-email-agent, faion-social-agent, faion-landing-analyzer, faion-landing-copywriter, faion-landing-designer
+
+### Standards (4)
+faion-pm-agent, faion-ba-agent, faion-ux-researcher-agent, faion-usability-agent
+
+### AI/LLM (14)
+faion-rag-agent, faion-embedding-agent, faion-prompt-engineer-agent, faion-image-generator-agent, faion-image-editor-agent, faion-video-generator-agent, faion-tts-agent, faion-stt-agent, faion-voice-agent-builder-agent, faion-finetuner-agent, faion-cost-optimizer-agent, faion-multimodal-agent, faion-llm-cli-agent, faion-autonomous-agent-builder-agent
+
+### Quality & Expert (4)
+faion-hallucination-checker, faion-seo-agent, faion-hooks-expert
+
+## Legacy Skills (archived)
+
+Old granular skills merged into domain skills:
+- faion-writing-specifications → faion-sdd-domain-skill
+- faion-writing-design-docs → faion-sdd-domain-skill
+- faion-writing-implementation-plan → faion-sdd-domain-skill
+- faion-backlog-grooming → faion-sdd-domain-skill
+- faion-product-research → faion-research-domain-skill
+- faion-gtm-manifest → faion-marketing-domain-skill
+- faion-mlp-planning → faion-product-domain-skill
+- etc. (see _archived/ for full list)
 
 ## Commands (User Entry Points)
 

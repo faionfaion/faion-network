@@ -1421,3 +1421,19 @@ for chunk in chain.stream({"input": "Hello"}):
 *faion-langchain-skill v1.0*
 *LangChain 0.3.x / LangGraph 0.2.x*
 *Covers: chains, agents, memory, tools, multi-agent systems*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-LLM-001-prompt-engineering | M-LLM-001-prompt-engineering | [methodologies/M-LLM-001-prompt-engineering.md](methodologies/M-LLM-001-prompt-engineering.md) |
+| M-LLM-002-llm-chain-patterns | M-LLM-002-llm-chain-patterns | [methodologies/M-LLM-002-llm-chain-patterns.md](methodologies/M-LLM-002-llm-chain-patterns.md) |
+| M-LLM-003-agent-architecture | M-LLM-003-agent-architecture | [methodologies/M-LLM-003-agent-architecture.md](methodologies/M-LLM-003-agent-architecture.md) |
+| M-LLM-004-multi-agent-systems | M-LLM-004-multi-agent-systems | [methodologies/M-LLM-004-multi-agent-systems.md](methodologies/M-LLM-004-multi-agent-systems.md) |
+| M-LLM-005-function-calling | M-LLM-005-function-calling | [methodologies/M-LLM-005-function-calling.md](methodologies/M-LLM-005-function-calling.md) |
+| M-LLM-006-context-window-optimization | M-LLM-006-context-window-optimization | [methodologies/M-LLM-006-context-window-optimization.md](methodologies/M-LLM-006-context-window-optimization.md) |
+| M-LLM-007-llm-evaluation | M-LLM-007-llm-evaluation | [methodologies/M-LLM-007-llm-evaluation.md](methodologies/M-LLM-007-llm-evaluation.md) |
+| M-LLM-008-cost-optimization | M-LLM-008-cost-optimization | [methodologies/M-LLM-008-cost-optimization.md](methodologies/M-LLM-008-cost-optimization.md) |

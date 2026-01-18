@@ -2232,3 +2232,23 @@ faion-api-agent
 - [JWT RFC 7519](https://www.rfc-editor.org/rfc/rfc7519)
 - [Google API Design Guide](https://cloud.google.com/apis/design)
 - [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-API-001 | Rest Api Design | [methodologies/M-API-001_rest_api_design.md](methodologies/M-API-001_rest_api_design.md) |
+| M-API-002 | Graphql Patterns | [methodologies/M-API-002_graphql_patterns.md](methodologies/M-API-002_graphql_patterns.md) |
+| M-API-003 | Api Versioning | [methodologies/M-API-003_api_versioning.md](methodologies/M-API-003_api_versioning.md) |
+| M-API-004 | Openapi Specification | [methodologies/M-API-004_openapi_specification.md](methodologies/M-API-004_openapi_specification.md) |
+| M-API-005 | Api Authentication | [methodologies/M-API-005_api_authentication.md](methodologies/M-API-005_api_authentication.md) |
+| M-API-006 | Rate Limiting | [methodologies/M-API-006_rate_limiting.md](methodologies/M-API-006_rate_limiting.md) |
+| M-API-007 | Error Handling | [methodologies/M-API-007_error_handling.md](methodologies/M-API-007_error_handling.md) |
+| M-API-008 | Api Documentation | [methodologies/M-API-008_api_documentation.md](methodologies/M-API-008_api_documentation.md) |
+| M-API-009 | Api Testing | [methodologies/M-API-009_api_testing.md](methodologies/M-API-009_api_testing.md) |
+| M-API-010 | Api Monitoring | [methodologies/M-API-010_api_monitoring.md](methodologies/M-API-010_api_monitoring.md) |
+| M-API-011 | Api Gateway Patterns | [methodologies/M-API-011_api_gateway_patterns.md](methodologies/M-API-011_api_gateway_patterns.md) |
+| M-API-012 | Contract First Development | [methodologies/M-API-012_contract_first_development.md](methodologies/M-API-012_contract_first_development.md) |

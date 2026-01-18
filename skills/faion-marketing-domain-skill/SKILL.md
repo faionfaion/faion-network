@@ -1331,6 +1331,9 @@ K > 1 = viral growth
 
 **Agent:** faion-analytics-skill
 
+
+> **Note:** Full methodology details available in `methodologies/` folder.
+
 ---
 
 ## Execution

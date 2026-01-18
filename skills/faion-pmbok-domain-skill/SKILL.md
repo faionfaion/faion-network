@@ -1493,3 +1493,35 @@ Execute with: `faion-pm-agent`
 *PMBOK Domain Skill v1.0 - 2026-01-18*
 *Based on PMBOK 7th Edition (2021) and PMBOK 8 updates*
 *8 Performance Domains | 12 Principles | 20 Methodologies*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-PMBOK-001 | Stakeholder Engagement | [methodologies/M-PMBOK-001_stakeholder_engagement.md](methodologies/M-PMBOK-001_stakeholder_engagement.md) |
+| M-PMBOK-001 | Stakeholder Register | [methodologies/M-PMBOK-001_stakeholder_register.md](methodologies/M-PMBOK-001_stakeholder_register.md) |
+| M-PMBOK-002 | Raci Matrix | [methodologies/M-PMBOK-002_raci_matrix.md](methodologies/M-PMBOK-002_raci_matrix.md) |
+| M-PMBOK-003 | Wbs Creation | [methodologies/M-PMBOK-003_wbs_creation.md](methodologies/M-PMBOK-003_wbs_creation.md) |
+| M-PMBOK-003 | Work Breakdown Structure | [methodologies/M-PMBOK-003_work_breakdown_structure.md](methodologies/M-PMBOK-003_work_breakdown_structure.md) |
+| M-PMBOK-004 | Schedule Development | [methodologies/M-PMBOK-004_schedule_development.md](methodologies/M-PMBOK-004_schedule_development.md) |
+| M-PMBOK-005 | Cost Estimation | [methodologies/M-PMBOK-005_cost_estimation.md](methodologies/M-PMBOK-005_cost_estimation.md) |
+| M-PMBOK-006 | Risk Management | [methodologies/M-PMBOK-006_risk_management.md](methodologies/M-PMBOK-006_risk_management.md) |
+| M-PMBOK-006 | Risk Register | [methodologies/M-PMBOK-006_risk_register.md](methodologies/M-PMBOK-006_risk_register.md) |
+| M-PMBOK-007 | Earned Value Management | [methodologies/M-PMBOK-007_earned_value_management.md](methodologies/M-PMBOK-007_earned_value_management.md) |
+| M-PMBOK-008 | Change Control | [methodologies/M-PMBOK-008_change_control.md](methodologies/M-PMBOK-008_change_control.md) |
+| M-PMBOK-009 | Quality Management | [methodologies/M-PMBOK-009_quality_management.md](methodologies/M-PMBOK-009_quality_management.md) |
+| M-PMBOK-010 | Communications Management | [methodologies/M-PMBOK-010_communications_management.md](methodologies/M-PMBOK-010_communications_management.md) |
+| M-PMBOK-010 | Team Development | [methodologies/M-PMBOK-010_team_development.md](methodologies/M-PMBOK-010_team_development.md) |
+| M-PMBOK-011 | Project Integration | [methodologies/M-PMBOK-011_project_integration.md](methodologies/M-PMBOK-011_project_integration.md) |
+| M-PMBOK-012 | Agile Hybrid Approaches | [methodologies/M-PMBOK-012_agile_hybrid_approaches.md](methodologies/M-PMBOK-012_agile_hybrid_approaches.md) |
+| M-PMBOK-013 | Resource Management | [methodologies/M-PMBOK-013_resource_management.md](methodologies/M-PMBOK-013_resource_management.md) |
+| M-PMBOK-014 | Procurement Management | [methodologies/M-PMBOK-014_procurement_management.md](methodologies/M-PMBOK-014_procurement_management.md) |
+| M-PMBOK-015 | Lessons Learned | [methodologies/M-PMBOK-015_lessons_learned.md](methodologies/M-PMBOK-015_lessons_learned.md) |
+| M-PMBOK-016 | Benefits Realization | [methodologies/M-PMBOK-016_benefits_realization.md](methodologies/M-PMBOK-016_benefits_realization.md) |
+| M-PMBOK-017 | Project Closure | [methodologies/M-PMBOK-017_project_closure.md](methodologies/M-PMBOK-017_project_closure.md) |
+| M-PMBOK-018 | Stakeholder Engagement | [methodologies/M-PMBOK-018_stakeholder_engagement.md](methodologies/M-PMBOK-018_stakeholder_engagement.md) |
+| M-PMBOK-019 | Scope Management | [methodologies/M-PMBOK-019_scope_management.md](methodologies/M-PMBOK-019_scope_management.md) |
+| M-PMBOK-020 | Performance Domains Overview | [methodologies/M-PMBOK-020_performance_domains_overview.md](methodologies/M-PMBOK-020_performance_domains_overview.md) |

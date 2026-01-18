@@ -2497,3 +2497,19 @@ Monthly analysis of workflow_metrics.jsonl:
 *SDD Domain Skill v2.0 - Complete*
 *Sections 1-13: Full SDD Workflow with Quality Gates, Grooming, Roadmapping, and Reflexion*
 *Methodologies: M-SDD-001 to M-SDD-008 embedded*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-SDD-001 | Sdd Workflow Overview | [methodologies/M-SDD-001_sdd_workflow_overview.md](methodologies/M-SDD-001_sdd_workflow_overview.md) |
+| M-SDD-002 | Writing Specifications | [methodologies/M-SDD-002_writing_specifications.md](methodologies/M-SDD-002_writing_specifications.md) |
+| M-SDD-003 | Writing Design Documents | [methodologies/M-SDD-003_writing_design_documents.md](methodologies/M-SDD-003_writing_design_documents.md) |
+| M-SDD-004 | Writing Implementation Plans | [methodologies/M-SDD-004_writing_implementation_plans.md](methodologies/M-SDD-004_writing_implementation_plans.md) |
+| M-SDD-005 | Task Creation Parallelization | [methodologies/M-SDD-005_task_creation_parallelization.md](methodologies/M-SDD-005_task_creation_parallelization.md) |
+| M-SDD-006 | Quality Gates Confidence | [methodologies/M-SDD-006_quality_gates_confidence.md](methodologies/M-SDD-006_quality_gates_confidence.md) |
+| M-SDD-007 | Reflexion Learning | [methodologies/M-SDD-007_reflexion_learning.md](methodologies/M-SDD-007_reflexion_learning.md) |
+| M-SDD-008 | Backlog Grooming Roadmapping | [methodologies/M-SDD-008_backlog_grooming_roadmapping.md](methodologies/M-SDD-008_backlog_grooming_roadmapping.md) |

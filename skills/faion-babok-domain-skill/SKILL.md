@@ -1762,3 +1762,29 @@ v-- SKILL.md (this file)
 *Based on BABOK v3 (Guide to Business Analysis Body of Knowledge)*
 *IIBA (International Institute of Business Analysis) Standards*
 *18 Embedded Methodologies (M-BABOK-001 to M-BABOK-018)*
+
+
+---
+
+## Methodologies
+
+| ID | Name | File |
+|----|------|------|
+| M-BABOK-001 | Ba Planning | [methodologies/M-BABOK-001_ba_planning.md](methodologies/M-BABOK-001_ba_planning.md) |
+| M-BABOK-002 | Stakeholder Analysis | [methodologies/M-BABOK-002_stakeholder_analysis.md](methodologies/M-BABOK-002_stakeholder_analysis.md) |
+| M-BABOK-003 | Elicitation Techniques | [methodologies/M-BABOK-003_elicitation_techniques.md](methodologies/M-BABOK-003_elicitation_techniques.md) |
+| M-BABOK-004 | Requirements Documentation | [methodologies/M-BABOK-004_requirements_documentation.md](methodologies/M-BABOK-004_requirements_documentation.md) |
+| M-BABOK-005 | Requirements Traceability | [methodologies/M-BABOK-005_requirements_traceability.md](methodologies/M-BABOK-005_requirements_traceability.md) |
+| M-BABOK-006 | Strategy Analysis | [methodologies/M-BABOK-006_strategy_analysis.md](methodologies/M-BABOK-006_strategy_analysis.md) |
+| M-BABOK-007 | Requirements Lifecycle | [methodologies/M-BABOK-007_requirements_lifecycle.md](methodologies/M-BABOK-007_requirements_lifecycle.md) |
+| M-BABOK-008 | Solution Assessment | [methodologies/M-BABOK-008_solution_assessment.md](methodologies/M-BABOK-008_solution_assessment.md) |
+| M-BABOK-009 | Business Process Analysis | [methodologies/M-BABOK-009_business_process_analysis.md](methodologies/M-BABOK-009_business_process_analysis.md) |
+| M-BABOK-010 | Data Analysis | [methodologies/M-BABOK-010_data_analysis.md](methodologies/M-BABOK-010_data_analysis.md) |
+| M-BABOK-011 | Decision Analysis | [methodologies/M-BABOK-011_decision_analysis.md](methodologies/M-BABOK-011_decision_analysis.md) |
+| M-BABOK-012 | Use Case Modeling | [methodologies/M-BABOK-012_use_case_modeling.md](methodologies/M-BABOK-012_use_case_modeling.md) |
+| M-BABOK-013 | User Story Mapping | [methodologies/M-BABOK-013_user_story_mapping.md](methodologies/M-BABOK-013_user_story_mapping.md) |
+| M-BABOK-014 | Acceptance Criteria | [methodologies/M-BABOK-014_acceptance_criteria.md](methodologies/M-BABOK-014_acceptance_criteria.md) |
+| M-BABOK-015 | Requirements Validation | [methodologies/M-BABOK-015_requirements_validation.md](methodologies/M-BABOK-015_requirements_validation.md) |
+| M-BABOK-016 | Requirements Prioritization | [methodologies/M-BABOK-016_requirements_prioritization.md](methodologies/M-BABOK-016_requirements_prioritization.md) |
+| M-BABOK-017 | Interface Analysis | [methodologies/M-BABOK-017_interface_analysis.md](methodologies/M-BABOK-017_interface_analysis.md) |
+| M-BABOK-018 | Knowledge Areas Overview | [methodologies/M-BABOK-018_knowledge_areas_overview.md](methodologies/M-BABOK-018_knowledge_areas_overview.md) |
