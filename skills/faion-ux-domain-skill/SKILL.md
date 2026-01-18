@@ -1,6 +1,6 @@
 ---
 name: faion-ux-domain-skill
-user-invocable: true
+user-invocable: false
 description: "UX Domain Skill: User Experience design and research orchestrator. Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping. 32 methodologies (M-UX-001 to M-UX-032)."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

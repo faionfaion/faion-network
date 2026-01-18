@@ -1,6 +1,6 @@
 ---
 name: faion-hooks
-user-invocable: true
+user-invocable: false
 description: "Claude Code hooks expert. Create, debug, and optimize hooks for PreToolUse, PostToolUse, Stop, UserPromptSubmit, SessionStart, and other lifecycle events. Includes templates, patterns, and security best practices."
 ---
 

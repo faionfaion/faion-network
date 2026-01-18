@@ -1,6 +1,6 @@
 ---
 name: faion-pm-tools-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

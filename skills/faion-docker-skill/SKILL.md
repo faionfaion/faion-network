@@ -1,6 +1,6 @@
 ---
 name: faion-docker-skill
-user-invocable: true
+user-invocable: false
 description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(docker:*, docker-compose:*)
 ---

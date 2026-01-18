@@ -1,6 +1,6 @@
 ---
 name: faion-claude-api-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

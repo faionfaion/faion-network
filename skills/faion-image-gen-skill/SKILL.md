@@ -1,6 +1,6 @@
 ---
 name: faion-image-gen-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

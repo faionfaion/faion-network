@@ -1,6 +1,6 @@
 ---
 name: faion-embeddings-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

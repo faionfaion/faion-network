@@ -1,6 +1,6 @@
 ---
 name: faion-video-gen-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

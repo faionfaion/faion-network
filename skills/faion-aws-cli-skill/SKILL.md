@@ -1,6 +1,6 @@
 ---
 name: faion-aws-cli-skill
-user-invocable: true
+user-invocable: false
 description: ""
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 ---

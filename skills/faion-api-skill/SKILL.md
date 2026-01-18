@@ -1,6 +1,6 @@
 ---
 name: faion-api-skill
-user-invocable: true
+user-invocable: false
 description: ""
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: faion-seo
-user-invocable: true
+user-invocable: false
 description: Comprehensive SEO and AEO (Answer Engine Optimization) skill. Technical SEO, multilingual hreflang, schema markup, llms.txt, Core Web Vitals, accessibility, social meta tags. Use for SEO audits, optimization, and AI search visibility.
 ---
 

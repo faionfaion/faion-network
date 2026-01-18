@@ -1,6 +1,6 @@
 ---
 name: faion-langchain-skill
-user-invocable: true
+user-invocable: false
 description: ""
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(python:*), Bash(pip:*)
 ---
