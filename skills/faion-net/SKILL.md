@@ -208,6 +208,17 @@ aidocs/sdd/{project}/
 | `faion-babok-domain-skill` | Business analysis using BABOK v3. Requirements elicitation, traceability, solution assessment. |
 | `faion-ux-domain-skill` | UX research, usability testing, heuristic evaluation (Nielsen Norman 10). Personas, journey mapping, wireframing. |
 
+**Domain References** (on-demand loading):
+- [SDD Domain](references/sdd-domain.md) - Specs, designs, tasks, quality gates
+- [Research Domain](references/research-domain.md) - Ideas, market research, personas
+- [Product Domain](references/product-domain.md) - MVP/MLP planning, prioritization
+- [Development Domain](references/development-domain.md) - Code, testing, DevOps, APIs
+- [Marketing Domain](references/marketing-domain.md) - GTM, ads, content, SEO
+- [PMBOK Domain](references/pmbok-domain.md) - Project management
+- [BABOK Domain](references/babok-domain.md) - Business analysis
+- [UX Domain](references/ux-domain.md) - UX research, usability
+- [AI/LLM Domain](references/ai-llm-domain.md) - RAG, embeddings, fine-tuning, multimodal
+
 ---
 
 ## Quality Assurance
