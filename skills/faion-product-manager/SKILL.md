@@ -1,6 +1,6 @@
 ---
 name: faion-product-manager
-description: "Product Manager role: MVP/MLP planning, feature prioritization (RICE, MoSCoW), roadmaps, backlog management, user story mapping, OKRs, lean canvas, jobs-to-be-done, value proposition. 18 methodologies."
+description: "Product Manager role: MVP/MLP planning, feature prioritization (RICE, MoSCoW), roadmaps, backlog management, user story mapping, OKRs, lean canvas, jobs-to-be-done, value proposition, 9 product frameworks (MVP/MLP/MMP/MAC/RAT), Micro-MVPs, Continuous Discovery. 23 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Bash(mkdir:*), Task, AskUserQuestion, TodoWrite
 ---
@@ -28,6 +28,14 @@ Orchestrates product planning activities from ideation to MVP/MLP definition. Co
 |-------|---------|
 | faion-mvp-scope-analyzer-agent | MVP scope via competitor analysis |
 | faion-mlp-agent | MLP orchestrator with modes: analyze, find-gaps, propose, update, plan |
+
+---
+
+## References
+
+| Reference | Content | Lines |
+|-----------|---------|-------|
+| [best-practices-2026.md](references/best-practices-2026.md) | 9 Product Frameworks, Micro-MVPs, AI-Native, Continuous Discovery | ~200 |
 
 ---
 

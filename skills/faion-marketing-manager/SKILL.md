@@ -1,6 +1,6 @@
 ---
 name: faion-marketing-manager
-description: "Marketing Manager role: GTM strategy, landing pages, copywriting, SEO/SEM, content marketing, social media, email campaigns, ads (Google, Meta), analytics, A/B testing, conversion optimization. 72 methodologies."
+description: "Marketing Manager role: GTM strategy, landing pages, copywriting, SEO/SEM, GEO/AEO, content marketing, social media, email campaigns, ads (Google, Meta), analytics, A/B testing, conversion optimization. 77 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
@@ -55,8 +55,9 @@ Detailed technical context for specialized areas:
 | [video-generation.md](references/video-generation.md) | Sora, Runway, Pika | ~860 |
 | [audio-production.md](references/audio-production.md) | TTS, voice cloning, podcasts | ~1300 |
 | [analytics.md](references/analytics.md) | Mixpanel, PostHog, GA4 | ~1470 |
+| [seo-2026.md](references/seo-2026.md) | GEO, AEO, Zero-Click, AI Content, Topical Authority | ~250 |
 
-**Total:** ~8,060 lines of technical reference
+**Total:** ~8,310 lines of technical reference
 
 ---
 

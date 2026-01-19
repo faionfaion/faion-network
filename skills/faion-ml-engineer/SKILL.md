@@ -1,6 +1,6 @@
 ---
 name: faion-ml-engineer
-description: "ML Engineer role: LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG pipelines, fine-tuning, LangChain, LlamaIndex, vector databases (Pinecone, Chroma, Weaviate), prompt engineering, model evaluation, cost optimization."
+description: "ML Engineer role: LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG pipelines, fine-tuning, LangChain, LlamaIndex, vector databases (Pinecone, Chroma, Weaviate), prompt engineering, model evaluation, cost optimization, Agentic RAG, AI Agents, MCP, LLM observability. 30 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
@@ -37,8 +37,9 @@ Detailed technical context for each area:
 | [langchain.md](references/langchain.md) | Chains, agents, memory, tools | ~1440 |
 | [llamaindex.md](references/llamaindex.md) | Document indexing, query engines | ~1210 |
 | [vector-databases.md](references/vector-databases.md) | Pinecone, Weaviate, Chroma, pgvector | ~1390 |
+| [best-practices-2026.md](references/best-practices-2026.md) | Agentic RAG, AI Agents, LLM Management, MCP | ~300 |
 
-**Total:** ~9,810 lines of technical reference
+**Total:** ~10,110 lines of technical reference
 
 ---
 

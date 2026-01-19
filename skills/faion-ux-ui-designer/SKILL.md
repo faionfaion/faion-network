@@ -1,7 +1,7 @@
 ---
 name: faion-ux-ui-designer
 user-invocable: false
-description: "UX/UI Designer role: Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility. 32 methodologies."
+description: "UX/UI Designer role: Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility, WCAG 2.2, EAA compliance. 37 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
@@ -37,6 +37,14 @@ Layer 3: Technical Skills - tools
 |-------|---------|--------------|
 | **faion-ux-researcher-agent** | User interviews, surveys, research synthesis | M-UX-011 to M-UX-022 |
 | **faion-usability-agent** | Usability testing, heuristic evaluation | M-UX-001 to M-UX-010, M-UX-023 to M-UX-032 |
+
+---
+
+## References
+
+| Reference | Content | Lines |
+|-----------|---------|-------|
+| [accessibility-2026.md](references/accessibility-2026.md) | WCAG 2.2, EAA compliance, assistive tech testing | ~250 |
 
 ---
 
