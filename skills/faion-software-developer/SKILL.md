@@ -1,6 +1,6 @@
 ---
 name: faion-software-developer
-description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 68 methodologies."
+description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 70 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
@@ -42,9 +42,11 @@ Detailed technical context for each area:
 | [methodologies.md](references/methodologies.md) | 68 development methodologies (M-DEV-*) | ~1573 |
 | [documentation.md](references/documentation.md) | CLAUDE.md creation templates | ~180 |
 | [frontend-design.md](references/frontend-design.md) | UI brainstorming, Storybook workflow | ~90 |
+| [shadcn-ui.md](references/shadcn-ui.md) | shadcn/ui architecture, CVA, composition | ~160 |
+| [tailwind.md](references/tailwind.md) | Tailwind patterns, class ordering, tokens | ~250 |
 | [django/](references/django/) | Django-specific patterns (7 files) | ~600 |
 
-**Total:** ~14,280 lines of technical reference
+**Total:** ~14,690 lines of technical reference
 
 ---
 
@@ -275,6 +277,6 @@ project/
 
 ---
 
-*Developer Domain Skill v3.0*
-*10 Reference Areas | 68 Methodologies | 5 Agents*
+*Developer Domain Skill v3.1*
+*12 Reference Areas | 70 Methodologies | 5 Agents*
 *Consolidated from: faion-development, faion-dev-django, faion-dev-docs, faion-dev-frontend*
