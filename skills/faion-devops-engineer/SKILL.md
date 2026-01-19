@@ -1,6 +1,6 @@
 ---
 name: faion-devops-engineer
-description: "DevOps Engineer role: Docker, Kubernetes, Terraform, AWS/GCP/Azure, CI/CD (GitHub Actions, GitLab CI), infrastructure as code, monitoring (Prometheus, Grafana), logging, secrets management, nginx, load balancing, Platform Engineering, GitOps, AIOps, DORA metrics. 20 methodologies."
+description: "DevOps Engineer role: Docker, Kubernetes, Terraform, AWS/GCP/Azure, CI/CD (GitHub Actions, GitLab CI), infrastructure as code, monitoring (Prometheus, Grafana), logging, secrets management, nginx, load balancing, Platform Engineering, GitOps, AIOps, DORA metrics. 24 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
@@ -33,9 +33,10 @@ Detailed technical context for each area:
 | [kubernetes.md](references/kubernetes.md) | K8s resources, Helm, operators | ~960 |
 | [terraform.md](references/terraform.md) | IaC, modules, state management | ~1090 |
 | [aws.md](references/aws.md) | AWS CLI, services, IAM, networking | ~1480 |
+| [gcp.md](references/gcp.md) | gcloud CLI, GCE, GKE, Cloud Run, BigQuery | ~1400 |
 | [best-practices-2026.md](references/best-practices-2026.md) | Platform Engineering, GitOps, AIOps, DORA | ~200 |
 
-**Total:** ~4,870 lines of technical reference
+**Total:** ~6,270 lines of technical reference
 
 ---
 
@@ -72,7 +73,7 @@ Detailed technical context for each area:
 
 ---
 
-## Methodologies (16)
+## Methodologies (20)
 
 ### Docker (M-DOC-*)
 
@@ -109,6 +110,15 @@ Detailed technical context for each area:
 | M-AWS-002 | VPC Design | Networking, security groups |
 | M-AWS-003 | Cost Optimization | Reserved, spot, rightsizing |
 | M-AWS-004 | Disaster Recovery | Backup, multi-region |
+
+### GCP (M-GCP-*)
+
+| ID | Name | Purpose |
+|----|------|---------|
+| M-GCP-001 | IAM & Service Accounts | Workload identity, least privilege |
+| M-GCP-002 | VPC & Networking | Shared VPC, firewall rules, Cloud NAT |
+| M-GCP-003 | GKE Operations | Autopilot, node pools, workload identity |
+| M-GCP-004 | Cost Optimization | Committed use, preemptible/spot, rightsizing |
 
 ---
 
@@ -244,6 +254,26 @@ aws ecr get-login-password | docker login --username AWS --password-stdin xxx.ec
 aws lambda invoke --function-name func output.json
 ```
 
+### gcloud CLI
+
+```bash
+# Configure
+gcloud auth login
+gcloud config set project my-project
+
+# Cloud Storage
+gcloud storage rsync -r ./dist gs://bucket/
+
+# Artifact Registry login
+gcloud auth configure-docker us-central1-docker.pkg.dev
+
+# Cloud Run deploy
+gcloud run deploy my-service --image=us-central1-docker.pkg.dev/project/repo/image --region=us-central1
+
+# GKE credentials
+gcloud container clusters get-credentials my-cluster --zone=us-central1-a
+```
+
 ---
 
 ## Security Checklist
@@ -323,6 +353,6 @@ groups:
 
 ---
 
-*DevOps Domain Skill v1.0*
-*4 Reference Files | 16 Methodologies*
-*Aggregated from: docker, kubernetes, terraform, aws*
+*DevOps Domain Skill v1.1*
+*6 Reference Files | 20 Methodologies*
+*Aggregated from: docker, kubernetes, terraform, aws, gcp, best-practices*

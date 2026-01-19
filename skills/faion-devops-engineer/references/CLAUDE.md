@@ -64,6 +64,25 @@ AWS CLI operations and cloud infrastructure patterns.
 - ECR/ECS: container registry and orchestration
 - CloudFormation and CDK basics
 
+### gcp.md (~1400 lines)
+
+Google Cloud CLI (gcloud) operations and infrastructure patterns.
+
+**Contents:**
+- gcloud CLI configuration and authentication
+- Compute Engine: instances, disks, images, snapshots
+- Cloud Storage: buckets, objects, lifecycle, IAM
+- Cloud Functions: HTTP/event triggers, deployment
+- Cloud Run: container deployment, traffic management
+- GKE: clusters, node pools, upgrades
+- Cloud SQL: PostgreSQL/MySQL instances, users
+- BigQuery: datasets, tables, queries, loading
+- IAM: service accounts, roles, policies
+- VPC: networks, subnets, firewalls, load balancing
+- Secret Manager: secrets, versions, access
+- Pub/Sub: topics, subscriptions
+- Artifact Registry: Docker repositories
+
 ### best-practices-2026.md (~330 lines)
 
 Modern DevOps practices and methodologies for 2026.
@@ -88,8 +107,9 @@ Load relevant reference files when working on specific technologies:
 | Kubernetes deployments | kubernetes.md |
 | Infrastructure provisioning | terraform.md |
 | AWS service configuration | aws.md |
+| Google Cloud configuration | gcp.md |
 | Modern practices/patterns | best-practices-2026.md |
 
 ---
 
-*Total: ~4,870 lines of technical reference*
+*Total: ~6,270 lines of technical reference*

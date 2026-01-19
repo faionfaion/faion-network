@@ -19,6 +19,7 @@ faion-devops-engineer/
     ├── kubernetes.md
     ├── terraform.md
     ├── aws.md
+    ├── gcp.md
     └── best-practices-2026.md
 ```
 
@@ -28,7 +29,7 @@ faion-devops-engineer/
 
 | Folder | Description |
 |--------|-------------|
-| `references/` | Technical documentation for Docker, Kubernetes, Terraform, AWS, and modern DevOps practices |
+| `references/` | Technical documentation for Docker, Kubernetes, Terraform, AWS, GCP, and modern DevOps practices |
 
 ---
 
@@ -41,11 +42,12 @@ faion-devops-engineer/
 | `references/kubernetes.md` | K8s operations: kubectl, Helm, deployments, services, networking | ~960 |
 | `references/terraform.md` | IaC with Terraform: HCL syntax, modules, state management, providers | ~1090 |
 | `references/aws.md` | AWS CLI operations: EC2, S3, Lambda, IAM, VPC, ECR, ECS | ~1480 |
+| `references/gcp.md` | gcloud CLI: Compute Engine, Cloud Run, GKE, BigQuery, IAM | ~1400 |
 | `references/best-practices-2026.md` | Modern practices: Platform Engineering, GitOps, AIOps, DORA, FinOps | ~330 |
 
 ---
 
-## Methodologies (20)
+## Methodologies (24)
 
 ### Docker (M-DOC-001 to M-DOC-004)
 
@@ -62,6 +64,10 @@ faion-devops-engineer/
 ### AWS (M-AWS-001 to M-AWS-004)
 
 - IAM best practices, VPC design, cost optimization, disaster recovery
+
+### GCP (M-GCP-001 to M-GCP-004)
+
+- IAM & service accounts, VPC & networking, GKE operations, cost optimization
 
 ### Best Practices 2026 (M-OPS-017 to M-OPS-022)
 
@@ -119,8 +125,13 @@ terraform apply
 # AWS
 aws configure
 aws s3 sync ./dist s3://bucket/
+
+# GCP
+gcloud auth login
+gcloud config set project my-project
+gcloud run deploy my-service --image=gcr.io/project/image --region=us-central1
 ```
 
 ---
 
-*Total reference content: ~4,870 lines*
+*Total reference content: ~6,270 lines*
