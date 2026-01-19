@@ -14,24 +14,51 @@ Universal skill for end-to-end software project lifecycle. From idea to producti
 
 ## Step 1: Knowledge Freshness Check
 
-**MANDATORY at session start.**
+**MANDATORY at session start. Execute this algorithm:**
 
-Calculate and acknowledge knowledge gap:
+```python
+# 1. Get current date from system
+import datetime
+today = datetime.date.today()  # e.g., 2026-01-18
 
+# 2. Model cutoff dates (update when model changes)
+MODEL_CUTOFFS = {
+    "claude-opus-4-5": "2025-04",      # April 2025
+    "claude-sonnet-4": "2025-03",      # March 2025
+    "claude-3-5-sonnet": "2024-04",    # April 2024
+    "claude-3-opus": "2024-01",        # January 2024
+}
+
+# 3. Calculate gap
+cutoff = datetime.date(2025, 4, 1)  # Claude Opus 4.5
+gap_days = (today - cutoff).days
+gap_months = gap_days // 30
+
+# 4. Determine risk level
+if gap_months <= 3:
+    risk = "LOW"
+elif gap_months <= 9:
+    risk = "MEDIUM"
+else:
+    risk = "HIGH"
 ```
-Current date: [TODAY]
-Model training cutoff: [CUTOFF_DATE]
-Knowledge gap: [DIFF] months
 
-Areas likely outdated:
-- Library versions (npm, pip, cargo)
-- Framework APIs (React, Next.js, Django)
-- Cloud services pricing and features
-- AI model capabilities and pricing
-- Security vulnerabilities and patches
+**Output to user:**
+```
+📅 Knowledge Check:
+   Today: {today}
+   Model cutoff: April 2025 (Claude Opus 4.5)
+   Gap: ~{gap_months} months
+   Risk: {risk}
+
+⚠️ Likely outdated: library versions, framework APIs, cloud pricing, AI models
+✅ Action: Using WebSearch for current versions before implementing
 ```
 
-**Action:** For time-sensitive info (versions, APIs, pricing), use WebSearch to get current data before implementing.
+**Rules by risk level:**
+- **LOW (≤3 months):** Proceed normally, verify critical versions
+- **MEDIUM (4-9 months):** WebSearch for all dependencies before coding
+- **HIGH (>9 months):** WebSearch mandatory for any technical implementation
 
 ---
 
