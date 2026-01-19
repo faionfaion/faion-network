@@ -5,11 +5,33 @@
 | Field | Value |
 |-------|-------|
 | **ID** | M-SDD-002 |
+| **Version** | 2.0.0 |
 | **Category** | SDD Foundation |
 | **Difficulty** | Beginner |
-| **Tags** | #methodology, #sdd, #specification |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Tags** | #methodology, #sdd, #specification, #requirements |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-spec-reviewer-agent |
+
+---
+
+## Methodology Reference
+
+**Primary:** M-SDD-002 (Writing Specifications v2.0)
+
+**Integrated:**
+| Domain | Methodology | Principle Applied |
+|--------|-------------|-------------------|
+| BA | M-BA-004 | SMART requirements criteria |
+| BA | M-BA-005 | Requirements traceability (FR-X → US-X) |
+| BA | M-BA-012 | Use Case diagrams and flows |
+| BA | M-BA-013 | User Story Mapping |
+| BA | M-BA-014 | Acceptance criteria (Given-When-Then) |
+| PdM | M-PRD-001 | MVP scoping (MoSCoW prioritization) |
+| PdM | M-PRD-006 | User Story Mapping |
+| PdM | M-PRD-008 | PRD writing best practices |
+| PM | M-PM-019 | Scope Management |
+| UX | M-UX-017 | User Research synthesis |
+| UX | M-UX-018 | Persona development |
 
 ---
 
@@ -20,6 +42,8 @@ Projects fail when teams build the wrong thing. This happens because:
 - Stakeholders have different expectations
 - Scope keeps changing during development
 - No single source of truth for "what are we building?"
+- User needs not properly researched
+- Acceptance criteria not testable
 
 **The root cause:** No written specification that everyone agrees on.
 
@@ -29,102 +53,345 @@ Projects fail when teams build the wrong thing. This happens because:
 
 ### What is a Specification?
 
-A specification (spec) answers: **"WHAT are we building?"**
+A specification (spec) answers: **"WHAT are we building and WHY?"**
 
 It does NOT answer "how" - that's for the design document.
 
-### Spec Structure
+### Spec vs Design vs Implementation Plan
+
+| Document | Question | Output |
+|----------|----------|--------|
+| Specification | WHAT and WHY? | Requirements, user stories, acceptance criteria |
+| Design | HOW? | Architecture, file structure, API contracts |
+| Implementation Plan | IN WHAT ORDER? | Tasks, dependencies, estimates |
+
+### Spec Structure v2.0
 
 ```markdown
 # Feature: [Name]
 
+## Reference Documents
+[Links to constitution, related specs]
+
 ## Overview
 [1-2 paragraphs explaining what this feature does]
 
-## User Stories
-[Who wants what, and why]
+## Problem Statement
+[Who, what problem, why it matters, business value]
+
+## User Personas
+[Who are the users]
+
+## User Stories (User Story Mapping)
+[Backbone → Walking Skeleton → Full Product]
+
+## Use Cases (if complex)
+[Actor, preconditions, flow, alternatives]
 
 ## Functional Requirements
-[Specific, testable requirements]
+[FR-X with SMART criteria, MoSCoW priority]
 
 ## Non-Functional Requirements
-[Performance, security, scalability]
+[NFR-X: performance, security, scalability]
 
-## Acceptance Criteria
-[How we know it's done]
+## Acceptance Criteria (BDD)
+[Given-When-Then format]
 
 ## Out of Scope
-[What we're explicitly NOT building]
+[Explicit exclusions]
+
+## Assumptions & Constraints
+[What we assume, limitations]
+
+## Related Features
+[Feature dependencies, related specs]
+
+## Recommended Skills & Methodologies
+[For implementation phase]
 ```
 
-### Writing Process
+---
 
-#### Step 1: Define the Problem
-Write one paragraph explaining:
-- Who has this problem?
-- What is the problem?
-- Why does it matter?
+## Writing Process
 
-**Bad:** "Users need authentication"
-**Good:** "New users cannot access premium content because there's no login system. This blocks monetization."
+### Phase 1: Load Context
 
-#### Step 2: Write User Stories
-Format: As a [persona], I want [action], so that [benefit].
-
-**Examples:**
-- As a free user, I want to create an account, so that I can save my progress
-- As a subscriber, I want to login with email, so that I can access paid content
-- As an admin, I want to see user analytics, so that I can understand usage
-
-#### Step 3: List Functional Requirements
-Each requirement:
-- Has unique ID (FR-1, FR-2, etc.)
-- Is specific and testable
-- Uses "shall" language
-
-**Bad:** "The system should handle users"
-**Good:** "FR-1: System shall allow users to register with email and password"
-
-#### Step 4: Add Non-Functional Requirements
-Cover:
-- Performance (response times, throughput)
-- Security (authentication, encryption)
-- Scalability (expected load)
-- Accessibility (WCAG level)
-
-**Example:**
-- NFR-1: Login shall complete in < 500ms
-- NFR-2: Passwords shall be hashed with bcrypt
-- NFR-3: System shall support 1000 concurrent users
-
-#### Step 5: Define Acceptance Criteria
-Use Given-When-Then format:
+Before writing, read and understand:
 
 ```
-Given: [initial state]
-When: [action]
-Then: [expected result]
+1. aidocs/sdd/{PROJECT}/constitution.md - project principles, tech stack
+2. aidocs/sdd/{PROJECT}/features/done/ - completed features (patterns)
+3. Related specs in features/todo/ or features/in-progress/
 ```
 
-**Example:**
+Extract:
+- Tech stack constraints
+- Code standards
+- Existing patterns
+- Related features to reference
+
+### Phase 2: Problem Analysis (BA: M-BA-004 SMART)
+
+#### 2.1 Define the Problem (SMART)
+
+| Criterion | Question | Bad Example | Good Example |
+|-----------|----------|-------------|--------------|
+| **S**pecific | Exactly who and what? | "Users need auth" | "New users cannot register" |
+| **M**easurable | How to measure success? | "Should be fast" | "Registration < 3 seconds" |
+| **A**chievable | Technically feasible? | "AI that reads minds" | "OAuth 2.0 integration" |
+| **R**elevant | Ties to business goal? | "Nice to have" | "Blocks monetization" |
+| **T**ime-bound | When needed? | "Eventually" | "Required for Q1 launch" |
+
+#### 2.2 Business Value Statement
+
+Format:
 ```
-Given: User is on login page
-When: User enters valid email and password
-Then: User is redirected to dashboard
-And: Session cookie is set
+[WHO] currently cannot [WHAT] because [WHY].
+This results in [IMPACT].
+By implementing [SOLUTION], we will [BENEFIT].
 ```
 
-#### Step 6: Scope It Out
-List what you're NOT building:
-- Features for later phases
-- Edge cases you'll ignore for now
-- Integrations that aren't needed yet
+Example:
+```
+New users currently cannot access premium content because there's no
+login system. This results in $0 revenue from premium features.
+By implementing email authentication, we will enable premium subscriptions.
+```
+
+### Phase 3: User Research (UX: M-UX-017, M-UX-018)
+
+#### 3.1 Define User Personas
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Archetype name |
+| **Role** | What they do |
+| **Goal** | What they want to achieve |
+| **Pain Points** | Current frustrations |
+| **Context** | When/where they use the product |
+
+Example:
+```markdown
+### Persona 1: Freelance Developer "Alex"
+- **Role:** Solo developer building SaaS products
+- **Goal:** Ship MVPs quickly without server management
+- **Pain Points:** Too much time on auth, payments, infra
+- **Context:** Works from home, uses macOS, deploys to Vercel
+```
+
+### Phase 4: User Story Mapping (BA: M-BA-013, PdM: M-PRD-006)
+
+#### 4.1 Story Mapping Structure
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │             USER ACTIVITIES             │
+                    │  (High-level goals: "Manage Account")   │
+                    └─────────────────────────────────────────┘
+                                        │
+                    ┌───────────────────┼───────────────────┐
+                    ↓                   ↓                   ↓
+            ┌───────────┐       ┌───────────┐       ┌───────────┐
+            │  BACKBONE │       │  BACKBONE │       │  BACKBONE │
+            │ (Actions) │       │ (Actions) │       │ (Actions) │
+            │ "Register"│       │  "Login"  │       │ "Logout"  │
+            └───────────┘       └───────────┘       └───────────┘
+                    │                   │                   │
+        ┌───────────┼───────┐   ┌───────┼───────┐          │
+        ↓           ↓       ↓   ↓       ↓       ↓          ↓
+    ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐ ┌───────┐
+    │ MVP   │ │ MVP   │ │ v1.1  │ │ MVP   │ │ v1.1  │ │ MVP   │
+    │US-001 │ │US-002 │ │US-005 │ │US-003 │ │US-006 │ │US-004 │
+    └───────┘ └───────┘ └───────┘ └───────┘ └───────┘ └───────┘
+
+    ─────────── MVP (Walking Skeleton) ───────────────────────
+    ─────────── v1.1 (Release 2) ─────────────────────────────
+```
+
+#### 4.2 Write User Stories
+
+Format: As a [PERSONA], I want [ACTION], so that [BENEFIT].
+
+**INVEST Criteria for User Stories:**
+| Criterion | Question |
+|-----------|----------|
+| **I**ndependent | Can be delivered separately? |
+| **N**egotiable | Details can be discussed? |
+| **V**aluable | Delivers user/business value? |
+| **E**stimable | Can estimate effort? |
+| **S**mall | Fits in one sprint/iteration? |
+| **T**estable | Can write acceptance tests? |
+
+Example:
+```markdown
+### US-001: Email Registration (MVP)
+**As a** freelance developer (Alex)
+**I want to** create an account with my email
+**So that** I can save my API keys and project settings
+
+**Acceptance Criteria:** (see AC-001)
+**Priority:** Must (MVP)
+**Estimate:** 3 story points
+```
+
+### Phase 5: Use Cases (BA: M-BA-012) - For Complex Features
+
+When to use: Multi-step workflows, multiple actors, complex validations.
+
+```markdown
+### UC-001: User Registration
+
+**Primary Actor:** Unregistered User
+**Preconditions:** User is not logged in, has valid email
+
+**Main Flow:**
+1. User navigates to registration page
+2. User enters email and password
+3. System validates email format
+4. System checks email uniqueness
+5. System creates account
+6. System sends verification email
+7. User is redirected to dashboard
+
+**Alternative Flows:**
+- 3a. Invalid email format → Show error, return to step 2
+- 4a. Email exists → Show "already registered" error
+
+**Postconditions:** Account created, verification email sent
+```
+
+### Phase 6: Functional Requirements (BA: M-BA-004, M-BA-005)
+
+#### 6.1 SMART Requirements
+
+Each requirement MUST be:
+
+| Criterion | How to Apply |
+|-----------|--------------|
+| **Specific** | One interpretation only |
+| **Measurable** | Testable with pass/fail |
+| **Achievable** | Technically possible |
+| **Relevant** | Traces to user story |
+| **Time-bound** | Has priority (MoSCoW) |
+
+#### 6.2 Requirements Format
+
+```markdown
+### FR-001: Email Registration
+
+**Requirement:** System SHALL allow users to register with email and password.
+
+**Rationale:** Enables user identification for premium features.
+
+**Traces to:** US-001
+
+**Acceptance Criteria:** AC-001, AC-002
+
+**Priority:** Must
+
+**Validation Rules:**
+- Email: valid format, unique in system
+- Password: min 8 chars, 1 uppercase, 1 number
+```
+
+#### 6.3 MoSCoW Prioritization (PdM: M-PRD-001)
+
+| Priority | Meaning | Example |
+|----------|---------|---------|
+| **Must** | MVP requirement, cannot launch without | Login, Core feature |
+| **Should** | Important but not critical | Password reset |
+| **Could** | Nice to have if time allows | Social login |
+| **Won't** | Explicitly not in this release | SSO, 2FA |
+
+### Phase 7: Non-Functional Requirements
+
+#### 7.1 NFR Categories
+
+| Category | What to Specify | Example |
+|----------|-----------------|---------|
+| **Performance** | Response times, throughput | < 500ms p95 latency |
+| **Scalability** | Load capacity | 10k concurrent users |
+| **Security** | Auth, encryption, compliance | bcrypt, HTTPS, GDPR |
+| **Availability** | Uptime, recovery | 99.9% uptime, 4h RTO |
+| **Accessibility** | WCAG level | WCAG 2.1 AA |
+| **Usability** | UX metrics | < 3 clicks to complete |
+
+#### 7.2 NFR Format
+
+```markdown
+### NFR-001: Login Performance
+
+**Requirement:** Login response time SHALL be < 500ms for p95.
+
+**Measurement:** Server-side response time, excluding network.
+
+**Priority:** Must
+
+**Validation:** Load test with 1000 concurrent users.
+```
+
+### Phase 8: Acceptance Criteria (BA: M-BA-014)
+
+#### 8.1 Given-When-Then Format (BDD)
+
+```markdown
+### AC-001: Successful Registration
+
+**Scenario:** User registers with valid credentials
+
+**Given:** User is on registration page
+**And:** User has valid email not in system
+**When:** User enters email "test@example.com" and password "SecurePass1"
+**And:** User clicks "Register" button
+**Then:** Account is created in database
+**And:** User receives verification email within 30 seconds
+**And:** User is redirected to dashboard
+**And:** Success message "Check your email" is displayed
+```
+
+#### 8.2 Coverage Checklist
+
+- [x] Happy path (main success scenario)
+- [x] Error handling (validation failures)
+- [ ] Boundary conditions (min/max values)
+- [ ] Security scenarios (injection, auth bypass)
+- [ ] Performance scenarios (load, timeout)
+- [ ] Accessibility (screen reader, keyboard)
+
+### Phase 9: Scope Definition (PM: M-PM-019)
+
+#### 9.1 In Scope
+
+Explicitly list what IS included:
+```markdown
+## In Scope
+
+- Email/password registration
+- Email/password login
+- Session management (7-day cookie)
+- Password reset via email
+- Basic profile (name, avatar)
+```
+
+#### 9.2 Out of Scope
+
+Explicitly list what is NOT included:
+```markdown
+## Out of Scope
+
+| Feature | Reason | When |
+|---------|--------|------|
+| Social login (Google, GitHub) | Not MVP | Phase 2 |
+| Two-factor authentication | Complexity | Phase 3 |
+| SSO/SAML | Enterprise only | Not planned |
+| Biometric auth | Mobile-only | v2.0 |
+```
 
 ---
 
 ## Templates
 
-### Full Spec Template
+### Full Spec Template v2.0
 
 ```markdown
 # Feature: [Feature Name]
@@ -133,77 +400,172 @@ List what you're NOT building:
 **Status:** Draft | Review | Approved
 **Author:** [Name]
 **Date:** YYYY-MM-DD
+**Project:** [project-name]
+
+---
+
+## Reference Documents
+
+| Document | Path | Sections |
+|----------|------|----------|
+| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Tech stack, standards |
+| Related Feature | `features/done/{NN}-{feature}/spec.md` | Patterns to follow |
 
 ---
 
 ## Overview
 
-[2-3 sentences describing the feature]
+[2-3 sentences describing the feature and its purpose]
 
 ---
 
 ## Problem Statement
 
-[Who has this problem? What is the problem? Why does it matter?]
+**Who:** [User persona]
+**Problem:** [What they cannot do]
+**Impact:** [Business/user impact]
+**Solution:** [High-level approach]
+**Success Metric:** [How we measure success]
+
+---
+
+## User Personas
+
+### Persona 1: [Name/Archetype]
+- **Role:** [What they do]
+- **Goal:** [What they want]
+- **Pain Points:** [Current frustrations]
+- **Context:** [When/where they use product]
 
 ---
 
 ## User Stories
 
-### US-01: [Story Title]
+### US-001: [Story Title]
 **As a** [persona]
 **I want to** [action]
 **So that** [benefit]
 
-### US-02: [Story Title]
+**Priority:** Must | Should | Could
+**Estimate:** [story points or T-shirt size]
+**Acceptance Criteria:** AC-001
+
+### US-002: [Story Title]
 ...
 
 ---
 
 ## Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-1 | [Requirement] | Must |
-| FR-2 | [Requirement] | Must |
-| FR-3 | [Requirement] | Should |
-| FR-4 | [Requirement] | Could |
+| ID | Requirement | Traces To | Priority |
+|----|-------------|-----------|----------|
+| FR-001 | System SHALL [requirement] | US-001 | Must |
+| FR-002 | System SHALL [requirement] | US-001 | Must |
+| FR-003 | System SHOULD [requirement] | US-002 | Should |
+
+### FR-001: [Requirement Title]
+
+**Requirement:** System SHALL [specific, testable requirement].
+
+**Rationale:** [Why this is needed]
+
+**Traces to:** US-001
+
+**Validation Rules:**
+- [Rule 1]
+- [Rule 2]
 
 ---
 
 ## Non-Functional Requirements
 
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NFR-1 | Response time | < 500ms |
-| NFR-2 | Uptime | 99.9% |
-| NFR-3 | Concurrent users | 1000 |
+| ID | Category | Requirement | Target | Priority |
+|----|----------|-------------|--------|----------|
+| NFR-001 | Performance | Response time | < 500ms p95 | Must |
+| NFR-002 | Security | Password storage | bcrypt 12 rounds | Must |
+| NFR-003 | Scalability | Concurrent users | 10,000 | Should |
 
 ---
 
 ## Acceptance Criteria
 
-### AC-01: [Criteria Title]
-**Given:** [initial state]
+### AC-001: [Scenario Title - Happy Path]
+
+**Scenario:** [Brief description]
+
+**Given:** [precondition]
+**And:** [additional precondition]
 **When:** [action]
 **Then:** [expected result]
+**And:** [additional result]
 
-### AC-02: [Criteria Title]
+### AC-002: [Scenario Title - Error Case]
 ...
+
+### AC-003: [Scenario Title - Edge Case]
+...
+
+**Coverage:**
+- [x] Happy path
+- [x] Error handling
+- [ ] Boundary conditions
+- [ ] Security scenarios
+- [ ] Performance scenarios
 
 ---
 
 ## Out of Scope
 
-- [Feature not included]
-- [Integration not needed]
-- [Edge case ignored]
+| Feature | Reason | When |
+|---------|--------|------|
+| [Feature] | [Why excluded] | [Future phase or Never] |
+
+---
+
+## Assumptions & Constraints
+
+### Assumptions
+- [Assumption 1]
+- [Assumption 2]
+
+### Constraints
+- [Technical constraint]
+- [Business constraint]
 
 ---
 
 ## Dependencies
 
-- [Other feature or external system]
+### Internal
+- [Other feature this depends on]
+
+### External
+- [Third-party service]
+- [Library requirement]
+
+---
+
+## Related Features
+
+| Feature | Relationship | Status |
+|---------|-------------|--------|
+| [NN-feature] | Depends on | Done |
+| [NN-feature] | Blocks | Todo |
+
+---
+
+## Recommended Skills & Methodologies
+
+### Skills
+| Skill | Purpose |
+|-------|---------|
+| faion-software-developer | Implementation |
+| faion-ux-ui-designer | UI components |
+
+### Methodologies
+| ID | Name | Purpose |
+|----|------|---------|
+| M-DEV-XXX | [Name] | [How it helps] |
 
 ---
 
@@ -218,134 +580,124 @@ List what you're NOT building:
 ### Wireframes
 [Link or embed]
 
-### Data Models
-[If known at spec stage]
+### Data Models (if known)
+[Preliminary models]
+
+### API Contracts (if known)
+[Preliminary contracts]
 ```
 
-### Requirement Checklist
+---
 
-```markdown
-## Spec Quality Checklist
+## Quality Checklist
 
-### Completeness
-- [ ] Problem statement is clear
-- [ ] All user personas covered
-- [ ] All core features have requirements
-- [ ] NFRs address performance, security, scalability
+### Spec Quality Gate (Before Design Phase)
 
-### Clarity
-- [ ] Each requirement is specific
-- [ ] No ambiguous words (good, fast, easy)
-- [ ] Technical terms are defined
-- [ ] Acceptance criteria are testable
+**Completeness:**
+- [ ] Problem statement is clear (SMART)
+- [ ] All user personas defined
+- [ ] All user stories have INVEST criteria
+- [ ] All FR-X have SMART criteria
+- [ ] All FR-X trace to user stories
+- [ ] NFRs cover performance, security, scalability
+- [ ] All acceptance criteria in Given-When-Then
 
-### Consistency
+**Clarity:**
+- [ ] Each requirement has ONE interpretation
+- [ ] No ambiguous words (good, fast, easy, etc.)
+- [ ] Technical terms defined or linked
+- [ ] All acceptance criteria are testable
+
+**Consistency:**
 - [ ] Requirement IDs are unique
 - [ ] No conflicting requirements
-- [ ] Scope is clearly defined
+- [ ] MoSCoW priorities assigned
+- [ ] Traceability matrix complete
 
-### Traceability
-- [ ] Requirements link to user stories
-- [ ] Acceptance criteria link to requirements
-- [ ] Dependencies are documented
-```
+**Context:**
+- [ ] Constitution referenced
+- [ ] Related features identified
+- [ ] Skills/methodologies recommended
+- [ ] Out of scope explicitly defined
 
 ---
 
 ## Examples
 
-### Example: Authentication Spec
+### Example: Authentication Spec (Condensed)
 
 ```markdown
 # Feature: User Authentication
 
 **Version:** 1.0
 **Status:** Approved
+**Project:** cashflow-planner
 
 ---
 
-## Overview
+## Reference Documents
 
-Implement email-based authentication so users can register, login,
-and access protected content.
+| Document | Path |
+|----------|------|
+| Constitution | `aidocs/sdd/cashflow-planner/constitution.md` |
 
 ---
 
 ## Problem Statement
 
-Currently, all content is publicly accessible. We cannot:
-- Track individual users
-- Offer premium content
-- Personalize experience
-
-This blocks our monetization strategy.
+**Who:** New users of the cashflow planning app
+**Problem:** Cannot access personal financial data because there's no authentication
+**Impact:** Users cannot save cashflow projections, blocking core value proposition
+**Solution:** Email-based authentication with JWT
+**Success Metric:** 1000 registered users in first month
 
 ---
 
 ## User Stories
 
-### US-01: Registration
-**As a** visitor
+### US-001: Email Registration (MVP)
+**As a** financial planner
 **I want to** create an account with my email
-**So that** I can access member features
+**So that** I can save and access my cashflow projections
 
-### US-02: Login
-**As a** registered user
-**I want to** login with my email and password
-**So that** I can access my account
-
-### US-03: Logout
-**As a** logged-in user
-**I want to** logout
-**So that** I can secure my account on shared devices
+**Priority:** Must
+**Acceptance Criteria:** AC-001, AC-002
 
 ---
 
 ## Functional Requirements
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-1 | System shall allow registration with email + password | Must |
-| FR-2 | System shall validate email format | Must |
-| FR-3 | System shall require password min 8 characters | Must |
-| FR-4 | System shall send email verification | Should |
-| FR-5 | System shall allow password reset via email | Must |
-
----
-
-## Non-Functional Requirements
-
-| ID | Requirement | Target |
-|----|-------------|--------|
-| NFR-1 | Login response time | < 500ms |
-| NFR-2 | Password storage | bcrypt, 12 rounds |
-| NFR-3 | Session duration | 7 days |
-| NFR-4 | Rate limiting | 5 attempts/minute |
+| ID | Requirement | Traces To | Priority |
+|----|-------------|-----------|----------|
+| FR-001 | System SHALL allow registration with email + password | US-001 | Must |
+| FR-002 | System SHALL validate email format (RFC 5322) | US-001 | Must |
+| FR-003 | System SHALL require password min 8 chars, 1 upper, 1 number | US-001 | Must |
 
 ---
 
 ## Acceptance Criteria
 
-### AC-01: Successful Registration
+### AC-001: Successful Registration
 **Given:** User is on registration page
-**When:** User enters valid email and password (8+ chars)
+**When:** User enters valid email and valid password
 **Then:** Account is created
-**And:** User receives verification email
+**And:** User receives verification email within 30 seconds
 **And:** User is redirected to dashboard
 
-### AC-02: Login with Valid Credentials
-**Given:** User has verified account
-**When:** User enters correct email and password
-**Then:** User is logged in
-**And:** Session is created for 7 days
+### AC-002: Registration with Existing Email
+**Given:** Email "test@example.com" exists in system
+**When:** User tries to register with "test@example.com"
+**Then:** Error message "Email already registered" is displayed
+**And:** No duplicate account is created
 
 ---
 
 ## Out of Scope
 
-- Social login (Google, GitHub) - Phase 2
-- Two-factor authentication - Phase 3
-- SSO/SAML - Not planned
+| Feature | Reason | When |
+|---------|--------|------|
+| Social login | Not MVP | Phase 2 |
+| 2FA | Complexity | Phase 3 |
 ```
 
 ---
@@ -354,11 +706,14 @@ This blocks our monetization strategy.
 
 | Mistake | Fix |
 |---------|-----|
-| "System should be fast" | Specify: "Response time < 500ms" |
+| "System should be fast" | SMART: "Response time < 500ms p95" |
+| No user personas | Define at least 2 personas |
+| User stories without benefits | Always include "so that [benefit]" |
+| Requirements without IDs | Always use FR-X, NFR-X format |
+| No traceability | Every FR must trace to a user story |
+| AC not testable | Use Given-When-Then with specific values |
 | Missing out-of-scope | Explicitly list what you're NOT building |
-| Requirements without IDs | Always use FR-1, FR-2 format |
-| Mixing what and how | Spec = what, Design = how |
-| No acceptance criteria | Every requirement needs testable criteria |
+| No related features | Check features/done/ for patterns |
 
 ---
 
@@ -366,8 +721,15 @@ This blocks our monetization strategy.
 
 - **M-SDD-001:** SDD Workflow Overview
 - **M-SDD-003:** Writing Design Documents
+- **M-BA-004:** SMART Requirements
+- **M-BA-012:** Use Case Modeling
+- **M-BA-013:** User Story Mapping
+- **M-BA-014:** Acceptance Criteria
 - **M-PRD-001:** MVP Scoping
 - **M-PRD-006:** User Story Mapping
+- **M-PRD-008:** PRD Writing
+- **M-UX-017:** User Research
+- **M-UX-018:** Persona Development
 
 ---
 
@@ -376,8 +738,10 @@ This blocks our monetization strategy.
 **faion-spec-reviewer-agent** reviews and improves specifications. Invoke with:
 - "Review this spec for completeness"
 - "Help me write user stories for [feature]"
-- "Generate acceptance criteria for FR-1"
+- "Generate acceptance criteria for FR-001"
+- "Check SMART/INVEST criteria"
 
 ---
 
-*Methodology M-SDD-002 | SDD Foundation | Version 1.0*
+*Methodology M-SDD-002 | SDD Foundation | Version 2.0.0*
+*Integrates BA, PM, PdM, UX best practices*

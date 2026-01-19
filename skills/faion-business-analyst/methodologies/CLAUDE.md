@@ -119,3 +119,4 @@ Each methodology file follows a consistent structure:
 | System integration | M-BA-017 |
 | Evaluating solutions | M-BA-008 |
 | Understanding BABOK | M-BA-018 |
+| Stakeholder communication | → See `faion-communicator` skill (M-COM-001 to M-COM-009) |

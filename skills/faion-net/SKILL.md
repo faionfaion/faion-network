@@ -34,26 +34,98 @@ Universal skill for end-to-end software project lifecycle. From idea to producti
 ```python
 AskUserQuestion([
     {
-        "question": "How should I execute tasks?",
-        "header": "Execution",
+        "question": "How should I work on tasks?",
+        "header": "Mode",
         "options": [
-            {"label": "Sub-agents (Recommended)", "description": "Use Task/Explore agents. Better for complex tasks, parallel execution, isolated context."},
-            {"label": "Main flow", "description": "Execute directly in conversation. Better for simple tasks, visibility, interactive work."}
+            {"label": "YOLO Mode (Recommended)", "description": "Maximum autonomy. Execute tasks completely without interruptions. Uses faion-task-executor-YOLO-agent."},
+            {"label": "Interactive Mode", "description": "Collaborative dialogue. Ask questions, clarify requirements, validate decisions. Stakeholder interview style."}
         ]
     }
 ])
 ```
 
-**If sub-agents selected:**
-- Use `Task` tool with appropriate `subagent_type` for all significant work
-- Use `Explore` agent for codebase analysis and research
-- Run multiple agents in parallel when independent
-- Return concise summaries to user
+---
 
-**If main flow selected:**
-- Execute all tools directly in conversation
+### YOLO Mode (Autonomous)
+
+**Agent:** `faion-task-executor-YOLO-agent`
+
+**Behavior:**
+- Execute tasks completely without asking questions
+- Make decisions autonomously using best practices
+- Use appropriate methodologies from 443 available
+- Document assumptions in code/comments
+- Complete tasks or report blockers with details
+
+**When to use:**
+- Clear, well-defined tasks
+- Tasks with SDD documentation (spec, design)
+- User trusts AI judgment
+- User wants speed over control
+
+**Execution:**
+```python
+Task(
+    prompt="Execute task: {task_description}",
+    subagent_type="faion-task-executor-YOLO-agent"
+)
+```
+
+---
+
+### Interactive Mode (Dialogue)
+
+**Skill:** `faion-communicator` (9 methodologies)
+
+**Behavior:**
+- Execute directly in main conversation flow
+- Ask clarifying questions before proceeding
+- Validate understanding at each step
+- Use communication techniques:
+  - **Interview:** Gather requirements with probing questions
+  - **Brainstorm:** Generate options collaboratively
+  - **Clarification:** Resolve ambiguity
+  - **Validation:** Confirm before implementing
+  - **Socratic:** Deep exploration through questions
+
+**When to use:**
+- Vague or incomplete requirements
+- User wants to learn/understand
+- Complex decisions needing input
+- User prefers control over speed
+
+**Communication Protocol:**
+
+```markdown
+## For new feature requests → Interview
+"I'd like to understand your requirements:
+1. What problem are you solving?
+2. Who are the users?
+3. What's the success criteria?
+4. Any constraints?"
+
+## For design decisions → Brainstorm + Validate
+"Let's explore options:
+- Option A: [pros/cons]
+- Option B: [pros/cons]
+Which direction feels right?"
+
+## For ambiguous requirements → Clarification
+"When you say 'fast', do you mean:
+a) Response time < 100ms?
+b) Quick to implement?
+c) Fast user experience?"
+
+## Before implementation → Validation
+"Here's my understanding: [summary]
+Is this correct? Shall I proceed?"
+```
+
+**Execution:**
+- Use tools directly in conversation
+- Ask questions via AskUserQuestion or text
 - Provide step-by-step visibility
-- Ask for confirmation on significant changes
+- Confirm before significant changes
 
 ---
 
@@ -135,7 +207,7 @@ AskUserQuestion([
 
 ---
 
-## Domain Skills (13)
+## Domain Skills (14)
 
 | Skill | Purpose |
 |-------|---------|
@@ -150,6 +222,7 @@ AskUserQuestion([
 | `faion-project-manager` | PMBOK 7/8 (8 Domains, 12 Principles), PM tools, risk, EVM, agile. 32 methodologies |
 | `faion-business-analyst` | IIBA BABOK v3: 6 Knowledge Areas, requirements, stakeholders, process modeling. 30 tasks |
 | `faion-ux-ui-designer` | Nielsen Norman 10, UX research, usability testing, personas, journey mapping. 32 methodologies |
+| `faion-communicator` | Stakeholder dialogue, Mom Test, conflict resolution, feedback, selling ideas, storytelling, negotiation. 9 methodologies |
 | `faion-claude-code` | Claude Code config: skills, agents, commands, hooks, MCP servers, IDE integrations |
 | `faion-net` | This orchestrator (recursive for complex multi-domain tasks) |
 

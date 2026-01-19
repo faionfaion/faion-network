@@ -5,11 +5,31 @@
 | Field | Value |
 |-------|-------|
 | **ID** | M-SDD-003 |
+| **Version** | 2.0.0 |
 | **Category** | SDD Foundation |
 | **Difficulty** | Intermediate |
-| **Tags** | #methodology, #sdd, #design |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Tags** | #methodology, #sdd, #design, #architecture |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-design-reviewer-agent |
+
+---
+
+## Methodology Reference
+
+**Primary:** M-SDD-003 (Writing Design Documents v2.0)
+
+**Integrated:**
+| Domain | Methodology | Principle Applied |
+|--------|-------------|-------------------|
+| BA | M-BA-005 | Requirements traceability (FR-X → AD-X) |
+| BA | M-BA-006 | Business process modeling |
+| Dev | M-DEV-002 | Architecture patterns |
+| Dev | M-DEV-020 | REST API design |
+| Dev | M-DEV-025 | Testing strategy |
+| DevOps | M-OPS-001 | Infrastructure considerations |
+| PdM | M-PRD-010 | Technical debt awareness |
+| PM | M-PM-006 | Risk assessment |
+| UX | M-UX-001 | Component design patterns |
 
 ---
 
@@ -20,6 +40,8 @@ Developers jump from requirements to coding without planning architecture. This 
 - Wrong technology choices discovered too late
 - Rewrites when architecture doesn't scale
 - Onboarding struggles - new devs can't understand the system
+- Decisions lost - no one remembers WHY something was built this way
+- Technical debt accumulates untracked
 
 **The root cause:** No documented decisions about HOW to build.
 
@@ -33,102 +55,246 @@ A design document answers: **"HOW are we building this?"**
 
 It bridges the gap between specification (what) and implementation (code).
 
-### Design vs Spec
+### Document Hierarchy
 
-| Aspect | Specification | Design |
-|--------|---------------|--------|
-| Question | What to build? | How to build it? |
-| Audience | Stakeholders, PMs | Developers |
-| Content | Requirements, acceptance criteria | Architecture, file structure |
-| Changes | Needs approval | Technical decision |
+```
+CONSTITUTION (project-wide)
+    ↓ informs
+SPEC (feature-specific) → DESIGN (feature-specific) → IMPL PLAN → TASKS
+    FR-X requirements     ↓ implements               ↓ breaks down
+                         AD-X decisions              TASK-XXX
+```
 
-### Design Document Structure
+### Design vs Spec vs Implementation Plan
+
+| Aspect | Specification | Design | Implementation Plan |
+|--------|---------------|--------|---------------------|
+| Question | What to build? | How to build it? | In what order? |
+| Audience | Stakeholders, PMs | Developers | Developers, AI agents |
+| Content | Requirements, AC | Architecture, APIs | Tasks, estimates |
+| Changes | Needs approval | Technical decision | May adjust during dev |
+| Output | FR-X, NFR-X | AD-X, file list | TASK-XXX list |
+
+### Design Document Structure v2.0
 
 ```markdown
 # Design: [Feature Name]
 
+## Reference Documents
+[Links to spec, constitution, related designs]
+
 ## Overview
 [Brief summary of technical approach]
 
+## Spec Coverage
+[FR-X → AD-X traceability matrix]
+
 ## Architectural Decisions
-[AD-1, AD-2, etc. with rationale]
+[AD-X with rationale, alternatives, consequences]
 
 ## File Structure
-[What files to create/modify]
+[What files to create/modify with patterns]
 
 ## Data Models
-[Database schemas, types]
+[Database schemas, TypeScript types]
 
 ## API Contracts
-[Endpoints, request/response]
+[Endpoints with OpenAPI-style documentation]
+
+## Component Design (if frontend)
+[React/Vue components, state management]
 
 ## Dependencies
-[Libraries, services]
+[Libraries, services, infrastructure]
+
+## Security Considerations
+[Auth, validation, encryption]
+
+## Performance Considerations
+[Caching, optimization, scaling]
 
 ## Testing Strategy
-[What and how to test]
+[Unit, integration, E2E approach]
+
+## Migration Strategy (if applicable)
+[Data migration, backwards compatibility]
+
+## Recommended Skills & Methodologies
+[For implementation phase]
 ```
 
-### Writing Process
+---
 
-#### Step 1: Review the Specification
-Read spec.md thoroughly. Understand:
-- All functional requirements
-- Non-functional requirements (performance, security)
-- Acceptance criteria
-- Scope boundaries
+## Writing Process
 
-#### Step 2: Make Architectural Decisions
-For each major technical choice, document:
-- **Decision:** What you chose
-- **Rationale:** Why you chose it
-- **Alternatives:** What you considered
-- **Consequences:** Trade-offs
+### Phase 1: Load Full SDD Context
 
-Use AD-X format (Architectural Decision):
+Before writing, read and understand:
+
+```
+1. aidocs/sdd/{PROJECT}/constitution.md - project principles, tech stack
+2. aidocs/sdd/{PROJECT}/contracts.md - existing API contracts
+3. {FEATURE_DIR}/spec.md - requirements to implement (FR-X)
+4. features/done/ - completed designs for patterns
+```
+
+Extract:
+- Tech stack constraints (from constitution)
+- Existing patterns (from done features)
+- API naming conventions (from contracts)
+- All FR-X and NFR-X to implement
+
+### Phase 2: Codebase Research
+
+**This phase is critical. Invest tokens here.**
+
+#### 2.1 Find Existing Patterns
+
+```bash
+# Find similar implementations
+Grep: pattern from spec keyword
+Glob: **/similar_feature/**
+
+# Find existing architecture patterns
+Grep: class.*Service
+Grep: class.*Controller
+Grep: export.*Router
+
+# Read project CLAUDE.md files
+Read: app/CLAUDE.md
+Read: app/components/CLAUDE.md
+```
+
+#### 2.2 Map Patterns for Each Component
+
+| Component Type | Pattern Source | What to Extract |
+|----------------|----------------|-----------------|
+| API endpoints | existing routes | URL structure, middleware |
+| Services | existing services | Base class, error handling |
+| Models | existing models | Field naming, relationships |
+| Components | existing UI | Props interface, styling |
+| Tests | existing tests | Setup, mocking strategy |
+
+### Phase 3: Create Traceability Matrix (BA: M-BA-005)
+
+**Every FR-X must map to at least one AD-X.**
 
 ```markdown
-### AD-1: Database Choice
+## Spec Coverage
 
-**Decision:** Use PostgreSQL
-
-**Rationale:**
-- Need relational data (users, subscriptions, content)
-- Complex queries for analytics
-- Team has PostgreSQL experience
-
-**Alternatives Considered:**
-- MongoDB: Rejected - relational data fits better
-- SQLite: Rejected - need concurrent writes
-
-**Consequences:**
-- Need to manage PostgreSQL server
-- Get ACID compliance
-- Complex queries are efficient
+| FR | Requirement Summary | Implemented By |
+|----|---------------------|----------------|
+| FR-001 | User registration | AD-001, AD-002 |
+| FR-002 | Email validation | AD-001 |
+| FR-003 | Password requirements | AD-002, AD-003 |
+| NFR-001 | Response < 500ms | AD-004 |
+| NFR-002 | bcrypt hashing | AD-003 |
 ```
 
-#### Step 3: Define File Structure
-List every file to CREATE or MODIFY:
+### Phase 4: Architecture Decisions (Dev: M-DEV-002)
+
+#### 4.1 Decision Format (ADR-Style)
+
+```markdown
+### AD-001: [Decision Title]
+
+**Context:** [Background, constraints, why decision needed]
+
+**Decision:** [What was decided]
+
+**Rationale:**
+- [Reason 1]
+- [Reason 2]
+- [Reason 3]
+
+**Alternatives Considered:**
+| Alternative | Pros | Cons | Why Rejected |
+|-------------|------|------|--------------|
+| [Option A] | [+] | [-] | [Reason] |
+| [Option B] | [+] | [-] | [Reason] |
+
+**Consequences:**
+- **Positive:** [Benefits]
+- **Negative:** [Trade-offs]
+- **Risks:** [What could go wrong]
+
+**Traces to:** FR-001, NFR-002
+```
+
+#### 4.2 Decision Categories
+
+| Category | Examples |
+|----------|----------|
+| **Data** | Database choice, schema design, caching |
+| **API** | REST vs GraphQL, authentication, versioning |
+| **Architecture** | Monolith vs microservice, module structure |
+| **Libraries** | Framework choice, utility libraries |
+| **Security** | Auth mechanism, encryption, validation |
+| **Performance** | Indexing, caching strategy, CDN |
+
+### Phase 5: File Structure (BA: M-BA-006)
+
+#### 5.1 List All File Changes
 
 ```markdown
 ## File Changes
 
-| Action | File | Description |
-|--------|------|-------------|
-| CREATE | `src/auth/login.ts` | Login handler |
-| CREATE | `src/auth/register.ts` | Registration handler |
-| MODIFY | `src/middleware/auth.ts` | Add session validation |
-| CREATE | `tests/auth.test.ts` | Auth unit tests |
+| Action | File | Description | FR | AD |
+|--------|------|-------------|----|----|
+| CREATE | `src/auth/handlers/register.ts` | Registration endpoint | FR-001 | AD-001 |
+| CREATE | `src/auth/services/password.ts` | Password hashing | FR-003 | AD-003 |
+| MODIFY | `src/middleware/auth.ts` | Add JWT validation | FR-004 | AD-002 |
+| CREATE | `tests/auth/register.test.ts` | Registration tests | FR-001 | AD-001 |
 ```
 
-#### Step 4: Specify Data Models
-Define database schemas:
+#### 5.2 Directory Tree
 
-```markdown
-## Data Models
+```
+src/
+├── auth/
+│   ├── handlers/
+│   │   ├── register.ts    # CREATE - FR-001
+│   │   ├── login.ts       # CREATE - FR-004
+│   │   └── logout.ts      # CREATE - FR-005
+│   ├── services/
+│   │   ├── password.ts    # CREATE - FR-003
+│   │   └── jwt.ts         # CREATE - FR-002
+│   ├── middleware/
+│   │   └── protect.ts     # CREATE - FR-006
+│   └── index.ts           # CREATE - router
+└── tests/
+    └── auth/
+        ├── register.test.ts
+        └── login.test.ts
+```
 
-### User
+### Phase 6: Data Models
+
+#### 6.1 TypeScript Types
+
+```typescript
+// src/auth/types.ts
+
+interface User {
+  id: string;           // UUID v4
+  email: string;        // Unique, RFC 5322 format
+  passwordHash: string; // bcrypt hash
+  createdAt: Date;
+  verifiedAt: Date | null;
+}
+
+interface Session {
+  id: string;           // UUID v4
+  userId: string;       // FK → User.id
+  expiresAt: Date;      // 7 days from creation
+}
+```
+
+#### 6.2 Database Schema
+
 ```sql
+-- migrations/001_create_users.sql
+
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -136,107 +302,273 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT NOW(),
   verified_at TIMESTAMP
 );
-```
 
-### Session
-```sql
+CREATE INDEX idx_users_email ON users(email);
+
+-- migrations/002_create_sessions.sql
+
 CREATE TABLE sessions (
   id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users(id),
-  expires_at TIMESTAMP NOT NULL
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
 );
-```
+
+CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 ```
 
-#### Step 5: Document API Contracts
-For each endpoint:
+### Phase 7: API Contracts (Dev: M-DEV-020)
+
+#### 7.1 OpenAPI-Style Documentation
 
 ```markdown
-## API Endpoints
-
 ### POST /api/auth/register
 
-**Request:**
+**Summary:** Register a new user account
+
+**Authentication:** None
+
+**Request Body:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securepassword123"
+  "password": "SecurePass1"
 }
 ```
 
-**Response (201):**
+**Request Validation:**
+| Field | Rules |
+|-------|-------|
+| email | Required, RFC 5322 format, max 255 chars |
+| password | Required, min 8 chars, 1 uppercase, 1 number |
+
+**Response (201 Created):**
 ```json
 {
-  "id": "uuid",
-  "email": "user@example.com",
-  "created_at": "2026-01-17T10:00:00Z"
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "email": "user@example.com",
+    "createdAt": "2026-01-19T10:00:00Z"
+  }
 }
 ```
+*Sets HTTP-only cookie: access_token*
 
-**Errors:**
-- 400: Invalid email format
-- 409: Email already exists
+**Error Responses:**
+| Code | Condition | Response |
+|------|-----------|----------|
+| 400 | Invalid email format | `{"error": "Invalid email format"}` |
+| 400 | Password too weak | `{"error": "Password must be 8+ chars with 1 uppercase and 1 number"}` |
+| 409 | Email exists | `{"error": "Email already registered"}` |
+| 500 | Server error | `{"error": "Internal server error"}` |
 ```
 
-#### Step 6: List Dependencies
-Document external libraries and services:
+### Phase 8: Component Design (if frontend)
+
+#### 8.1 Component Hierarchy
+
+```
+<AuthLayout>
+├── <RegisterForm>
+│   ├── <EmailInput />
+│   ├── <PasswordInput />
+│   ├── <PasswordStrengthMeter />
+│   └── <SubmitButton />
+└── <AuthFooter>
+    └── <LoginLink />
+```
+
+#### 8.2 Component Specification
 
 ```markdown
-## Dependencies
+### RegisterForm Component
 
-### New Packages
-| Package | Version | Purpose |
-|---------|---------|---------|
-| bcrypt | ^5.1.0 | Password hashing |
-| jsonwebtoken | ^9.0.0 | JWT tokens |
-| nodemailer | ^6.9.0 | Email sending |
+**Location:** `src/components/auth/RegisterForm.tsx`
 
-### External Services
-- SendGrid: Email delivery
-- Redis: Session storage
+**Props:**
+```typescript
+interface RegisterFormProps {
+  onSuccess: (user: User) => void;
+  onError?: (error: Error) => void;
+}
+```
+
+**State:**
+- email: string
+- password: string
+- isLoading: boolean
+- errors: ValidationErrors
+
+**Behavior:**
+1. Validates email format on blur
+2. Shows password strength meter on input
+3. Disables submit while loading
+4. Calls onSuccess with user data
+```
+
+### Phase 9: Dependencies
+
+#### 9.1 New Packages
+
+| Package | Version | Purpose | License |
+|---------|---------|---------|---------|
+| bcrypt | ^5.1.0 | Password hashing | MIT |
+| jsonwebtoken | ^9.0.0 | JWT tokens | MIT |
+| zod | ^3.22.0 | Request validation | MIT |
+
+#### 9.2 External Services
+
+| Service | Purpose | Required | Fallback |
+|---------|---------|----------|----------|
+| SendGrid | Email delivery | Yes | Log to console (dev) |
+| Redis | Session blacklist | No | In-memory (dev) |
+
+### Phase 10: Security Considerations
+
+| Concern | Mitigation | AD Reference |
+|---------|------------|--------------|
+| Password storage | bcrypt with cost 12 | AD-003 |
+| XSS prevention | HTTP-only cookies | AD-002 |
+| CSRF protection | SameSite=Strict cookie | AD-002 |
+| SQL injection | Parameterized queries | AD-001 |
+| Rate limiting | 5 attempts/minute/IP | AD-005 |
+| Input validation | Zod schema validation | AD-001 |
+
+### Phase 11: Performance Considerations
+
+| Concern | Strategy | Target | AD Reference |
+|---------|----------|--------|--------------|
+| Login latency | Connection pooling | < 500ms p95 | AD-004 |
+| Token validation | JWT (stateless) | < 10ms | AD-002 |
+| Database queries | Indexed email lookup | < 50ms | AD-001 |
+| Password hashing | bcrypt cost 12 | < 300ms | AD-003 |
+
+### Phase 12: Testing Strategy (Dev: M-DEV-025)
+
+#### 12.1 Test Pyramid
+
+```
+         E2E Tests
+        (Playwright)
+       ┌───────────┐
+       │  Critical │
+       │  Flows    │
+       └─────┬─────┘
+             │
+    Integration Tests
+       (Supertest)
+    ┌─────────────────┐
+    │ API endpoints   │
+    │ Service layers  │
+    └───────┬─────────┘
+            │
+      Unit Tests
+       (Vitest)
+   ┌───────────────────┐
+   │ Pure functions    │
+   │ Utilities         │
+   │ Validators        │
+   └───────────────────┘
+```
+
+#### 12.2 Test Coverage Requirements
+
+| Layer | Coverage Target | What to Test |
+|-------|-----------------|--------------|
+| Unit | 80%+ | Password hashing, JWT utils, validators |
+| Integration | 100% endpoints | All API routes with happy/error paths |
+| E2E | Critical flows | Registration, Login, Logout |
+
+### Phase 13: Migration Strategy (if applicable)
+
+```markdown
+## Migration Strategy
+
+### Data Migration
+- No existing user data (greenfield)
+
+### Backwards Compatibility
+- N/A (new feature)
+
+### Rollout Plan
+1. Deploy database migrations
+2. Deploy API changes (behind feature flag)
+3. Enable feature flag for 10% users
+4. Monitor error rates
+5. Gradual rollout to 100%
+
+### Rollback Plan
+1. Disable feature flag
+2. No data migration needed (new tables)
 ```
 
 ---
 
 ## Templates
 
-### Full Design Template
+### Full Design Template v2.0
 
 ```markdown
 # Design: [Feature Name]
 
 **Version:** 1.0
-**Spec:** [link to spec.md]
+**Spec:** `{FEATURE_DIR}/spec.md`
 **Status:** Draft | Review | Approved
 **Author:** [Name]
 **Date:** YYYY-MM-DD
+**Project:** [project-name]
+
+---
+
+## Reference Documents
+
+| Document | Path | Sections |
+|----------|------|----------|
+| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Tech stack, patterns |
+| Spec | `{FEATURE_DIR}/spec.md` | FR-X, NFR-X to implement |
+| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | Existing API patterns |
+| Related Design | `features/done/{NN}-{feature}/design.md` | Patterns to follow |
 
 ---
 
 ## Overview
 
-[2-3 sentences summarizing technical approach]
+[2-3 sentences summarizing technical approach and key decisions]
+
+---
+
+## Spec Coverage
+
+| FR/NFR | Requirement | Implemented By |
+|--------|-------------|----------------|
+| FR-001 | [Summary] | AD-001, AD-002 |
+| FR-002 | [Summary] | AD-001 |
+| NFR-001 | [Summary] | AD-003 |
 
 ---
 
 ## Architectural Decisions
 
-### AD-1: [Decision Title]
+### AD-001: [Decision Title]
 
-**Decision:** [What you chose]
+**Context:** [Why this decision is needed]
 
-**Rationale:** [Why]
+**Decision:** [What was decided]
+
+**Rationale:**
+- [Reason 1]
+- [Reason 2]
 
 **Alternatives Considered:**
-- [Option A]: [Why rejected]
-- [Option B]: [Why rejected]
+| Alternative | Why Rejected |
+|-------------|--------------|
+| [Option A] | [Reason] |
 
 **Consequences:**
-- [Trade-off 1]
-- [Trade-off 2]
+- **Positive:** [Benefits]
+- **Negative:** [Trade-offs]
 
-### AD-2: [Decision Title]
-...
+**Traces to:** FR-001, FR-002
 
 ---
 
@@ -246,22 +578,21 @@ Document external libraries and services:
 src/
 ├── feature/
 │   ├── handlers/
-│   │   ├── create.ts    # CREATE
-│   │   └── update.ts    # CREATE
-│   ├── models/
-│   │   └── schema.ts    # CREATE
-│   └── index.ts         # MODIFY
+│   │   └── create.ts    # CREATE - FR-001
+│   ├── services/
+│   │   └── logic.ts     # CREATE - FR-002
+│   └── index.ts         # CREATE
 └── tests/
-    └── feature.test.ts  # CREATE
+    └── feature/
+        └── create.test.ts  # CREATE
 ```
 
 ### File Changes
 
-| Action | File | Description | FR |
-|--------|------|-------------|-----|
-| CREATE | `src/feature/handlers/create.ts` | Create handler | FR-1 |
-| CREATE | `src/feature/handlers/update.ts` | Update handler | FR-2 |
-| MODIFY | `src/middleware/auth.ts` | Add permission check | FR-3 |
+| Action | File | Description | FR | AD |
+|--------|------|-------------|----|----|
+| CREATE | `src/feature/handlers/create.ts` | Create handler | FR-001 | AD-001 |
+| MODIFY | `src/middleware/auth.ts` | Add permission | FR-003 | AD-002 |
 
 ---
 
@@ -273,7 +604,6 @@ src/
 interface ModelName {
   id: string;
   field1: string;
-  field2: number;
   createdAt: Date;
 }
 ```
@@ -281,9 +611,8 @@ interface ModelName {
 **Database:**
 ```sql
 CREATE TABLE model_name (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   field1 VARCHAR(255) NOT NULL,
-  field2 INTEGER DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
 );
 ```
@@ -294,15 +623,13 @@ CREATE TABLE model_name (
 
 ### [METHOD] /api/[endpoint]
 
-**Description:** [What this endpoint does]
-
-**Authentication:** Required | Optional | None
+**Summary:** [What this endpoint does]
+**Authentication:** Required | None
 
 **Request:**
 ```json
 {
-  "field1": "value",
-  "field2": 123
+  "field1": "value"
 }
 ```
 
@@ -310,193 +637,143 @@ CREATE TABLE model_name (
 ```json
 {
   "id": "uuid",
-  "field1": "value",
-  "createdAt": "2026-01-17T10:00:00Z"
+  "field1": "value"
 }
 ```
 
 **Errors:**
-| Code | Reason |
-|------|--------|
-| 400 | Invalid input |
-| 401 | Not authenticated |
-| 404 | Not found |
+| Code | Condition | Response |
+|------|-----------|----------|
+| 400 | Invalid input | `{"error": "..."}` |
 
 ---
 
 ## Dependencies
 
 ### Packages
-
 | Package | Version | Purpose |
 |---------|---------|---------|
-| package-name | ^1.0.0 | Description |
+| [name] | ^X.Y.Z | [Why needed] |
 
 ### External Services
-
 | Service | Purpose | Required |
 |---------|---------|----------|
-| Service Name | Description | Yes/No |
+| [name] | [Why] | Yes/No |
+
+---
+
+## Security Considerations
+
+| Concern | Mitigation | AD |
+|---------|------------|-----|
+| [Concern] | [Strategy] | AD-X |
+
+---
+
+## Performance Considerations
+
+| Concern | Strategy | Target |
+|---------|----------|--------|
+| [Concern] | [Approach] | [Metric] |
 
 ---
 
 ## Testing Strategy
 
 ### Unit Tests
-- [ ] [Test case 1]
-- [ ] [Test case 2]
+- [ ] [What to test]
 
 ### Integration Tests
-- [ ] [Test case 1]
+- [ ] [What to test]
 
 ### E2E Tests
-- [ ] [Test case 1]
+- [ ] [Critical flow]
 
 ---
 
-## Security Considerations
+## Migration Strategy
 
-- [Security measure 1]
-- [Security measure 2]
+### Data Migration
+- [Required migrations]
+
+### Backwards Compatibility
+- [Considerations]
+
+### Rollback Plan
+- [Steps to rollback]
 
 ---
 
-## Performance Considerations
+## Related Designs
 
-- [Performance optimization 1]
-- [Performance optimization 2]
+| Feature | Relationship | Patterns to Reuse |
+|---------|-------------|-------------------|
+| [feature] | [dependency/similar] | [patterns] |
+
+---
+
+## Recommended Skills & Methodologies
+
+### Skills
+| Skill | Purpose |
+|-------|---------|
+| faion-software-developer | Implementation |
+| faion-devops-engineer | Infrastructure |
+
+### Methodologies
+| ID | Name | Purpose |
+|----|------|---------|
+| M-DEV-XXX | [Name] | [How it helps] |
 
 ---
 
 ## Open Questions
 
-- [ ] [Question to resolve]
+- [ ] [Question to resolve before implementation]
 
 ---
 
 ## References
 
-- [Link to related design]
-- [External documentation]
+- [Link to external documentation]
+- [Link to similar design]
 ```
 
 ---
 
-## Examples
+## Quality Checklist
 
-### Example: Authentication Design
+### Design Quality Gate (Before Implementation Plan)
 
-```markdown
-# Design: User Authentication
+**Completeness:**
+- [ ] All FR-X from spec have corresponding AD-X
+- [ ] All NFR-X addressed (performance, security, scalability)
+- [ ] All files listed with CREATE/MODIFY actions
+- [ ] All API endpoints documented with request/response
+- [ ] All data models defined (TypeScript + SQL)
+- [ ] Dependencies listed with versions
 
-**Spec:** features/04-auth-system/spec.md
-**Status:** Approved
+**Clarity:**
+- [ ] Each AD-X has context, decision, rationale
+- [ ] Alternatives considered and rejected
+- [ ] Consequences documented (positive and negative)
+- [ ] File changes traced to FR-X and AD-X
 
----
+**Traceability:**
+- [ ] Spec Coverage matrix complete
+- [ ] Every FR maps to at least one AD
+- [ ] Every file change traces to FR and AD
 
-## Overview
+**Context:**
+- [ ] Constitution referenced
+- [ ] Related designs identified
+- [ ] Existing patterns documented
+- [ ] Skills/methodologies recommended
 
-Implement JWT-based authentication with HTTP-only cookies.
-Use PostgreSQL for user storage and Redis for session blacklist.
-
----
-
-## Architectural Decisions
-
-### AD-1: JWT in HTTP-only Cookies
-
-**Decision:** Store JWT in HTTP-only cookies, not localStorage.
-
-**Rationale:**
-- Prevents XSS attacks (JavaScript can't read cookie)
-- Automatic inclusion in requests
-- Can set SameSite for CSRF protection
-
-**Alternatives Considered:**
-- localStorage: Rejected - vulnerable to XSS
-- Session IDs: Rejected - requires server state
-
-### AD-2: Access + Refresh Token Pattern
-
-**Decision:** Use short-lived access tokens (15min) +
-long-lived refresh tokens (7 days).
-
-**Rationale:**
-- Limits damage from token theft
-- Good UX (not logging out constantly)
-- Industry standard
-
----
-
-## File Structure
-
-```
-src/
-├── auth/
-│   ├── handlers/
-│   │   ├── register.ts   # CREATE
-│   │   ├── login.ts      # CREATE
-│   │   ├── logout.ts     # CREATE
-│   │   └── refresh.ts    # CREATE
-│   ├── middleware/
-│   │   └── protect.ts    # CREATE
-│   ├── utils/
-│   │   ├── jwt.ts        # CREATE
-│   │   └── password.ts   # CREATE
-│   └── index.ts          # CREATE
-└── tests/
-    └── auth/
-        ├── register.test.ts
-        ├── login.test.ts
-        └── jwt.test.ts
-```
-
----
-
-## API Contracts
-
-### POST /api/auth/register
-
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "min8chars"
-}
-```
-
-**Response (201):**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com"
-  }
-}
-```
-*Sets HTTP-only cookie with access token*
-
-### POST /api/auth/login
-
-**Request:**
-```json
-{
-  "email": "user@example.com",
-  "password": "min8chars"
-}
-```
-
-**Response (200):**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com"
-  }
-}
-```
-*Sets HTTP-only cookies: access_token, refresh_token*
-```
+**Risk:**
+- [ ] Security considerations documented
+- [ ] Performance targets defined
+- [ ] Migration/rollback plan (if applicable)
 
 ---
 
@@ -507,8 +784,11 @@ src/
 | No rationale for decisions | Always explain WHY, not just what |
 | Missing file list | Every file touched must be listed |
 | Vague API contracts | Specify exact request/response JSON |
-| Forgetting security | Add security section for sensitive features |
+| No traceability | Every AD must trace to FR-X |
+| Forgetting security | Add security section for all features |
 | No testing strategy | Define what tests you'll write |
+| Missing alternatives | Document at least 2 alternatives per AD |
+| No related designs | Check features/done/ for patterns |
 
 ---
 
@@ -516,8 +796,13 @@ src/
 
 - **M-SDD-002:** Writing Specifications
 - **M-SDD-004:** Writing Implementation Plans
-- **M-API-001:** REST API Design
-- **M-API-004:** OpenAPI Specification
+- **M-BA-005:** Requirements Traceability
+- **M-BA-006:** Business Process Modeling
+- **M-DEV-002:** Architecture Patterns
+- **M-DEV-020:** REST API Design
+- **M-DEV-025:** Testing Strategy
+- **M-OPS-001:** Infrastructure Patterns
+- **M-PM-006:** Risk Assessment
 
 ---
 
@@ -527,7 +812,9 @@ src/
 - "Review this design for completeness"
 - "Suggest architectural decisions for [feature]"
 - "Generate API contracts from spec"
+- "Check FR-X to AD-X traceability"
 
 ---
 
-*Methodology M-SDD-003 | SDD Foundation | Version 1.0*
+*Methodology M-SDD-003 | SDD Foundation | Version 2.0.0*
+*Integrates BA, Dev, DevOps, PM best practices*

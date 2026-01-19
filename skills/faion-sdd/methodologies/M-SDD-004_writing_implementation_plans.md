@@ -5,11 +5,30 @@
 | Field | Value |
 |-------|-------|
 | **ID** | M-SDD-004 |
+| **Version** | 2.0.0 |
 | **Category** | SDD Foundation |
 | **Difficulty** | Intermediate |
-| **Tags** | #methodology, #sdd, #implementation |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Tags** | #methodology, #sdd, #implementation, #planning |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-impl-plan-reviewer-agent |
+
+---
+
+## Methodology Reference
+
+**Primary:** M-SDD-004 (Writing Implementation Plans v2.0)
+
+**Integrated:**
+| Domain | Methodology | Principle Applied |
+|--------|-------------|-------------------|
+| PM | M-PM-003 | WBS decomposition |
+| PM | M-PM-004 | Dependency types (FS, SS, FF, SF) |
+| PM | M-PM-006 | Risk assessment |
+| PM | M-PM-008 | Schedule management |
+| BA | M-BA-005 | Requirements traceability (AD-X → TASK) |
+| PdM | M-PRD-018 | INVEST principle for tasks |
+| Dev | M-DEV-025 | Testing strategy |
+| SDD | M-SDD-005 | Task parallelization and waves |
 
 ---
 
@@ -20,6 +39,8 @@ Developers struggle to start coding after reading design documents because:
 - Unclear order of operations
 - Dependencies between components not obvious
 - No clear success criteria for each step
+- AI agents fail with tasks > 100k tokens
+- Parallel work opportunities missed
 
 **The root cause:** No bridge between design and actionable tasks.
 
@@ -30,15 +51,30 @@ Developers struggle to start coding after reading design documents because:
 ### What is an Implementation Plan?
 
 An implementation plan breaks the design into ordered, actionable tasks with:
-- Clear dependencies
-- Estimated effort
-- Success criteria
-- Testing requirements
+- Clear dependencies (graph-based)
+- Effort estimates (for AI context budget)
+- Success criteria (testable)
+- Parallelization opportunities (waves)
+- Risk mitigation strategies
 
-### Implementation Plan Structure
+### Document Hierarchy
+
+```
+SPEC (what) → DESIGN (how) → IMPL PLAN (order) → TASKS (execution)
+  FR-X         AD-X          TASK-XXX outline    TASK_XXX.md files
+                                   ↓
+                              Wave 1: TASK-001, TASK-002 (parallel)
+                              Wave 2: TASK-003, TASK-004 (depends on W1)
+                              Wave 3: TASK-005 (depends on W2)
+```
+
+### Implementation Plan Structure v2.0
 
 ```markdown
 # Implementation Plan: [Feature Name]
+
+## Reference Documents
+[Links to design, spec, constitution]
 
 ## Overview
 [Summary of implementation approach]
@@ -46,159 +82,444 @@ An implementation plan breaks the design into ordered, actionable tasks with:
 ## Prerequisites
 [What must exist before starting]
 
+## Dependency Graph
+[Visual dependency tree]
+
+## Wave Analysis
+[Tasks grouped by execution waves]
+
 ## Phase Breakdown
 [Logical grouping of tasks]
 
 ## Task List
-[Detailed tasks with estimates]
+[TASK-XXX entries with INVEST validation]
+
+## Critical Path
+[Longest dependency chain]
+
+## Risk Assessment
+[Risks and mitigations]
 
 ## Testing Plan
 [What to test at each phase]
 
 ## Rollout Strategy
 [How to deploy safely]
+
+## Recommended Skills & Methodologies
+[For task execution]
 ```
 
-### Writing Process
+---
 
-#### Step 1: Identify Prerequisites
-List everything that must exist before you start:
-- Required infrastructure
-- Dependencies to install
-- Access/permissions needed
-- Existing code to review
+## Writing Process
+
+### Phase 1: Load Full SDD Context
+
+Before writing, read and understand:
+
+```
+1. aidocs/sdd/{PROJECT}/constitution.md - project principles
+2. {FEATURE_DIR}/spec.md - requirements (FR-X)
+3. {FEATURE_DIR}/design.md - architecture (AD-X)
+4. features/done/ - completed implementation plans for patterns
+```
+
+Extract:
+- All AD-X decisions to implement
+- File changes list (CREATE/MODIFY)
+- Dependencies between components
+- Testing requirements
+
+### Phase 2: Prerequisites Check
+
+List everything that must exist before starting:
 
 ```markdown
 ## Prerequisites
 
+### Infrastructure
 - [ ] PostgreSQL database running
 - [ ] Redis instance configured
 - [ ] SendGrid API key obtained
+
+### Environment
 - [ ] Development environment set up
+- [ ] Environment variables configured
+- [ ] Access permissions granted
+
+### Code Dependencies
+- [ ] Base service class exists
+- [ ] Auth middleware exists
+- [ ] Test framework configured
+
+### Documentation
+- [ ] Spec approved (status: Approved)
+- [ ] Design approved (status: Approved)
 ```
 
-#### Step 2: Define Phases
+### Phase 3: Work Breakdown Structure (PM: M-PM-003)
+
+#### 3.1 WBS Principles
+
+| Level | Description | Example |
+|-------|-------------|---------|
+| **Phase** | Logical grouping | "Phase 1: Infrastructure" |
+| **Task** | Atomic work unit | "TASK-001: Create users table" |
+| **Subtask** | Steps within task | "01. Create migration file" |
+
+#### 3.2 Decomposition Rules
+
+- **100% Rule:** All work is accounted for
+- **Mutually Exclusive:** No overlap between tasks
+- **Completeness:** Each task has clear done criteria
+- **AI Context:** Each task < 100k tokens
+
+### Phase 4: Build Dependency Graph
+
+#### 4.1 Dependency Types (PM: M-PM-004)
+
+| Type | Meaning | Example |
+|------|---------|---------|
+| **FS** | Finish-to-Start | TASK-002 starts when TASK-001 finishes |
+| **SS** | Start-to-Start | TASK-002 can start when TASK-001 starts |
+| **FF** | Finish-to-Finish | TASK-002 finishes when TASK-001 finishes |
+| **SF** | Start-to-Finish | TASK-002 finishes when TASK-001 starts (rare) |
+
+#### 4.2 Dependency Graph Visualization
+
+```markdown
+## Dependency Graph
+
+```
+TASK-001 (Users table)
+    │
+    ├──[FS]──→ TASK-003 (Registration handler)
+    │              │
+    │              └──[FS]──→ TASK-005 (Registration tests)
+    │
+    └──[FS]──→ TASK-004 (Login handler)
+                   │
+                   └──[FS]──→ TASK-006 (Login tests)
+
+TASK-002 (Password utils) ──[SS]──→ TASK-003 (Registration handler)
+                          ──[SS]──→ TASK-004 (Login handler)
+```
+```
+
+### Phase 5: Wave Analysis (SDD: M-SDD-005)
+
+#### 5.1 Wave Identification
+
+Group tasks by dependency level:
+
+```markdown
+## Wave Analysis
+
+| Wave | Tasks | Can Run In Parallel | Dependencies |
+|------|-------|---------------------|--------------|
+| Wave 1 | TASK-001, TASK-002 | Yes | None |
+| Wave 2 | TASK-003, TASK-004 | Yes | Wave 1 |
+| Wave 3 | TASK-005, TASK-006 | Yes | Wave 2 |
+| Wave 4 | TASK-007 | No | Wave 3 |
+```
+
+#### 5.2 Wave Visualization
+
+```
+Wave 1 (parallel)    Wave 2 (parallel)    Wave 3 (parallel)    Wave 4
+┌──────────┐         ┌──────────┐         ┌──────────┐         ┌──────────┐
+│ TASK-001 │─────────│ TASK-003 │─────────│ TASK-005 │─────────│ TASK-007 │
+│ Users DB │         │ Register │         │ Reg Tests│         │ E2E Tests│
+└──────────┘    ┌────│          │────┐    └──────────┘         └──────────┘
+                │    └──────────┘    │
+┌──────────┐    │                    │    ┌──────────┐
+│ TASK-002 │────┤                    └────│ TASK-006 │
+│ Password │    │    ┌──────────┐         │ Login Tst│
+└──────────┘    └────│ TASK-004 │────────└──────────┘
+                     │  Login   │
+                     └──────────┘
+```
+
+#### 5.3 Wave-Based Task Creation
+
+**Principle:** Create detailed TASK files in waves, not all at once.
+
+```
+Wave 1: Create TASK_001, TASK_002 files
+    ↓ execute
+Wave 2: Create TASK_003, TASK_004 files (incorporate learnings)
+    ↓ execute
+Wave 3: Create TASK_005, TASK_006 files (incorporate patterns)
+    ...
+```
+
+**Benefits:**
+- Later tasks incorporate learnings from earlier waves
+- Patterns discovered in Wave 1 are documented
+- Better context from completed dependency tasks
+- Reduced rework from early discoveries
+
+### Phase 6: Define Phases
+
 Group related tasks into logical phases:
 
 ```markdown
 ## Phases
 
-### Phase 1: Infrastructure (Day 1)
-Set up database tables, configure services
+| Phase | Description | Tasks | Effort | Dependencies |
+|-------|-------------|-------|--------|--------------|
+| 1 | Infrastructure | TASK-001, TASK-002 | 1 day | None |
+| 2 | Core Logic | TASK-003, TASK-004 | 2 days | Phase 1 |
+| 3 | Testing | TASK-005, TASK-006, TASK-007 | 1.5 days | Phase 2 |
+| 4 | Integration | TASK-008 | 0.5 days | Phase 3 |
 
-### Phase 2: Core Logic (Days 2-3)
-Implement authentication handlers
-
-### Phase 3: API Layer (Day 4)
-Create REST endpoints
-
-### Phase 4: Integration (Day 5)
-Connect frontend, test E2E
+**Total Estimated Effort:** 5 days
 ```
 
-#### Step 3: Break Down Tasks
-For each phase, create specific tasks:
+### Phase 7: Task Definition (INVEST + SMART)
 
-**Task format:**
+#### 7.1 Task Format v2.0
+
 ```markdown
-### TASK-XXX: [Task Title]
+### TASK-XXX: [Concise Title]
 
-**Description:** [What to do]
-**Depends on:** [Other tasks]
-**Effort:** [Hours/Days]
+**Phase:** [Phase number]
+**Wave:** [Wave number]
+
+**Description:**
+[2-3 sentences explaining what needs to be done]
+
+**Traces to:**
+- AD-X: [Architectural decision this implements]
+- FR-X: [Requirement this satisfies]
+
+**Depends on:** TASK-YYY [FS], TASK-ZZZ [SS] (or "None")
+
+**Blocks:** TASK-AAA, TASK-BBB
+
+**Effort:** [X hours]
+**Context Estimate:** [Xk tokens]
+
+**Complexity:** simple (1-2h) | normal (2-3h) | complex (3-4h)
+
 **Acceptance Criteria:**
-- [ ] [Criterion 1]
-- [ ] [Criterion 2]
+- [ ] [Specific, testable criterion]
+- [ ] [Another criterion]
 
 **Files:**
-- CREATE: `path/to/file.ts`
-- MODIFY: `path/to/existing.ts`
+| Action | File | Purpose |
+|--------|------|---------|
+| CREATE | `src/path/file.ts` | [What this file does] |
+| MODIFY | `src/path/existing.ts` | [What to add/change] |
+
+**Technical Notes:**
+[Implementation hints, patterns to follow, gotchas]
+
+**Tests:**
+- [ ] Unit: [Test description]
+- [ ] Integration: [Test description]
+
+**Recommended Skills:**
+- faion-software-developer: [specific aspect]
 ```
 
-#### Step 4: Define Testing Plan
-Specify tests for each phase:
+#### 7.2 INVEST Validation
+
+| Criterion | Question | ✅ Good | ❌ Bad |
+|-----------|----------|---------|--------|
+| **Independent** | Can be done without other incomplete tasks? | No code dependencies on pending tasks | Needs unfinished TASK-005 |
+| **Negotiable** | Implementation details flexible? | "User can register" | "Use bcrypt version 5.1.0" |
+| **Valuable** | Clear business value? | Enables user registration | Technical refactoring |
+| **Estimable** | Effort estimate possible? | 3 hours | "Some time" |
+| **Small** | Completable in < 4 hours? | 2-3 hours | 2 days |
+| **Testable** | Acceptance criteria testable? | "Returns 201 status" | "Works correctly" |
+
+#### 7.3 Context Budget
+
+| Complexity | Effort | Context | Description |
+|------------|--------|---------|-------------|
+| **Simple** | 1-2h | < 30k tokens | Single file, clear pattern |
+| **Normal** | 2-3h | 30-60k tokens | Multiple files, some research |
+| **Complex** | 3-4h | 60-100k tokens | Many files, deep research |
+
+**If > 100k tokens:** Split into multiple tasks.
+
+### Phase 8: Critical Path Analysis
+
+#### 8.1 Identify Critical Path
+
+The critical path is the longest chain of dependent tasks.
+
+```markdown
+## Critical Path
+
+```
+TASK-001 → TASK-003 → TASK-005 → TASK-007
+  1d         1d         0.5d       0.5d     = 3 days
+```
+
+**Critical Path Duration:** 3 days
+
+**Implications:**
+- Cannot finish feature faster than 3 days
+- TASK-001, TASK-003, TASK-005, TASK-007 have no slack
+- Delays on critical path delay the entire feature
+```
+
+### Phase 9: Risk Assessment (PM: M-PM-006)
+
+```markdown
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| External API unavailable | Medium | High | Mock API for development |
+| Database schema changes | Low | High | Run migrations in staging first |
+| Performance issues | Medium | Medium | Load test before production |
+| Security vulnerability | Low | High | Security review before launch |
+
+### Contingency Buffer
+- Add 20% buffer to critical path
+- 3 days → 3.6 days → 4 days
+```
+
+### Phase 10: Testing Plan (Dev: M-DEV-025)
 
 ```markdown
 ## Testing Plan
 
-### Phase 1 Tests
-- [ ] Database migrations run successfully
-- [ ] Tables created with correct schema
+### Per-Phase Testing
 
-### Phase 2 Tests
-- [ ] Password hashing works
-- [ ] JWT generation/validation works
-- [ ] Unit tests pass
+| Phase | Tests | Pass Criteria |
+|-------|-------|---------------|
+| Phase 1 | DB migrations | Tables created, rollback works |
+| Phase 2 | Unit tests | 80%+ coverage, all pass |
+| Phase 3 | Integration tests | All API endpoints tested |
+| Phase 4 | E2E tests | Critical flows pass |
 
-### Phase 3 Tests
-- [ ] API endpoints return correct responses
-- [ ] Error handling works
-- [ ] Integration tests pass
+### Test Coverage Targets
 
-### Phase 4 Tests
-- [ ] E2E login flow works
-- [ ] E2E registration flow works
+| Layer | Target | Actual |
+|-------|--------|--------|
+| Unit | 80% | TBD |
+| Integration | 100% endpoints | TBD |
+| E2E | Critical flows | TBD |
 ```
 
-#### Step 5: Plan Rollout
-How will you deploy safely?
+### Phase 11: Rollout Strategy
 
 ```markdown
 ## Rollout Strategy
 
 ### Pre-deployment
-- [ ] Run all tests in staging
+- [ ] All tests pass in staging
 - [ ] Database backup created
+- [ ] Feature flag configured (disabled)
+- [ ] Monitoring alerts set up
 
-### Deployment
-- [ ] Apply database migrations
-- [ ] Deploy new code
-- [ ] Verify health checks
+### Deployment Steps
+1. Apply database migrations
+2. Deploy code changes
+3. Verify health checks
+4. Enable feature flag (10% users)
+5. Monitor error rates (30 minutes)
+6. Gradual rollout (25% → 50% → 100%)
 
-### Post-deployment
-- [ ] Monitor error rates
-- [ ] Check performance metrics
-- [ ] Rollback plan ready
+### Rollback Plan
+1. Disable feature flag (immediate)
+2. Revert code deployment (if needed)
+3. Rollback migrations (if needed)
+
+### Success Criteria
+- Error rate < 0.1%
+- Response time < 500ms p95
+- No critical bugs in 24 hours
 ```
 
 ---
 
 ## Templates
 
-### Full Implementation Plan Template
+### Full Implementation Plan Template v2.0
 
 ```markdown
 # Implementation Plan: [Feature Name]
 
-**Design:** [link to design.md]
+**Version:** 1.0
+**Design:** `{FEATURE_DIR}/design.md`
 **Status:** Draft | In Progress | Complete
 **Author:** [Name]
-**Estimated Effort:** [X days]
-**Start Date:** YYYY-MM-DD
+**Date:** YYYY-MM-DD
+**Project:** [project-name]
+
+---
+
+## Reference Documents
+
+| Document | Path | Sections |
+|----------|------|----------|
+| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Standards |
+| Spec | `{FEATURE_DIR}/spec.md` | FR-X requirements |
+| Design | `{FEATURE_DIR}/design.md` | AD-X decisions |
+| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | API patterns |
 
 ---
 
 ## Overview
 
-[1-2 paragraphs summarizing implementation approach]
+[1-2 paragraphs summarizing implementation approach and key decisions]
+
+**Estimated Effort:** [X days]
+**Critical Path:** [X days]
+**Waves:** [N waves]
+**Total Tasks:** [M tasks]
 
 ---
 
 ## Prerequisites
 
+### Infrastructure
 - [ ] [Prerequisite 1]
 - [ ] [Prerequisite 2]
-- [ ] [Prerequisite 3]
+
+### Environment
+- [ ] [Prerequisite 1]
+
+### Code Dependencies
+- [ ] [Prerequisite 1]
+
+---
+
+## Dependency Graph
+
+```
+[Visual representation of task dependencies]
+```
+
+---
+
+## Wave Analysis
+
+| Wave | Tasks | Parallel | Dependencies | Effort |
+|------|-------|----------|--------------|--------|
+| 1 | TASK-001, TASK-002 | Yes | None | X hours |
+| 2 | TASK-003, TASK-004 | Yes | Wave 1 | X hours |
+| 3 | TASK-005 | No | Wave 2 | X hours |
+
+**Wave Diagram:**
+```
+[Visual wave diagram]
+```
 
 ---
 
 ## Phases
 
-| Phase | Description | Effort | Dependencies |
-|-------|-------------|--------|--------------|
-| 1 | [Phase 1 name] | X days | None |
-| 2 | [Phase 2 name] | X days | Phase 1 |
-| 3 | [Phase 3 name] | X days | Phase 2 |
+| Phase | Description | Tasks | Effort |
+|-------|-------------|-------|--------|
+| 1 | [Phase name] | TASK-001, TASK-002 | X days |
+| 2 | [Phase name] | TASK-003, TASK-004 | X days |
 
 ---
 
@@ -206,12 +527,18 @@ How will you deploy safely?
 
 ### TASK-001: [Task Title]
 
+**Wave:** 1
+**Complexity:** simple | normal | complex
+**Effort:** X hours
+**Context:** ~Xk tokens
+
 **Description:**
-[Detailed description of what to do]
+[2-3 sentences]
+
+**Traces to:** AD-001, FR-001
 
 **Depends on:** None
-
-**Effort:** X hours
+**Blocks:** TASK-003, TASK-004
 
 **Acceptance Criteria:**
 - [ ] [Criterion 1]
@@ -221,11 +548,10 @@ How will you deploy safely?
 | Action | File | Description |
 |--------|------|-------------|
 | CREATE | `path/file.ts` | Description |
-| MODIFY | `path/existing.ts` | What to change |
 
 **Tests:**
-- [ ] [Test 1]
-- [ ] [Test 2]
+- [ ] Unit: [description]
+- [ ] Integration: [description]
 
 ---
 
@@ -241,40 +567,14 @@ How will you deploy safely?
 
 ---
 
-## Testing Plan
+## Critical Path
 
-### Unit Tests
-- [ ] [Test case]
+```
+[Critical path visualization]
+```
 
-### Integration Tests
-- [ ] [Test case]
-
-### E2E Tests
-- [ ] [Test case]
-
----
-
-## Rollout Strategy
-
-### Pre-deployment Checklist
-- [ ] All tests pass
-- [ ] Code reviewed
-- [ ] Documentation updated
-- [ ] Database backup
-
-### Deployment Steps
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
-
-### Rollback Plan
-1. [Rollback step 1]
-2. [Rollback step 2]
-
-### Monitoring
-- [ ] Error rate < X%
-- [ ] Response time < Xms
-- [ ] No critical errors
+**Duration:** X days
+**Tasks on Critical Path:** TASK-001 → TASK-003 → TASK-005
 
 ---
 
@@ -282,13 +582,64 @@ How will you deploy safely?
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| [Risk 1] | Low/Med/High | Low/Med/High | [Mitigation] |
+| [Risk 1] | Low/Med/High | Low/Med/High | [Strategy] |
+
+**Contingency Buffer:** X% added to estimates
+
+---
+
+## Testing Plan
+
+### Per-Phase Testing
+| Phase | Tests | Pass Criteria |
+|-------|-------|---------------|
+| 1 | [Tests] | [Criteria] |
+
+### Coverage Targets
+| Layer | Target |
+|-------|--------|
+| Unit | 80%+ |
+| Integration | 100% endpoints |
+| E2E | Critical flows |
+
+---
+
+## Rollout Strategy
+
+### Pre-deployment
+- [ ] [Checklist item]
+
+### Deployment Steps
+1. [Step 1]
+2. [Step 2]
+
+### Rollback Plan
+1. [Rollback step]
+
+### Success Criteria
+- [Metric 1]
+- [Metric 2]
+
+---
+
+## Recommended Skills & Methodologies
+
+### Skills
+| Skill | Tasks | Purpose |
+|-------|-------|---------|
+| faion-software-developer | TASK-001 to TASK-005 | Core implementation |
+| faion-devops-engineer | TASK-006 | Deployment |
+
+### Methodologies
+| ID | Name | Relevant Tasks |
+|----|------|----------------|
+| M-DEV-XXX | [Name] | TASK-001, TASK-002 |
 
 ---
 
 ## Open Questions
 
-- [ ] [Question]
+- [ ] [Question to resolve]
 
 ---
 
@@ -299,166 +650,40 @@ How will you deploy safely?
 | YYYY-MM-DD | 1.0 | Initial plan |
 ```
 
-### Task Template
-
-```markdown
-### TASK-XXX: [Concise Title]
-
-**Description:**
-[2-3 sentences explaining what needs to be done]
-
-**Depends on:** TASK-YYY, TASK-ZZZ (or "None")
-
-**Effort:** [X hours/days]
-
-**Acceptance Criteria:**
-- [ ] [Specific, measurable criterion]
-- [ ] [Another criterion]
-
-**Files:**
-| Action | File | Purpose |
-|--------|------|---------|
-| CREATE | `src/path/file.ts` | [What this file does] |
-| MODIFY | `src/path/existing.ts` | [What to add/change] |
-
-**Technical Notes:**
-[Any implementation hints or gotchas]
-
-**Tests:**
-- [ ] Unit: [Test description]
-- [ ] Integration: [Test description]
-```
-
 ---
 
-## Examples
+## Quality Checklist
 
-### Example: Authentication Implementation Plan
+### Implementation Plan Quality Gate
 
-```markdown
-# Implementation Plan: User Authentication
+**Completeness:**
+- [ ] All AD-X from design have corresponding tasks
+- [ ] All file changes from design are assigned to tasks
+- [ ] Prerequisites fully documented
+- [ ] Testing plan covers all phases
 
-**Design:** features/04-auth-system/design.md
-**Effort:** 5 days
-**Start Date:** 2026-01-20
+**Structure:**
+- [ ] Tasks follow INVEST criteria
+- [ ] Dependencies clearly documented (FS/SS/FF/SF)
+- [ ] Effort estimates provided
+- [ ] Context budget < 100k per task
 
----
+**Parallelization:**
+- [ ] Dependency graph documented
+- [ ] Waves identified
+- [ ] Critical path calculated
+- [ ] Parallel opportunities maximized
 
-## Overview
+**Risk:**
+- [ ] Risks identified with mitigations
+- [ ] Rollout strategy defined
+- [ ] Rollback plan documented
+- [ ] Contingency buffer added
 
-Implement JWT-based authentication in 4 phases:
-1. Database setup (0.5 days)
-2. Core auth logic (1.5 days)
-3. API endpoints (1.5 days)
-4. Integration & testing (1.5 days)
-
----
-
-## Prerequisites
-
-- [ ] PostgreSQL database configured
-- [ ] Redis for token blacklist
-- [ ] SendGrid API key for emails
-- [ ] JWT_SECRET in environment
-
----
-
-## Phase 1: Database Setup (0.5 days)
-
-### TASK-001: Create Users Table
-
-**Description:**
-Create PostgreSQL migration for users table with email,
-password_hash, and timestamps.
-
-**Depends on:** None
-
-**Effort:** 2 hours
-
-**Acceptance Criteria:**
-- [ ] Migration runs without errors
-- [ ] Users table exists with correct columns
-- [ ] Unique constraint on email
-- [ ] Indexes created
-
-**Files:**
-| Action | File |
-|--------|------|
-| CREATE | `migrations/001_create_users.sql` |
-| CREATE | `src/models/user.ts` |
-
-**Tests:**
-- [ ] Migration up/down works
-- [ ] Can insert/query users
-
----
-
-### TASK-002: Create Sessions Table
-
-**Description:**
-Create sessions table for refresh token tracking.
-
-**Depends on:** TASK-001
-
-**Effort:** 1 hour
-
-**Acceptance Criteria:**
-- [ ] Sessions table with user_id foreign key
-- [ ] Expiration timestamp column
-
-**Files:**
-| Action | File |
-|--------|------|
-| CREATE | `migrations/002_create_sessions.sql` |
-| CREATE | `src/models/session.ts` |
-
----
-
-## Phase 2: Core Auth Logic (1.5 days)
-
-### TASK-003: Password Hashing Utilities
-
-**Description:**
-Create bcrypt wrapper for hashing and comparing passwords.
-
-**Depends on:** None (parallel with TASK-001)
-
-**Effort:** 2 hours
-
-**Acceptance Criteria:**
-- [ ] hashPassword() returns bcrypt hash
-- [ ] comparePassword() correctly validates
-- [ ] Cost factor is configurable
-
-**Files:**
-| Action | File |
-|--------|------|
-| CREATE | `src/auth/utils/password.ts` |
-| CREATE | `tests/auth/password.test.ts` |
-
----
-
-### TASK-004: JWT Utilities
-
-**Description:**
-Create JWT sign/verify utilities with access and refresh tokens.
-
-**Depends on:** None
-
-**Effort:** 3 hours
-
-**Acceptance Criteria:**
-- [ ] signAccessToken() creates 15min token
-- [ ] signRefreshToken() creates 7-day token
-- [ ] verifyToken() validates and returns payload
-- [ ] Handles expired tokens gracefully
-
-**Files:**
-| Action | File |
-|--------|------|
-| CREATE | `src/auth/utils/jwt.ts` |
-| CREATE | `tests/auth/jwt.test.ts` |
-```
+**Traceability:**
+- [ ] Each task traces to AD-X
+- [ ] Each task traces to FR-X
+- [ ] Skills/methodologies recommended
 
 ---
 
@@ -466,11 +691,14 @@ Create JWT sign/verify utilities with access and refresh tokens.
 
 | Mistake | Fix |
 |---------|-----|
-| Tasks too large | Break down to < 4 hours each |
+| Tasks too large | Break down to < 4 hours, < 100k tokens |
 | Missing dependencies | Every task needs explicit "Depends on" |
 | No acceptance criteria | Each task needs testable criteria |
 | Forgetting tests | Include test tasks in plan |
 | No rollback plan | Always plan for failure |
+| No wave analysis | Identify parallel opportunities |
+| Tasks not traced | Every task must trace to AD-X |
+| Missing context estimate | AI needs token budget |
 
 ---
 
@@ -478,8 +706,12 @@ Create JWT sign/verify utilities with access and refresh tokens.
 
 - **M-SDD-003:** Writing Design Documents
 - **M-SDD-005:** Task Creation & Parallelization
-- **M-PRD-001:** MVP Scoping
+- **M-PM-003:** WBS Decomposition
+- **M-PM-004:** Dependency Management
+- **M-PM-006:** Risk Assessment
 - **M-PM-008:** Schedule Management
+- **M-PRD-018:** INVEST Principle
+- **M-DEV-025:** Testing Strategy
 
 ---
 
@@ -488,8 +720,10 @@ Create JWT sign/verify utilities with access and refresh tokens.
 **faion-impl-plan-reviewer-agent** reviews implementation plans. Invoke with:
 - "Review this implementation plan"
 - "Break down this design into tasks"
-- "Estimate effort for these tasks"
+- "Analyze dependency graph for parallelization"
+- "Calculate critical path"
 
 ---
 
-*Methodology M-SDD-004 | SDD Foundation | Version 1.0*
+*Methodology M-SDD-004 | SDD Foundation | Version 2.0.0*
+*Integrates PM, BA, PdM, Dev best practices*

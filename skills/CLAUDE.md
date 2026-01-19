@@ -2,7 +2,7 @@
 
 Claude Code skills for the faion-network framework.
 
-## Active Skills (13)
+## Active Skills (14)
 
 ### Orchestrators
 
@@ -25,6 +25,7 @@ Claude Code skills for the faion-network framework.
 | **faion-marketing-manager** | Marketing | GTM, SEO, ads, content, email |
 | **faion-ux-ui-designer** | UX/UI | Nielsen heuristics, accessibility, prototyping |
 | **faion-researcher** | Research | Market research, competitors, validation |
+| **faion-communicator** | Communication | Active listening, Mom Test, conflict resolution, SPIN |
 | **faion-claude-code** | Claude Code | Skills, agents, hooks, MCP, IDE integration |
 
 ## Subfolders
@@ -59,6 +60,7 @@ skills/
 ├── faion-marketing-manager/      # Marketing
 ├── faion-ux-ui-designer/         # UX/UI Design
 ├── faion-researcher/             # Research
+├── faion-communicator/           # Communication & Stakeholder Dialogue
 ├── faion-claude-code/            # Claude Code config
 ├── _archived/                    # 50 legacy skills
 └── archive/                      # 5 older skills
