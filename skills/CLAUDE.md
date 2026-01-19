@@ -8,9 +8,9 @@ Claude Code skills for the faion-network framework.
 
 | Skill | Description | Methodologies |
 |-------|-------------|---------------|
-| **faion-net** | Universal orchestrator for all software projects | 60+ agents, 40+ skills |
+| **faion-net** | Universal orchestrator for all software projects | 456 methodologies |
 | **faion-sdd** | Specification-Driven Development workflow | M-SDD-001 to M-SDD-017 |
-| **faion-feature-executor** | Sequential task execution with quality gates | Uses faion-task-executor-agent |
+| **faion-feature-executor** | Sequential task execution with quality gates | Uses faion-task-executor-YOLO-agent |
 
 ### Domain Skills
 
@@ -30,18 +30,11 @@ Claude Code skills for the faion-network framework.
 
 ## Subfolders
 
-### Active Skill Folders
-Each active skill folder contains:
+Each skill folder contains:
 - `SKILL.md` - Main skill documentation
 - `CLAUDE.md` - Navigation and summary
 - `methodologies/` - Methodology files (M-XXX-NNN)
 - `references/` - Reference materials and best practices
-
-### Archive Folders
-| Folder | Description |
-|--------|-------------|
-| `_archived/` | 50 legacy skills consolidated into domain orchestrators |
-| `archive/` | 5 older development skills |
 
 ## Architecture
 
@@ -61,16 +54,14 @@ skills/
 ├── faion-ux-ui-designer/         # UX/UI Design
 ├── faion-researcher/             # Research
 ├── faion-communicator/           # Communication & Stakeholder Dialogue
-├── faion-claude-code/            # Claude Code config
-├── _archived/                    # 50 legacy skills
-└── archive/                      # 5 older skills
+└── faion-claude-code/            # Claude Code config
 ```
 
 ## Naming Conventions
 
 - **Skills**: `faion-{domain}` (e.g., faion-software-developer)
 - **Methodologies**: `M-{DOMAIN}-{NNN}` (e.g., M-DEV-001)
-- **Agents**: `faion-{function}-agent` (e.g., faion-task-executor-agent)
+- **Agent**: `faion-task-executor-YOLO-agent`
 
 ## Usage
 
@@ -83,6 +74,6 @@ Invoke skills via slash commands:
 
 ## Related
 
-- Agents: `~/.claude/agents/`
+- Agent: `~/.claude/agents/faion-task-executor-YOLO-agent.md`
 - Documentation: `~/.claude/docs/`
 - Memory: `~/.sdd/memory/`
