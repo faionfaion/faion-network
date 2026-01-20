@@ -13,10 +13,33 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQues
 
 Execute all tasks in an SDD feature with full quality gates:
 1. Load project and feature context
-2. Execute tasks sequentially via `faion-task-executor-agent`
-3. After each task: verify tests pass, coverage adequate, project runs
-4. After all tasks: code review cycle until no issues remain
-5. Move feature to `done/`
+2. **Ask user permission** before starting YOLO execution
+3. Execute tasks sequentially via `faion-task-executor-YOLO-agent`
+4. After each task: verify tests pass, coverage adequate, project runs
+5. After all tasks: code review cycle until no issues remain
+6. Move feature to `done/`
+
+## CRITICAL: User Permission Required
+
+**Before launching `faion-task-executor-YOLO-agent`, ALWAYS ask user:**
+
+```
+⚠️ YOLO Mode Activation
+
+About to execute {N} tasks autonomously:
+- Task 1: {name}
+- Task 2: {name}
+...
+
+YOLO mode means:
+- No confirmations during execution
+- All file edits auto-approved
+- Full autonomy until completion
+
+Proceed with YOLO execution? [Yes/No]
+```
+
+**Use AskUserQuestion tool to get explicit permission.**
 
 ## Agents Used
 
