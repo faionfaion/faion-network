@@ -1,3 +1,11 @@
+---
+id: M-UX-009
+name: "Help Users Recognize, Diagnose, and Recover from Errors"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-009: Help Users Recognize, Diagnose, and Recover from Errors
 
 ## Metadata

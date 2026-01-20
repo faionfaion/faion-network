@@ -1,3 +1,11 @@
+---
+id: M-PM-012
+name: "Agile and Hybrid Approaches"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-012: Agile and Hybrid Approaches
 
 ## Metadata

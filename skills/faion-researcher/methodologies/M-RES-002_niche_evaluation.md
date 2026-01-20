@@ -1,3 +1,11 @@
+---
+id: M-RES-002
+name: "Niche Evaluation"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-002: Niche Evaluation
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #niche, #evaluation |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-niche-evaluator-agent |
 
 ---

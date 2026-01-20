@@ -1,3 +1,11 @@
+---
+id: M-PM-014
+name: "Procurement Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-014: Procurement Management
 
 ## Metadata

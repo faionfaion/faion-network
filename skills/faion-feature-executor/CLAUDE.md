@@ -59,7 +59,7 @@ Part of SDD workflow:
 SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> [FEATURE-EXECUTOR] -> DONE
 ```
 
-Related skills: `faion-sdd-domain-skill`, `faion-task-executor-agent`
+Related skills: `faion-sdd`, `faion-task-executor-agent`
 
 ---
 

@@ -1,3 +1,11 @@
+---
+id: M-PRD-007
+name: "OKR Setting"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-007: OKR Setting
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #okr, #goals |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-impl-planner-agent |
 
 ---

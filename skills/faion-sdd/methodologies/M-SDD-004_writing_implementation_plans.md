@@ -1,3 +1,11 @@
+---
+id: M-SDD-004
+name: "Writing Implementation Plans"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-004: Writing Implementation Plans
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-020
+name: "Heuristic Evaluation"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-020: Heuristic Evaluation
 
 ## Metadata

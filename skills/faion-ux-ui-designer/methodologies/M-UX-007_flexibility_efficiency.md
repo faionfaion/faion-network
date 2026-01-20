@@ -1,3 +1,11 @@
+---
+id: M-UX-007
+name: "Flexibility and Efficiency of Use"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-007: Flexibility and Efficiency of Use
 
 ## Metadata

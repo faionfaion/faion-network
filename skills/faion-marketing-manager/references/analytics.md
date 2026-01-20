@@ -16,7 +16,7 @@ Provides comprehensive analytics integration patterns for web applications. Cove
 ## 3-Layer Architecture Position
 
 ```
-Layer 1: Domain Skills (faion-marketing-domain-skill)
+Layer 1: Domain Skills (faion-marketing-manager)
     ↓ calls
 Layer 2: Agents (faion-ads-agent, faion-growth-agent)
     ↓ uses
@@ -1461,7 +1461,7 @@ track_server_event(
 |-----------|--------------|
 | faion-ads-agent | Uses this skill for conversion tracking |
 | faion-growth-agent | Uses this skill for funnel analysis |
-| faion-marketing-domain-skill | Orchestrates analytics workflows |
+| faion-marketing-manager | Orchestrates analytics workflows |
 | faion-google-ads-skill | Shares conversion data with Google Ads |
 | faion-meta-ads-skill | Shares conversion data with Meta |
 | faion-seo-skill | Tracks organic traffic metrics |

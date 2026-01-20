@@ -2,15 +2,15 @@
 
 ## Overview
 
-Contains 74 marketing methodologies organized into growth metrics (root level), paid advertising, marketing growth channels, and business operations. Each methodology follows a consistent structure: Metadata, Problem, Framework, Templates, Examples, Implementation Checklist, Common Mistakes, Tools, and Related Methodologies.
+Contains 77 marketing methodologies organized into growth metrics (root level), paid advertising, marketing growth channels, and business operations. Each methodology follows a consistent structure: Metadata, Problem, Framework, Templates, Examples, Implementation Checklist, Common Mistakes, Tools, and Related Methodologies.
 
 ## Structure
 
 ```
 methodologies/
-├── M-GRO-*.md           # Growth metrics and frameworks (12 files)
+├── *.md                 # Growth metrics and frameworks (20 files)
 ├── ads/                 # Paid advertising methodologies (16 files)
-├── growth/              # Marketing channels and tactics (32 files)
+├── growth/              # Marketing channels and tactics (35 files)
 ├── operations/          # Business and operations (14 files)
 └── [empty subfolders]   # Reserved for future organization
     ├── analytics/
@@ -29,44 +29,60 @@ methodologies/
 | Folder | Description | Files |
 |--------|-------------|-------|
 | [ads/](ads/) | Meta, Google, LinkedIn, Twitter ads; analytics setup; attribution; retargeting | 16 |
-| [growth/](growth/) | GTM, landing pages, content, SEO, email, social media, launches | 32 |
+| [growth/](growth/) | GTM, landing pages, content, SEO, email, social media, launches | 35 |
 | [operations/](operations/) | Pricing, subscriptions, churn, legal, financial, hiring, automation | 14 |
 
-## Root Level Files (M-GRO-*)
+## Root Level Files
 
-Growth metrics and experimentation methodologies:
+Growth metrics, experimentation, and AI/SEO methodologies:
+
+### Core Growth Metrics
 
 | File | ID | Description |
 |------|----|-------------|
-| M-GRO-001_aarrr_pirate_metrics.md | M-GRO-001 | AARRR funnel framework for measuring the complete customer journey |
-| M-GRO-002_north_star_metric.md | M-GRO-002 | Defining the single metric that captures core customer value |
-| M-GRO-003_growth_loops.md | M-GRO-003 | Self-reinforcing growth mechanisms (viral, content, paid, sales) |
-| M-GRO-004_ab_testing_framework.md | M-GRO-004 | Systematic A/B testing methodology for experiments |
-| M-GRO-005_multivariate_testing.md | M-GRO-005 | Testing multiple variables simultaneously |
-| M-GRO-006_statistical_significance.md | M-GRO-006 | Ensuring experiment results are valid and reliable |
-| M-GRO-007_cohort_analysis.md | M-GRO-007 | Analyzing user behavior by time-based groups |
-| M-GRO-008_funnel_optimization.md | M-GRO-008 | Improving conversion at each funnel stage |
-| M-GRO-009_viral_coefficient.md | M-GRO-009 | Measuring and improving product virality (K-factor) |
-| M-GRO-010_product_led_growth.md | M-GRO-010 | Growth strategy driven by product experience |
-| M-GRO-011_activation_rate.md | M-GRO-011 | Optimizing time-to-first-value and activation |
-| M-GRO-012_retention_loops.md | M-GRO-012 | Building mechanisms to keep users returning |
+| aarrr-pirate-metrics.md | aarrr-pirate-metrics | AARRR funnel framework for measuring the complete customer journey |
+| north-star-metric.md | north-star-metric | Defining the single metric that captures core customer value |
+| growth-loops.md | growth-loops | Self-reinforcing growth mechanisms (viral, content, paid, sales) |
+| ab-testing-framework.md | ab-testing-framework | Systematic A/B testing methodology for experiments |
+| multivariate-testing.md | multivariate-testing | Testing multiple variables simultaneously |
+| statistical-significance.md | statistical-significance | Ensuring experiment results are valid and reliable |
+| cohort-analysis.md | cohort-analysis | Analyzing user behavior by time-based groups |
+| funnel-optimization.md | funnel-optimization | Improving conversion at each funnel stage |
+| viral-coefficient.md | viral-coefficient | Measuring and improving product virality (K-factor) |
+| product-led-growth.md | product-led-growth | Growth strategy driven by product experience |
+| activation-rate.md | activation-rate | Optimizing time-to-first-value and activation |
+| retention-loops.md | retention-loops | Building mechanisms to keep users returning |
+
+### AI & Modern SEO
+
+| File | ID | Description |
+|------|----|-------------|
+| ai-content-strategy.md | ai-content-strategy | AI-assisted content creation and optimization |
+| ai-marketing-tools-stack-2026.md | ai-marketing-tools-stack-2026 | Modern AI marketing tools and integrations |
+| agentic-commerce-future-trends.md | agentic-commerce-future-trends | AI agents in commerce and future trends |
+| google-ai-overviews-optimization.md | google-ai-overviews-optimization | Optimizing for Google AI Overviews |
+| search-everywhere-optimization.md | search-everywhere-optimization | Multi-platform search optimization (SEO, GEO, AEO) |
+| technical-seo-for-ai.md | technical-seo-for-ai | Technical SEO for AI crawlers and indexing |
+| topical-authority.md | topical-authority | Building topical authority for search ranking |
+| zero-click-search-adaptation.md | zero-click-search-adaptation | Adapting to zero-click search landscape |
+| community-led-growth.md | community-led-growth | Community-driven growth strategies |
 
 ## Methodology Structure
 
 Each methodology file follows this structure:
 
 ```markdown
-# M-XXX-NNN: Title
+# methodology-name
 
 ## Metadata
 | Field | Value |
 |-------|-------|
-| ID | M-XXX-NNN |
+| ID | methodology-name |
 | Name | Methodology Name |
 | Category | Category |
 | Difficulty | Beginner/Intermediate/Advanced |
 | Agent | faion-*-agent |
-| Related | M-XXX-NNN, M-XXX-NNN |
+| Related | methodology-1, methodology-2 |
 
 ## Problem
 [What problem this solves]
@@ -90,29 +106,30 @@ Each methodology file follows this structure:
 [Recommended tools]
 
 ## Related Methodologies
-[Links to related M-* files]
+[Links to related methodology files]
 ```
 
 ## ID Conventions
 
-| Prefix | Category | Range |
-|--------|----------|-------|
-| M-GRO | Growth Metrics | 001-012 |
-| M-ADS | Paid Advertising | 001-016 |
-| M-MKT | Marketing Tactics | 001-032 |
-| M-OPS | Operations | 001-014 |
+| Category | Semantic Pattern | Count |
+|----------|------------------|-------|
+| Growth Metrics | aarrr-*, north-star-*, *-loops, *-testing | 12 |
+| AI/SEO | ai-*, *-seo-*, *-optimization | 8 |
+| Paid Advertising | meta-*, google-*, linkedin-*, twitter-* | 16 |
+| Marketing Tactics | gtm-*, *-marketing, *-strategy | 35 |
+| Operations | pricing-*, *-planning, *-compliance | 14 |
 
 ## Agent Assignments
 
 | Agent | Methodologies |
 |-------|---------------|
-| faion-growth-agent | M-GRO-*, M-OPS-* |
-| faion-ads-agent | M-ADS-* |
-| faion-content-agent | M-MKT-001, M-MKT-003, M-MKT-004 |
-| faion-landing-designer-agent | M-MKT-002 |
-| faion-email-agent | M-MKT-005, M-MKT-030 |
-| faion-social-agent | M-MKT-006, M-MKT-014, M-MKT-015 |
+| faion-growth-agent | aarrr-pirate-metrics, growth-loops, funnel-optimization, retention-loops |
+| faion-ads-agent | meta-*, google-*, linkedin-ads, twitter-ads, retargeting |
+| faion-content-agent | gtm-strategy, content-marketing, seo-fundamentals |
+| faion-landing-designer-agent | landing-page-design |
+| faion-email-agent | email-marketing, onboarding-emails |
+| faion-social-agent | social-media-strategy, twitter-x-growth, linkedin-strategy |
 
 ---
 
-*74 Methodologies | 4 Categories | 6 Agents*
+*77 Methodologies | 4 Categories | 6 Agents*

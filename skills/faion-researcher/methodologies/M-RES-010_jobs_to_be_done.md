@@ -1,3 +1,11 @@
+---
+id: M-RES-010
+name: "Jobs to Be Done (JTBD)"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-010: Jobs to Be Done (JTBD)
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #jtbd, #framework |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-pain-point-researcher-agent |
 
 ---

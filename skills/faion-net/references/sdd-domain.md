@@ -18,7 +18,7 @@ Writing specs, designs, implementation plans. Task creation and execution. Quali
 
 ## Technical Skills
 
-None directly - uses methodologies embedded in faion-sdd-domain-skill.
+None directly - uses methodologies embedded in faion-sdd.
 
 ## Methodologies
 

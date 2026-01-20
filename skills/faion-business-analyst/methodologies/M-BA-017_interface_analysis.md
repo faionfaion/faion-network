@@ -1,3 +1,11 @@
+---
+id: M-BA-017
+name: "Interface Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-017: Interface Analysis
 
 ## Metadata

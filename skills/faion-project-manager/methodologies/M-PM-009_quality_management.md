@@ -1,3 +1,11 @@
+---
+id: M-PM-009
+name: "Quality Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-009: Quality Management
 
 ## Metadata

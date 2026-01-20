@@ -8,34 +8,34 @@ Business operations and monetization methodologies covering pricing strategy, su
 
 ## Files Summary
 
-### Monetization (M-OPS-001 to M-OPS-005)
+### Monetization
 
 | File | ID | Description |
 |------|----|-------------|
-| M-OPS-001_pricing_strategy.md | M-OPS-001 | Value-based pricing: cost analysis, willingness-to-pay research, pricing models, tier design, psychological pricing |
-| M-OPS-002_subscription_models.md | M-OPS-002 | Subscription business models: SaaS, membership, replenishment; billing frequency, LTV optimization |
-| M-OPS-003_customer_support.md | M-OPS-003 | Support operations: ticket systems, response times, self-service, escalation, CSAT/NPS measurement |
-| M-OPS-004_churn_prevention.md | M-OPS-004 | Churn reduction: early warning signals, at-risk identification, win-back campaigns, exit surveys |
-| M-OPS-005_upselling_cross_selling.md | M-OPS-005 | Revenue expansion: upgrade triggers, feature gating, add-on products, expansion revenue |
+| pricing-strategy.md | pricing-strategy | Value-based pricing: cost analysis, willingness-to-pay research, pricing models, tier design, psychological pricing |
+| subscription-models.md | subscription-models | Subscription business models: SaaS, membership, replenishment; billing frequency, LTV optimization |
+| customer-support.md | customer-support | Support operations: ticket systems, response times, self-service, escalation, CSAT/NPS measurement |
+| churn-prevention.md | churn-prevention | Churn reduction: early warning signals, at-risk identification, win-back campaigns, exit surveys |
+| upselling-cross-selling.md | upselling-cross-selling | Revenue expansion: upgrade triggers, feature gating, add-on products, expansion revenue |
 
-### Business Development (M-OPS-006 to M-OPS-010)
-
-| File | ID | Description |
-|------|----|-------------|
-| M-OPS-006_partnership_strategy.md | M-OPS-006 | Partnership development: types (integration, co-marketing, reseller), outreach, deal structure |
-| M-OPS-007_financial_planning.md | M-OPS-007 | Financial modeling: revenue projections, burn rate, runway, unit economics, fundraising metrics |
-| M-OPS-008_legal_compliance.md | M-OPS-008 | Legal requirements: privacy (GDPR, CCPA), terms of service, contracts, IP protection |
-| M-OPS-009_tax_considerations.md | M-OPS-009 | Tax planning: business structure, sales tax, international taxation, deductions, compliance |
-| M-OPS-010_hiring_contractors.md | M-OPS-010 | Team building: contractor vs employee, hiring process, onboarding, remote management |
-
-### Operations Excellence (M-OPS-011 to M-OPS-014)
+### Business Development
 
 | File | ID | Description |
 |------|----|-------------|
-| M-OPS-011_automation_workflow.md | M-OPS-011 | Business automation: Zapier/Make workflows, email automation, reporting automation, ops efficiency |
-| M-OPS-012_customer_success.md | M-OPS-012 | CS operations: onboarding programs, health scores, QBRs, renewal management, advocacy |
-| M-OPS-013_metrics_dashboards.md | M-OPS-013 | Business dashboards: KPI selection, visualization, real-time monitoring, alerting, reporting cadence |
-| M-OPS-014_annual_planning.md | M-OPS-014 | Annual planning: OKRs, budgeting, roadmap alignment, quarterly reviews, retrospectives |
+| partnership-strategy.md | partnership-strategy | Partnership development: types (integration, co-marketing, reseller), outreach, deal structure |
+| financial-planning.md | financial-planning | Financial modeling: revenue projections, burn rate, runway, unit economics, fundraising metrics |
+| legal-compliance.md | legal-compliance | Legal requirements: privacy (GDPR, CCPA), terms of service, contracts, IP protection |
+| tax-considerations.md | tax-considerations | Tax planning: business structure, sales tax, international taxation, deductions, compliance |
+| hiring-contractors.md | hiring-contractors | Team building: contractor vs employee, hiring process, onboarding, remote management |
+
+### Operations Excellence
+
+| File | ID | Description |
+|------|----|-------------|
+| automation-workflow.md | automation-workflow | Business automation: Zapier/Make workflows, email automation, reporting automation, ops efficiency |
+| customer-success.md | customer-success | CS operations: onboarding programs, health scores, QBRs, renewal management, advocacy |
+| metrics-dashboards.md | metrics-dashboards | Business dashboards: KPI selection, visualization, real-time monitoring, alerting, reporting cadence |
+| annual-planning.md | annual-planning | Annual planning: OKRs, budgeting, roadmap alignment, quarterly reviews, retrospectives |
 
 ## Key Frameworks
 
@@ -83,10 +83,10 @@ Business operations and monetization methodologies covering pricing strategy, su
 
 ## Related Methodologies
 
-- M-GRO-001: AARRR Pirate Metrics (retention, revenue stages)
-- M-GRO-004: A/B Testing Framework (pricing tests)
-- M-MKT-005: Email Marketing (retention emails)
-- M-MKT-029: Free Trial Optimization
+- aarrr-pirate-metrics: AARRR Pirate Metrics (retention, revenue stages)
+- ab-testing-framework: A/B Testing Framework (pricing tests)
+- email-marketing: Email Marketing (retention emails)
+- free-trial-optimization: Free Trial Optimization
 
 ---
 

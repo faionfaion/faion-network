@@ -1,3 +1,11 @@
+---
+id: M-UX-011
+name: "User Interviews"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-011: User Interviews
 
 ## Metadata

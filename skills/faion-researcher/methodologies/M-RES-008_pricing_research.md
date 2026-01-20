@@ -1,3 +1,11 @@
+---
+id: M-RES-008
+name: "Pricing Research"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-008: Pricing Research
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #pricing, #monetization |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-pricing-researcher-agent |
 
 ---

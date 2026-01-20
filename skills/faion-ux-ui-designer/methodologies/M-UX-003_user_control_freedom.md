@@ -1,3 +1,11 @@
+---
+id: M-UX-003
+name: "User Control and Freedom"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-003: User Control and Freedom
 
 ## Metadata

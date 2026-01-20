@@ -1,3 +1,11 @@
+---
+id: M-BA-007
+name: "Requirements Lifecycle Management"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-007: Requirements Lifecycle Management
 
 ## Metadata

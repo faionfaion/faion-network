@@ -1,3 +1,11 @@
+---
+id: M-UX-006
+name: "Recognition Rather Than Recall"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-006: Recognition Rather Than Recall
 
 ## Metadata

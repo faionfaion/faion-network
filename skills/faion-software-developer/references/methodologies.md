@@ -1563,8 +1563,8 @@ Task(subagent_type="faion-devops-agent",
 | Skill | Relationship |
 |-------|-------------|
 | faion-api-skill | API design patterns |
-| faion-sdd-domain-skill | Specs and design docs |
-| faion-product-domain-skill | Requirements for development |
+| faion-sdd | Specs and design docs |
+| faion-product-manager | Requirements for development |
 
 ---
 

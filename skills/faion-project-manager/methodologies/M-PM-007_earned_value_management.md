@@ -1,3 +1,11 @@
+---
+id: M-PM-007
+name: "Earned Value Management (EVM)"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-007: Earned Value Management (EVM)
 
 ## Metadata

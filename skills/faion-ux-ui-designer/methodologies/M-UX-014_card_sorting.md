@@ -1,3 +1,11 @@
+---
+id: M-UX-014
+name: "Card Sorting"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-014: Card Sorting
 
 ## Metadata

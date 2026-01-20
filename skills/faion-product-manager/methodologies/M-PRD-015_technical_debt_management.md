@@ -1,3 +1,11 @@
+---
+id: M-PRD-015
+name: "Technical Debt Management"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-015: Technical Debt Management
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #technical-debt, #engineering |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-code-agent |
 
 ---

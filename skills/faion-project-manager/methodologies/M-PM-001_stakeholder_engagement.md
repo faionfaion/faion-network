@@ -1,3 +1,11 @@
+---
+id: M-PM-001
+name: "Stakeholder Engagement"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-001: Stakeholder Engagement
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-PRD-011
+name: "Release Planning"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-011: Release Planning
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #release, #planning |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-impl-planner-agent |
 
 ---

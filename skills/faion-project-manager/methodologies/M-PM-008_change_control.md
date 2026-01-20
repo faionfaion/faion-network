@@ -1,3 +1,11 @@
+---
+id: M-PM-008
+name: "Change Control"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-008: Change Control
 
 ## Metadata

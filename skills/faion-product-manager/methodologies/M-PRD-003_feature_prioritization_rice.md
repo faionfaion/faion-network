@@ -1,3 +1,11 @@
+---
+id: M-PRD-003
+name: "Feature Prioritization (RICE)"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-003: Feature Prioritization (RICE)
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Beginner |
 | **Tags** | #product, #prioritization, #rice |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-feature-proposer-agent |
 
 ---

@@ -1,3 +1,11 @@
+---
+id: M-RES-020
+name: "Risk Assessment"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-020: Risk Assessment
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #risk, #planning |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

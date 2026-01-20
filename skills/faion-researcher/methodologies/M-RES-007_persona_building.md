@@ -1,3 +1,11 @@
+---
+id: M-RES-007
+name: "Persona Building"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-007: Persona Building
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #persona, #audience |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-persona-builder-agent |
 
 ---

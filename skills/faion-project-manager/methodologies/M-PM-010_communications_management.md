@@ -1,3 +1,11 @@
+---
+id: M-PM-010
+name: "Communications Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-010: Communications Management
 
 ## Metadata

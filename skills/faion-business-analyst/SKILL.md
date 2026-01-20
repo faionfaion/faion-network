@@ -1758,7 +1758,7 @@ faion-ba-agent
 # Directory Structure
 
 ```
-~/.claude/skills/faion-ba-domain-skill/
+~/.claude/skills/faion-business-analyst/
 |
 v-- SKILL.md (this file)
 ```

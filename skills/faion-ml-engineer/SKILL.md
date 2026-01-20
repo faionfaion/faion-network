@@ -336,8 +336,8 @@ response = client.chat.completions.create(
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-developer-domain-skill | Application integration |
-| faion-devops-domain-skill | Model deployment |
+| faion-software-developer | Application integration |
+| faion-devops-engineer | Model deployment |
 
 ---
 

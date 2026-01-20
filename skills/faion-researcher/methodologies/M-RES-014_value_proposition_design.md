@@ -1,3 +1,11 @@
+---
+id: M-RES-014
+name: "Value Proposition Design"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-014: Value Proposition Design
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #value-proposition, #positioning |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-idea-generator-agent |
 
 ---

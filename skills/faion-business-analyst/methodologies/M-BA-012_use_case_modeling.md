@@ -1,3 +1,11 @@
+---
+id: M-BA-012
+name: "Use Case Modeling"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-012: Use Case Modeling
 
 ## Metadata

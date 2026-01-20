@@ -1,3 +1,11 @@
+---
+id: M-BA-013
+name: "User Story Mapping"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-013: User Story Mapping
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-032
+name: "Diary Studies"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-032: Diary Studies
 
 ## Metadata

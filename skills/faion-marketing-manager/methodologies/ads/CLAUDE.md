@@ -8,41 +8,41 @@ Paid advertising methodologies covering Meta (Facebook/Instagram), Google, Linke
 
 ## Files Summary
 
-### Meta Ads (M-ADS-001 to M-ADS-004)
+### Meta Ads
 
 | File | ID | Description |
 |------|----|-------------|
-| M-ADS-001_meta_campaign_setup.md | M-ADS-001 | Meta Ads Manager campaign setup: objectives, budget (CBO), ad sets, pixel installation, learning phase management |
-| M-ADS-002_meta_targeting.md | M-ADS-002 | Core audiences (interests, demographics), Custom audiences (website, email), Lookalike audiences for expansion |
-| M-ADS-003_meta_creative.md | M-ADS-003 | Ad creative development: image/video specs, headlines, primary text, CTA optimization, creative testing |
-| M-ADS-004_meta_reporting.md | M-ADS-004 | Ads Manager reporting: key metrics (CPM, CPC, CTR, CPA, ROAS), breakdowns, custom columns, export |
+| meta-campaign-setup.md | meta-campaign-setup | Meta Ads Manager campaign setup: objectives, budget (CBO), ad sets, pixel installation, learning phase management |
+| meta-targeting.md | meta-targeting | Core audiences (interests, demographics), Custom audiences (website, email), Lookalike audiences for expansion |
+| meta-creative.md | meta-creative | Ad creative development: image/video specs, headlines, primary text, CTA optimization, creative testing |
+| meta-reporting.md | meta-reporting | Ads Manager reporting: key metrics (CPM, CPC, CTR, CPA, ROAS), breakdowns, custom columns, export |
 
-### Google Ads (M-ADS-005 to M-ADS-008)
-
-| File | ID | Description |
-|------|----|-------------|
-| M-ADS-005_google_campaign_setup.md | M-ADS-005 | Google Ads campaign types (Search, Display, Video, Shopping, PMax), conversion tracking, GA4 linking |
-| M-ADS-006_google_keywords.md | M-ADS-006 | Keyword research, match types (broad, phrase, exact), negative keywords, search term analysis |
-| M-ADS-007_google_creative.md | M-ADS-007 | Responsive Search Ads (RSAs), Display ads, video ad formats, asset requirements |
-| M-ADS-008_google_reporting.md | M-ADS-008 | Google Ads reporting: metrics, segments, custom reports, automated rules |
-
-### Platform-Specific (M-ADS-009 to M-ADS-010)
+### Google Ads
 
 | File | ID | Description |
 |------|----|-------------|
-| M-ADS-009_linkedin_ads.md | M-ADS-009 | LinkedIn Campaign Manager: B2B targeting (job title, company size, industry), Lead Gen Forms, Sponsored Content |
-| M-ADS-010_twitter_ads.md | M-ADS-010 | Twitter/X Ads: promoted tweets, follower targeting, conversation targeting, video ads |
+| google-campaign-setup.md | google-campaign-setup | Google Ads campaign types (Search, Display, Video, Shopping, PMax), conversion tracking, GA4 linking |
+| google-keywords.md | google-keywords | Keyword research, match types (broad, phrase, exact), negative keywords, search term analysis |
+| google-creative.md | google-creative | Responsive Search Ads (RSAs), Display ads, video ad formats, asset requirements |
+| google-reporting.md | google-reporting | Google Ads reporting: metrics, segments, custom reports, automated rules |
 
-### Cross-Platform (M-ADS-011 to M-ADS-016)
+### Platform-Specific
 
 | File | ID | Description |
 |------|----|-------------|
-| M-ADS-011_analytics_setup.md | M-ADS-011 | Analytics integration: GA4 setup, UTM parameters, event tracking, goals configuration |
-| M-ADS-012_conversion_tracking.md | M-ADS-012 | Conversion tracking across platforms: pixels, tags, server-side tracking, CAPI |
-| M-ADS-013_attribution_models.md | M-ADS-013 | Attribution models (last-click, first-click, linear, data-driven), cross-channel attribution |
-| M-ADS-014_budget_optimization.md | M-ADS-014 | Budget allocation strategies, scaling rules (20%/day), killing underperformers, CPA targets |
-| M-ADS-015_ab_testing_ads.md | M-ADS-015 | Ad creative A/B testing: hooks, body, CTA, format testing; statistical significance |
-| M-ADS-016_retargeting.md | M-ADS-016 | Retargeting strategies: website visitors, cart abandoners, customer lists, timing windows |
+| linkedin-ads.md | linkedin-ads | LinkedIn Campaign Manager: B2B targeting (job title, company size, industry), Lead Gen Forms, Sponsored Content |
+| twitter-ads.md | twitter-ads | Twitter/X Ads: promoted tweets, follower targeting, conversation targeting, video ads |
+
+### Cross-Platform
+
+| File | ID | Description |
+|------|----|-------------|
+| analytics-setup.md | analytics-setup | Analytics integration: GA4 setup, UTM parameters, event tracking, goals configuration |
+| conversion-tracking.md | conversion-tracking | Conversion tracking across platforms: pixels, tags, server-side tracking, CAPI |
+| attribution-models.md | attribution-models | Attribution models (last-click, first-click, linear, data-driven), cross-channel attribution |
+| budget-optimization.md | budget-optimization | Budget allocation strategies, scaling rules (20%/day), killing underperformers, CPA targets |
+| ab-testing-ads.md | ab-testing-ads | Ad creative A/B testing: hooks, body, CTA, format testing; statistical significance |
+| retargeting.md | retargeting | Retargeting strategies: website visitors, cart abandoners, customer lists, timing windows |
 
 ## Key Concepts
 
@@ -77,9 +77,9 @@ LinkedIn: Campaign (Objective) > Ad (Sponsored Content/Lead Gen)
 
 ## Related Methodologies
 
-- M-MKT-023: Paid Acquisition (overview)
-- M-MKT-024: Conversion Optimization
-- M-GRO-004: A/B Testing Framework
+- paid-acquisition: Paid Acquisition (overview)
+- conversion-optimization: Conversion Optimization
+- ab-testing-framework: A/B Testing Framework
 
 ---
 

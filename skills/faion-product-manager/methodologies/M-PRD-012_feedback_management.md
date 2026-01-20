@@ -1,3 +1,11 @@
+---
+id: M-PRD-012
+name: "Feedback Management"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-012: Feedback Management
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Beginner |
 | **Tags** | #product, #feedback, #users |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-gap-finder-agent |
 
 ---

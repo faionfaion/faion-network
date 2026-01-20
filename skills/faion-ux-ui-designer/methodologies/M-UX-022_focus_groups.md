@@ -1,3 +1,11 @@
+---
+id: M-UX-022
+name: "Focus Groups"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-022: Focus Groups
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-031
+name: "Voice UI Design"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-031: Voice UI Design
 
 ## Metadata

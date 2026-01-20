@@ -1,3 +1,11 @@
+---
+id: M-UX-025
+name: "Design Critique"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-025: Design Critique
 
 ## Metadata

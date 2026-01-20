@@ -1,3 +1,11 @@
+---
+id: M-PM-004
+name: "Schedule Development"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-004: Schedule Development
 
 ## Metadata

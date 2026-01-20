@@ -1,3 +1,11 @@
+---
+id: M-PM-005
+name: "Cost Estimation"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-005: Cost Estimation
 
 ## Metadata

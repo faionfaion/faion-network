@@ -1453,8 +1453,8 @@ Task(subagent_type="faion-growth-agent",
 
 | Skill | Relationship |
 |-------|-------------|
-| faion-research-domain-skill | Provides market data for marketing |
-| faion-product-domain-skill | Provides product positioning |
+| faion-researcher | Provides market data for marketing |
+| faion-product-manager | Provides product positioning |
 | faion-seo-skill | SEO optimization |
 
 ---

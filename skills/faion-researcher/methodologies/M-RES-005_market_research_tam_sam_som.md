@@ -1,3 +1,11 @@
+---
+id: M-RES-005
+name: "Market Research (TAM/SAM/SOM)"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-005: Market Research (TAM/SAM/SOM)
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #market, #tam, #sam, #som |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

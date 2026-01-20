@@ -1,3 +1,11 @@
+---
+id: M-BA-008
+name: "Solution Assessment"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-008: Solution Assessment
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-PRD-016
+name: "Product Lifecycle Management"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-016: Product Lifecycle Management
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #lifecycle, #strategy |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-impl-planner-agent |
 
 ---

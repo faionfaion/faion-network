@@ -1,3 +1,11 @@
+---
+id: M-PRD-013
+name: "Product Analytics"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-013: Product Analytics
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #analytics, #data |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-market-researcher-agent |
 
 ---

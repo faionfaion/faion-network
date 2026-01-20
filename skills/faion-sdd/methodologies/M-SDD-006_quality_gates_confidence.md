@@ -1,3 +1,11 @@
+---
+id: M-SDD-006
+name: "Quality Gates & Confidence Checks"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-006: Quality Gates & Confidence Checks
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | SDD Foundation |
 | **Difficulty** | Intermediate |
 | **Tags** | #methodology, #sdd, #quality, #confidence |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-hallucination-checker-agent |
 
 ---

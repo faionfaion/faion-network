@@ -1,3 +1,11 @@
+---
+id: M-BA-005
+name: "Requirements Traceability"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-005: Requirements Traceability
 
 ## Metadata

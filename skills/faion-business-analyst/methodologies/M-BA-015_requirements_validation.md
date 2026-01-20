@@ -1,3 +1,11 @@
+---
+id: M-BA-015
+name: "Requirements Validation"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-015: Requirements Validation
 
 ## Metadata

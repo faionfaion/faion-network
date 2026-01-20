@@ -1,3 +1,11 @@
+---
+id: M-UX-013
+name: "Surveys and Questionnaires"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-013: Surveys and Questionnaires
 
 ## Metadata

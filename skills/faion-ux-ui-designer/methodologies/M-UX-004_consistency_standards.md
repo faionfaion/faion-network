@@ -1,3 +1,11 @@
+---
+id: M-UX-004
+name: "Consistency and Standards"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-004: Consistency and Standards
 
 ## Metadata

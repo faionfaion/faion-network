@@ -1,3 +1,11 @@
+---
+id: M-UX-015
+name: "Personas"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-015: Personas
 
 ## Metadata

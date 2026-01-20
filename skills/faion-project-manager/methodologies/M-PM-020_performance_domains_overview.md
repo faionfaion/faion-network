@@ -1,3 +1,11 @@
+---
+id: M-PM-020
+name: "Performance Domains Overview"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-020: Performance Domains Overview
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-RES-006
+name: "Competitor Analysis"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-006: Competitor Analysis
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #competitors, #analysis |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-competitor-analyzer-agent |
 
 ---

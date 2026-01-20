@@ -474,7 +474,7 @@ Call `faion-sdd-reviewer-agent (mode: plan)` agent. Checks: 100k compliance, dep
 
 **Rule:** If uncertain, estimate higher and split.
 
-**Output:** `implementation-plan.md` → Next: Task Creation (via faion-sdd-domain-skill)
+**Output:** `implementation-plan.md` → Next: Task Creation (via faion-sdd)
 
 ---
 

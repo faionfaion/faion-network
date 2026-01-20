@@ -1,3 +1,11 @@
+---
+id: M-PRD-001
+name: "MVP Scoping"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-001: MVP Scoping
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Beginner |
 | **Tags** | #product, #mvp, #scoping |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mvp-scope-analyzer-agent |
 
 ---

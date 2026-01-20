@@ -1,3 +1,11 @@
+---
+id: M-PM-017
+name: "Project Closure"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-017: Project Closure
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-029
+name: "Information Architecture"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-029: Information Architecture
 
 ## Metadata

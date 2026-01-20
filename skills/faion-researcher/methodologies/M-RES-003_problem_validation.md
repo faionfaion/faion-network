@@ -1,3 +1,11 @@
+---
+id: M-RES-003
+name: "Problem Validation"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-003: Problem Validation
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #validation, #problem |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-problem-validator-agent |
 
 ---

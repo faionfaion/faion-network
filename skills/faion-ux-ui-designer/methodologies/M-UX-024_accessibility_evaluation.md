@@ -1,3 +1,11 @@
+---
+id: M-UX-024
+name: "Accessibility Evaluation"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-024: Accessibility Evaluation
 
 ## Metadata

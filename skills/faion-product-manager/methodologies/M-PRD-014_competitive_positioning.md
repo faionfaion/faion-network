@@ -1,3 +1,11 @@
+---
+id: M-PRD-014
+name: "Competitive Positioning"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-014: Competitive Positioning
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #positioning, #competition |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-competitor-analyzer-agent |
 
 ---

@@ -1,3 +1,11 @@
+---
+id: M-RES-019
+name: "Success Metrics Definition"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-019: Success Metrics Definition
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #metrics, #kpis |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

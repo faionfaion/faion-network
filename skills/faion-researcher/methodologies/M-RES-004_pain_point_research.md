@@ -1,3 +1,11 @@
+---
+id: M-RES-004
+name: "Pain Point Research"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-004: Pain Point Research
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #pain-points, #discovery |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-pain-point-researcher-agent |
 
 ---

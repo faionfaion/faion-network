@@ -1,3 +1,11 @@
+---
+id: M-UX-018
+name: "Prototyping"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-018: Prototyping
 
 ## Metadata

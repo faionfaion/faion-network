@@ -63,8 +63,10 @@ The skill routes requests based on keywords:
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `faion-{name}-skill` | `faion-python-skill` |
-| Agent | `faion-{name}-agent` | `faion-pm-agent` |
+| Skill (orchestrator) | `faion-net` | `faion-net` |
+| Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
+| Agent | `faion-{name}-agent` | `faion-task-executor-YOLO-agent` |
 | Command | `{verb}` | `commit`, `deploy` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 
@@ -72,7 +74,7 @@ The skill routes requests based on keywords:
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `{project}-{name}-skill` | `myapp-auth-skill` |
+| Skill | `{project}-{name}` | `myapp-auth`, `myapp-deploy` |
 | Agent | `{project}-{name}-agent` | `myapp-deploy-agent` |
 | Command | `{project}-{action}` | `myapp-build` |
 | Hook | `{project}-{event}-{purpose}-hook.{ext}` | `myapp-pre-bash-lint-hook.sh` |

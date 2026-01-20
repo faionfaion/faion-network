@@ -1,3 +1,11 @@
+---
+id: M-SDD-001
+name: "SDD Workflow Overview"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-001: SDD Workflow Overview
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | SDD Foundation |
 | **Difficulty** | Beginner |
 | **Tags** | #methodology, #sdd, #workflow |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-task-executor-agent |
 
 ---

@@ -1,3 +1,11 @@
+---
+id: M-RES-018
+name: "Distribution Channel Research"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-018: Distribution Channel Research
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #distribution, #channels |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

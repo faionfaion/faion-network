@@ -1,3 +1,11 @@
+---
+id: M-BA-004
+name: "Requirements Documentation"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-004: Requirements Documentation
 
 ## Metadata

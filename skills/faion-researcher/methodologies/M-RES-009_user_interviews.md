@@ -1,3 +1,11 @@
+---
+id: M-RES-009
+name: "User Interviews"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-009: User Interviews
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #interviews, #users |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-persona-builder-agent |
 
 ---

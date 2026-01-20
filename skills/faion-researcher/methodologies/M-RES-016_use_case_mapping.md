@@ -1,3 +1,11 @@
+---
+id: M-RES-016
+name: "Use Case Mapping"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-016: Use Case Mapping
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #use-cases, #requirements |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-persona-builder-agent |
 
 ---

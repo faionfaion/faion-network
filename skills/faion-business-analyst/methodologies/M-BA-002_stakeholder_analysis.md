@@ -1,3 +1,11 @@
+---
+id: M-BA-002
+name: "Stakeholder Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-002: Stakeholder Analysis
 
 ## Metadata

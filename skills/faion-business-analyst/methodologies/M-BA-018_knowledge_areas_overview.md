@@ -1,3 +1,11 @@
+---
+id: M-BA-018
+name: "BABOK Knowledge Areas Overview"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-018: BABOK Knowledge Areas Overview
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-030
+name: "Mobile UX Design"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-030: Mobile UX Design
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-SDD-002
+name: "Writing Specifications"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-002: Writing Specifications
 
 ## Metadata

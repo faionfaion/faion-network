@@ -1,3 +1,11 @@
+---
+id: M-BA-016
+name: "Requirements Prioritization"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-016: Requirements Prioritization
 
 ## Metadata

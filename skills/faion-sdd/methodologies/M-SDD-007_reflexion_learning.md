@@ -1,3 +1,11 @@
+---
+id: M-SDD-007
+name: "Reflexion & Learning"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-007: Reflexion & Learning
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | SDD Foundation |
 | **Difficulty** | Intermediate |
 | **Tags** | #methodology, #sdd, #reflexion, #learning |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-task-executor-agent |
 
 ---

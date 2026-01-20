@@ -1,3 +1,11 @@
+---
+id: M-PM-016
+name: "Benefits Realization"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-016: Benefits Realization
 
 ## Metadata

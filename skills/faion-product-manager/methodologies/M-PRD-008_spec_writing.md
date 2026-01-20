@@ -1,3 +1,11 @@
+---
+id: M-PRD-008
+name: "Product Specification Writing"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-008: Product Specification Writing
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #specification, #prd |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-spec-reviewer-agent |
 
 ---

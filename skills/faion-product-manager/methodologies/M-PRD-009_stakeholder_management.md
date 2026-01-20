@@ -1,3 +1,11 @@
+---
+id: M-PRD-009
+name: "Stakeholder Management"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-009: Stakeholder Management
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #stakeholders, #communication |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-pm-agent |
 
 ---

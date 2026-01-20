@@ -338,8 +338,8 @@ groups:
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-developer-domain-skill | Application code to deploy |
-| faion-ml-domain-skill | ML model deployment |
+| faion-software-developer | Application code to deploy |
+| faion-ml-engineer | ML model deployment |
 
 ---
 

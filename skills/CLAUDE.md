@@ -2,13 +2,13 @@
 
 Claude Code skills for the faion-network framework.
 
-## Active Skills (14)
+## Active Skills (15)
 
 ### Orchestrators
 
 | Skill | Description | Methodologies |
 |-------|-------------|---------------|
-| **faion-net** | Universal orchestrator for all software projects | 456 methodologies |
+| **faion-net** | Universal orchestrator for all software projects | 501 methodologies |
 | **faion-sdd** | Specification-Driven Development workflow | M-SDD-001 to M-SDD-017 |
 | **faion-feature-executor** | Sequential task execution with quality gates | Uses faion-task-executor-YOLO-agent |
 
@@ -26,6 +26,7 @@ Claude Code skills for the faion-network framework.
 | **faion-ux-ui-designer** | UX/UI | Nielsen heuristics, accessibility, prototyping |
 | **faion-researcher** | Research | Market research, competitors, validation |
 | **faion-communicator** | Communication | Active listening, Mom Test, conflict resolution, SPIN |
+| **faion-hr-recruiter** | HR/Recruiting | Talent acquisition, employer branding, interviewing, onboarding |
 | **faion-claude-code** | Claude Code | Skills, agents, hooks, MCP, IDE integration |
 
 ## Subfolders
@@ -54,14 +55,19 @@ skills/
 ├── faion-ux-ui-designer/         # UX/UI Design
 ├── faion-researcher/             # Research
 ├── faion-communicator/           # Communication & Stakeholder Dialogue
+├── faion-hr-recruiter/           # HR & Recruiting
 └── faion-claude-code/            # Claude Code config
 ```
 
 ## Naming Conventions
 
 - **Skills**: `faion-{domain}` (e.g., faion-software-developer)
-- **Methodologies**: `M-{DOMAIN}-{NNN}` (e.g., M-DEV-001)
+- **Methodologies**:
+  - Legacy: `M-{DOMAIN}-{NNN}` (e.g., M-DEV-001)
+  - Semantic: `{name}.md` with id `{name}` (e.g., gtm-strategy.md)
 - **Agent**: `faion-task-executor-YOLO-agent`
+
+**Note:** faion-marketing-manager and faion-hr-recruiter use semantic naming (77 and 45 methodologies respectively).
 
 ## Usage
 

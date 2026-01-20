@@ -16,7 +16,7 @@ Provides patterns and guidance for Google Ads API operations including campaign 
 ## 3-Layer Architecture
 
 ```
-Layer 1: Domain Skills (faion-marketing-domain-skill) - orchestrator
+Layer 1: Domain Skills (faion-marketing-manager) - orchestrator
     |
 Layer 2: Agents (faion-ads-agent) - executor
     |

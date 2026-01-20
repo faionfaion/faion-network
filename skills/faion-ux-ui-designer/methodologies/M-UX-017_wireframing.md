@@ -1,3 +1,11 @@
+---
+id: M-UX-017
+name: "Wireframing"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-017: Wireframing
 
 ## Metadata

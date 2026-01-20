@@ -1,3 +1,11 @@
+---
+id: M-PRD-006
+name: "User Story Mapping"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-006: User Story Mapping
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #user-stories, #mapping |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-spec-analyzer-agent |
 
 ---

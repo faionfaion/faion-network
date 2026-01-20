@@ -20,9 +20,9 @@ Claude Code loads `.claude/` from TWO locations:
 │   │
 │   ├── skills/                         # ALL skills (global + project)
 │   │   ├── faion-net/                  # Global: main orchestrator
-│   │   ├── faion-sdd-domain-skill/     # Global: SDD workflow
-│   │   ├── faion-*-skill/              # Global: other skills
-│   │   └── myapp-*-skill/              # Project: gitignored
+│   │   ├── faion-sdd/                  # Global: SDD workflow
+│   │   ├── faion-{role}/               # Global: role-based skills (e.g., faion-software-developer)
+│   │   └── {project}-*/                # Project: gitignored
 │   │
 │   ├── agents/                         # ALL agents (global + project)
 │   │   ├── faion-*-agent.md            # Global: committed
@@ -140,19 +140,18 @@ backlog/ → todo/ → in-progress/ → done/
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `faion-{name}-skill` | `faion-python-skill` |
-| Domain Skill | `faion-{name}-domain-skill` | `faion-sdd-domain-skill` |
-| Agent | `faion-{name}-agent` | `faion-pm-agent` |
+| Skill (orchestrator) | `faion-net` | `faion-net` |
+| Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
+| Agent | `faion-{name}-agent` | `faion-task-executor-YOLO-agent` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 | Command | `{verb}` (no prefix) | `commit`, `deploy` |
-
-**Exception:** `faion-net` (main orchestrator only)
 
 ### Project-Specific
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `{project}-{name}-skill` | `myapp-auth-skill` |
+| Skill | `{project}-{name}` | `myapp-auth`, `myapp-deploy` |
 | Agent | `{project}-{name}-agent` | `myapp-deploy-agent` |
 | Hook | `{project}-{event}-{purpose}-hook.{ext}` | `myapp-pre-bash-lint-hook.sh` |
 | Command | `{project}-{action}` | `myapp-build` |
@@ -178,8 +177,8 @@ Add `.gitignore` **at the same level as `.claude/`** (sibling, not inside):
 
 ```gitignore
 # Project-specific Claude components (not committed to faion-network)
-.claude/skills/*-*-skill/
-!.claude/skills/faion-*-skill/
+.claude/skills/*
+!.claude/skills/faion-*/
 
 .claude/agents/*-*-agent.md
 !.claude/agents/faion-*-agent.md

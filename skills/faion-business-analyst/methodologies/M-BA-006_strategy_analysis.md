@@ -1,3 +1,11 @@
+---
+id: M-BA-006
+name: "Strategy Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-006: Strategy Analysis
 
 ## Metadata

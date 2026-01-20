@@ -1203,7 +1203,7 @@ variants = generate_variants(
 | **faion-video-gen-skill** | Generate source images for image-to-video |
 | **faion-openai-api-skill** | DALL-E API details |
 | **faion-langchain-skill** | Build image generation chains |
-| **faion-marketing-domain-skill** | Social media and ad visuals |
+| **faion-marketing-manager** | Social media and ad visuals |
 
 ---
 

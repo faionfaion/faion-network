@@ -1,6 +1,6 @@
 ---
 name: faion-net
-description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX. 60+ agents, 40+ skills, 250+ methodologies."
+description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX, HR/recruiting. 60+ agents, 15 skills, 501 methodologies."
 user-invocable: true
 ---
 
@@ -53,7 +53,7 @@ AskUserQuestion([
 **Behavior:**
 - Execute tasks completely without asking questions
 - Make decisions autonomously using best practices
-- Use appropriate methodologies from 443 available
+- Use appropriate methodologies from 494 available
 - Document assumptions in code/comments
 - Complete tasks or report blockers with details
 
@@ -213,22 +213,22 @@ Is this correct? Shall I proceed?"
 |-------|---------|
 | `faion-sdd` | SDD orchestrator: specs, designs, implementation plans, constitutions, task lifecycle, quality gates, reflexion |
 | `faion-feature-executor` | SDD feature executor: sequential tasks with quality gates, tests/coverage, code review |
-| `faion-researcher` | Idea generation (SCAMPER), market research, competitors, personas, pricing, validation. 9 modes |
+| `faion-researcher` | Idea generation (SCAMPER), market research, competitors, personas, pricing, validation. 20 methodologies |
 | `faion-product-manager` | MVP/MLP planning, RICE/MoSCoW prioritization, roadmaps, backlog, user stories, OKRs. 18 methodologies |
 | `faion-software-developer` | Python, JS/TS, Django, FastAPI, React, APIs, testing, DevOps, UI design. 68 methodologies |
-| `faion-devops-engineer` | Docker, K8s, Terraform, AWS/GCP/Azure, CI/CD, monitoring, IaC, nginx |
-| `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning, LangChain, vector DBs, prompt engineering |
-| `faion-marketing-manager` | GTM, landing pages, SEO/SEM, content, ads, email, social media. 72 methodologies |
-| `faion-project-manager` | PMBOK 7/8 (8 Domains, 12 Principles), PM tools, risk, EVM, agile. 32 methodologies |
+| `faion-devops-engineer` | Docker, K8s, Terraform, AWS/GCP/Azure, CI/CD, monitoring, IaC, nginx. 20 methodologies |
+| `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning, LangChain, vector DBs, prompt engineering. 30 methodologies |
+| `faion-marketing-manager` | GTM, landing pages, SEO/SEM, content, ads, email, social media. 74 methodologies |
+| `faion-project-manager` | PMBOK 7/8 (8 Domains, 12 Principles), PM tools, risk, EVM, agile. 36 methodologies |
 | `faion-business-analyst` | IIBA BABOK v3: 6 Knowledge Areas, requirements, stakeholders, process modeling. 30 tasks |
 | `faion-ux-ui-designer` | Nielsen Norman 10, UX research, usability testing, personas, journey mapping. 32 methodologies |
-| `faion-communicator` | Stakeholder dialogue, Mom Test, conflict resolution, feedback, selling ideas, storytelling, negotiation. 9 methodologies |
+| `faion-communicator` | Stakeholder dialogue, Mom Test, conflict resolution, feedback, selling ideas, storytelling, negotiation. 10 methodologies |
 | `faion-claude-code` | Claude Code config: skills, agents, commands, hooks, MCP servers, IDE integrations |
 | `faion-net` | This orchestrator (recursive for complex multi-domain tasks) |
 
 ---
 
-## All Methodologies (250+)
+## All Methodologies (494)
 
 ### Research (M-RES-*)
 | ID | Name |
@@ -444,6 +444,60 @@ Is this correct? Shall I proceed?"
 | M-MKT-039 | Funnel Analysis |
 | M-MKT-040 | Customer Journey |
 
+### Growth (M-GRO-*)
+| ID | Name |
+|----|------|
+| M-GRO-001 | AARRR Pirate Metrics |
+| M-GRO-002 | North Star Metric |
+| M-GRO-003 | Growth Loops |
+| M-GRO-004 | A/B Testing Framework |
+| M-GRO-005 | Multivariate Testing |
+| M-GRO-006 | Statistical Significance |
+| M-GRO-007 | Cohort Analysis |
+| M-GRO-008 | Funnel Optimization |
+| M-GRO-009 | Viral Coefficient |
+| M-GRO-010 | Product-Led Growth |
+| M-GRO-011 | Activation Rate |
+| M-GRO-012 | Retention Loops |
+
+### Advertising (M-ADS-*)
+| ID | Name |
+|----|------|
+| M-ADS-001 | Meta Campaign Setup |
+| M-ADS-002 | Meta Targeting |
+| M-ADS-003 | Meta Creative |
+| M-ADS-004 | Meta Reporting |
+| M-ADS-005 | Google Campaign Setup |
+| M-ADS-006 | Google Keywords |
+| M-ADS-007 | Google Creative |
+| M-ADS-008 | Google Reporting |
+| M-ADS-009 | LinkedIn Ads |
+| M-ADS-010 | Twitter Ads |
+| M-ADS-011 | Analytics Setup |
+| M-ADS-012 | Conversion Tracking |
+| M-ADS-013 | Attribution Models |
+| M-ADS-014 | Budget Optimization |
+| M-ADS-015 | A/B Testing Ads |
+| M-ADS-016 | Retargeting |
+
+### Business Operations (M-BIZ-*)
+| ID | Name |
+|----|------|
+| M-BIZ-001 | Pricing Strategy |
+| M-BIZ-002 | Subscription Models |
+| M-BIZ-003 | Customer Support |
+| M-BIZ-004 | Churn Prevention |
+| M-BIZ-005 | Upselling & Cross-selling |
+| M-BIZ-006 | Partnership Strategy |
+| M-BIZ-007 | Financial Planning |
+| M-BIZ-008 | Legal Compliance |
+| M-BIZ-009 | Tax Considerations |
+| M-BIZ-010 | Hiring Contractors |
+| M-BIZ-011 | Automation Workflow |
+| M-BIZ-012 | Customer Success |
+| M-BIZ-013 | Metrics Dashboards |
+| M-BIZ-014 | Annual Planning |
+
 ### Project Management (M-PM-*)
 | ID | Name |
 |----|------|
@@ -552,6 +606,20 @@ Is this correct? Shall I proceed?"
 | M-SDD-011 | Pattern Memory |
 | M-SDD-012 | Mistake Memory |
 
+### Communication (M-COM-*)
+| ID | Name |
+|----|------|
+| M-COM-001 | Active Listening (RASA, Empathic, Reflective) |
+| M-COM-002 | The Mom Test (Customer Validation) |
+| M-COM-003 | Stakeholder Communication (Interview, Brainstorm, Clarify, Validate, Socratic) |
+| M-COM-004 | Conflict Resolution (Thomas-Kilmann, NVC) |
+| M-COM-005 | Giving & Receiving Feedback (SBI, Radical Candor, EEC) |
+| M-COM-006 | Selling Ideas (SPIN Selling, Challenger Sale, Elevator Pitch) |
+| M-COM-007 | Business Storytelling (Pyramid Principle, SCQA, Pixar) |
+| M-COM-008 | Negotiation & Persuasion (BATNA, Cialdini's 6) |
+| M-COM-009 | Difficult Conversations (Crucial Conversations, DESC) |
+| M-COM-010 | Brainstorming & Ideation (SCAMPER, Mind Mapping, 6-3-5) |
+
 ---
 
 ## References
@@ -561,13 +629,24 @@ Is this correct? Shall I proceed?"
 - [Directory Structure](references/directory-structure.md) - SDD folder layout
 - [Quality Assurance](references/quality-assurance.md) - Confidence checks, reflexion
 
-**Domains:**
-- [SDD](references/sdd-domain.md) | [Research](references/research-domain.md) | [Product](references/product-domain.md)
-- [Development](references/development-domain.md) | [Marketing](references/marketing-domain.md)
-- [PMBOK](references/pm-domain.md) | [BABOK](references/ba-domain.md) | [UX](references/ux-domain.md)
-- [AI/LLM](references/ai-llm-domain.md)
+**Domains (Reference → Skill):**
+
+| Domain | Reference | Skill to Invoke |
+|--------|-----------|-----------------|
+| SDD | [sdd-domain.md](references/sdd-domain.md) | `faion-sdd` |
+| Research | [research-domain.md](references/research-domain.md) | `faion-researcher` |
+| Product | [product-domain.md](references/product-domain.md) | `faion-product-manager` |
+| Development | [development-domain.md](references/development-domain.md) | `faion-software-developer` |
+| DevOps | [development-domain.md](references/development-domain.md) | `faion-devops-engineer` |
+| Marketing | [marketing-domain.md](references/marketing-domain.md) | `faion-marketing-manager` |
+| Project Management | [pm-domain.md](references/pm-domain.md) | `faion-project-manager` |
+| Business Analysis | [ba-domain.md](references/ba-domain.md) | `faion-business-analyst` |
+| UX/UI | [ux-domain.md](references/ux-domain.md) | `faion-ux-ui-designer` |
+| AI/LLM | [ai-llm-domain.md](references/ai-llm-domain.md) | `faion-ml-engineer` |
+| Communication | [faion-communicator](~/.claude/skills/faion-communicator/SKILL.md) | `faion-communicator` |
+| Claude Code | - | `faion-claude-code` |
 
 ---
 
 *Faion Network v2.0*
-*13 Domain Skills | 250+ Methodologies | 60+ Agents*
+*14 Domain Skills | 494 Methodologies | 60+ Agents*

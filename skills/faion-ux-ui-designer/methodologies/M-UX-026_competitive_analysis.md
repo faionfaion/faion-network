@@ -1,3 +1,11 @@
+---
+id: M-UX-026
+name: "Competitive Analysis"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-026: Competitive Analysis
 
 ## Metadata

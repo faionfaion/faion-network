@@ -60,13 +60,14 @@ For shared/reusable components in faion-network:
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `faion-{name}-skill` | `faion-python-skill` |
-| Domain Skill | `faion-{name}-domain-skill` | `faion-sdd-domain-skill` |
-| Agent | `faion-{name}-agent` | `faion-pm-agent` |
+| Skill (orchestrator) | `faion-net` | `faion-net` |
+| Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
+| Skill (process) | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
+| Agent | `faion-{name}-agent` | `faion-task-executor-YOLO-agent` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 | Command | `{verb}` (no prefix) | `commit`, `deploy` |
 
-**Exception:** `faion-net` (main orchestrator only)
+**Note:** Skills use role/process naming without `-skill` suffix. Name is self-explanatory.
 
 ### Project-Specific (Local)
 
@@ -74,7 +75,7 @@ For project-specific components that should NOT be committed to faion-network:
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Skill | `{project}-{name}-skill` | `myapp-auth-skill` |
+| Skill | `{project}-{name}` | `myapp-auth`, `myapp-deploy` |
 | Agent | `{project}-{name}-agent` | `myapp-deploy-agent` |
 | Hook | `{project}-{event}-{purpose}-hook.{ext}` | `myapp-pre-bash-lint-hook.sh` |
 | Command | `{project}-{action}` | `myapp-build`, `myapp-deploy` |

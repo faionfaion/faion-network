@@ -1,3 +1,11 @@
+---
+id: M-PM-011
+name: "Project Integration Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-011: Project Integration Management
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-001
+name: "Visibility of System Status"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-001: Visibility of System Status
 
 ## Metadata

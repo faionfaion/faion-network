@@ -1,3 +1,11 @@
+---
+id: M-BA-001
+name: "Business Analysis Planning"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-001: Business Analysis Planning
 
 ## Metadata

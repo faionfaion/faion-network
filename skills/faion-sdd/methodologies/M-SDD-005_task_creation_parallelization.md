@@ -1,3 +1,11 @@
+---
+id: M-SDD-005
+name: "Task Creation & Parallelization"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-005: Task Creation & Parallelization
 
 ## Metadata

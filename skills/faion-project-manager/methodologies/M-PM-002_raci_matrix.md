@@ -1,3 +1,11 @@
+---
+id: M-PM-002
+name: "RACI Matrix"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-002: RACI Matrix
 
 ## Metadata

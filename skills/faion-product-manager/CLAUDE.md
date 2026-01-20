@@ -87,7 +87,7 @@ aidocs/sdd/{project}/
 
 | Skill | Relationship |
 |-------|-------------|
-| faion-research-domain-skill | Provides market data for product decisions |
-| faion-pm-domain-skill | Provides project management standards |
-| faion-ba-domain-skill | Provides business analysis standards |
-| faion-sdd-domain-skill | Uses product decisions for specifications |
+| faion-researcher | Provides market data for product decisions |
+| faion-project-manager | Provides project management standards |
+| faion-business-analyst | Provides business analysis standards |
+| faion-sdd | Uses product decisions for specifications |

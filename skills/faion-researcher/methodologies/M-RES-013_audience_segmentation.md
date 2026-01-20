@@ -1,3 +1,11 @@
+---
+id: M-RES-013
+name: "Audience Segmentation"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-013: Audience Segmentation
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #segmentation, #audience |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-persona-builder-agent |
 
 ---

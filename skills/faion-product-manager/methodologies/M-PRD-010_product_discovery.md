@@ -1,3 +1,11 @@
+---
+id: M-PRD-010
+name: "Product Discovery"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-010: Product Discovery
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #discovery, #validation |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-idea-generator-agent |
 
 ---

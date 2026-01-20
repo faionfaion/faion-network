@@ -1,3 +1,11 @@
+---
+id: M-PM-013
+name: "Resource Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-013: Resource Management
 
 ## Metadata

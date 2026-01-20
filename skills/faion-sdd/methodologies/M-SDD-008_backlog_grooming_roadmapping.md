@@ -1,3 +1,11 @@
+---
+id: M-SDD-008
+name: "Backlog Grooming & Roadmapping"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-008: Backlog Grooming & Roadmapping
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | SDD Foundation |
 | **Difficulty** | Beginner |
 | **Tags** | #methodology, #sdd, #backlog, #roadmap |
-| **Domain Skill** | faion-sdd-domain-skill |
+| **Domain Skill** | faion-sdd |
 | **Agents** | faion-task-executor-agent |
 
 ---

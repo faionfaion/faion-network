@@ -1,3 +1,11 @@
+---
+id: M-BA-010
+name: "Data Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-010: Data Analysis
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-RES-015
+name: "Feature Discovery"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-015: Feature Discovery
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #features, #discovery |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-idea-generator-agent |
 
 ---

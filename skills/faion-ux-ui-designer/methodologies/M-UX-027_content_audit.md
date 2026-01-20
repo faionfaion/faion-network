@@ -1,3 +1,11 @@
+---
+id: M-UX-027
+name: "Content Audit"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-027: Content Audit
 
 ## Metadata

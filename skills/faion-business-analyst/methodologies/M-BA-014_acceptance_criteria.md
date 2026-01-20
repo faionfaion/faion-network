@@ -1,3 +1,11 @@
+---
+id: M-BA-014
+name: "Acceptance Criteria"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-014: Acceptance Criteria
 
 ## Metadata

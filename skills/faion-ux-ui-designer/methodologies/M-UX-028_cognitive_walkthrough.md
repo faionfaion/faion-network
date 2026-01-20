@@ -1,3 +1,11 @@
+---
+id: M-UX-028
+name: "Cognitive Walkthrough"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-028: Cognitive Walkthrough
 
 ## Metadata

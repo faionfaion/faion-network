@@ -1,3 +1,11 @@
+---
+id: M-PM-015
+name: "Lessons Learned"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-015: Lessons Learned
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-PRD-018
+name: "Backlog Management"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-018: Backlog Management
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Beginner |
 | **Tags** | #product, #backlog, #agile |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-task-creator-agent |
 
 ---

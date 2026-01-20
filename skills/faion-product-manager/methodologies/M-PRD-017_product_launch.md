@@ -1,3 +1,11 @@
+---
+id: M-PRD-017
+name: "Product Launch"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-017: Product Launch
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #launch, #marketing |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-impl-planner-agent |
 
 ---

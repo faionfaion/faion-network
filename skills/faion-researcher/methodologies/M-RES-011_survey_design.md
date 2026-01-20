@@ -1,3 +1,11 @@
+---
+id: M-RES-011
+name: "Survey Design"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-011: Survey Design
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #survey, #quantitative |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

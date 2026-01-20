@@ -1,3 +1,11 @@
+---
+id: M-BA-011
+name: "Decision Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-011: Decision Analysis
 
 ## Metadata

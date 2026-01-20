@@ -1,3 +1,11 @@
+---
+id: M-BA-003
+name: "Elicitation Techniques"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-003: Elicitation Techniques
 
 ## Metadata

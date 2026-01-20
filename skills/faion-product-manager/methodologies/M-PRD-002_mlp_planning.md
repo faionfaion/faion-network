@@ -1,3 +1,11 @@
+---
+id: M-PRD-002
+name: "MLP Planning"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-002: MLP Planning
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #mlp, #planning |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-gap-finder-agent |
 
 ---

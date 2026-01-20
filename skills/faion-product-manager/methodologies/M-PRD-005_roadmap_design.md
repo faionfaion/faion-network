@@ -1,3 +1,11 @@
+---
+id: M-PRD-005
+name: "Roadmap Design"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-005: Roadmap Design
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Intermediate |
 | **Tags** | #product, #roadmap, #planning |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mlp-impl-planner-agent |
 
 ---

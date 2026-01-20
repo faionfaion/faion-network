@@ -144,30 +144,29 @@ For shared/reusable skills in faion-network:
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| Domain orchestrator | `faion-{domain}-domain-skill` | `faion-sdd-domain-skill` |
-| Technical/language | `faion-{tech}-skill` | `faion-python-skill` |
-| AI/LLM capability | `faion-{capability}-skill` | `faion-langchain-skill` |
-| Maker/creator | `faion-make-{what}-skill` | `faion-make-hooks-skill` |
-| Development | `faion-dev-{area}-skill` | `faion-dev-django-skill` |
+| Orchestrator | `faion-net` | `faion-net` |
+| Role-based | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
+| Process | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
+| Tool | `faion-{tool}` | `faion-claude-code` |
 
-**Exception:** `faion-net` (main orchestrator only)
+**Note:** No `-skill` suffix. Name is self-explanatory.
 
 ### Project-Specific Convention (Local)
 
 For project-specific skills that should NOT be committed to faion-network:
 
-**Pattern:** `{project}-{name}-skill`
+**Pattern:** `{project}-{name}`
 
 | Example | Description |
 |---------|-------------|
-| `myapp-auth-skill` | Auth logic for myapp |
-| `shopify-sync-skill` | Shopify integration |
-| `acme-deploy-skill` | ACME Corp deployment |
+| `myapp-auth` | Auth logic for myapp |
+| `shopify-sync` | Shopify integration |
+| `acme-deploy` | ACME Corp deployment |
 
 **Setup:**
 ```bash
 # Add to .gitignore at the same level as .claude/
-echo ".claude/skills/{project}-*/" >> .gitignore
+echo ".claude/skills/{project}-*" >> .gitignore
 ```
 
 **Attribution footer (add to SKILL.md):**

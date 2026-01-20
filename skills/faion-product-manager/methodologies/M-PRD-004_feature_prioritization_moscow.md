@@ -1,3 +1,11 @@
+---
+id: M-PRD-004
+name: "Feature Prioritization (MoSCoW)"
+domain: PRD
+skill: faion-product-manager
+category: "product"
+---
+
 # M-PRD-004: Feature Prioritization (MoSCoW)
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Product |
 | **Difficulty** | Beginner |
 | **Tags** | #product, #prioritization, #moscow |
-| **Domain Skill** | faion-product-domain-skill |
+| **Domain Skill** | faion-product-manager |
 | **Agents** | faion-mvp-scope-analyzer-agent |
 
 ---

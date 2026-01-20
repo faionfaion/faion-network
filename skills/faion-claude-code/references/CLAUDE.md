@@ -19,7 +19,7 @@ Guide for creating and updating SKILL.md files.
 - SKILL.md frontmatter fields (name, description, allowed-tools, model, context, user-invocable)
 - Built-in tools reference (Read, Write, Edit, Bash, Task, etc.)
 - allowed-tools syntax with prefix matching (`Bash(git:*)`)
-- Naming conventions (global `faion-{name}-skill`, project `{project}-{name}-skill`)
+- Naming conventions (global `faion-{role}`, project `{project}-{name}`)
 - SKILL.md body template
 - Local/private skill setup (gitignore pattern)
 - Troubleshooting common issues

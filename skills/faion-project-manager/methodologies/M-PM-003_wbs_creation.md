@@ -1,3 +1,11 @@
+---
+id: M-PM-003
+name: "Work Breakdown Structure (WBS)"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-003: Work Breakdown Structure (WBS)
 
 ## Metadata

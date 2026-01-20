@@ -659,7 +659,7 @@ SPEC → DESIGN → IMPL-PLAN → TASKS → [FEATURE-EXECUTOR] → DONE
 
 | Skill | Integration |
 |-------|-------------|
-| faion-sdd-domain-skill | Provides SDD context |
+| faion-sdd | Provides SDD context |
 | faion-dev-django-skill | Django-specific patterns |
 | faion-testing-skill | Test generation patterns |
 

@@ -73,10 +73,10 @@ faion-project-manager/
 
 | Domain Skill | Integration Point |
 |--------------|-------------------|
-| faion-sdd-domain-skill | Task planning uses PMBOK scheduling |
-| faion-ba-domain-skill | Requirements feed into PMBOK scope |
-| faion-product-domain-skill | Product roadmap aligns with project schedule |
-| faion-marketing-domain-skill | Campaign planning uses PMBOK methods |
+| faion-sdd | Task planning uses PMBOK scheduling |
+| faion-business-analyst | Requirements feed into PMBOK scope |
+| faion-product-manager | Product roadmap aligns with project schedule |
+| faion-marketing-manager | Campaign planning uses PMBOK methods |
 
 ## Usage
 

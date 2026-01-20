@@ -1,3 +1,11 @@
+---
+id: M-PM-001
+name: "Stakeholder Register"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-001: Stakeholder Register
 
 ## Metadata

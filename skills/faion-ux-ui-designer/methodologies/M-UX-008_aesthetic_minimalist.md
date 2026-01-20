@@ -1,3 +1,11 @@
+---
+id: M-UX-008
+name: "Aesthetic and Minimalist Design"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-008: Aesthetic and Minimalist Design
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-016
+name: "Customer Journey Mapping"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-016: Customer Journey Mapping
 
 ## Metadata

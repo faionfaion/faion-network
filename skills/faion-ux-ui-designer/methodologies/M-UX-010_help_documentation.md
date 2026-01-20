@@ -1,3 +1,11 @@
+---
+id: M-UX-010
+name: "Help and Documentation"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-010: Help and Documentation
 
 ## Metadata

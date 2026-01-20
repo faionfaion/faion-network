@@ -1,3 +1,11 @@
+---
+id: M-UX-019
+name: "A/B Testing"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-019: A/B Testing
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-UX-021
+name: "Contextual Inquiry"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-021: Contextual Inquiry
 
 ## Metadata

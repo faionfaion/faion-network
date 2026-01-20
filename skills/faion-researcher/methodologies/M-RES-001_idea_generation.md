@@ -1,3 +1,11 @@
+---
+id: M-RES-001
+name: "Idea Generation"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-001: Idea Generation
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Beginner |
 | **Tags** | #research, #ideas, #discovery |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-idea-generator-agent |
 
 ---

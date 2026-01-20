@@ -23,13 +23,13 @@
 
 ```
 ~/.claude/                    # Global framework (faion-network)
-├── skills/faion-*-skill/
+├── skills/faion-{role}/      # Role-based skills (e.g., faion-software-developer)
 ├── agents/faion-*-agent.md
 └── docs/
 
 {project}/                    # Project root
 ├── .claude/                  # Project-specific config
-│   └── {project}-*-skill/   # Project skills (gitignored)
+│   └── {project}-*/         # Project skills (gitignored)
 └── aidocs/sdd/{project}/    # SDD documentation
     ├── constitution.md
     ├── features/{status}/{NN}-{feature}/

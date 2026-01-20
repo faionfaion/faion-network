@@ -4,7 +4,7 @@ Universal orchestrator for end-to-end software project lifecycle. From idea to p
 
 ## Overview
 
-This skill provides comprehensive coverage across 9 domains:
+This skill provides comprehensive coverage across 10 domains:
 - **SDD** - Specification-Driven Development workflow
 - **Research** - Idea generation, market research, validation
 - **Product** - MVP/MLP planning, prioritization, roadmapping
@@ -14,15 +14,16 @@ This skill provides comprehensive coverage across 9 domains:
 - **Business Analysis** - BABOK v3, requirements, traceability
 - **UX/UI** - Research, usability testing, heuristic evaluation
 - **AI/LLM** - RAG, embeddings, fine-tuning, multimodal, agents
+- **HR/Recruiting** - Talent acquisition, employer branding, onboarding
 
 ## Key Statistics
 
 | Metric | Count |
 |--------|-------|
-| Domain Skills | 13 |
+| Domain Skills | 15 |
 | Agents | 60+ |
 | Technical Skills | 40+ |
-| Methodologies | 250+ |
+| Methodologies | 501 |
 
 ## Directory Structure
 
@@ -43,7 +44,7 @@ faion-net/
 
 | File | Purpose |
 |------|---------|
-| `SKILL.md` | Main skill definition with execution modes, capabilities, domain skills list, and 250+ methodologies catalog |
+| `SKILL.md` | Main skill definition with execution modes, capabilities, domain skills list, and 494 methodologies catalog |
 | `references/workflow.md` | SDD workflow phases (idea discovery through feature completion) |
 | `references/directory-structure.md` | SDD folder layout and file purposes |
 | `references/quality-assurance.md` | Confidence checks, hallucination prevention, reflexion learning |
@@ -69,19 +70,25 @@ faion-net/
 | `faion-project-manager` | PMBOK 7/8, risk, EVM (32 methodologies) |
 | `faion-business-analyst` | BABOK v3, 6 Knowledge Areas (30 tasks) |
 | `faion-ux-ui-designer` | Nielsen Norman 10, usability (32 methodologies) |
+| `faion-hr-recruiter` | Talent acquisition, employer branding, onboarding (45 methodologies) |
 | `faion-claude-code` | Skills, agents, commands, MCP servers |
 
 ## Quick Reference
 
 **Methodology Prefixes:**
-- `M-RES-*` - Research (14 methodologies)
+- `M-RES-*` - Research (20 methodologies)
 - `M-PRD-*` - Product (18 methodologies)
 - `M-DEV-*` - Development (68 methodologies)
 - `M-OPS-*` - DevOps (20 methodologies)
 - `M-ML-*` - ML/AI (30 methodologies)
-- `M-MKT-*` - Marketing (40 methodologies)
-- `M-PM-*` - Project Management (20 methodologies)
+- `M-MKT-*` - Marketing (32 methodologies)
+- `M-GRO-*` - Growth (12 methodologies)
+- `M-ADS-*` - Advertising (16 methodologies)
+- `M-BIZ-*` - Business Operations (14 methodologies)
+- `M-PM-*` - Project Management (24 methodologies)
 - `M-PMT-*` - PM Tools (12 methodologies)
-- `M-BA-*` - Business Analysis (12 methodologies)
+- `M-BA-*` - Business Analysis (18 methodologies)
 - `M-UX-*` - UX/UI (32 methodologies)
 - `M-SDD-*` - SDD (12 methodologies)
+- `M-COM-*` - Communication (10 methodologies)
+- `semantic` - HR/Recruiting (45 methodologies, e.g., employee-value-proposition, star-interview-method)

@@ -2,19 +2,28 @@
 
 ## Overview
 
-Universal communication skill for effective dialogue with stakeholders, customers, team members, and decision-makers. 9 methodologies covering the full spectrum of business communication.
+Universal communication skill for effective dialogue with stakeholders, customers, team members, and decision-makers. 10 methodologies covering the full spectrum of business communication.
 
 ## Directory Structure
 
 ```
 faion-communicator/
-├── SKILL.md              # Main skill with all 9 methodologies embedded
+├── SKILL.md              # Main skill overview and quick reference
 ├── CLAUDE.md             # This navigation file
-├── methodologies/        # Detailed methodology files
-└── references/           # Research and best practices
+└── methodologies/        # 10 detailed methodology files
+    ├── M-COM-001_active_listening.md
+    ├── M-COM-002_mom_test.md
+    ├── M-COM-003_stakeholder_communication.md
+    ├── M-COM-004_conflict_resolution.md
+    ├── M-COM-005_feedback.md
+    ├── M-COM-006_selling_ideas.md
+    ├── M-COM-007_storytelling.md
+    ├── M-COM-008_negotiation.md
+    ├── M-COM-009_difficult_conversations.md
+    └── M-COM-010_brainstorming_ideation.md
 ```
 
-## Methodologies (9)
+## Methodologies (10)
 
 | ID | Name | Focus |
 |----|------|-------|
@@ -27,6 +36,7 @@ faion-communicator/
 | M-COM-007 | Business Storytelling | Pyramid Principle, SCQA, Pixar framework |
 | M-COM-008 | Negotiation & Persuasion | Principled negotiation, BATNA, Cialdini's 6 |
 | M-COM-009 | Difficult Conversations | Crucial Conversations, DESC script |
+| M-COM-010 | Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5 Brainwriting, Reverse |
 
 ## Usage by Situation
 
@@ -39,6 +49,7 @@ faion-communicator/
 | Pitching to stakeholders | M-COM-006 + M-COM-007 |
 | Contract discussions | M-COM-008 |
 | Sensitive topics | M-COM-009 |
+| Generating ideas | M-COM-010 |
 
 ## Key Frameworks Summary
 
@@ -62,15 +73,24 @@ Situation → Problem → Implication → Need-Payoff
 ### Pyramid Principle: Structure
 Lead with answer → Support with arguments → Base with evidence
 
+### Brainstorming: Osborn's 4 Rules
+1. Defer judgment
+2. Go for quantity
+3. Encourage wild ideas
+4. Build on others' ideas
+
+### SCAMPER: 7 Lenses
+Substitute | Combine | Adapt | Modify | Put to other uses | Eliminate | Reverse
+
 ## Integration
 
 Used by other faion-network skills:
-- faion-business-analyst
-- faion-product-manager
-- faion-project-manager
-- faion-researcher
-- faion-marketing-manager
-- faion-ux-ui-designer
+- faion-business-analyst (requirements, workshops)
+- faion-product-manager (validation, pitching)
+- faion-project-manager (conflicts, feedback)
+- faion-researcher (validation, interviews)
+- faion-marketing-manager (storytelling, pitching)
+- faion-ux-ui-designer (listening, interviews, ideation)
 
 Essential for Interactive mode in faion-net.
 
@@ -88,4 +108,7 @@ Use M-COM-004 (Thomas-Kilmann mode selection + NVC formula)
 
 # Give feedback
 Use M-COM-005 (SBI format)
+
+# Generate ideas
+Use M-COM-010 (SCAMPER, 6-3-5, Mind Mapping)
 ```

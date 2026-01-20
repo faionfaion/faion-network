@@ -569,15 +569,15 @@ This skill is invoked via `/faion-net` command when user intent is research-rela
 ```python
 # Intent detection
 if intent in ["idea", "research", "market", "competitors", "naming", "personas", "pricing"]:
-    invoke("faion-research-domain-skill")
+    invoke("faion-researcher")
 ```
 
 ### Next Steps After Research
 
 After research complete, offer:
-- "Create GTM Manifest?" → Call `faion-marketing-domain-skill`
-- "Create spec.md?" → Call `faion-sdd-domain-skill`
-- "Start development?" → Call `faion-development-domain-skill`
+- "Create GTM Manifest?" → Call `faion-marketing-manager`
+- "Create spec.md?" → Call `faion-sdd`
+- "Start development?" → Call `faion-software-developer`
 
 ---
 
@@ -2153,7 +2153,7 @@ faion-research-agent (mode: validate)
 
 ---
 
-*faion-research-domain-skill v1.1*
+*faion-researcher v1.1*
 *Merged from: faion-idea-discovery, faion-product-research, faion-project-naming*
 *Methodologies: M-RES-001 to M-RES-020 (20 total)*
 *Agents: 8 research + 2 naming*

@@ -1,3 +1,11 @@
+---
+id: M-BA-009
+name: "Business Process Analysis"
+domain: BA
+skill: faion-business-analyst
+category: "business-analysis"
+---
+
 # M-BA-009: Business Process Analysis
 
 ## Metadata

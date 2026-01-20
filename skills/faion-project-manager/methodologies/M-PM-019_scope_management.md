@@ -1,3 +1,11 @@
+---
+id: M-PM-019
+name: "Scope Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-019: Scope Management
 
 ## Metadata

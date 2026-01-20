@@ -1,3 +1,11 @@
+---
+id: M-PM-006
+name: "Risk Management"
+domain: PM
+skill: faion-project-manager
+category: "project-management"
+---
+
 # M-PM-006: Risk Management
 
 ## Metadata

@@ -1,3 +1,11 @@
+---
+id: M-RES-012
+name: "Trend Analysis"
+domain: RES
+skill: faion-researcher
+category: "research"
+---
+
 # M-RES-012: Trend Analysis
 
 ## Metadata
@@ -8,7 +16,7 @@
 | **Category** | Research |
 | **Difficulty** | Intermediate |
 | **Tags** | #research, #trends, #market |
-| **Domain Skill** | faion-research-domain-skill |
+| **Domain Skill** | faion-researcher |
 | **Agents** | faion-market-researcher-agent |
 
 ---

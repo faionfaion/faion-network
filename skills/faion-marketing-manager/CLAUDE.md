@@ -35,9 +35,9 @@ faion-marketing-manager/
 ├── SKILL.md                    # Main skill definition
 ├── CLAUDE.md                   # This file
 ├── methodologies/              # 77 methodology files
-│   ├── M-GRO-*.md             # Growth methodologies (12 files)
+│   ├── *.md                   # Growth metrics (20 files)
 │   ├── ads/                   # Paid advertising (16 files)
-│   ├── growth/                # Marketing growth (32 files)
+│   ├── growth/                # Marketing growth (35 files)
 │   └── operations/            # Business operations (14 files)
 └── references/                 # Technical reference guides (8 files)
 ```
@@ -46,9 +46,9 @@ faion-marketing-manager/
 
 | Folder | Description | Files |
 |--------|-------------|-------|
-| [methodologies/](methodologies/) | All methodology files organized by category | 74 files |
+| [methodologies/](methodologies/) | All methodology files organized by category | 77 files |
 | [methodologies/ads/](methodologies/ads/) | Meta, Google, LinkedIn ads setup and optimization | 16 files |
-| [methodologies/growth/](methodologies/growth/) | Marketing channels, GTM, social media, SEO | 32 files |
+| [methodologies/growth/](methodologies/growth/) | Marketing channels, GTM, social media, SEO | 35 files |
 | [methodologies/operations/](methodologies/operations/) | Pricing, subscriptions, legal, financial planning | 14 files |
 | [references/](references/) | Technical API guides and tool references | 8 files |
 
@@ -58,24 +58,37 @@ faion-marketing-manager/
 
 | File | Description |
 |------|-------------|
-| [SKILL.md](SKILL.md) | Complete skill definition with all 72 inline methodologies |
+| [SKILL.md](SKILL.md) | Complete skill definition |
 
 ### Growth Methodologies (Root)
 
-| File | Description |
-|------|-------------|
-| M-GRO-001_aarrr_pirate_metrics.md | AARRR funnel framework (Acquisition, Activation, Retention, Revenue, Referral) |
-| M-GRO-002_north_star_metric.md | Single metric that captures core customer value |
-| M-GRO-003_growth_loops.md | Self-reinforcing growth mechanisms |
-| M-GRO-004_ab_testing_framework.md | Systematic experimentation methodology |
-| M-GRO-005_multivariate_testing.md | Testing multiple variables simultaneously |
-| M-GRO-006_statistical_significance.md | Ensuring experiment validity |
-| M-GRO-007_cohort_analysis.md | Analyzing user groups over time |
-| M-GRO-008_funnel_optimization.md | Improving conversion at each stage |
-| M-GRO-009_viral_coefficient.md | Measuring and improving virality |
-| M-GRO-010_product_led_growth.md | Growth driven by product experience |
-| M-GRO-011_activation_rate.md | First-value experience optimization |
-| M-GRO-012_retention_loops.md | Mechanisms to keep users returning |
+| File | ID | Description |
+|------|----|-------------|
+| aarrr-pirate-metrics.md | aarrr-pirate-metrics | AARRR funnel framework |
+| north-star-metric.md | north-star-metric | Single metric capturing core value |
+| growth-loops.md | growth-loops | Self-reinforcing growth mechanisms |
+| ab-testing-framework.md | ab-testing-framework | Systematic experimentation |
+| multivariate-testing.md | multivariate-testing | Testing multiple variables |
+| statistical-significance.md | statistical-significance | Experiment validity |
+| cohort-analysis.md | cohort-analysis | User group analysis over time |
+| funnel-optimization.md | funnel-optimization | Conversion at each stage |
+| viral-coefficient.md | viral-coefficient | Measuring virality |
+| product-led-growth.md | product-led-growth | Product-driven growth |
+| activation-rate.md | activation-rate | First-value optimization |
+| retention-loops.md | retention-loops | User return mechanisms |
+
+### AI & Modern SEO (Root)
+
+| File | ID | Description |
+|------|----|-------------|
+| ai-content-strategy.md | ai-content-strategy | AI-assisted content creation |
+| ai-marketing-tools-stack-2026.md | ai-marketing-tools-stack-2026 | Modern AI marketing tools |
+| agentic-commerce-future-trends.md | agentic-commerce-future-trends | AI agents in commerce |
+| google-ai-overviews-optimization.md | google-ai-overviews-optimization | Optimizing for Google AI |
+| search-everywhere-optimization.md | search-everywhere-optimization | Multi-platform SEO/GEO/AEO |
+| technical-seo-for-ai.md | technical-seo-for-ai | Technical SEO for AI crawlers |
+| topical-authority.md | topical-authority | Building topical authority |
+| zero-click-search-adaptation.md | zero-click-search-adaptation | Zero-click search adaptation |
 
 ### References
 
@@ -120,8 +133,8 @@ Hypothesis -> Experiment Design -> Run -> Analyze -> Learn -> Iterate
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-research-domain-skill | Provides market data for marketing |
-| faion-product-domain-skill | Provides product positioning |
+| faion-researcher | Provides market data for marketing |
+| faion-product-manager | Provides product positioning |
 | faion-seo-skill | SEO optimization details |
 | faion-analytics-skill | Analytics integration |
 

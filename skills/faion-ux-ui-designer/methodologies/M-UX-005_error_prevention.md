@@ -1,3 +1,11 @@
+---
+id: M-UX-005
+name: "Error Prevention"
+domain: UX
+skill: faion-ux-ui-designer
+category: "ux-design"
+---
+
 # M-UX-005: Error Prevention
 
 ## Metadata

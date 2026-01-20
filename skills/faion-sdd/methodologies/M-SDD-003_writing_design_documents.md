@@ -1,3 +1,11 @@
+---
+id: M-SDD-003
+name: "Writing Design Documents"
+domain: SDD
+skill: faion-sdd
+category: "sdd"
+---
+
 # M-SDD-003: Writing Design Documents
 
 ## Metadata
