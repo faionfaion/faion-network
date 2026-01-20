@@ -1,6 +1,6 @@
 ---
 name: faion-researcher
-description: "Researcher role: idea generation (SCAMPER, mind maps), market research, competitor analysis, persona building, pricing research, problem validation, niche evaluation, project naming, trend analysis. AI-powered research, Continuous Discovery. 9 research modes. 14 methodologies."
+description: "Researcher role: idea generation (SCAMPER, mind maps), market research, competitor analysis, persona building, pricing research, problem validation, niche evaluation, project naming, trend analysis. AI-powered research, Continuous Discovery. 9 research modes. 32 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite
 ---

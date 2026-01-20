@@ -1,6 +1,6 @@
 ---
 name: faion-net
-description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX, HR/recruiting. 60+ agents, 15 skills, 501 methodologies."
+description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX, HR/recruiting. 60+ agents, 15 skills, 502 methodologies."
 user-invocable: true
 ---
 

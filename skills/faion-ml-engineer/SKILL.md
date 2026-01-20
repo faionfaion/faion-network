@@ -1,6 +1,6 @@
 ---
 name: faion-ml-engineer
-description: "ML Engineer role: LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG pipelines, fine-tuning, LangChain, LlamaIndex, vector databases (Pinecone, Chroma, Weaviate), prompt engineering, model evaluation, cost optimization, Agentic RAG, AI Agents, MCP, LLM observability. 30 methodologies."
+description: "ML Engineer role: LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG pipelines, fine-tuning, LangChain, LlamaIndex, vector databases (Pinecone, Chroma, Weaviate), prompt engineering, model evaluation, cost optimization, Agentic RAG, AI Agents, MCP, LLM observability. 42 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

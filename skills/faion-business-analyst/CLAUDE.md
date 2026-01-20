@@ -2,7 +2,7 @@
 
 ## Overview
 
-BA Domain Skill based on IIBA BABOK v3 (Guide to Business Analysis Body of Knowledge). Orchestrates business analysis activities across 6 Knowledge Areas with 30 tasks, 50 techniques, and underlying competencies.
+BA Domain Skill based on IIBA BABOK v3 (Guide to Business Analysis Body of Knowledge). Orchestrates business analysis activities across 6 Knowledge Areas with 24 methodologies.
 
 **Agent:** `faion-ba-agent`
 
@@ -21,7 +21,7 @@ Enable professional business analysis following IIBA standards:
 faion-business-analyst/
 |-- SKILL.md              # Main skill definition with embedded methodologies
 |-- CLAUDE.md             # This navigation file
-|-- methodologies/        # 18 detailed methodology files (M-BA-001 to M-BA-018)
+|-- methodologies/        # 24 methodology files (M-BA-001 to M-BA-024)
 |   |-- CLAUDE.md         # Methodology folder overview
 |   |-- M-BA-001_ba_planning.md
 |   |-- M-BA-002_stakeholder_analysis.md
@@ -35,7 +35,7 @@ faion-business-analyst/
 
 | File | Description |
 |------|-------------|
-| SKILL.md | Complete skill definition: 6 Knowledge Areas, 30 tasks, embedded M-BA-001 to M-BA-018 |
+| SKILL.md | Complete skill definition: 6 Knowledge Areas, 24 methodologies (M-BA-001 to M-BA-024) |
 | methodologies/ | Individual methodology files with detailed frameworks and templates |
 | references/ | Modern BA practices 2025-2026: AI integration, agile BA, process mining |
 

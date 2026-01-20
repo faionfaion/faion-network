@@ -1,7 +1,7 @@
 ---
 name: faion-sdd
 user-invocable: false
-description: "SDD orchestrator: Specification-Driven Development workflow. Specifications, design docs, implementation plans, constitutions, task lifecycle (backlog→done), quality gates, reflexion learning, pattern/mistake memory."
+description: "SDD orchestrator: Specification-Driven Development workflow. Specifications, design docs, implementation plans, constitutions, task lifecycle (backlog→done), quality gates, reflexion learning, pattern/mistake memory. 17 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 

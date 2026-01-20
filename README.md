@@ -191,7 +191,7 @@ One autonomous executor for maximum efficiency:
 |-------|---------|
 | `faion-task-executor-YOLO-agent` | Maximum autonomy task execution. Full framework knowledge, all tools access, no interruptions. |
 
-The agent has access to all 501 methodologies and executes tasks using the appropriate skill's knowledge.
+The agent has access to all 502 methodologies and executes tasks using the appropriate skill's knowledge.
 
 ---
 

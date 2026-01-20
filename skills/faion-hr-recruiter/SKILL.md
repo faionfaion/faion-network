@@ -1,6 +1,6 @@
 ---
 name: faion-hr-recruiter
-description: "HR Recruiter role: talent acquisition, employer branding, EVP, structured interviews, STAR method, candidate experience, onboarding, 30-60-90 day plans, ATS optimization, retention strategies, hiring compliance, DEI in hiring. 45 methodologies."
+description: "HR Recruiter role: talent acquisition, employer branding, EVP, structured interviews, STAR method, candidate experience, onboarding, 30-60-90 day plans, ATS optimization, retention strategies, hiring compliance, DEI in hiring. 5 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

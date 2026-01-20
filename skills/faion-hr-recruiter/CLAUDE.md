@@ -14,7 +14,7 @@ HR and recruiting domain skill that orchestrates all talent acquisition, employe
 |-------|-------|
 | Name | faion-hr-recruiter |
 | User-invocable | No |
-| Methodologies | 45 total |
+| Methodologies | 5 total |
 | References | 3 technical guides |
 
 ## Agents
@@ -161,5 +161,5 @@ Behavioral interviewing framework:
 
 ---
 
-*HR Recruiter Skill v1.0 | 45 Methodologies | 3 Agents*
+*HR Recruiter Skill v1.0 | 5 Methodologies | 3 Agents*
 *Based on: SHRM, AIHR, Gartner HR Research*

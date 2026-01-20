@@ -47,7 +47,7 @@ faion-devops-engineer/
 
 ---
 
-## Methodologies (24)
+## Methodologies (26)
 
 ### Docker (M-DOC-001 to M-DOC-004)
 

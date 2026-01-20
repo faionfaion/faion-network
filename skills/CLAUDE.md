@@ -8,7 +8,7 @@ Claude Code skills for the faion-network framework.
 
 | Skill | Description | Methodologies |
 |-------|-------------|---------------|
-| **faion-net** | Universal orchestrator for all software projects | 501 methodologies |
+| **faion-net** | Universal orchestrator for all software projects | 502 methodologies |
 | **faion-sdd** | Specification-Driven Development workflow | M-SDD-001 to M-SDD-017 |
 | **faion-feature-executor** | Sequential task execution with quality gates | Uses faion-task-executor-YOLO-agent |
 
@@ -67,7 +67,7 @@ skills/
   - Semantic: `{name}.md` with id `{name}` (e.g., gtm-strategy.md)
 - **Agent**: `faion-task-executor-YOLO-agent`
 
-**Note:** faion-marketing-manager and faion-hr-recruiter use semantic naming (77 and 45 methodologies respectively).
+**Note:** faion-marketing-manager and faion-hr-recruiter use semantic naming (86 and 5 methodologies respectively).
 
 ## Usage
 

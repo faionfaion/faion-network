@@ -14,7 +14,7 @@ Marketing domain skill that orchestrates all marketing activities from go-to-mar
 |-------|-------|
 | Name | faion-marketing-manager |
 | User-invocable | No |
-| Methodologies | 77 total |
+| Methodologies | 86 total |
 | References | 8 technical guides |
 
 ## Agents
@@ -140,4 +140,4 @@ Hypothesis -> Experiment Design -> Run -> Analyze -> Learn -> Iterate
 
 ---
 
-*Marketing Domain Skill v1.0 | 77 Methodologies | 8 Agents*
+*Marketing Domain Skill v1.0 | 86 Methodologies | 8 Agents*

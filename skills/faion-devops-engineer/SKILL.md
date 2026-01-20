@@ -1,6 +1,6 @@
 ---
 name: faion-devops-engineer
-description: "DevOps Engineer role: Docker, Kubernetes, Terraform, AWS/GCP/Azure, CI/CD (GitHub Actions, GitLab CI), infrastructure as code, monitoring (Prometheus, Grafana), logging, secrets management, nginx, load balancing, Platform Engineering, GitOps, AIOps, DORA metrics. 24 methodologies."
+description: "DevOps Engineer role: Docker, Kubernetes, Terraform, AWS/GCP/Azure, CI/CD (GitHub Actions, GitLab CI), infrastructure as code, monitoring (Prometheus, Grafana), logging, secrets management, nginx, load balancing, Platform Engineering, GitOps, AIOps, DORA metrics. 26 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

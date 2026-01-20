@@ -1,6 +1,6 @@
 ---
 name: faion-marketing-manager
-description: "Marketing Manager role: GTM strategy, landing pages, copywriting, SEO/SEM, GEO/AEO, content marketing, social media, email campaigns, ads (Google, Meta), analytics, A/B testing, conversion optimization. 77 methodologies."
+description: "Marketing Manager role: GTM strategy, landing pages, copywriting, SEO/SEM, GEO/AEO, content marketing, social media, email campaigns, ads (Google, Meta), analytics, A/B testing, conversion optimization. 86 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

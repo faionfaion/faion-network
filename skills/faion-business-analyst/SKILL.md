@@ -1,7 +1,7 @@
 ---
 name: faion-business-analyst
 user-invocable: false
-description: "BA Domain Skill: IIBA BABOK v3 orchestrator. 6 Knowledge Areas (Planning, Elicitation, Analysis, Traceability, Evaluation, Management), requirements engineering, stakeholder analysis, process modeling, use cases, user stories. 30 tasks, competencies, techniques."
+description: "BA Domain Skill: IIBA BABOK v3 orchestrator. 6 Knowledge Areas (Planning, Elicitation, Analysis, Traceability, Evaluation, Management), requirements engineering, stakeholder analysis, process modeling, use cases, user stories. 24 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 

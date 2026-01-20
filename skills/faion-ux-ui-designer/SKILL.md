@@ -1,7 +1,7 @@
 ---
 name: faion-ux-ui-designer
 user-invocable: false
-description: "UX/UI Designer role: Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility, WCAG 2.2, EAA compliance. 37 methodologies."
+description: "UX/UI Designer role: Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility, WCAG 2.2, EAA compliance. 75 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 

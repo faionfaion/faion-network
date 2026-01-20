@@ -7,7 +7,7 @@ Project Manager domain skill based on PMBOK 7th Edition (2021) and PMBOK 8 (2026
 - **Name:** faion-project-manager
 - **Type:** Domain Skill (orchestrator)
 - **Agent:** faion-pm-agent
-- **Methodologies:** 24 (M-PM-001 to M-PM-020, plus M-PM-021 to M-PM-030 in references)
+- **Methodologies:** 46 (M-PM-001 to M-PM-020, plus M-PM-021 to M-PM-030 in references)
 
 ## Core Framework
 

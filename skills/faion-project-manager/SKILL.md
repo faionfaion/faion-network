@@ -1,7 +1,7 @@
 ---
 name: faion-project-manager
 user-invocable: false
-description: "Project Manager role: PMBOK 7/8 (8 Performance Domains, 12 Principles), PM tools (Jira, ClickUp, Linear, GitHub Projects, Azure DevOps), risk/schedule/cost management, EVM, agile ceremonies, dashboards, AI in PM, hybrid delivery. 38 methodologies."
+description: "Project Manager role: PMBOK 7/8 (8 Performance Domains, 12 Principles), PM tools (Jira, ClickUp, Linear, GitHub Projects, Azure DevOps), risk/schedule/cost management, EVM, agile ceremonies, dashboards, AI in PM, hybrid delivery. 46 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 

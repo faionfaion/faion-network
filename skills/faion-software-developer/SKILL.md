@@ -1,6 +1,6 @@
 ---
 name: faion-software-developer
-description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 70 methodologies."
+description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 106 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
