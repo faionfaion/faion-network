@@ -42,9 +42,9 @@ Building AI/LLM applications. RAG pipelines, embeddings, fine-tuning, multimodal
 ## Methodologies
 
 42 methodologies across:
-- LLM Fundamentals (M-LLM-001 to M-LLM-008)
-- RAG (M-RAG-001 to M-RAG-008)
-- Embeddings (M-EMB-001 to M-EMB-006)
-- Fine-tuning (M-FT-001 to M-FT-006)
-- Prompt Engineering (M-PE-001 to M-PE-006)
-- Multimodal (M-MM-001 to M-MM-008)
+- LLM Fundamentals (8 methodologies)
+- RAG (8 methodologies)
+- Embeddings (6 methodologies)
+- Fine-tuning (6 methodologies)
+- Prompt Engineering (6 methodologies)
+- Multimodal (8 methodologies)

@@ -51,7 +51,7 @@ Use this skill when:
 
 ---
 
-# Methodology M-PY-001: Project Setup with Poetry
+# Project Setup with Poetry
 
 ## Problem
 
@@ -162,7 +162,7 @@ Executed by: faion-code-agent, faion-devops-agent
 
 ---
 
-# Methodology M-PY-002: Django Patterns
+# Django Patterns
 
 ## Problem
 
@@ -388,7 +388,7 @@ Executed by: faion-code-agent
 
 ---
 
-# Methodology M-PY-003: FastAPI Patterns
+# FastAPI Patterns
 
 ## Problem
 
@@ -633,7 +633,7 @@ Executed by: faion-code-agent
 
 ---
 
-# Methodology M-PY-004: pytest Patterns
+# pytest Patterns
 
 ## Problem
 
@@ -896,7 +896,7 @@ Executed by: faion-test-agent, faion-code-agent
 
 ---
 
-# Methodology M-PY-005: Type Hints and mypy
+# Type Hints and mypy
 
 ## Problem
 
@@ -1094,7 +1094,7 @@ Executed by: faion-code-agent
 
 ---
 
-# Methodology M-PY-006: Code Formatting (Black, isort, flake8)
+# Code Formatting (Black, isort, flake8)
 
 ## Problem
 
@@ -1271,7 +1271,7 @@ Executed by: faion-code-agent, faion-devops-agent
 
 ---
 
-# Methodology M-PY-007: Virtual Environments
+# Virtual Environments
 
 ## Problem
 
@@ -1427,7 +1427,7 @@ Executed by: faion-devops-agent, faion-code-agent
 
 ---
 
-# Methodology M-PY-008: Async Python (asyncio)
+# Async Python (asyncio)
 
 ## Problem
 
@@ -1714,16 +1714,16 @@ Executed by: faion-code-agent
 
 ## Methodology Index
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-PY-001 | Project Setup with Poetry | Dependency management |
-| M-PY-002 | Django Patterns | Models, views, serializers, admin |
-| M-PY-003 | FastAPI Patterns | Routes, dependencies, Pydantic |
-| M-PY-004 | pytest Patterns | Fixtures, mocking, parametrize |
-| M-PY-005 | Type Hints and mypy | Type safety and static analysis |
-| M-PY-006 | Code Formatting | Black, isort, flake8 |
-| M-PY-007 | Virtual Environments | venv, Poetry, pyenv |
-| M-PY-008 | Async Python | asyncio, concurrent execution |
+| Name | Purpose |
+|------|---------|
+| Project Setup with Poetry | Dependency management |
+| Django Patterns | Models, views, serializers, admin |
+| FastAPI Patterns | Routes, dependencies, Pydantic |
+| pytest Patterns | Fixtures, mocking, parametrize |
+| Type Hints and mypy | Type safety and static analysis |
+| Code Formatting | Black, isort, flake8 |
+| Virtual Environments | venv, Poetry, pyenv |
+| Async Python | asyncio, concurrent execution |
 
 ---
 
@@ -1749,13 +1749,13 @@ Executed by: faion-code-agent
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-PY-001 | Project Setup Poetry | [methodologies/M-PY-001_project_setup_poetry.md](methodologies/M-PY-001_project_setup_poetry.md) |
-| M-PY-002 | Django Patterns | [methodologies/M-PY-002_django_patterns.md](methodologies/M-PY-002_django_patterns.md) |
-| M-PY-003 | Fastapi Patterns | [methodologies/M-PY-003_fastapi_patterns.md](methodologies/M-PY-003_fastapi_patterns.md) |
-| M-PY-004 | Pytest Testing | [methodologies/M-PY-004_pytest_testing.md](methodologies/M-PY-004_pytest_testing.md) |
-| M-PY-005 | Asyncio Patterns | [methodologies/M-PY-005_asyncio_patterns.md](methodologies/M-PY-005_asyncio_patterns.md) |
-| M-PY-006 | Type Hints | [methodologies/M-PY-006_type_hints.md](methodologies/M-PY-006_type_hints.md) |
-| M-PY-007 | Packaging | [methodologies/M-PY-007_packaging.md](methodologies/M-PY-007_packaging.md) |
-| M-PY-008 | Code Quality | [methodologies/M-PY-008_code_quality.md](methodologies/M-PY-008_code_quality.md) |
+| Name | File |
+|------|------|
+| Project Setup Poetry | [methodologies/project-setup-poetry.md](methodologies/project-setup-poetry.md) |
+| Django Patterns | [methodologies/django-patterns.md](methodologies/django-patterns.md) |
+| Fastapi Patterns | [methodologies/fastapi-patterns.md](methodologies/fastapi-patterns.md) |
+| Pytest Testing | [methodologies/pytest-testing.md](methodologies/pytest-testing.md) |
+| Asyncio Patterns | [methodologies/asyncio-patterns.md](methodologies/asyncio-patterns.md) |
+| Type Hints | [methodologies/type-hints.md](methodologies/type-hints.md) |
+| Packaging | [methodologies/packaging.md](methodologies/packaging.md) |
+| Code Quality | [methodologies/code-quality.md](methodologies/code-quality.md) |

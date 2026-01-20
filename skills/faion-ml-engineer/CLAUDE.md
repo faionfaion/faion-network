@@ -4,7 +4,7 @@
 
 ML Engineer skill for AI/ML engineering activities. Covers LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG systems, fine-tuning, vector databases, and AI frameworks (LangChain, LlamaIndex).
 
-**Total:** 10 reference files, ~11,000 lines of technical documentation, 24 methodologies.
+**Total:** 10 reference files, ~11,000 lines of technical documentation, 42 methodologies.
 
 ---
 
@@ -12,6 +12,7 @@ ML Engineer skill for AI/ML engineering activities. Covers LLM APIs (OpenAI, Cla
 
 | Folder | Description |
 |--------|-------------|
+| [methodologies/](methodologies/) | 42 methodology files (semantic naming) |
 | [references/](references/) | Technical documentation for LLM APIs, embeddings, RAG, fine-tuning, frameworks, and vector databases |
 
 ---
@@ -64,13 +65,20 @@ ML Engineer skill for AI/ML engineering activities. Covers LLM APIs (OpenAI, Cla
 
 ---
 
-## Methodologies
+## Methodologies (42)
 
-- **M-LLM-001 to M-LLM-006:** Prompt engineering, structured output, streaming, token optimization, error handling, rate limiting
-- **M-EMB-001 to M-EMB-004:** Chunking strategies, similarity search, hybrid search, reranking
-- **M-RAG-001 to M-RAG-006:** Document processing, index design, query processing, context assembly, response generation, evaluation
-- **M-FT-001 to M-FT-004:** Dataset preparation, training configuration, evaluation metrics, deployment
-- **M-AGT-001 to M-AGT-004:** Tool design, agent loop, memory management, multi-agent systems
+See [methodologies/CLAUDE.md](methodologies/CLAUDE.md) for full listing.
+
+**Categories:**
+- **LLM API Integration (4):** openai-api-integration, claude-api-integration, gemini-api-integration, local-llm-ollama
+- **RAG and Retrieval (7):** embedding-generation, vector-database-setup, rag-pipeline-design, rag-evaluation, hybrid-search, reranking, chunking-strategies
+- **Fine-tuning (2):** fine-tuning-openai, fine-tuning-lora
+- **Prompt Engineering (5):** prompt-engineering, chain-of-thought, tool-use-function-calling, structured-output, guardrails
+- **Operations (3):** cost-optimization, model-evaluation, llm-observability
+- **Frameworks (2):** langchain-patterns, llamaindex-patterns
+- **Agents (4):** autonomous-agents, multi-agent-systems, ai-agent-patterns, multi-agent-design-patterns
+- **Multimodal (6):** image-generation, image-analysis-vision, speech-to-text, text-to-speech, voice-agents, video-generation
+- **Best Practices 2026 (9):** agentic-rag, decision-framework, mcp-model-context-protocol, ai-governance-compliance, graph-rag-advanced-retrieval, llm-observability-stack-2026, mcp-ecosystem-2026, eu-ai-act-compliance-2026, reasoning-first-architectures
 
 ---
 

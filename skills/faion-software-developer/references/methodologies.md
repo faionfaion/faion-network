@@ -56,7 +56,7 @@ Analyze Folder → Identify Type → Write CLAUDE.md → Verify
 
 ### Python Ecosystem (8)
 
-#### M-DEV-001: Django Coding Standards
+#### Django Coding Standards
 
 **Problem:** Inconsistent Django code across projects.
 
@@ -118,7 +118,7 @@ class ItemActivationView(APIView):
 
 **Agent:** faion-code-agent
 
-#### M-DEV-002: Django Code Decision Tree
+#### Django Code Decision Tree
 
 **Problem:** Unclear where to put code.
 
@@ -138,7 +138,7 @@ What does the function do?
 
 **Agent:** faion-code-agent
 
-#### M-DEV-003: Django Base Model Pattern
+#### Django Base Model Pattern
 
 **Problem:** Missing standard fields on models.
 
@@ -155,7 +155,7 @@ class BaseModel(models.Model):
 
 **Agent:** faion-code-agent
 
-#### M-DEV-004: Django Testing with pytest
+#### Django Testing with pytest
 
 **Problem:** Inconsistent test patterns.
 
@@ -173,7 +173,7 @@ def test_activate_item_success(user, item):
 
 **Agent:** faion-test-agent
 
-#### M-DEV-005: FastAPI Standards
+#### FastAPI Standards
 
 **Problem:** Inconsistent FastAPI patterns.
 
@@ -199,7 +199,7 @@ async def create_item(
 
 **Agent:** faion-code-agent
 
-#### M-DEV-006: Python Project Structure
+#### Python Project Structure
 
 **Problem:** No standard project layout.
 
@@ -221,7 +221,7 @@ project/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-007: Python Type Hints
+#### Python Type Hints
 
 **Problem:** Unclear function signatures.
 
@@ -238,7 +238,7 @@ def process_users(
 
 **Agent:** faion-code-agent
 
-#### M-DEV-008: Python Dependency Management
+#### Python Dependency Management
 
 **Problem:** Dependency conflicts, no lockfile.
 
@@ -252,7 +252,7 @@ def process_users(
 
 ### JavaScript/TypeScript Ecosystem (8)
 
-#### M-DEV-009: React Component Pattern
+#### React Component Pattern
 
 **Problem:** Inconsistent component structure.
 
@@ -280,7 +280,7 @@ export const Button: React.FC<ButtonProps> = ({
 
 **Agent:** faion-code-agent
 
-#### M-DEV-010: React Hooks Pattern
+#### React Hooks Pattern
 
 **Problem:** Logic duplicated across components.
 
@@ -305,7 +305,7 @@ export function useUser(userId: string) {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-011: TypeScript Strict Mode
+#### TypeScript Strict Mode
 
 **Problem:** Type errors caught too late.
 
@@ -325,7 +325,7 @@ export function useUser(userId: string) {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-012: Node.js Project Structure
+#### Node.js Project Structure
 
 **Problem:** No standard layout for Node.js.
 
@@ -346,7 +346,7 @@ project/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-013: Next.js App Router Pattern
+#### Next.js App Router Pattern
 
 **Problem:** Unclear Next.js 13+ patterns.
 
@@ -370,7 +370,7 @@ app/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-014: Frontend State Management
+#### Frontend State Management
 
 **Problem:** State scattered across components.
 
@@ -385,7 +385,7 @@ app/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-015: CSS Architecture
+#### CSS Architecture
 
 **Problem:** Unorganized styles.
 
@@ -399,7 +399,7 @@ app/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-016: Frontend Testing
+#### Frontend Testing
 
 **Problem:** No test strategy.
 
@@ -419,7 +419,7 @@ test('renders button with text', () => {
 
 ### Backend Languages (24)
 
-#### M-DEV-017: Go Project Structure
+#### Go Project Structure
 
 **Problem:** No standard Go layout.
 
@@ -440,7 +440,7 @@ project/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-018: Go Error Handling
+#### Go Error Handling
 
 **Problem:** Inconsistent error handling.
 
@@ -457,7 +457,7 @@ func GetUser(id string) (*User, error) {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-019: Go Interface Pattern
+#### Go Interface Pattern
 
 **Problem:** Tight coupling between components.
 
@@ -481,7 +481,7 @@ func (r *PostgresUserRepo) Find(id string) (*User, error) {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-020: Go Concurrency Patterns
+#### Go Concurrency Patterns
 
 **Problem:** Race conditions, goroutine leaks.
 
@@ -506,7 +506,7 @@ func main() {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-021: Ruby on Rails Patterns
+#### Ruby on Rails Patterns
 
 **Problem:** Fat controllers, thin models.
 
@@ -519,7 +519,7 @@ func main() {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-022: Ruby on Rails Testing
+#### Ruby on Rails Testing
 
 **Problem:** Slow, flaky tests.
 
@@ -539,7 +539,7 @@ end
 
 **Agent:** faion-test-agent
 
-#### M-DEV-023: PHP Laravel Patterns
+#### PHP Laravel Patterns
 
 **Problem:** Inconsistent Laravel code.
 
@@ -567,7 +567,7 @@ class UserController extends Controller
 
 **Agent:** faion-code-agent
 
-#### M-DEV-024: PHP Laravel Testing
+#### PHP Laravel Testing
 
 **Problem:** No test coverage.
 
@@ -589,7 +589,7 @@ class UserTest extends TestCase
 
 **Agent:** faion-test-agent
 
-#### M-DEV-025: Java Spring Boot Patterns
+#### Java Spring Boot Patterns
 
 **Problem:** Inconsistent Spring code.
 
@@ -612,7 +612,7 @@ public class UserService {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-026: Java Spring Boot Testing
+#### Java Spring Boot Testing
 
 **Problem:** Complex test setup.
 
@@ -634,7 +634,7 @@ class UserServiceTest {
 
 **Agent:** faion-test-agent
 
-#### M-DEV-027: C# .NET Patterns
+#### C# .NET Patterns
 
 **Problem:** Inconsistent .NET code.
 
@@ -659,7 +659,7 @@ public class UserService : IUserService
 
 **Agent:** faion-code-agent
 
-#### M-DEV-028: C# .NET Testing
+#### C# .NET Testing
 
 **Problem:** Hard to test dependencies.
 
@@ -682,7 +682,7 @@ public class UserServiceTests
 
 **Agent:** faion-test-agent
 
-#### M-DEV-029: Rust Project Structure
+#### Rust Project Structure
 
 **Problem:** No standard Rust layout.
 
@@ -703,7 +703,7 @@ project/
 
 **Agent:** faion-code-agent
 
-#### M-DEV-030: Rust Error Handling
+#### Rust Error Handling
 
 **Problem:** Panic vs Result confusion.
 
@@ -728,7 +728,7 @@ pub fn get_user(id: &str) -> Result<User, UserError> {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-031: Rust Async Patterns
+#### Rust Async Patterns
 
 **Problem:** Async complexity.
 
@@ -750,7 +750,7 @@ async fn fetch_data() -> Result<Data, Error> {
 
 **Agent:** faion-code-agent
 
-#### M-DEV-032: Rust Testing
+#### Rust Testing
 
 **Problem:** No test organization.
 
@@ -776,7 +776,7 @@ mod tests {
 
 **Agent:** faion-test-agent
 
-#### M-DEV-033: Database Migration Patterns
+#### Database Migration Patterns
 
 **Problem:** Manual database changes.
 
@@ -796,7 +796,7 @@ DROP TABLE users;
 
 **Agent:** faion-code-agent
 
-#### M-DEV-034: SQL Query Optimization
+#### SQL Query Optimization
 
 **Problem:** Slow database queries.
 
@@ -809,7 +809,7 @@ DROP TABLE users;
 
 **Agent:** faion-code-agent
 
-#### M-DEV-035: ORM Best Practices
+#### ORM Best Practices
 
 **Problem:** N+1 queries, memory issues.
 
@@ -828,7 +828,7 @@ for user in users:
 
 **Agent:** faion-code-agent
 
-#### M-DEV-036: API Response Patterns
+#### API Response Patterns
 
 **Problem:** Inconsistent API responses.
 
@@ -852,7 +852,7 @@ for user in users:
 
 **Agent:** faion-code-agent
 
-#### M-DEV-037: Authentication Patterns
+#### Authentication Patterns
 
 **Problem:** Insecure auth implementation.
 
@@ -866,7 +866,7 @@ for user in users:
 
 **Agent:** faion-code-agent
 
-#### M-DEV-038: Caching Strategies
+#### Caching Strategies
 
 **Problem:** High database load.
 
@@ -880,7 +880,7 @@ for user in users:
 
 **Agent:** faion-code-agent
 
-#### M-DEV-039: Queue/Background Jobs
+#### Queue/Background Jobs
 
 **Problem:** Blocking operations in requests.
 
@@ -898,7 +898,7 @@ send_welcome_email.delay(user.id)
 
 **Agent:** faion-code-agent
 
-#### M-DEV-040: Logging Best Practices
+#### Logging Best Practices
 
 **Problem:** No structured logging.
 
@@ -920,7 +920,7 @@ logger.info(
 
 ### DevOps & Infrastructure (28)
 
-#### M-DEV-041: Docker Best Practices
+#### Docker Best Practices
 
 **Problem:** Large, insecure images.
 
@@ -942,7 +942,7 @@ CMD ["python", "main.py"]
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-042: Docker Compose Patterns
+#### Docker Compose Patterns
 
 **Problem:** Complex local environments.
 
@@ -969,7 +969,7 @@ volumes:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-043: Kubernetes Deployment
+#### Kubernetes Deployment
 
 **Problem:** No standard K8s patterns.
 
@@ -1002,7 +1002,7 @@ spec:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-044: Kubernetes Service
+#### Kubernetes Service
 
 **Problem:** Pod networking complexity.
 
@@ -1023,7 +1023,7 @@ spec:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-045: Kubernetes ConfigMap/Secret
+#### Kubernetes ConfigMap/Secret
 
 **Problem:** Hardcoded configuration.
 
@@ -1048,7 +1048,7 @@ data:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-046: Terraform Module Structure
+#### Terraform Module Structure
 
 **Problem:** Unorganized infrastructure code.
 
@@ -1071,7 +1071,7 @@ terraform/
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-047: Terraform State Management
+#### Terraform State Management
 
 **Problem:** State conflicts, lost state.
 
@@ -1090,7 +1090,7 @@ terraform {
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-048: AWS VPC Design
+#### AWS VPC Design
 
 **Problem:** Insecure network architecture.
 
@@ -1107,7 +1107,7 @@ VPC (10.0.0.0/16)
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-049: AWS IAM Best Practices
+#### AWS IAM Best Practices
 
 **Problem:** Over-permissive IAM policies.
 
@@ -1120,7 +1120,7 @@ VPC (10.0.0.0/16)
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-050: CI/CD Pipeline Design
+#### CI/CD Pipeline Design
 
 **Problem:** Manual deployments.
 
@@ -1150,7 +1150,7 @@ jobs:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-051: GitOps Pattern
+#### GitOps Pattern
 
 **Problem:** Configuration drift.
 
@@ -1162,7 +1162,7 @@ jobs:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-052: Blue-Green Deployment
+#### Blue-Green Deployment
 
 **Problem:** Downtime during deployments.
 
@@ -1187,7 +1187,7 @@ jobs:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-053: Canary Deployment
+#### Canary Deployment
 
 **Problem:** Risky full rollouts.
 
@@ -1203,7 +1203,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-054: Infrastructure Monitoring
+#### Infrastructure Monitoring
 
 **Problem:** No visibility into issues.
 
@@ -1217,7 +1217,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-055: Alerting Strategy
+#### Alerting Strategy
 
 **Problem:** Alert fatigue or missing alerts.
 
@@ -1231,7 +1231,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-056: Backup Strategy
+#### Backup Strategy
 
 **Problem:** Data loss risk.
 
@@ -1244,7 +1244,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-057: Disaster Recovery
+#### Disaster Recovery
 
 **Problem:** No recovery plan.
 
@@ -1262,7 +1262,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-058: Security Scanning
+#### Security Scanning
 
 **Problem:** Vulnerabilities in code/deps.
 
@@ -1276,7 +1276,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-059: Secret Management
+#### Secret Management
 
 **Problem:** Secrets in code/env files.
 
@@ -1290,7 +1290,7 @@ Traffic Split:
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-060: Load Testing
+#### Load Testing
 
 **Problem:** Unknown capacity limits.
 
@@ -1314,7 +1314,7 @@ export default function () {
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-061: Nginx Configuration
+#### Nginx Configuration
 
 **Problem:** Suboptimal web server config.
 
@@ -1342,7 +1342,7 @@ server {
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-062: SSL/TLS Configuration
+#### SSL/TLS Configuration
 
 **Problem:** Insecure HTTPS setup.
 
@@ -1359,7 +1359,7 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" alway
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-063: CDN Configuration
+#### CDN Configuration
 
 **Problem:** Slow global content delivery.
 
@@ -1373,7 +1373,7 @@ add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" alway
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-064: Database HA Setup
+#### Database HA Setup
 
 **Problem:** Single point of failure.
 
@@ -1389,7 +1389,7 @@ Auto-failover: Primary fails → Replica promoted
 
 **Agent:** faion-devops-agent
 
-#### M-DEV-065: CLAUDE.md Documentation
+#### CLAUDE.md Documentation
 
 **Problem:** No AI-readable context.
 
@@ -1429,7 +1429,7 @@ command example
 
 **Agent:** faion-code-agent
 
-#### M-DEV-066: Storybook Setup
+#### Storybook Setup
 
 **Problem:** No component documentation.
 
@@ -1457,7 +1457,7 @@ export const Primary: Story = {
 
 **Agent:** faion-storybook-agent
 
-#### M-DEV-067: Design Tokens
+#### Design Tokens
 
 **Problem:** Inconsistent design values.
 
@@ -1488,7 +1488,7 @@ export const spacing = {
 
 **Agent:** faion-frontend-component-agent
 
-#### M-DEV-068: Component File Structure
+#### Component File Structure
 
 **Problem:** Scattered component files.
 

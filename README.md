@@ -16,7 +16,7 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 |-----------|-------|---------|
 | **Skills** | 15 | Role-based expertise (Product, Dev, Marketing, DevOps, UX, BA, PM, HR...) |
 | **Agent** | 1 | Task executor with maximum autonomy (YOLO mode) |
-| **Methodologies** | 501 | Battle-tested frameworks (PMBOK 7/8, BABOK v3, Nielsen Norman, GTM) |
+| **Methodologies** | 501 | Battle-tested frameworks (Project Management Framework 7/8, Business Analysis Framework, 10 Usability Heuristics, GTM) |
 
 ### Who This Is For
 
@@ -174,9 +174,9 @@ Sequential task execution with:
 | `faion-devops-engineer` | 30 | Docker, K8s, Terraform, CI/CD, monitoring |
 | `faion-ml-engineer` | 30 | LLM APIs, RAG, embeddings, AI Agents, MCP |
 | `faion-marketing-manager` | 77 | GTM, landing pages, SEO/GEO/AEO, ads, email |
-| `faion-project-manager` | 46 | PMBOK 7/8, PM tools, risk, EVM, AI in PM |
-| `faion-business-analyst` | 24 | BABOK v3, requirements, stakeholder analysis |
-| `faion-ux-ui-designer` | 75 | Nielsen Norman 10, accessibility, WCAG 2.2 |
+| `faion-project-manager` | 46 | Project Management Framework 7/8, PM tools, risk, EVM, AI in PM |
+| `faion-business-analyst` | 24 | Business Analysis Framework, requirements, stakeholder analysis |
+| `faion-ux-ui-designer` | 75 | 10 Usability Heuristics, accessibility, WCAG 2.2 |
 | `faion-hr-recruiter` | 45 | Talent acquisition, employer branding, onboarding |
 | `faion-communicator` | 9 | Mom Test, conflict resolution, SPIN selling |
 | `faion-claude-code` | — | Skills, agents, hooks, MCP server configuration |

@@ -1,6 +1,6 @@
 # shadcn/ui Methodology
 
-## M-DEV-069: shadcn/ui Component Architecture
+## shadcn/ui Component Architecture
 
 ### Principles
 
@@ -158,5 +158,5 @@ With shadcn MCP server installed, use natural language:
 
 ---
 
-*M-DEV-069 shadcn/ui Component Architecture*
+*shadcn/ui Component Architecture*
 *Sources: [shadcn/ui docs](https://ui.shadcn.com/docs), [Anatomy of shadcn/ui](https://manupa.dev/blog/anatomy-of-shadcn-ui)*

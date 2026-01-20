@@ -1109,33 +1109,33 @@ docker run -it --rm myapp:debug sh
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-DO-001 | Cicd Github Actions | [methodologies/M-DO-001_cicd_github_actions.md](methodologies/M-DO-001_cicd_github_actions.md) |
-| M-DO-002 | Cicd Gitlab Ci | [methodologies/M-DO-002_cicd_gitlab_ci.md](methodologies/M-DO-002_cicd_gitlab_ci.md) |
-| M-DO-003 | Docker Basics | [methodologies/M-DO-003_docker_basics.md](methodologies/M-DO-003_docker_basics.md) |
-| M-DO-004 | Docker Compose | [methodologies/M-DO-004_docker_compose.md](methodologies/M-DO-004_docker_compose.md) |
-| M-DO-005 | Kubernetes Basics | [methodologies/M-DO-005_kubernetes_basics.md](methodologies/M-DO-005_kubernetes_basics.md) |
-| M-DO-006 | Helm Charts | [methodologies/M-DO-006_helm_charts.md](methodologies/M-DO-006_helm_charts.md) |
-| M-DO-007 | Aws Ec2 | [methodologies/M-DO-007_aws_ec2.md](methodologies/M-DO-007_aws_ec2.md) |
-| M-DO-008 | Aws Lambda | [methodologies/M-DO-008_aws_lambda.md](methodologies/M-DO-008_aws_lambda.md) |
-| M-DO-009 | Terraform Basics | [methodologies/M-DO-009_terraform_basics.md](methodologies/M-DO-009_terraform_basics.md) |
-| M-DO-010 | Infrastructure Patterns | [methodologies/M-DO-010_infrastructure_patterns.md](methodologies/M-DO-010_infrastructure_patterns.md) |
-| M-DO-011 | Monitoring Prometheus | [methodologies/M-DO-011_monitoring_prometheus.md](methodologies/M-DO-011_monitoring_prometheus.md) |
-| M-DO-012 | Logging Elk | [methodologies/M-DO-012_logging_elk.md](methodologies/M-DO-012_logging_elk.md) |
-| M-DO-013 | Tracing Jaeger | [methodologies/M-DO-013_tracing_jaeger.md](methodologies/M-DO-013_tracing_jaeger.md) |
-| M-DO-014 | Secrets Management | [methodologies/M-DO-014_secrets_management.md](methodologies/M-DO-014_secrets_management.md) |
-| M-DO-015 | Ssl Certificates | [methodologies/M-DO-015_ssl_certificates.md](methodologies/M-DO-015_ssl_certificates.md) |
-| M-DO-016 | Backup Recovery | [methodologies/M-DO-016_backup_recovery.md](methodologies/M-DO-016_backup_recovery.md) |
-| M-DO-017 | Networking Basics | [methodologies/M-DO-017_networking_basics.md](methodologies/M-DO-017_networking_basics.md) |
-| M-DO-018 | Dns Route53 | [methodologies/M-DO-018_dns_route53.md](methodologies/M-DO-018_dns_route53.md) |
-| M-DO-019 | Cdn Cloudfront | [methodologies/M-DO-019_cdn_cloudfront.md](methodologies/M-DO-019_cdn_cloudfront.md) |
-| M-DO-020 | Container Registry | [methodologies/M-DO-020_container_registry.md](methodologies/M-DO-020_container_registry.md) |
-| M-DO-021 | Security Scanning | [methodologies/M-DO-021_security_scanning.md](methodologies/M-DO-021_security_scanning.md) |
-| M-DO-022 | Cost Optimization | [methodologies/M-DO-022_cost_optimization.md](methodologies/M-DO-022_cost_optimization.md) |
-| M-DO-023 | Database Operations | [methodologies/M-DO-023_database_operations.md](methodologies/M-DO-023_database_operations.md) |
-| M-DO-024 | Feature Flags | [methodologies/M-DO-024_feature_flags.md](methodologies/M-DO-024_feature_flags.md) |
-| M-DO-025 | Incident Management | [methodologies/M-DO-025_incident_management.md](methodologies/M-DO-025_incident_management.md) |
-| M-DO-026 | Gitops | [methodologies/M-DO-026_gitops.md](methodologies/M-DO-026_gitops.md) |
-| M-DO-027 | Service Mesh | [methodologies/M-DO-027_service_mesh.md](methodologies/M-DO-027_service_mesh.md) |
-| M-DO-028 | Slo Sli | [methodologies/M-DO-028_slo_sli.md](methodologies/M-DO-028_slo_sli.md) |
+| Name | Description | File |
+|------|-------------|------|
+| CI/CD GitHub Actions | GitHub Actions workflows for CI/CD | [methodologies/cicd-github-actions.md](methodologies/cicd-github-actions.md) |
+| CI/CD GitLab CI | GitLab CI/CD pipeline configuration | [methodologies/cicd-gitlab-ci.md](methodologies/cicd-gitlab-ci.md) |
+| Docker Basics | Docker fundamentals and Dockerfile patterns | [methodologies/docker-basics.md](methodologies/docker-basics.md) |
+| Docker Compose | Multi-container orchestration with Compose | [methodologies/docker-compose.md](methodologies/docker-compose.md) |
+| Kubernetes Basics | K8s core concepts and kubectl commands | [methodologies/kubernetes-basics.md](methodologies/kubernetes-basics.md) |
+| Helm Charts | Kubernetes package management with Helm | [methodologies/helm-charts.md](methodologies/helm-charts.md) |
+| AWS EC2 | EC2 instance management and configuration | [methodologies/aws-ec2.md](methodologies/aws-ec2.md) |
+| AWS Lambda | Serverless functions with AWS Lambda | [methodologies/aws-lambda.md](methodologies/aws-lambda.md) |
+| Terraform Basics | Infrastructure as Code with Terraform | [methodologies/terraform-basics.md](methodologies/terraform-basics.md) |
+| Infrastructure Patterns | Common IaC patterns and best practices | [methodologies/infrastructure-patterns.md](methodologies/infrastructure-patterns.md) |
+| Monitoring Prometheus | Metrics collection with Prometheus | [methodologies/monitoring-prometheus.md](methodologies/monitoring-prometheus.md) |
+| Logging ELK | Centralized logging with Elasticsearch | [methodologies/logging-elk.md](methodologies/logging-elk.md) |
+| Tracing Jaeger | Distributed tracing with Jaeger | [methodologies/tracing-jaeger.md](methodologies/tracing-jaeger.md) |
+| Secrets Management | Secure secrets handling and storage | [methodologies/secrets-management.md](methodologies/secrets-management.md) |
+| SSL Certificates | TLS/SSL certificate management | [methodologies/ssl-certificates.md](methodologies/ssl-certificates.md) |
+| Backup Recovery | Backup strategies and disaster recovery | [methodologies/backup-recovery.md](methodologies/backup-recovery.md) |
+| Networking Basics | Container and cloud networking fundamentals | [methodologies/networking-basics.md](methodologies/networking-basics.md) |
+| DNS Route53 | DNS management with AWS Route 53 | [methodologies/dns-route53.md](methodologies/dns-route53.md) |
+| CDN CloudFront | Content delivery with CloudFront | [methodologies/cdn-cloudfront.md](methodologies/cdn-cloudfront.md) |
+| Container Registry | Docker registry operations | [methodologies/container-registry.md](methodologies/container-registry.md) |
+| Security Scanning | Container and code security scanning | [methodologies/security-scanning.md](methodologies/security-scanning.md) |
+| Cost Optimization | Cloud cost management and optimization | [methodologies/cost-optimization.md](methodologies/cost-optimization.md) |
+| Database Operations | Database deployment and management | [methodologies/database-operations.md](methodologies/database-operations.md) |
+| Feature Flags | Feature flag implementation and management | [methodologies/feature-flags.md](methodologies/feature-flags.md) |
+| Incident Management | Incident response and management | [methodologies/incident-management.md](methodologies/incident-management.md) |
+| GitOps | Git-based operations and deployments | [methodologies/gitops.md](methodologies/gitops.md) |
+| Service Mesh | Service mesh implementation (Istio, Linkerd) | [methodologies/service-mesh.md](methodologies/service-mesh.md) |
+| SLO/SLI | Service level objectives and indicators | [methodologies/slo-sli.md](methodologies/slo-sli.md) |

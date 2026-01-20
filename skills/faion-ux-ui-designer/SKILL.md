@@ -1,7 +1,7 @@
 ---
 name: faion-ux-ui-designer
 user-invocable: false
-description: "UX/UI Designer role: Nielsen Norman 10 Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility, WCAG 2.2, EAA compliance. 75 methodologies."
+description: "UX/UI Designer role: 10 Usability Heuristics, UX research methods, usability testing, persona development, journey mapping, wireframing, prototyping, design systems, accessibility, WCAG 2.2, EAA compliance. 75 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
@@ -11,7 +11,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ## Purpose
 
-Orchestrates UX (User Experience) research, design, and evaluation. This domain skill provides comprehensive UX methodology based on Nielsen Norman Group research and industry best practices.
+Orchestrates UX (User Experience) research, design, and evaluation. This domain skill provides comprehensive UX methodology based on UX research community research and industry best practices.
 
 ## Philosophy
 
@@ -35,8 +35,8 @@ Layer 3: Technical Skills - tools
 
 | Agent | Purpose | Methods Used |
 |-------|---------|--------------|
-| **faion-ux-researcher-agent** | User interviews, surveys, research synthesis | M-UX-011 to M-UX-022 |
-| **faion-usability-agent** | Usability testing, heuristic evaluation | M-UX-001 to M-UX-010, M-UX-023 to M-UX-032 |
+| **faion-ux-researcher-agent** | User interviews, surveys, research synthesis | 12 research methodologies |
+| **faion-usability-agent** | Usability testing, heuristic evaluation | 10 heuristics + 10 evaluation methodologies |
 
 ---
 
@@ -48,7 +48,7 @@ Layer 3: Technical Skills - tools
 
 ---
 
-# Part 1: Nielsen Norman 10 Usability Heuristics
+# Part 1: 10 Usability Usability Heuristics
 
 ## Overview
 
@@ -56,7 +56,7 @@ Jakob Nielsen's 10 general principles for interaction design. They are called "h
 
 ---
 
-## M-UX-001: Visibility of System Status
+## visibility-of-system-status
 
 ### Problem
 
@@ -111,7 +111,7 @@ Users feel lost when they don't know what's happening in the system.
 
 ---
 
-## M-UX-002: Match Between System and Real World
+## match-real-world
 
 ### Problem
 
@@ -169,7 +169,7 @@ Users struggle when interfaces use unfamiliar terminology or concepts.
 
 ---
 
-## M-UX-003: User Control and Freedom
+## user-control-freedom
 
 ### Problem
 
@@ -224,7 +224,7 @@ Users often make mistakes or change their minds. They need a way out.
 
 ---
 
-## M-UX-004: Consistency and Standards
+## consistency-standards
 
 ### Problem
 
@@ -281,7 +281,7 @@ Users shouldn't wonder whether different words, situations, or actions mean the 
 
 ---
 
-## M-UX-005: Error Prevention
+## error-prevention
 
 ### Problem
 
@@ -338,7 +338,7 @@ Errors frustrate users and cost businesses money. Prevention is better than reco
 
 ---
 
-## M-UX-006: Recognition Rather Than Recall
+## recognition-over-recall
 
 ### Problem
 
@@ -396,7 +396,7 @@ Users should not have to remember information from one part of the interface to 
 
 ---
 
-## M-UX-007: Flexibility and Efficiency of Use
+## flexibility-efficiency
 
 ### Problem
 
@@ -453,7 +453,7 @@ Different users have different needs. Novices need guidance, experts need speed.
 
 ---
 
-## M-UX-008: Aesthetic and Minimalist Design
+## aesthetic-minimalist
 
 ### Problem
 
@@ -508,7 +508,7 @@ Every extra unit of information competes with relevant information and diminishe
 
 ---
 
-## M-UX-009: Help Users Recognize, Diagnose, and Recover from Errors
+## error-recovery
 
 ### Problem
 
@@ -574,7 +574,7 @@ Errors will happen. Good error messages help users fix problems quickly.
 
 ---
 
-## M-UX-010: Help and Documentation
+## help-documentation
 
 ### Problem
 
@@ -642,7 +642,7 @@ Research methods for understanding user needs, behaviors, and experiences. Choos
 
 ---
 
-## M-UX-011: User Interviews
+## user-interviews
 
 ### Problem
 
@@ -728,7 +728,7 @@ You need deep understanding of user motivations, pain points, and workflows.
 
 ---
 
-## M-UX-012: Contextual Inquiry
+## contextual-inquiry
 
 ### Problem
 
@@ -780,7 +780,7 @@ You need to observe real behavior in natural environment, not just hear about it
 
 ---
 
-## M-UX-013: Surveys and Questionnaires
+## surveys
 
 ### Problem
 
@@ -871,7 +871,7 @@ You need quantitative data from large number of users.
 
 ---
 
-## M-UX-014: Usability Testing
+## usability-testing
 
 ### Problem
 
@@ -961,7 +961,7 @@ Success criteria:
 
 ---
 
-## M-UX-015: A/B Testing
+## ab-testing
 
 ### Problem
 
@@ -1048,7 +1048,7 @@ because [reason].
 
 ---
 
-## M-UX-016: Card Sorting
+## card-sorting
 
 ### Problem
 
@@ -1127,7 +1127,7 @@ You need to understand how users categorize and label information.
 
 ---
 
-## M-UX-017: Tree Testing
+## tree-testing
 
 ### Problem
 
@@ -1209,7 +1209,7 @@ Correct answer: Home > Products > Category A
 
 ---
 
-## M-UX-018: Journey Mapping
+## journey-mapping
 
 ### Problem
 
@@ -1279,7 +1279,7 @@ You need to understand the complete user experience across touchpoints and time.
 
 ---
 
-## M-UX-019: Empathy Mapping
+## empathy-mapping
 
 ### Problem
 
@@ -1363,7 +1363,7 @@ You need to build shared understanding of user perspective within your team.
 
 ---
 
-## M-UX-020: Persona Development
+## personas
 
 ### Problem
 
@@ -1457,7 +1457,7 @@ You need a shared reference for who you're designing for.
 
 ---
 
-## M-UX-021: Diary Studies
+## diary-studies
 
 ### Problem
 
@@ -1539,7 +1539,7 @@ You need to understand behavior over time in natural context.
 
 ---
 
-## M-UX-022: Competitive Analysis
+## competitive-analysis
 
 ### Problem
 
@@ -1640,7 +1640,7 @@ Methods for translating research into design solutions.
 
 ---
 
-## M-UX-023: Information Architecture
+## information-architecture
 
 ### Problem
 
@@ -1707,7 +1707,7 @@ You need to organize content so users can find what they need.
 
 ---
 
-## M-UX-024: Wireframing
+## wireframing
 
 ### Problem
 
@@ -1751,7 +1751,7 @@ You need to explore layout and structure before visual design.
 
 ---
 
-## M-UX-025: Prototyping
+## prototyping
 
 ### Problem
 
@@ -1793,7 +1793,7 @@ You need to test interactions before building.
 
 ---
 
-## M-UX-026: Design Systems
+## design-systems
 
 ### Problem
 
@@ -1858,7 +1858,7 @@ You need consistency and efficiency across a product.
 
 ---
 
-## M-UX-027: Accessibility Design
+## accessibility-evaluation
 
 ### Problem
 
@@ -1929,7 +1929,7 @@ You need to design for users of all abilities.
 
 ---
 
-## M-UX-028: Mobile UX Design
+## mobile-ux
 
 ### Problem
 
@@ -1977,7 +1977,7 @@ You need to design for touch interfaces and small screens.
 
 ---
 
-## M-UX-029: Form Design
+## form-design
 
 ### Problem
 
@@ -2032,7 +2032,7 @@ You need to create forms that are easy to complete.
 
 ---
 
-## M-UX-030: Onboarding Design
+## onboarding-design
 
 ### Problem
 
@@ -2107,7 +2107,7 @@ You need to help new users get value quickly.
 
 ---
 
-## M-UX-031: Microcopy and UX Writing
+## ux-writing
 
 ### Problem
 
@@ -2155,7 +2155,7 @@ You need to write interface text that guides and delights users.
 
 ---
 
-## M-UX-032: UX Metrics and KPIs
+## ux-metrics
 
 ### Problem
 
@@ -2233,59 +2233,59 @@ You need to measure UX quality objectively.
 
 ## Methodology Index
 
-| ID | Name | Category | Agent |
-|----|------|----------|-------|
-| M-UX-001 | Visibility of System Status | Heuristic | faion-usability-agent |
-| M-UX-002 | Match Between System and Real World | Heuristic | faion-usability-agent |
-| M-UX-003 | User Control and Freedom | Heuristic | faion-usability-agent |
-| M-UX-004 | Consistency and Standards | Heuristic | faion-usability-agent |
-| M-UX-005 | Error Prevention | Heuristic | faion-usability-agent |
-| M-UX-006 | Recognition Rather Than Recall | Heuristic | faion-usability-agent |
-| M-UX-007 | Flexibility and Efficiency of Use | Heuristic | faion-usability-agent |
-| M-UX-008 | Aesthetic and Minimalist Design | Heuristic | faion-usability-agent |
-| M-UX-009 | Help Users Recognize, Diagnose, Recover from Errors | Heuristic | faion-usability-agent |
-| M-UX-010 | Help and Documentation | Heuristic | faion-usability-agent |
-| M-UX-011 | User Interviews | Research | faion-ux-researcher-agent |
-| M-UX-012 | Contextual Inquiry | Research | faion-ux-researcher-agent |
-| M-UX-013 | Surveys and Questionnaires | Research | faion-ux-researcher-agent |
-| M-UX-014 | Usability Testing | Research | faion-usability-agent |
-| M-UX-015 | A/B Testing | Research | faion-ux-researcher-agent |
-| M-UX-016 | Card Sorting | Research | faion-ux-researcher-agent |
-| M-UX-017 | Tree Testing | Research | faion-ux-researcher-agent |
-| M-UX-018 | Journey Mapping | Research | faion-ux-researcher-agent |
-| M-UX-019 | Empathy Mapping | Research | faion-ux-researcher-agent |
-| M-UX-020 | Persona Development | Research | faion-ux-researcher-agent |
-| M-UX-021 | Diary Studies | Research | faion-ux-researcher-agent |
-| M-UX-022 | Competitive Analysis | Research | faion-ux-researcher-agent |
-| M-UX-023 | Information Architecture | Design | faion-usability-agent |
-| M-UX-024 | Wireframing | Design | faion-usability-agent |
-| M-UX-025 | Prototyping | Design | faion-usability-agent |
-| M-UX-026 | Design Systems | Design | faion-usability-agent |
-| M-UX-027 | Accessibility Design | Design | faion-usability-agent |
-| M-UX-028 | Mobile UX Design | Design | faion-usability-agent |
-| M-UX-029 | Form Design | Design | faion-usability-agent |
-| M-UX-030 | Onboarding Design | Design | faion-usability-agent |
-| M-UX-031 | Microcopy and UX Writing | Design | faion-usability-agent |
-| M-UX-032 | UX Metrics and KPIs | Measurement | faion-usability-agent |
+| Name | Description | Category | Agent |
+|------|-------------|----------|-------|
+| visibility-of-system-status | Visibility of System Status | Heuristic | faion-usability-agent |
+| match-real-world | Match Between System and Real World | Heuristic | faion-usability-agent |
+| user-control-freedom | User Control and Freedom | Heuristic | faion-usability-agent |
+| consistency-standards | Consistency and Standards | Heuristic | faion-usability-agent |
+| error-prevention | Error Prevention | Heuristic | faion-usability-agent |
+| recognition-over-recall | Recognition Rather Than Recall | Heuristic | faion-usability-agent |
+| flexibility-efficiency | Flexibility and Efficiency of Use | Heuristic | faion-usability-agent |
+| aesthetic-minimalist | Aesthetic and Minimalist Design | Heuristic | faion-usability-agent |
+| error-recovery | Help Users Recognize, Diagnose, Recover from Errors | Heuristic | faion-usability-agent |
+| help-documentation | Help and Documentation | Heuristic | faion-usability-agent |
+| user-interviews | User Interviews | Research | faion-ux-researcher-agent |
+| contextual-inquiry | Contextual Inquiry | Research | faion-ux-researcher-agent |
+| surveys | Surveys and Questionnaires | Research | faion-ux-researcher-agent |
+| usability-testing | Usability Testing | Research | faion-usability-agent |
+| ab-testing | A/B Testing | Research | faion-ux-researcher-agent |
+| card-sorting | Card Sorting | Research | faion-ux-researcher-agent |
+| tree-testing | Tree Testing | Research | faion-ux-researcher-agent |
+| journey-mapping | Journey Mapping | Research | faion-ux-researcher-agent |
+| empathy-mapping | Empathy Mapping | Research | faion-ux-researcher-agent |
+| personas | Persona Development | Research | faion-ux-researcher-agent |
+| diary-studies | Diary Studies | Research | faion-ux-researcher-agent |
+| competitive-analysis | Competitive Analysis | Research | faion-ux-researcher-agent |
+| information-architecture | Information Architecture | Design | faion-usability-agent |
+| wireframing | Wireframing | Design | faion-usability-agent |
+| prototyping | Prototyping | Design | faion-usability-agent |
+| design-tokens-fundamentals | Design Systems | Design | faion-usability-agent |
+| accessibility-evaluation | Accessibility Design | Design | faion-usability-agent |
+| mobile-ux | Mobile UX Design | Design | faion-usability-agent |
+| form-design | Form Design | Design | faion-usability-agent |
+| onboarding-design | Onboarding Design | Design | faion-usability-agent |
+| microcopy-ux-writing | Microcopy and UX Writing | Design | faion-usability-agent |
+| ux-metrics-kpis | UX Metrics and KPIs | Measurement | faion-usability-agent |
 
 ## When to Use What
 
 | Goal | Method |
 |------|--------|
-| Understand user needs | User Interviews (M-UX-011), Contextual Inquiry (M-UX-012) |
-| Validate information architecture | Card Sorting (M-UX-016), Tree Testing (M-UX-017) |
-| Test usability | Usability Testing (M-UX-014), Heuristic Evaluation (M-UX-001-010) |
-| Measure satisfaction | Surveys (M-UX-013), UX Metrics (M-UX-032) |
-| Optimize conversion | A/B Testing (M-UX-015), Form Design (M-UX-029) |
-| Map experience | Journey Mapping (M-UX-018), Empathy Mapping (M-UX-019) |
-| Design for accessibility | Accessibility Design (M-UX-027) |
-| Ensure consistency | Design Systems (M-UX-026), Consistency Heuristic (M-UX-004) |
+| Understand user needs | user-interviews, contextual-inquiry |
+| Validate information architecture | card-sorting, tree-testing |
+| Test usability | usability-testing, 10 heuristics |
+| Measure satisfaction | surveys, ux-metrics |
+| Optimize conversion | ab-testing, form-design |
+| Map experience | journey-mapping, empathy-mapping |
+| Design for accessibility | accessibility-evaluation |
+| Ensure consistency | design-systems, consistency-standards |
 
 ---
 
 ## Sources
 
-- [Nielsen Norman Group](https://www.nngroup.com/) - 10 Usability Heuristics
+- [UX research community](https://www.nngroup.com/) - 10 Usability Heuristics
 - [IDEO Design Kit](https://www.designkit.org/) - Human-Centered Design Methods
 - [Rosenfeld Media](https://rosenfeldmedia.com/) - Information Architecture
 - [A List Apart](https://alistapart.com/) - Web Design Standards
@@ -2296,7 +2296,7 @@ You need to measure UX quality objectively.
 ---
 
 *UX Domain Skill v1.0*
-*32 Methodologies (M-UX-001 to M-UX-032)*
+*32 Methodologies (semantic names)*
 *Agents: faion-ux-researcher-agent, faion-usability-agent*
 
 
@@ -2304,37 +2304,37 @@ You need to measure UX quality objectively.
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-UX-001 | Visibility Of System Status | [methodologies/M-UX-001_visibility_of_system_status.md](methodologies/M-UX-001_visibility_of_system_status.md) |
-| M-UX-002 | Match Real World | [methodologies/M-UX-002_match_real_world.md](methodologies/M-UX-002_match_real_world.md) |
-| M-UX-003 | User Control Freedom | [methodologies/M-UX-003_user_control_freedom.md](methodologies/M-UX-003_user_control_freedom.md) |
-| M-UX-004 | Consistency Standards | [methodologies/M-UX-004_consistency_standards.md](methodologies/M-UX-004_consistency_standards.md) |
-| M-UX-005 | Error Prevention | [methodologies/M-UX-005_error_prevention.md](methodologies/M-UX-005_error_prevention.md) |
-| M-UX-006 | Recognition Over Recall | [methodologies/M-UX-006_recognition_over_recall.md](methodologies/M-UX-006_recognition_over_recall.md) |
-| M-UX-007 | Flexibility Efficiency | [methodologies/M-UX-007_flexibility_efficiency.md](methodologies/M-UX-007_flexibility_efficiency.md) |
-| M-UX-008 | Aesthetic Minimalist | [methodologies/M-UX-008_aesthetic_minimalist.md](methodologies/M-UX-008_aesthetic_minimalist.md) |
-| M-UX-009 | Error Recovery | [methodologies/M-UX-009_error_recovery.md](methodologies/M-UX-009_error_recovery.md) |
-| M-UX-010 | Help Documentation | [methodologies/M-UX-010_help_documentation.md](methodologies/M-UX-010_help_documentation.md) |
-| M-UX-011 | User Interviews | [methodologies/M-UX-011_user_interviews.md](methodologies/M-UX-011_user_interviews.md) |
-| M-UX-012 | Usability Testing | [methodologies/M-UX-012_usability_testing.md](methodologies/M-UX-012_usability_testing.md) |
-| M-UX-013 | Surveys | [methodologies/M-UX-013_surveys.md](methodologies/M-UX-013_surveys.md) |
-| M-UX-014 | Card Sorting | [methodologies/M-UX-014_card_sorting.md](methodologies/M-UX-014_card_sorting.md) |
-| M-UX-015 | Personas | [methodologies/M-UX-015_personas.md](methodologies/M-UX-015_personas.md) |
-| M-UX-016 | Journey Mapping | [methodologies/M-UX-016_journey_mapping.md](methodologies/M-UX-016_journey_mapping.md) |
-| M-UX-017 | Wireframing | [methodologies/M-UX-017_wireframing.md](methodologies/M-UX-017_wireframing.md) |
-| M-UX-018 | Prototyping | [methodologies/M-UX-018_prototyping.md](methodologies/M-UX-018_prototyping.md) |
-| M-UX-019 | Ab Testing | [methodologies/M-UX-019_ab_testing.md](methodologies/M-UX-019_ab_testing.md) |
-| M-UX-020 | Heuristic Evaluation | [methodologies/M-UX-020_heuristic_evaluation.md](methodologies/M-UX-020_heuristic_evaluation.md) |
-| M-UX-021 | Contextual Inquiry | [methodologies/M-UX-021_contextual_inquiry.md](methodologies/M-UX-021_contextual_inquiry.md) |
-| M-UX-022 | Focus Groups | [methodologies/M-UX-022_focus_groups.md](methodologies/M-UX-022_focus_groups.md) |
-| M-UX-023 | Tree Testing | [methodologies/M-UX-023_tree_testing.md](methodologies/M-UX-023_tree_testing.md) |
-| M-UX-024 | Accessibility Evaluation | [methodologies/M-UX-024_accessibility_evaluation.md](methodologies/M-UX-024_accessibility_evaluation.md) |
-| M-UX-025 | Design Critique | [methodologies/M-UX-025_design_critique.md](methodologies/M-UX-025_design_critique.md) |
-| M-UX-026 | Competitive Analysis | [methodologies/M-UX-026_competitive_analysis.md](methodologies/M-UX-026_competitive_analysis.md) |
-| M-UX-027 | Content Audit | [methodologies/M-UX-027_content_audit.md](methodologies/M-UX-027_content_audit.md) |
-| M-UX-028 | Cognitive Walkthrough | [methodologies/M-UX-028_cognitive_walkthrough.md](methodologies/M-UX-028_cognitive_walkthrough.md) |
-| M-UX-029 | Information Architecture | [methodologies/M-UX-029_information_architecture.md](methodologies/M-UX-029_information_architecture.md) |
-| M-UX-030 | Mobile Ux | [methodologies/M-UX-030_mobile_ux.md](methodologies/M-UX-030_mobile_ux.md) |
-| M-UX-031 | Voice Ui | [methodologies/M-UX-031_voice_ui.md](methodologies/M-UX-031_voice_ui.md) |
-| M-UX-032 | Diary Studies | [methodologies/M-UX-032_diary_studies.md](methodologies/M-UX-032_diary_studies.md) |
+| Name | File |
+|------|------|
+| Visibility of System Status | [visibility-of-system-status](references/visibility-of-system-status.md) |
+| Match Real World | [match-real-world](references/match-real-world.md) |
+| User Control Freedom | [user-control-freedom](references/user-control-freedom.md) |
+| Consistency Standards | [consistency-standards](references/consistency-standards.md) |
+| Error Prevention | [error-prevention](references/error-prevention.md) |
+| Recognition Over Recall | [recognition-over-recall](references/recognition-over-recall.md) |
+| Flexibility Efficiency | [flexibility-efficiency](references/flexibility-efficiency.md) |
+| Aesthetic Minimalist | [aesthetic-minimalist](references/aesthetic-minimalist.md) |
+| Error Recovery | [error-recovery](references/error-recovery.md) |
+| Help Documentation | [help-documentation](references/help-documentation.md) |
+| User Interviews | [user-interviews](references/user-interviews.md) |
+| Usability Testing | [usability-testing](references/usability-testing.md) |
+| Surveys | [surveys](references/surveys.md) |
+| Card Sorting | [card-sorting](references/card-sorting.md) |
+| Personas | [personas](references/personas.md) |
+| Journey Mapping | [journey-mapping](references/journey-mapping.md) |
+| Wireframing | [wireframing](references/wireframing.md) |
+| Prototyping | [prototyping](references/prototyping.md) |
+| A/B Testing | [ab-testing](references/ab-testing.md) |
+| Heuristic Evaluation | [heuristic-evaluation](references/heuristic-evaluation.md) |
+| Contextual Inquiry | [contextual-inquiry](references/contextual-inquiry.md) |
+| Focus Groups | [focus-groups](references/focus-groups.md) |
+| Tree Testing | [tree-testing](references/tree-testing.md) |
+| Accessibility Evaluation | [accessibility-evaluation](references/accessibility-evaluation.md) |
+| Design Critique | [design-critique](references/design-critique.md) |
+| Competitive Analysis | [competitive-analysis](references/competitive-analysis.md) |
+| Content Audit | [content-audit](references/content-audit.md) |
+| Cognitive Walkthrough | [cognitive-walkthrough](references/cognitive-walkthrough.md) |
+| Information Architecture | [information-architecture](references/information-architecture.md) |
+| Mobile UX | [mobile-ux](references/mobile-ux.md) |
+| Voice UI | [voice-ui](references/voice-ui.md) |
+| Diary Studies | [diary-studies](references/diary-studies.md) |

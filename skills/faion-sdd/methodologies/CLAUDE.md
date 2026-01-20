@@ -2,20 +2,28 @@
 
 ## Overview
 
-Contains 8 core SDD (Specification-Driven Development) methodologies covering the complete workflow from project setup to backlog management. Each methodology follows a standard format with metadata, problem statement, framework, templates, examples, and common mistakes.
+Contains 16 SDD (Specification-Driven Development) methodologies covering the complete workflow from project setup to backlog management. Each methodology follows a standard format with metadata, problem statement, framework, templates, examples, and common mistakes.
 
 ## File Summary
 
 | File | ID | Description |
 |------|-----|-------------|
-| M-SDD-001_sdd_workflow_overview.md | M-SDD-001 | Foundation overview of the SDD workflow phases (Idea -> Validation -> Spec -> Design -> Implementation -> Launch) |
-| M-SDD-002_writing_specifications.md | M-SDD-002 | How to write spec.md files with user stories, functional requirements, and acceptance criteria |
-| M-SDD-003_writing_design_documents.md | M-SDD-003 | How to write design.md files with architecture decisions, file structure, data models, and API contracts |
-| M-SDD-004_writing_implementation_plans.md | M-SDD-004 | How to break design into phased tasks with estimates, dependencies, and rollout strategy |
-| M-SDD-005_task_creation_parallelization.md | M-SDD-005 | Task decomposition principles, dependency analysis, and parallelization strategies |
-| M-SDD-006_quality_gates_confidence.md | M-SDD-006 | Quality checkpoints (spec review, design review, code review) and confidence assessment |
-| M-SDD-007_reflexion_learning.md | M-SDD-007 | Post-task reflection process, learning storage, and PDCA cycle implementation |
-| M-SDD-008_backlog_grooming_roadmapping.md | M-SDD-008 | Backlog management, RICE/MoSCoW prioritization, and roadmap planning |
+| sdd-workflow-overview.md | sdd-workflow-overview | Foundation overview of the SDD workflow phases (Idea -> Validation -> Spec -> Design -> Implementation -> Launch) |
+| writing-specifications.md | writing-specifications | How to write spec.md files with user stories, functional requirements, and acceptance criteria |
+| writing-design-documents.md | writing-design-documents | How to write design.md files with architecture decisions, file structure, data models, and API contracts |
+| writing-implementation-plans.md | writing-implementation-plans | How to break design into phased tasks with estimates, dependencies, and rollout strategy |
+| task-creation-parallelization.md | task-creation-parallelization | Task decomposition principles, dependency analysis, and parallelization strategies |
+| quality-gates-confidence.md | quality-gates-confidence | Quality checkpoints (spec review, design review, code review) and confidence assessment |
+| backlog-grooming-roadmapping.md | backlog-grooming-roadmapping | Backlog management, RICE/MoSCoW prioritization, and roadmap planning |
+| code-review-cycle.md | code-review-cycle | Code review process in SDD with quality gates and feedback loops |
+| reflexion-learning.md | reflexion-learning | Post-task reflection process, learning storage, and PDCA cycle implementation |
+| pattern-memory.md | pattern-memory | Capturing and storing successful patterns for reuse |
+| mistake-memory.md | mistake-memory | Documenting and learning from mistakes to prevent recurrence |
+| ai-assisted-specification-writing.md | ai-assisted-specification-writing | Using AI to generate and improve specifications |
+| living-documentation-docs-as-code.md | living-documentation-docs-as-code | Keeping documentation in sync with code |
+| architecture-decision-records.md | architecture-decision-records | Documenting architecture decisions with ADRs |
+| api-first-development.md | api-first-development | Designing APIs before implementation |
+| design-docs-patterns.md | design-docs-patterns | Design document patterns from big tech companies |
 
 ## Methodology Structure
 
@@ -30,68 +38,32 @@ Each methodology file contains:
 7. **Related Methodologies** - Cross-references
 8. **Agent** - Which agent implements this methodology
 
-## Detailed File Descriptions
+## Categories
 
-### M-SDD-001: SDD Workflow Overview
+### Core SDD Workflow
 
-- **Category:** SDD Foundation
-- **Difficulty:** Beginner
-- **Agent:** faion-task-executor-agent
+- sdd-workflow-overview.md
+- writing-specifications.md
+- writing-design-documents.md
+- writing-implementation-plans.md
 
-Introduces the six-phase SDD workflow. Covers time allocation for solo vs team projects. Includes project structure template and phase checklist.
+### Task Management
 
-### M-SDD-002: Writing Specifications
+- task-creation-parallelization.md
+- quality-gates-confidence.md
+- backlog-grooming-roadmapping.md
+- code-review-cycle.md
 
-- **Category:** SDD Foundation
-- **Difficulty:** Beginner
-- **Agent:** faion-spec-reviewer-agent
+### Learning & Memory
 
-Defines spec.md structure: overview, user stories, functional requirements (FR-X), non-functional requirements (NFR-X), acceptance criteria (Given-When-Then), and out of scope. Includes full spec template.
+- reflexion-learning.md
+- pattern-memory.md
+- mistake-memory.md
 
-### M-SDD-003: Writing Design Documents
+### Best Practices (2026)
 
-- **Category:** SDD Foundation
-- **Difficulty:** Intermediate
-- **Agent:** faion-design-reviewer-agent
-
-Bridges spec (what) to implementation (code). Covers architecture decisions (AD-X format), file changes (CREATE/MODIFY), data models, API contracts, dependencies, and testing strategy.
-
-### M-SDD-004: Writing Implementation Plans
-
-- **Category:** SDD Foundation
-- **Difficulty:** Intermediate
-- **Agent:** faion-impl-plan-reviewer-agent
-
-Breaks design into actionable tasks. Covers prerequisites, phases, task format (TASK-XXX), testing plan, rollout strategy, and risk assessment.
-
-### M-SDD-005: Task Creation and Parallelization
-
-- **Category:** SDD Foundation
-- **Difficulty:** Intermediate
-- **Agent:** faion-task-creator-agent
-
-Task decomposition principles (right size, clear boundaries, explicit dependencies). Dependency graph analysis, parallel path identification, critical path calculation, and wave-based execution.
-
-### M-SDD-006: Quality Gates and Confidence Checks
-
-- **Category:** SDD Foundation
-- **Difficulty:** Intermediate
-- **Agent:** faion-hallucination-checker-agent
-
-Quality gate types (spec review, design review, code review, test gate, deploy gate). Confidence levels (high/medium/low). Includes checklists for each gate type and AI code confidence assessment.
-
-### M-SDD-007: Reflexion and Learning
-
-- **Category:** SDD Foundation
-- **Difficulty:** Intermediate
-- **Agent:** faion-task-executor-agent
-
-PDCA learning loop (Do -> Reflect -> Learn -> Apply). Covers task reflexion, feature retrospectives, learning entry format (JSONL), and session context. Storage in ~/.sdd/memory/.
-
-### M-SDD-008: Backlog Grooming and Roadmapping
-
-- **Category:** SDD Foundation
-- **Difficulty:** Beginner
-- **Agent:** faion-task-executor-agent
-
-Backlog structure (ideas -> validated -> specified -> designed -> ready). Weekly grooming process. Prioritization frameworks (RICE, MoSCoW, Value vs Effort). Roadmap templates (time-based, theme-based).
+- ai-assisted-specification-writing.md
+- living-documentation-docs-as-code.md
+- architecture-decision-records.md
+- api-first-development.md
+- design-docs-patterns.md

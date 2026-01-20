@@ -1,6 +1,6 @@
 # Tailwind CSS Methodology
 
-## M-DEV-070: Tailwind Architecture
+## Tailwind Architecture
 
 ### Principles
 
@@ -244,5 +244,5 @@ plugins: [
 
 ---
 
-*M-DEV-070 Tailwind Architecture*
+*Tailwind Architecture*
 *Sources: [Tailwind Best Practices 2025](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns), [Infinum Handbook](https://infinum.com/handbook/frontend/react/tailwind/best-practices)*

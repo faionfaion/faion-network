@@ -10,8 +10,8 @@ This skill provides comprehensive coverage across 10 domains:
 - **Product** - MVP/MLP planning, prioritization, roadmapping
 - **Development** - Code generation, testing, API design, DevOps
 - **Marketing** - GTM strategy, landing pages, SEO, ads, email
-- **Project Management** - PMBOK 7/8, risk management, EVM
-- **Business Analysis** - BABOK v3, requirements, traceability
+- **Project Management** - Project Management Framework 7/8, risk management, EVM
+- **Business Analysis** - Business Analysis Framework, requirements, traceability
 - **UX/UI** - Research, usability testing, heuristic evaluation
 - **AI/LLM** - RAG, embeddings, fine-tuning, multimodal, agents
 - **HR/Recruiting** - Talent acquisition, employer branding, onboarding
@@ -67,28 +67,28 @@ faion-net/
 | `faion-devops-engineer` | Docker, K8s, Terraform, CI/CD |
 | `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning |
 | `faion-marketing-manager` | GTM, landing pages, SEO (72 methodologies) |
-| `faion-project-manager` | PMBOK 7/8, risk, EVM (32 methodologies) |
-| `faion-business-analyst` | BABOK v3, 6 Knowledge Areas (30 tasks) |
-| `faion-ux-ui-designer` | Nielsen Norman 10, usability (32 methodologies) |
+| `faion-project-manager` | Project Management Framework 7/8, risk, EVM (32 methodologies) |
+| `faion-business-analyst` | Business Analysis Framework, 6 Knowledge Areas (30 tasks) |
+| `faion-ux-ui-designer` | 10 Usability Heuristics, usability (32 methodologies) |
 | `faion-hr-recruiter` | Talent acquisition, employer branding, onboarding (45 methodologies) |
 | `faion-claude-code` | Skills, agents, commands, MCP servers |
 
 ## Quick Reference
 
-**Methodology Prefixes:**
-- `M-RES-*` - Research (20 methodologies)
-- `M-PRD-*` - Product (18 methodologies)
-- `M-DEV-*` - Development (68 methodologies)
-- `M-OPS-*` - DevOps (20 methodologies)
-- `M-ML-*` - ML/AI (30 methodologies)
-- `M-MKT-*` - Marketing (32 methodologies)
-- `M-GRO-*` - Growth (12 methodologies)
-- `M-ADS-*` - Advertising (16 methodologies)
-- `M-BIZ-*` - Business Operations (14 methodologies)
-- `M-PM-*` - Project Management (24 methodologies)
-- `M-PMT-*` - PM Tools (12 methodologies)
-- `M-BA-*` - Business Analysis (18 methodologies)
-- `M-UX-*` - UX/UI (32 methodologies)
-- `M-SDD-*` - SDD (12 methodologies)
-- `M-COM-*` - Communication (10 methodologies)
-- `semantic` - HR/Recruiting (45 methodologies, e.g., employee-value-proposition, star-interview-method)
+**Methodology Categories (semantic naming):**
+- Research - 14 methodologies (idea-generation, market-research-tam-sam-som, competitor-analysis, etc.)
+- Product - 18 methodologies (mvp-scoping, mlp-planning, feature-prioritization-rice, etc.)
+- Development - 68 methodologies (python-*, react-*, api-*, testing-*, etc.)
+- DevOps - 20 methodologies (docker-*, kubernetes-*, terraform-*, cicd-*, etc.)
+- ML/AI - 30 methodologies (llm-*, rag-*, embedding-*, prompt-engineering, etc.)
+- Marketing - 40 methodologies (gtm-strategy, landing-page-design, seo-*, etc.)
+- Growth - 12 methodologies (aarrr-pirate-metrics, growth-loops, product-led-growth, etc.)
+- Advertising - 16 methodologies (meta-*, google-*, linkedin-ads, attribution-models, etc.)
+- Business Operations - 14 methodologies (pricing-strategy, subscription-models, customer-success, etc.)
+- Project Management - 20 methodologies (stakeholder-register, raci-matrix, earned-value-management, etc.)
+- PM Tools - 12 methodologies (jira-workflow, linear-issue-tracking, github-projects, etc.)
+- Business Analysis - 12 methodologies (ba-planning, stakeholder-analysis, elicitation-techniques, etc.)
+- UX/UI - 32 methodologies (user-interviews, usability-testing, wireframing, etc.)
+- SDD - 12 methodologies (sdd-workflow-overview, writing-specifications, quality-gates-review-cycle, etc.)
+- Communication - 10 methodologies (active-listening, mom-test, stakeholder-communication, etc.)
+- HR/Recruiting - 45 methodologies (employee-value-proposition, star-interview-method, etc.)

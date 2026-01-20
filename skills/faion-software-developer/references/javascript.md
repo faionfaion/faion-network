@@ -1140,7 +1140,7 @@ afterAll(() => server.close());
 
 ## Methodologies (8)
 
-### M-JS-001: Component-First Architecture
+### Component-First Architecture
 
 **Problem:** Large React applications become hard to maintain without clear structure.
 
@@ -1158,7 +1158,7 @@ afterAll(() => server.close());
 - [ ] Types are defined close to usage
 - [ ] Tests are colocated with components
 
-### M-JS-002: TypeScript Strict Mode
+### TypeScript Strict Mode
 
 **Problem:** TypeScript without strict mode allows unsafe patterns.
 
@@ -1176,7 +1176,7 @@ afterAll(() => server.close());
 - [ ] Public functions have return types
 - [ ] Arrays accessed safely
 
-### M-JS-003: React Hooks Best Practices
+### React Hooks Best Practices
 
 **Problem:** Improper hook usage causes bugs and performance issues.
 
@@ -1194,7 +1194,7 @@ afterAll(() => server.close());
 - [ ] Custom hooks are composable
 - [ ] Effects have cleanup functions
 
-### M-JS-004: Node.js Service Layer
+### Node.js Service Layer
 
 **Problem:** Business logic mixed in controllers is hard to test and reuse.
 
@@ -1212,7 +1212,7 @@ afterAll(() => server.close());
 - [ ] Each service has clear responsibility
 - [ ] Services are unit testable
 
-### M-JS-005: Error Handling Strategy
+### Error Handling Strategy
 
 **Problem:** Inconsistent error handling leads to poor UX and debugging.
 
@@ -1230,7 +1230,7 @@ afterAll(() => server.close());
 - [ ] Structured logging with Pino/Winston
 - [ ] Production errors sanitized
 
-### M-JS-006: Testing Pyramid
+### Testing Pyramid
 
 **Problem:** Unbalanced test suites are slow or provide poor coverage.
 
@@ -1248,7 +1248,7 @@ afterAll(() => server.close());
 - [ ] Tests run in CI/CD
 - [ ] Coverage above 80% for business logic
 
-### M-JS-007: Package Management
+### Package Management
 
 **Problem:** Poor dependency management causes version conflicts and security issues.
 
@@ -1266,7 +1266,7 @@ afterAll(() => server.close());
 - [ ] Renovate/Dependabot configured
 - [ ] Update schedule documented
 
-### M-JS-008: Performance Optimization
+### Performance Optimization
 
 **Problem:** React apps become slow without intentional optimization.
 

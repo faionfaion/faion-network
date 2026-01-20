@@ -84,57 +84,57 @@ Detailed technical context for each area:
 
 ## Methodologies (32)
 
-### Python (M-PY-*)
+### Python
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-PY-001 | Project Setup Poetry | Dependency management |
-| M-PY-002 | Django Patterns | Models, views, services |
-| M-PY-003 | FastAPI Patterns | Routes, dependencies, Pydantic |
-| M-PY-004 | pytest Patterns | Fixtures, mocking, parametrize |
-| M-PY-005 | Type Hints | Type safety, mypy |
-| M-PY-006 | Code Formatting | Black, isort, flake8 |
-| M-PY-007 | Virtual Environments | venv, Poetry, pyenv |
-| M-PY-008 | Async Python | asyncio, concurrent execution |
+| Name | Purpose |
+|------|---------|
+| python-poetry-setup | Dependency management |
+| django-coding-standards | Models, views, services |
+| python-fastapi | Routes, dependencies, Pydantic |
+| django-pytest | Fixtures, mocking, parametrize |
+| python-type-hints | Type safety, mypy |
+| code-formatting (in tools) | Black, isort, flake8 |
+| virtual-environments (in python.md) | venv, Poetry, pyenv |
+| python-async-patterns | asyncio, concurrent execution |
 
-### JavaScript/TypeScript (M-JS-*)
+### JavaScript/TypeScript
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-JS-001 | Component Architecture | React feature-based structure |
-| M-JS-002 | TypeScript Strict Mode | Type safety patterns |
-| M-JS-003 | React Hooks | Custom hooks best practices |
-| M-JS-004 | Node.js Service Layer | Controller-Service-Repository |
-| M-JS-005 | Error Handling | Custom errors, middleware |
-| M-JS-006 | Testing Pyramid | Unit, integration, E2E balance |
-| M-JS-007 | Package Management | pnpm, lockfiles, security |
-| M-JS-008 | Performance | Memoization, virtualization |
+| Name | Purpose |
+|------|---------|
+| react-component-architecture | React feature-based structure |
+| typescript-strict-mode | Type safety patterns |
+| react-hooks | Custom hooks best practices |
+| nodejs-service-layer | Controller-Service-Repository |
+| error-handling | Custom errors, middleware |
+| tdd-workflow | Testing pyramid, unit, integration, E2E balance |
+| pnpm-package-management | pnpm, lockfiles, security |
+| performance-testing | Memoization, virtualization |
 
-### Backend (M-BE-*)
+### Backend
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-BE-001 | Clean Architecture | Layers, dependencies |
-| M-BE-002 | Database Design | Normalization, indexes |
-| M-BE-003 | Caching Strategy | Redis, in-memory, CDN |
-| M-BE-004 | Authentication | JWT, sessions, OAuth |
-| M-BE-005 | Rate Limiting | Token bucket, sliding window |
-| M-BE-006 | Background Jobs | Celery, BullMQ, cron |
-| M-BE-007 | Logging & Monitoring | Structured logs, metrics |
-| M-BE-008 | Error Recovery | Retry, circuit breaker |
+| Name | Purpose |
+|------|---------|
+| clean-architecture | Layers, dependencies |
+| database-design | Normalization, indexes |
+| caching-strategy | Redis, in-memory, CDN |
+| api-authentication | JWT, sessions, OAuth |
+| api-rate-limiting | Token bucket, sliding window |
+| message-queues | Background jobs, Celery, BullMQ, cron |
+| logging-patterns | Structured logs, metrics |
+| error-handling | Retry, circuit breaker |
 
-### API Design (M-API-*)
+### API Design
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-API-001 | REST Conventions | Resources, verbs, status codes |
-| M-API-002 | OpenAPI/Swagger | Documentation, code generation |
-| M-API-003 | Versioning | URL, header, query strategies |
-| M-API-004 | Pagination | Cursor, offset, keyset |
-| M-API-005 | Error Responses | Consistent error format |
-| M-API-006 | GraphQL Patterns | Schema, resolvers, N+1 |
-| M-API-007 | WebSocket Design | Real-time communication |
-| M-API-008 | API Security | CORS, rate limits, validation |
+| Name | Purpose |
+|------|---------|
+| api-rest-design | Resources, verbs, status codes |
+| api-openapi-spec | Documentation, code generation |
+| api-versioning | URL, header, query strategies |
+| api-pagination (in rest-design) | Cursor, offset, keyset |
+| api-error-handling | Consistent error format |
+| api-graphql | Schema, resolvers, N+1 |
+| websocket-design | Real-time communication |
+| api-security (in rest-design) | CORS, rate limits, validation |
 
 ---
 

@@ -4,7 +4,7 @@ Technical reference documents for software development. Contains detailed patter
 
 ## Overview
 
-This folder provides in-depth technical context for development tasks. Each file focuses on a specific technology or domain area. Total: 14 files, ~14,000 lines of reference material.
+This folder provides in-depth technical context for development tasks. Each file focuses on a specific technology or domain area. Total: 19 files, ~14,000 lines of reference material.
 
 ## Files
 
@@ -14,7 +14,17 @@ This folder provides in-depth technical context for development tasks. Each file
 |------|---------|------|
 | `python.md` | Python ecosystem: Django, FastAPI, pytest, Poetry, typing, async patterns | ~1760 lines |
 | `javascript.md` | TypeScript 5.x, React 19.x, Node.js 22, Bun, ESLint 9, testing | ~1350 lines |
-| `backend.md` | Multi-language backend: Go, Ruby, PHP, Java, C#, Rust with 4 methodologies each | ~3180 lines |
+
+### Backend Languages (6 files)
+
+| File | Content |
+|------|---------|
+| `go-backend.md` | Go: Gin, Echo, project structure, concurrency, error handling |
+| `ruby-rails.md` | Ruby: Rails patterns, ActiveRecord, RSpec, Sidekiq |
+| `php-laravel.md` | PHP: Laravel patterns, Eloquent, PHPUnit, Queues |
+| `java-spring.md` | Java: Spring Boot, JPA/Hibernate, JUnit, Async |
+| `csharp-dotnet.md` | C#: ASP.NET Core, Entity Framework, xUnit, Background Services |
+| `rust-backend.md` | Rust: Axum, Actix, Tokio async patterns, testing |
 
 ### API and Testing
 
@@ -54,6 +64,9 @@ Reference files are loaded by agents when working on specific technology areas. 
 - Building REST API -> read `api-design.md`
 - Setting up tests -> read `testing.md`
 - Creating UI components -> read `tailwind.md` + `shadcn-ui.md`
+- Go backend development -> read `go-backend.md`
+- Java Spring Boot -> read `java-spring.md`
+- Rust web services -> read `rust-backend.md`
 
 ## Key Patterns
 

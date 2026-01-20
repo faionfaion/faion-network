@@ -22,7 +22,7 @@ None directly - uses methodologies embedded in faion-sdd.
 
 ## Methodologies
 
-8 methodologies (M-SDD-001 to M-SDD-008):
+8 methodologies:
 - SDD Workflow Overview
 - Writing Specifications
 - Writing Design Documents

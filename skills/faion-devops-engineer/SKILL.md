@@ -75,50 +75,50 @@ Detailed technical context for each area:
 
 ## Methodologies (20)
 
-### Docker (M-DOC-*)
+### Docker
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-DOC-001 | Multi-stage Builds | Smaller production images |
-| M-DOC-002 | Docker Compose | Multi-container local dev |
-| M-DOC-003 | Security Scanning | Vulnerability detection |
-| M-DOC-004 | Layer Optimization | Build cache efficiency |
+| Name | Purpose |
+|------|---------|
+| docker-containerization | Multi-stage builds, smaller production images |
+| docker-compose | Multi-container local dev |
+| security-scanning (in docker) | Vulnerability detection |
+| layer-optimization (in docker) | Build cache efficiency |
 
-### Kubernetes (M-K8S-*)
+### Kubernetes
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-K8S-001 | Resource Management | Requests, limits, QoS |
-| M-K8S-002 | Helm Charts | Package management |
-| M-K8S-003 | ConfigMaps & Secrets | Configuration management |
-| M-K8S-004 | Ingress & Networking | Traffic routing |
+| Name | Purpose |
+|------|---------|
+| kubernetes-deployment | Resource management, requests, limits, QoS |
+| helm-charts | Package management |
+| secrets-management | ConfigMaps, Secrets, configuration management |
+| load-balancing | Ingress, traffic routing |
 
-### Terraform (M-TF-*)
+### Terraform
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-TF-001 | Module Design | Reusable infrastructure |
-| M-TF-002 | State Management | Remote state, locking |
-| M-TF-003 | Workspaces | Environment separation |
-| M-TF-004 | Testing | Terratest, plan validation |
+| Name | Purpose |
+|------|---------|
+| terraform-iac | Module design, reusable infrastructure |
+| state-management (in terraform) | Remote state, locking |
+| workspaces (in terraform) | Environment separation |
+| testing (in terraform) | Terratest, plan validation |
 
-### AWS (M-AWS-*)
+### AWS
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-AWS-001 | IAM Best Practices | Least privilege, roles |
-| M-AWS-002 | VPC Design | Networking, security groups |
-| M-AWS-003 | Cost Optimization | Reserved, spot, rightsizing |
-| M-AWS-004 | Disaster Recovery | Backup, multi-region |
+| Name | Purpose |
+|------|---------|
+| aws-architecture | IAM best practices, least privilege, roles |
+| vpc-design (in aws) | Networking, security groups |
+| finops-cloud-cost-optimization | Reserved, spot, rightsizing |
+| backup-strategies | Disaster recovery, backup, multi-region |
 
-### GCP (M-GCP-*)
+### GCP
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-GCP-001 | IAM & Service Accounts | Workload identity, least privilege |
-| M-GCP-002 | VPC & Networking | Shared VPC, firewall rules, Cloud NAT |
-| M-GCP-003 | GKE Operations | Autopilot, node pools, workload identity |
-| M-GCP-004 | Cost Optimization | Committed use, preemptible/spot, rightsizing |
+| Name | Purpose |
+|------|---------|
+| gcp-architecture | IAM, service accounts, workload identity |
+| vpc-networking (in gcp) | Shared VPC, firewall rules, Cloud NAT |
+| gke-operations (in gcp) | Autopilot, node pools, workload identity |
+| cost-optimization (in gcp) | Committed use, preemptible/spot, rightsizing |
 
 ---
 

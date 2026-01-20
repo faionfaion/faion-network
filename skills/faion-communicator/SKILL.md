@@ -31,32 +31,32 @@ This skill provides communication methodologies for:
 
 | Situation | Methodology |
 |-----------|-------------|
-| Gathering requirements | M-COM-001 (Active Listening), M-COM-003 (Stakeholder Communication) |
-| Validating business ideas | M-COM-002 (The Mom Test) |
-| Team disagreements | M-COM-004 (Conflict Resolution) |
-| Performance reviews | M-COM-005 (Feedback) |
-| Pitching to stakeholders | M-COM-006 (Selling Ideas) |
-| Presentations | M-COM-007 (Storytelling) |
-| Contract discussions | M-COM-008 (Negotiation) |
-| Sensitive topics | M-COM-009 (Difficult Conversations) |
-| Generating ideas | M-COM-010 (Brainstorming & Ideation) |
+| Gathering requirements | active-listening, stakeholder-communication |
+| Validating business ideas | mom-test |
+| Team disagreements | conflict-resolution |
+| Performance reviews | feedback |
+| Pitching to stakeholders | selling-ideas |
+| Presentations | business-storytelling |
+| Contract discussions | negotiation |
+| Sensitive topics | difficult-conversations |
+| Generating ideas | brainstorming-ideation |
 
 ---
 
 ## All Methodologies (10)
 
-| ID | Name | Key Frameworks | File |
-|----|------|----------------|------|
-| M-COM-001 | Active Listening | RASA, Empathic Listening, Reflective | [M-COM-001](methodologies/M-COM-001_active_listening.md) |
-| M-COM-002 | The Mom Test | Rob Fitzpatrick's validation | [M-COM-002](methodologies/M-COM-002_mom_test.md) |
-| M-COM-003 | Stakeholder Communication | Interview, Brainstorm, Clarify, Validate, Socratic | [M-COM-003](methodologies/M-COM-003_stakeholder_communication.md) |
-| M-COM-004 | Conflict Resolution | Thomas-Kilmann, NVC | [M-COM-004](methodologies/M-COM-004_conflict_resolution.md) |
-| M-COM-005 | Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC | [M-COM-005](methodologies/M-COM-005_feedback.md) |
-| M-COM-006 | Selling Ideas | SPIN Selling, Challenger Sale, Elevator Pitch | [M-COM-006](methodologies/M-COM-006_selling_ideas.md) |
-| M-COM-007 | Business Storytelling | Pyramid Principle, SCQA, Pixar Framework | [M-COM-007](methodologies/M-COM-007_storytelling.md) |
-| M-COM-008 | Negotiation & Persuasion | Principled Negotiation, BATNA, Cialdini's 6 | [M-COM-008](methodologies/M-COM-008_negotiation.md) |
-| M-COM-009 | Difficult Conversations | Crucial Conversations, DESC Script | [M-COM-009](methodologies/M-COM-009_difficult_conversations.md) |
-| M-COM-010 | Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5, Reverse | [M-COM-010](methodologies/M-COM-010_brainstorming_ideation.md) |
+| Name | Key Frameworks | File |
+|------|----------------|------|
+| Active Listening | RASA, Empathic Listening, Reflective | [active-listening](methodologies/active-listening.md) |
+| The Mom Test | Rob Fitzpatrick's validation | [mom-test](methodologies/mom-test.md) |
+| Stakeholder Communication | Interview, Brainstorm, Clarify, Validate, Socratic | [stakeholder-communication](methodologies/stakeholder-communication.md) |
+| Conflict Resolution | Thomas-Kilmann, NVC | [conflict-resolution](methodologies/conflict-resolution.md) |
+| Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC | [feedback](methodologies/feedback.md) |
+| Selling Ideas | SPIN Selling, Challenger Sale, Elevator Pitch | [selling-ideas](methodologies/selling-ideas.md) |
+| Business Storytelling | Pyramid Principle, SCQA, Pixar Framework | [business-storytelling](methodologies/business-storytelling.md) |
+| Negotiation & Persuasion | Principled Negotiation, BATNA, Cialdini's 6 | [negotiation](methodologies/negotiation.md) |
+| Difficult Conversations | Crucial Conversations, DESC Script | [difficult-conversations](methodologies/difficult-conversations.md) |
+| Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5, Reverse | [brainstorming-ideation](methodologies/brainstorming-ideation.md) |
 
 ---
 
@@ -106,12 +106,12 @@ Lead with answer → Support with arguments → Base with evidence
 
 | Skill | Uses Methodologies |
 |-------|-------------------|
-| faion-business-analyst | M-COM-001, M-COM-003, M-COM-004, M-COM-010 |
-| faion-product-manager | M-COM-002, M-COM-006, M-COM-007, M-COM-010 |
-| faion-project-manager | M-COM-004, M-COM-005, M-COM-008 |
-| faion-researcher | M-COM-002, M-COM-003, M-COM-010 |
-| faion-marketing-manager | M-COM-006, M-COM-007 |
-| faion-ux-ui-designer | M-COM-001, M-COM-003, M-COM-010 |
+| faion-business-analyst | active-listening, stakeholder-communication, conflict-resolution, brainstorming-ideation |
+| faion-product-manager | mom-test, selling-ideas, business-storytelling, brainstorming-ideation |
+| faion-project-manager | conflict-resolution, feedback, negotiation |
+| faion-researcher | mom-test, stakeholder-communication, brainstorming-ideation |
+| faion-marketing-manager | selling-ideas, business-storytelling |
+| faion-ux-ui-designer | active-listening, stakeholder-communication, brainstorming-ideation |
 
 ### Interactive Mode (faion-net)
 
@@ -119,19 +119,19 @@ When faion-net runs in Interactive mode, use these methodologies:
 
 ```python
 # For requirements gathering
-Apply: M-COM-001 (Active Listening) + M-COM-003 (Stakeholder Communication)
+Apply: active-listening + stakeholder-communication
 
 # For idea validation
-Apply: M-COM-002 (The Mom Test)
+Apply: mom-test
 
 # For presenting proposals
-Apply: M-COM-006 (Selling Ideas) + M-COM-007 (Storytelling)
+Apply: selling-ideas + business-storytelling
 
 # For disagreements
-Apply: M-COM-004 (Conflict Resolution)
+Apply: conflict-resolution
 
 # For idea generation
-Apply: M-COM-010 (Brainstorming & Ideation)
+Apply: brainstorming-ideation
 ```
 
 ---

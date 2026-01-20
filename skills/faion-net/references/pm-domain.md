@@ -1,14 +1,14 @@
-# PMBOK Domain
+# Project Management Framework Domain
 
 ## When to Use
 
-Project management using PMBOK 7/8. Stakeholder management, risk management, EVM, change control.
+Project management using Project Management Framework 7/8. Stakeholder management, risk management, EVM, change control.
 
 ## Agents
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-pm-agent` | Execute PMBOK methodologies, manage projects |
+| `faion-pm-agent` | Execute Project Management Framework methodologies, manage projects |
 
 ## Technical Skills
 
@@ -18,7 +18,7 @@ Project management using PMBOK 7/8. Stakeholder management, risk management, EVM
 
 ## Methodologies
 
-20 methodologies (M-PM-001 to M-PM-020):
+20 methodologies:
 - Stakeholder Management
 - Team Management
 - Planning

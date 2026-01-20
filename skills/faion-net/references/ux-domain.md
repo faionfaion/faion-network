@@ -2,7 +2,7 @@
 
 ## When to Use
 
-UX research, usability testing, heuristic evaluation (Nielsen Norman 10). Personas, journey mapping, wireframing.
+UX research, usability testing, heuristic evaluation (10 Usability Heuristics). Personas, journey mapping, wireframing.
 
 ## Agents
 
@@ -17,7 +17,7 @@ None directly - uses UX methodologies and browser automation for testing.
 
 ## Methodologies
 
-32 methodologies (M-UX-001 to M-UX-032):
+32 methodologies:
 
 **Research Methods:**
 - User Interviews
@@ -44,7 +44,7 @@ None directly - uses UX methodologies and browser automation for testing.
 - Accessibility Design
 
 **Evaluation:**
-- Nielsen Norman 10 Heuristics
+- 10 Usability Heuristics Heuristics
 - Cognitive Walkthrough
 - Usability Testing (Moderated)
 - Usability Testing (Unmoderated)

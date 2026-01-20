@@ -384,7 +384,7 @@ because [rationale].
 - **landing-page-design:** Landing Page Design (page optimization)
 - **ab-testing-framework:** A/B Testing Framework (testing methodology)
 - **funnel-optimization:** Funnel Optimization (full funnel)
-- **M-UX-016:** Usability Testing (user research)
+- **usability-testing:** Usability Testing (user research)
 
 ---
 

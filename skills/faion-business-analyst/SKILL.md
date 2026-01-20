@@ -1,7 +1,7 @@
 ---
 name: faion-business-analyst
 user-invocable: false
-description: "BA Domain Skill: IIBA BABOK v3 orchestrator. 6 Knowledge Areas (Planning, Elicitation, Analysis, Traceability, Evaluation, Management), requirements engineering, stakeholder analysis, process modeling, use cases, user stories. 24 methodologies."
+description: "BA Domain Skill: Business Analysis Framework orchestrator. 6 Knowledge Areas (Planning, Elicitation, Analysis, Traceability, Evaluation, Management), requirements engineering, stakeholder analysis, process modeling, use cases, user stories. 24 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
@@ -11,14 +11,14 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-ba-agent` | Execute BABOK v3 methodologies for business analysis |
+| `faion-ba-agent` | Execute Business Analysis Framework methodologies for business analysis |
 
 
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose
 
-Orchestrates business analysis activities following BABOK v3 (Guide to Business Analysis Body of Knowledge) standards from IIBA (International Institute of Business Analysis). This domain skill provides frameworks, techniques, and best practices for professional business analysis.
+Orchestrates business analysis activities following Business Analysis Framework (Guide to Business Analysis Body of Knowledge) standards from BA industry standards organization. This domain skill provides frameworks, techniques, and best practices for professional business analysis.
 
 ## Philosophy
 
@@ -36,7 +36,7 @@ Layer 2: Agents (faion-ba-agent) - executors
 Layer 3: Technical Skills - tools
 ```
 
-## BABOK v3 Core Concepts
+## Business Analysis Framework Core Concepts
 
 ### Business Analysis Definition
 
@@ -80,7 +80,7 @@ Defines the approach to performing business analysis, identifies stakeholders, p
 **Outputs:**
 - Business analysis approach
 
-**Technique:** M-BA-001 (BA Approach Planning)
+**Technique:** ba-planning
 
 ### 1.2 Plan Stakeholder Engagement
 
@@ -98,7 +98,7 @@ Defines the approach to performing business analysis, identifies stakeholders, p
 **Outputs:**
 - Stakeholder engagement approach
 
-**Technique:** M-BA-002 (Stakeholder Analysis)
+**Technique:** stakeholder-analysis
 
 ### 1.3 Plan Business Analysis Governance
 
@@ -117,7 +117,7 @@ Defines the approach to performing business analysis, identifies stakeholders, p
 **Outputs:**
 - Governance approach
 
-**Technique:** M-BA-003 (Governance Framework)
+**Technique:** governance-framework
 
 ### 1.4 Plan Business Analysis Information Management
 
@@ -182,7 +182,7 @@ Describes the tasks BAs perform to obtain information from stakeholders and conf
 **Outputs:**
 - Elicitation activity plan
 
-**Technique:** M-BA-004 (Elicitation Preparation)
+**Technique:** elicitation-preparation
 
 ### 2.2 Conduct Elicitation
 
@@ -199,7 +199,7 @@ Describes the tasks BAs perform to obtain information from stakeholders and conf
 **Outputs:**
 - Elicitation results (unconfirmed)
 
-**Technique:** M-BA-005 (Elicitation Techniques)
+**Technique:** elicitation-techniques
 
 ### 2.3 Confirm Elicitation Results
 
@@ -232,7 +232,7 @@ Describes the tasks BAs perform to obtain information from stakeholders and conf
 **Outputs:**
 - BA communication
 
-**Technique:** M-BA-006 (Communication Planning)
+**Technique:** communication-planning
 
 ### 2.5 Manage Stakeholder Collaboration
 
@@ -276,7 +276,7 @@ Describes the tasks to manage and maintain requirements and design information t
 **Outputs:**
 - Requirements (traced)
 
-**Technique:** M-BA-007 (Requirements Traceability)
+**Technique:** requirements-traceability
 
 ### 3.2 Maintain Requirements
 
@@ -293,7 +293,7 @@ Describes the tasks to manage and maintain requirements and design information t
 **Outputs:**
 - Requirements (maintained)
 
-**Technique:** M-BA-008 (Requirements Maintenance)
+**Technique:** requirements-lifecycle
 
 ### 3.3 Prioritize Requirements
 
@@ -311,7 +311,7 @@ Describes the tasks to manage and maintain requirements and design information t
 **Outputs:**
 - Requirements (prioritized)
 
-**Technique:** M-BA-009 (Requirements Prioritization)
+**Technique:** requirements-prioritization
 
 ### 3.4 Assess Requirements Changes
 
@@ -329,7 +329,7 @@ Describes the tasks to manage and maintain requirements and design information t
 **Outputs:**
 - Requirements change assessment
 
-**Technique:** M-BA-010 (Change Impact Analysis)
+**Technique:** change-impact-analysis
 
 ### 3.5 Approve Requirements
 
@@ -376,7 +376,7 @@ Focuses on defining the future state needed to address business needs and determ
 **Outputs:**
 - Current state description
 
-**Technique:** M-BA-011 (Current State Analysis)
+**Technique:** strategy-analysis
 
 ### 4.2 Define Future State
 
@@ -396,7 +396,7 @@ Focuses on defining the future state needed to address business needs and determ
 **Outputs:**
 - Future state description
 
-**Technique:** M-BA-012 (Future State Definition)
+**Technique:** future-state-definition
 
 ### 4.3 Assess Risks
 
@@ -417,7 +417,7 @@ Focuses on defining the future state needed to address business needs and determ
 **Outputs:**
 - Risk assessment results
 
-**Technique:** M-BA-013 (Risk Analysis)
+**Technique:** risk-analysis
 
 ### 4.4 Define Change Strategy
 
@@ -437,7 +437,7 @@ Focuses on defining the future state needed to address business needs and determ
 **Outputs:**
 - Change strategy
 
-**Technique:** M-BA-014 (Change Strategy Planning)
+**Technique:** change-strategy-planning
 
 ---
 
@@ -466,7 +466,7 @@ Describes how to structure requirements and design, specify and model requiremen
 **Outputs:**
 - Requirements (specified and modeled)
 
-**Technique:** M-BA-015 (Requirements Modeling)
+**Technique:** requirements-modeling
 
 ### 5.2 Verify Requirements
 
@@ -516,7 +516,7 @@ Describes how to structure requirements and design, specify and model requiremen
 **Outputs:**
 - Requirements architecture
 
-**Technique:** M-BA-016 (Requirements Architecture)
+**Technique:** requirements-architecture
 
 ### 5.5 Define Design Options
 
@@ -552,7 +552,7 @@ Describes how to structure requirements and design, specify and model requiremen
 **Outputs:**
 - Solution recommendation
 
-**Technique:** M-BA-017 (Solution Options Analysis)
+**Technique:** solution-options-analysis
 
 ---
 
@@ -611,7 +611,7 @@ Assesses the performance of a solution and the value delivered, recommending imp
 **Outputs:**
 - Solution limitations
 
-**Technique:** M-BA-018 (Solution Limitation Assessment)
+**Technique:** solution-assessment
 
 ### 6.4 Assess Enterprise Limitations
 
@@ -649,7 +649,7 @@ Assesses the performance of a solution and the value delivered, recommending imp
 
 # Embedded Methodologies (18)
 
-## M-BA-001: BA Approach Planning
+## ba-planning
 
 ### Problem
 How to determine the right business analysis approach for a specific initiative?
@@ -707,7 +707,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-002: Stakeholder Analysis
+## stakeholder-analysis
 
 ### Problem
 How to identify, analyze, and plan engagement with stakeholders?
@@ -758,7 +758,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-003: Governance Framework
+## governance-framework
 
 ### Problem
 How to establish decision-making processes for requirements?
@@ -808,7 +808,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-004: Elicitation Preparation
+## elicitation-preparation
 
 ### Problem
 How to prepare effectively for elicitation activities?
@@ -848,7 +848,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-005: Elicitation Techniques
+## elicitation-techniques
 
 ### Problem
 How to effectively draw out information from stakeholders?
@@ -897,7 +897,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-006: Communication Planning
+## communication-planning
 
 ### Problem
 How to ensure effective communication of BA information?
@@ -943,7 +943,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-007: Requirements Traceability
+## requirements-traceability
 
 ### Problem
 How to track requirements relationships and ensure coverage?
@@ -989,7 +989,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-008: Requirements Maintenance
+## requirements-maintenance
 
 ### Problem
 How to keep requirements accurate and useful over time?
@@ -1021,7 +1021,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-009: Requirements Prioritization
+## requirements-prioritization
 
 ### Problem
 How to rank requirements by importance?
@@ -1072,7 +1072,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-010: Change Impact Analysis
+## change-impact-analysis
 
 ### Problem
 How to assess the impact of proposed requirement changes?
@@ -1133,7 +1133,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-011: Current State Analysis
+## current-state-analysis
 
 ### Problem
 How to understand the existing environment and identify needs?
@@ -1198,7 +1198,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-012: Future State Definition
+## future-state-definition
 
 ### Problem
 How to define the desired future state?
@@ -1262,7 +1262,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-013: Risk Analysis
+## risk-analysis
 
 ### Problem
 How to identify and assess risks to the change initiative?
@@ -1315,7 +1315,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-014: Change Strategy Planning
+## change-strategy-planning
 
 ### Problem
 How to develop the optimal approach for achieving the future state?
@@ -1377,7 +1377,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-015: Requirements Modeling
+## requirements-modeling
 
 ### Problem
 How to effectively represent and communicate requirements?
@@ -1450,7 +1450,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-016: Requirements Architecture
+## requirements-architecture
 
 ### Problem
 How to organize requirements into a coherent structure?
@@ -1508,7 +1508,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-017: Solution Options Analysis
+## solution-options-analysis
 
 ### Problem
 How to evaluate and recommend the best solution option?
@@ -1579,7 +1579,7 @@ faion-ba-agent
 
 ---
 
-## M-BA-018: Solution Limitation Assessment
+## solution-limitation-assessment
 
 ### Problem
 How to identify and address solution limitations?
@@ -1690,7 +1690,7 @@ faion-ba-agent
 
 ---
 
-# BABOK Techniques Reference
+# BA Framework Techniques Reference
 
 | # | Technique | Use Cases |
 |---|-----------|-----------|
@@ -1751,7 +1751,7 @@ faion-ba-agent
 
 | Agent | Purpose |
 |-------|---------|
-| faion-ba-agent | Execute BABOK methodologies, perform business analysis tasks |
+| faion-ba-agent | Execute BA Framework methodologies, perform business analysis tasks |
 
 ---
 
@@ -1766,32 +1766,32 @@ v-- SKILL.md (this file)
 ---
 
 *BA Domain Skill v1.0*
-*Based on BABOK v3 (Guide to Business Analysis Body of Knowledge)*
-*IIBA (International Institute of Business Analysis) Standards*
-*18 Embedded Methodologies (M-BA-001 to M-BA-018)*
+*Based on Business Analysis Framework (Guide to Business Analysis Body of Knowledge)*
+*BA industry standards organization Standards*
+*18 Embedded Methodologies (semantic names)*
 
 
 ---
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-BA-001 | Ba Planning | [methodologies/M-BA-001_ba_planning.md](methodologies/M-BA-001_ba_planning.md) |
-| M-BA-002 | Stakeholder Analysis | [methodologies/M-BA-002_stakeholder_analysis.md](methodologies/M-BA-002_stakeholder_analysis.md) |
-| M-BA-003 | Elicitation Techniques | [methodologies/M-BA-003_elicitation_techniques.md](methodologies/M-BA-003_elicitation_techniques.md) |
-| M-BA-004 | Requirements Documentation | [methodologies/M-BA-004_requirements_documentation.md](methodologies/M-BA-004_requirements_documentation.md) |
-| M-BA-005 | Requirements Traceability | [methodologies/M-BA-005_requirements_traceability.md](methodologies/M-BA-005_requirements_traceability.md) |
-| M-BA-006 | Strategy Analysis | [methodologies/M-BA-006_strategy_analysis.md](methodologies/M-BA-006_strategy_analysis.md) |
-| M-BA-007 | Requirements Lifecycle | [methodologies/M-BA-007_requirements_lifecycle.md](methodologies/M-BA-007_requirements_lifecycle.md) |
-| M-BA-008 | Solution Assessment | [methodologies/M-BA-008_solution_assessment.md](methodologies/M-BA-008_solution_assessment.md) |
-| M-BA-009 | Business Process Analysis | [methodologies/M-BA-009_business_process_analysis.md](methodologies/M-BA-009_business_process_analysis.md) |
-| M-BA-010 | Data Analysis | [methodologies/M-BA-010_data_analysis.md](methodologies/M-BA-010_data_analysis.md) |
-| M-BA-011 | Decision Analysis | [methodologies/M-BA-011_decision_analysis.md](methodologies/M-BA-011_decision_analysis.md) |
-| M-BA-012 | Use Case Modeling | [methodologies/M-BA-012_use_case_modeling.md](methodologies/M-BA-012_use_case_modeling.md) |
-| M-BA-013 | User Story Mapping | [methodologies/M-BA-013_user_story_mapping.md](methodologies/M-BA-013_user_story_mapping.md) |
-| M-BA-014 | Acceptance Criteria | [methodologies/M-BA-014_acceptance_criteria.md](methodologies/M-BA-014_acceptance_criteria.md) |
-| M-BA-015 | Requirements Validation | [methodologies/M-BA-015_requirements_validation.md](methodologies/M-BA-015_requirements_validation.md) |
-| M-BA-016 | Requirements Prioritization | [methodologies/M-BA-016_requirements_prioritization.md](methodologies/M-BA-016_requirements_prioritization.md) |
-| M-BA-017 | Interface Analysis | [methodologies/M-BA-017_interface_analysis.md](methodologies/M-BA-017_interface_analysis.md) |
-| M-BA-018 | Knowledge Areas Overview | [methodologies/M-BA-018_knowledge_areas_overview.md](methodologies/M-BA-018_knowledge_areas_overview.md) |
+| Name | File |
+|------|------|
+| BA Planning | [ba-planning](methodologies/ba-planning.md) |
+| Stakeholder Analysis | [stakeholder-analysis](methodologies/stakeholder-analysis.md) |
+| Elicitation Techniques | [elicitation-techniques](methodologies/elicitation-techniques.md) |
+| Requirements Documentation | [requirements-documentation](methodologies/requirements-documentation.md) |
+| Requirements Traceability | [requirements-traceability](methodologies/requirements-traceability.md) |
+| Strategy Analysis | [strategy-analysis](methodologies/strategy-analysis.md) |
+| Requirements Lifecycle | [requirements-lifecycle](methodologies/requirements-lifecycle.md) |
+| Solution Assessment | [solution-assessment](methodologies/solution-assessment.md) |
+| Business Process Analysis | [business-process-analysis](methodologies/business-process-analysis.md) |
+| Data Analysis | [data-analysis](methodologies/data-analysis.md) |
+| Decision Analysis | [decision-analysis](methodologies/decision-analysis.md) |
+| Use Case Modeling | [use-case-modeling](methodologies/use-case-modeling.md) |
+| User Story Mapping | [user-story-mapping](methodologies/user-story-mapping.md) |
+| Acceptance Criteria | [acceptance-criteria](methodologies/acceptance-criteria.md) |
+| Requirements Validation | [requirements-validation](methodologies/requirements-validation.md) |
+| Requirements Prioritization | [requirements-prioritization](methodologies/requirements-prioritization.md) |
+| Interface Analysis | [interface-analysis](methodologies/interface-analysis.md) |
+| Knowledge Areas Overview | [knowledge-areas-overview](methodologies/knowledge-areas-overview.md) |

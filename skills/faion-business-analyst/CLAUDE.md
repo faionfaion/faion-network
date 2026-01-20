@@ -2,13 +2,13 @@
 
 ## Overview
 
-BA Domain Skill based on IIBA BABOK v3 (Guide to Business Analysis Body of Knowledge). Orchestrates business analysis activities across 6 Knowledge Areas with 24 methodologies.
+BA Domain Skill for professional business analysis. Orchestrates business analysis activities across 6 Knowledge Areas with 24 methodologies.
 
 **Agent:** `faion-ba-agent`
 
 ## Purpose
 
-Enable professional business analysis following IIBA standards:
+Enable professional business analysis following industry standards:
 - Requirements engineering and lifecycle management
 - Stakeholder analysis and engagement
 - Process modeling and data analysis
@@ -19,82 +19,77 @@ Enable professional business analysis following IIBA standards:
 
 ```
 faion-business-analyst/
-|-- SKILL.md              # Main skill definition with embedded methodologies
-|-- CLAUDE.md             # This navigation file
-|-- methodologies/        # 24 methodology files (M-BA-001 to M-BA-024)
-|   |-- CLAUDE.md         # Methodology folder overview
-|   |-- M-BA-001_ba_planning.md
-|   |-- M-BA-002_stakeholder_analysis.md
-|   |-- ... (16 more files)
-|-- references/           # Best practices and research
-    |-- CLAUDE.md         # References folder overview
-    |-- best-practices-2026.md
+├── SKILL.md              # Main skill definition
+├── CLAUDE.md             # This navigation file
+└── references/           # 24 methodology files + best practices
+    ├── ba-planning.md
+    ├── stakeholder-analysis.md
+    ├── elicitation-techniques.md
+    ├── ... (21 more files)
+    └── best-practices-2026.md
 ```
 
 ## Key Files
 
 | File | Description |
 |------|-------------|
-| SKILL.md | Complete skill definition: 6 Knowledge Areas, 24 methodologies (M-BA-001 to M-BA-024) |
-| methodologies/ | Individual methodology files with detailed frameworks and templates |
-| references/ | Modern BA practices 2025-2026: AI integration, agile BA, process mining |
+| SKILL.md | Complete skill definition: 6 Knowledge Areas, embedded frameworks |
+| references/ | 24 methodology files + modern BA practices 2025-2026 |
 
-## BABOK Knowledge Areas
+## BA Knowledge Areas
 
 | # | Knowledge Area | Methodologies |
 |---|----------------|---------------|
-| 1 | BA Planning and Monitoring | M-BA-001, M-BA-002, M-BA-003 |
-| 2 | Elicitation and Collaboration | M-BA-004, M-BA-005, M-BA-006 |
-| 3 | Requirements Lifecycle Management | M-BA-007, M-BA-008 |
-| 4 | Strategy Analysis | M-BA-011, M-BA-012, M-BA-013, M-BA-014 |
-| 5 | Requirements Analysis and Design Definition | M-BA-015, M-BA-016, M-BA-017 |
-| 6 | Solution Evaluation | M-BA-018 |
+| 1 | BA Planning and Monitoring | ba-planning, stakeholder-analysis, elicitation-techniques |
+| 2 | Elicitation and Collaboration | requirements-documentation, requirements-traceability, strategy-analysis |
+| 3 | Requirements Lifecycle Management | requirements-lifecycle, solution-assessment |
+| 4 | Strategy Analysis | decision-analysis, use-case-modeling, user-story-mapping, acceptance-criteria |
+| 5 | Requirements Analysis and Design | requirements-validation, requirements-prioritization, interface-analysis |
+| 6 | Solution Evaluation | knowledge-areas-overview |
 
 ## Methodology Quick Reference
 
-| ID | Name | Category |
-|----|------|----------|
-| M-BA-001 | BA Planning | Planning |
-| M-BA-002 | Stakeholder Analysis | Planning |
-| M-BA-003 | Elicitation Techniques | Elicitation |
-| M-BA-004 | Requirements Documentation | Analysis |
-| M-BA-005 | Requirements Traceability | Lifecycle |
-| M-BA-006 | Strategy Analysis | Strategy |
-| M-BA-007 | Requirements Lifecycle | Lifecycle |
-| M-BA-008 | Solution Assessment | Evaluation |
-| M-BA-009 | Business Process Analysis | Analysis |
-| M-BA-010 | Data Analysis | Analysis |
-| M-BA-011 | Decision Analysis | Analysis |
-| M-BA-012 | Use Case Modeling | Analysis |
-| M-BA-013 | User Story Mapping | Analysis |
-| M-BA-014 | Acceptance Criteria | Analysis |
-| M-BA-015 | Requirements Validation | Lifecycle |
-| M-BA-016 | Requirements Prioritization | Lifecycle |
-| M-BA-017 | Interface Analysis | Analysis |
-| M-BA-018 | Knowledge Areas Overview | Framework |
+| File | Name | Category |
+|------|------|----------|
+| ba-planning.md | BA Planning | Planning |
+| stakeholder-analysis.md | Stakeholder Analysis | Planning |
+| elicitation-techniques.md | Elicitation Techniques | Elicitation |
+| requirements-documentation.md | Requirements Documentation | Analysis |
+| requirements-traceability.md | Requirements Traceability | Lifecycle |
+| strategy-analysis.md | Strategy Analysis | Strategy |
+| requirements-lifecycle.md | Requirements Lifecycle | Lifecycle |
+| solution-assessment.md | Solution Assessment | Evaluation |
+| business-process-analysis.md | Business Process Analysis | Analysis |
+| data-analysis.md | Data Analysis | Analysis |
+| decision-analysis.md | Decision Analysis | Analysis |
+| use-case-modeling.md | Use Case Modeling | Analysis |
+| user-story-mapping.md | User Story Mapping | Analysis |
+| acceptance-criteria.md | Acceptance Criteria | Analysis |
+| requirements-validation.md | Requirements Validation | Lifecycle |
+| requirements-prioritization.md | Requirements Prioritization | Lifecycle |
+| interface-analysis.md | Interface Analysis | Analysis |
+| knowledge-areas-overview.md | Knowledge Areas Overview | Framework |
 
 ## Modern Practices (references/)
 
-Additional methodologies for 2025-2026:
-
-| ID | Name | Focus |
-|----|------|-------|
-| M-BA-019 | AI-Enabled BA | GenAI, agentic AI, AI TRiSM |
-| M-BA-020 | Agile BA in Scrum/SAFe | Scaled frameworks |
-| M-BA-021 | Process Mining | RPA, intelligent automation |
-| M-BA-022 | Data-Driven Requirements | Analytics, evidence-based |
-| M-BA-023 | BABOK v3 Modern Application | Framework updates |
-| M-BA-024 | BA Strategic Partnership | Innovation leadership |
+| File | Name | Focus |
+|------|------|-------|
+| ai-enabled-business-analysis.md | AI-Enabled BA | GenAI, agentic AI |
+| agile-ba-frameworks.md | Agile BA Frameworks | Scrum, scaled agile |
+| process-mining-automation.md | Process Mining | RPA, automation |
+| data-driven-requirements.md | Data-Driven Requirements | Analytics |
+| modern-ba-framework.md | Modern BA Framework | 2025-2026 updates |
+| ba-strategic-partnership.md | BA Strategic Partnership | Innovation |
 
 ## Usage
 
 ```
-# Use via faion-ba-agent for BABOK methodology execution
+# Use via faion-ba-agent for methodology execution
 # Called from faion-net or faion-sdd orchestrators
 ```
 
 ## References
 
-- BABOK Guide v3 (IIBA)
-- IIBA Business Analysis Standards
-- IIBA Certifications: ECBA, CCBA, CBAP, IIBA-AAC
+- Business Analysis Framework Guide
+- BA industry standards
+- BA Certifications: Entry-level (ECBA), Mid-level (CCBA), Senior (CBAP), Agile Analysis

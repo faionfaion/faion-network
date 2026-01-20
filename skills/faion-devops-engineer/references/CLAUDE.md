@@ -83,17 +83,29 @@ Google Cloud CLI (gcloud) operations and infrastructure patterns.
 - Pub/Sub: topics, subscriptions
 - Artifact Registry: Docker repositories
 
-### best-practices-2026.md (~330 lines)
+### platform-engineering.md
 
-Modern DevOps practices and methodologies for 2026.
+Internal Developer Platforms (IDP), self-service infrastructure, golden paths, developer portals.
 
-**Contents:**
-- M-OPS-017: Platform Engineering and Internal Developer Platforms
-- M-OPS-018: GitOps with ArgoCD and Flux
-- M-OPS-019: AIOps for anomaly detection and auto-remediation
-- M-OPS-020: DORA metrics for DevOps performance
-- M-OPS-021: FinOps and cloud cost optimization
-- M-OPS-022: Security as Code with OPA and Kyverno
+### gitops.md
+
+Git as single source of truth, ArgoCD, Flux, progressive delivery, multi-cluster management.
+
+### aiops.md
+
+AI-powered operations, anomaly detection, auto-remediation, self-healing systems.
+
+### dora-metrics.md
+
+Four key DevOps metrics: deployment frequency, lead time, change failure rate, time to restore.
+
+### finops.md
+
+Cloud cost optimization, AI workload costs, FinOps practices, cost per unit of work.
+
+### security-as-code.md
+
+Policy as Code with OPA, Gatekeeper, Kyverno, DevSecOps practices.
 
 ---
 
@@ -108,8 +120,13 @@ Load relevant reference files when working on specific technologies:
 | Infrastructure provisioning | terraform.md |
 | AWS service configuration | aws.md |
 | Google Cloud configuration | gcp.md |
-| Modern practices/patterns | best-practices-2026.md |
+| Platform Engineering / IDP | platform-engineering.md |
+| GitOps / ArgoCD / Flux | gitops.md |
+| AIOps / Self-healing | aiops.md |
+| DevOps Metrics | dora-metrics.md |
+| Cloud Costs | finops.md |
+| Security Policies | security-as-code.md |
 
 ---
 
-*Total: ~6,270 lines of technical reference*
+*Total: 11 reference files*

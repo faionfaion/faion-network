@@ -26,9 +26,9 @@ GTM strategy, landing pages, content marketing. Ads (Meta/Google), email campaig
 ## Methodologies
 
 72 methodologies across:
-- GTM Strategy (M-GTM-001 to M-GTM-012)
-- Landing Pages (M-LP-001 to M-LP-012)
-- Content Marketing (M-CM-001 to M-CM-012)
-- SEO (M-SEO-001 to M-SEO-012)
-- Paid Ads (M-ADS-001 to M-ADS-012)
-- Email Marketing (M-EM-001 to M-EM-012)
+- GTM Strategy (12 methodologies)
+- Landing Pages (12 methodologies)
+- Content Marketing (12 methodologies)
+- SEO (12 methodologies)
+- Paid Ads (12 methodologies)
+- Email Marketing (12 methodologies)

@@ -33,7 +33,7 @@ Writing code (Python, JS, Go, etc.), code review, refactoring. CI/CD, testing, A
 ## Methodologies
 
 68 methodologies across:
-- Python (M-PY-001 to M-PY-008)
-- JavaScript (M-JS-001 to M-JS-008)
+- Python (8 methodologies)
+- JavaScript (8 methodologies)
 - Backend languages (Go, Ruby, PHP, Java, C#, Rust)
-- DevOps (M-DO-001 to M-DO-028)
+- DevOps (28 methodologies)

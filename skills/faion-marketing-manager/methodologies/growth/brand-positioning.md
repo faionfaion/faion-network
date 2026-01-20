@@ -17,7 +17,7 @@ category: "marketing"
 | **Category** | Marketing |
 | **Difficulty** | Intermediate |
 | **Agent** | faion-content-agent |
-| **Related** | gtm-strategy, copywriting-fundamentals, M-RES-006 |
+| **Related** | gtm-strategy, copywriting-fundamentals, competitor-analysis |
 
 ---
 
@@ -375,8 +375,8 @@ we're simple, fast, and GDPR-compliant out of the box.
 
 - **gtm-strategy:** GTM Strategy (positioning in GTM)
 - **copywriting-fundamentals:** Copywriting (expressing positioning)
-- **M-RES-006:** Competitor Analysis (understanding alternatives)
-- **M-RES-007:** Persona Building (understanding customers)
+- **competitor-analysis:** Competitor Analysis (understanding alternatives)
+- **persona-building:** Persona Building (understanding customers)
 
 ---
 

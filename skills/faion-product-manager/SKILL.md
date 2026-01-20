@@ -93,7 +93,7 @@ product_docs/
 
 ## Methodologies (18)
 
-### M-PRD-001: MVP Scoping
+### mvp-scoping
 
 **Problem:** Teams build too much before validation.
 
@@ -105,7 +105,7 @@ product_docs/
 
 **Agent:** faion-mvp-scope-analyzer-agent
 
-### M-PRD-002: MLP Planning
+### mlp-planning
 
 **Problem:** MVP works but users don't love it.
 
@@ -124,7 +124,7 @@ product_docs/
 
 **Agent:** faion-mlp-agent (mode: find-gaps)
 
-### M-PRD-003: Feature Prioritization (RICE)
+### feature-prioritization-rice
 
 **Problem:** Too many features, limited resources.
 
@@ -140,7 +140,7 @@ product_docs/
 
 **Agent:** faion-pm-agent
 
-### M-PRD-004: Feature Prioritization (MoSCoW)
+### feature-prioritization-moscow
 
 **Problem:** Stakeholders disagree on priorities.
 
@@ -154,7 +154,7 @@ product_docs/
 
 **Agent:** faion-pm-agent
 
-### M-PRD-005: Roadmap Design
+### roadmap-design
 
 **Problem:** No clear development direction.
 
@@ -179,7 +179,7 @@ product_docs/
 
 **Agent:** faion-pm-agent
 
-### M-PRD-006: User Story Mapping
+### user-story-mapping
 
 **Problem:** Features lack user context.
 
@@ -200,7 +200,7 @@ Task 1.3                    Task 3.3   ← Release 3
 
 **Agent:** faion-pm-agent
 
-### M-PRD-007: OKR Setting
+### okr-setting
 
 **Problem:** Goals are vague or unmeasurable.
 
@@ -225,7 +225,7 @@ Task 1.3                    Task 3.3   ← Release 3
 
 **Agent:** faion-pm-agent
 
-### M-PRD-008: Problem Validation
+### problem-validation (see faion-researcher)
 
 **Problem:** Building solutions for non-problems.
 
@@ -243,7 +243,7 @@ Task 1.3                    Task 3.3   ← Release 3
 
 **Agent:** faion-market-researcher-agent
 
-### M-PRD-009: Assumption Mapping
+### risk-assessment
 
 **Problem:** Unknown risks in product decisions.
 
@@ -266,7 +266,7 @@ Task 1.3                    Task 3.3   ← Release 3
 
 **Agent:** faion-pm-agent
 
-### M-PRD-010: Lean Canvas
+### business-model-research (see faion-researcher)
 
 **Problem:** Business model not structured.
 
@@ -283,7 +283,7 @@ Task 1.3                    Task 3.3   ← Release 3
 
 **Agent:** faion-pm-agent
 
-### M-PRD-011: Jobs To Be Done
+### jobs-to-be-done (see faion-researcher)
 
 **Problem:** Features don't match user needs.
 
@@ -303,7 +303,7 @@ So I can confirm to my customer without worry.
 
 **Agent:** faion-persona-builder-agent
 
-### M-PRD-012: Opportunity Scoring
+### niche-evaluation (see faion-researcher)
 
 **Problem:** Too many opportunities, no prioritization.
 
@@ -319,7 +319,7 @@ So I can confirm to my customer without worry.
 
 **Agent:** faion-market-researcher-agent
 
-### M-PRD-013: Value Proposition Canvas
+### value-proposition-design (see faion-researcher)
 
 **Problem:** Product-market fit unclear.
 
@@ -340,7 +340,7 @@ FIT = Pain Relievers match Pains + Gain Creators match Gains
 
 **Agent:** faion-market-researcher-agent
 
-### M-PRD-014: Sprint Planning
+### release-planning
 
 **Problem:** Unclear work for upcoming sprint.
 
@@ -355,7 +355,7 @@ FIT = Pain Relievers match Pains + Gain Creators match Gains
 
 **Agent:** faion-pm-agent
 
-### M-PRD-015: Release Planning
+### product-launch
 
 **Problem:** No clear release timeline.
 
@@ -369,7 +369,7 @@ FIT = Pain Relievers match Pains + Gain Creators match Gains
 
 **Agent:** faion-pm-agent
 
-### M-PRD-016: Backlog Refinement
+### backlog-management
 
 **Problem:** Backlog items unclear or oversized.
 
@@ -389,7 +389,7 @@ FIT = Pain Relievers match Pains + Gain Creators match Gains
 
 **Agent:** faion-pm-agent
 
-### M-PRD-017: Five Whys Analysis
+### product-discovery
 
 **Problem:** Root cause not understood.
 
@@ -408,7 +408,7 @@ Action: [Fix the root cause]
 
 **Agent:** faion-pm-agent
 
-### M-PRD-018: Impact Mapping
+### stakeholder-management
 
 **Problem:** Features disconnected from goals.
 

@@ -53,7 +53,7 @@ aidocs/sdd/{project}/
 
 | Folder | Content |
 |--------|---------|
-| [methodologies/](methodologies/) | 18 detailed methodology files (M-PRD-001 to M-PRD-018) |
+| [methodologies/](methodologies/) | 33 detailed methodology files (semantic naming) |
 | [references/](references/) | Best practices and advanced frameworks for 2026 |
 
 ## Key Files
@@ -61,11 +61,11 @@ aidocs/sdd/{project}/
 | File | Description |
 |------|-------------|
 | SKILL.md | Main skill definition with agents, workflows, methodology summaries |
-| methodologies/M-PRD-001_mvp_scoping.md | MVP scope framework with templates |
-| methodologies/M-PRD-002_mlp_planning.md | MLP transformation from MVP |
-| methodologies/M-PRD-003_feature_prioritization_rice.md | RICE scoring framework |
-| methodologies/M-PRD-005_roadmap_design.md | Roadmap types and templates |
-| references/best-practices-2026.md | 15 advanced methodologies (M-PRD-019 to M-PRD-033) |
+| methodologies/mvp-scoping.md | MVP scope framework with templates |
+| methodologies/mlp-planning.md | MLP transformation from MVP |
+| methodologies/feature-prioritization-rice.md | RICE scoring framework |
+| methodologies/roadmap-design.md | Roadmap types and templates |
+| methodologies/continuous-discovery.md | Continuous Discovery Habits framework |
 
 ## Agents
 

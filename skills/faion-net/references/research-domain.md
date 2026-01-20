@@ -25,7 +25,7 @@ None directly - uses web research tools (WebSearch, WebFetch).
 
 ## Methodologies
 
-20 methodologies (M-RES-001 to M-RES-020):
+20 methodologies:
 - Idea Generation (7 Ps, Paul Graham, Pain Points)
 - Niche Evaluation
 - Problem Validation

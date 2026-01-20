@@ -20,7 +20,12 @@ faion-devops-engineer/
     ├── terraform.md
     ├── aws.md
     ├── gcp.md
-    └── best-practices-2026.md
+    ├── platform-engineering.md
+    ├── gitops.md
+    ├── aiops.md
+    ├── dora-metrics.md
+    ├── finops.md
+    └── security-as-code.md
 ```
 
 ---
@@ -43,35 +48,45 @@ faion-devops-engineer/
 | `references/terraform.md` | IaC with Terraform: HCL syntax, modules, state management, providers | ~1090 |
 | `references/aws.md` | AWS CLI operations: EC2, S3, Lambda, IAM, VPC, ECR, ECS | ~1480 |
 | `references/gcp.md` | gcloud CLI: Compute Engine, Cloud Run, GKE, BigQuery, IAM | ~1400 |
-| `references/best-practices-2026.md` | Modern practices: Platform Engineering, GitOps, AIOps, DORA, FinOps | ~330 |
+| `references/platform-engineering.md` | Internal Developer Platforms (IDP), self-service, golden paths | ~50 |
+| `references/gitops.md` | Git as source of truth, ArgoCD, Flux, progressive delivery | ~80 |
+| `references/aiops.md` | AI-powered operations, anomaly detection, auto-remediation | ~70 |
+| `references/dora-metrics.md` | Four key DevOps metrics for performance measurement | ~35 |
+| `references/finops.md` | Cloud cost optimization, AI workload costs | ~55 |
+| `references/security-as-code.md` | Policy as Code with OPA, Gatekeeper, Kyverno | ~60 |
 
 ---
 
 ## Methodologies (26)
 
-### Docker (M-DOC-001 to M-DOC-004)
+### Docker (docker.md)
 
 - Multi-stage builds, Docker Compose, security scanning, layer optimization
 
-### Kubernetes (M-K8S-001 to M-K8S-004)
+### Kubernetes (kubernetes.md)
 
 - Resource management, Helm charts, ConfigMaps/Secrets, Ingress/networking
 
-### Terraform (M-TF-001 to M-TF-004)
+### Terraform (terraform.md)
 
 - Module design, state management, workspaces, testing
 
-### AWS (M-AWS-001 to M-AWS-004)
+### AWS (aws.md)
 
 - IAM best practices, VPC design, cost optimization, disaster recovery
 
-### GCP (M-GCP-001 to M-GCP-004)
+### GCP (gcp.md)
 
 - IAM & service accounts, VPC & networking, GKE operations, cost optimization
 
-### Best Practices 2026 (M-OPS-017 to M-OPS-022)
+### Modern DevOps Practices
 
-- Platform Engineering, GitOps, AIOps, DORA metrics, FinOps, Security as Code
+- Platform Engineering: platform-engineering.md
+- GitOps: gitops.md
+- AIOps: aiops.md
+- DORA Metrics: dora-metrics.md
+- FinOps: finops.md
+- Security as Code: security-as-code.md
 
 ---
 
@@ -134,4 +149,4 @@ gcloud run deploy my-service --image=gcr.io/project/image --region=us-central1
 
 ---
 
-*Total reference content: ~6,270 lines*
+*Total: 11 reference files*

@@ -17,7 +17,7 @@ category: "marketing"
 | **Category** | Marketing |
 | **Difficulty** | Beginner |
 | **Agent** | faion-landing-designer-agent |
-| **Related** | gtm-strategy, content-marketing, M-UX-001 |
+| **Related** | gtm-strategy, content-marketing, visibility-of-system-status |
 
 ---
 
@@ -328,7 +328,7 @@ Social: "4.9 stars, 100K+ downloads"
 
 - **gtm-strategy:** GTM Strategy (traffic sources)
 - **content-marketing:** Content Marketing (organic traffic)
-- **M-UX-001:** Nielsen Heuristics (usability)
+- **visibility-of-system-status:** Usability Heuristics (usability)
 - **funnel-optimization:** Funnel Optimization (improve conversion)
 
 ---

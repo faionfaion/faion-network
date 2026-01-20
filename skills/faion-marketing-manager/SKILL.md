@@ -117,7 +117,7 @@ Hypothesis → Experiment Design → Run → Analyze → Learn → Iterate
 
 ### GTM Strategy (12)
 
-#### M-MKT-001: Executive Summary
+#### executive-summary
 
 **Problem:** No clear GTM overview for stakeholders.
 
@@ -143,7 +143,7 @@ Hypothesis → Experiment Design → Run → Analyze → Learn → Iterate
 
 **Agent:** faion-content-agent
 
-#### M-MKT-002: Market Context Analysis
+#### market-context-analysis
 
 **Problem:** GTM not grounded in market reality.
 
@@ -157,7 +157,7 @@ Hypothesis → Experiment Design → Run → Analyze → Learn → Iterate
 
 **Agent:** faion-market-researcher-agent
 
-#### M-MKT-003: ICP Definition
+#### icp-definition
 
 **Problem:** Target customer unclear.
 
@@ -183,7 +183,7 @@ Hypothesis → Experiment Design → Run → Analyze → Learn → Iterate
 
 **Agent:** faion-persona-builder-agent
 
-#### M-MKT-004: Value Proposition Design
+#### value-proposition-design
 
 **Problem:** Unclear differentiation.
 
@@ -200,7 +200,7 @@ We [unique differentiator]
 
 **Agent:** faion-content-agent
 
-#### M-MKT-005: Positioning Statement
+#### positioning-statement
 
 **Problem:** Inconsistent positioning.
 
@@ -214,7 +214,7 @@ We [unique differentiator]
 
 **Agent:** faion-content-agent
 
-#### M-MKT-006: Messaging Framework
+#### messaging-framework
 
 **Problem:** Inconsistent messaging across channels.
 
@@ -247,7 +247,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: copy)
 
-#### M-MKT-007: Pricing Strategy
+#### pricing-strategy
 
 **Problem:** Pricing not aligned with value.
 
@@ -267,7 +267,7 @@ We [unique differentiator]
 
 **Agent:** faion-pricing-researcher-agent
 
-#### M-MKT-008: Sales Model Selection
+#### sales-model-selection
 
 **Problem:** Wrong sales approach for product.
 
@@ -281,7 +281,7 @@ We [unique differentiator]
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-009: Channel Strategy
+#### channel-strategy
 
 **Problem:** Scattered marketing efforts.
 
@@ -297,7 +297,7 @@ We [unique differentiator]
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-010: Launch Plan
+#### launch-plan
 
 **Problem:** Uncoordinated launches.
 
@@ -326,7 +326,7 @@ We [unique differentiator]
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-011: Success Metrics Definition
+#### success-metrics-definition
 
 **Problem:** No clear success criteria.
 
@@ -341,7 +341,7 @@ We [unique differentiator]
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-012: Risk Mitigation
+#### risk-mitigation
 
 **Problem:** Unidentified GTM risks.
 
@@ -356,7 +356,7 @@ We [unique differentiator]
 
 ### Landing Page (12)
 
-#### M-MKT-013: AIDA Framework
+#### aida-framework
 
 **Problem:** Copy doesn't convert.
 
@@ -370,7 +370,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: copy)
 
-#### M-MKT-014: PAS Framework
+#### pas-framework
 
 **Problem:** Not addressing pain effectively.
 
@@ -385,7 +385,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: copy)
 
-#### M-MKT-015: Above the Fold Design
+#### above-the-fold-design
 
 **Problem:** No clear value proposition on landing.
 
@@ -400,7 +400,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: design)
 
-#### M-MKT-016: Social Proof Strategy
+#### social-proof-strategy
 
 **Problem:** No credibility signals.
 
@@ -415,7 +415,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: design)
 
-#### M-MKT-017: CTA Optimization
+#### cta-optimization
 
 **Problem:** Low click-through rates.
 
@@ -433,7 +433,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: analyze)
 
-#### M-MKT-018: Mobile-First Design
+#### mobile-first-design
 
 **Problem:** Desktop-only thinking.
 
@@ -448,7 +448,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: design)
 
-#### M-MKT-019: Form Optimization
+#### form-optimization
 
 **Problem:** Form abandonment.
 
@@ -463,7 +463,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: analyze)
 
-#### M-MKT-020: Page Speed Optimization
+#### page-speed-optimization
 
 **Problem:** Slow load = lost conversions.
 
@@ -483,7 +483,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: design)
 
-#### M-MKT-021: Conversion Rate Benchmarks
+#### conversion-rate-benchmarks
 
 **Problem:** No baseline for performance.
 
@@ -496,7 +496,7 @@ We [unique differentiator]
 
 **Agent:** faion-landing-agent (mode: analyze)
 
-#### M-MKT-022: A/B Testing Framework
+#### ab-testing-framework
 
 **Problem:** No systematic testing.
 
@@ -521,7 +521,7 @@ Changing [element] from [current] to [new] will increase [metric] by [%]
 
 **Agent:** faion-landing-agent (mode: analyze)
 
-#### M-MKT-023: Heat Map Analysis
+#### heat-map-analysis
 
 **Problem:** Unknown user behavior.
 
@@ -537,7 +537,7 @@ Changing [element] from [current] to [new] will increase [metric] by [%]
 
 **Agent:** faion-landing-agent (mode: analyze)
 
-#### M-MKT-024: Landing Page Checklist
+#### landing-page-checklist
 
 **Problem:** Missing critical elements.
 
@@ -557,7 +557,7 @@ Changing [element] from [current] to [new] will increase [metric] by [%]
 
 ### Content Marketing (12)
 
-#### M-MKT-025: Keyword Research
+#### keyword-research
 
 **Problem:** Content not discoverable.
 
@@ -572,7 +572,7 @@ Changing [element] from [current] to [new] will increase [metric] by [%]
 
 **Agent:** faion-content-agent
 
-#### M-MKT-026: Content Pillar Strategy
+#### content-pillar-strategy
 
 **Problem:** Scattered content, no authority.
 
@@ -595,7 +595,7 @@ All cluster articles link to pillar page.
 
 **Agent:** faion-content-agent
 
-#### M-MKT-027: Content Calendar
+#### content-calendar
 
 **Problem:** Inconsistent publishing.
 
@@ -608,7 +608,7 @@ All cluster articles link to pillar page.
 
 **Agent:** faion-content-agent
 
-#### M-MKT-028: SEO On-Page Optimization
+#### seo-on-page-optimization
 
 **Problem:** Content not ranking.
 
@@ -625,7 +625,7 @@ All cluster articles link to pillar page.
 
 **Agent:** faion-content-agent
 
-#### M-MKT-029: Content Repurposing
+#### content-repurposing
 
 **Problem:** Content creation too time-consuming.
 
@@ -643,7 +643,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-030: Link Building Strategy
+#### link-building-strategy
 
 **Problem:** Low domain authority.
 
@@ -658,7 +658,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-031: Content Performance Analysis
+#### content-performance-analysis
 
 **Problem:** No content ROI tracking.
 
@@ -673,7 +673,7 @@ Blog Post
 
 **Agent:** faion-analytics-skill
 
-#### M-MKT-032: Blog Post Template
+#### blog-post-template
 
 **Problem:** Inconsistent article structure.
 
@@ -705,7 +705,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-033: Long-form Content Structure
+#### long-form-content-structure
 
 **Problem:** Long content lacks readability.
 
@@ -722,7 +722,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-034: Video Content Strategy
+#### video-content-strategy
 
 **Problem:** No video presence.
 
@@ -736,7 +736,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-035: Podcast Strategy
+#### podcast-strategy
 
 **Problem:** Missing audio channel.
 
@@ -751,7 +751,7 @@ Blog Post
 
 **Agent:** faion-content-agent
 
-#### M-MKT-036: Content Governance
+#### content-governance
 
 **Problem:** Outdated, inconsistent content.
 
@@ -772,7 +772,7 @@ Blog Post
 
 ### Email Marketing (12)
 
-#### M-MKT-037: Welcome Sequence
+#### welcome-sequence
 
 **Problem:** Poor first impressions.
 
@@ -787,7 +787,7 @@ Blog Post
 
 **Agent:** faion-email-agent
 
-#### M-MKT-038: Nurture Sequence
+#### nurture-sequence
 
 **Problem:** Leads going cold.
 
@@ -803,7 +803,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-039: Email Copywriting Formula
+#### email-copywriting-formula
 
 **Problem:** Low open and click rates.
 
@@ -819,7 +819,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-040: Subject Line Formulas
+#### subject-line-formulas
 
 **Problem:** Emails not opened.
 
@@ -834,7 +834,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-041: Email Segmentation
+#### email-segmentation
 
 **Problem:** One-size-fits-all messaging.
 
@@ -848,7 +848,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-042: Email Automation Flows
+#### email-automation-flows
 
 **Problem:** Manual email work.
 
@@ -863,7 +863,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-043: Newsletter Strategy
+#### newsletter-strategy
 
 **Problem:** No consistent communication.
 
@@ -878,7 +878,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-044: Email Deliverability
+#### email-deliverability
 
 **Problem:** Emails going to spam.
 
@@ -893,7 +893,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-045: Email A/B Testing
+#### email-ab-testing
 
 **Problem:** No email optimization.
 
@@ -908,7 +908,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-046: Email Metrics Benchmarks
+#### email-metrics-benchmarks
 
 **Problem:** Unknown email performance.
 
@@ -922,7 +922,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-047: Re-engagement Campaigns
+#### re-engagement-campaigns
 
 **Problem:** Inactive subscribers.
 
@@ -937,7 +937,7 @@ Lead enters sequence
 
 **Agent:** faion-email-agent
 
-#### M-MKT-048: Transactional Email Optimization
+#### transactional-email-optimization
 
 **Problem:** Transactional emails underutilized.
 
@@ -953,7 +953,7 @@ Lead enters sequence
 
 ### Paid Advertising (12)
 
-#### M-MKT-049: Facebook/Meta Ads Structure
+#### meta-ads-structure
 
 **Problem:** Unorganized ad accounts.
 
@@ -973,7 +973,7 @@ Campaign (Objective)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-050: Google Ads Structure
+#### google-ads-structure
 
 **Problem:** Messy Google Ads account.
 
@@ -991,7 +991,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-051: Audience Targeting Strategy
+#### audience-targeting-strategy
 
 **Problem:** Wrong audience, wasted spend.
 
@@ -1006,7 +1006,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-052: Ad Creative Framework
+#### ad-creative-framework
 
 **Problem:** Low-performing creatives.
 
@@ -1021,7 +1021,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-053: Ad Copy Formulas
+#### ad-copy-formulas
 
 **Problem:** Boring ad copy.
 
@@ -1034,7 +1034,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-054: Retargeting Strategy
+#### retargeting-strategy
 
 **Problem:** Losing interested visitors.
 
@@ -1048,7 +1048,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-055: Ad Budget Allocation
+#### ad-budget-allocation
 
 **Problem:** Budget spread too thin.
 
@@ -1065,7 +1065,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-056: Landing Page + Ad Alignment
+#### landing-page-ad-alignment
 
 **Problem:** Message mismatch.
 
@@ -1080,7 +1080,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-057: ROAS Optimization
+#### roas-optimization
 
 **Problem:** Poor return on ad spend.
 
@@ -1099,7 +1099,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-058: Ad Testing Framework
+#### ad-testing-framework
 
 **Problem:** No systematic creative testing.
 
@@ -1113,7 +1113,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-ads-agent
 
-#### M-MKT-059: Attribution Modeling
+#### attribution-modeling
 
 **Problem:** Unknown ad contribution.
 
@@ -1127,7 +1127,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-analytics-skill
 
-#### M-MKT-060: Paid Media Reporting
+#### paid-media-reporting
 
 **Problem:** No clear performance view.
 
@@ -1146,7 +1146,7 @@ Campaign (Theme/Product)
 
 ### Social Media (6)
 
-#### M-MKT-061: Social Media Strategy
+#### social-media-strategy
 
 **Problem:** Random posting, no strategy.
 
@@ -1160,7 +1160,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-social-agent
 
-#### M-MKT-062: LinkedIn Content Strategy
+#### linkedin-content-strategy
 
 **Problem:** No LinkedIn presence.
 
@@ -1179,7 +1179,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-social-agent
 
-#### M-MKT-063: Twitter/X Strategy
+#### twitter-x-strategy
 
 **Problem:** No Twitter presence.
 
@@ -1200,7 +1200,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-social-agent
 
-#### M-MKT-064: Community Building
+#### community-building
 
 **Problem:** No engaged community.
 
@@ -1215,7 +1215,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-social-agent
 
-#### M-MKT-065: Influencer Partnership
+#### influencer-partnership
 
 **Problem:** No influencer strategy.
 
@@ -1231,7 +1231,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-social-agent
 
-#### M-MKT-066: Social Listening
+#### social-listening
 
 **Problem:** Missing brand mentions, trends.
 
@@ -1247,7 +1247,7 @@ Campaign (Theme/Product)
 
 ### Growth & Operations (6)
 
-#### M-MKT-067: AARRR Funnel Analysis
+#### aarrr-funnel-analysis
 
 **Problem:** Unknown growth leaks.
 
@@ -1262,7 +1262,7 @@ Campaign (Theme/Product)
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-068: Growth Experiment Framework
+#### growth-experiment-framework
 
 **Problem:** Random growth efforts.
 
@@ -1291,7 +1291,7 @@ If we [change], then [metric] will [increase/decrease] by [%]
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-069: Referral Program Design
+#### referral-program-design
 
 **Problem:** No organic growth.
 
@@ -1309,7 +1309,7 @@ K > 1 = viral growth
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-070: Customer Lifecycle Marketing
+#### customer-lifecycle-marketing
 
 **Problem:** Same messaging for all users.
 
@@ -1325,7 +1325,7 @@ K > 1 = viral growth
 
 **Agent:** faion-growth-agent
 
-#### M-MKT-071: Competitive Intelligence
+#### competitive-intelligence
 
 **Problem:** Unaware of competitor moves.
 
@@ -1340,7 +1340,7 @@ K > 1 = viral growth
 
 **Agent:** faion-market-researcher-agent
 
-#### M-MKT-072: Marketing Analytics Stack
+#### marketing-analytics-stack
 
 **Problem:** No clear data infrastructure.
 

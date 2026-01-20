@@ -1290,13 +1290,13 @@ Before using generated images:
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-GEN-001-image-prompting | M-GEN-001-image-prompting | [methodologies/M-GEN-001-image-prompting.md](methodologies/M-GEN-001-image-prompting.md) |
-| M-GEN-002-video-generation-workflow | M-GEN-002-video-generation-workflow | [methodologies/M-GEN-002-video-generation-workflow.md](methodologies/M-GEN-002-video-generation-workflow.md) |
-| M-GEN-003-voice-synthesis | M-GEN-003-voice-synthesis | [methodologies/M-GEN-003-voice-synthesis.md](methodologies/M-GEN-003-voice-synthesis.md) |
-| M-GEN-004-audio-transcription | M-GEN-004-audio-transcription | [methodologies/M-GEN-004-audio-transcription.md](methodologies/M-GEN-004-audio-transcription.md) |
-| M-GEN-005-multimodal-pipelines | M-GEN-005-multimodal-pipelines | [methodologies/M-GEN-005-multimodal-pipelines.md](methodologies/M-GEN-005-multimodal-pipelines.md) |
-| M-GEN-006-finetuning-workflow | M-GEN-006-finetuning-workflow | [methodologies/M-GEN-006-finetuning-workflow.md](methodologies/M-GEN-006-finetuning-workflow.md) |
-| M-GEN-007-content-moderation | M-GEN-007-content-moderation | [methodologies/M-GEN-007-content-moderation.md](methodologies/M-GEN-007-content-moderation.md) |
-| M-GEN-008-asset-management | M-GEN-008-asset-management | [methodologies/M-GEN-008-asset-management.md](methodologies/M-GEN-008-asset-management.md) |
+| Name | Description | File |
+|------|-------------|------|
+| Image Prompting | Text-to-image prompt engineering techniques | [methodologies/image-prompting.md](methodologies/image-prompting.md) |
+| Video Generation Workflow | AI video generation process and best practices | [methodologies/video-generation-workflow.md](methodologies/video-generation-workflow.md) |
+| Voice Synthesis | Text-to-speech and voice cloning techniques | [methodologies/voice-synthesis.md](methodologies/voice-synthesis.md) |
+| Audio Transcription | Speech-to-text transcription workflows | [methodologies/audio-transcription.md](methodologies/audio-transcription.md) |
+| Multimodal Pipelines | Combining multiple AI modalities | [methodologies/multimodal-pipelines.md](methodologies/multimodal-pipelines.md) |
+| Finetuning Workflow | Custom model fine-tuning processes | [methodologies/finetuning-workflow.md](methodologies/finetuning-workflow.md) |
+| Content Moderation | AI content safety and moderation | [methodologies/content-moderation.md](methodologies/content-moderation.md) |
+| Asset Management | Generated asset organization and storage | [methodologies/asset-management.md](methodologies/asset-management.md) |

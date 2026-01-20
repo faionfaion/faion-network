@@ -34,17 +34,17 @@ This skill orchestrates all software development activities. It provides pattern
 | api-design.md | REST, GraphQL, OpenAPI, versioning | ~2250 |
 | testing.md | pytest, Jest, Vitest, E2E testing | ~1810 |
 | browser-automation.md | Puppeteer, Playwright, scraping | ~1490 |
-| methodologies.md | 68 development methodologies (M-DEV-*) | ~1573 |
+| methodologies.md | 68 development methodologies | ~1573 |
 | best-practices-2026.md | AI-assisted development, modern patterns | ~600 |
 
 ## Methodologies
 
-32 core methodologies organized by domain:
+Organized by domain with semantic naming:
 
-- **M-PY-001 to M-PY-008**: Python (Poetry, Django, FastAPI, pytest, typing)
-- **M-JS-001 to M-JS-008**: JavaScript/TypeScript (React, Node.js, testing)
-- **M-BE-001 to M-BE-008**: Backend (architecture, databases, caching, auth)
-- **M-API-001 to M-API-008**: API design (REST, OpenAPI, versioning, security)
+- **Python**: python.md, testing.md, django/ (7 files)
+- **JavaScript/TypeScript**: javascript.md, testing.md, frontend-design.md
+- **Backend**: go-backend.md, ruby-rails.md, php-laravel.md, java-spring.md, csharp-dotnet.md, rust-backend.md
+- **API Design**: rest-api-design.md, graphql-api.md, openapi-specification.md, api-versioning.md, api-authentication.md
 
 ## Quick Commands
 

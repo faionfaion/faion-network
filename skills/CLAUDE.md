@@ -9,7 +9,7 @@ Claude Code skills for the faion-network framework.
 | Skill | Description | Methodologies |
 |-------|-------------|---------------|
 | **faion-net** | Universal orchestrator for all software projects | 502 methodologies |
-| **faion-sdd** | Specification-Driven Development workflow | M-SDD-001 to M-SDD-017 |
+| **faion-sdd** | Specification-Driven Development workflow | 17 methodologies (semantic names) |
 | **faion-feature-executor** | Sequential task execution with quality gates | Uses faion-task-executor-YOLO-agent |
 
 ### Domain Skills
@@ -19,11 +19,11 @@ Claude Code skills for the faion-network framework.
 | **faion-software-developer** | Development | Python, JS/TS, backend, APIs, testing, UI design |
 | **faion-devops-engineer** | DevOps | Docker, K8s, Terraform, CI/CD, monitoring |
 | **faion-ml-engineer** | ML/AI | LLM APIs, RAG, embeddings, vector DBs |
-| **faion-business-analyst** | BA | BABOK v3, requirements, stakeholder analysis |
+| **faion-business-analyst** | BA | Business Analysis Framework, requirements, stakeholder analysis |
 | **faion-product-manager** | Product | MVP/MLP, roadmaps, OKRs, prioritization |
-| **faion-project-manager** | PM | PMBOK 7/8, agile, risk management |
+| **faion-project-manager** | PM | Project Management Framework 7/8, agile, risk management |
 | **faion-marketing-manager** | Marketing | GTM, SEO, ads, content, email |
-| **faion-ux-ui-designer** | UX/UI | Nielsen heuristics, accessibility, prototyping |
+| **faion-ux-ui-designer** | UX/UI | 10 Usability Heuristics, accessibility, prototyping |
 | **faion-researcher** | Research | Market research, competitors, validation |
 | **faion-communicator** | Communication | Active listening, Mom Test, conflict resolution, SPIN |
 | **faion-hr-recruiter** | HR/Recruiting | Talent acquisition, employer branding, interviewing, onboarding |
@@ -34,7 +34,7 @@ Claude Code skills for the faion-network framework.
 Each skill folder contains:
 - `SKILL.md` - Main skill documentation
 - `CLAUDE.md` - Navigation and summary
-- `methodologies/` - Methodology files (M-XXX-NNN)
+- `methodologies/` or `references/` - Methodology files (semantic names)
 - `references/` - Reference materials and best practices
 
 ## Architecture
@@ -62,12 +62,10 @@ skills/
 ## Naming Conventions
 
 - **Skills**: `faion-{domain}` (e.g., faion-software-developer)
-- **Methodologies**:
-  - Legacy: `M-{DOMAIN}-{NNN}` (e.g., M-DEV-001)
-  - Semantic: `{name}.md` with id `{name}` (e.g., gtm-strategy.md)
+- **Methodologies**: Semantic naming `{name}.md` (e.g., gtm-strategy.md, prompt-engineering.md)
 - **Agent**: `faion-task-executor-YOLO-agent`
 
-**Note:** faion-marketing-manager and faion-hr-recruiter use semantic naming (86 and 5 methodologies respectively).
+**Note:** All skills now use semantic naming for methodologies.
 
 ## Usage
 

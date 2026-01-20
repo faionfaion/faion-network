@@ -17,7 +17,7 @@ category: "operations"
 | **Category** | Operations & Business |
 | **Difficulty** | Intermediate |
 | **Agent** | faion-growth-agent |
-| **Related** | financial-planning, metrics-dashboards, M-SDD-001 |
+| **Related** | financial-planning, metrics-dashboards, sdd-workflow-overview |
 
 ---
 
@@ -480,7 +480,7 @@ Q1 Goal: Launch new product line
 
 - **financial-planning:** Financial Planning (budget and projections)
 - **metrics-dashboards:** Metrics & Dashboards (tracking progress)
-- **M-SDD-001:** SDD Overview (project planning framework)
+- **sdd-workflow-overview:** SDD Overview (project planning framework)
 - **tax-considerations:** Tax Considerations (year-end tax planning)
 
 ---

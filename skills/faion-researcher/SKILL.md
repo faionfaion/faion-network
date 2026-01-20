@@ -41,28 +41,28 @@ Orchestrate all research and discovery activities for product/startup developmen
 
 This skill references 20 research methodologies:
 
-| # | Methodology | Description | Agent (Mode) |
-|---|-------------|-------------|--------------|
-| M-RES-001 | 7 Ps of Ideation | Pain, Passion, Profession, Process, Platform, People, Product | faion-research-agent (ideas) |
-| M-RES-002 | Paul Graham Questions | Tedious tasks, surprisingly hard, build for self | faion-research-agent (ideas) |
-| M-RES-003 | Personal Pain Points | Daily problems, complaints, workarounds | faion-research-agent (ideas) |
-| M-RES-004 | Idea Scoring Matrix | Multi-criteria scoring (market, competition, fit) | faion-research-agent (niche) |
-| M-RES-005 | TAM/SAM/SOM Analysis | Total, Serviceable, Obtainable market sizing | faion-research-agent (market) |
-| M-RES-006 | Market Trend Analysis | Industry trends, growth drivers, threats | faion-research-agent (market) |
-| M-RES-007 | Competitive Landscape Mapping | Direct, indirect, substitute competitors | faion-research-agent (competitors) |
-| M-RES-008 | Feature Gap Analysis | Missing features in competitor products | faion-research-agent (competitors) |
-| M-RES-009 | Pricing Benchmarking | Competitor pricing models comparison | faion-research-agent (pricing) |
-| M-RES-010 | Jobs To Be Done (JTBD) | Functional, emotional, social jobs | faion-research-agent (personas) |
-| M-RES-011 | User Persona Creation | Demographics, behaviors, pain points, goals | faion-research-agent (personas) |
-| M-RES-012 | Problem Validation | Evidence gathering for problem existence | faion-research-agent (validate) |
-| M-RES-013 | Pain Point Mining | Reddit, forums, reviews, social listening | faion-research-agent (pains) |
-| M-RES-014 | Niche Viability Scoring | 5-criteria scoring (market, competition, barriers, profit, fit) | faion-research-agent (niche) |
-| M-RES-015 | Blue Ocean Strategy | Uncontested market space identification | faion-research-agent (niche) |
-| M-RES-016 | Value Proposition Canvas | Customer profile vs. value map | faion-research-agent (personas) |
-| M-RES-017 | Project Naming Strategies | Descriptive, invented, compound, metaphor, portmanteau | faion-research-agent (names) |
-| M-RES-018 | Domain Availability Check | .com, .io, .co, social handles | faion-domain-checker-agent |
-| M-RES-019 | Pricing Model Selection | Freemium, subscription, one-time, usage-based | faion-research-agent (pricing) |
-| M-RES-020 | Customer Interview Framework | Discovery interviews, problem interviews | faion-research-agent (validate) |
+| Methodology | Description | Agent (Mode) |
+|-------------|-------------|--------------|
+| idea-generation | Pain, Passion, Profession, Process, Platform, People, Product | faion-research-agent (ideas) |
+| paul-graham-questions (in idea-generation) | Tedious tasks, surprisingly hard, build for self | faion-research-agent (ideas) |
+| pain-point-research | Daily problems, complaints, workarounds | faion-research-agent (ideas) |
+| niche-evaluation | Multi-criteria scoring (market, competition, fit) | faion-research-agent (niche) |
+| market-research-tam-sam-som | Total, Serviceable, Obtainable market sizing | faion-research-agent (market) |
+| trend-analysis | Industry trends, growth drivers, threats | faion-research-agent (market) |
+| competitor-analysis | Direct, indirect, substitute competitors | faion-research-agent (competitors) |
+| competitive-intelligence | Missing features in competitor products | faion-research-agent (competitors) |
+| pricing-research | Competitor pricing models comparison | faion-research-agent (pricing) |
+| jobs-to-be-done | Functional, emotional, social jobs | faion-research-agent (personas) |
+| persona-building | Demographics, behaviors, pain points, goals | faion-research-agent (personas) |
+| problem-validation | Evidence gathering for problem existence | faion-research-agent (validate) |
+| pain-point-research | Reddit, forums, reviews, social listening | faion-research-agent (pains) |
+| niche-evaluation | 5-criteria scoring (market, competition, barriers, profit, fit) | faion-research-agent (niche) |
+| business-model-research | Uncontested market space identification | faion-research-agent (niche) |
+| value-proposition-design | Customer profile vs. value map | faion-research-agent (personas) |
+| project-naming (in idea-generation) | Descriptive, invented, compound, metaphor, portmanteau | faion-research-agent (names) |
+| domain-availability (in idea-generation) | .com, .io, .co, social handles | faion-domain-checker-agent |
+| pricing-research | Freemium, subscription, one-time, usage-based | faion-research-agent (pricing) |
+| user-interviews | Discovery interviews, problem interviews | faion-research-agent (validate) |
 
 
 > **Note:** Full methodology details available in `methodologies/` folder.
@@ -644,7 +644,7 @@ Task(
 
 # Methodologies Reference (Detailed)
 
-## M-RES-001: 7 Ps of Ideation
+## idea-generation
 
 ### Problem
 Aspiring entrepreneurs struggle to find viable startup ideas that match their skills and interests.
@@ -700,7 +700,7 @@ faion-research-agent (mode: ideas)
 
 ---
 
-## M-RES-002: Paul Graham Questions
+## paul-graham-questions (part of idea-generation)
 
 ### Problem
 Entrepreneurs miss obvious opportunities hiding in plain sight.
@@ -762,7 +762,7 @@ faion-research-agent (mode: ideas)
 
 ---
 
-## M-RES-003: Personal Pain Points
+## pain-point-research
 
 ### Problem
 Entrepreneurs overlook problems they face daily because they've normalized them.
@@ -820,7 +820,7 @@ faion-research-agent (mode: ideas)
 
 ---
 
-## M-RES-004: Idea Scoring Matrix
+## niche-evaluation
 
 ### Problem
 Too many ideas, no objective way to prioritize.
@@ -875,7 +875,7 @@ faion-research-agent (mode: niche)
 
 ---
 
-## M-RES-005: TAM/SAM/SOM Analysis
+## market-research-tam-sam-som
 
 ### Problem
 Entrepreneurs can't quantify market opportunity or set realistic targets.
@@ -947,7 +947,7 @@ faion-research-agent (mode: market)
 
 ---
 
-## M-RES-006: Market Trend Analysis
+## trend-analysis
 
 ### Problem
 Entrepreneurs miss timing opportunities or build for declining markets.
@@ -1019,7 +1019,7 @@ faion-research-agent (mode: market)
 
 ---
 
-## M-RES-007: Competitive Landscape Mapping
+## competitor-analysis
 
 ### Problem
 Entrepreneurs underestimate competition or miss indirect competitors.
@@ -1097,7 +1097,7 @@ faion-research-agent (mode: competitors)
 
 ---
 
-## M-RES-008: Feature Gap Analysis
+## competitive-intelligence
 
 ### Problem
 Entrepreneurs don't know which features are missing in the market.
@@ -1170,7 +1170,7 @@ faion-research-agent (mode: competitors)
 
 ---
 
-## M-RES-009: User Interviews
+## user-interviews
 
 ### Problem
 Entrepreneurs build based on assumptions rather than validated user needs.
@@ -1244,7 +1244,7 @@ faion-research-agent (mode: validate)
 
 ---
 
-## M-RES-010: Jobs To Be Done (JTBD)
+## jobs-to-be-done
 
 ### Problem
 Features don't connect to real user motivations.
@@ -1317,7 +1317,7 @@ faion-research-agent (mode: personas)
 
 ---
 
-## M-RES-011: User Persona Creation
+## persona-building
 
 ### Problem
 Teams build for abstract "users" rather than specific people with distinct needs.
@@ -1400,7 +1400,7 @@ faion-research-agent (mode: personas)
 
 ---
 
-## M-RES-012: Problem Validation
+## problem-validation
 
 ### Problem
 Entrepreneurs build solutions for problems that don't exist or aren't painful enough.
@@ -1479,7 +1479,7 @@ faion-research-agent (mode: validate)
 
 ---
 
-## M-RES-013: Pain Point Mining
+## pain-point-mining
 
 ### Problem
 Entrepreneurs don't know where customers express frustrations.
@@ -1552,7 +1552,7 @@ faion-research-agent (mode: pains)
 
 ---
 
-## M-RES-014: Niche Viability Scoring
+## niche-viability-scoring
 
 ### Problem
 Entrepreneurs can't objectively assess if a niche is worth pursuing.
@@ -1620,7 +1620,7 @@ faion-research-agent (mode: niche)
 
 ---
 
-## M-RES-015: Blue Ocean Strategy
+## business-model-research
 
 ### Problem
 Entrepreneurs compete in crowded markets instead of creating new ones.
@@ -1697,7 +1697,7 @@ faion-research-agent (mode: niche)
 
 ---
 
-## M-RES-016: Value Proposition Canvas
+## value-proposition-design
 
 ### Problem
 Products don't clearly match customer needs.
@@ -1797,7 +1797,7 @@ faion-research-agent (mode: personas)
 
 ---
 
-## M-RES-017: Project Naming Strategies
+## project-naming
 
 ### Problem
 Entrepreneurs struggle to find memorable, available names.
@@ -1874,7 +1874,7 @@ faion-research-agent (mode: names)
 
 ---
 
-## M-RES-018: Domain Availability Check
+## domain-availability
 
 ### Problem
 Great names are unusable due to domain/handle unavailability.
@@ -1957,7 +1957,7 @@ faion-domain-checker-agent
 
 ---
 
-## M-RES-019: Pricing Model Selection
+## pricing-research
 
 ### Problem
 Entrepreneurs choose wrong pricing models that limit growth or revenue.
@@ -2041,7 +2041,7 @@ faion-research-agent (mode: pricing)
 
 ---
 
-## M-RES-020: Customer Interview Framework
+## customer-interview-framework
 
 ### Problem
 Interviews fail to extract actionable insights due to poor questions and structure.
@@ -2155,5 +2155,5 @@ faion-research-agent (mode: validate)
 
 *faion-researcher v1.1*
 *Merged from: faion-idea-discovery, faion-product-research, faion-project-naming*
-*Methodologies: M-RES-001 to M-RES-020 (20 total)*
+*Methodologies: 20 total (semantic names)*
 *Agents: 8 research + 2 naming*

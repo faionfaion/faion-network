@@ -10,7 +10,7 @@ Research domain skill for product/startup development. Orchestrates idea discove
 - `faion-research-agent` (opus) - Research orchestrator with 9 modes
 - `faion-domain-checker-agent` (sonnet) - Domain availability verification
 
-**Methodologies:** 32 (M-RES-001 to M-RES-032)
+**Methodologies:** 32 (semantic naming)
 
 **Tools:** Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite
 
@@ -38,7 +38,7 @@ Research domain skill for product/startup development. Orchestrates idea discove
 faion-researcher/
 ├── SKILL.md              # Full skill specification
 ├── CLAUDE.md             # This file
-├── methodologies/        # 32 research methodologies (M-RES-001 to M-RES-032)
+├── methodologies/        # 32 research methodologies (semantic naming)
 │   └── CLAUDE.md
 └── references/           # AI research tools, best practices
     └── CLAUDE.md

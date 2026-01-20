@@ -1,22 +1,22 @@
-# BABOK Domain
+# Business Analysis Framework Domain
 
 ## When to Use
 
-Business analysis using BABOK v3. Requirements elicitation, traceability, solution assessment.
+Business analysis using Business Analysis Framework v3. Requirements elicitation, traceability, solution assessment.
 
 ## Agents
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-ba-agent` | Execute BABOK methodologies, business analysis |
+| `faion-ba-agent` | Execute Business Analysis Framework methodologies, business analysis |
 
 ## Technical Skills
 
-None directly - uses BABOK techniques embedded in domain skill.
+None directly - uses Business Analysis Framework techniques embedded in domain skill.
 
 ## Methodologies
 
-30 methodologies across 6 Knowledge Areas (M-BA-001 to M-BA-030):
+30 methodologies across 6 Knowledge Areas:
 
 **Business Analysis Planning & Monitoring:**
 - Plan BA Approach

@@ -185,14 +185,14 @@ Is this correct? Shall I proceed?"
 - Email campaigns and automation
 - Social media strategy
 
-**Project Management (PMBOK 7/8):**
+**Project Management (Project Management Framework 7/8):**
 - Stakeholder management
 - Risk management
 - Earned Value Management (EVM)
 - Change control
 - Agile, Waterfall, Hybrid delivery
 
-**Business Analysis (BABOK v3):**
+**Business Analysis (Business Analysis Framework):**
 - Requirements elicitation
 - Traceability matrices
 - Solution assessment
@@ -201,7 +201,7 @@ Is this correct? Shall I proceed?"
 **UX:**
 - User research (interviews, surveys, contextual inquiry)
 - Usability testing (moderated, unmoderated)
-- Heuristic evaluation (Nielsen Norman 10)
+- Heuristic evaluation (10 Usability Heuristics)
 - Personas, journey mapping
 - Wireframing, prototyping
 
@@ -219,9 +219,9 @@ Is this correct? Shall I proceed?"
 | `faion-devops-engineer` | Docker, K8s, Terraform, AWS/GCP/Azure, CI/CD, monitoring, IaC, nginx. 20 methodologies |
 | `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning, LangChain, vector DBs, prompt engineering. 30 methodologies |
 | `faion-marketing-manager` | GTM, landing pages, SEO/SEM, content, ads, email, social media. 74 methodologies |
-| `faion-project-manager` | PMBOK 7/8 (8 Domains, 12 Principles), PM tools, risk, EVM, agile. 36 methodologies |
-| `faion-business-analyst` | IIBA BABOK v3: 6 Knowledge Areas, requirements, stakeholders, process modeling. 30 tasks |
-| `faion-ux-ui-designer` | Nielsen Norman 10, UX research, usability testing, personas, journey mapping. 32 methodologies |
+| `faion-project-manager` | Project Management Framework 7/8 (8 Domains, 12 Principles), PM tools, risk, EVM, agile. 36 methodologies |
+| `faion-business-analyst` | Business Analysis Framework: 6 Knowledge Areas, requirements, stakeholders, process modeling. 30 tasks |
+| `faion-ux-ui-designer` | 10 Usability Heuristics, UX research, usability testing, personas, journey mapping. 32 methodologies |
 | `faion-communicator` | Stakeholder dialogue, Mom Test, conflict resolution, feedback, selling ideas, storytelling, negotiation. 10 methodologies |
 | `faion-claude-code` | Claude Code config: skills, agents, commands, hooks, MCP servers, IDE integrations |
 | `faion-net` | This orchestrator (recursive for complex multi-domain tasks) |
@@ -230,395 +230,395 @@ Is this correct? Shall I proceed?"
 
 ## All Methodologies (494)
 
-### Research (M-RES-*)
-| ID | Name |
-|----|------|
-| M-RES-001 | SCAMPER Ideation |
-| M-RES-002 | Mind Mapping |
-| M-RES-003 | Reverse Engineering Ideas |
-| M-RES-004 | Problem-First Discovery |
-| M-RES-005 | Trend Surfing |
-| M-RES-006 | Skill-Stack Analysis |
-| M-RES-007 | Market Gap Analysis |
-| M-RES-008 | Pain Point Research |
-| M-RES-009 | Competitor Feature Matrix |
-| M-RES-010 | Pricing Strategy Analysis |
-| M-RES-011 | Persona Building |
-| M-RES-012 | Niche Evaluation |
-| M-RES-013 | Problem Validation |
-| M-RES-014 | Project Naming |
+### Research
+| Name | File |
+|------|------|
+| idea-generation | SCAMPER Ideation |
+| mind-mapping | Mind Mapping |
+| reverse-engineering-ideas | Reverse Engineering Ideas |
+| problem-first-discovery | Problem-First Discovery |
+| trend-surfing | Trend Surfing |
+| skill-stack-analysis | Skill-Stack Analysis |
+| market-research-tam-sam-som | Market Gap Analysis |
+| pain-point-research | Pain Point Research |
+| competitor-analysis | Competitor Feature Matrix |
+| pricing-research | Pricing Strategy Analysis |
+| persona-building | Persona Building |
+| niche-evaluation | Niche Evaluation |
+| problem-validation | Problem Validation |
+| project-naming | Project Naming |
 
-### Product (M-PRD-*)
-| ID | Name |
-|----|------|
-| M-PRD-001 | MVP Scoping |
-| M-PRD-002 | MLP Planning |
-| M-PRD-003 | RICE Prioritization |
-| M-PRD-004 | MoSCoW Prioritization |
-| M-PRD-005 | Roadmap Design |
-| M-PRD-006 | User Story Mapping |
-| M-PRD-007 | OKR Setting |
-| M-PRD-008 | Problem Validation |
-| M-PRD-009 | Assumption Mapping |
-| M-PRD-010 | Lean Canvas |
-| M-PRD-011 | Jobs To Be Done |
-| M-PRD-012 | Opportunity Scoring |
-| M-PRD-013 | Value Proposition Canvas |
-| M-PRD-014 | Sprint Planning |
-| M-PRD-015 | Release Planning |
-| M-PRD-016 | Backlog Refinement |
-| M-PRD-017 | Five Whys Analysis |
-| M-PRD-018 | Impact Mapping |
+### Product
+| Name | Description |
+|------|-------------|
+| mvp-scoping | MVP Scoping |
+| mlp-planning | MLP Planning |
+| feature-prioritization-rice | RICE Prioritization |
+| feature-prioritization-moscow | MoSCoW Prioritization |
+| roadmap-design | Roadmap Design |
+| user-story-mapping | User Story Mapping |
+| okr-setting | OKR Setting |
+| problem-validation | Problem Validation |
+| assumption-mapping | Assumption Mapping |
+| lean-canvas | Lean Canvas |
+| jobs-to-be-done | Jobs To Be Done |
+| opportunity-scoring | Opportunity Scoring |
+| value-proposition-canvas | Value Proposition Canvas |
+| sprint-planning | Sprint Planning |
+| release-planning | Release Planning |
+| backlog-refinement | Backlog Refinement |
+| five-whys-analysis | Five Whys Analysis |
+| impact-mapping | Impact Mapping |
 
-### Development (M-DEV-*)
-| ID | Name |
-|----|------|
-| M-DEV-001 | Django Coding Standards |
-| M-DEV-002 | Django Code Decision Tree |
-| M-DEV-003 | Django Base Model Pattern |
-| M-DEV-004 | Django Testing with pytest |
-| M-DEV-005 | FastAPI Standards |
-| M-DEV-006 | Python Async Patterns |
-| M-DEV-007 | Python Type Hints |
-| M-DEV-008 | Poetry Project Setup |
-| M-DEV-009 | React Component Architecture |
-| M-DEV-010 | TypeScript Strict Mode |
-| M-DEV-011 | React Hooks Best Practices |
-| M-DEV-012 | Next.js App Router |
-| M-DEV-013 | Node.js Service Layer |
-| M-DEV-014 | Express/Fastify Patterns |
-| M-DEV-015 | Bun Runtime |
-| M-DEV-016 | Package Management (pnpm) |
-| M-DEV-017 | Monorepo Setup (Turborepo) |
-| M-DEV-018 | Go Project Structure |
-| M-DEV-019 | Go Error Handling |
-| M-DEV-020 | Go Concurrency Patterns |
-| M-DEV-021 | Rust Ownership Model |
-| M-DEV-022 | Rust Error Handling |
-| M-DEV-023 | Ruby on Rails Patterns |
-| M-DEV-024 | PHP Laravel Patterns |
-| M-DEV-025 | Java Spring Boot |
-| M-DEV-026 | C# .NET Patterns |
-| M-DEV-027 | Clean Architecture |
-| M-DEV-028 | Domain-Driven Design |
-| M-DEV-029 | CQRS Pattern |
-| M-DEV-030 | Event Sourcing |
-| M-DEV-031 | Microservices Design |
-| M-DEV-032 | API Design (REST) |
-| M-DEV-033 | API Design (GraphQL) |
-| M-DEV-034 | OpenAPI Specification |
-| M-DEV-035 | Database Design |
-| M-DEV-036 | SQL Optimization |
-| M-DEV-037 | NoSQL Patterns |
-| M-DEV-038 | Caching Strategy |
-| M-DEV-039 | Message Queues |
-| M-DEV-040 | WebSocket Design |
-| M-DEV-041 | Unit Testing |
-| M-DEV-042 | Integration Testing |
-| M-DEV-043 | E2E Testing |
-| M-DEV-044 | TDD Workflow |
-| M-DEV-045 | Test Fixtures |
-| M-DEV-046 | Mocking Strategies |
-| M-DEV-047 | Code Coverage |
-| M-DEV-048 | Security Testing |
-| M-DEV-049 | Performance Testing |
-| M-DEV-050 | Documentation |
-| M-DEV-051 | CLAUDE.md Creation |
-| M-DEV-052 | Code Review |
-| M-DEV-053 | Refactoring Patterns |
-| M-DEV-054 | Technical Debt |
-| M-DEV-055 | Error Handling |
-| M-DEV-056 | Logging Patterns |
-| M-DEV-057 | Feature Flags |
-| M-DEV-058 | A/B Testing |
-| M-DEV-059 | Internationalization |
-| M-DEV-060 | Accessibility |
-| M-DEV-061 | SEO for SPAs |
-| M-DEV-062 | PWA Development |
-| M-DEV-063 | Mobile Responsive |
-| M-DEV-064 | UI Component Library |
-| M-DEV-065 | Storybook Setup |
-| M-DEV-066 | Design Tokens |
-| M-DEV-067 | CSS-in-JS |
-| M-DEV-068 | Tailwind Patterns |
+### Development
+| Name | Description |
+|------|-------------|
+| python-django-standards | Django Coding Standards |
+| python-django-decision-tree | Django Code Decision Tree |
+| python-django-base-model | Django Base Model Pattern |
+| python-django-testing-pytest | Django Testing with pytest |
+| python-fastapi-standards | FastAPI Standards |
+| python-async-patterns | Python Async Patterns |
+| python-type-hints | Python Type Hints |
+| python-poetry-setup | Poetry Project Setup |
+| react-component-architecture | React Component Architecture |
+| typescript-strict-mode | TypeScript Strict Mode |
+| react-hooks-best-practices | React Hooks Best Practices |
+| nextjs-app-router | Next.js App Router |
+| nodejs-service-layer | Node.js Service Layer |
+| express-fastify-patterns | Express/Fastify Patterns |
+| bun-runtime | Bun Runtime |
+| package-management-pnpm | Package Management (pnpm) |
+| monorepo-turborepo | Monorepo Setup (Turborepo) |
+| go-project-structure | Go Project Structure |
+| go-error-handling | Go Error Handling |
+| go-concurrency-patterns | Go Concurrency Patterns |
+| rust-ownership-model | Rust Ownership Model |
+| rust-error-handling | Rust Error Handling |
+| ruby-rails-patterns | Ruby on Rails Patterns |
+| php-laravel-patterns | PHP Laravel Patterns |
+| java-spring-boot | Java Spring Boot |
+| csharp-dotnet-patterns | C# .NET Patterns |
+| clean-architecture | Clean Architecture |
+| domain-driven-design | Domain-Driven Design |
+| cqrs-pattern | CQRS Pattern |
+| event-sourcing | Event Sourcing |
+| microservices-design | Microservices Design |
+| api-rest-design | API Design (REST) |
+| api-graphql-design | API Design (GraphQL) |
+| api-openapi-specification | OpenAPI Specification |
+| database-design | Database Design |
+| database-sql-optimization | SQL Optimization |
+| database-nosql-patterns | NoSQL Patterns |
+| caching-strategy | Caching Strategy |
+| message-queues | Message Queues |
+| websocket-design | WebSocket Design |
+| testing-unit | Unit Testing |
+| testing-integration | Integration Testing |
+| testing-e2e | E2E Testing |
+| testing-tdd-workflow | TDD Workflow |
+| testing-fixtures | Test Fixtures |
+| testing-mocking | Mocking Strategies |
+| testing-coverage | Code Coverage |
+| testing-security | Security Testing |
+| testing-performance | Performance Testing |
+| documentation | Documentation |
+| claude-md-creation | CLAUDE.md Creation |
+| code-review | Code Review |
+| refactoring-patterns | Refactoring Patterns |
+| technical-debt | Technical Debt |
+| error-handling | Error Handling |
+| logging-patterns | Logging Patterns |
+| feature-flags | Feature Flags |
+| ab-testing | A/B Testing |
+| internationalization | Internationalization |
+| accessibility | Accessibility |
+| seo-spa | SEO for SPAs |
+| pwa-development | PWA Development |
+| mobile-responsive | Mobile Responsive |
+| ui-component-library | UI Component Library |
+| storybook-setup | Storybook Setup |
+| design-tokens | Design Tokens |
+| css-in-js | CSS-in-JS |
+| tailwind-patterns | Tailwind Patterns |
 
-### DevOps (M-OPS-*)
-| ID | Name |
-|----|------|
-| M-OPS-001 | Docker Containerization |
-| M-OPS-002 | Docker Compose |
-| M-OPS-003 | Kubernetes Deployment |
-| M-OPS-004 | Helm Charts |
-| M-OPS-005 | Terraform IaC |
-| M-OPS-006 | AWS Architecture |
-| M-OPS-007 | GCP Architecture |
-| M-OPS-008 | Azure Architecture |
-| M-OPS-009 | GitHub Actions CI/CD |
-| M-OPS-010 | GitLab CI/CD |
-| M-OPS-011 | Jenkins Pipelines |
-| M-OPS-012 | ArgoCD GitOps |
-| M-OPS-013 | Prometheus Monitoring |
-| M-OPS-014 | Grafana Dashboards |
-| M-OPS-015 | ELK Stack Logging |
-| M-OPS-016 | Nginx Configuration |
-| M-OPS-017 | Load Balancing |
-| M-OPS-018 | SSL/TLS Setup |
-| M-OPS-019 | Secrets Management |
-| M-OPS-020 | Backup Strategies |
+### DevOps
+| Name | Description |
+|------|-------------|
+| docker-containerization | Docker Containerization |
+| docker-compose | Docker Compose |
+| kubernetes-deployment | Kubernetes Deployment |
+| kubernetes-helm-charts | Helm Charts |
+| terraform-iac | Terraform IaC |
+| aws-architecture | AWS Architecture |
+| gcp-architecture | GCP Architecture |
+| azure-architecture | Azure Architecture |
+| cicd-github-actions | GitHub Actions CI/CD |
+| cicd-gitlab | GitLab CI/CD |
+| cicd-jenkins | Jenkins Pipelines |
+| gitops-argocd | ArgoCD GitOps |
+| monitoring-prometheus | Prometheus Monitoring |
+| monitoring-grafana | Grafana Dashboards |
+| logging-elk-stack | ELK Stack Logging |
+| nginx-configuration | Nginx Configuration |
+| load-balancing | Load Balancing |
+| ssl-tls-setup | SSL/TLS Setup |
+| secrets-management | Secrets Management |
+| backup-strategies | Backup Strategies |
 
-### ML/AI (M-ML-*)
-| ID | Name |
-|----|------|
-| M-ML-001 | OpenAI API Integration |
-| M-ML-002 | Claude API Integration |
-| M-ML-003 | Gemini API Integration |
-| M-ML-004 | Local LLM (Ollama) |
-| M-ML-005 | Embedding Generation |
-| M-ML-006 | Vector Database Setup |
-| M-ML-007 | RAG Pipeline Design |
-| M-ML-008 | RAG Evaluation |
-| M-ML-009 | Hybrid Search |
-| M-ML-010 | Reranking |
-| M-ML-011 | Chunking Strategies |
-| M-ML-012 | Fine-tuning (OpenAI) |
-| M-ML-013 | Fine-tuning (LoRA) |
-| M-ML-014 | Prompt Engineering |
-| M-ML-015 | Chain-of-Thought |
-| M-ML-016 | Tool Use / Function Calling |
-| M-ML-017 | Structured Output |
-| M-ML-018 | Guardrails |
-| M-ML-019 | Cost Optimization |
-| M-ML-020 | Model Evaluation |
-| M-ML-021 | LangChain Patterns |
-| M-ML-022 | LlamaIndex Patterns |
-| M-ML-023 | Autonomous Agents |
-| M-ML-024 | Multi-Agent Systems |
-| M-ML-025 | Image Generation (DALL-E, Midjourney) |
-| M-ML-026 | Image Analysis (Vision) |
-| M-ML-027 | Speech-to-Text |
-| M-ML-028 | Text-to-Speech |
-| M-ML-029 | Voice Agents |
-| M-ML-030 | Video Generation |
+### ML/AI
+| Name | Description |
+|------|-------------|
+| llm-openai-api | OpenAI API Integration |
+| llm-claude-api | Claude API Integration |
+| llm-gemini-api | Gemini API Integration |
+| llm-local-ollama | Local LLM (Ollama) |
+| embedding-generation | Embedding Generation |
+| vector-database-setup | Vector Database Setup |
+| rag-pipeline-design | RAG Pipeline Design |
+| rag-evaluation | RAG Evaluation |
+| hybrid-search | Hybrid Search |
+| reranking | Reranking |
+| chunking-strategies | Chunking Strategies |
+| fine-tuning-openai | Fine-tuning (OpenAI) |
+| fine-tuning-lora | Fine-tuning (LoRA) |
+| prompt-engineering | Prompt Engineering |
+| chain-of-thought | Chain-of-Thought |
+| function-calling | Tool Use / Function Calling |
+| structured-output | Structured Output |
+| guardrails | Guardrails |
+| llm-cost-optimization | Cost Optimization |
+| model-evaluation | Model Evaluation |
+| langchain-patterns | LangChain Patterns |
+| llamaindex-patterns | LlamaIndex Patterns |
+| autonomous-agents | Autonomous Agents |
+| multi-agent-systems | Multi-Agent Systems |
+| image-generation | Image Generation (DALL-E, Midjourney) |
+| image-analysis-vision | Image Analysis (Vision) |
+| speech-to-text | Speech-to-Text |
+| text-to-speech | Text-to-Speech |
+| voice-agents | Voice Agents |
+| video-generation | Video Generation |
 
-### Marketing (M-MKT-*)
-| ID | Name |
-|----|------|
-| M-MKT-001 | GTM Strategy |
-| M-MKT-002 | ICP Definition |
-| M-MKT-003 | Value Proposition |
-| M-MKT-004 | Positioning Statement |
-| M-MKT-005 | Messaging Framework |
-| M-MKT-006 | Landing Page Design |
-| M-MKT-007 | Hero Section |
-| M-MKT-008 | Social Proof |
-| M-MKT-009 | CTA Optimization |
-| M-MKT-010 | A/B Testing |
-| M-MKT-011 | Copywriting Formulas |
-| M-MKT-012 | AIDA Framework |
-| M-MKT-013 | PAS Framework |
-| M-MKT-014 | Feature-Benefit Mapping |
-| M-MKT-015 | SEO On-Page |
-| M-MKT-016 | SEO Technical |
-| M-MKT-017 | Keyword Research |
-| M-MKT-018 | Content Strategy |
-| M-MKT-019 | Blog Writing |
-| M-MKT-020 | Guest Posting |
-| M-MKT-021 | Link Building |
-| M-MKT-022 | Google Ads |
-| M-MKT-023 | Meta Ads |
-| M-MKT-024 | LinkedIn Ads |
-| M-MKT-025 | Retargeting |
-| M-MKT-026 | Email Welcome Sequence |
-| M-MKT-027 | Newsletter |
-| M-MKT-028 | Drip Campaigns |
-| M-MKT-029 | Email Deliverability |
-| M-MKT-030 | Social Media Strategy |
-| M-MKT-031 | Twitter/X Growth |
-| M-MKT-032 | LinkedIn Growth |
-| M-MKT-033 | Community Building |
-| M-MKT-034 | Influencer Marketing |
-| M-MKT-035 | Product Hunt Launch |
-| M-MKT-036 | Press Release |
-| M-MKT-037 | Analytics Setup |
-| M-MKT-038 | Conversion Tracking |
-| M-MKT-039 | Funnel Analysis |
-| M-MKT-040 | Customer Journey |
+### Marketing
+| Name | Description |
+|------|-------------|
+| gtm-strategy | GTM Strategy |
+| icp-definition | ICP Definition |
+| value-proposition-design | Value Proposition |
+| positioning-statement | Positioning Statement |
+| messaging-framework | Messaging Framework |
+| landing-page-design | Landing Page Design |
+| above-the-fold-design | Hero Section |
+| social-proof-strategy | Social Proof |
+| cta-optimization | CTA Optimization |
+| ab-testing-framework | A/B Testing |
+| copywriting-fundamentals | Copywriting Formulas |
+| aida-framework | AIDA Framework |
+| pas-framework | PAS Framework |
+| feature-benefit-mapping | Feature-Benefit Mapping |
+| seo-on-page-optimization | SEO On-Page |
+| seo-fundamentals | SEO Technical |
+| keyword-research | Keyword Research |
+| content-marketing | Content Strategy |
+| blog-post-template | Blog Writing |
+| link-building-strategy | Guest Posting |
+| seo-link-building | Link Building |
+| google-ads-structure | Google Ads |
+| meta-ads-structure | Meta Ads |
+| linkedin-strategy | LinkedIn Ads |
+| retargeting-strategy | Retargeting |
+| welcome-sequence | Email Welcome Sequence |
+| newsletter-strategy | Newsletter |
+| nurture-sequence | Drip Campaigns |
+| email-deliverability | Email Deliverability |
+| social-media-strategy | Social Media Strategy |
+| twitter-x-strategy | Twitter/X Growth |
+| linkedin-content-strategy | LinkedIn Growth |
+| community-building | Community Building |
+| influencer-partnership | Influencer Marketing |
+| product-hunt-launch | Product Hunt Launch |
+| press-coverage | Press Release |
+| marketing-analytics-stack | Analytics Setup |
+| conversion-tracking | Conversion Tracking |
+| funnel-optimization | Funnel Analysis |
+| customer-lifecycle-marketing | Customer Journey |
 
-### Growth (M-GRO-*)
-| ID | Name |
-|----|------|
-| M-GRO-001 | AARRR Pirate Metrics |
-| M-GRO-002 | North Star Metric |
-| M-GRO-003 | Growth Loops |
-| M-GRO-004 | A/B Testing Framework |
-| M-GRO-005 | Multivariate Testing |
-| M-GRO-006 | Statistical Significance |
-| M-GRO-007 | Cohort Analysis |
-| M-GRO-008 | Funnel Optimization |
-| M-GRO-009 | Viral Coefficient |
-| M-GRO-010 | Product-Led Growth |
-| M-GRO-011 | Activation Rate |
-| M-GRO-012 | Retention Loops |
+### Growth
+| Name | Description |
+|------|-------------|
+| aarrr-pirate-metrics | AARRR Pirate Metrics |
+| north-star-metric | North Star Metric |
+| growth-loops | Growth Loops |
+| ab-testing-framework | A/B Testing Framework |
+| multivariate-testing | Multivariate Testing |
+| statistical-significance | Statistical Significance |
+| cohort-analysis | Cohort Analysis |
+| funnel-optimization | Funnel Optimization |
+| viral-coefficient | Viral Coefficient |
+| product-led-growth | Product-Led Growth |
+| activation-rate | Activation Rate |
+| retention-loops | Retention Loops |
 
-### Advertising (M-ADS-*)
-| ID | Name |
-|----|------|
-| M-ADS-001 | Meta Campaign Setup |
-| M-ADS-002 | Meta Targeting |
-| M-ADS-003 | Meta Creative |
-| M-ADS-004 | Meta Reporting |
-| M-ADS-005 | Google Campaign Setup |
-| M-ADS-006 | Google Keywords |
-| M-ADS-007 | Google Creative |
-| M-ADS-008 | Google Reporting |
-| M-ADS-009 | LinkedIn Ads |
-| M-ADS-010 | Twitter Ads |
-| M-ADS-011 | Analytics Setup |
-| M-ADS-012 | Conversion Tracking |
-| M-ADS-013 | Attribution Models |
-| M-ADS-014 | Budget Optimization |
-| M-ADS-015 | A/B Testing Ads |
-| M-ADS-016 | Retargeting |
+### Advertising
+| Name | Description |
+|------|-------------|
+| meta-campaign-setup | Meta Campaign Setup |
+| meta-targeting | Meta Targeting |
+| meta-creative | Meta Creative |
+| meta-reporting | Meta Reporting |
+| google-campaign-setup | Google Campaign Setup |
+| google-keywords | Google Keywords |
+| google-creative | Google Creative |
+| google-reporting | Google Reporting |
+| linkedin-ads | LinkedIn Ads |
+| twitter-ads | Twitter Ads |
+| analytics-setup | Analytics Setup |
+| conversion-tracking | Conversion Tracking |
+| attribution-models | Attribution Models |
+| budget-optimization | Budget Optimization |
+| ab-testing-ads | A/B Testing Ads |
+| retargeting | Retargeting |
 
-### Business Operations (M-BIZ-*)
-| ID | Name |
-|----|------|
-| M-BIZ-001 | Pricing Strategy |
-| M-BIZ-002 | Subscription Models |
-| M-BIZ-003 | Customer Support |
-| M-BIZ-004 | Churn Prevention |
-| M-BIZ-005 | Upselling & Cross-selling |
-| M-BIZ-006 | Partnership Strategy |
-| M-BIZ-007 | Financial Planning |
-| M-BIZ-008 | Legal Compliance |
-| M-BIZ-009 | Tax Considerations |
-| M-BIZ-010 | Hiring Contractors |
-| M-BIZ-011 | Automation Workflow |
-| M-BIZ-012 | Customer Success |
-| M-BIZ-013 | Metrics Dashboards |
-| M-BIZ-014 | Annual Planning |
+### Business Operations
+| Name | Description |
+|------|-------------|
+| pricing-strategy | Pricing Strategy |
+| subscription-models | Subscription Models |
+| customer-support | Customer Support |
+| churn-prevention | Churn Prevention |
+| upselling-cross-selling | Upselling & Cross-selling |
+| partnership-strategy | Partnership Strategy |
+| financial-planning | Financial Planning |
+| legal-compliance | Legal Compliance |
+| tax-considerations | Tax Considerations |
+| hiring-contractors | Hiring Contractors |
+| automation-workflow | Automation Workflow |
+| customer-success | Customer Success |
+| metrics-dashboards | Metrics Dashboards |
+| annual-planning | Annual Planning |
 
-### Project Management (M-PM-*)
-| ID | Name |
-|----|------|
-| M-PM-001 | Stakeholder Register |
-| M-PM-002 | Stakeholder Analysis Matrix |
-| M-PM-003 | RACI Matrix |
-| M-PM-004 | Team Charter |
-| M-PM-005 | Development Approach Selection |
-| M-PM-006 | Project Life Cycle Design |
-| M-PM-007 | WBS Creation |
-| M-PM-008 | Schedule Development |
-| M-PM-009 | Cost Estimation |
-| M-PM-010 | Communication Management Plan |
-| M-PM-011 | Change Management Process |
-| M-PM-012 | Quality Management Plan |
-| M-PM-013 | Acceptance Criteria Definition |
-| M-PM-014 | Earned Value Management |
-| M-PM-015 | Project Dashboard Design |
-| M-PM-016 | Risk Register |
-| M-PM-017 | Risk Response Planning |
-| M-PM-018 | Lessons Learned |
-| M-PM-019 | Project Closure Checklist |
-| M-PM-020 | Project Status Report |
+### Project Management
+| Name | Description |
+|------|-------------|
+| stakeholder-register | Stakeholder Register |
+| stakeholder-analysis-matrix | Stakeholder Analysis Matrix |
+| raci-matrix | RACI Matrix |
+| team-charter | Team Charter |
+| development-approach-selection | Development Approach Selection |
+| project-life-cycle-design | Project Life Cycle Design |
+| wbs-creation | WBS Creation |
+| schedule-development | Schedule Development |
+| cost-estimation | Cost Estimation |
+| communication-management-plan | Communication Management Plan |
+| change-management-process | Change Management Process |
+| quality-management-plan | Quality Management Plan |
+| acceptance-criteria-definition | Acceptance Criteria Definition |
+| earned-value-management | Earned Value Management |
+| project-dashboard-design | Project Dashboard Design |
+| risk-register | Risk Register |
+| risk-response-planning | Risk Response Planning |
+| lessons-learned | Lessons Learned |
+| project-closure-checklist | Project Closure Checklist |
+| project-status-report | Project Status Report |
 
-### PM Tools (M-PMT-*)
-| ID | Name |
-|----|------|
-| M-PMT-001 | Jira Workflow Management |
-| M-PMT-002 | ClickUp Setup |
-| M-PMT-003 | Linear Issue Tracking |
-| M-PMT-004 | GitHub Projects |
-| M-PMT-005 | GitLab Boards |
-| M-PMT-006 | Azure DevOps Boards |
-| M-PMT-007 | Notion PM |
-| M-PMT-008 | Trello Kanban |
-| M-PMT-009 | Cross-Tool Migration |
-| M-PMT-010 | PM Tool Selection |
-| M-PMT-011 | Agile Ceremonies Setup |
-| M-PMT-012 | Reporting & Dashboards |
+### PM Tools
+| Name | Description |
+|------|-------------|
+| jira-workflow | Jira Workflow Management |
+| clickup-setup | ClickUp Setup |
+| linear-issue-tracking | Linear Issue Tracking |
+| github-projects | GitHub Projects |
+| gitlab-boards | GitLab Boards |
+| azure-devops-boards | Azure DevOps Boards |
+| notion-pm | Notion PM |
+| trello-kanban | Trello Kanban |
+| cross-tool-migration | Cross-Tool Migration |
+| pm-tool-selection | PM Tool Selection |
+| agile-ceremonies-setup | Agile Ceremonies Setup |
+| reporting-dashboards | Reporting & Dashboards |
 
-### Business Analysis (M-BA-*)
-| ID | Name |
-|----|------|
-| M-BA-001 | Business Case Development |
-| M-BA-002 | Stakeholder Analysis |
-| M-BA-003 | Requirements Elicitation |
-| M-BA-004 | Use Case Modeling |
-| M-BA-005 | User Story Writing |
-| M-BA-006 | Acceptance Criteria |
-| M-BA-007 | Traceability Matrix |
-| M-BA-008 | Gap Analysis |
-| M-BA-009 | Process Modeling (BPMN) |
-| M-BA-010 | Data Modeling |
-| M-BA-011 | Solution Assessment |
-| M-BA-012 | Feasibility Study |
+### Business Analysis
+| Name | Description |
+|------|-------------|
+| ba-planning | Business Case Development |
+| stakeholder-analysis | Stakeholder Analysis |
+| elicitation-techniques | Requirements Elicitation |
+| use-case-modeling | Use Case Modeling |
+| user-story-mapping | User Story Writing |
+| acceptance-criteria | Acceptance Criteria |
+| requirements-traceability | Traceability Matrix |
+| strategy-analysis | Gap Analysis |
+| business-process-analysis | Process Modeling (BPMN) |
+| data-analysis | Data Modeling |
+| solution-assessment | Solution Assessment |
+| requirements-validation | Feasibility Study |
 
-### UX/UI (M-UX-*)
-| ID | Name |
-|----|------|
-| M-UX-001 | User Interviews |
-| M-UX-002 | Surveys |
-| M-UX-003 | Contextual Inquiry |
-| M-UX-004 | Competitive Analysis |
-| M-UX-005 | Persona Development |
-| M-UX-006 | Empathy Mapping |
-| M-UX-007 | Journey Mapping |
-| M-UX-008 | Service Blueprint |
-| M-UX-009 | Information Architecture |
-| M-UX-010 | Card Sorting |
-| M-UX-011 | Wireframing |
-| M-UX-012 | Prototyping |
-| M-UX-013 | Usability Testing |
-| M-UX-014 | Heuristic Evaluation |
-| M-UX-015 | A/B Testing |
-| M-UX-016 | Accessibility Audit |
-| M-UX-017 | Design System |
-| M-UX-018 | Component Library |
-| M-UX-019 | Typography System |
-| M-UX-020 | Color System |
-| M-UX-021 | Spacing System |
-| M-UX-022 | Icon System |
-| M-UX-023 | Motion Design |
-| M-UX-024 | Micro-interactions |
-| M-UX-025 | Form Design |
-| M-UX-026 | Navigation Patterns |
-| M-UX-027 | Search UX |
-| M-UX-028 | Error States |
-| M-UX-029 | Empty States |
-| M-UX-030 | Loading States |
-| M-UX-031 | Onboarding |
-| M-UX-032 | Dark Mode |
+### UX/UI
+| Name | Description |
+|------|-------------|
+| user-interviews | User Interviews |
+| surveys | Surveys |
+| contextual-inquiry | Contextual Inquiry |
+| competitive-analysis | Competitive Analysis |
+| personas | Persona Development |
+| empathy-mapping | Empathy Mapping |
+| journey-mapping | Journey Mapping |
+| service-blueprint | Service Blueprint |
+| information-architecture | Information Architecture |
+| card-sorting | Card Sorting |
+| wireframing | Wireframing |
+| prototyping | Prototyping |
+| usability-testing | Usability Testing |
+| heuristic-evaluation | Heuristic Evaluation |
+| ab-testing | A/B Testing |
+| accessibility-evaluation | Accessibility Audit |
+| design-tokens-fundamentals | Design System |
+| component-library | Component Library |
+| typography-system | Typography System |
+| color-system | Color System |
+| spacing-system | Spacing System |
+| icon-system | Icon System |
+| motion-design | Motion Design |
+| micro-interactions | Micro-interactions |
+| form-design | Form Design |
+| navigation-patterns | Navigation Patterns |
+| search-ux | Search UX |
+| error-states | Error States |
+| empty-states | Empty States |
+| loading-states | Loading States |
+| onboarding | Onboarding |
+| dark-mode | Dark Mode |
 
-### SDD (M-SDD-*)
-| ID | Name |
-|----|------|
-| M-SDD-001 | Constitution Creation |
-| M-SDD-002 | Roadmap Planning |
-| M-SDD-003 | Feature Specification |
-| M-SDD-004 | Technical Design |
-| M-SDD-005 | Implementation Plan |
-| M-SDD-006 | Task Breakdown |
-| M-SDD-007 | Task Execution |
-| M-SDD-008 | Quality Gate |
-| M-SDD-009 | Code Review Cycle |
-| M-SDD-010 | Reflexion Learning |
-| M-SDD-011 | Pattern Memory |
-| M-SDD-012 | Mistake Memory |
+### SDD
+| Name | Description |
+|------|-------------|
+| sdd-workflow-overview | Constitution Creation |
+| writing-specifications | Roadmap Planning |
+| writing-technical-design | Feature Specification |
+| creating-implementation-plans | Technical Design |
+| task-creation-parallelization | Implementation Plan |
+| executing-single-task | Task Breakdown |
+| constitution-guidelines | Task Execution |
+| quality-gates-review-cycle | Quality Gate |
+| reflexion-learning | Code Review Cycle |
+| pattern-memory | Reflexion Learning |
+| mistake-memory | Pattern Memory |
+| agentic-sdd-integration | Mistake Memory |
 
-### Communication (M-COM-*)
-| ID | Name |
-|----|------|
-| M-COM-001 | Active Listening (RASA, Empathic, Reflective) |
-| M-COM-002 | The Mom Test (Customer Validation) |
-| M-COM-003 | Stakeholder Communication (Interview, Brainstorm, Clarify, Validate, Socratic) |
-| M-COM-004 | Conflict Resolution (Thomas-Kilmann, NVC) |
-| M-COM-005 | Giving & Receiving Feedback (SBI, Radical Candor, EEC) |
-| M-COM-006 | Selling Ideas (SPIN Selling, Challenger Sale, Elevator Pitch) |
-| M-COM-007 | Business Storytelling (Pyramid Principle, SCQA, Pixar) |
-| M-COM-008 | Negotiation & Persuasion (BATNA, Cialdini's 6) |
-| M-COM-009 | Difficult Conversations (Crucial Conversations, DESC) |
-| M-COM-010 | Brainstorming & Ideation (SCAMPER, Mind Mapping, 6-3-5) |
+### Communication
+| Name | Description |
+|------|-------------|
+| active-listening | Active Listening (RASA, Empathic, Reflective) |
+| mom-test | The Mom Test (Customer Validation) |
+| stakeholder-communication | Stakeholder Communication (Interview, Brainstorm, Clarify, Validate, Socratic) |
+| conflict-resolution | Conflict Resolution (Thomas-Kilmann, NVC) |
+| giving-receiving-feedback | Giving & Receiving Feedback (SBI, Radical Candor, EEC) |
+| selling-ideas | Selling Ideas (SPIN Selling, Challenger Sale, Elevator Pitch) |
+| business-storytelling | Business Storytelling (Pyramid Principle, SCQA, Pixar) |
+| negotiation-persuasion | Negotiation & Persuasion (BATNA, Cialdini's 6) |
+| difficult-conversations | Difficult Conversations (Crucial Conversations, DESC) |
+| brainstorming-ideation | Brainstorming & Ideation (SCAMPER, Mind Mapping, 6-3-5) |
 
 ---
 

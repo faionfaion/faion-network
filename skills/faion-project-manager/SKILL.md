@@ -1,7 +1,7 @@
 ---
 name: faion-project-manager
 user-invocable: false
-description: "Project Manager role: PMBOK 7/8 (8 Performance Domains, 12 Principles), PM tools (Jira, ClickUp, Linear, GitHub Projects, Azure DevOps), risk/schedule/cost management, EVM, agile ceremonies, dashboards, AI in PM, hybrid delivery. 46 methodologies."
+description: "Project Manager role: Project Management Framework 7/8 (8 Performance Domains, 12 Principles), PM tools (Jira, ClickUp, Linear, GitHub Projects, Azure DevOps), risk/schedule/cost management, EVM, agile ceremonies, dashboards, AI in PM, hybrid delivery. 46 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
@@ -12,20 +12,20 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 | Reference | Content | Lines |
 |-----------|---------|-------|
 | [pm-tools.md](references/pm-tools.md) | Jira, ClickUp, Linear, GitHub Projects, GitLab, Azure DevOps, Notion, Trello, migrations, dashboards | ~1926 |
-| [pmbok8.md](references/pmbok8.md) | PMBOK 8 Focus Areas, 7 Domains, 6 Principles, AI in PM, PMP 2026 | ~250 |
+| [pmbok8.md](references/pmbok8.md) | Project Management Framework 8 Focus Areas, 7 Domains, 6 Principles, AI in PM, PM Certification 2026 | ~250 |
 
 ## Agents
 
 | Agent | When to Use |
 |-------|-------------|
-| `faion-pm-agent` | Execute PMBOK 7/8 methodologies for project management |
+| `faion-pm-agent` | Execute Project Management Framework 7/8 methodologies for project management |
 
 
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose
 
-Orchestrates project management activities using PMBOK 7th Edition (2021) and PMBOK 8 principles. This domain skill provides professional PM methodologies for solopreneurs and teams.
+Orchestrates project management activities using Project Management Framework 7th Edition (2021) and Project Management Framework 8 principles. This domain skill provides professional PM methodologies for solopreneurs and teams.
 
 ## 3-Layer Architecture
 
@@ -41,7 +41,7 @@ Layer 3: Technical Skills - tools
 
 ---
 
-# PMBOK 7 Performance Domains (8)
+# Project Management Framework 7 Performance Domains (8)
 
 Performance domains are interactive, interrelated, and interdependent areas of focus that work together throughout a project.
 
@@ -76,8 +76,8 @@ Performance domains are interactive, interrelated, and interdependent areas of f
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-001" (Stakeholder Register)
-  methodology: "M-PM-002" (Stakeholder Analysis Matrix)
+  methodology: stakeholder-engagement
+  methodology: stakeholder-register
 ```
 
 ---
@@ -114,8 +114,8 @@ Call faion-pm-agent with:
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-003" (RACI Matrix)
-  methodology: "M-PM-004" (Team Charter)
+  methodology: raci-matrix
+  methodology: team-development
 ```
 
 ---
@@ -153,8 +153,8 @@ Call faion-pm-agent with:
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-005" (Development Approach Selection)
-  methodology: "M-PM-006" (Project Life Cycle Design)
+  methodology: agile-hybrid-approaches
+  methodology: project-integration
 ```
 
 ---
@@ -199,9 +199,9 @@ Uncertainty decreases as project progresses
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-007" (WBS Creation)
-  methodology: "M-PM-008" (Schedule Development)
-  methodology: "M-PM-009" (Cost Estimation)
+  methodology: wbs-creation
+  methodology: schedule-development
+  methodology: cost-estimation
 ```
 
 ---
@@ -238,8 +238,8 @@ Plan -> Execute -> Monitor -> Adjust -> Repeat
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-010" (Communication Management Plan)
-  methodology: "M-PM-011" (Change Management Process)
+  methodology: communications-management
+  methodology: change-control
 ```
 
 ---
@@ -278,8 +278,8 @@ Plan Quality -> Manage Quality -> Control Quality
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-012" (Quality Management Plan)
-  methodology: "M-PM-013" (Acceptance Criteria Definition)
+  methodology: quality-management
+  methodology: scope-management
 ```
 
 ---
@@ -324,8 +324,8 @@ Call faion-pm-agent with:
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-014" (Earned Value Management)
-  methodology: "M-PM-015" (Project Dashboard Design)
+  methodology: earned-value-management
+  methodology: performance-domains-overview
 ```
 
 ---
@@ -367,13 +367,13 @@ Call faion-pm-agent with:
 
 ```
 Call faion-pm-agent with:
-  methodology: "M-PM-016" (Risk Register)
-  methodology: "M-PM-017" (Risk Response Planning)
+  methodology: risk-register
+  methodology: risk-management
 ```
 
 ---
 
-# PMBOK 7 Principles (12)
+# Project Management Framework 7 Principles (12)
 
 Principles guide behavior and decision-making throughout project work.
 
@@ -605,7 +605,7 @@ External: Regulatory <-> Market <-> Technology <-> Society
 
 # Methodologies (20)
 
-## M-PM-001: Stakeholder Register
+## stakeholder-register
 
 ### Problem
 
@@ -641,7 +641,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-002: Stakeholder Analysis Matrix
+## stakeholder-analysis
 
 ### Problem
 
@@ -680,7 +680,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-003: RACI Matrix
+## raci-matrix
 
 ### Problem
 
@@ -716,7 +716,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-004: Team Charter
+## team-charter
 
 ### Problem
 
@@ -771,7 +771,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-005: Development Approach Selection
+## development-approach-selection
 
 ### Problem
 
@@ -813,7 +813,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-006: Project Life Cycle Design
+## project-life-cycle
 
 ### Problem
 
@@ -857,7 +857,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-007: WBS Creation
+## wbs-creation
 
 ### Problem
 
@@ -904,7 +904,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-008: Schedule Development
+## schedule-development
 
 ### Problem
 
@@ -946,7 +946,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-009: Cost Estimation
+## cost-estimation
 
 ### Problem
 
@@ -985,7 +985,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-010: Communication Management Plan
+## communications-management
 
 ### Problem
 
@@ -1023,7 +1023,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-011: Change Management Process
+## change-control
 
 ### Problem
 
@@ -1077,7 +1077,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-012: Quality Management Plan
+## quality-management
 
 ### Problem
 
@@ -1112,7 +1112,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-013: Acceptance Criteria Definition
+## acceptance-criteria
 
 ### Problem
 
@@ -1150,7 +1150,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-014: Earned Value Management
+## earned-value-management
 
 ### Problem
 
@@ -1199,7 +1199,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-015: Project Dashboard Design
+## project-dashboard
 
 ### Problem
 
@@ -1247,7 +1247,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-016: Risk Register
+## risk-register
 
 ### Problem
 
@@ -1295,7 +1295,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-017: Risk Response Planning
+## risk-response-planning
 
 ### Problem
 
@@ -1334,7 +1334,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-018: Lessons Learned
+## lessons-learned
 
 ### Problem
 
@@ -1384,7 +1384,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-019: Project Closure Checklist
+## project-closure
 
 ### Problem
 
@@ -1420,7 +1420,7 @@ Execute with: `faion-pm-agent`
 
 ---
 
-## M-PM-020: Project Status Report
+## project-status-report
 
 ### Problem
 
@@ -1489,7 +1489,7 @@ Execute with: `faion-pm-agent`
 
 | Agent | Purpose |
 |-------|---------|
-| faion-pm-agent | Executes PMBOK methodologies (M-PM-001 to M-PM-020) |
+| faion-pm-agent | Executes Project Management Framework methodologies (20 total) |
 
 ---
 
@@ -1497,16 +1497,16 @@ Execute with: `faion-pm-agent`
 
 | Domain Skill | Integration Point |
 |--------------|-------------------|
-| faion-sdd | Task planning uses PMBOK scheduling |
-| faion-business-analyst | Requirements feed into PMBOK scope |
+| faion-sdd | Task planning uses Project Management Framework scheduling |
+| faion-business-analyst | Requirements feed into Project Management Framework scope |
 | faion-product-manager | Product roadmap aligns with project schedule |
-| faion-marketing-manager | Campaign planning uses PMBOK methods |
+| faion-marketing-manager | Campaign planning uses Project Management Framework methods |
 
 ---
 
 *PM Domain Skill v2.0 - 2026-01-18*
-*Based on PMBOK 7th Edition (2021) and PMBOK 8 updates*
-*8 Performance Domains | 12 Principles | 32 Methodologies (M-PM + M-PMT)*
+*Based on Project Management Framework 7th Edition (2021) and Project Management Framework 8 updates*
+*8 Performance Domains | 12 Principles | 32 Methodologies (semantic names)*
 *Consolidated from: faion-pm-tools*
 
 
@@ -1514,29 +1514,28 @@ Execute with: `faion-pm-agent`
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-PM-001 | Stakeholder Engagement | [methodologies/M-PM-001_stakeholder_engagement.md](methodologies/M-PM-001_stakeholder_engagement.md) |
-| M-PM-001 | Stakeholder Register | [methodologies/M-PM-001_stakeholder_register.md](methodologies/M-PM-001_stakeholder_register.md) |
-| M-PM-002 | Raci Matrix | [methodologies/M-PM-002_raci_matrix.md](methodologies/M-PM-002_raci_matrix.md) |
-| M-PM-003 | Wbs Creation | [methodologies/M-PM-003_wbs_creation.md](methodologies/M-PM-003_wbs_creation.md) |
-| M-PM-003 | Work Breakdown Structure | [methodologies/M-PM-003_work_breakdown_structure.md](methodologies/M-PM-003_work_breakdown_structure.md) |
-| M-PM-004 | Schedule Development | [methodologies/M-PM-004_schedule_development.md](methodologies/M-PM-004_schedule_development.md) |
-| M-PM-005 | Cost Estimation | [methodologies/M-PM-005_cost_estimation.md](methodologies/M-PM-005_cost_estimation.md) |
-| M-PM-006 | Risk Management | [methodologies/M-PM-006_risk_management.md](methodologies/M-PM-006_risk_management.md) |
-| M-PM-006 | Risk Register | [methodologies/M-PM-006_risk_register.md](methodologies/M-PM-006_risk_register.md) |
-| M-PM-007 | Earned Value Management | [methodologies/M-PM-007_earned_value_management.md](methodologies/M-PM-007_earned_value_management.md) |
-| M-PM-008 | Change Control | [methodologies/M-PM-008_change_control.md](methodologies/M-PM-008_change_control.md) |
-| M-PM-009 | Quality Management | [methodologies/M-PM-009_quality_management.md](methodologies/M-PM-009_quality_management.md) |
-| M-PM-010 | Communications Management | [methodologies/M-PM-010_communications_management.md](methodologies/M-PM-010_communications_management.md) |
-| M-PM-010 | Team Development | [methodologies/M-PM-010_team_development.md](methodologies/M-PM-010_team_development.md) |
-| M-PM-011 | Project Integration | [methodologies/M-PM-011_project_integration.md](methodologies/M-PM-011_project_integration.md) |
-| M-PM-012 | Agile Hybrid Approaches | [methodologies/M-PM-012_agile_hybrid_approaches.md](methodologies/M-PM-012_agile_hybrid_approaches.md) |
-| M-PM-013 | Resource Management | [methodologies/M-PM-013_resource_management.md](methodologies/M-PM-013_resource_management.md) |
-| M-PM-014 | Procurement Management | [methodologies/M-PM-014_procurement_management.md](methodologies/M-PM-014_procurement_management.md) |
-| M-PM-015 | Lessons Learned | [methodologies/M-PM-015_lessons_learned.md](methodologies/M-PM-015_lessons_learned.md) |
-| M-PM-016 | Benefits Realization | [methodologies/M-PM-016_benefits_realization.md](methodologies/M-PM-016_benefits_realization.md) |
-| M-PM-017 | Project Closure | [methodologies/M-PM-017_project_closure.md](methodologies/M-PM-017_project_closure.md) |
-| M-PM-018 | Stakeholder Engagement | [methodologies/M-PM-018_stakeholder_engagement.md](methodologies/M-PM-018_stakeholder_engagement.md) |
-| M-PM-019 | Scope Management | [methodologies/M-PM-019_scope_management.md](methodologies/M-PM-019_scope_management.md) |
-| M-PM-020 | Performance Domains Overview | [methodologies/M-PM-020_performance_domains_overview.md](methodologies/M-PM-020_performance_domains_overview.md) |
+| Name | File |
+|------|------|
+| Stakeholder Engagement | [stakeholder-engagement](methodologies/stakeholder-engagement.md) |
+| Stakeholder Register | [stakeholder-register](methodologies/stakeholder-register.md) |
+| RACI Matrix | [raci-matrix](methodologies/raci-matrix.md) |
+| WBS Creation | [wbs-creation](methodologies/wbs-creation.md) |
+| Work Breakdown Structure | [work-breakdown-structure](methodologies/work-breakdown-structure.md) |
+| Schedule Development | [schedule-development](methodologies/schedule-development.md) |
+| Cost Estimation | [cost-estimation](methodologies/cost-estimation.md) |
+| Risk Management | [risk-management](methodologies/risk-management.md) |
+| Risk Register | [risk-register](methodologies/risk-register.md) |
+| Earned Value Management | [earned-value-management](methodologies/earned-value-management.md) |
+| Change Control | [change-control](methodologies/change-control.md) |
+| Quality Management | [quality-management](methodologies/quality-management.md) |
+| Communications Management | [communications-management](methodologies/communications-management.md) |
+| Team Development | [team-development](methodologies/team-development.md) |
+| Project Integration | [project-integration](methodologies/project-integration.md) |
+| Agile Hybrid Approaches | [agile-hybrid-approaches](methodologies/agile-hybrid-approaches.md) |
+| Resource Management | [resource-management](methodologies/resource-management.md) |
+| Procurement Management | [procurement-management](methodologies/procurement-management.md) |
+| Lessons Learned | [lessons-learned](methodologies/lessons-learned.md) |
+| Benefits Realization | [benefits-realization](methodologies/benefits-realization.md) |
+| Project Closure | [project-closure](methodologies/project-closure.md) |
+| Scope Management | [scope-management](methodologies/scope-management.md) |
+| Performance Domains Overview | [performance-domains-overview](methodologies/performance-domains-overview.md) |

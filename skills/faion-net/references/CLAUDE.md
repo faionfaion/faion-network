@@ -20,14 +20,14 @@ This folder contains detailed documentation for workflow processes, directory st
 
 | File | Domain | Key Content |
 |------|--------|-------------|
-| `sdd-domain.md` | Specification-Driven Development | 7 agents (task-executor, task-creator, spec-reviewer, design-reviewer, impl-plan-reviewer, tasks-reviewer, hallucination-checker). 8 methodologies (M-SDD-001 to M-SDD-008). |
-| `research-domain.md` | Research | 10 agents (idea-generator, market-researcher, competitor-analyzer, persona-builder, pricing-researcher, problem-validator, niche-evaluator, pain-point-researcher, name-generator, domain-checker). 20 methodologies (M-RES-001 to M-RES-020). |
-| `product-domain.md` | Product Management | 6 agents (mvp-scope-analyzer, mlp-spec-analyzer, mlp-gap-finder, mlp-spec-updater, mlp-feature-proposer, mlp-impl-planner). 18 methodologies (M-PRD-001 to M-PRD-018). |
+| `sdd-domain.md` | Specification-Driven Development | 7 agents (task-executor, task-creator, spec-reviewer, design-reviewer, impl-plan-reviewer, tasks-reviewer, hallucination-checker). 8 methodologies covering SDD workflow. |
+| `research-domain.md` | Research | 10 agents (idea-generator, market-researcher, competitor-analyzer, persona-builder, pricing-researcher, problem-validator, niche-evaluator, pain-point-researcher, name-generator, domain-checker). 20 methodologies covering research activities. |
+| `product-domain.md` | Product Management | 6 agents (mvp-scope-analyzer, mlp-spec-analyzer, mlp-gap-finder, mlp-spec-updater, mlp-feature-proposer, mlp-impl-planner). 18 methodologies covering product management. |
 | `development-domain.md` | Software Development | 6 agents (code, test, devops, browser, api, api-designer). 10 technical skills (Python, JS, backend, API, testing, AWS, K8s, Terraform, Docker, browser automation). 68 methodologies covering Python, JavaScript, backend languages, DevOps. |
 | `marketing-domain.md` | Marketing | 5 agents (ads, content, social, email, seo). 4 technical skills (Google Ads, Meta Ads, SEO, Analytics). 72 methodologies across GTM, landing pages, content, SEO, paid ads, email. |
-| `pm-domain.md` | Project Management (PMBOK 7/8) | 1 agent (pm-agent). 1 technical skill (pm-tools-skill). 20 methodologies (M-PM-001 to M-PM-020) covering stakeholder, team, planning, delivery, measurement, uncertainty management. |
-| `ba-domain.md` | Business Analysis (BABOK v3) | 1 agent (ba-agent). 30 methodologies across 6 Knowledge Areas: Planning & Monitoring, Elicitation & Collaboration, Requirements Lifecycle, Strategy Analysis, Requirements Analysis & Design, Solution Evaluation. |
-| `ux-domain.md` | UX/UI Design | 2 agents (ux-researcher, usability). 32 methodologies covering research methods, analysis & synthesis, design, evaluation, strategy. Includes Nielsen Norman 10 Heuristics. |
+| `pm-domain.md` | Project Management (Project Management Framework 7/8) | 1 agent (pm-agent). 1 technical skill (pm-tools-skill). 20 methodologies covering stakeholder, team, planning, delivery, measurement, uncertainty management. |
+| `ba-domain.md` | Business Analysis (Business Analysis Framework) | 1 agent (ba-agent). 30 methodologies across 6 Knowledge Areas: Planning & Monitoring, Elicitation & Collaboration, Requirements Lifecycle, Strategy Analysis, Requirements Analysis & Design, Solution Evaluation. |
+| `ux-domain.md` | UX/UI Design | 2 agents (ux-researcher, usability). 32 methodologies covering research methods, analysis & synthesis, design, evaluation, strategy. Includes 10 Usability Heuristics. |
 | `ai-llm-domain.md` | AI/LLM | 14 agents (rag, embedding, finetuner, prompt-engineer, cost-optimizer, llm-cli, autonomous-agent-builder, voice-agent-builder, multimodal, image-generator, image-editor, video-generator, tts, stt). 11 technical skills. 42 methodologies across LLM fundamentals, RAG, embeddings, fine-tuning, prompt engineering, multimodal. |
 
 ## Usage

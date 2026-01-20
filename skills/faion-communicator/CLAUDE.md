@@ -11,45 +11,45 @@ faion-communicator/
 ├── SKILL.md              # Main skill overview and quick reference
 ├── CLAUDE.md             # This navigation file
 └── methodologies/        # 10 detailed methodology files
-    ├── M-COM-001_active_listening.md
-    ├── M-COM-002_mom_test.md
-    ├── M-COM-003_stakeholder_communication.md
-    ├── M-COM-004_conflict_resolution.md
-    ├── M-COM-005_feedback.md
-    ├── M-COM-006_selling_ideas.md
-    ├── M-COM-007_storytelling.md
-    ├── M-COM-008_negotiation.md
-    ├── M-COM-009_difficult_conversations.md
-    └── M-COM-010_brainstorming_ideation.md
+    ├── active-listening.md
+    ├── mom-test.md
+    ├── stakeholder-communication.md
+    ├── conflict-resolution.md
+    ├── feedback.md
+    ├── selling-ideas.md
+    ├── business-storytelling.md
+    ├── negotiation.md
+    ├── difficult-conversations.md
+    └── brainstorming-ideation.md
 ```
 
 ## Methodologies (10)
 
-| ID | Name | Focus |
-|----|------|-------|
-| M-COM-001 | Active Listening | RASA, empathic listening, reflective techniques |
-| M-COM-002 | The Mom Test | Customer validation without bias |
-| M-COM-003 | Stakeholder Communication | Interview, brainstorm, clarify, validate, Socratic |
-| M-COM-004 | Conflict Resolution | Thomas-Kilmann 5 modes, Nonviolent Communication |
-| M-COM-005 | Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC |
-| M-COM-006 | Selling Ideas | SPIN Selling, Challenger Sale, elevator pitch |
-| M-COM-007 | Business Storytelling | Pyramid Principle, SCQA, Pixar framework |
-| M-COM-008 | Negotiation & Persuasion | Principled negotiation, BATNA, Cialdini's 6 |
-| M-COM-009 | Difficult Conversations | Crucial Conversations, DESC script |
-| M-COM-010 | Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5 Brainwriting, Reverse |
+| File | Name | Focus |
+|------|------|-------|
+| active-listening.md | Active Listening | RASA, empathic listening, reflective techniques |
+| mom-test.md | The Mom Test | Customer validation without bias |
+| stakeholder-communication.md | Stakeholder Communication | Interview, brainstorm, clarify, validate, Socratic |
+| conflict-resolution.md | Conflict Resolution | Thomas-Kilmann 5 modes, Nonviolent Communication |
+| feedback.md | Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC |
+| selling-ideas.md | Selling Ideas | SPIN Selling, Challenger Sale, elevator pitch |
+| business-storytelling.md | Business Storytelling | Pyramid Principle, SCQA, Pixar framework |
+| negotiation.md | Negotiation & Persuasion | Principled negotiation, BATNA, Cialdini's 6 |
+| difficult-conversations.md | Difficult Conversations | Crucial Conversations, DESC script |
+| brainstorming-ideation.md | Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5 Brainwriting, Reverse |
 
 ## Usage by Situation
 
 | Situation | Use |
 |-----------|-----|
-| Gathering requirements | M-COM-001 + M-COM-003 |
-| Validating business ideas | M-COM-002 |
-| Team disagreements | M-COM-004 |
-| Performance reviews | M-COM-005 |
-| Pitching to stakeholders | M-COM-006 + M-COM-007 |
-| Contract discussions | M-COM-008 |
-| Sensitive topics | M-COM-009 |
-| Generating ideas | M-COM-010 |
+| Gathering requirements | active-listening.md + stakeholder-communication.md |
+| Validating business ideas | mom-test.md |
+| Team disagreements | conflict-resolution.md |
+| Performance reviews | feedback.md |
+| Pitching to stakeholders | selling-ideas.md + business-storytelling.md |
+| Contract discussions | negotiation.md |
+| Sensitive topics | difficult-conversations.md |
+| Generating ideas | brainstorming-ideation.md |
 
 ## Key Frameworks Summary
 
@@ -98,17 +98,17 @@ Essential for Interactive mode in faion-net.
 
 ```
 # Validate a business idea
-Use M-COM-002 (The Mom Test) to create interview questions
+Use mom-test.md (The Mom Test) to create interview questions
 
 # Pitch to stakeholders
-Use M-COM-006 (SPIN) + M-COM-007 (Pyramid/SCQA)
+Use selling-ideas.md (SPIN) + business-storytelling.md (Pyramid/SCQA)
 
 # Handle conflict
-Use M-COM-004 (Thomas-Kilmann mode selection + NVC formula)
+Use conflict-resolution.md (Thomas-Kilmann mode selection + NVC formula)
 
 # Give feedback
-Use M-COM-005 (SBI format)
+Use feedback.md (SBI format)
 
 # Generate ideas
-Use M-COM-010 (SCAMPER, 6-3-5, Mind Mapping)
+Use brainstorming-ideation.md (SCAMPER, 6-3-5, Mind Mapping)
 ```

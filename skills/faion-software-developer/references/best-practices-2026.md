@@ -19,7 +19,7 @@
 
 ## Section 1: AI-Assisted Development
 
-### M-BP-001: AI Coding Tool Selection
+### AI Coding Tool Selection
 
 **Problem:** Choosing the right AI coding assistant for specific tasks.
 
@@ -64,7 +64,7 @@
 
 ---
 
-### M-BP-002: AI Prompt Engineering for Code
+### AI Prompt Engineering for Code
 
 **Problem:** Getting consistent, high-quality code from AI assistants.
 
@@ -105,7 +105,7 @@
 
 ## Section 2: TypeScript 5.x Patterns
 
-### M-BP-003: TypeScript 5 Strict Configuration
+### TypeScript 5 Strict Configuration
 
 **Problem:** TypeScript without proper configuration allows unsafe patterns.
 
@@ -184,7 +184,7 @@
 
 ---
 
-### M-BP-004: TypeScript Advanced Patterns
+### TypeScript Advanced Patterns
 
 **Problem:** Complex type transformations and generic patterns.
 
@@ -244,7 +244,7 @@
 
 ## Section 3: React 19 & Server Components
 
-### M-BP-005: React 19 Server Components Architecture
+### React 19 Server Components Architecture
 
 **Problem:** Understanding when and how to use Server Components effectively.
 
@@ -315,7 +315,7 @@
 
 ---
 
-### M-BP-006: React 19 Server Actions
+### React 19 Server Actions
 
 **Problem:** Simplifying form handling and data mutations.
 
@@ -408,7 +408,7 @@
 
 ---
 
-### M-BP-007: Next.js 15 Patterns
+### Next.js 15 Patterns
 
 **Problem:** Optimal patterns for Next.js 15 App Router.
 
@@ -504,7 +504,7 @@
 
 ## Section 4: Python Modern Patterns (3.12/3.13)
 
-### M-BP-008: Python 3.13 Features
+### Python 3.13 Features
 
 **Problem:** Leveraging latest Python features for better performance and code quality.
 
@@ -566,7 +566,7 @@
 
 ---
 
-### M-BP-009: Python Async Best Practices
+### Python Async Best Practices
 
 **Problem:** Efficient async/await patterns for I/O-bound applications.
 
@@ -633,7 +633,7 @@
 
 ---
 
-### M-BP-010: Python Type Hints (2026)
+### Python Type Hints (2026)
 
 **Problem:** Comprehensive type safety with modern Python typing.
 
@@ -717,7 +717,7 @@
 
 ## Section 5: AI Testing Tools
 
-### M-BP-011: AI Test Generation
+### AI Test Generation
 
 **Problem:** Leveraging AI for test creation and maintenance.
 
@@ -757,7 +757,7 @@
 
 ---
 
-### M-BP-012: Testing with AI Assistants
+### Testing with AI Assistants
 
 **Problem:** Using AI coding assistants for test generation.
 
@@ -800,20 +800,20 @@
 
 ## Section 6: Methodologies Index
 
-| ID | Name | Section |
-|----|------|---------|
-| M-BP-001 | AI Coding Tool Selection | AI Development |
-| M-BP-002 | AI Prompt Engineering for Code | AI Development |
-| M-BP-003 | TypeScript 5 Strict Configuration | TypeScript |
-| M-BP-004 | TypeScript Advanced Patterns | TypeScript |
-| M-BP-005 | React 19 Server Components Architecture | React 19 |
-| M-BP-006 | React 19 Server Actions | React 19 |
-| M-BP-007 | Next.js 15 Patterns | React 19 |
-| M-BP-008 | Python 3.13 Features | Python |
-| M-BP-009 | Python Async Best Practices | Python |
-| M-BP-010 | Python Type Hints (2026) | Python |
-| M-BP-011 | AI Test Generation | AI Testing |
-| M-BP-012 | Testing with AI Assistants | AI Testing |
+| Name | Section |
+|------|---------|
+| AI Coding Tool Selection | AI Development |
+| AI Prompt Engineering for Code | AI Development |
+| TypeScript 5 Strict Configuration | TypeScript |
+| TypeScript Advanced Patterns | TypeScript |
+| React 19 Server Components Architecture | React 19 |
+| React 19 Server Actions | React 19 |
+| Next.js 15 Patterns | React 19 |
+| Python 3.13 Features | Python |
+| Python Async Best Practices | Python |
+| Python Type Hints (2026) | Python |
+| AI Test Generation | AI Testing |
+| Testing with AI Assistants | AI Testing |
 
 ---
 

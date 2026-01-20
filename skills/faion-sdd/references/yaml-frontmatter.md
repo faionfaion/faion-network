@@ -257,12 +257,12 @@ language: uk
 
 ---
 
-### 10. Methodology (M-XXX-NNN)
+### 10. Methodology
 
 ```yaml
 ---
 type: methodology
-id: M-SDD-001
+id: sdd-workflow-overview
 title: SDD Workflow Overview
 category: SDD
 difficulty: beginner
@@ -274,7 +274,7 @@ read_time_minutes: 8
 | Field | Required | Description |
 |-------|----------|-------------|
 | type | yes | Always `methodology` |
-| id | yes | M-XXX-NNN format |
+| id | yes | Semantic name (kebab-case) |
 | title | yes | Human-readable title |
 | category | yes | Domain category |
 | difficulty | yes | `beginner`, `intermediate`, `advanced` |

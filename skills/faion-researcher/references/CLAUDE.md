@@ -8,24 +8,21 @@ This folder contains reference materials for AI-powered research tools and best 
 
 ## Files
 
-### ai-research-2026.md
-
-Comprehensive guide to AI-augmented research covering:
-
-| Section | Content |
-|---------|---------|
-| M-RES-021 | AI Research Tools - Stack and workflow for AI-assisted discovery |
-| M-RES-021A | Perplexity AI - Pro Search use cases and best practices |
-| M-RES-022 | Continuous Discovery - Teresa Torres framework, weekly cadence |
-| M-RES-022A | Opportunity Solution Trees - Visual discovery framework |
-| M-RES-023 | Problem Validation 2026 - Evidence hierarchy, Mom Test updates |
-| M-RES-024 | AI-Assisted Persona Building - Data-driven persona process |
-| M-RES-024A | Synthetic Users - AI-generated research participants, limitations |
-| M-RES-025 | Competitive Intelligence - Continuous monitoring, CI platforms |
-| M-RES-026 | Market Sizing with AI - Triangulation approach, AI tools |
-| M-RES-027 | AI-Assisted Interview Analysis - Transcription, synthesis tools |
-| M-RES-028 | User Research at Scale - AI-augmented research operations |
-| M-RES-029 | Product Development Trends 2026 - Modern development methodology |
+| File | Content |
+|------|---------|
+| ai-research-tools.md | AI Research Stack and workflow for AI-assisted discovery |
+| perplexity-ai-research.md | Perplexity Pro Search use cases and best practices |
+| continuous-discovery.md | Teresa Torres framework, weekly cadence |
+| opportunity-solution-trees.md | Visual discovery framework (OST) |
+| problem-validation.md | Evidence hierarchy, Mom Test updates |
+| ai-persona-building.md | Data-driven persona process |
+| synthetic-users.md | AI-generated research participants, limitations |
+| competitive-intelligence.md | Continuous monitoring, CI platforms |
+| market-sizing-with-ai.md | Triangulation approach, AI tools |
+| ai-interview-analysis.md | Transcription, synthesis tools |
+| user-research-at-scale.md | AI-augmented research operations |
+| product-development-trends.md | Modern development methodology |
+| ai-research-tool-categories.md | Quick reference by phase and budget |
 
 ---
 

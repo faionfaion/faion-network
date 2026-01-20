@@ -26,7 +26,7 @@ CONSTITUTION -> SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> EXECUTE -> DONE
 faion-sdd/
 ├── SKILL.md              # Main skill definition (13 sections)
 ├── CLAUDE.md             # This file
-├── methodologies/        # 8 methodology files (M-SDD-001 to M-SDD-008)
+├── methodologies/        # 17 methodology files (semantic naming)
 └── references/           # External research and best practices
 ```
 

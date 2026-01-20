@@ -1098,7 +1098,7 @@ aidocs/sdd/{project}/
 
 # Methodologies Reference
 
-## M-SDD-001: SDD Workflow Overview
+## sdd-workflow-overview
 
 ### Problem
 Teams lack a structured approach to translate ideas into working software, leading to scope creep, miscommunication, and wasted effort.
@@ -1164,7 +1164,7 @@ faion-task-executor-agent, faion-task-creator-agent
 
 ---
 
-## M-SDD-002: Writing Specifications
+## writing-specifications
 
 ### Problem
 Requirements are vague, incomplete, or based on assumptions rather than validated user needs.
@@ -1239,7 +1239,7 @@ faion-sdd-reviewer-agent (mode: spec)
 
 ---
 
-## M-SDD-003: Writing Design Documents
+## writing-design-documents
 
 ### Problem
 Developers lack clear technical guidance, leading to inconsistent implementations and architectural drift.
@@ -1323,7 +1323,7 @@ faion-sdd-reviewer-agent (mode: design)
 
 ---
 
-## M-SDD-004: Writing Implementation Plans
+## writing-implementation-plans
 
 ### Problem
 Tasks are too large, unclear, or have hidden dependencies, causing blocked work and context overflow.
@@ -1419,7 +1419,7 @@ faion-sdd-reviewer-agent (mode: plan)
 
 ---
 
-## M-SDD-005: Task Creation and Parallelization
+## task-creation-parallelization
 
 ### Problem
 Tasks are created inconsistently, dependencies are unclear, and parallelization opportunities are missed.
@@ -1508,7 +1508,7 @@ faion-task-creator-agent, faion-sdd-reviewer-agent (mode: tasks)
 
 ---
 
-## M-SDD-006: Quality Gates and Confidence Checks
+## quality-gates-confidence
 
 ### Problem
 Work is marked complete without proper verification, leading to bugs, incomplete features, and technical debt.
@@ -1571,7 +1571,7 @@ faion-hallucination-checker-agent
 
 ---
 
-## M-SDD-007: Reflexion and Learning
+## reflexion-learning
 
 ### Problem
 Teams repeat mistakes, don't capture lessons learned, and fail to improve processes over time.
@@ -1648,7 +1648,7 @@ faion-task-executor-agent (reflexion phase)
 
 ---
 
-## M-SDD-008: Backlog Grooming and Roadmapping
+## backlog-grooming-roadmapping
 
 ### Problem
 Backlog is disorganized, priorities unclear, and there's no connection between daily work and long-term goals.
@@ -2320,7 +2320,7 @@ Store (memory update)
   "pattern_name": "methodology_embedding",
   "description": "Embed full methodology content in SKILL.md",
   "context": "When creating domain skills",
-  "code_example": "## M-SDD-001: Methodology Name\n...",
+  "code_example": "## methodology-name\n...",
   "success_count": 5,
   "tags": ["skill", "methodology", "documentation"]
 }
@@ -2514,20 +2514,20 @@ Monthly analysis of workflow_metrics.jsonl:
 
 *SDD Domain Skill v2.0 - Complete*
 *Sections 1-13: Full SDD Workflow with Quality Gates, Grooming, Roadmapping, and Reflexion*
-*Methodologies: M-SDD-001 to M-SDD-008 embedded*
+*Methodologies: 8 SDD methodologies embedded*
 
 
 ---
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-SDD-001 | Sdd Workflow Overview | [methodologies/M-SDD-001_sdd_workflow_overview.md](methodologies/M-SDD-001_sdd_workflow_overview.md) |
-| M-SDD-002 | Writing Specifications | [methodologies/M-SDD-002_writing_specifications.md](methodologies/M-SDD-002_writing_specifications.md) |
-| M-SDD-003 | Writing Design Documents | [methodologies/M-SDD-003_writing_design_documents.md](methodologies/M-SDD-003_writing_design_documents.md) |
-| M-SDD-004 | Writing Implementation Plans | [methodologies/M-SDD-004_writing_implementation_plans.md](methodologies/M-SDD-004_writing_implementation_plans.md) |
-| M-SDD-005 | Task Creation Parallelization | [methodologies/M-SDD-005_task_creation_parallelization.md](methodologies/M-SDD-005_task_creation_parallelization.md) |
-| M-SDD-006 | Quality Gates Confidence | [methodologies/M-SDD-006_quality_gates_confidence.md](methodologies/M-SDD-006_quality_gates_confidence.md) |
-| M-SDD-007 | Reflexion Learning | [methodologies/M-SDD-007_reflexion_learning.md](methodologies/M-SDD-007_reflexion_learning.md) |
-| M-SDD-008 | Backlog Grooming Roadmapping | [methodologies/M-SDD-008_backlog_grooming_roadmapping.md](methodologies/M-SDD-008_backlog_grooming_roadmapping.md) |
+| Name | File |
+|------|------|
+| SDD Workflow Overview | [sdd-workflow-overview](methodologies/sdd-workflow-overview.md) |
+| Writing Specifications | [writing-specifications](methodologies/writing-specifications.md) |
+| Writing Design Documents | [writing-design-documents](methodologies/writing-design-documents.md) |
+| Writing Implementation Plans | [writing-implementation-plans](methodologies/writing-implementation-plans.md) |
+| Task Creation Parallelization | [task-creation-parallelization](methodologies/task-creation-parallelization.md) |
+| Quality Gates Confidence | [quality-gates-confidence](methodologies/quality-gates-confidence.md) |
+| Reflexion Learning | [reflexion-learning](methodologies/reflexion-learning.md) |
+| Backlog Grooming Roadmapping | [backlog-grooming-roadmapping](methodologies/backlog-grooming-roadmapping.md) |

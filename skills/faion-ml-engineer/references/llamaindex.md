@@ -1198,13 +1198,13 @@ for node in response.source_nodes:
 
 ## Methodologies
 
-| ID | Name | File |
-|----|------|------|
-| M-RAG-001-document-ingestion | M-RAG-001-document-ingestion | [methodologies/M-RAG-001-document-ingestion.md](methodologies/M-RAG-001-document-ingestion.md) |
-| M-RAG-002-embedding-selection | M-RAG-002-embedding-selection | [methodologies/M-RAG-002-embedding-selection.md](methodologies/M-RAG-002-embedding-selection.md) |
-| M-RAG-003-vector-db-design | M-RAG-003-vector-db-design | [methodologies/M-RAG-003-vector-db-design.md](methodologies/M-RAG-003-vector-db-design.md) |
-| M-RAG-004-retrieval-strategies | M-RAG-004-retrieval-strategies | [methodologies/M-RAG-004-retrieval-strategies.md](methodologies/M-RAG-004-retrieval-strategies.md) |
-| M-RAG-005-rag-evaluation | M-RAG-005-rag-evaluation | [methodologies/M-RAG-005-rag-evaluation.md](methodologies/M-RAG-005-rag-evaluation.md) |
-| M-RAG-006-knowledge-graph-rag | M-RAG-006-knowledge-graph-rag | [methodologies/M-RAG-006-knowledge-graph-rag.md](methodologies/M-RAG-006-knowledge-graph-rag.md) |
-| M-RAG-007-multimodal-rag | M-RAG-007-multimodal-rag | [methodologies/M-RAG-007-multimodal-rag.md](methodologies/M-RAG-007-multimodal-rag.md) |
-| M-RAG-008-production-rag | M-RAG-008-production-rag | [methodologies/M-RAG-008-production-rag.md](methodologies/M-RAG-008-production-rag.md) |
+| Name | File |
+|------|------|
+| document-ingestion | [methodologies/document-ingestion.md](methodologies/document-ingestion.md) |
+| embedding-selection | [methodologies/embedding-selection.md](methodologies/embedding-selection.md) |
+| vector-db-design | [methodologies/vector-db-design.md](methodologies/vector-db-design.md) |
+| retrieval-strategies | [methodologies/retrieval-strategies.md](methodologies/retrieval-strategies.md) |
+| rag-evaluation | [methodologies/rag-evaluation.md](methodologies/rag-evaluation.md) |
+| knowledge-graph-rag | [methodologies/knowledge-graph-rag.md](methodologies/knowledge-graph-rag.md) |
+| multimodal-rag | [methodologies/multimodal-rag.md](methodologies/multimodal-rag.md) |
+| production-rag | [methodologies/production-rag.md](methodologies/production-rag.md) |

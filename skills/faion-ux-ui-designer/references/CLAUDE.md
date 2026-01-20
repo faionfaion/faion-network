@@ -1,104 +1,94 @@
-# UX/UI References 2026
+# UX/UI References
 
 ## Overview
 
-5 reference documents covering 2026 best practices and emerging technologies in UX/UI design. These extend the core methodologies (M-UX-001 to M-UX-032) with current industry standards and trends.
+Reference documents covering 2026 best practices and emerging technologies in UX/UI design. Individual methodology files organized by category with semantic naming.
 
-**Methodologies Range:** M-UX-033 to M-UX-075 (43 additional methodologies)
+**Total References:** 43 files
 
-## File Summaries
+## File Index by Category
 
-### accessibility-2026.md
+### Accessibility (8 files)
 
-**Methodologies:** M-UX-033 to M-UX-040 (8 methodologies)
+| File | Topic | Key Points |
+|------|-------|------------|
+| wcag-22-compliance.md | WCAG 2.2 Compliance | 9 new success criteria; Focus Not Obscured, Dragging Movements, Target Size (24x24px min), Accessible Authentication |
+| accessibility-first-design.md | Accessibility-First Design | 70-80% of issues preventable at design stage; contrast ratios (4.5:1 text, 3:1 UI) |
+| regulatory-compliance-2026.md | Regulatory Compliance | ADA (April 2026), EAA (June 2025/2030), AODA, Section 508 |
+| testing-with-assistive-technology.md | Assistive Tech Testing | Screen readers (NVDA, JAWS, VoiceOver), keyboard-only testing |
+| ai-assisted-accessibility.md | AI-Assisted Accessibility | axe DevTools, Stark, UserWay, Level Access AI features |
+| ai-accessibility-automation-2026.md | AI Accessibility Automation | 60-70% coverage with AI context, automated VPAT generation |
+| cognitive-inclusion-design.md | Cognitive Inclusion | ADHD, autism, dyslexia-friendly design patterns |
+| ada-title-ii-compliance-2026.md | ADA Title II 2026 | US government compliance deadline April 2026, WCAG 2.1 AA |
 
-| ID | Topic | Key Points |
-|----|-------|------------|
-| M-UX-033 | WCAG 2.2 Compliance | 9 new success criteria; Focus Not Obscured, Dragging Movements, Target Size (24x24px min), Accessible Authentication |
-| M-UX-034 | Accessibility-First Design | 70-80% of issues preventable at design stage; contrast ratios (4.5:1 text, 3:1 UI) |
-| M-UX-035 | Regulatory Compliance | ADA (April 2026), EAA (June 2025/2030), AODA, Section 508 |
-| M-UX-036 | Assistive Tech Testing | Screen readers (NVDA, JAWS, VoiceOver), keyboard-only testing |
-| M-UX-037 | AI-Assisted Accessibility | axe DevTools, Stark, UserWay, Level Access AI features |
-| M-UX-038 | AI Accessibility Automation | 60-70% coverage with AI context, automated VPAT generation |
-| M-UX-039 | Cognitive Inclusion | ADHD, autism, dyslexia-friendly design patterns |
-| M-UX-040 | ADA Title II 2026 | US government compliance deadline April 2026, WCAG 2.1 AA |
+### AI Design Tools (6 files)
 
-### ai-design-tools-2026.md
+| File | Topic | Key Points |
+|------|-------|------------|
+| figma-ai-ecosystem.md | Figma AI Ecosystem | Figma Make, Draw, Sites; AI image tools (erase, isolate, expand) |
+| adobe-firefly-integration.md | Adobe Firefly | Generative Fill, Text-to-Vector; commercial licensing framework |
+| generative-ui-design.md | Generative UI Design | Galileo, Uizard, v0, Claude Artifacts, Relume |
+| ai-plugin-ecosystem.md | AI Plugin Ecosystem | Magician, Automator, Content Reel, Similayer, Diagram, Stark |
+| ai-design-assistant-patterns.md | AI Design Assistants | Contextual, generative, review, documentation assistant patterns |
+| figma-vs-adobe-strategy-2026.md | Figma vs Adobe Strategy | Figma for collaboration/UI; Adobe for content creation/enterprise |
 
-**Methodologies:** M-UX-041 to M-UX-046 (6 methodologies)
+### Design Systems (8 files)
 
-| ID | Topic | Key Points |
-|----|-------|------------|
-| M-UX-041 | Figma AI Ecosystem | Figma Make, Draw, Sites; AI image tools (erase, isolate, expand) |
-| M-UX-042 | Adobe Firefly | Generative Fill, Text-to-Vector; commercial licensing framework |
-| M-UX-043 | Generative UI Design | Galileo, Uizard, v0, Claude Artifacts, Relume |
-| M-UX-044 | AI Plugin Ecosystem | Magician, Automator, Content Reel, Similayer, Diagram, Stark |
-| M-UX-045 | AI Design Assistants | Contextual, generative, review, documentation assistant patterns |
-| M-UX-046 | Figma vs Adobe Strategy | Figma for collaboration/UI; Adobe for content creation/enterprise |
+| File | Topic | Key Points |
+|------|-------|------------|
+| design-tokens-fundamentals.md | Design Tokens Fundamentals | Global/primitive, semantic/alias, component tokens; JSON structure |
+| token-organization.md | Token Organization | Hierarchy (primitives to semantic to component); naming conventions |
+| semantic-tokens-and-modes.md | Semantic Tokens and Modes | Light/dark modes, platform-specific values, Figma Variables |
+| w3c-design-tokens-standard.md | W3C Design Tokens Standard | Emerging standard for tool interoperability |
+| ai-enhanced-design-systems.md | AI-Enhanced Design Systems | AI for component generation, documentation, pattern recognition |
+| design-system-success-factors.md | Design System Success | Four pillars: ownership, usable components, documentation, adoption |
+| tailwind-design-tokens.md | Tailwind + Design Tokens | CSS variables integration, config as token system |
+| cross-platform-token-distribution.md | Cross-Platform Distribution | Style Dictionary, Tokens Studio; CSS/Swift/XML outputs |
 
-### design-systems-2026.md
+### Voice UI (10 files)
 
-**Methodologies:** M-UX-047 to M-UX-054 (8 methodologies)
+| File | Topic | Key Points |
+|------|-------|------------|
+| vui-market-context.md | VUI Market Context | 8.4B+ voice assistants; 71% prefer voice over typing |
+| core-vui-design-principles.md | Core VUI Principles | Simplicity, natural conversation, context awareness |
+| vui-conversation-design.md | Conversation Design | Wake word, intent, entities, prompts, confirmations, error handling |
+| error-handling-in-vui.md | Error Handling in VUI | No input, no match, ambiguous, system error; progressive disclosure |
+| multimodal-vui-design.md | Multimodal VUI | Voice + visual integration; smart display patterns |
+| vui-accessibility-inclusivity.md | VUI Accessibility | Accent support, motor/visual/cognitive accessibility benefits |
+| vui-privacy-security.md | VUI Privacy and Security | Transparency, control, minimization; sensitive operation handling |
+| vui-iot-integration.md | VUI + IoT Integration | Smart home patterns; multi-device coordination |
+| llm-powered-conversational-ai.md | LLM-Powered Conversational AI | Complex queries, full context, emotion recognition; guardrails |
+| vui-testing-best-practices.md | VUI Testing | Intent accuracy, task completion, error rate metrics |
 
-| ID | Topic | Key Points |
-|----|-------|------------|
-| M-UX-047 | Design Tokens Fundamentals | Global/primitive, semantic/alias, component tokens; JSON structure |
-| M-UX-048 | Token Organization | Hierarchy (primitives to semantic to component); naming conventions |
-| M-UX-049 | Semantic Tokens and Modes | Light/dark modes, platform-specific values, Figma Variables |
-| M-UX-050 | W3C Design Tokens Standard | Emerging standard for tool interoperability |
-| M-UX-051 | AI-Enhanced Design Systems | AI for component generation, documentation, pattern recognition |
-| M-UX-052 | Design System Success | Four pillars: ownership, usable components, documentation, adoption |
-| M-UX-053 | Tailwind + Design Tokens | CSS variables integration, config as token system |
-| M-UX-054 | Cross-Platform Distribution | Style Dictionary, Tokens Studio; CSS/Swift/XML outputs |
+### Spatial Computing (11 files)
 
-### voice-ui-2026.md
-
-**Methodologies:** M-UX-055 to M-UX-064 (10 methodologies)
-
-| ID | Topic | Key Points |
-|----|-------|------------|
-| M-UX-055 | VUI Market Context | 8.4B+ voice assistants; 71% prefer voice over typing |
-| M-UX-056 | Core VUI Principles | Simplicity, natural conversation, context awareness |
-| M-UX-057 | Conversation Design | Wake word, intent, entities, prompts, confirmations, error handling |
-| M-UX-058 | Error Handling in VUI | No input, no match, ambiguous, system error; progressive disclosure |
-| M-UX-059 | Multimodal VUI | Voice + visual integration; smart display patterns |
-| M-UX-060 | VUI Accessibility | Accent support, motor/visual/cognitive accessibility benefits |
-| M-UX-061 | VUI Privacy and Security | Transparency, control, minimization; sensitive operation handling |
-| M-UX-062 | VUI + IoT Integration | Smart home patterns; multi-device coordination |
-| M-UX-063 | LLM-Powered Conversational AI | Complex queries, full context, emotion recognition; guardrails |
-| M-UX-064 | VUI Testing | Intent accuracy, task completion, error rate metrics |
-
-### spatial-computing-ux-2026.md
-
-**Methodologies:** M-UX-065 to M-UX-075 (11 methodologies)
-
-| ID | Topic | Key Points |
-|----|-------|------------|
-| M-UX-065 | Spatial Computing Overview | AR/VR/MR platforms; Apple Vision Pro, Meta Quest, Android XR |
-| M-UX-066 | Spatial UX Fundamentals | Scale, reach, sight-lines, occlusion; near/mid/far field zones |
-| M-UX-067 | Spatial Interaction Patterns | Hand tracking, controllers, gaze, voice, gesture inputs |
-| M-UX-068 | Spatial UI Patterns | World-locked, head-locked, body-locked, hand-attached panels |
-| M-UX-069 | Immersive Design Principles | Immersion levels; motion sickness, disorientation prevention |
-| M-UX-070 | AR Design Patterns | Surface detection, object recognition; context-aware overlays |
-| M-UX-071 | VR Design Patterns | Ground plane, horizon, locomotion methods (teleportation, walking) |
-| M-UX-072 | Enterprise XR Applications | Training, remote assistance, digital twins, data visualization |
-| M-UX-073 | AI + Spatial Computing | Scene understanding, gesture prediction, contextual UI adaptation |
-| M-UX-074 | Spatial Accessibility | Motor/visual/cognitive alternatives; seated mode design |
-| M-UX-075 | Spatial Design Tools | ShapesXR, Gravity Sketch, Unity, Unreal, Reality Composer |
+| File | Topic | Key Points |
+|------|-------|------------|
+| spatial-computing-overview.md | Spatial Computing Overview | AR/VR/MR platforms; Apple Vision Pro, Meta Quest, Android XR |
+| spatial-ux-fundamentals.md | Spatial UX Fundamentals | Scale, reach, sight-lines, occlusion; near/mid/far field zones |
+| spatial-interaction-patterns.md | Spatial Interaction Patterns | Hand tracking, controllers, gaze, voice, gesture inputs |
+| spatial-ui-patterns.md | Spatial UI Patterns | World-locked, head-locked, body-locked, hand-attached panels |
+| immersive-design-principles.md | Immersive Design Principles | Immersion levels; motion sickness, disorientation prevention |
+| ar-design-patterns.md | AR Design Patterns | Surface detection, object recognition; context-aware overlays |
+| vr-design-patterns.md | VR Design Patterns | Ground plane, horizon, locomotion methods (teleportation, walking) |
+| enterprise-xr-applications.md | Enterprise XR Applications | Training, remote assistance, digital twins, data visualization |
+| ai-spatial-computing.md | AI + Spatial Computing | Scene understanding, gesture prediction, contextual UI adaptation |
+| spatial-accessibility.md | Spatial Accessibility | Motor/visual/cognitive alternatives; seated mode design |
+| spatial-design-tools.md | Spatial Design Tools | ShapesXR, Gravity Sketch, Unity, Unreal, Reality Composer |
 
 ## Quick Reference
 
-| File | Methodologies | Count | Primary Focus |
-|------|---------------|-------|---------------|
-| accessibility-2026.md | M-UX-033 to M-UX-040 | 8 | WCAG 2.2, regulations, AI tools |
-| ai-design-tools-2026.md | M-UX-041 to M-UX-046 | 6 | Figma AI, Firefly, generative UI |
-| design-systems-2026.md | M-UX-047 to M-UX-054 | 8 | Tokens, W3C standard, cross-platform |
-| voice-ui-2026.md | M-UX-055 to M-UX-064 | 10 | VUI principles, LLM integration |
-| spatial-computing-ux-2026.md | M-UX-065 to M-UX-075 | 11 | AR/VR/MR, enterprise XR |
+| Category | Count | Primary Focus |
+|----------|-------|---------------|
+| Accessibility | 8 | WCAG 2.2, regulations, AI tools |
+| AI Design Tools | 6 | Figma AI, Firefly, generative UI |
+| Design Systems | 8 | Tokens, W3C standard, cross-platform |
+| Voice UI | 10 | VUI principles, LLM integration |
+| Spatial Computing | 11 | AR/VR/MR, enterprise XR |
 
 ## Sources
 
-- WCAG.com, Nielsen Norman Group, WebAIM, Level Access
+- WCAG.com, UX research community, WebAIM, Level Access
 - Figma Config 2025, TechCrunch, VentureBeat
 - Contentful, Supernova, USWDS, Into Design Systems Conference
 - Aufait UX, Designlab, Parallel HQ, Lollypop Studio

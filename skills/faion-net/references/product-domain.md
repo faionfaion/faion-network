@@ -21,7 +21,7 @@ None directly - uses research and SDD skills.
 
 ## Methodologies
 
-18 methodologies (M-PRD-001 to M-PRD-018):
+18 methodologies:
 - MVP Scoping
 - MLP Planning
 - Feature Prioritization (RICE)

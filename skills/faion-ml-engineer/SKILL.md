@@ -88,54 +88,54 @@ Detailed technical context for each area:
 
 ## Methodologies (24)
 
-### LLM APIs (M-LLM-*)
+### LLM APIs
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-LLM-001 | Prompt Engineering | Effective prompts, few-shot |
-| M-LLM-002 | Structured Output | JSON mode, function calling |
-| M-LLM-003 | Streaming Responses | Real-time output |
-| M-LLM-004 | Token Optimization | Context management, caching |
-| M-LLM-005 | Error Handling | Retries, fallbacks |
-| M-LLM-006 | Rate Limiting | Throttling, queuing |
+| Name | Purpose |
+|------|---------|
+| prompt-engineering | Effective prompts, few-shot |
+| structured-output | JSON mode, function calling |
+| streaming (in api refs) | Real-time output |
+| cost-optimization | Context management, caching |
+| error-handling (in api refs) | Retries, fallbacks |
+| rate-limiting (in api refs) | Throttling, queuing |
 
-### Embeddings (M-EMB-*)
+### Embeddings
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-EMB-001 | Chunking Strategies | Size, overlap, semantic |
-| M-EMB-002 | Similarity Search | Cosine, dot product |
-| M-EMB-003 | Hybrid Search | Vector + keyword |
-| M-EMB-004 | Reranking | Cross-encoder, Cohere |
+| Name | Purpose |
+|------|---------|
+| chunking-strategies | Size, overlap, semantic |
+| embedding-generation | Cosine, dot product, similarity search |
+| hybrid-search | Vector + keyword |
+| reranking | Cross-encoder, Cohere |
 
-### RAG (M-RAG-*)
+### RAG
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-RAG-001 | Document Processing | Parsing, extraction |
-| M-RAG-002 | Index Design | Hierarchical, knowledge graphs |
-| M-RAG-003 | Query Processing | Expansion, routing |
-| M-RAG-004 | Context Assembly | Ranking, filtering |
-| M-RAG-005 | Response Generation | Grounding, citations |
-| M-RAG-006 | Evaluation | Relevance, faithfulness |
+| Name | Purpose |
+|------|---------|
+| rag-pipeline-design | Document processing, parsing, extraction |
+| graph-rag-advanced-retrieval | Index design, hierarchical, knowledge graphs |
+| query-processing (in rag) | Expansion, routing |
+| context-assembly (in rag) | Ranking, filtering |
+| response-generation (in rag) | Grounding, citations |
+| rag-evaluation | Relevance, faithfulness |
 
-### Fine-tuning (M-FT-*)
+### Fine-tuning
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-FT-001 | Dataset Preparation | Format, quality, size |
-| M-FT-002 | Training Configuration | Hyperparameters |
-| M-FT-003 | Evaluation Metrics | Loss, task-specific |
-| M-FT-004 | Deployment | Model serving, A/B testing |
+| Name | Purpose |
+|------|---------|
+| fine-tuning-openai | Dataset preparation, format, quality, size |
+| fine-tuning-lora | Training configuration, hyperparameters |
+| model-evaluation | Loss, task-specific metrics |
+| deployment (in devops) | Model serving, A/B testing |
 
-### Agents (M-AGT-*)
+### Agents
 
-| ID | Name | Purpose |
-|----|------|---------|
-| M-AGT-001 | Tool Design | Function definitions |
-| M-AGT-002 | Agent Loop | ReAct, plan-and-execute |
-| M-AGT-003 | Memory Management | Short/long-term |
-| M-AGT-004 | Multi-Agent Systems | Orchestration |
+| Name | Purpose |
+|------|---------|
+| tool-use-function-calling | Function definitions, tool design |
+| autonomous-agents | Agent loop, ReAct, plan-and-execute |
+| ai-agent-patterns | Memory management, short/long-term |
+| multi-agent-systems | Orchestration, coordination |
 
 ---
 

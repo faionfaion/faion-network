@@ -2,16 +2,15 @@
 
 ## Overview
 
-The faion-ux-ui-designer skill provides comprehensive UX/UI design methodologies and best practices. It covers Nielsen's 10 Usability Heuristics, UX research methods, design techniques, and 2026 industry references including accessibility compliance, AI tools, design systems, voice UI, and spatial computing.
+The faion-ux-ui-designer skill provides comprehensive UX/UI design methodologies and best practices. It covers 10 Usability Heuristics, UX research methods, design techniques, and 2026 industry references including accessibility compliance, AI tools, design systems, voice UI, and spatial computing.
 
-**Total Methodologies:** 75 (M-UX-001 to M-UX-075)
+**Total Methodologies:** 75
 
 ## Folder Structure
 
 | Folder | Description |
 |--------|-------------|
-| `methodologies/` | 32 core UX methodologies covering heuristics, research methods, and design techniques |
-| `references/` | 5 reference documents with 2026 best practices and emerging technologies |
+| `references/` | 75 methodology files covering heuristics, research, design, accessibility, AI, voice UI, spatial computing |
 
 ## Key Files
 
@@ -19,44 +18,123 @@ The faion-ux-ui-designer skill provides comprehensive UX/UI design methodologies
 - `SKILL.md` - Skill definition and configuration
 - `CLAUDE.md` - This navigation file
 
-### Methodologies (32 files)
+### References (75 files)
 
-**Nielsen's 10 Heuristics (M-UX-001 to M-UX-010)**
-- Visibility of system status, match between system and real world, user control, consistency, error prevention, recognition over recall, flexibility, aesthetic minimalist design, error recovery, help and documentation
+**10 Usability Heuristics**
+- visibility-of-system-status.md
+- match-real-world.md
+- user-control-freedom.md
+- consistency-standards.md
+- error-prevention.md
+- recognition-over-recall.md
+- flexibility-efficiency.md
+- aesthetic-minimalist.md
+- error-recovery.md
+- help-documentation.md
 
-**UX Research Methods (M-UX-011 to M-UX-016)**
-- User interviews, usability testing, surveys/questionnaires, card sorting, personas, journey mapping
+**UX Research Methods**
+- user-interviews.md
+- usability-testing.md
+- surveys.md
+- card-sorting.md
+- personas.md
+- journey-mapping.md
 
-**Design Methods (M-UX-017 to M-UX-025)**
-- Wireframing, prototyping, A/B testing, heuristic evaluation, contextual inquiry, focus groups, tree testing, accessibility evaluation, design critique
+**Design Methods**
+- wireframing.md
+- prototyping.md
+- ab-testing.md
+- heuristic-evaluation.md
+- contextual-inquiry.md
+- focus-groups.md
+- tree-testing.md
+- accessibility-evaluation.md
+- design-critique.md
 
-**Advanced Topics (M-UX-026 to M-UX-032)**
-- Competitive analysis, content audit, cognitive walkthrough, information architecture, mobile UX, voice UI basics, diary studies
+**Advanced Topics**
+- competitive-analysis.md
+- content-audit.md
+- cognitive-walkthrough.md
+- information-architecture.md
+- mobile-ux.md
+- voice-ui.md
+- diary-studies.md
 
-### References (5 files)
+**Accessibility 2026**
+- wcag-22-compliance.md
+- accessibility-first-design.md
+- regulatory-compliance-2026.md
+- testing-with-assistive-technology.md
+- ai-assisted-accessibility.md
+- ai-accessibility-automation-2026.md
+- cognitive-inclusion-design.md
+- ada-title-ii-compliance-2026.md
 
-| File | Methodologies | Topics |
-|------|---------------|--------|
-| `accessibility-2026.md` | M-UX-033 to M-UX-040 | WCAG 2.2, EAA, ADA Title II, AI-assisted accessibility |
-| `ai-design-tools-2026.md` | M-UX-041 to M-UX-046 | Figma AI, Adobe Firefly, generative UI tools |
-| `design-systems-2026.md` | M-UX-047 to M-UX-054 | Design tokens, W3C standard, cross-platform distribution |
-| `voice-ui-2026.md` | M-UX-055 to M-UX-064 | VUI principles, conversation design, LLM integration |
-| `spatial-computing-ux-2026.md` | M-UX-065 to M-UX-075 | AR/VR/MR design, enterprise XR, spatial accessibility |
+**AI Design Tools 2026**
+- figma-ai-ecosystem.md
+- adobe-firefly-integration.md
+- generative-ui-design.md
+- ai-plugin-ecosystem.md
+- ai-design-assistant-patterns.md
+- figma-vs-adobe-strategy-2026.md
+
+**Design Systems**
+- design-tokens-fundamentals.md
+- token-organization.md
+- semantic-tokens-and-modes.md
+- w3c-design-tokens-standard.md
+- ai-enhanced-design-systems.md
+- design-system-success-factors.md
+- tailwind-design-tokens.md
+- cross-platform-token-distribution.md
+
+**Voice UI**
+- vui-market-context.md
+- core-vui-design-principles.md
+- vui-conversation-design.md
+- error-handling-in-vui.md
+- multimodal-vui-design.md
+- vui-accessibility-inclusivity.md
+- vui-privacy-security.md
+- vui-iot-integration.md
+- llm-powered-conversational-ai.md
+- vui-testing-best-practices.md
+
+**Spatial Computing**
+- spatial-computing-overview.md
+- spatial-ux-fundamentals.md
+- spatial-interaction-patterns.md
+- spatial-ui-patterns.md
+- immersive-design-principles.md
+- ar-design-patterns.md
+- vr-design-patterns.md
+- enterprise-xr-applications.md
+- ai-spatial-computing.md
+- spatial-accessibility.md
+- spatial-design-tools.md
 
 ## Quick Reference
 
-| Category | Count | Range |
-|----------|-------|-------|
-| Nielsen Heuristics | 10 | M-UX-001 to M-UX-010 |
-| Research Methods | 6 | M-UX-011 to M-UX-016 |
-| Design Methods | 9 | M-UX-017 to M-UX-025 |
-| Advanced Topics | 7 | M-UX-026 to M-UX-032 |
-| Accessibility 2026 | 8 | M-UX-033 to M-UX-040 |
-| AI Design Tools | 6 | M-UX-041 to M-UX-046 |
-| Design Systems | 8 | M-UX-047 to M-UX-054 |
-| Voice UI | 10 | M-UX-055 to M-UX-064 |
-| Spatial Computing | 11 | M-UX-065 to M-UX-075 |
+| Category | Count |
+|----------|-------|
+| Usability Heuristics | 10 |
+| Research Methods | 6 |
+| Design Methods | 9 |
+| Advanced Topics | 7 |
+| Accessibility 2026 | 8 |
+| AI Design Tools | 6 |
+| Design Systems | 8 |
+| Voice UI | 10 |
+| Spatial Computing | 11 |
 
 ## Usage
 
-Reference specific methodologies by ID (e.g., M-UX-001 for Visibility of System Status) when applying UX principles to design work.
+Execute methodologies via faion-ux-agent:
+
+```
+# Called from faion-net or faion-sdd orchestrators
+```
+
+---
+
+*UX/UI Designer Skill v2.0*

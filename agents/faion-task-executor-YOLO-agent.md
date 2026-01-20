@@ -51,57 +51,57 @@ When facing choices:
 | `faion-devops-engineer` | Docker, K8s, CI/CD, infrastructure |
 | `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning |
 | `faion-marketing-manager` | Landing pages, SEO, ads, email campaigns |
-| `faion-project-manager` | PMBOK, risk management, EVM |
+| `faion-project-manager` | Project Management Framework, risk management, EVM |
 | `faion-business-analyst` | Requirements, traceability, process modeling |
 | `faion-ux-ui-designer` | User research, usability, accessibility |
 | `faion-claude-code` | Skills, agents, hooks, MCP configuration |
 
 ### Key Methodologies by Domain
 
-**SDD (M-SDD-*):**
-- M-SDD-001: SDD Workflow Overview
-- M-SDD-002: Writing Specifications (SMART, INVEST, Given-When-Then)
-- M-SDD-003: Writing Design Documents (ADR, traceability)
-- M-SDD-004: Writing Implementation Plans (WBS, waves, critical path)
-- M-SDD-005: Task Creation & Parallelization (dependency graph, waves)
+**SDD (faion-sdd/methodologies/):**
+- sdd-workflow-overview.md: SDD Workflow Overview
+- writing-specifications.md: Specifications (SMART, INVEST, Given-When-Then)
+- writing-design-documents.md: Design Documents (ADR, traceability)
+- writing-implementation-plans.md: Implementation Plans (WBS, waves, critical path)
+- task-creation-parallelization.md: Task Creation & Parallelization (dependency graph, waves)
 
-**Development (M-DEV-*):**
-- M-DEV-001 to M-DEV-008: Python/Django/FastAPI patterns
-- M-DEV-009 to M-DEV-017: React/TypeScript/Next.js patterns
-- M-DEV-027 to M-DEV-031: Architecture (Clean, DDD, CQRS, Microservices)
-- M-DEV-041 to M-DEV-049: Testing (Unit, Integration, E2E, TDD)
-- M-DEV-069: shadcn/ui components
-- M-DEV-070: Tailwind CSS patterns
+**Development (faion-software-developer/references/):**
+- python.md: Python/Django/FastAPI patterns
+- javascript.md: React/TypeScript/Next.js patterns
+- methodologies.md: Architecture (Clean, DDD, CQRS, Microservices)
+- testing.md: Testing (Unit, Integration, E2E, TDD)
+- shadcn-ui.md: shadcn/ui components
+- tailwind.md: Tailwind CSS patterns
 
-**DevOps (M-OPS-*):**
-- M-OPS-001 to M-OPS-004: Docker, K8s, Helm
-- M-OPS-005 to M-OPS-008: Terraform, AWS/GCP/Azure
-- M-OPS-009 to M-OPS-012: CI/CD (GitHub Actions, GitLab, ArgoCD)
-- M-OPS-013 to M-OPS-015: Monitoring (Prometheus, Grafana, ELK)
+**DevOps (faion-devops-engineer/references/):**
+- docker.md, kubernetes.md: Docker, K8s, Helm
+- terraform.md, aws.md, gcp.md: Terraform, AWS/GCP/Azure
+- gitops.md: CI/CD (GitHub Actions, GitLab, ArgoCD)
+- platform-engineering.md: Monitoring (Prometheus, Grafana, ELK)
 
-**ML/AI (M-ML-*):**
-- M-ML-001 to M-ML-004: LLM APIs (OpenAI, Claude, Gemini, Ollama)
-- M-ML-005 to M-ML-011: RAG pipeline (embeddings, vectors, chunking)
-- M-ML-014 to M-ML-018: Prompt engineering, tool use, guardrails
-- M-ML-021 to M-ML-024: LangChain, LlamaIndex, agents
+**ML/AI (faion-ml-engineer/methodologies/):**
+- llm-apis.md: LLM APIs (OpenAI, Claude, Gemini, Ollama)
+- rag-pipeline.md: RAG pipeline (embeddings, vectors, chunking)
+- prompt-engineering.md: Prompt engineering, tool use, guardrails
+- langchain.md, llamaindex.md: LangChain, LlamaIndex, agents
 
-**BA (M-BA-*):**
-- M-BA-004: SMART requirements
-- M-BA-005: Requirements traceability
-- M-BA-012: Use Case modeling
-- M-BA-013: User Story Mapping
-- M-BA-014: Acceptance Criteria (BDD)
+**BA (faion-business-analyst/methodologies/):**
+- smart-requirements.md: SMART requirements
+- requirements-traceability.md: Requirements traceability
+- use-case-modeling.md: Use Case modeling
+- user-story-mapping.md: User Story Mapping
+- acceptance-criteria.md: Acceptance Criteria (BDD)
 
-**PM (M-PM-*):**
-- M-PM-003: WBS decomposition
-- M-PM-004: Dependency types (FS, SS, FF, SF)
-- M-PM-006: Risk assessment
-- M-PM-016: Risk Register
+**PM (faion-project-manager/methodologies/):**
+- wbs-decomposition.md: WBS decomposition
+- dependency-management.md: Dependency types (FS, SS, FF, SF)
+- risk-assessment.md: Risk assessment
+- risk-register.md: Risk Register
 
-**UX (M-UX-*):**
-- M-UX-001 to M-UX-004: User research
-- M-UX-014: Heuristic evaluation (Nielsen Norman 10)
-- M-UX-016: Accessibility audit (WCAG 2.1)
+**UX (faion-ux-ui-designer/methodologies/):**
+- user-research.md: User research
+- heuristic-evaluation.md: Heuristic evaluation (10 Usability Heuristics)
+- accessibility-audit.md: Accessibility audit (WCAG 2.1)
 
 ---
 
