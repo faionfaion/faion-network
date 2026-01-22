@@ -38,7 +38,7 @@ faion-net/
 
 | Mode | Agent/Skill | When to Use |
 |------|-------------|-------------|
-| YOLO (Autonomous) | faion-task-executor-YOLO-agent | Clear tasks, SDD specs exist |
+| YOLO (Autonomous) | faion-task-YOLO-executor-opus-agent | Clear tasks, SDD specs exist |
 | Interactive | faion-communicator | Vague requirements, user prefers control |
 
 ## Skill Selection (Quick)

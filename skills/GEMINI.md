@@ -65,7 +65,7 @@ skills/
 
 - **Skills**: `faion-{domain}` (e.g., faion-software-developer)
 - **Methodologies**: Semantic naming `{name}.md` (e.g., gtm-strategy.md, prompt-engineering.md)
-- **Agent**: `faion-task-executor-YOLO-agent`
+- **Agent**: `faion-task-YOLO-executor-opus-agent`
 
 **Note:** All skills now use semantic naming for methodologies.
 
@@ -80,6 +80,6 @@ Invoke skills via slash commands:
 
 ## Related
 
-- Agent: `~/.claude/agents/faion-task-executor-YOLO-agent.md`
+- Agent: `~/.claude/agents/faion-task-YOLO-executor-opus-agent.md`
 - Documentation: `~/.claude/docs/`
 - Memory: `~/.sdd/memory/`

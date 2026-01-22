@@ -37,7 +37,7 @@ AskUserQuestion([
         "question": "How should I work on tasks?",
         "header": "Mode",
         "options": [
-            {"label": "YOLO Mode (Recommended)", "description": "Maximum autonomy. Execute tasks completely without interruptions. Uses faion-task-executor-YOLO-agent."},
+            {"label": "YOLO Mode (Recommended)", "description": "Maximum autonomy. Execute tasks completely without interruptions. Uses faion-task-YOLO-executor-opus-agent."},
             {"label": "Interactive Mode", "description": "Collaborative dialogue. Ask questions, clarify requirements, validate decisions. Stakeholder interview style."}
         ]
     }
@@ -48,7 +48,7 @@ AskUserQuestion([
 
 ### YOLO Mode (Autonomous)
 
-**Agent:** `faion-task-executor-YOLO-agent`
+**Agent:** `faion-task-YOLO-executor-opus-agent`
 
 **Behavior:**
 - Execute tasks completely without asking questions
@@ -67,7 +67,7 @@ AskUserQuestion([
 ```python
 Task(
     prompt="Execute task: {task_description}",
-    subagent_type="faion-task-executor-YOLO-agent"
+    subagent_type="faion-task-YOLO-executor-opus-agent"
 )
 ```
 

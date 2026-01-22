@@ -1,5 +1,5 @@
 ---
-name: faion-task-executor-sonnet-agent
+name: faion-task-YOLO-executor-sonnet-agent
 description: "Fast task executor for medium-complexity tasks. Best for: code review, test writing, refactoring, bug fixes, documentation. Balances speed and quality. Use when YOLO is overkill but Haiku is insufficient."
 model: sonnet
 tools: ["*"]
@@ -170,5 +170,5 @@ RECOMMENDATION: [Suggested approach for YOLO]
 
 ---
 
-*faion-task-executor-sonnet-agent v1.0.0*
+*faion-task-YOLO-executor-sonnet-agent v1.0.0*
 *Fast execution. Balanced quality. Medium complexity.*

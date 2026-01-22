@@ -1,5 +1,5 @@
 ---
-name: faion-task-executor-YOLO-agent
+name: faion-task-YOLO-executor-opus-agent
 description: "Maximum autonomy task executor. Full framework knowledge (15 skills, 502 methodologies). Executes carefully but without user interruptions. All tools available. IMPORTANT: Always ask user permission before launching this agent."
 model: opus
 tools: ["*"]
@@ -406,5 +406,5 @@ RECOMMENDATION:
 
 ---
 
-*faion-task-executor-YOLO-agent v1.0.0*
+*faion-task-YOLO-executor-opus-agent v1.0.0*
 *Maximum autonomy. Full framework knowledge. Careful execution.*

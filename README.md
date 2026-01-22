@@ -63,7 +63,7 @@ git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify installation
 ls ~/.claude/skills      # Should show 15 faion-* folders
-ls ~/.claude/agents      # Should show faion-task-executor-YOLO-agent.md
+ls ~/.claude/agents      # Should show faion-task-YOLO-executor-opus-agent.md
 ```
 
 **Option B: Add to Existing Setup**
@@ -189,7 +189,7 @@ One autonomous executor for maximum efficiency:
 
 | Agent | Purpose |
 |-------|---------|
-| `faion-task-executor-YOLO-agent` | Maximum autonomy task execution. Full framework knowledge, all tools access, no interruptions. |
+| `faion-task-YOLO-executor-opus-agent` | Maximum autonomy task execution. Full framework knowledge, all tools access, no interruptions. |
 
 The agent has access to all 502 methodologies and executes tasks using the appropriate skill's knowledge.
 

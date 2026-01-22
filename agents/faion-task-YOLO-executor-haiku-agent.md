@@ -1,5 +1,5 @@
 ---
-name: faion-task-executor-haiku-agent
+name: faion-task-YOLO-executor-haiku-agent
 description: "Ultra-fast executor for simple tasks. Best for: file searches, simple edits, config updates, status checks, formatting, git operations. Minimal latency, maximum speed. Use for mechanical tasks requiring no reasoning."
 model: haiku
 tools: ["*"]
@@ -210,5 +210,5 @@ Escalate to YOLO when:
 
 ---
 
-*faion-task-executor-haiku-agent v1.0.0*
+*faion-task-YOLO-executor-haiku-agent v1.0.0*
 *Lightning fast. Simple tasks. Zero overhead.*

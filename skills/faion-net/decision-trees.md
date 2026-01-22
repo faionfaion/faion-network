@@ -141,7 +141,7 @@ Q1: How complex is the task?
     │
     ├─ "Moderate" (single domain, multiple steps) ─────────────────────────────┐
     │   Action: Use Task tool with appropriate agent                           │
-    │   Example: "Implement auth feature" → faion-task-executor-YOLO-agent     │
+    │   Example: "Implement auth feature" → faion-task-YOLO-executor-opus-agent     │
     │
     └─ "Complex" (multi-domain, unclear outcome) ──────────────────────────────┐
         Action: Multi-skill orchestration                                      │
@@ -515,7 +515,7 @@ faion-ux-ui-designer (wireframes)
 Q1: Task clarity?
     │
     ├─ Clear, well-defined ────────────────────────────────────────────────────┐
-    │   Use: YOLO Mode (faion-task-executor-YOLO-agent)                        │
+    │   Use: YOLO Mode (faion-task-YOLO-executor-opus-agent)                        │
     │   - Maximum autonomy                                                     │
     │   - No interruptions                                                     │
     │   - Best for: SDD tasks with spec/design                                 │

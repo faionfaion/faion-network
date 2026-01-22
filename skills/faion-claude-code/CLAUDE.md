@@ -66,7 +66,7 @@ The skill routes requests based on keywords:
 | Skill (orchestrator) | `faion-net` | `faion-net` |
 | Skill (role-based) | `faion-{role}` | `faion-software-developer`, `faion-ux-ui-designer` |
 | Skill (process) | `faion-{process}` | `faion-sdd`, `faion-feature-executor` |
-| Agent | `faion-{name}-agent` | `faion-task-executor-YOLO-agent` |
+| Agent | `faion-{name}-agent` | `faion-task-YOLO-executor-opus-agent` |
 | Command | `{verb}` | `commit`, `deploy` |
 | Hook | `faion-{event}-{purpose}-hook.{ext}` | `faion-pre-bash-security-hook.py` |
 
