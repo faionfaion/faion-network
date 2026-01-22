@@ -40,9 +40,11 @@ Claude Code loads `.claude/` from TWO locations:
 │       └── directory-structure.md      # This file
 │
 └── Projects/                           # Projects folder
-    ├── myapp/                          # Project root
-    │   ├── CLAUDE.md                   # Project instructions (in project root!)
+    │
+    ├── myapp/                          # Single-repo project
+    │   ├── CLAUDE.md                   # Project instructions
     │   ├── src/                        # Source code
+    │   ├── .git/                       # Git repository
     │   └── .aidocs/                    # SDD documentation
     │       ├── constitution.md
     │       ├── roadmap.md
@@ -54,9 +56,24 @@ Claude Code loads `.claude/` from TWO locations:
     │       ├── in-progress/
     │       └── done/
     │
-    └── another-project/                # Another project
-        ├── CLAUDE.md
-        └── .aidocs/
+    └── bigapp/                         # Multi-repo project
+        ├── CLAUDE.md                   # Project overview
+        ├── bigapp-fe/                  # Frontend repo
+        │   ├── .git/
+        │   └── src/
+        ├── bigapp-be/                  # Backend repo
+        │   ├── .git/
+        │   └── src/
+        └── .aidocs/                    # Shared SDD docs for all repos
+            ├── constitution.md         # Covers FE + BE
+            ├── roadmap.md
+            ├── product_docs/
+            ├── backlog/
+            │   ├── feature-001-auth/   # May touch FE + BE
+            │   └── TASK-0001-api.md
+            ├── todo/
+            ├── in-progress/
+            └── done/
 ```
 
 ## Key Points
@@ -65,7 +82,9 @@ Claude Code loads `.claude/` from TWO locations:
 2. **Global components** (`faion-*`) are committed to faion-network repo
 3. **Project components** (`{project}-*`) are gitignored
 4. **Project CLAUDE.md** lives in project root (not in .claude)
-5. **aidocs/** lives in project root alongside source code
+5. **.aidocs/ location:**
+   - **Single repo:** Inside repo root (alongside src/)
+   - **Multi-repo:** Parent level (alongside repo folders)
 
 ## Why This Structure?
 
@@ -78,6 +97,34 @@ cd ~ && claude                   # Loads ~/.claude/ ✓
 
 All skills/agents are always available, project-specific ones just need gitignore.
 
+## .aidocs/ Placement Rules
+
+**Decision tree:**
+
+```
+Does the project have multiple repos?
+├─ NO (single repo)
+│  └─ Place .aidocs/ INSIDE repo root
+│     Example: myapp/.aidocs/
+│
+└─ YES (multiple repos: FE, BE, mobile, etc.)
+   └─ Place .aidocs/ at PARENT level (alongside repos)
+      Example: myapp/.aidocs/ + myapp/myapp-fe/ + myapp/myapp-be/
+```
+
+**Why?**
+- **Single repo:** .aidocs/ is versioned with code, easier to clone
+- **Multi-repo:** .aidocs/ is shared, avoids duplication, single source of truth
+
+**Examples:**
+
+| Project Structure | .aidocs/ Location | Reason |
+|-------------------|-------------------|--------|
+| `myapp/` (monorepo) | `myapp/.aidocs/` | Single repo |
+| `bigapp/bigapp-fe/` + `bigapp/bigapp-be/` | `bigapp/.aidocs/` | Multi-repo, shared docs |
+| `faion-net/` (Gatsby) | `faion-net/.aidocs/` | Single repo |
+| `scanmecard/scanmecard-web/` + `scanmecard/scanmecard-api/` | `scanmecard/.aidocs/` | Multi-repo |
+
 ## .aidocs Structure
 
 SDD (Specification-Driven Development) documentation lives in project's `.aidocs/`:
@@ -85,10 +132,11 @@ SDD (Specification-Driven Development) documentation lives in project's `.aidocs
 ```
 .aidocs/
 ├── constitution.md                 # Immutable project principles
-│   - Tech stack
+│   - Tech stack (for ALL repos in multi-repo setup)
 │   - Code standards (linters, formatters)
 │   - Testing requirements
 │   - Git conventions
+│   - Multi-repo: describes FE, BE, and shared standards
 │
 ├── roadmap.md                      # High-level project roadmap
 │
@@ -204,12 +252,15 @@ Add `.gitignore` **at the same level as `.claude/`** (sibling, not inside):
 
 ## Quick Setup
 
-### New Project
+### New Single-Repo Project
 
 ```bash
-# Create project directory with aidocs
+# Create project directory
 mkdir -p ~/Projects/myapp
 cd ~/Projects/myapp
+
+# Initialize git
+git init
 
 # Create project CLAUDE.md
 cat > CLAUDE.md << 'EOF'
@@ -225,8 +276,43 @@ cat > CLAUDE.md << 'EOF'
 - [Directory Structure](~/.claude/docs/directory-structure.md)
 EOF
 
-# Create .aidocs structure
+# Create .aidocs structure (inside repo)
 mkdir -p .aidocs/{product_docs,backlog,todo,in-progress,done}
+```
+
+### New Multi-Repo Project
+
+```bash
+# Create project parent directory
+mkdir -p ~/Projects/bigapp
+cd ~/Projects/bigapp
+
+# Create project CLAUDE.md
+cat > CLAUDE.md << 'EOF'
+# BigApp - Claude Instructions
+
+## Project
+- Name: BigApp
+- Repos: bigapp-fe (React), bigapp-be (Django)
+- Documentation: .aidocs/ (shared)
+
+## Repositories
+- **Frontend:** ./bigapp-fe/ - React + Vite
+- **Backend:** ./bigapp-be/ - Django REST
+
+## References
+- [Directory Structure](~/.claude/docs/directory-structure.md)
+EOF
+
+# Create .aidocs structure (parent level, shared)
+mkdir -p .aidocs/{product_docs,backlog,todo,in-progress,done}
+
+# Clone or create repos
+git clone <frontend-repo-url> bigapp-fe
+git clone <backend-repo-url> bigapp-be
+# OR
+mkdir bigapp-fe && cd bigapp-fe && git init && cd ..
+mkdir bigapp-be && cd bigapp-be && git init && cd ..
 
 # Add to .gitignore (same level as .claude/)
 grep -q "myapp-" .gitignore 2>/dev/null || cat >> .gitignore << 'EOF'
