@@ -27,14 +27,26 @@
 ├── agents/faion-*-agent.md
 └── docs/
 
-{project}/                    # Project root
+# Single repo project:
+{project}/                    # Project root = repo root
 ├── .claude/                  # Project-specific config
 │   └── {project}-*/         # Project skills (gitignored)
 └── .aidocs/                  # SDD documentation
     ├── constitution.md
     ├── backlog/
-    │   ├── feature-001-feature-name/
-    │   └── TASK-0001-task-title.md
+    │   ├── feature-001-name/
+    │   └── TASK-0001-title.md
+    ├── todo/
+    ├── in-progress/
+    └── done/
+
+# Multi-repo project:
+{project}/                    # Project root (parent of repos)
+├── {project}-fe/             # Frontend repo
+├── {project}-be/             # Backend repo
+└── .aidocs/                  # SDD docs (shared for all repos)
+    ├── constitution.md       # Covers ALL repos
+    ├── backlog/
     ├── todo/
     ├── in-progress/
     └── done/
