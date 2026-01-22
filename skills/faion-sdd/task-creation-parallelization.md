@@ -271,10 +271,10 @@ Sometimes all tasks should be created upfront:
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Code standards |
+| Constitution | `.aidocs/constitution.md` | Code standards |
 | Spec | `{FEATURE_DIR}/spec.md` | FR-X, FR-Y |
 | Design | `{FEATURE_DIR}/design.md` | AD-X, AD-Y |
-| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | (if API) |
+| Contracts | `.aidocs/contracts.md` | (if API) |
 
 ## Task Dependency Tree
 
@@ -397,10 +397,10 @@ BACKLOG → TODO → IN_PROGRESS → DONE
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Code standards |
+| Constitution | `.aidocs/constitution.md` | Code standards |
 | Spec | `{FEATURE_DIR}/spec.md` | FR-X, FR-Y |
 | Design | `{FEATURE_DIR}/design.md` | AD-X, AD-Y |
-| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | (if API) |
+| Contracts | `.aidocs/contracts.md` | (if API) |
 
 ## Task Dependency Tree
 

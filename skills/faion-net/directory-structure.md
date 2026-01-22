@@ -1,7 +1,7 @@
 # SDD Directory Structure
 
 ```
-aidocs/sdd/{project}/
+.aidocs/
 ├── constitution.md
 ├── roadmap.md
 │

@@ -65,8 +65,8 @@ Proceed with YOLO execution? [Yes/No]
 ```
 
 **Parameters:**
-- `project`: Project name (folder in `aidocs/sdd/`)
-- `feature`: Feature name (folder in `features/{status}/`)
+- `project`: Project name (containing `.aidocs/` folder)
+- `feature`: Feature name (folder in `.aidocs/{status}/`)
 
 ---
 
@@ -123,7 +123,7 @@ Proceed with YOLO execution? [Yes/No]
 # Find feature in any status folder
 feature_statuses = ["in-progress", "todo", "backlog"]
 for status in feature_statuses:
-    path = f"aidocs/sdd/{project}/features/{status}/{feature}"
+    path = f".aidocs/features/{status}/{feature}"
     if exists(path):
         FEATURE_DIR = path
         FEATURE_STATUS = status
@@ -134,7 +134,7 @@ for status in feature_statuses:
 
 **Required files:**
 ```
-aidocs/sdd/{project}/
+.aidocs/
 ├── constitution.md      # Project standards (MUST READ)
 └── CLAUDE.md           # Project navigation (if exists)
 ```
@@ -478,8 +478,8 @@ Review cycle ends when:
 
 ```bash
 # Move entire feature directory
-mv aidocs/sdd/{project}/features/in-progress/{feature} \
-   aidocs/sdd/{project}/features/done/{feature}
+mv .aidocs/features/in-progress/{feature} \
+   .aidocs/features/done/{feature}
 ```
 
 ### 5.2 Update Task Files

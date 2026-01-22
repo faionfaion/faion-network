@@ -151,7 +151,7 @@ What phase?
 ## Directory Structure
 
 ```
-aidocs/sdd/{project}/
+.aidocs/
 |-- constitution.md                    # Project principles
 |-- contracts.md                       # API contracts
 |-- roadmap.md                         # Milestones
@@ -246,7 +246,7 @@ TOTAL:         <100k
 1. **Existing Project** - Analyze codebase, present findings, draft
 2. **New Project** - Socratic dialogue: Vision -> Tech -> Architecture -> Standards
 
-**Output:** `aidocs/sdd/{project}/constitution.md`
+**Output:** `.aidocs/constitution.md`
 
 **Details:** [workflows.md#1](workflows.md#1-writing-constitutions) | [templates.md](templates.md#constitution-template)
 

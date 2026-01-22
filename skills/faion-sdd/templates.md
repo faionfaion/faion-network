@@ -116,7 +116,7 @@ All templates for SDD artifacts. Copy and customize for your project.
 
 | Document | Path |
 |----------|------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` |
+| Constitution | `.aidocs/constitution.md` |
 | Related Feature | `features/done/{NN}-{feature}/spec.md` |
 
 ---
@@ -244,8 +244,8 @@ All templates for SDD artifacts. Copy and customize for your project.
 | Document | Path |
 |----------|------|
 | Specification | `spec.md` |
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` |
-| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` |
+| Constitution | `.aidocs/constitution.md` |
+| Contracts | `.aidocs/contracts.md` |
 
 ---
 
@@ -501,9 +501,9 @@ TASK_004 ─────────────────┘
 
 | Document | Path |
 |----------|------|
-| Spec | aidocs/sdd/{project}/features/{status}/{feature}/spec.md |
-| Design | aidocs/sdd/{project}/features/{status}/{feature}/design.md |
-| Plan | aidocs/sdd/{project}/features/{status}/{feature}/implementation-plan.md |
+| Spec | .aidocs/features/{status}/{feature}/spec.md |
+| Design | .aidocs/features/{status}/{feature}/design.md |
+| Plan | .aidocs/features/{status}/{feature}/implementation-plan.md |
 
 ---
 

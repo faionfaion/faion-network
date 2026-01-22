@@ -140,8 +140,8 @@ SPEC (feature-specific) → DESIGN (feature-specific) → IMPL PLAN → TASKS
 Before writing, read and understand:
 
 ```
-1. aidocs/sdd/{PROJECT}/constitution.md - project principles, tech stack
-2. aidocs/sdd/{PROJECT}/contracts.md - existing API contracts
+1. .aidocs/constitution.md - project principles, tech stack
+2. .aidocs/contracts.md - existing API contracts
 3. {FEATURE_DIR}/spec.md - requirements to implement (FR-X)
 4. features/done/ - completed designs for patterns
 ```
@@ -532,9 +532,9 @@ interface RegisterFormProps {
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Tech stack, patterns |
+| Constitution | `.aidocs/constitution.md` | Tech stack, patterns |
 | Spec | `{FEATURE_DIR}/spec.md` | FR-X, NFR-X to implement |
-| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | Existing API patterns |
+| Contracts | `.aidocs/contracts.md` | Existing API patterns |
 | Related Design | `features/done/{NN}-{feature}/design.md` | Patterns to follow |
 
 ---

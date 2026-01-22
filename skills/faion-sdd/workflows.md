@@ -81,8 +81,8 @@ For each decision, present A/B/C with pros/cons:
 ### Save Location
 
 ```bash
-mkdir -p aidocs/sdd/{project}
-# Write constitution.md
+mkdir -p .aidocs/{backlog,todo,in-progress,done}
+# Write constitution.md to .aidocs/
 ```
 
 Create CLAUDE.md navigation hub in project folder.
@@ -138,7 +138,7 @@ Which is closer?
 
 ### Phase 2: Research Codebase
 
-Search: `Glob **/models.py`, `Grep class.*Model`, `Glob aidocs/sdd/**/spec.md`
+Search: `Glob **/models.py`, `Grep class.*Model`, `Glob **/.aidocs/**/spec.md`
 
 Share findings: "Found existing export in services.py. Does this affect approach?"
 
@@ -177,7 +177,7 @@ Call `faion-sdd-reviewer-agent (mode: spec)` before save.
 
 ### Phase 6: Save
 
-**New feature:** `aidocs/sdd/{project}/features/backlog/{NN}-{feature}/spec.md`
+**New feature:** `.aidocs/features/backlog/{NN}-{feature}/spec.md`
 **Active feature:** update existing spec.md
 
 ### Anti-patterns
@@ -194,7 +194,7 @@ Call `faion-sdd-reviewer-agent (mode: spec)` before save.
 ### Prerequisites
 
 1. `spec.md` exists with status `approved`
-2. `constitution.md` exists at `aidocs/sdd/{project}/constitution.md`
+2. `constitution.md` exists at `.aidocs/constitution.md`
 3. `contracts.md` exists (for API features)
 
 ### Workflow
@@ -364,7 +364,7 @@ Call `faion-sdd-reviewer-agent (mode: plan)`. Checks: 100k compliance, deps, cov
 
 ### Phase 8: Save
 
-`aidocs/sdd/{project}/features/{feature}/implementation-plan.md`
+`.aidocs/features/{feature}/implementation-plan.md`
 
 ---
 
@@ -391,9 +391,9 @@ Call `faion-sdd-reviewer-agent (mode: plan)`. Checks: 100k compliance, deps, cov
 
 Check these files exist and are approved:
 ```
-aidocs/sdd/{project}/features/{status}/{feature}/spec.md
-aidocs/sdd/{project}/features/{status}/{feature}/design.md
-aidocs/sdd/{project}/features/{status}/{feature}/implementation-plan.md
+.aidocs/features/{status}/{feature}/spec.md
+.aidocs/features/{status}/{feature}/design.md
+.aidocs/features/{status}/{feature}/implementation-plan.md
 ```
 
 If implementation-plan missing: Create it first using workflow #4.
@@ -408,7 +408,7 @@ Task(
 PROJECT: {project}
 FEATURE: {feature}
 TASK_INFO: {task_from_plan}
-SDD_PATH: aidocs/sdd/{project}/features/{status}/{feature}/
+SDD_PATH: .aidocs/features/{status}/{feature}/
 
 Create comprehensive task file with:
 - Clear objective
@@ -472,10 +472,10 @@ Partial match supported: "TASK_001", "001", "models"
 
 Load these files:
 ```
-aidocs/sdd/{project}/constitution.md
-aidocs/sdd/{project}/features/{status}/{feature}/spec.md
-aidocs/sdd/{project}/features/{status}/{feature}/design.md
-aidocs/sdd/{project}/features/{status}/{feature}/implementation-plan.md
+.aidocs/constitution.md
+.aidocs/features/{status}/{feature}/spec.md
+.aidocs/features/{status}/{feature}/design.md
+.aidocs/features/{status}/{feature}/implementation-plan.md
 {task_file}
 ```
 
@@ -745,8 +745,8 @@ ANALYZE -> REVIEW PRIORITIES -> ADD FEATURES -> UPDATE ROADMAP
 
 ```bash
 # Count features by status
-ls aidocs/sdd/{project}/features/done/
-ls aidocs/sdd/{project}/features/backlog/
+ls .aidocs/features/done/
+ls .aidocs/features/backlog/
 ```
 
 ### Phase 2: Review Priorities

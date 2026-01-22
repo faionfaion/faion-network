@@ -127,7 +127,7 @@ SPEC (what) → DESIGN (how) → IMPL PLAN (order) → TASKS (execution)
 Before writing, read and understand:
 
 ```
-1. aidocs/sdd/{PROJECT}/constitution.md - project principles
+1. .aidocs/constitution.md - project principles
 2. {FEATURE_DIR}/spec.md - requirements (FR-X)
 3. {FEATURE_DIR}/design.md - architecture (AD-X)
 4. features/done/ - completed implementation plans for patterns
@@ -467,10 +467,10 @@ TASK-001 → TASK-003 → TASK-005 → TASK-007
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Standards |
+| Constitution | `.aidocs/constitution.md` | Standards |
 | Spec | `{FEATURE_DIR}/spec.md` | FR-X requirements |
 | Design | `{FEATURE_DIR}/design.md` | AD-X decisions |
-| Contracts | `aidocs/sdd/{PROJECT}/contracts.md` | API patterns |
+| Contracts | `.aidocs/contracts.md` | API patterns |
 
 ---
 

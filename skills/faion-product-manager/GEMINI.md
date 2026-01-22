@@ -30,7 +30,7 @@ IDEA -> CONCEPT -> TECH STACK -> MVP SCOPE -> CONFIRMATION -> BACKLOG -> CONSTIT
 
 Output structure:
 ```
-aidocs/sdd/{project}/
+.aidocs/
   constitution.md
   roadmap.md
   features/

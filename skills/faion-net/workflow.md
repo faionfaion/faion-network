@@ -28,7 +28,7 @@ MLP PLANNING (optional):
 ## Phase 1-2: Select Project
 
 ```bash
-ls -d aidocs/sdd/*/ 2>/dev/null | xargs -I{} basename {}
+find . -maxdepth 2 -name ".aidocs" -type d 2>/dev/null | sed 's|/.aidocs||;s|./||'
 ```
 
 AskUserQuestion: "З яким проектом працюємо?" + "+ Новий проект"
@@ -42,14 +42,14 @@ If new project:
    - **Has codebase** → Call `faion-writing-constitutions` skill (analysis mode)
 
 **After bootstrap:**
-- Constitution: `aidocs/sdd/{project}/constitution.md`
-- Roadmap: `aidocs/sdd/{project}/roadmap.md`
-- Setup task: `aidocs/sdd/{project}/features/todo/00-setup/tasks/todo/TASK_000_project_setup.md`
+- Constitution: `.aidocs/constitution.md`
+- Roadmap: `.aidocs/roadmap.md`
+- Setup task: `.aidocs/features/todo/00-setup/tasks/todo/TASK_000_project_setup.md`
 
 ## Phase 4: Select Feature
 
 ```bash
-ls -d aidocs/sdd/{project}/features/{in-progress,todo,backlog,done}/*/ 2>/dev/null
+ls -d .aidocs/features/{in-progress,todo,backlog,done}/*/ 2>/dev/null
 ```
 
 AskUserQuestion: "Що хочеш зробити?" options:

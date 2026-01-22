@@ -96,7 +96,7 @@ Detailed step-by-step instructions for all 13 sections:
 ## SDD Project Structure
 
 ```
-aidocs/sdd/{project}/
+.aidocs/
 |-- constitution.md           # Project principles
 |-- contracts.md              # API contracts
 |-- roadmap.md                # Milestones

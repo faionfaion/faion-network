@@ -431,7 +431,7 @@ Task(
 
 ## Output Files
 
-All outputs go to `aidocs/sdd/{project}/product_docs/`:
+All outputs go to `.aidocs/product_docs/`:
 
 | Module | Output File |
 |--------|-------------|

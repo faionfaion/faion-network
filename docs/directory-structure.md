@@ -43,17 +43,20 @@ Claude Code loads `.claude/` from TWO locations:
     ├── myapp/                          # Project root
     │   ├── CLAUDE.md                   # Project instructions (in project root!)
     │   ├── src/                        # Source code
-    │   └── aidocs/                     # SDD documentation
-    │       └── sdd/myapp/
-    │           ├── constitution.md
-    │           ├── roadmap.md
-    │           ├── product_docs/
-    │           ├── tasks/{backlog,todo,in-progress,done}/
-    │           └── features/{backlog,todo,in-progress,done}/
+    │   └── .aidocs/                    # SDD documentation
+    │       ├── constitution.md
+    │       ├── roadmap.md
+    │       ├── product_docs/
+    │       ├── backlog/
+    │       │   ├── feature-001-auth/
+    │       │   └── TASK-0001-setup.md
+    │       ├── todo/
+    │       ├── in-progress/
+    │       └── done/
     │
     └── another-project/                # Another project
         ├── CLAUDE.md
-        └── aidocs/sdd/another-project/
+        └── .aidocs/
 ```
 
 ## Key Points
@@ -75,50 +78,43 @@ cd ~ && claude                   # Loads ~/.claude/ ✓
 
 All skills/agents are always available, project-specific ones just need gitignore.
 
-## aidocs Structure
+## .aidocs Structure
 
-SDD (Specification-Driven Development) documentation lives in project's `aidocs/`:
+SDD (Specification-Driven Development) documentation lives in project's `.aidocs/`:
 
 ```
-aidocs/
-└── sdd/{project}/
-    │
-    ├── constitution.md                 # Immutable project principles
-    │   - Tech stack
-    │   - Code standards (linters, formatters)
-    │   - Testing requirements
-    │   - Git conventions
-    │
-    ├── roadmap.md                      # High-level project roadmap
-    │
-    ├── product_docs/                   # Product documentation
-    │   ├── prd.md                      # Product Requirements
-    │   ├── user-personas.md            # Target users
-    │   └── competitive-analysis.md     # Market research
-    │
-    ├── tasks/                          # Standalone tasks (not feature-bound)
-    │   ├── backlog/                    # Ideas, not prioritized
-    │   ├── todo/                       # Ready to execute
-    │   ├── in-progress/                # Currently executing
-    │   └── done/                       # Completed
-    │
-    └── features/                       # Feature-based organization
-        ├── backlog/                    # Feature ideas
-        ├── todo/                       # Specified, ready to implement
-        ├── in-progress/                # Currently implementing
-        │   └── {NN}-{feature-name}/
-        │       ├── spec.md             # Functional requirements (FR-X)
-        │       ├── design.md           # Architecture decisions (AD-X)
-        │       ├── implementation-plan.md  # Task breakdown
-        │       └── tasks/
-        │           ├── backlog/
-        │           ├── todo/
-        │           │   ├── TASK_001_*.md
-        │           │   ├── TASK_002_*.md
-        │           │   └── ...
-        │           ├── in-progress/
-        │           └── done/
-        └── done/                       # Completed features
+.aidocs/
+├── constitution.md                 # Immutable project principles
+│   - Tech stack
+│   - Code standards (linters, formatters)
+│   - Testing requirements
+│   - Git conventions
+│
+├── roadmap.md                      # High-level project roadmap
+│
+├── product_docs/                   # Product documentation
+│   ├── prd.md                      # Product Requirements
+│   ├── user-personas.md            # Target users
+│   └── competitive-analysis.md     # Market research
+│
+├── backlog/                        # Ideas, not prioritized
+│   ├── feature-001-auth/           # Feature folder
+│   │   ├── spec.md                 # Functional requirements (FR-X)
+│   │   ├── design.md               # Architecture decisions (AD-X)
+│   │   └── implementation-plan.md  # Task breakdown
+│   └── TASK-0001-setup.md          # Standalone task file
+│
+├── todo/                           # Specified, ready to implement
+│   ├── feature-002-payments/
+│   └── TASK-0005-database.md
+│
+├── in-progress/                    # Currently executing
+│   ├── feature-003-dashboard/
+│   └── TASK-0010-api.md
+│
+└── done/                           # Completed
+    ├── feature-000-init/
+    └── TASK-0000-scaffold.md
 ```
 
 ## Lifecycle
@@ -160,8 +156,8 @@ backlog/ → todo/ → in-progress/ → done/
 
 | Component | Pattern | Example |
 |-----------|---------|---------|
-| Feature folder | `{NN}-{feature-name}` | `01-auth`, `02-payments` |
-| Task file | `TASK_{NNN}_{short_name}.md` | `TASK_001_user_model.md` |
+| Feature folder | `feature-{NNN}-{name}` | `feature-001-auth`, `feature-025-dashboard` |
+| Task file | `TASK-{NNNN}-{title}.md` | `TASK-0001-user-model.md`, `TASK-0150-api-endpoint.md` |
 
 ## Gitignore Setup
 
@@ -229,8 +225,8 @@ cat > CLAUDE.md << 'EOF'
 - [Directory Structure](~/.claude/docs/directory-structure.md)
 EOF
 
-# Create aidocs structure
-mkdir -p aidocs/sdd/myapp/{product_docs,tasks/{backlog,todo,in-progress,done},features/{backlog,todo,in-progress,done}}
+# Create .aidocs structure
+mkdir -p .aidocs/{product_docs,backlog,todo,in-progress,done}
 
 # Add to .gitignore (same level as .claude/)
 grep -q "myapp-" .gitignore 2>/dev/null || cat >> .gitignore << 'EOF'

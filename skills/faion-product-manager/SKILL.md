@@ -54,7 +54,7 @@ IDEA → CONCEPT → TECH STACK → MVP SCOPE → CONFIRMATION → BACKLOG → C
 
 **Output:**
 ```
-aidocs/sdd/{project}/
+.aidocs/
 ├── constitution.md
 ├── roadmap.md
 └── features/

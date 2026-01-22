@@ -30,18 +30,13 @@
 {project}/                    # Project root
 ├── .claude/                  # Project-specific config
 │   └── {project}-*/         # Project skills (gitignored)
-└── .aidocs/                  # SDD documentation
+└── aidocs/sdd/{project}/    # SDD documentation
     ├── constitution.md
-    ├── backlog/
-    │   ├── feature-001-feature-name/
-    │   └── TASK-0001-task-title.md
-    ├── todo/
-    ├── in-progress/
-    └── done/
+    ├── features/{status}/{NN}-{feature}/
+    └── tasks/{status}/
 ```
 
 **Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
-**Features:** `feature-NNN-name/` folders | **Tasks:** `TASK-NNNN-title.md` files
 
 ## No Time Estimates
 

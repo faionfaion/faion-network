@@ -13,7 +13,7 @@ This folder contains detailed documentation for workflow processes, directory st
 | File | Description |
 |------|-------------|
 | `workflow.md` | SDD workflow phases from idea discovery through feature completion. Covers project selection, new project bootstrap, feature selection, grooming, execution, and completion. |
-| `directory-structure.md` | SDD folder layout (`aidocs/sdd/{project}/`). Defines constitution, roadmap, product_docs, tasks, and features lifecycle (backlog -> todo -> in-progress -> done). |
+| `directory-structure.md` | SDD folder layout (`.aidocs/`). Defines constitution, roadmap, product_docs, tasks, and features lifecycle (backlog -> todo -> in-progress -> done). |
 | `quality-assurance.md` | Confidence checks before each phase, hallucination prevention checklist, and reflexion learning for storing patterns/mistakes in `~/.sdd/memory/`. |
 
 ### Domain Reference Files

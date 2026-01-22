@@ -127,8 +127,8 @@ It does NOT answer "how" - that's for the design document.
 Before writing, read and understand:
 
 ```
-1. aidocs/sdd/{PROJECT}/constitution.md - project principles, tech stack
-2. aidocs/sdd/{PROJECT}/features/done/ - completed features (patterns)
+1. .aidocs/constitution.md - project principles, tech stack
+2. .aidocs/features/done/ - completed features (patterns)
 3. Related specs in features/todo/ or features/in-progress/
 ```
 
@@ -416,7 +416,7 @@ Explicitly list what is NOT included:
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `aidocs/sdd/{PROJECT}/constitution.md` | Tech stack, standards |
+| Constitution | `.aidocs/constitution.md` | Tech stack, standards |
 | Related Feature | `features/done/{NN}-{feature}/spec.md` | Patterns to follow |
 
 ---
@@ -647,7 +647,7 @@ Explicitly list what is NOT included:
 
 | Document | Path |
 |----------|------|
-| Constitution | `aidocs/sdd/cashflow-planner/constitution.md` |
+| Constitution | `.aidocs/constitution.md` |
 
 ---
 
