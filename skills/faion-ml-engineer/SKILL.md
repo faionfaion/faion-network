@@ -29,15 +29,15 @@ Detailed technical context for each area:
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [openai-api.md](references/openai-api.md) | GPT-4, DALL-E, Whisper, Assistants | ~1310 |
-| [claude-api.md](references/claude-api.md) | Claude models, tool use, extended thinking | ~1420 |
-| [gemini-api.md](references/gemini-api.md) | Gemini models, multimodal, grounding | ~1150 |
-| [embeddings.md](references/embeddings.md) | Text embeddings, similarity, chunking | ~900 |
-| [finetuning.md](references/finetuning.md) | Model fine-tuning, datasets, evaluation | ~990 |
-| [langchain.md](references/langchain.md) | Chains, agents, memory, tools | ~1440 |
-| [llamaindex.md](references/llamaindex.md) | Document indexing, query engines | ~1210 |
-| [vector-databases.md](references/vector-databases.md) | Pinecone, Weaviate, Chroma, pgvector | ~1390 |
-| [best-practices-2026.md](references/best-practices-2026.md) | Agentic RAG, AI Agents, LLM Management, MCP | ~300 |
+| [openai-api.md](openai-api.md) | GPT-4, DALL-E, Whisper, Assistants | ~1310 |
+| [claude-api.md](claude-api.md) | Claude models, tool use, extended thinking | ~1420 |
+| [gemini-api.md](gemini-api.md) | Gemini models, multimodal, grounding | ~1150 |
+| [embeddings.md](embeddings.md) | Text embeddings, similarity, chunking | ~900 |
+| [finetuning.md](finetuning.md) | Model fine-tuning, datasets, evaluation | ~990 |
+| [langchain.md](langchain.md) | Chains, agents, memory, tools | ~1440 |
+| [llamaindex.md](llamaindex.md) | Document indexing, query engines | ~1210 |
+| [vector-databases.md](vector-databases.md) | Pinecone, Weaviate, Chroma, pgvector | ~1390 |
+| [ref-agentic-rag.md](ref-agentic-rag.md) | Agentic RAG, AI Agents, LLM Management, MCP | ~300 |
 
 **Total:** ~10,110 lines of technical reference
 

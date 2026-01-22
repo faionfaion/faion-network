@@ -31,9 +31,9 @@ Detailed technical context for specialized areas:
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [ats-platforms.md](references/ats-platforms.md) | ATS comparison, AI recruiting tools | ~400 |
-| [hr-compliance.md](references/hr-compliance.md) | Hiring laws, DEI compliance, GDPR | ~300 |
-| [interview-questions.md](references/interview-questions.md) | STAR questions bank by competency | ~500 |
+| [ats-platforms.md](ats-platforms.md) | ATS comparison, AI recruiting tools | ~400 |
+| [hr-compliance.md](hr-compliance.md) | Hiring laws, DEI compliance, GDPR | ~300 |
+| [interview-questions.md](interview-questions.md) | STAR questions bank by competency | ~500 |
 
 ---
 
@@ -879,10 +879,6 @@ Low Pot   Exit      Stable     Expert
 | Cost | Where can we optimize? |
 
 **Agent:** faion-recruiter-agent
-
----
-
-> **Note:** Full methodology details available in `methodologies/` folder.
 
 ---
 

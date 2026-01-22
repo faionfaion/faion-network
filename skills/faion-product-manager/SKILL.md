@@ -35,7 +35,10 @@ Orchestrates product planning activities from ideation to MVP/MLP definition. Co
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [best-practices-2026.md](references/best-practices-2026.md) | 9 Product Frameworks, Micro-MVPs, AI-Native, Continuous Discovery | ~200 |
+| ref-minimum-product-frameworks.md | 9 Product Frameworks: MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC |
+| ref-micro-mvps.md | Micro-MVPs: Landing page, concierge, Wizard of Oz, video demo |
+| ref-ai-native-product-development.md | AI-Native Product Development |
+| ref-continuous-discovery.md | Continuous Discovery Habits |
 
 ---
 
@@ -436,7 +439,7 @@ Goal: Increase revenue 20%
 **Agent:** faion-pm-agent
 
 
-> **Note:** Full methodology details available in `methodologies/` folder.
+> **Note:** Full methodology details available in skill root (files: mvp-scoping.md, mlp-planning.md, etc.).
 
 ---
 

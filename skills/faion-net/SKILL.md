@@ -215,7 +215,7 @@ Is this correct? Shall I proceed?"
 | `faion-feature-executor` | SDD feature executor: sequential tasks with quality gates, tests/coverage, code review |
 | `faion-researcher` | Idea generation (SCAMPER), market research, competitors, personas, pricing, validation. 20 methodologies |
 | `faion-product-manager` | MVP/MLP planning, RICE/MoSCoW prioritization, roadmaps, backlog, user stories, OKRs. 18 methodologies |
-| `faion-software-developer` | Python, JS/TS, Django, FastAPI, React, APIs, testing, DevOps, UI design. 68 methodologies |
+| `faion-software-developer` | Python, JS/TS, Django, FastAPI, React, APIs, testing, DevOps, UI design. 111 methodologies |
 | `faion-devops-engineer` | Docker, K8s, Terraform, AWS/GCP/Azure, CI/CD, monitoring, IaC, nginx. 20 methodologies |
 | `faion-ml-engineer` | LLM APIs, RAG, embeddings, fine-tuning, LangChain, vector DBs, prompt engineering. 30 methodologies |
 | `faion-marketing-manager` | GTM, landing pages, SEO/SEM, content, ads, email, social media. 74 methodologies |
@@ -228,425 +228,96 @@ Is this correct? Shall I proceed?"
 
 ---
 
-## All Methodologies (494)
+## Step 3: Skill Selection
 
-### Research
-| Name | File |
-|------|------|
-| idea-generation | SCAMPER Ideation |
-| mind-mapping | Mind Mapping |
-| reverse-engineering-ideas | Reverse Engineering Ideas |
-| problem-first-discovery | Problem-First Discovery |
-| trend-surfing | Trend Surfing |
-| skill-stack-analysis | Skill-Stack Analysis |
-| market-research-tam-sam-som | Market Gap Analysis |
-| pain-point-research | Pain Point Research |
-| competitor-analysis | Competitor Feature Matrix |
-| pricing-research | Pricing Strategy Analysis |
-| persona-building | Persona Building |
-| niche-evaluation | Niche Evaluation |
-| problem-validation | Problem Validation |
-| project-naming | Project Naming |
+Use the [Decision Trees](decision-trees.md) to select the appropriate skill.
 
-### Product
-| Name | Description |
-|------|-------------|
-| mvp-scoping | MVP Scoping |
-| mlp-planning | MLP Planning |
-| feature-prioritization-rice | RICE Prioritization |
-| feature-prioritization-moscow | MoSCoW Prioritization |
-| roadmap-design | Roadmap Design |
-| user-story-mapping | User Story Mapping |
-| okr-setting | OKR Setting |
-| problem-validation | Problem Validation |
-| assumption-mapping | Assumption Mapping |
-| lean-canvas | Lean Canvas |
-| jobs-to-be-done | Jobs To Be Done |
-| opportunity-scoring | Opportunity Scoring |
-| value-proposition-canvas | Value Proposition Canvas |
-| sprint-planning | Sprint Planning |
-| release-planning | Release Planning |
-| backlog-refinement | Backlog Refinement |
-| five-whys-analysis | Five Whys Analysis |
-| impact-mapping | Impact Mapping |
+### Quick Decision Flowchart
 
-### Development
-| Name | Description |
-|------|-------------|
-| python-django-standards | Django Coding Standards |
-| python-django-decision-tree | Django Code Decision Tree |
-| python-django-base-model | Django Base Model Pattern |
-| python-django-testing-pytest | Django Testing with pytest |
-| python-fastapi-standards | FastAPI Standards |
-| python-async-patterns | Python Async Patterns |
-| python-type-hints | Python Type Hints |
-| python-poetry-setup | Poetry Project Setup |
-| react-component-architecture | React Component Architecture |
-| typescript-strict-mode | TypeScript Strict Mode |
-| react-hooks-best-practices | React Hooks Best Practices |
-| nextjs-app-router | Next.js App Router |
-| nodejs-service-layer | Node.js Service Layer |
-| express-fastify-patterns | Express/Fastify Patterns |
-| bun-runtime | Bun Runtime |
-| package-management-pnpm | Package Management (pnpm) |
-| monorepo-turborepo | Monorepo Setup (Turborepo) |
-| go-project-structure | Go Project Structure |
-| go-error-handling | Go Error Handling |
-| go-concurrency-patterns | Go Concurrency Patterns |
-| rust-ownership-model | Rust Ownership Model |
-| rust-error-handling | Rust Error Handling |
-| ruby-rails-patterns | Ruby on Rails Patterns |
-| php-laravel-patterns | PHP Laravel Patterns |
-| java-spring-boot | Java Spring Boot |
-| csharp-dotnet-patterns | C# .NET Patterns |
-| clean-architecture | Clean Architecture |
-| domain-driven-design | Domain-Driven Design |
-| cqrs-pattern | CQRS Pattern |
-| event-sourcing | Event Sourcing |
-| microservices-design | Microservices Design |
-| api-rest-design | API Design (REST) |
-| api-graphql-design | API Design (GraphQL) |
-| api-openapi-specification | OpenAPI Specification |
-| database-design | Database Design |
-| database-sql-optimization | SQL Optimization |
-| database-nosql-patterns | NoSQL Patterns |
-| caching-strategy | Caching Strategy |
-| message-queues | Message Queues |
-| websocket-design | WebSocket Design |
-| testing-unit | Unit Testing |
-| testing-integration | Integration Testing |
-| testing-e2e | E2E Testing |
-| testing-tdd-workflow | TDD Workflow |
-| testing-fixtures | Test Fixtures |
-| testing-mocking | Mocking Strategies |
-| testing-coverage | Code Coverage |
-| testing-security | Security Testing |
-| testing-performance | Performance Testing |
-| documentation | Documentation |
-| claude-md-creation | CLAUDE.md Creation |
-| code-review | Code Review |
-| refactoring-patterns | Refactoring Patterns |
-| technical-debt | Technical Debt |
-| error-handling | Error Handling |
-| logging-patterns | Logging Patterns |
-| feature-flags | Feature Flags |
-| ab-testing | A/B Testing |
-| internationalization | Internationalization |
-| accessibility | Accessibility |
-| seo-spa | SEO for SPAs |
-| pwa-development | PWA Development |
-| mobile-responsive | Mobile Responsive |
-| ui-component-library | UI Component Library |
-| storybook-setup | Storybook Setup |
-| design-tokens | Design Tokens |
-| css-in-js | CSS-in-JS |
-| tailwind-patterns | Tailwind Patterns |
+```
+User Intent                         → Skill to Invoke
+─────────────────────────────────────────────────────
+Research/Discovery                  → faion-researcher
+Architecture/Design Patterns        → faion-software-architect
+Product Planning (MVP, roadmap)     → faion-product-manager
+Writing Code                        → faion-software-developer
+Infrastructure/Deployment           → faion-devops-engineer
+AI/ML/LLM                          → faion-ml-engineer
+Marketing/GTM                       → faion-marketing-manager
+UX/UI Design                        → faion-ux-ui-designer
+Project Management                  → faion-project-manager
+Business Analysis                   → faion-business-analyst
+Communication/Stakeholders          → faion-communicator
+Hiring/HR                          → faion-hr-recruiter
+SDD Workflow                        → faion-sdd
+Claude Code Setup                   → faion-claude-code
+```
 
-### DevOps
-| Name | Description |
-|------|-------------|
-| docker-containerization | Docker Containerization |
-| docker-compose | Docker Compose |
-| kubernetes-deployment | Kubernetes Deployment |
-| kubernetes-helm-charts | Helm Charts |
-| terraform-iac | Terraform IaC |
-| aws-architecture | AWS Architecture |
-| gcp-architecture | GCP Architecture |
-| azure-architecture | Azure Architecture |
-| cicd-github-actions | GitHub Actions CI/CD |
-| cicd-gitlab | GitLab CI/CD |
-| cicd-jenkins | Jenkins Pipelines |
-| gitops-argocd | ArgoCD GitOps |
-| monitoring-prometheus | Prometheus Monitoring |
-| monitoring-grafana | Grafana Dashboards |
-| logging-elk-stack | ELK Stack Logging |
-| nginx-configuration | Nginx Configuration |
-| load-balancing | Load Balancing |
-| ssl-tls-setup | SSL/TLS Setup |
-| secrets-management | Secrets Management |
-| backup-strategies | Backup Strategies |
+### Multi-Skill Orchestration
 
-### ML/AI
-| Name | Description |
-|------|-------------|
-| llm-openai-api | OpenAI API Integration |
-| llm-claude-api | Claude API Integration |
-| llm-gemini-api | Gemini API Integration |
-| llm-local-ollama | Local LLM (Ollama) |
-| embedding-generation | Embedding Generation |
-| vector-database-setup | Vector Database Setup |
-| rag-pipeline-design | RAG Pipeline Design |
-| rag-evaluation | RAG Evaluation |
-| hybrid-search | Hybrid Search |
-| reranking | Reranking |
-| chunking-strategies | Chunking Strategies |
-| fine-tuning-openai | Fine-tuning (OpenAI) |
-| fine-tuning-lora | Fine-tuning (LoRA) |
-| prompt-engineering | Prompt Engineering |
-| chain-of-thought | Chain-of-Thought |
-| function-calling | Tool Use / Function Calling |
-| structured-output | Structured Output |
-| guardrails | Guardrails |
-| llm-cost-optimization | Cost Optimization |
-| model-evaluation | Model Evaluation |
-| langchain-patterns | LangChain Patterns |
-| llamaindex-patterns | LlamaIndex Patterns |
-| autonomous-agents | Autonomous Agents |
-| multi-agent-systems | Multi-Agent Systems |
-| image-generation | Image Generation (DALL-E, Midjourney) |
-| image-analysis-vision | Image Analysis (Vision) |
-| speech-to-text | Speech-to-Text |
-| text-to-speech | Text-to-Speech |
-| voice-agents | Voice Agents |
-| video-generation | Video Generation |
+For complex tasks spanning multiple domains, use orchestration patterns:
 
-### Marketing
-| Name | Description |
-|------|-------------|
-| gtm-strategy | GTM Strategy |
-| icp-definition | ICP Definition |
-| value-proposition-design | Value Proposition |
-| positioning-statement | Positioning Statement |
-| messaging-framework | Messaging Framework |
-| landing-page-design | Landing Page Design |
-| above-the-fold-design | Hero Section |
-| social-proof-strategy | Social Proof |
-| cta-optimization | CTA Optimization |
-| ab-testing-framework | A/B Testing |
-| copywriting-fundamentals | Copywriting Formulas |
-| aida-framework | AIDA Framework |
-| pas-framework | PAS Framework |
-| feature-benefit-mapping | Feature-Benefit Mapping |
-| seo-on-page-optimization | SEO On-Page |
-| seo-fundamentals | SEO Technical |
-| keyword-research | Keyword Research |
-| content-marketing | Content Strategy |
-| blog-post-template | Blog Writing |
-| link-building-strategy | Guest Posting |
-| seo-link-building | Link Building |
-| google-ads-structure | Google Ads |
-| meta-ads-structure | Meta Ads |
-| linkedin-strategy | LinkedIn Ads |
-| retargeting-strategy | Retargeting |
-| welcome-sequence | Email Welcome Sequence |
-| newsletter-strategy | Newsletter |
-| nurture-sequence | Drip Campaigns |
-| email-deliverability | Email Deliverability |
-| social-media-strategy | Social Media Strategy |
-| twitter-x-strategy | Twitter/X Growth |
-| linkedin-content-strategy | LinkedIn Growth |
-| community-building | Community Building |
-| influencer-partnership | Influencer Marketing |
-| product-hunt-launch | Product Hunt Launch |
-| press-coverage | Press Release |
-| marketing-analytics-stack | Analytics Setup |
-| conversion-tracking | Conversion Tracking |
-| funnel-optimization | Funnel Analysis |
-| customer-lifecycle-marketing | Customer Journey |
+| Pattern | When to Use | Example |
+|---------|-------------|---------|
+| **Sequential** | Tasks have dependencies | Research → Product → Dev → Deploy |
+| **Parallel** | Independent tasks | Dev + Marketing + DevOps (launch prep) |
+| **Iterative** | Feedback cycles | UX ↔ Dev (design-dev loop) |
 
-### Growth
-| Name | Description |
-|------|-------------|
-| aarrr-pirate-metrics | AARRR Pirate Metrics |
-| north-star-metric | North Star Metric |
-| growth-loops | Growth Loops |
-| ab-testing-framework | A/B Testing Framework |
-| multivariate-testing | Multivariate Testing |
-| statistical-significance | Statistical Significance |
-| cohort-analysis | Cohort Analysis |
-| funnel-optimization | Funnel Optimization |
-| viral-coefficient | Viral Coefficient |
-| product-led-growth | Product-Led Growth |
-| activation-rate | Activation Rate |
-| retention-loops | Retention Loops |
+See [Decision Trees](decision-trees.md) for detailed guidance.
 
-### Advertising
-| Name | Description |
-|------|-------------|
-| meta-campaign-setup | Meta Campaign Setup |
-| meta-targeting | Meta Targeting |
-| meta-creative | Meta Creative |
-| meta-reporting | Meta Reporting |
-| google-campaign-setup | Google Campaign Setup |
-| google-keywords | Google Keywords |
-| google-creative | Google Creative |
-| google-reporting | Google Reporting |
-| linkedin-ads | LinkedIn Ads |
-| twitter-ads | Twitter Ads |
-| analytics-setup | Analytics Setup |
-| conversion-tracking | Conversion Tracking |
-| attribution-models | Attribution Models |
-| budget-optimization | Budget Optimization |
-| ab-testing-ads | A/B Testing Ads |
-| retargeting | Retargeting |
+---
 
-### Business Operations
-| Name | Description |
-|------|-------------|
-| pricing-strategy | Pricing Strategy |
-| subscription-models | Subscription Models |
-| customer-support | Customer Support |
-| churn-prevention | Churn Prevention |
-| upselling-cross-selling | Upselling & Cross-selling |
-| partnership-strategy | Partnership Strategy |
-| financial-planning | Financial Planning |
-| legal-compliance | Legal Compliance |
-| tax-considerations | Tax Considerations |
-| hiring-contractors | Hiring Contractors |
-| automation-workflow | Automation Workflow |
-| customer-success | Customer Success |
-| metrics-dashboards | Metrics Dashboards |
-| annual-planning | Annual Planning |
+## Methodologies Catalog
 
-### Project Management
-| Name | Description |
-|------|-------------|
-| stakeholder-register | Stakeholder Register |
-| stakeholder-analysis-matrix | Stakeholder Analysis Matrix |
-| raci-matrix | RACI Matrix |
-| team-charter | Team Charter |
-| development-approach-selection | Development Approach Selection |
-| project-life-cycle-design | Project Life Cycle Design |
-| wbs-creation | WBS Creation |
-| schedule-development | Schedule Development |
-| cost-estimation | Cost Estimation |
-| communication-management-plan | Communication Management Plan |
-| change-management-process | Change Management Process |
-| quality-management-plan | Quality Management Plan |
-| acceptance-criteria-definition | Acceptance Criteria Definition |
-| earned-value-management | Earned Value Management |
-| project-dashboard-design | Project Dashboard Design |
-| risk-register | Risk Register |
-| risk-response-planning | Risk Response Planning |
-| lessons-learned | Lessons Learned |
-| project-closure-checklist | Project Closure Checklist |
-| project-status-report | Project Status Report |
+**502 methodologies** organized by domain. Full catalog: [methodologies-catalog.md](methodologies-catalog.md)
 
-### PM Tools
-| Name | Description |
-|------|-------------|
-| jira-workflow | Jira Workflow Management |
-| clickup-setup | ClickUp Setup |
-| linear-issue-tracking | Linear Issue Tracking |
-| github-projects | GitHub Projects |
-| gitlab-boards | GitLab Boards |
-| azure-devops-boards | Azure DevOps Boards |
-| notion-pm | Notion PM |
-| trello-kanban | Trello Kanban |
-| cross-tool-migration | Cross-Tool Migration |
-| pm-tool-selection | PM Tool Selection |
-| agile-ceremonies-setup | Agile Ceremonies Setup |
-| reporting-dashboards | Reporting & Dashboards |
-
-### Business Analysis
-| Name | Description |
-|------|-------------|
-| ba-planning | Business Case Development |
-| stakeholder-analysis | Stakeholder Analysis |
-| elicitation-techniques | Requirements Elicitation |
-| use-case-modeling | Use Case Modeling |
-| user-story-mapping | User Story Writing |
-| acceptance-criteria | Acceptance Criteria |
-| requirements-traceability | Traceability Matrix |
-| strategy-analysis | Gap Analysis |
-| business-process-analysis | Process Modeling (BPMN) |
-| data-analysis | Data Modeling |
-| solution-assessment | Solution Assessment |
-| requirements-validation | Feasibility Study |
-
-### UX/UI
-| Name | Description |
-|------|-------------|
-| user-interviews | User Interviews |
-| surveys | Surveys |
-| contextual-inquiry | Contextual Inquiry |
-| competitive-analysis | Competitive Analysis |
-| personas | Persona Development |
-| empathy-mapping | Empathy Mapping |
-| journey-mapping | Journey Mapping |
-| service-blueprint | Service Blueprint |
-| information-architecture | Information Architecture |
-| card-sorting | Card Sorting |
-| wireframing | Wireframing |
-| prototyping | Prototyping |
-| usability-testing | Usability Testing |
-| heuristic-evaluation | Heuristic Evaluation |
-| ab-testing | A/B Testing |
-| accessibility-evaluation | Accessibility Audit |
-| design-tokens-fundamentals | Design System |
-| component-library | Component Library |
-| typography-system | Typography System |
-| color-system | Color System |
-| spacing-system | Spacing System |
-| icon-system | Icon System |
-| motion-design | Motion Design |
-| micro-interactions | Micro-interactions |
-| form-design | Form Design |
-| navigation-patterns | Navigation Patterns |
-| search-ux | Search UX |
-| error-states | Error States |
-| empty-states | Empty States |
-| loading-states | Loading States |
-| onboarding | Onboarding |
-| dark-mode | Dark Mode |
-
-### SDD
-| Name | Description |
-|------|-------------|
-| sdd-workflow-overview | Constitution Creation |
-| writing-specifications | Roadmap Planning |
-| writing-technical-design | Feature Specification |
-| creating-implementation-plans | Technical Design |
-| task-creation-parallelization | Implementation Plan |
-| executing-single-task | Task Breakdown |
-| constitution-guidelines | Task Execution |
-| quality-gates-review-cycle | Quality Gate |
-| reflexion-learning | Code Review Cycle |
-| pattern-memory | Reflexion Learning |
-| mistake-memory | Pattern Memory |
-| agentic-sdd-integration | Mistake Memory |
-
-### Communication
-| Name | Description |
-|------|-------------|
-| active-listening | Active Listening (RASA, Empathic, Reflective) |
-| mom-test | The Mom Test (Customer Validation) |
-| stakeholder-communication | Stakeholder Communication (Interview, Brainstorm, Clarify, Validate, Socratic) |
-| conflict-resolution | Conflict Resolution (Thomas-Kilmann, NVC) |
-| giving-receiving-feedback | Giving & Receiving Feedback (SBI, Radical Candor, EEC) |
-| selling-ideas | Selling Ideas (SPIN Selling, Challenger Sale, Elevator Pitch) |
-| business-storytelling | Business Storytelling (Pyramid Principle, SCQA, Pixar) |
-| negotiation-persuasion | Negotiation & Persuasion (BATNA, Cialdini's 6) |
-| difficult-conversations | Difficult Conversations (Crucial Conversations, DESC) |
-| brainstorming-ideation | Brainstorming & Ideation (SCAMPER, Mind Mapping, 6-3-5) |
+| Category | Count | Domain Skill |
+|----------|-------|--------------|
+| Research | 14 | faion-researcher |
+| Product | 18 | faion-product-manager |
+| Development | 68 | faion-software-developer |
+| DevOps | 20 | faion-devops-engineer |
+| ML/AI | 30 | faion-ml-engineer |
+| Marketing | 40 | faion-marketing-manager |
+| Growth | 12 | faion-marketing-manager |
+| Advertising | 16 | faion-marketing-manager |
+| Business Operations | 14 | faion-marketing-manager |
+| Project Management | 32 | faion-project-manager |
+| Business Analysis | 12 | faion-business-analyst |
+| UX/UI | 32 | faion-ux-ui-designer |
+| SDD | 12 | faion-sdd |
+| Communication | 10 | faion-communicator |
+| HR/Recruiting | 45 | faion-hr-recruiter |
 
 ---
 
 ## References
 
-**Workflow:**
-- [SDD Workflow](references/workflow.md) - Phases, project/feature selection
-- [Directory Structure](references/directory-structure.md) - SDD folder layout
-- [Quality Assurance](references/quality-assurance.md) - Confidence checks, reflexion
+**Core:**
+- [Decision Trees](decision-trees.md) - Skill and methodology selection
+- [Methodologies Catalog](methodologies-catalog.md) - Full 502 methodologies
 
-**Domains (Reference → Skill):**
+**SDD Workflow:**
+- [Workflow](workflow.md) - Phases, project/feature selection
+- [Directory Structure](directory-structure.md) - SDD folder layout
+- [Quality Assurance](quality-assurance.md) - Confidence checks, reflexion
 
-| Domain | Reference | Skill to Invoke |
-|--------|-----------|-----------------|
-| SDD | [sdd-domain.md](references/sdd-domain.md) | `faion-sdd` |
-| Research | [research-domain.md](references/research-domain.md) | `faion-researcher` |
-| Product | [product-domain.md](references/product-domain.md) | `faion-product-manager` |
-| Development | [development-domain.md](references/development-domain.md) | `faion-software-developer` |
-| DevOps | [development-domain.md](references/development-domain.md) | `faion-devops-engineer` |
-| Marketing | [marketing-domain.md](references/marketing-domain.md) | `faion-marketing-manager` |
-| Project Management | [pm-domain.md](references/pm-domain.md) | `faion-project-manager` |
-| Business Analysis | [ba-domain.md](references/ba-domain.md) | `faion-business-analyst` |
-| UX/UI | [ux-domain.md](references/ux-domain.md) | `faion-ux-ui-designer` |
-| AI/LLM | [ai-llm-domain.md](references/ai-llm-domain.md) | `faion-ml-engineer` |
-| Communication | [faion-communicator](~/.claude/skills/faion-communicator/SKILL.md) | `faion-communicator` |
-| Claude Code | - | `faion-claude-code` |
+**Domains:**
+
+| Domain | Reference | Skill |
+|--------|-----------|-------|
+| SDD | [sdd-domain.md](sdd-domain.md) | faion-sdd |
+| Research | [research-domain.md](research-domain.md) | faion-researcher |
+| Product | [product-domain.md](product-domain.md) | faion-product-manager |
+| Development | [development-domain.md](development-domain.md) | faion-software-developer |
+| DevOps | [development-domain.md](development-domain.md) | faion-devops-engineer |
+| Marketing | [marketing-domain.md](marketing-domain.md) | faion-marketing-manager |
+| PM | [pm-domain.md](pm-domain.md) | faion-project-manager |
+| BA | [ba-domain.md](ba-domain.md) | faion-business-analyst |
+| UX/UI | [ux-domain.md](ux-domain.md) | faion-ux-ui-designer |
+| AI/LLM | [ai-llm-domain.md](ai-llm-domain.md) | faion-ml-engineer |
 
 ---
 
-*Faion Network v2.0*
-*14 Domain Skills | 494 Methodologies | 60+ Agents*
+*Faion Network v2.1*
+*15 Domain Skills | 502 Methodologies | 60+ Agents*

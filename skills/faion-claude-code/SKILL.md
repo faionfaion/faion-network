@@ -25,11 +25,11 @@ Detailed technical context for specialized areas:
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [skills.md](references/skills.md) | SKILL.md creation, frontmatter, tools, patterns | ~340 |
-| [agents.md](references/agents.md) | Agent files, tools, prompts, patterns | ~330 |
-| [commands.md](references/commands.md) | Slash commands, arguments, syntax | ~250 |
-| [hooks.md](references/hooks.md) | Lifecycle hooks, events, templates | ~420 |
-| [mcp.md](references/mcp.md) | MCP server development, catalog, config | ~570 |
+| [skills.md](skills.md) | SKILL.md creation, frontmatter, tools, patterns | ~340 |
+| [agents.md](agents.md) | Agent files, tools, prompts, patterns | ~330 |
+| [commands.md](commands.md) | Slash commands, arguments, syntax | ~250 |
+| [hooks.md](hooks.md) | Lifecycle hooks, events, templates | ~420 |
+| [mcp.md](mcp.md) | MCP server development, catalog, config | ~570 |
 
 **Total:** ~1,910 lines of technical reference
 
@@ -43,11 +43,11 @@ User Request → Detect Type → Load Reference
 
 | Request Contains | Load Reference |
 |------------------|----------------|
-| "skill", "SKILL.md" | [skills.md](references/skills.md) |
-| "agent", "subagent" | [agents.md](references/agents.md) |
-| "command", "/cmd", "slash" | [commands.md](references/commands.md) |
-| "hook", "PreToolUse", "PostToolUse" | [hooks.md](references/hooks.md) |
-| "MCP", "server", "install mcp" | [mcp.md](references/mcp.md) |
+| "skill", "SKILL.md" | [skills.md](skills.md) |
+| "agent", "subagent" | [agents.md](agents.md) |
+| "command", "/cmd", "slash" | [commands.md](commands.md) |
+| "hook", "PreToolUse", "PostToolUse" | [hooks.md](hooks.md) |
+| "MCP", "server", "install mcp" | [mcp.md](mcp.md) |
 | "settings", "config" | Handle directly (below) |
 
 ---
@@ -116,7 +116,7 @@ echo ".claude/scripts/hooks/{project}-*" >> .gitignore
 ├── skills/
 │   └── faion-*-skill/
 │       ├── SKILL.md       # Skill index
-│       └── references/    # Detailed content
+│       └──     # Detailed content
 ├── commands/
 │   └── *.md               # Slash commands
 └── scripts/
@@ -229,7 +229,7 @@ Install Claude plugin from marketplace.
 **Skills:**
 - One clear purpose per skill
 - Include trigger keywords in description
-- Keep SKILL.md under 300 lines (use references/)
+- Keep SKILL.md under 300 lines (use )
 - Third-person descriptions only
 
 **Agents:**
@@ -273,4 +273,4 @@ Install Claude plugin from marketplace.
 ---
 
 *faion-claude-code-skill v2.0.0*
-*Claude Code configuration orchestrator with references/*
+*Claude Code configuration orchestrator with *

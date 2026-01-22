@@ -29,12 +29,17 @@ Detailed technical context for each area:
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [docker.md](references/docker.md) | Containers, Compose, multi-stage builds | ~1140 |
-| [kubernetes.md](references/kubernetes.md) | K8s resources, Helm, operators | ~960 |
-| [terraform.md](references/terraform.md) | IaC, modules, state management | ~1090 |
-| [aws.md](references/aws.md) | AWS CLI, services, IAM, networking | ~1480 |
-| [gcp.md](references/gcp.md) | gcloud CLI, GCE, GKE, Cloud Run, BigQuery | ~1400 |
-| [best-practices-2026.md](references/best-practices-2026.md) | Platform Engineering, GitOps, AIOps, DORA | ~200 |
+| [docker.md](docker.md) | Containers, Compose, multi-stage builds | ~1140 |
+| [kubernetes.md](kubernetes.md) | K8s resources, Helm, operators | ~960 |
+| [terraform.md](terraform.md) | IaC, modules, state management | ~1090 |
+| [aws.md](aws.md) | AWS CLI, services, IAM, networking | ~1480 |
+| [gcp.md](gcp.md) | gcloud CLI, GCE, GKE, Cloud Run, BigQuery | ~1400 |
+| [ref-platform-engineering.md](ref-platform-engineering.md) | Platform Engineering, IDPs | ~50 |
+| [ref-gitops.md](ref-gitops.md) | GitOps, ArgoCD, Flux | ~80 |
+| [ref-aiops.md](ref-aiops.md) | AIOps, anomaly detection | ~70 |
+| [ref-dora-metrics.md](ref-dora-metrics.md) | DORA metrics | ~35 |
+| [finops.md](finops.md) | Cloud cost optimization | ~55 |
+| [ref-security-as-code.md](ref-security-as-code.md) | Policy as Code | ~60 |
 
 **Total:** ~6,270 lines of technical reference
 
@@ -348,7 +353,7 @@ groups:
 | Issue | Action |
 |-------|--------|
 | Unknown cloud provider | Ask user or check existing config |
-| Complex infrastructure | Read references/ for patterns |
+| Complex infrastructure | Read reference files for patterns |
 | Multi-cloud setup | Combine relevant references |
 
 ---

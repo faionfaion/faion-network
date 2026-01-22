@@ -47,16 +47,16 @@ This skill provides communication methodologies for:
 
 | Name | Key Frameworks | File |
 |------|----------------|------|
-| Active Listening | RASA, Empathic Listening, Reflective | [active-listening](methodologies/active-listening.md) |
-| The Mom Test | Rob Fitzpatrick's validation | [mom-test](methodologies/mom-test.md) |
-| Stakeholder Communication | Interview, Brainstorm, Clarify, Validate, Socratic | [stakeholder-communication](methodologies/stakeholder-communication.md) |
-| Conflict Resolution | Thomas-Kilmann, NVC | [conflict-resolution](methodologies/conflict-resolution.md) |
-| Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC | [feedback](methodologies/feedback.md) |
-| Selling Ideas | SPIN Selling, Challenger Sale, Elevator Pitch | [selling-ideas](methodologies/selling-ideas.md) |
-| Business Storytelling | Pyramid Principle, SCQA, Pixar Framework | [business-storytelling](methodologies/business-storytelling.md) |
-| Negotiation & Persuasion | Principled Negotiation, BATNA, Cialdini's 6 | [negotiation](methodologies/negotiation.md) |
-| Difficult Conversations | Crucial Conversations, DESC Script | [difficult-conversations](methodologies/difficult-conversations.md) |
-| Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5, Reverse | [brainstorming-ideation](methodologies/brainstorming-ideation.md) |
+| Active Listening | RASA, Empathic Listening, Reflective | [active-listening](active-listening.md) |
+| The Mom Test | Rob Fitzpatrick's validation | [mom-test](mom-test.md) |
+| Stakeholder Communication | Interview, Brainstorm, Clarify, Validate, Socratic | [stakeholder-communication](stakeholder-communication.md) |
+| Conflict Resolution | Thomas-Kilmann, NVC | [conflict-resolution](conflict-resolution.md) |
+| Giving & Receiving Feedback | SBI, SBII, Radical Candor, EEC | [feedback](feedback.md) |
+| Selling Ideas | SPIN Selling, Challenger Sale, Elevator Pitch | [selling-ideas](selling-ideas.md) |
+| Business Storytelling | Pyramid Principle, SCQA, Pixar Framework | [business-storytelling](business-storytelling.md) |
+| Negotiation & Persuasion | Principled Negotiation, BATNA, Cialdini's 6 | [negotiation](negotiation.md) |
+| Difficult Conversations | Crucial Conversations, DESC Script | [difficult-conversations](difficult-conversations.md) |
+| Brainstorming & Ideation | SCAMPER, Mind Mapping, 6-3-5, Reverse | [brainstorming-ideation](brainstorming-ideation.md) |
 
 ---
 

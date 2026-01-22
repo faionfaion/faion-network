@@ -1,6 +1,6 @@
 ---
 name: faion-software-developer
-description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 106 methodologies."
+description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 111 methodologies."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
@@ -33,18 +33,17 @@ Detailed technical context for each area:
 
 | Reference | Content | Lines |
 |-----------|---------|-------|
-| [python.md](references/python.md) | Python, Django, FastAPI, pytest, typing | ~1760 |
-| [javascript.md](references/javascript.md) | TypeScript, React, Node.js, Bun, testing | ~1350 |
-| [backend.md](references/backend.md) | Backend architecture, databases, caching | ~3180 |
-| [api-design.md](references/api-design.md) | REST, GraphQL, OpenAPI, versioning | ~2250 |
-| [testing.md](references/testing.md) | Unit, integration, E2E, TDD, coverage | ~1810 |
-| [browser-automation.md](references/browser-automation.md) | Puppeteer, Playwright, scraping | ~1490 |
-| [methodologies.md](references/methodologies.md) | 68 development methodologies (M-DEV-*) | ~1573 |
-| [documentation.md](references/documentation.md) | CLAUDE.md creation templates | ~180 |
-| [frontend-design.md](references/frontend-design.md) | UI brainstorming, Storybook workflow | ~90 |
-| [shadcn-ui.md](references/shadcn-ui.md) | shadcn/ui architecture, CVA, composition | ~160 |
-| [tailwind.md](references/tailwind.md) | Tailwind patterns, class ordering, tokens | ~250 |
-| [django/](references/django/) | Django-specific patterns (7 files) | ~600 |
+| [ref-python.md](ref-python.md) | Python, Django, FastAPI, pytest, typing | ~1760 |
+| [ref-javascript.md](ref-javascript.md) | TypeScript, React, Node.js, Bun, testing | ~1350 |
+| [ref-go-backend.md](ref-go-backend.md) | Go backend, Gin, Echo, concurrency | ~500 |
+| [ref-testing.md](ref-testing.md) | Unit, integration, E2E, TDD, coverage | ~1810 |
+| [ref-browser-automation.md](ref-browser-automation.md) | Puppeteer, Playwright, scraping | ~1490 |
+| [ref-methodologies.md](ref-methodologies.md) | 68 development methodologies (M-DEV-*) | ~1573 |
+| [ref-documentation.md](ref-documentation.md) | CLAUDE.md creation templates | ~180 |
+| [ref-frontend-design.md](ref-frontend-design.md) | UI brainstorming, Storybook workflow | ~90 |
+| [ref-shadcn-ui.md](ref-shadcn-ui.md) | shadcn/ui architecture, CVA, composition | ~160 |
+| [ref-tailwind.md](ref-tailwind.md) | Tailwind patterns, class ordering, tokens | ~250 |
+| `django-*.md` | Django-specific patterns (7 files) | ~600 |
 
 **Total:** ~14,690 lines of technical reference
 
@@ -82,7 +81,7 @@ Detailed technical context for each area:
 
 ---
 
-## Methodologies (32)
+## Methodologies (37)
 
 ### Python
 
@@ -135,6 +134,16 @@ Detailed technical context for each area:
 | api-graphql | Schema, resolvers, N+1 |
 | websocket-design | Real-time communication |
 | api-security (in rest-design) | CORS, rate limits, validation |
+
+### Development Practices
+
+| Name | Purpose |
+|------|---------|
+| xp-extreme-programming | XP values, 12 practices, planning game |
+| pair-programming | Driver/navigator, ping-pong, strong-style |
+| mob-programming | Whole team collaboration, rotation |
+| trunk-based-development | Short-lived branches, feature flags |
+| continuous-delivery | Pipeline automation, deployment strategies |
 
 ---
 
@@ -272,7 +281,7 @@ project/
 | Issue | Action |
 |-------|--------|
 | Unknown language | Ask user or infer from files |
-| Missing context | Read references/ for patterns |
+| Missing context | Read ref-*.md files for patterns |
 | Complex architecture | Use Task tool with Explore agent |
 
 ---

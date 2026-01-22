@@ -38,6 +38,23 @@
 
 **Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
 
+## No Time Estimates
+
+**NEVER provide time estimates** for task execution in SDD workflow:
+
+- ❌ "This will take 2 hours"
+- ❌ "Estimated duration: 3 days"
+- ❌ "Should be done in 30 minutes"
+- ✅ "Task complexity: High" (qualitative)
+- ✅ "Est. tokens: ~50k" (resource-based)
+
+**Why:** Time estimates are inherently unreliable and create false expectations. Use complexity levels and token estimates instead.
+
+**In SDD documents:**
+- `implementation-plan.md` — NO `estimated_duration` field
+- `TASK_*.md` — NO time estimates, use token estimates only
+- `roadmap.md` — Use phases/milestones, not dates when possible
+
 ## Token Efficiency
 
 **Symbols:** `→` leads to | `⇒` transforms | `✅` done | `❌` failed | `⚠️` warning

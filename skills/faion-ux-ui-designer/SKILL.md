@@ -5,2336 +5,539 @@ description: "UX/UI Designer role: 10 Usability Heuristics, UX research methods,
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
-# UX Domain Skill
+# UX/UI Designer Domain Skill
 
 **Communication: User's language. Docs/code: English.**
 
 ## Purpose
 
-Orchestrates UX (User Experience) research, design, and evaluation. This domain skill provides comprehensive UX methodology based on UX research community research and industry best practices.
+Orchestrates UX (User Experience) research, design, and evaluation. This domain skill provides comprehensive UX methodology based on Nielsen Norman Group research and industry best practices.
 
-## Philosophy
+**Philosophy:** "Design is not just what it looks like. Design is how it works." — Steve Jobs
 
-**"Design is not just what it looks like. Design is how it works."** — Steve Jobs
-
-User experience is measured by how well users can achieve their goals, not by aesthetic appeal alone.
+---
 
 ## 3-Layer Architecture
 
 ```
-Layer 1: Domain Skills (this) - orchestrators
-    |
-    v call
-Layer 2: Agents - executors
-    |
-    v use
-Layer 3: Technical Skills - tools
+Layer 1: Domain Skills (this) → orchestrators
+    ↓ call
+Layer 2: Agents → executors
+    ↓ use
+Layer 3: Technical Skills → tools
 ```
 
-## Agents Called
+## Agents
 
-| Agent | Purpose | Methods Used |
-|-------|---------|--------------|
+| Agent | Purpose | Modes |
+|-------|---------|-------|
 | **faion-ux-researcher-agent** | User interviews, surveys, research synthesis | 12 research methodologies |
-| **faion-usability-agent** | Usability testing, heuristic evaluation | 10 heuristics + 10 evaluation methodologies |
+| **faion-usability-agent** | Usability testing, heuristic evaluation | 10 heuristics + 10 evaluation methods |
 
 ---
 
-## References
+## Capabilities Overview
 
-| Reference | Content | Lines |
-|-----------|---------|-------|
-| [accessibility-2026.md](references/accessibility-2026.md) | WCAG 2.2, EAA compliance, assistive tech testing | ~250 |
+| Area | Methodologies | Key Topics |
+|------|---------------|------------|
+| Usability Heuristics | 10 | Nielsen's 10 principles |
+| UX Research | 12 | Interviews, surveys, testing, personas |
+| UX Design | 9 | Wireframing, prototyping, IA |
+| Accessibility | 8 | WCAG 2.2, EAA, assistive tech |
+| AI Design Tools | 6 | Figma AI, Firefly, generative UI |
+| Design Systems | 8 | Tokens, W3C standard, cross-platform |
+| Voice UI | 10 | VUI principles, LLM integration |
+| Spatial Computing | 11 | AR/VR/MR, enterprise XR |
 
----
-
-# Part 1: 10 Usability Usability Heuristics
-
-## Overview
-
-Jakob Nielsen's 10 general principles for interaction design. They are called "heuristics" because they are broad rules of thumb, not specific usability guidelines.
-
----
-
-## visibility-of-system-status
-
-### Problem
-
-Users feel lost when they don't know what's happening in the system.
-
-### Heuristic
-
-**The design should always keep users informed about what is going on, through appropriate feedback within a reasonable amount of time.**
-
-### Framework
-
-1. **Loading States**
-   - Show progress indicators for operations > 1 second
-   - Use skeleton screens for content loading
-   - Display percentage for long operations
-
-2. **Action Feedback**
-   - Confirm successful actions (saved, sent, deleted)
-   - Show errors immediately with clear messages
-   - Indicate pending states (processing, waiting)
-
-3. **Navigation Context**
-   - Highlight current location in navigation
-   - Use breadcrumbs for deep hierarchies
-   - Show step indicators in multi-step flows
-
-4. **State Indicators**
-   - Online/offline status
-   - Connection quality
-   - Sync status
-
-### Examples
-
-| Good | Bad |
-|------|-----|
-| "Saving... Saved 5 seconds ago" | Silent save with no feedback |
-| Progress bar: "Uploading 45%" | Spinner with no context |
-| "Step 2 of 4: Payment Details" | No indication of progress |
-| "You are here" marker on map | Map without user location |
-
-### Checklist
-
-- [ ] Every action has immediate visual feedback
-- [ ] Loading states shown for operations > 1 second
-- [ ] Current location is always visible in navigation
-- [ ] System state changes are communicated clearly
-- [ ] Error states are distinguishable from normal states
-
-### Agent
-
-**faion-usability-agent** - Heuristic Evaluation mode
+**Total:** 75 methodologies
 
 ---
 
-## match-real-world
+## Decision Trees
 
-### Problem
-
-Users struggle when interfaces use unfamiliar terminology or concepts.
-
-### Heuristic
-
-**The design should speak the users' language, with words, phrases, and concepts familiar to the user, rather than internal jargon. Follow real-world conventions, making information appear in a natural and logical order.**
-
-### Framework
-
-1. **Language Audit**
-   - Replace technical terms with user terms
-   - Use verbs users would use (not system actions)
-   - Match industry-specific vocabulary when appropriate
-
-2. **Mental Models**
-   - Organize information as users expect
-   - Use familiar metaphors (folders, shopping cart)
-   - Follow real-world object behaviors
-
-3. **Logical Ordering**
-   - Chronological for timelines
-   - Alphabetical for lists
-   - Priority-based for tasks
-   - Geographic for locations
-
-4. **Cultural Considerations**
-   - Date formats (MM/DD vs DD/MM)
-   - Number formats (1,000 vs 1.000)
-   - Reading direction (LTR vs RTL)
-   - Color meanings (red = danger/luck)
-
-### Examples
-
-| Technical | User-Friendly |
-|-----------|---------------|
-| "Execute query" | "Search" |
-| "Terminate session" | "Log out" |
-| "Invalid input" | "Please enter a valid email" |
-| "Repository" | "Project" |
-| "Instance" | "Copy" or "Server" |
-
-### Checklist
-
-- [ ] No technical jargon visible to end users
-- [ ] Icons match real-world objects they represent
-- [ ] Information order matches user expectations
-- [ ] Dates, times, currencies match user locale
-- [ ] Error messages use plain language
-
-### Agent
-
-**faion-usability-agent** - Content Review mode
-
----
-
-## user-control-freedom
-
-### Problem
-
-Users often make mistakes or change their minds. They need a way out.
-
-### Heuristic
-
-**Users often perform actions by mistake. They need a clearly marked "emergency exit" to leave the unwanted action without having to go through an extended process.**
-
-### Framework
-
-1. **Undo/Redo**
-   - Support undo for destructive actions
-   - Provide redo capability
-   - Show undo confirmation ("Deleted. Undo?")
-
-2. **Cancel Operations**
-   - Allow canceling long operations
-   - Confirm before irreversible actions
-   - Provide "Back" navigation
-
-3. **Easy Exit**
-   - Clear close buttons
-   - Escape key support for modals
-   - "Cancel" button always available
-
-4. **Graceful Recovery**
-   - Soft delete with recovery period
-   - Draft auto-save
-   - Session restoration
-
-### Examples
-
-| Good | Bad |
-|------|-----|
-| "Message deleted. Undo (10s)" | Permanent delete with no undo |
-| "Cancel" button on every form | No way to exit form without saving |
-| Escape key closes modal | Click outside to close (not discoverable) |
-| "Discard changes?" confirmation | Silent loss of unsaved work |
-
-### Checklist
-
-- [ ] Undo available for destructive actions
-- [ ] Cancel button on all forms and dialogs
-- [ ] Escape key closes modals
-- [ ] Confirmation before irreversible actions
-- [ ] Auto-save for important content
-
-### Agent
-
-**faion-usability-agent** - Interaction Review mode
-
----
-
-## consistency-standards
-
-### Problem
-
-Users shouldn't wonder whether different words, situations, or actions mean the same thing.
-
-### Heuristic
-
-**Users should not have to wonder whether different words, situations, or actions mean the same thing. Follow platform and industry conventions.**
-
-### Framework
-
-1. **Internal Consistency**
-   - Same action, same name everywhere
-   - Same icon, same meaning
-   - Same position for same function
-   - Same color for same state
-
-2. **External Consistency**
-   - Follow platform conventions (iOS, Android, Web)
-   - Use industry-standard terminology
-   - Match competitor UX patterns
-
-3. **Design System**
-   - Components library
-   - Color palette with meanings
-   - Typography scale
-   - Spacing system
-
-4. **Interaction Patterns**
-   - Consistent click/tap targets
-   - Same gesture for same action
-   - Predictable navigation
-
-### Examples
-
-| Inconsistent | Consistent |
-|--------------|------------|
-| "Save" / "Submit" / "Confirm" for same action | "Save" everywhere |
-| Blue links on page A, green on page B | Blue links everywhere |
-| Menu on left on some pages, right on others | Menu always in same position |
-| Different button sizes for same importance | Button hierarchy system |
-
-### Checklist
-
-- [ ] Design system documented and followed
-- [ ] Same terminology for same concepts
-- [ ] Same colors for same meanings
-- [ ] Platform conventions respected
-- [ ] Components reused, not recreated
-
-### Agent
-
-**faion-usability-agent** - Design Consistency Audit mode
-
----
-
-## error-prevention
-
-### Problem
-
-Errors frustrate users and cost businesses money. Prevention is better than recovery.
-
-### Heuristic
-
-**Good error messages are important, but the best designs carefully prevent problems from occurring in the first place. Either eliminate error-prone conditions, or check for them and present users with a confirmation option before they commit to the action.**
-
-### Framework
-
-1. **Eliminate Error-Prone Conditions**
-   - Use dropdowns instead of text input for known values
-   - Disable buttons until valid input
-   - Use date pickers instead of text dates
-   - Auto-format inputs (phone, credit card)
-
-2. **Constrain Input**
-   - Set min/max values
-   - Limit character count
-   - Restrict file types
-   - Validate in real-time
-
-3. **Confirm Risky Actions**
-   - "Are you sure you want to delete?"
-   - Preview before publish
-   - Review before payment
-
-4. **Provide Defaults**
-   - Smart defaults based on context
-   - Remember user preferences
-   - Suggest common values
-
-### Examples
-
-| Error-Prone | Error-Proof |
-|-------------|-------------|
-| Text input for country | Dropdown with countries |
-| "Enter date" text field | Date picker calendar |
-| Free-form phone input | Masked input: (___) ___-____ |
-| Immediate delete | "Delete" -> Confirm -> Deleted |
-
-### Checklist
-
-- [ ] Dropdowns used for known value sets
-- [ ] Date/time pickers instead of text input
-- [ ] Real-time validation with helpful messages
-- [ ] Confirmation for destructive actions
-- [ ] Smart defaults reduce input needed
-
-### Agent
-
-**faion-usability-agent** - Form Review mode
-
----
-
-## recognition-over-recall
-
-### Problem
-
-Users should not have to remember information from one part of the interface to another.
-
-### Heuristic
-
-**Minimize the user's memory load by making elements, actions, and options visible. The user should not have to remember information from one part of the dialogue to another. Instructions for use of the system should be visible or easily retrievable whenever appropriate.**
-
-### Framework
-
-1. **Make Options Visible**
-   - Show all available actions
-   - Use menus instead of command lines
-   - Display recent items
-   - Show shortcuts inline
-
-2. **Reduce Memory Load**
-   - Display context (current file name, user name)
-   - Show breadcrumbs for navigation history
-   - Preview selections before confirming
-
-3. **Provide Help In-Context**
-   - Tooltips on hover
-   - Inline help text
-   - Examples in placeholders
-   - Progressive disclosure
-
-4. **Remember User Context**
-   - Recently opened files
-   - Search history
-   - Form field suggestions
-   - Last used settings
-
-### Examples
-
-| Requires Recall | Supports Recognition |
-|-----------------|----------------------|
-| "Enter command" | Menu with all commands |
-| "Enter product code" | Searchable product list |
-| "Confirm password" (hidden) | Show password toggle |
-| Empty search box | Recent searches dropdown |
-
-### Checklist
-
-- [ ] All available actions are visible or easily discoverable
-- [ ] Recent items and history easily accessible
-- [ ] Tooltips explain unclear elements
-- [ ] Form fields have helpful placeholders
-- [ ] Search suggestions based on history
-
-### Agent
-
-**faion-usability-agent** - Cognitive Load Review mode
-
----
-
-## flexibility-efficiency
-
-### Problem
-
-Different users have different needs. Novices need guidance, experts need speed.
-
-### Heuristic
-
-**Shortcuts - hidden from novice users - can speed up the interaction for the expert user such that the design can cater to both inexperienced and experienced users. Allow users to tailor frequent actions.**
-
-### Framework
-
-1. **Keyboard Shortcuts**
-   - Common shortcuts (Ctrl+S, Ctrl+Z)
-   - Custom shortcut assignment
-   - Shortcut cheat sheet
-
-2. **Accelerators**
-   - Type-ahead search
-   - Quick actions
-   - Bulk operations
-   - Drag and drop
-
-3. **Customization**
-   - Configurable dashboard
-   - Custom workflows
-   - Saved filters/views
-   - Personalized defaults
-
-4. **Progressive Complexity**
-   - Simple mode by default
-   - Advanced options available
-   - Expert mode toggle
-
-### Examples
-
-| Novice Path | Expert Path |
-|-------------|-------------|
-| Click File > Save | Ctrl+S |
-| Navigate through menu | Command palette (Cmd+K) |
-| Single item edit | Bulk edit mode |
-| Wizard-based setup | Import configuration |
-
-### Checklist
-
-- [ ] Keyboard shortcuts for common actions
-- [ ] Shortcuts documented and discoverable
-- [ ] Bulk operations for repetitive tasks
-- [ ] Search/filter can be saved
-- [ ] Power user features don't complicate novice experience
-
-### Agent
-
-**faion-usability-agent** - Efficiency Review mode
-
----
-
-## aesthetic-minimalist
-
-### Problem
-
-Every extra unit of information competes with relevant information and diminishes visibility.
-
-### Heuristic
-
-**Interfaces should not contain information which is irrelevant or rarely needed. Every extra unit of information in an interface competes with the relevant units of information and diminishes their relative visibility.**
-
-### Framework
-
-1. **Content Hierarchy**
-   - Most important information first
-   - Progressive disclosure for details
-   - Clear visual hierarchy
-
-2. **Remove Clutter**
-   - Eliminate unnecessary elements
-   - Reduce decorative graphics
-   - Simplify navigation
-
-3. **White Space**
-   - Generous padding
-   - Group related items
-   - Separate unrelated content
-
-4. **Focus on Essentials**
-   - One primary action per screen
-   - Hide advanced options
-   - Default to simple view
-
-### Examples
-
-| Cluttered | Minimalist |
-|-----------|------------|
-| 10 buttons on toolbar | 3 primary, "More" for rest |
-| Full feature list on home | Key benefits, link to details |
-| All settings visible | Organized in categories |
-| Dense text walls | Scannable bullet points |
-
-### Checklist
-
-- [ ] Primary action clearly visible
-- [ ] Secondary actions de-emphasized
-- [ ] Adequate white space
-- [ ] Content scannable, not wall of text
-- [ ] Decorative elements serve a purpose
-
-### Agent
-
-**faion-usability-agent** - Visual Design Review mode
-
----
-
-## error-recovery
-
-### Problem
-
-Errors will happen. Good error messages help users fix problems quickly.
-
-### Heuristic
-
-**Error messages should be expressed in plain language (no error codes), precisely indicate the problem, and constructively suggest a solution.**
-
-### Framework
-
-1. **Error Message Structure**
-   - What happened (plain language)
-   - Why it happened (if helpful)
-   - How to fix it (actionable)
-   - Link to help (if complex)
-
-2. **Visual Error States**
-   - Red border on invalid fields
-   - Error icon with message
-   - Inline error placement
-   - Clear error vs warning distinction
-
-3. **Error Prevention vs Recovery**
-   - Prevent before it happens (validation)
-   - Recover quickly if it happens (suggestions)
-   - Learn from errors (analytics)
-
-4. **Error Types**
-   - Validation errors (user input)
-   - System errors (server issues)
-   - Network errors (connectivity)
-   - Permission errors (access denied)
-
-### Examples
-
-| Bad Error | Good Error |
-|-----------|------------|
-| "Error 500" | "Something went wrong. Please try again or contact support." |
-| "Invalid input" | "Email address is not valid. Example: name@example.com" |
-| "Operation failed" | "Could not save. Check your connection and try again." |
-| "Unauthorized" | "You don't have permission. Request access from admin@company.com" |
-
-### Error Message Template
+### Main Decision Tree: What UX task?
 
 ```
-[What] Your password is too short.
-[Why] Passwords must be at least 8 characters for security.
-[Fix] Add more characters to your password.
+START: What is your UX/UI task?
+    │
+    ├─→ [Understand Users] → Research Decision Tree
+    │
+    ├─→ [Evaluate Existing Design] → Evaluation Decision Tree
+    │
+    ├─→ [Create New Design] → Design Decision Tree
+    │
+    ├─→ [Ensure Accessibility] → Accessibility Decision Tree
+    │
+    ├─→ [Voice/Conversational] → Voice UI Decision Tree
+    │
+    ├─→ [AR/VR/XR] → Spatial Computing Decision Tree
+    │
+    └─→ [Design System] → Design Systems Decision Tree
 ```
 
-### Checklist
-
-- [ ] Error messages in plain language
-- [ ] Specific problem identified
-- [ ] Actionable solution provided
-- [ ] Errors placed near the problem
-- [ ] Recovery path is clear
-
-### Agent
-
-**faion-usability-agent** - Error Handling Review mode
-
 ---
 
-## help-documentation
+### Research Decision Tree
 
-### Problem
-
-Even the best designs sometimes need explanation. Help should be accessible when needed.
-
-### Heuristic
-
-**It is better if the system can be used without documentation, but it may be necessary to provide help and documentation. Any such information should be easy to search, focused on the user's task, list concrete steps to be carried out, and not be too large.**
-
-### Framework
-
-1. **Types of Help**
-   - Onboarding tours (first-time users)
-   - Tooltips (contextual help)
-   - Help center (searchable docs)
-   - FAQs (common questions)
-   - Live chat/support (complex issues)
-
-2. **Help Content Principles**
-   - Task-oriented (how to achieve goals)
-   - Searchable (full-text search)
-   - Scannable (short paragraphs, lists)
-   - Current (updated with product)
-
-3. **Contextual Help**
-   - "?" icons next to complex fields
-   - Empty state guidance
-   - First-use walkthroughs
-   - Inline documentation
-
-4. **Progressive Help**
-   - Start with basics
-   - Link to advanced topics
-   - Offer video alternatives
-   - Provide examples
-
-### Examples
-
-| Poor Help | Good Help |
-|-----------|-----------|
-| PDF manual download | Searchable help center |
-| Generic FAQ | Context-sensitive help |
-| "See documentation" | Link to specific article |
-| Text-only instructions | Step-by-step with screenshots |
-
-### Checklist
-
-- [ ] Help is searchable
-- [ ] Help is contextual (relates to current task)
-- [ ] Instructions are step-by-step
-- [ ] Screenshots or videos for complex tasks
-- [ ] Help content is up-to-date
-
-### Agent
-
-**faion-usability-agent** - Documentation Review mode
-
----
-
-# Part 2: UX Research Methods
-
-## Overview
-
-Research methods for understanding user needs, behaviors, and experiences. Choosing the right method depends on research goals, timeline, and resources.
-
----
-
-## user-interviews
-
-### Problem
-
-You need deep understanding of user motivations, pain points, and workflows.
-
-### When to Use
-
-- Early discovery phase
-- Understanding "why" behind behaviors
-- Exploring new problem spaces
-- Validating personas
-
-### Framework
-
-1. **Preparation**
-   - Define research questions (not interview questions)
-   - Recruit 5-8 participants per segment
-   - Prepare discussion guide
-   - Set up recording (with consent)
-
-2. **Interview Structure**
-   - Introduction (5 min): Build rapport, explain purpose
-   - Warm-up (5 min): Easy background questions
-   - Main body (30-40 min): Core research questions
-   - Wrap-up (5 min): Summary, additional thoughts
-
-3. **Question Types**
-   - Open-ended: "Tell me about..."
-   - Follow-up: "Why do you think that is?"
-   - Behavioral: "Walk me through the last time..."
-   - Hypothetical: "What if you could..."
-
-4. **Analysis**
-   - Transcribe or review recordings
-   - Identify themes and patterns
-   - Create affinity diagram
-   - Document quotes
-
-### Interview Guide Template
-
-```markdown
-## Research Goal
-[What we want to learn]
-
-## Participant Criteria
-[Who to recruit]
-
-## Discussion Guide
-
-### Introduction (5 min)
-- Introduce yourself
-- Explain purpose (learning, not testing)
-- Ask permission to record
-- "No right or wrong answers"
-
-### Background (5 min)
-- Role and responsibilities
-- Experience with [topic]
-
-### Core Questions (30 min)
-1. [Question 1]
-   - Follow-up: [Probe]
-2. [Question 2]
-   - Follow-up: [Probe]
-
-### Wrap-up (5 min)
-- Anything else to share?
-- Any questions for us?
+```
+What do you need to learn?
+    │
+    ├─→ [Deep understanding of users]
+    │       │
+    │       ├─→ Early discovery? → user-interviews, contextual-inquiry
+    │       ├─→ Over time? → diary-studies
+    │       └─→ Team alignment? → empathy-mapping, personas
+    │
+    ├─→ [Quantitative data at scale]
+    │       │
+    │       └─→ surveys (NPS, CSAT, SUS)
+    │
+    ├─→ [Information Architecture]
+    │       │
+    │       ├─→ How users categorize? → card-sorting
+    │       └─→ Can users find content? → tree-testing
+    │
+    ├─→ [User journey understanding]
+    │       │
+    │       └─→ journey-mapping
+    │
+    ├─→ [Compare design options]
+    │       │
+    │       └─→ ab-testing
+    │
+    └─→ [Competitive landscape]
+            │
+            └─→ competitive-analysis
 ```
 
-### Checklist
+**Research Methods Quick Reference:**
 
-- [ ] Research goals defined before interviews
-- [ ] Discussion guide prepared and reviewed
-- [ ] Participants recruited from target audience
-- [ ] Recording consent obtained
-- [ ] Notes taken during interview
-- [ ] Analysis completed within 48 hours
-
-### Agent
-
-**faion-ux-researcher-agent** - Interview mode
-
----
-
-## contextual-inquiry
-
-### Problem
-
-You need to observe real behavior in natural environment, not just hear about it.
-
-### When to Use
-
-- Understanding actual workflows
-- Discovering workarounds
-- Learning environmental constraints
-- Early design discovery
-
-### Framework
-
-1. **Master-Apprentice Model**
-   - User is the expert (master)
-   - Researcher is learning (apprentice)
-   - Observe, then ask questions
-
-2. **Four Principles**
-   - **Context:** Observe in real environment
-   - **Partnership:** Collaborate, don't just watch
-   - **Interpretation:** Discuss observations in the moment
-   - **Focus:** Stay on research topic
-
-3. **Session Structure**
-   - Introduction (10 min): Explain approach
-   - Observation (60-90 min): Watch and ask
-   - Summary (15 min): Review understanding
-
-4. **Documentation**
-   - Photos (with permission)
-   - Sketches of workspace
-   - Artifact collection
-   - Audio/video recording
-
-### Checklist
-
-- [ ] Environment access arranged
-- [ ] Participant comfortable with observation
-- [ ] Research focus defined
-- [ ] Permission for photos/recording
-- [ ] Artifacts collected
-- [ ] Same-day notes completed
-
-### Agent
-
-**faion-ux-researcher-agent** - Contextual Inquiry mode
+| Need | Method | File |
+|------|--------|------|
+| Understand motivations | User Interviews | [user-interviews](user-interviews.md) |
+| Observe real behavior | Contextual Inquiry | [contextual-inquiry](contextual-inquiry.md) |
+| Quantitative feedback | Surveys | [surveys](surveys.md) |
+| Test with real users | Usability Testing | [usability-testing](usability-testing.md) |
+| Validate IA structure | Tree Testing | [tree-testing](tree-testing.md) |
+| Create IA from scratch | Card Sorting | [card-sorting](card-sorting.md) |
+| Long-term behavior | Diary Studies | [diary-studies](diary-studies.md) |
+| Team empathy | Empathy Mapping | [journey-mapping](journey-mapping.md) |
+| Target users | Personas | [personas](personas.md) |
+| End-to-end experience | Journey Mapping | [journey-mapping](journey-mapping.md) |
+| Data-driven decisions | A/B Testing | [ab-testing](ab-testing.md) |
+| Market landscape | Competitive Analysis | [competitive-analysis](competitive-analysis.md) |
 
 ---
 
-## surveys
+### Evaluation Decision Tree
 
-### Problem
-
-You need quantitative data from large number of users.
-
-### When to Use
-
-- Measuring satisfaction (NPS, CSAT)
-- Prioritizing features
-- Benchmarking over time
-- Reaching large audiences
-
-### Framework
-
-1. **Survey Design**
-   - Define objectives first
-   - Keep surveys short (5-10 min)
-   - Use clear, unbiased language
-   - Include progress indicator
-
-2. **Question Types**
-   - **Closed:** Multiple choice, rating scales
-   - **Open:** Free text (use sparingly)
-   - **Scale:** Likert (1-5 or 1-7)
-   - **Ranking:** Order preferences
-
-3. **Response Scales**
-   | Scale | Use For |
-   |-------|---------|
-   | 1-5 Likert | Agreement, satisfaction |
-   | 1-10 NPS | Likelihood to recommend |
-   | Semantic differential | Opposing adjectives |
-   | Frequency | How often |
-
-4. **Analysis**
-   - Quantitative: Means, distributions, correlations
-   - Qualitative: Theme coding for open responses
-   - Segmentation: Compare groups
-
-### Survey Template
-
-```markdown
-## Survey Objective
-[What decision will this inform?]
-
-## Target Audience
-[Who should respond?]
-
-## Questions
-
-### Screening
-1. [Role/criteria check]
-
-### Core Questions
-2. On a scale of 1-5, how satisfied are you with [feature]?
-   - [ ] 1 - Very dissatisfied
-   - [ ] 2 - Dissatisfied
-   - [ ] 3 - Neutral
-   - [ ] 4 - Satisfied
-   - [ ] 5 - Very satisfied
-
-3. What is your primary challenge with [topic]?
-   - [ ] Option A
-   - [ ] Option B
-   - [ ] Other: ____
-
-### Open-Ended
-4. What would make [product] more useful for you?
-   [Text field]
-
-### Demographics
-5. Role: [Dropdown]
-6. Company size: [Dropdown]
+```
+What needs evaluation?
+    │
+    ├─→ [Expert review (no users)]
+    │       │
+    │       ├─→ Against principles? → heuristic-evaluation (10 heuristics)
+    │       ├─→ Learnability focus? → cognitive-walkthrough
+    │       └─→ Team feedback? → design-critique
+    │
+    ├─→ [Test with users]
+    │       │
+    │       ├─→ Complex flows? → usability-testing (moderated)
+    │       ├─→ Simple tasks at scale? → usability-testing (unmoderated)
+    │       └─→ Measure satisfaction? → surveys (SUS)
+    │
+    └─→ [Content review]
+            │
+            └─→ content-audit
 ```
 
-### Checklist
+**10 Usability Heuristics Quick Reference:**
 
-- [ ] Objectives clearly defined
-- [ ] Survey length under 10 minutes
-- [ ] Questions unbiased and clear
-- [ ] Scale types appropriate
-- [ ] Pilot tested before launch
-- [ ] Response rate acceptable (>20%)
-
-### Agent
-
-**faion-ux-researcher-agent** - Survey mode
+| # | Heuristic | When Violated | File |
+|---|-----------|---------------|------|
+| 1 | Visibility of System Status | No loading states, no feedback | [visibility-of-system-status](visibility-of-system-status.md) |
+| 2 | Match Between System and Real World | Technical jargon, unfamiliar icons | [match-real-world](match-real-world.md) |
+| 3 | User Control and Freedom | No undo, no cancel, trapped in flows | [user-control-freedom](user-control-freedom.md) |
+| 4 | Consistency and Standards | Different words for same thing | [consistency-standards](consistency-standards.md) |
+| 5 | Error Prevention | Users make frequent mistakes | [error-prevention](error-prevention.md) |
+| 6 | Recognition Rather Than Recall | Users must remember info | [recognition-over-recall](recognition-over-recall.md) |
+| 7 | Flexibility and Efficiency | No shortcuts for experts | [flexibility-efficiency](flexibility-efficiency.md) |
+| 8 | Aesthetic and Minimalist Design | Cluttered, too much info | [aesthetic-minimalist](aesthetic-minimalist.md) |
+| 9 | Help Users Recover from Errors | Cryptic error messages | [error-recovery](error-recovery.md) |
+| 10 | Help and Documentation | No help, hard to find | [help-documentation](help-documentation.md) |
 
 ---
 
-## usability-testing
+### Design Decision Tree
 
-### Problem
-
-You need to validate that users can complete tasks with your design.
-
-### When to Use
-
-- Validating prototypes
-- Finding usability issues
-- Comparing design options
-- Measuring task success
-
-### Framework
-
-1. **Test Types**
-   | Type | When | Pros | Cons |
-   |------|------|------|------|
-   | Moderated | Complex flows | Deep insights | Time-intensive |
-   | Unmoderated | Simple tasks | Scale, speed | Less context |
-   | Remote | Access users anywhere | Convenience | Tech issues |
-   | In-person | Observe body language | Rich data | Logistics |
-
-2. **Session Structure**
-   - Pre-test interview (5 min)
-   - Task scenarios (20-40 min)
-   - Post-test questions (10 min)
-   - SUS questionnaire (5 min)
-
-3. **Task Writing**
-   - Scenario-based (not "click here")
-   - Realistic goals
-   - No hints about solution
-   - Clear success criteria
-
-4. **Metrics**
-   - Task success rate
-   - Time on task
-   - Error rate
-   - SUS score
-   - Task difficulty rating
-
-### Usability Test Script
-
-```markdown
-## Introduction
-"Thank you for participating. We're testing [product], not you.
-There are no right or wrong answers. Please think aloud."
-
-## Warm-up
-"First, tell me a bit about yourself and your role."
-
-## Tasks
-
-### Task 1: [Goal]
-Scenario: "Imagine you need to [realistic context].
-Please show me how you would [specific goal]."
-
-Success criteria:
-- [ ] Completed task
-- [ ] Found [specific element]
-- [ ] Time under [X] minutes
-
-### Task 2: [Goal]
-[Same format]
-
-## Post-Test
-"Overall, how would you describe this experience?"
-"What was most confusing?"
-"What did you like?"
-
-## SUS Questionnaire
-[10-item System Usability Scale]
+```
+What design artifact needed?
+    │
+    ├─→ [Structure content]
+    │       │
+    │       └─→ information-architecture
+    │
+    ├─→ [Explore layouts]
+    │       │
+    │       ├─→ Low fidelity? → wireframing (paper, Balsamiq)
+    │       └─→ High fidelity? → wireframing (Figma)
+    │
+    ├─→ [Test interactions]
+    │       │
+    │       └─→ prototyping
+    │
+    ├─→ [Mobile-specific]
+    │       │
+    │       └─→ mobile-ux
+    │
+    ├─→ [Interface text]
+    │       │
+    │       └─→ ux-writing (microcopy)
+    │
+    └─→ [Onboarding flow]
+            │
+            └─→ onboarding-design
 ```
 
-### Checklist
+**Design Methods Quick Reference:**
 
-- [ ] Test objectives defined
-- [ ] 5+ participants per design
-- [ ] Realistic task scenarios
-- [ ] Think-aloud protocol used
-- [ ] Metrics captured
-- [ ] Findings prioritized by severity
-
-### Agent
-
-**faion-usability-agent** - Usability Testing mode
+| Need | Method | File |
+|------|--------|------|
+| Organize content | Information Architecture | [information-architecture](information-architecture.md) |
+| Layout exploration | Wireframing | [wireframing](wireframing.md) |
+| Test interactions | Prototyping | [prototyping](prototyping.md) |
+| Touch interfaces | Mobile UX | [mobile-ux](mobile-ux.md) |
+| Focus groups | Focus Groups | [focus-groups](focus-groups.md) |
 
 ---
 
-## ab-testing
+### Accessibility Decision Tree
 
-### Problem
-
-You need to make data-driven decisions between design alternatives.
-
-### When to Use
-
-- Optimizing conversions
-- Validating design hypotheses
-- Iterating on existing features
-- Measuring real user behavior
-
-### Framework
-
-1. **Test Design**
-   - One variable per test
-   - Control (A) vs Variant (B)
-   - Define success metric
-   - Calculate sample size
-
-2. **Statistical Requirements**
-   - Confidence level: 95%
-   - Statistical power: 80%
-   - Minimum detectable effect: 5-10%
-   - Sample size calculator
-
-3. **Implementation**
-   - Random assignment
-   - Even split (50/50)
-   - Consistent experience per user
-   - Run for full business cycle
-
-4. **Analysis**
-   - Statistical significance
-   - Practical significance
-   - Segment analysis
-   - Secondary metrics
-
-### A/B Test Plan Template
-
-```markdown
-## Hypothesis
-If we [change], then [metric] will [improve/increase] by [amount]
-because [reason].
-
-## Test Design
-- Control (A): [Current design]
-- Variant (B): [New design]
-- Variable: [Single change]
-
-## Metrics
-- Primary: [Conversion rate, clicks, etc.]
-- Secondary: [Engagement, time on page]
-- Guardrail: [Metrics that should not decrease]
-
-## Sample Size
-- MDE: [5%]
-- Confidence: [95%]
-- Power: [80%]
-- Required sample: [X users per variant]
-
-## Duration
-- Estimated: [X days/weeks]
-- Minimum: [1 full business cycle]
-
-## Segmentation
-- [ ] Device type
-- [ ] New vs returning
-- [ ] User segment
+```
+What accessibility need?
+    │
+    ├─→ [Compliance requirements]
+    │       │
+    │       ├─→ WCAG 2.2 audit? → wcag-22-compliance
+    │       ├─→ US government (ADA)? → ada-title-ii-compliance-2026
+    │       └─→ EU/EAA compliance? → regulatory-compliance-2026
+    │
+    ├─→ [Design phase]
+    │       │
+    │       └─→ accessibility-first-design
+    │
+    ├─→ [Testing]
+    │       │
+    │       ├─→ Automated? → ai-accessibility-automation-2026
+    │       └─→ Manual/assistive tech? → testing-with-assistive-technology
+    │
+    ├─→ [Cognitive accessibility]
+    │       │
+    │       └─→ cognitive-inclusion-design
+    │
+    └─→ [AI-assisted]
+            │
+            └─→ ai-assisted-accessibility
 ```
 
-### Checklist
+**Accessibility Quick Reference:**
 
-- [ ] Single variable isolated
-- [ ] Sample size calculated
-- [ ] Success metric defined
-- [ ] Test ran for full cycle
-- [ ] Results statistically significant
-- [ ] Decision documented
-
-### Agent
-
-**faion-ux-researcher-agent** - A/B Testing mode
+| Need | File |
+|------|------|
+| WCAG 2.2 compliance | [wcag-22-compliance](wcag-22-compliance.md) |
+| Design-phase accessibility | [accessibility-first-design](accessibility-first-design.md) |
+| Regulatory requirements | [regulatory-compliance-2026](regulatory-compliance-2026.md) |
+| Assistive tech testing | [testing-with-assistive-technology](testing-with-assistive-technology.md) |
+| AI automation | [ai-accessibility-automation-2026](ai-accessibility-automation-2026.md) |
+| Cognitive inclusion | [cognitive-inclusion-design](cognitive-inclusion-design.md) |
+| ADA Title II (US 2026) | [ada-title-ii-compliance-2026](ada-title-ii-compliance-2026.md) |
+| AI-assisted tools | [ai-assisted-accessibility](ai-assisted-accessibility.md) |
 
 ---
 
-## card-sorting
+### Voice UI Decision Tree
 
-### Problem
-
-You need to understand how users categorize and label information.
-
-### When to Use
-
-- Designing information architecture
-- Creating navigation
-- Labeling categories
-- Understanding mental models
-
-### Framework
-
-1. **Types**
-   | Type | Description | Use |
-   |------|-------------|-----|
-   | **Open** | Users create categories | New IA |
-   | **Closed** | Users sort into predefined categories | Validate IA |
-   | **Hybrid** | Predefined + can create new | Iterate IA |
-
-2. **Setup**
-   - 30-60 cards (content items)
-   - 15-30 participants
-   - Physical or digital (OptimalSort, Maze)
-   - Clear instructions
-
-3. **Analysis**
-   - Similarity matrix
-   - Dendrogram (clustering)
-   - Category agreement
-   - Labeling patterns
-
-### Card Sort Plan
-
-```markdown
-## Objective
-[What IA decision will this inform?]
-
-## Type
-- [ ] Open (users create groups)
-- [ ] Closed (predefined groups)
-- [ ] Hybrid
-
-## Cards
-1. [Content item 1]
-2. [Content item 2]
-...
-[30-60 items]
-
-## Categories (for closed/hybrid)
-- [Category A]
-- [Category B]
-...
-
-## Participants
-- Number: [15-30]
-- Criteria: [Target users]
-
-## Analysis Plan
-- Similarity matrix threshold: [70%]
-- Report format: [Dendrogram + recommendations]
+```
+What voice/conversational need?
+    │
+    ├─→ [Getting started]
+    │       │
+    │       ├─→ Market context? → vui-market-context
+    │       └─→ Core principles? → core-vui-design-principles
+    │
+    ├─→ [Conversation design]
+    │       │
+    │       └─→ vui-conversation-design
+    │
+    ├─→ [Error handling]
+    │       │
+    │       └─→ error-handling-in-vui
+    │
+    ├─→ [Multimodal (voice + visual)]
+    │       │
+    │       └─→ multimodal-vui-design
+    │
+    ├─→ [Accessibility]
+    │       │
+    │       └─→ vui-accessibility-inclusivity
+    │
+    ├─→ [Privacy/security]
+    │       │
+    │       └─→ vui-privacy-security
+    │
+    ├─→ [IoT integration]
+    │       │
+    │       └─→ vui-iot-integration
+    │
+    ├─→ [LLM-powered]
+    │       │
+    │       └─→ llm-powered-conversational-ai
+    │
+    └─→ [Testing]
+            │
+            └─→ vui-testing-best-practices
 ```
 
-### Checklist
+**Voice UI Quick Reference:**
 
-- [ ] Card content matches real labels
-- [ ] 30-60 cards prepared
-- [ ] 15+ participants completed
-- [ ] Similarity matrix analyzed
-- [ ] Recommendations documented
-
-### Agent
-
-**faion-ux-researcher-agent** - Card Sorting mode
+| Need | File |
+|------|------|
+| Market overview | [vui-market-context](vui-market-context.md) |
+| Core principles | [core-vui-design-principles](core-vui-design-principles.md) |
+| Conversation design | [vui-conversation-design](vui-conversation-design.md) |
+| Error handling | [error-handling-in-vui](error-handling-in-vui.md) |
+| Voice + visual | [multimodal-vui-design](multimodal-vui-design.md) |
+| VUI accessibility | [vui-accessibility-inclusivity](vui-accessibility-inclusivity.md) |
+| Privacy/security | [vui-privacy-security](vui-privacy-security.md) |
+| Smart home/IoT | [vui-iot-integration](vui-iot-integration.md) |
+| LLM-powered AI | [llm-powered-conversational-ai](llm-powered-conversational-ai.md) |
+| Testing VUI | [vui-testing-best-practices](vui-testing-best-practices.md) |
 
 ---
 
-## tree-testing
+### Spatial Computing Decision Tree
 
-### Problem
-
-You need to validate that users can find content in your navigation structure.
-
-### When to Use
-
-- Validating information architecture
-- Testing navigation labels
-- Before implementing navigation
-- After card sorting
-
-### Framework
-
-1. **Setup**
-   - Text-only navigation tree
-   - No visual design
-   - 8-10 tasks
-   - 50+ participants
-
-2. **Task Design**
-   - Goal-based scenarios
-   - No hints in wording
-   - Single correct answer
-   - Varying difficulty
-
-3. **Metrics**
-   - Success rate (found correct location)
-   - Directness (no backtracking)
-   - Time to complete
-   - First click accuracy
-
-4. **Analysis**
-   - Task-level success
-   - Path analysis
-   - Problem categories identification
-   - Recommendations
-
-### Tree Test Plan
-
-```markdown
-## Navigation Tree
 ```
-Home
-|-- Products
-|   |-- Category A
-|   |-- Category B
-|-- Support
-|   |-- FAQ
-|   |-- Contact
-|-- About
+What AR/VR/XR need?
+    │
+    ├─→ [Getting started]
+    │       │
+    │       ├─→ Overview? → spatial-computing-overview
+    │       └─→ UX fundamentals? → spatial-ux-fundamentals
+    │
+    ├─→ [Interaction design]
+    │       │
+    │       └─→ spatial-interaction-patterns
+    │
+    ├─→ [UI patterns]
+    │       │
+    │       └─→ spatial-ui-patterns
+    │
+    ├─→ [Platform-specific]
+    │       │
+    │       ├─→ AR design? → ar-design-patterns
+    │       └─→ VR design? → vr-design-patterns
+    │
+    ├─→ [Immersion]
+    │       │
+    │       └─→ immersive-design-principles
+    │
+    ├─→ [Enterprise]
+    │       │
+    │       └─→ enterprise-xr-applications
+    │
+    ├─→ [AI integration]
+    │       │
+    │       └─→ ai-spatial-computing
+    │
+    ├─→ [Accessibility]
+    │       │
+    │       └─→ spatial-accessibility
+    │
+    └─→ [Tools]
+            │
+            └─→ spatial-design-tools
 ```
 
-## Tasks
+**Spatial Computing Quick Reference:**
 
-### Task 1
-Scenario: "You want to [goal]."
-Correct answer: Home > Products > Category A
+| Need | File |
+|------|------|
+| Platform overview | [spatial-computing-overview](spatial-computing-overview.md) |
+| UX fundamentals | [spatial-ux-fundamentals](spatial-ux-fundamentals.md) |
+| Interaction patterns | [spatial-interaction-patterns](spatial-interaction-patterns.md) |
+| UI patterns | [spatial-ui-patterns](spatial-ui-patterns.md) |
+| Immersive design | [immersive-design-principles](immersive-design-principles.md) |
+| AR patterns | [ar-design-patterns](ar-design-patterns.md) |
+| VR patterns | [vr-design-patterns](vr-design-patterns.md) |
+| Enterprise XR | [enterprise-xr-applications](enterprise-xr-applications.md) |
+| AI + spatial | [ai-spatial-computing](ai-spatial-computing.md) |
+| XR accessibility | [spatial-accessibility](spatial-accessibility.md) |
+| Design tools | [spatial-design-tools](spatial-design-tools.md) |
 
-### Task 2
-[Continue for 8-10 tasks]
+---
 
-## Success Criteria
-- Overall success: >80%
-- Directness: >60%
+### Design Systems Decision Tree
+
+```
+What design system need?
+    │
+    ├─→ [Token fundamentals]
+    │       │
+    │       └─→ design-tokens-fundamentals
+    │
+    ├─→ [Token organization]
+    │       │
+    │       └─→ token-organization
+    │
+    ├─→ [Theming/modes]
+    │       │
+    │       └─→ semantic-tokens-and-modes
+    │
+    ├─→ [Standards]
+    │       │
+    │       └─→ w3c-design-tokens-standard
+    │
+    ├─→ [AI enhancement]
+    │       │
+    │       └─→ ai-enhanced-design-systems
+    │
+    ├─→ [Success factors]
+    │       │
+    │       └─→ design-system-success-factors
+    │
+    ├─→ [Tailwind integration]
+    │       │
+    │       └─→ tailwind-design-tokens
+    │
+    └─→ [Cross-platform]
+            │
+            └─→ cross-platform-token-distribution
 ```
 
-### Checklist
+**Design Systems Quick Reference:**
 
-- [ ] Navigation tree matches proposed IA
-- [ ] Tasks cover key user goals
-- [ ] 50+ participants completed
-- [ ] Problem areas identified
-- [ ] Improvements recommended
-
-### Agent
-
-**faion-ux-researcher-agent** - Tree Testing mode
+| Need | File |
+|------|------|
+| Token basics | [design-tokens-fundamentals](design-tokens-fundamentals.md) |
+| Token structure | [token-organization](token-organization.md) |
+| Theming/dark mode | [semantic-tokens-and-modes](semantic-tokens-and-modes.md) |
+| W3C standard | [w3c-design-tokens-standard](w3c-design-tokens-standard.md) |
+| AI-enhanced | [ai-enhanced-design-systems](ai-enhanced-design-systems.md) |
+| Success factors | [design-system-success-factors](design-system-success-factors.md) |
+| Tailwind | [tailwind-design-tokens](tailwind-design-tokens.md) |
+| Cross-platform | [cross-platform-token-distribution](cross-platform-token-distribution.md) |
 
 ---
 
-## journey-mapping
+### AI Design Tools Decision Tree
 
-### Problem
-
-You need to understand the complete user experience across touchpoints and time.
-
-### When to Use
-
-- Understanding end-to-end experience
-- Identifying pain points
-- Aligning teams on user perspective
-- Finding improvement opportunities
-
-### Framework
-
-1. **Journey Map Components**
-   - **Stages:** Major phases of experience
-   - **Actions:** What user does
-   - **Thoughts:** What user thinks
-   - **Emotions:** How user feels
-   - **Touchpoints:** Where interaction happens
-   - **Pain Points:** Friction and frustration
-   - **Opportunities:** Improvement ideas
-
-2. **Process**
-   - Define scope and persona
-   - Gather research data
-   - Map current state
-   - Identify pain points
-   - Propose future state
-
-3. **Data Sources**
-   - User interviews
-   - Analytics
-   - Support tickets
-   - Surveys
-   - Usability tests
-
-### Journey Map Template
-
-```markdown
-## Journey: [Name]
-## Persona: [User type]
-## Scenario: [Specific goal]
-
-| Stage | Awareness | Consideration | Decision | Use | Support |
-|-------|-----------|---------------|----------|-----|---------|
-| **Actions** | Searches online | Compares options | Signs up | Uses feature | Contacts support |
-| **Thoughts** | "How do I solve this?" | "Which is best?" | "Is this worth it?" | "How do I do X?" | "Why isn't this working?" |
-| **Emotions** | Curious | Overwhelmed | Hopeful | Frustrated | Anxious |
-| **Touchpoints** | Google, social | Website, reviews | Pricing page | App | Support chat |
-| **Pain Points** | Hard to find info | Too many options | Pricing unclear | Feature hard to find | Long wait time |
-| **Opportunities** | SEO, content | Comparison tool | Clear pricing | Onboarding | Self-service help |
+```
+What AI tool need?
+    │
+    ├─→ [Figma ecosystem]
+    │       │
+    │       └─→ figma-ai-ecosystem
+    │
+    ├─→ [Adobe tools]
+    │       │
+    │       └─→ adobe-firefly-integration
+    │
+    ├─→ [Generative UI]
+    │       │
+    │       └─→ generative-ui-design
+    │
+    ├─→ [Plugin ecosystem]
+    │       │
+    │       └─→ ai-plugin-ecosystem
+    │
+    ├─→ [Assistant patterns]
+    │       │
+    │       └─→ ai-design-assistant-patterns
+    │
+    └─→ [Tool comparison]
+            │
+            └─→ figma-vs-adobe-strategy-2026
 ```
 
-### Checklist
+**AI Tools Quick Reference:**
 
-- [ ] Persona defined
-- [ ] Journey scope bounded
-- [ ] Based on real user data
-- [ ] Pain points identified
-- [ ] Opportunities prioritized
-- [ ] Stakeholders aligned
-
-### Agent
-
-**faion-ux-researcher-agent** - Journey Mapping mode
+| Need | File |
+|------|------|
+| Figma AI features | [figma-ai-ecosystem](figma-ai-ecosystem.md) |
+| Adobe Firefly | [adobe-firefly-integration](adobe-firefly-integration.md) |
+| Generative UI (v0, Galileo) | [generative-ui-design](generative-ui-design.md) |
+| AI plugins | [ai-plugin-ecosystem](ai-plugin-ecosystem.md) |
+| Assistant patterns | [ai-design-assistant-patterns](ai-design-assistant-patterns.md) |
+| Figma vs Adobe | [figma-vs-adobe-strategy-2026](figma-vs-adobe-strategy-2026.md) |
 
 ---
 
-## empathy-mapping
-
-### Problem
-
-You need to build shared understanding of user perspective within your team.
-
-### When to Use
-
-- Synthesizing research findings
-- Workshop activity
-- Building empathy
-- Preparing for design
-
-### Framework
-
-1. **Quadrants**
-   - **Says:** Direct quotes from research
-   - **Thinks:** Inferred thoughts, beliefs
-   - **Does:** Observable behaviors, actions
-   - **Feels:** Emotions, frustrations, delights
-
-2. **Extended Model**
-   - **Goals:** What user wants to achieve
-   - **Pain Points:** What frustrates them
-   - **Gains:** What would delight them
-
-3. **Process**
-   - Gather research artifacts
-   - Create individual maps
-   - Synthesize into composite
-   - Validate with team
-
-### Empathy Map Template
-
-```markdown
-## User: [Name/Persona]
-## Context: [Situation being mapped]
-
-### SAYS
-- "[Direct quote 1]"
-- "[Direct quote 2]"
-
-### THINKS
-- Believes [belief]
-- Wonders about [question]
-- Worries that [concern]
-
-### DOES
-- [Observable behavior 1]
-- [Observable behavior 2]
-- Workaround: [coping mechanism]
-
-### FEELS
-- Frustrated when [trigger]
-- Delighted by [positive]
-- Anxious about [concern]
-
-### GOALS
-- Primary: [Main goal]
-- Secondary: [Supporting goals]
-
-### PAIN POINTS
-1. [Major frustration]
-2. [Minor frustration]
-
-### GAINS
-1. [What would delight]
-2. [Unmet need]
-```
-
-### Checklist
-
-- [ ] Based on real research
-- [ ] All quadrants filled
-- [ ] Team participated
-- [ ] Insights actionable
-- [ ] Documented and shared
-
-### Agent
-
-**faion-ux-researcher-agent** - Empathy Mapping mode
-
----
-
-## personas
-
-### Problem
-
-You need a shared reference for who you're designing for.
-
-### When to Use
-
-- Starting new project
-- Aligning team on target users
-- Making design decisions
-- Prioritizing features
-
-### Framework
-
-1. **Persona Components**
-   - Name and photo (realistic)
-   - Demographics
-   - Goals and motivations
-   - Frustrations and pain points
-   - Behaviors and habits
-   - Technology comfort
-   - Quote that captures essence
-
-2. **Types**
-   | Type | Description | Use |
-   |------|-------------|-----|
-   | **Proto-persona** | Assumption-based | Before research |
-   | **Research-based** | Data-driven | After research |
-   | **Composite** | Combined from multiple users | When patterns emerge |
-
-3. **Process**
-   - Conduct user research
-   - Identify patterns and segments
-   - Create 3-5 distinct personas
-   - Validate with stakeholders
-   - Keep personas alive (reference often)
-
-### Persona Template
-
-```markdown
-## [Persona Name]
-
-### Photo
-[Realistic stock photo representing demographic]
-
-### Quote
-"[Characteristic quote that captures perspective]"
-
-### Demographics
-- Age: [Range]
-- Role: [Job title]
-- Location: [Geography]
-- Tech comfort: [Low/Medium/High]
-
-### Bio
-[2-3 sentences about background and context]
-
-### Goals
-1. [Primary goal]
-2. [Secondary goal]
-3. [Tertiary goal]
-
-### Frustrations
-1. [Major pain point]
-2. [Minor pain point]
-
-### Behaviors
-- [Relevant behavior 1]
-- [Relevant behavior 2]
-
-### Tools Used
-- [Tool/platform 1]
-- [Tool/platform 2]
-
-### A Day in the Life
-[Brief narrative of typical day]
-```
-
-### Checklist
-
-- [ ] Based on research data
-- [ ] 3-5 distinct personas
-- [ ] Goals clearly defined
-- [ ] Frustrations specific
-- [ ] Team has access
-- [ ] Referenced in decisions
-
-### Agent
-
-**faion-ux-researcher-agent** - Persona Development mode
-
----
-
-## diary-studies
-
-### Problem
-
-You need to understand behavior over time in natural context.
-
-### When to Use
-
-- Long-term behavior patterns
-- Infrequent activities
-- Emotional journeys
-- Context-dependent behavior
-
-### Framework
-
-1. **Setup**
-   - Duration: 1-4 weeks
-   - Participants: 10-15
-   - Entry frequency: Daily or per event
-   - Platform: App, email, or physical diary
-
-2. **Entry Design**
-   - Short entries (2-5 minutes)
-   - Mix of structured and open
-   - Photo/video capture
-   - Emotion capture
-
-3. **Engagement**
-   - Daily reminders
-   - Mid-study check-ins
-   - Incentives for completion
-   - Support channel
-
-4. **Analysis**
-   - Timeline analysis
-   - Pattern identification
-   - Cross-participant themes
-   - Quote extraction
-
-### Diary Study Plan
-
-```markdown
-## Study Objective
-[What long-term behavior are we studying?]
-
-## Duration
-[X weeks]
-
-## Participants
-- Number: [10-15]
-- Criteria: [Target users]
-- Compensation: [Incentive]
-
-## Entry Prompt
-
-### Daily Entry
-1. What [activity] did you do today?
-2. On a scale of 1-5, how was your experience?
-3. What was most challenging?
-4. Photo: [If relevant, capture image]
-
-### Event-Triggered Entry
-1. What just happened?
-2. What were you trying to do?
-3. How did you feel?
-```
-
-### Checklist
-
-- [ ] Duration appropriate for behavior
-- [ ] Entry prompts tested
-- [ ] Reminder system in place
-- [ ] Mid-study engagement planned
-- [ ] Analysis framework ready
-- [ ] Participant dropout managed
-
-### Agent
-
-**faion-ux-researcher-agent** - Diary Study mode
-
----
-
-## competitive-analysis
-
-### Problem
-
-You need to understand the competitive landscape and identify opportunities.
-
-### When to Use
-
-- New product planning
-- Feature prioritization
-- Positioning strategy
-- UX benchmarking
-
-### Framework
-
-1. **Competitor Categories**
-   - **Direct:** Same product, same market
-   - **Indirect:** Different product, same need
-   - **Future:** Emerging competitors
-
-2. **Analysis Dimensions**
-   - Features and capabilities
-   - User experience
-   - Pricing and business model
-   - Strengths and weaknesses
-   - Market positioning
-
-3. **Methods**
-   - Product teardown
-   - User reviews analysis
-   - Heuristic evaluation
-   - Feature matrix
-   - SWOT analysis
-
-### Competitive Analysis Template
-
-```markdown
-## Product: [Your product]
-## Market: [Market segment]
-
-## Competitors
-
-### [Competitor A]
-- Website: [URL]
-- Pricing: [Model]
-- Target: [User segment]
-
-#### Strengths
-- [Strength 1]
-- [Strength 2]
-
-#### Weaknesses
-- [Weakness 1]
-- [Weakness 2]
-
-#### UX Notes
-- [Notable UX pattern]
-- [Pain point observed]
-
-### [Competitor B]
-[Same format]
-
-## Feature Matrix
-
-| Feature | Us | Comp A | Comp B |
-|---------|------|--------|--------|
-| Feature 1 | Yes | Yes | No |
-| Feature 2 | No | Yes | Yes |
-
-## Opportunities
-1. [Gap in market]
-2. [Competitor weakness to exploit]
-
-## Threats
-1. [Competitor advantage]
-2. [Market trend]
-```
-
-### Checklist
-
-- [ ] Direct and indirect competitors identified
-- [ ] Feature comparison complete
-- [ ] UX evaluated systematically
-- [ ] Opportunities identified
-- [ ] Threats documented
-- [ ] Regularly updated
-
-### Agent
-
-**faion-ux-researcher-agent** - Competitive Analysis mode
-
----
-
-# Part 3: UX Design Methods
-
-## Overview
-
-Methods for translating research into design solutions.
-
----
-
-## information-architecture
-
-### Problem
-
-You need to organize content so users can find what they need.
-
-### Framework
-
-1. **IA Components**
-   - **Organization schemes:** How content is categorized
-   - **Labeling systems:** How content is named
-   - **Navigation systems:** How users move through content
-   - **Search systems:** How users find specific content
-
-2. **Organization Schemes**
-   | Scheme | Example | Use |
-   |--------|---------|-----|
-   | Alphabetical | A-Z directory | Known-item search |
-   | Chronological | Blog posts | Time-based content |
-   | Geographical | Store locations | Location-based |
-   | Topic | Product categories | Browsing |
-   | Audience | For developers/designers | Role-based |
-   | Task | What you can do | Action-oriented |
-
-3. **Process**
-   - Content audit
-   - Card sorting
-   - Create sitemap
-   - Tree testing
-   - Iterate
-
-### Sitemap Template
-
-```markdown
-## [Product Name] Sitemap
-
-### Level 1: Primary Navigation
-1. Home
-2. Products
-3. Resources
-4. Pricing
-5. About
-
-### Level 2: Products
-2.1. Category A
-2.2. Category B
-2.3. All Products
-
-### Level 3: Category A
-2.1.1. Product 1
-2.1.2. Product 2
-```
-
-### Checklist
-
-- [ ] Content inventory complete
-- [ ] Organization scheme chosen
-- [ ] Labels user-tested
-- [ ] Navigation validated (tree test)
-- [ ] Search requirements defined
-
-### Agent
-
-**faion-usability-agent** - Information Architecture mode
-
----
-
-## wireframing
-
-### Problem
-
-You need to explore layout and structure before visual design.
-
-### Framework
-
-1. **Fidelity Levels**
-   | Level | Detail | Tool | Purpose |
-   |-------|--------|------|---------|
-   | Low | Boxes, lines | Paper, Whimsical | Explore ideas |
-   | Medium | Real content, basic layout | Balsamiq, Figma | Validate structure |
-   | High | Detailed, interactive | Figma, Sketch | Test interactions |
-
-2. **Wireframe Elements**
-   - Content blocks (text, images)
-   - Navigation
-   - Forms and inputs
-   - Calls to action
-   - Annotations
-
-3. **Best Practices**
-   - Use real content (no lorem ipsum)
-   - Focus on hierarchy, not aesthetics
-   - Include annotations explaining choices
-   - Create multiple variations
-   - Test with users before high-fidelity
-
-### Checklist
-
-- [ ] Key screens identified
-- [ ] Real content used
-- [ ] Hierarchy clear
-- [ ] Annotations included
-- [ ] Multiple options explored
-- [ ] Stakeholder review complete
-
-### Agent
-
-**faion-usability-agent** - Wireframing Review mode
-
----
-
-## prototyping
-
-### Problem
-
-You need to test interactions before building.
-
-### Framework
-
-1. **Prototype Types**
-   | Type | Tool | Use |
-   |------|------|-----|
-| Paper | Sketches | Very early exploration |
-   | Clickable | Figma, InVision | Flow validation |
-   | Interactive | Figma, Framer | Micro-interactions |
-   | Coded | HTML/CSS | Developer handoff |
-
-2. **Prototyping Principles**
-   - Right fidelity for the question
-   - Realistic enough to test
-   - Fast to iterate
-   - Disposable
-
-3. **Testing Prototypes**
-   - Define what to learn
-   - Create task scenarios
-   - Run usability tests
-   - Iterate based on findings
-
-### Checklist
-
-- [ ] Fidelity matches research goals
-- [ ] Key flows prototyped
-- [ ] Realistic interactions
-- [ ] Tested with users
-- [ ] Findings documented
-
-### Agent
-
-**faion-usability-agent** - Prototype Review mode
-
----
-
-## design-systems
-
-### Problem
-
-You need consistency and efficiency across a product.
-
-### Framework
-
-1. **Design System Components**
-   - **Foundations:** Color, typography, spacing, icons
-   - **Components:** Buttons, inputs, cards, modals
-   - **Patterns:** Forms, navigation, data display
-   - **Guidelines:** Usage rules, accessibility, voice
-
-2. **Documentation**
-   - Component specifications
-   - Do's and don'ts
-   - Code snippets
-   - Live examples
-
-3. **Maintenance**
-   - Version control
-   - Contribution process
-   - Deprecation policy
-   - Governance model
-
-### Design System Structure
-
-```markdown
-## [Product] Design System
-
-### Foundations
-- Colors: Brand, UI, Semantic
-- Typography: Scale, Weights, Usage
-- Spacing: 4px base unit scale
-- Icons: Library, Usage guidelines
-
-### Components
-- Button: Primary, Secondary, Destructive
-- Input: Text, Number, Select, Checkbox
-- Card: Default, Interactive, Featured
-- Modal: Alert, Confirmation, Form
-
-### Patterns
-- Form Layout
-- Navigation
-- Data Table
-- Empty States
-- Loading States
-```
-
-### Checklist
-
-- [ ] Foundations defined
-- [ ] Core components documented
-- [ ] Accessibility built in
-- [ ] Code implementation aligned
-- [ ] Governance established
-
-### Agent
-
-**faion-usability-agent** - Design System Review mode
-
----
-
-## accessibility-evaluation
-
-### Problem
-
-You need to design for users of all abilities.
-
-### Framework
-
-1. **WCAG Principles (POUR)**
-   - **Perceivable:** Content available to senses
-   - **Operable:** Interface can be used
-   - **Understandable:** Content and UI clear
-   - **Robust:** Works with assistive tech
-
-2. **Common Requirements**
-   | Category | Requirement |
-   |----------|-------------|
-   | Vision | Color contrast 4.5:1, alt text, resizable text |
-   | Hearing | Captions, transcripts |
-   | Motor | Keyboard navigation, large targets |
-   | Cognitive | Simple language, consistent navigation |
-
-3. **Design Checklist**
-   - [ ] Color not only indicator
-   - [ ] Focus states visible
-   - [ ] Form labels associated
-   - [ ] Error messages descriptive
-   - [ ] Skip navigation available
-   - [ ] Heading hierarchy correct
-
-### Accessibility Audit Template
-
-```markdown
-## Page: [URL]
-
-### Perceivable
-- [ ] Images have alt text
-- [ ] Color contrast passes (4.5:1)
-- [ ] Text resizable to 200%
-
-### Operable
-- [ ] All interactive elements keyboard accessible
-- [ ] Focus order logical
-- [ ] No keyboard traps
-- [ ] Skip links available
-
-### Understandable
-- [ ] Language declared
-- [ ] Form inputs labeled
-- [ ] Error messages clear
-
-### Robust
-- [ ] Valid HTML
-- [ ] ARIA used correctly
-- [ ] Works with screen readers
-```
-
-### Checklist
-
-- [ ] WCAG 2.1 AA compliance targeted
-- [ ] Automated testing run
-- [ ] Manual testing completed
-- [ ] Screen reader tested
-- [ ] Keyboard navigation verified
-
-### Agent
-
-**faion-usability-agent** - Accessibility Audit mode
-
----
-
-## mobile-ux
-
-### Problem
-
-You need to design for touch interfaces and small screens.
-
-### Framework
-
-1. **Mobile-First Principles**
-   - Design for smallest screen first
-   - Prioritize content ruthlessly
-   - Optimize for touch
-   - Consider context
-
-2. **Touch Targets**
-   - Minimum size: 44x44px (iOS), 48x48dp (Android)
-   - Adequate spacing between targets
-   - Primary actions in thumb zone
-
-3. **Mobile Patterns**
-   | Pattern | Use |
-   |---------|-----|
-   | Bottom navigation | 3-5 primary destinations |
-   | Pull to refresh | Content updates |
-   | Swipe actions | Quick operations |
-   | Floating action button | Primary action |
-
-4. **Performance**
-   - Optimize images
-   - Minimize JavaScript
-   - Lazy load content
-   - Offline support
-
-### Mobile UX Checklist
-
-- [ ] Touch targets 44px minimum
-- [ ] Content prioritized for small screen
-- [ ] Forms optimized (input types, autofill)
-- [ ] Loading states shown
-- [ ] Works offline (critical features)
-- [ ] Tested on real devices
-
-### Agent
-
-**faion-usability-agent** - Mobile UX Review mode
-
----
-
-## form-design
-
-### Problem
-
-You need to create forms that are easy to complete.
-
-### Framework
-
-1. **Form Principles**
-   - Ask only what you need
-   - Use appropriate input types
-   - Show clear labels and help
-   - Validate in real-time
-   - Make errors easy to fix
-
-2. **Input Best Practices**
-   | Input | Best Practice |
-   |-------|---------------|
-   | Text | Appropriate width for expected content |
-   | Email | email input type for keyboard |
-   | Phone | tel input type, auto-format |
-   | Date | Date picker, not text |
-   | Select | Searchable for long lists |
-   | Checkbox | For multi-select, binary |
-   | Radio | For single select, few options |
-
-3. **Layout**
-   - One column (mobile-friendly)
-   - Labels above inputs
-   - Group related fields
-   - Clear progress for multi-step
-
-4. **Validation**
-   - Validate on blur, not on change
-   - Inline error messages
-   - Describe what's wrong and how to fix
-   - Don't clear valid fields on error
-
-### Form Design Checklist
-
-- [ ] Only necessary fields included
-- [ ] Input types appropriate
-- [ ] Labels clear and visible
-- [ ] Help text where needed
-- [ ] Validation real-time
-- [ ] Error messages actionable
-- [ ] Primary action clear
-- [ ] Works without JavaScript
-
-### Agent
-
-**faion-usability-agent** - Form Review mode
-
----
-
-## onboarding-design
-
-### Problem
-
-You need to help new users get value quickly.
-
-### Framework
-
-1. **Onboarding Types**
-   | Type | When | Example |
-   |------|------|---------|
-   | Benefits-oriented | First visit | Value proposition |
-   | Function-oriented | First use | Feature tour |
-   | Progressive | Over time | Contextual tips |
-
-2. **Onboarding Principles**
-   - Show value before asking for info
-   - Minimize steps to first success
-   - Let users skip and return later
-   - Personalize based on goals
-
-3. **Patterns**
-   - Welcome screens
-   - Feature tours
-   - Empty states with guidance
-   - Checklists and progress
-   - Contextual tooltips
-
-4. **Metrics**
-   - Completion rate
-   - Time to first value
-   - Drop-off points
-   - Feature adoption
-
-### Onboarding Flow Template
-
-```markdown
-## Onboarding: [Product]
-
-### Step 1: Welcome
-- Headline: [Value proposition]
-- CTA: Get started
-
-### Step 2: Quick Wins
-- Goal: [First success moment]
-- Actions: [Minimal steps]
-
-### Step 3: Personalization (optional)
-- Question: [Relevant customization]
-- Impact: [How it improves experience]
-
-### Step 4: Feature Highlight
-- Feature: [Key capability]
-- Action: [Try it now]
-
-### Success State
-- Celebration: [Positive feedback]
-- Next: [Clear next step]
-```
-
-### Checklist
-
-- [ ] First value achieved quickly
-- [ ] Steps skippable
-- [ ] Progress visible
-- [ ] Help accessible
-- [ ] Drop-off tracked
-- [ ] Optimized based on data
-
-### Agent
-
-**faion-usability-agent** - Onboarding Review mode
-
----
-
-## ux-writing
-
-### Problem
-
-You need to write interface text that guides and delights users.
-
-### Framework
-
-1. **UX Writing Principles**
-   - Clear over clever
-   - Concise over complete
-   - Useful over promotional
-   - Human over robotic
-
-2. **Content Types**
-   | Type | Purpose | Example |
-   |------|---------|---------|
-   | Labels | Identify elements | "Email address" |
-   | Instructions | Guide actions | "Enter your email to get started" |
-   | Errors | Explain problems | "This email is already registered" |
-   | Confirmation | Verify actions | "Your changes have been saved" |
-   | Empty states | Guide next steps | "No messages yet. Start a conversation!" |
-
-3. **Voice and Tone**
-   - Voice: Consistent personality
-   - Tone: Adapts to context (error vs success)
-
-4. **Best Practices**
-   - Front-load important information
-   - Use verbs for buttons (Save, not Okay)
-   - Be specific (not "Error occurred")
-   - Match user's language
-
-### UX Writing Checklist
-
-- [ ] Button text uses verbs
-- [ ] Error messages explain and solve
-- [ ] Confirmation messages reassure
-- [ ] Empty states guide action
-- [ ] Tone appropriate for context
-- [ ] Terminology consistent
-
-### Agent
-
-**faion-usability-agent** - Content Review mode
-
----
-
-## ux-metrics
-
-### Problem
-
-You need to measure UX quality objectively.
-
-### Framework
-
-1. **Metric Categories**
-   | Category | Metrics | Measures |
-   |----------|---------|----------|
-   | Behavioral | Task success, time on task, error rate | Performance |
-   | Attitudinal | SUS, NPS, CSAT | Satisfaction |
-   | Business | Conversion, retention, support tickets | Impact |
-
-2. **Common UX Metrics**
-   - **SUS (System Usability Scale):** 10-question standardized survey (0-100)
-   - **NPS (Net Promoter Score):** Likelihood to recommend (-100 to +100)
-   - **Task Success Rate:** Percentage completing tasks
-   - **Time on Task:** Efficiency measure
-   - **Error Rate:** Mistakes per task
-
-3. **Benchmarking**
-   - SUS average: 68
-   - Good SUS: 80+
-   - NPS average varies by industry
-   - Track over time for trends
-
-4. **Measurement Plan**
-   - Define metrics per feature
-   - Establish baselines
-   - Set targets
-   - Measure regularly
-   - Act on findings
-
-### UX Metrics Dashboard
-
-```markdown
-## [Product] UX Metrics
-
-### Overall
-- SUS Score: [X] (Target: 80)
-- NPS: [X] (Target: +50)
-
-### Task Performance
-| Task | Success Rate | Avg Time | Benchmark |
-|------|--------------|----------|-----------|
-| Sign up | 85% | 2m 30s | 90%, 2m |
-| Find product | 75% | 45s | 80%, 30s |
-
-### Trends
-- SUS: [trend over time]
-- Task success: [trend over time]
-
-### Action Items
-1. [Improvement based on data]
-2. [Improvement based on data]
-```
-
-### Checklist
-
-- [ ] Key metrics defined
-- [ ] Baseline established
-- [ ] Targets set
-- [ ] Regular measurement cadence
-- [ ] Findings shared with team
-- [ ] Actions taken on insights
-
-### Agent
-
-**faion-usability-agent** - Metrics Review mode
-
----
-
-# Quick Reference
-
-## Methodology Index
-
-| Name | Description | Category | Agent |
-|------|-------------|----------|-------|
-| visibility-of-system-status | Visibility of System Status | Heuristic | faion-usability-agent |
-| match-real-world | Match Between System and Real World | Heuristic | faion-usability-agent |
-| user-control-freedom | User Control and Freedom | Heuristic | faion-usability-agent |
-| consistency-standards | Consistency and Standards | Heuristic | faion-usability-agent |
-| error-prevention | Error Prevention | Heuristic | faion-usability-agent |
-| recognition-over-recall | Recognition Rather Than Recall | Heuristic | faion-usability-agent |
-| flexibility-efficiency | Flexibility and Efficiency of Use | Heuristic | faion-usability-agent |
-| aesthetic-minimalist | Aesthetic and Minimalist Design | Heuristic | faion-usability-agent |
-| error-recovery | Help Users Recognize, Diagnose, Recover from Errors | Heuristic | faion-usability-agent |
-| help-documentation | Help and Documentation | Heuristic | faion-usability-agent |
-| user-interviews | User Interviews | Research | faion-ux-researcher-agent |
-| contextual-inquiry | Contextual Inquiry | Research | faion-ux-researcher-agent |
-| surveys | Surveys and Questionnaires | Research | faion-ux-researcher-agent |
-| usability-testing | Usability Testing | Research | faion-usability-agent |
-| ab-testing | A/B Testing | Research | faion-ux-researcher-agent |
-| card-sorting | Card Sorting | Research | faion-ux-researcher-agent |
-| tree-testing | Tree Testing | Research | faion-ux-researcher-agent |
-| journey-mapping | Journey Mapping | Research | faion-ux-researcher-agent |
-| empathy-mapping | Empathy Mapping | Research | faion-ux-researcher-agent |
-| personas | Persona Development | Research | faion-ux-researcher-agent |
-| diary-studies | Diary Studies | Research | faion-ux-researcher-agent |
-| competitive-analysis | Competitive Analysis | Research | faion-ux-researcher-agent |
-| information-architecture | Information Architecture | Design | faion-usability-agent |
-| wireframing | Wireframing | Design | faion-usability-agent |
-| prototyping | Prototyping | Design | faion-usability-agent |
-| design-tokens-fundamentals | Design Systems | Design | faion-usability-agent |
-| accessibility-evaluation | Accessibility Design | Design | faion-usability-agent |
-| mobile-ux | Mobile UX Design | Design | faion-usability-agent |
-| form-design | Form Design | Design | faion-usability-agent |
-| onboarding-design | Onboarding Design | Design | faion-usability-agent |
-| microcopy-ux-writing | Microcopy and UX Writing | Design | faion-usability-agent |
-| ux-metrics-kpis | UX Metrics and KPIs | Measurement | faion-usability-agent |
-
-## When to Use What
-
-| Goal | Method |
-|------|--------|
-| Understand user needs | user-interviews, contextual-inquiry |
-| Validate information architecture | card-sorting, tree-testing |
-| Test usability | usability-testing, 10 heuristics |
-| Measure satisfaction | surveys, ux-metrics |
-| Optimize conversion | ab-testing, form-design |
-| Map experience | journey-mapping, empathy-mapping |
-| Design for accessibility | accessibility-evaluation |
-| Ensure consistency | design-systems, consistency-standards |
+## Complete Methodology Index
+
+### Nielsen's 10 Usability Heuristics
+
+| # | Name | File |
+|---|------|------|
+| 1 | Visibility of System Status | [visibility-of-system-status](visibility-of-system-status.md) |
+| 2 | Match Between System and Real World | [match-real-world](match-real-world.md) |
+| 3 | User Control and Freedom | [user-control-freedom](user-control-freedom.md) |
+| 4 | Consistency and Standards | [consistency-standards](consistency-standards.md) |
+| 5 | Error Prevention | [error-prevention](error-prevention.md) |
+| 6 | Recognition Rather Than Recall | [recognition-over-recall](recognition-over-recall.md) |
+| 7 | Flexibility and Efficiency of Use | [flexibility-efficiency](flexibility-efficiency.md) |
+| 8 | Aesthetic and Minimalist Design | [aesthetic-minimalist](aesthetic-minimalist.md) |
+| 9 | Help Users Recover from Errors | [error-recovery](error-recovery.md) |
+| 10 | Help and Documentation | [help-documentation](help-documentation.md) |
+
+### UX Research Methods
+
+| Name | File |
+|------|------|
+| User Interviews | [user-interviews](user-interviews.md) |
+| Contextual Inquiry | [contextual-inquiry](contextual-inquiry.md) |
+| Surveys | [surveys](surveys.md) |
+| Usability Testing | [usability-testing](usability-testing.md) |
+| A/B Testing | [ab-testing](ab-testing.md) |
+| Card Sorting | [card-sorting](card-sorting.md) |
+| Tree Testing | [tree-testing](tree-testing.md) |
+| Journey Mapping | [journey-mapping](journey-mapping.md) |
+| Personas | [personas](personas.md) |
+| Diary Studies | [diary-studies](diary-studies.md) |
+| Competitive Analysis | [competitive-analysis](competitive-analysis.md) |
+| Focus Groups | [focus-groups](focus-groups.md) |
+
+### Evaluation Methods
+
+| Name | File |
+|------|------|
+| Heuristic Evaluation | [heuristic-evaluation](heuristic-evaluation.md) |
+| Cognitive Walkthrough | [cognitive-walkthrough](cognitive-walkthrough.md) |
+| Design Critique | [design-critique](design-critique.md) |
+| Content Audit | [content-audit](content-audit.md) |
+| Accessibility Evaluation | [accessibility-evaluation](accessibility-evaluation.md) |
+
+### Design Methods
+
+| Name | File |
+|------|------|
+| Information Architecture | [information-architecture](information-architecture.md) |
+| Wireframing | [wireframing](wireframing.md) |
+| Prototyping | [prototyping](prototyping.md) |
+| Mobile UX | [mobile-ux](mobile-ux.md) |
+| Voice UI | [voice-ui](voice-ui.md) |
 
 ---
 
 ## Sources
 
-- [UX research community](https://www.nngroup.com/) - 10 Usability Heuristics
-- [IDEO Design Kit](https://www.designkit.org/) - Human-Centered Design Methods
-- [Rosenfeld Media](https://rosenfeldmedia.com/) - Information Architecture
-- [A List Apart](https://alistapart.com/) - Web Design Standards
+- [Nielsen Norman Group](https://www.nngroup.com/) - 10 Usability Heuristics
+- [IDEO Design Kit](https://www.designkit.org/) - Human-Centered Design
 - [WCAG 2.2](https://www.w3.org/WAI/WCAG22/quickref/) - Accessibility Guidelines
 - [Material Design](https://m3.material.io/) - Google Design System
 - [Human Interface Guidelines](https://developer.apple.com/design/) - Apple Design
 
 ---
 
-*UX Domain Skill v1.0*
-*32 Methodologies (semantic names)*
-*Agents: faion-ux-researcher-agent, faion-usability-agent*
-
-
----
-
-## Methodologies
-
-| Name | File |
-|------|------|
-| Visibility of System Status | [visibility-of-system-status](references/visibility-of-system-status.md) |
-| Match Real World | [match-real-world](references/match-real-world.md) |
-| User Control Freedom | [user-control-freedom](references/user-control-freedom.md) |
-| Consistency Standards | [consistency-standards](references/consistency-standards.md) |
-| Error Prevention | [error-prevention](references/error-prevention.md) |
-| Recognition Over Recall | [recognition-over-recall](references/recognition-over-recall.md) |
-| Flexibility Efficiency | [flexibility-efficiency](references/flexibility-efficiency.md) |
-| Aesthetic Minimalist | [aesthetic-minimalist](references/aesthetic-minimalist.md) |
-| Error Recovery | [error-recovery](references/error-recovery.md) |
-| Help Documentation | [help-documentation](references/help-documentation.md) |
-| User Interviews | [user-interviews](references/user-interviews.md) |
-| Usability Testing | [usability-testing](references/usability-testing.md) |
-| Surveys | [surveys](references/surveys.md) |
-| Card Sorting | [card-sorting](references/card-sorting.md) |
-| Personas | [personas](references/personas.md) |
-| Journey Mapping | [journey-mapping](references/journey-mapping.md) |
-| Wireframing | [wireframing](references/wireframing.md) |
-| Prototyping | [prototyping](references/prototyping.md) |
-| A/B Testing | [ab-testing](references/ab-testing.md) |
-| Heuristic Evaluation | [heuristic-evaluation](references/heuristic-evaluation.md) |
-| Contextual Inquiry | [contextual-inquiry](references/contextual-inquiry.md) |
-| Focus Groups | [focus-groups](references/focus-groups.md) |
-| Tree Testing | [tree-testing](references/tree-testing.md) |
-| Accessibility Evaluation | [accessibility-evaluation](references/accessibility-evaluation.md) |
-| Design Critique | [design-critique](references/design-critique.md) |
-| Competitive Analysis | [competitive-analysis](references/competitive-analysis.md) |
-| Content Audit | [content-audit](references/content-audit.md) |
-| Cognitive Walkthrough | [cognitive-walkthrough](references/cognitive-walkthrough.md) |
-| Information Architecture | [information-architecture](references/information-architecture.md) |
-| Mobile UX | [mobile-ux](references/mobile-ux.md) |
-| Voice UI | [voice-ui](references/voice-ui.md) |
-| Diary Studies | [diary-studies](references/diary-studies.md) |
+*UX/UI Designer Domain Skill v2.0*
+*75 Methodologies | 2 Agents | Decision Trees for Navigation*
