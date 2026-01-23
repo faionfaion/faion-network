@@ -44,16 +44,53 @@
 {project}/                    # Project root (parent of repos)
 ├── {project}-fe/             # Frontend repo
 ├── {project}-be/             # Backend repo
+├── {project}-cli/            # CLI repo (optional)
+├── {project}-storybook/      # Storybook repo (optional)
 └── .aidocs/                  # SDD docs (shared for all repos)
-    ├── constitution.md       # Covers ALL repos
-    ├── backlog/
-    ├── todo/
-    ├── in-progress/
-    └── done/
+    ├── constitution.md       # Tech stack & standards (ALL repos)
+    ├── roadmap.md            # Feature roadmap, releases, metrics
+    │
+    ├── backlog/              # Features ready for grooming
+    │   └── feature-NNN-name/
+    │       ├── spec.md       # Feature specification
+    │       ├── design.md     # Technical design
+    │       ├── implementation-plan.md  # Task breakdown
+    │       └── README.md     # Feature overview
+    │
+    ├── todo/                 # Features ready for execution
+    │   ├── feature-NNN-name/
+    │   └── TASK-XXX-*.md     # Standalone tasks
+    │
+    ├── in-progress/          # Currently executing
+    │   ├── feature-NNN-name/
+    │   └── TASK-XXX-*.md
+    │
+    ├── done/                 # Completed features
+    │   ├── feature-NNN-name/
+    │   └── TASK-XXX-*.md
+    │
+    ├── improvements/         # Feature proposals & enhancements
+    │   ├── README.md
+    │   └── AI-NNN-*.md       # Improvement suggestions
+    │
+    ├── product_docs/         # Product planning & GTM
+    │   ├── article-lists/    # Editorial calendar
+    │   ├── gtm-manifest/     # Go-to-market strategy
+    │   └── seo/              # SEO keywords & strategy
+    │
+    └── content/              # Content drafts & planning
+        └── articles/         # Article drafts (MDX/Markdown)
 ```
 
 **Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
 **Features:** `feature-NNN-name/` folders | **Tasks:** `TASK-NNNN-title.md` files
+
+**Documentation Types:**
+- **constitution.md** - Tech decisions, standards, architecture
+- **roadmap.md** - Feature timeline, releases, success metrics
+- **spec.md** - What to build (requirements, success criteria)
+- **design.md** - How to build (architecture, API contracts)
+- **implementation-plan.md** - Task breakdown, dependencies, token estimates
 
 ## No Time Estimates
 
