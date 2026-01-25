@@ -19,14 +19,14 @@ Orchestrates project management activities using PMBoK 7/8 framework. Coordinate
 ```
 faion-project-manager (orchestrator)
     |
-    +-> faion-agile-pm (28 methodologies)
+    +-> faion-project-manager:agile (28 methodologies)
     |   - Scrum, Kanban, SAFe ceremonies
     |   - PM tools (Jira, Linear, ClickUp, GitHub, etc.)
     |   - Dashboards, reporting, metrics
     |   - Team development, RACI
     |   - AI in PM, hybrid delivery
     |
-    +-> faion-traditional-pm (22 methodologies)
+    +-> faion-project-manager:traditional (22 methodologies)
         - PMBoK knowledge areas
         - Stakeholder management
         - Planning (scope, schedule, cost, WBS)
@@ -44,7 +44,7 @@ faion-project-manager (orchestrator)
 
 ## Sub-Skills
 
-### faion-agile-pm (28 methodologies)
+### faion-project-manager:agile (28 methodologies)
 
 **Use when:**
 - Planning sprints or ceremonies
@@ -60,9 +60,9 @@ faion-project-manager (orchestrator)
 - Team development, RACI matrix
 - AI in PM, hybrid delivery
 
-**Location:** [faion-agile-pm/SKILL.md](faion-agile-pm/SKILL.md)
+**Location:** `~/.claude/skills/faion-project-manager:agile/`
 
-### faion-traditional-pm (22 methodologies)
+### faion-project-manager:traditional (22 methodologies)
 
 **Use when:**
 - Planning project scope, schedule, cost
@@ -78,7 +78,7 @@ faion-project-manager (orchestrator)
 - EVM, quality, change control
 - Project closure, lessons learned
 
-**Location:** [faion-traditional-pm/SKILL.md](faion-traditional-pm/SKILL.md)
+**Location:** `~/.claude/skills/faion-project-manager:traditional/`
 
 ## Decision Guide
 

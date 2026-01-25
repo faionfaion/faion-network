@@ -15,27 +15,9 @@
 
 ## Overview
 
-<<<<<<< HEAD
-- **Name:** faion-project-manager
-- **Type:** Domain Skill (orchestrator)
-- **Agent:** faion-pm-agent
-- **Methodologies:** 46
-- **SKILL.md:** 342 lines (optimized)
-
-## Quick Navigation
-
-| Need | Go To |
-|------|-------|
-| Find the right methodology | SKILL.md > Decision Tree |
-| PMBoK 7 overview | SKILL.md > PMBoK 7 Overview |
-| PMBoK 8 updates | SKILL.md > PMBoK 8 Updates |
-| Quick reference tables | SKILL.md > Quick Reference Tables |
-| Detailed methodology | {methodology}.md |
-=======
 Project Manager domain skill providing professional PM methodologies for solopreneurs and teams.
 
-**Methodologies:** 46 | **Agent:** faion-pm-agent
->>>>>>> claude
+**Methodologies:** 50 | **Agent:** faion-pm-agent
 
 ## Core Framework
 
@@ -56,49 +38,32 @@ Project Manager domain skill providing professional PM methodologies for solopre
 
 Stewardship, Team, Stakeholders, Value, Systems Thinking, Leadership, Tailoring, Quality, Complexity, Risk, Adaptability, Change.
 
+## Architecture
+
+```
+faion-project-manager (orchestrator)
+├── faion-project-manager:agile (28 methodologies)
+│   └── Scrum, Kanban, SAFe, PM tools, dashboards
+└── faion-project-manager:traditional (22 methodologies)
+    └── PMBoK knowledge areas, EVM, WBS, closure
+```
+
+## Sub-Skills
+
+### faion-project-manager:agile (28 methodologies)
+
+Scrum, Kanban, SAFe ceremonies, PM tools (Jira, Linear, ClickUp, GitHub, Azure DevOps), dashboards, reporting, team development, AI in PM, hybrid delivery.
+
+**Location:** `~/.claude/skills/faion-project-manager:agile/`
+
+### faion-project-manager:traditional (22 methodologies)
+
+PMBoK knowledge areas, stakeholder management, planning (scope, schedule, cost, WBS), risk management, EVM, quality, change control, project closure, lessons learned.
+
+**Location:** `~/.claude/skills/faion-project-manager:traditional/`
+
 ## Files
 
-<<<<<<< HEAD
-```
-faion-project-manager/
-├── CLAUDE.md              # This file (navigation)
-├── SKILL.md               # Decision tree, PMBoK overview, quick reference
-├── ref-CLAUDE.md          # References overview (renamed from references/CLAUDE.md)
-├── stakeholder-*.md       # Stakeholder domain
-├── raci-matrix.md         # Team domain
-├── wbs-creation.md        # Planning domain
-├── risk-*.md              # Uncertainty domain
-├── earned-value-*.md      # Measurement domain
-├── jira-*.md              # PM tools
-├── linear-*.md
-└── ... (46 methodology files total)
-```
-
-## Key Methodologies by Domain
-
-| Domain | Methodologies |
-|--------|---------------|
-| Stakeholder | stakeholder-register, stakeholder-engagement |
-| Team | raci-matrix, team-development |
-| Planning | wbs-creation, schedule-development, cost-estimation |
-| Work | project-integration, communications-management, change-control |
-| Delivery | quality-management, benefits-realization |
-| Measurement | earned-value-management, performance-domains-overview |
-| Uncertainty | risk-register, risk-management |
-| Closure | lessons-learned, project-closure |
-
-## PM Tools
-
-| File | Tool | Best For |
-|------|------|----------|
-| jira-workflow-management.md | Jira | Enterprise, scaled agile |
-| clickup-setup.md | ClickUp | All-in-one workspace |
-| linear-issue-tracking.md | Linear | Engineering teams |
-| github-projects.md | GitHub Projects | Developers |
-| azure-devops-boards.md | Azure DevOps | Microsoft ecosystem |
-| notion-pm.md | Notion | Knowledge + PM |
-| trello-kanban.md | Trello | Simple kanban |
-=======
 | File | Purpose |
 |------|---------|
 | [SKILL.md](SKILL.md) | Quick methodology selector, PMBoK overview, index |
@@ -114,30 +79,11 @@ faion-project-manager/
 | Linear | Engineering teams |
 | GitHub Projects | Developers |
 | Azure DevOps | Microsoft ecosystem |
->>>>>>> claude
+| Notion | Knowledge + PM |
+| Trello | Simple kanban |
 
 ## Related Skills
 
-<<<<<<< HEAD
-| Domain Skill | Integration Point |
-|--------------|-------------------|
-| faion-sdd | Task planning uses PMBoK scheduling |
-| faion-business-analyst | Requirements feed into PM scope |
-| faion-product-manager | Product roadmap aligns with project schedule |
-| faion-marketing-manager | Campaign planning uses PM methods |
-
-## Usage
-
-Execute methodologies via faion-pm-agent:
-
-```
-# Called from faion-net or faion-sdd orchestrators
-```
-
----
-
-*PM Domain Skill v3.0 - 2026-01-21*
-=======
 | Skill | Relationship |
 |-------|--------------|
 | [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
@@ -148,5 +94,4 @@ Execute methodologies via faion-pm-agent:
 
 ---
 
-*PM Domain Skill v3.1*
->>>>>>> claude
+*PM Domain Skill v4.0 - 2 sub-skills | 50 methodologies | PMBoK 7/8*

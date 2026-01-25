@@ -16,14 +16,14 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ```
 faion-business-analyst (orchestrator)
-├── faion-ba-core (21 methodologies)
+├── faion-business-analyst:core (21 methodologies)
 │   ├── Planning & Governance
 │   ├── Elicitation
 │   ├── Requirements Lifecycle
 │   ├── Strategy Analysis
 │   ├── Solution Evaluation
 │   └── Modern Practices
-└── faion-ba-modeling (7 methodologies)
+└── faion-business-analyst:modeling (7 methodologies)
     ├── Behavioral Models (use cases, user stories)
     ├── Process Models (BPMN)
     ├── Data Models (ERD)
@@ -68,15 +68,15 @@ faion-business-analyst (orchestrator)
 
 ## Sub-Skills
 
-### faion-ba-core (21 files)
+### faion-business-analyst:core (21 files)
 Planning, elicitation, requirements lifecycle, strategy, evaluation, modern practices
 
-**Files:** [faion-ba-core/SKILL.md](faion-ba-core/SKILL.md)
+**Location:** `~/.claude/skills/faion-business-analyst:core/`
 
-### faion-ba-modeling (7 files)
+### faion-business-analyst:modeling (7 files)
 Use cases, user stories, BPMN, ERD, decision tables, interfaces, acceptance criteria
 
-**Files:** [faion-ba-modeling/SKILL.md](faion-ba-modeling/SKILL.md)
+**Location:** `~/.claude/skills/faion-business-analyst:modeling/`
 
 ---
 
