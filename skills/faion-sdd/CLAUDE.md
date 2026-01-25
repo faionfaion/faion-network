@@ -1,28 +1,81 @@
-# faion-sdd Skill
+# faion-sdd Skill (Orchestrator)
 
-## Overview
+**Specification-Driven Development: orchestrates planning + execution sub-skills.**
 
+<<<<<<< HEAD
 Specification-Driven Development (SDD) orchestrator. Philosophy: "Intent is the source of truth" - specification is the main artifact, code is its implementation.
+=======
+---
+
+## Entry Point
+
+Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-sdd`
+
+---
+
+## When to Use
+
+- Starting a new project (constitution, specs)
+- Planning a feature (spec → design → impl-plan → tasks)
+- Managing task lifecycle (backlog → todo → in-progress → done)
+- Quality gates and reviews
+- Batch task execution
+
+---
+
+## Architecture
+
+This skill orchestrates 2 sub-skills with **48 total methodologies**:
+
+| Sub-Skill | Focus | Count |
+|-----------|-------|-------|
+| **[faion-sdd-planning](faion-sdd-planning/CLAUDE.md)** | Specs, design docs, impl-plans, tasks, templates | 28 |
+| **[faion-sdd-execution](faion-sdd-execution/CLAUDE.md)** | Quality gates, reflexion, patterns, memory, review | 20 |
+
+---
+>>>>>>> claude
 
 ## Workflow
 
 ```
-CONSTITUTION -> SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> EXECUTE -> DONE
+CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
+                |        |          |          |         |        |
+             PLANNING  PLANNING  PLANNING  PLANNING  EXECUTION  EXECUTION
 ```
 
-| Phase | Purpose | Output |
-|-------|---------|--------|
-| Constitution | Project principles | constitution.md |
-| Specification | WHAT and WHY | spec.md |
-| Design | HOW | design.md |
-| Implementation Plan | 100k token rule | implementation-plan.md |
-| Tasks | Atomic work units | TASK_*.md files |
-| Execute | Agent execution | Code + commits |
-| Done | Quality verified | Archived feature |
+---
 
-## Directory Structure
+## Quick Decision
+
+| Need | Use | Why |
+|------|-----|-----|
+| Write spec/design/impl-plan | [faion-sdd-planning](faion-sdd-planning/CLAUDE.md) | Documentation phase |
+| Execute/validate/learn | [faion-sdd-execution](faion-sdd-execution/CLAUDE.md) | Execution phase |
+
+---
+
+## Philosophy
+
+**"Intent is the source of truth"** - specification is the main artifact, code is implementation.
+
+**No Time Estimates** - use complexity (Low/Medium/High) + token estimates (~Xk).
+
+---
+
+## Key Concepts
+
+- **100k Token Rule**: Each task fits within 100k token context
+- **Quality Gates**: L1-L6 checkpoints before proceeding
+- **Confidence Checks**: Pre-phase validation (90%+ to proceed)
+- **Reflexion**: PDCA learning cycle with pattern/mistake memory
+- **Parallelization**: Wave-based execution for 1.8-3.5x speedup
+
+---
+
+## Task Lifecycle
 
 ```
+<<<<<<< HEAD
 faion-sdd/
 |-- SKILL.md              # Navigation hub with decision trees (~500 lines)
 |-- CLAUDE.md             # This file
@@ -110,24 +163,64 @@ Detailed step-by-step instructions for all 13 sections:
             |-- design.md
             |-- implementation-plan.md
             +-- tasks/{status}/
+=======
+backlog/ → todo/ → in-progress/ → done/
 ```
 
-## Task Lifecycle
+---
+
+## Project Structure
 
 ```
-backlog/ -> todo/ -> in-progress/ -> done/
+.aidocs/
+├── constitution.md
+├── roadmap.md
+└── features/
+    ├── backlog/
+    ├── todo/
+    ├── in-progress/
+    └── done/
+        └── {NN}-{feature}/
+            ├── spec.md
+            ├── design.md
+            ├── implementation-plan.md
+            └── tasks/{status}/
+>>>>>>> claude
 ```
 
-## Key Concepts
+---
 
+## Memory
+
+**Location:** Project-local `.aidocs/memory/`
+
+```
+.aidocs/memory/
+├── patterns.md
+├── mistakes.md
+├── decisions.md
+└── session.md
+```
+
+---
+
+<<<<<<< HEAD
 - **100k Token Rule**: Each task must fit within 100k token context
 - **Quality Gates**: Checkpoints before proceeding (L1-L6)
 - **Confidence Checks**: Pre-phase validation (90%+ to proceed)
 - **Reflexion**: PDCA learning cycle with pattern/mistake memory
 - **Parallelization**: Wave-based execution for 1.8-3.5x speedup
+=======
+## Related Skills
+>>>>>>> claude
 
-## Memory Storage
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-feature-executor](../faion-feature-executor/CLAUDE.md) | Executes SDD tasks in sequence |
+| [faion-software-developer](../faion-software-developer/CLAUDE.md) | Implements code from tasks |
 
+<<<<<<< HEAD
 ```
 ~/.sdd/memory/
 |-- patterns_learned.jsonl    # Reusable patterns
@@ -147,3 +240,18 @@ backlog/ -> todo/ -> in-progress/ -> done/
 
 *faion-sdd v3.0*
 *Optimized: SKILL.md ~500 lines, details in references/*
+=======
+---
+
+## Files
+
+- [SKILL.md](SKILL.md) - Main orchestrator definition
+- Sub-skills:
+  - [faion-sdd-planning/SKILL.md](faion-sdd-planning/SKILL.md)
+  - [faion-sdd-execution/SKILL.md](faion-sdd-execution/SKILL.md)
+
+---
+
+*faion-sdd v4.0 (Orchestrator)*
+*48 methodologies across 2 sub-skills*
+>>>>>>> claude

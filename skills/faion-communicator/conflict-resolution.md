@@ -238,19 +238,18 @@ RESOLUTION:
 
 ---
 
-## Related Methodologies
 
-- **Active Listening:** RASA framework, empathic listening
-- **Feedback:** Giving & receiving feedback (SBI, Radical Candor)
-- **Negotiation:** Principled negotiation, BATNA, Cialdini's 6 principles
-- **Difficult Conversations:** Crucial Conversations, DESC script
+
 
 ---
 
-## References
+*Conflict Resolution | Communication | Version 1.0*
 
-- Thomas, K. & Kilmann, R. (1974). Thomas-Kilmann Conflict Mode Instrument
-- Rosenberg, M. (2003). Nonviolent Communication
+## Sources
+
+- [MindTools Conflict Resolution](https://www.mindtools.com/CommSkll/ConflictResolution.htm)
+- [Harvard Program on Negotiation](https://www.pon.harvard.edu/category/research_projects/conflict-resolution/)
+- [SHRM Conflict Management](https://www.shrm.org/topics-tools/tools/toolkits/managing-workplace-conflict)
 
 ---
 

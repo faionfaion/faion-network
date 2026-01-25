@@ -332,3 +332,9 @@ We avoid competing on: [weaknesses]
 ---
 
 *Methodology: employee-value-proposition | Employer Branding | faion-employer-brand-agent*
+
+## Sources
+
+- [LinkedIn Talent Solutions EVP Guide](https://business.linkedin.com/talent-solutions/resources/talent-engagement/employer-brand/employee-value-proposition)
+- [Glassdoor Employer Branding](https://www.glassdoor.com/employers/blog/employer-branding/)
+- [SHRM EVP Development](https://www.shrm.org/topics-tools/news/talent-acquisition/creating-employee-value-proposition)

@@ -21,7 +21,8 @@ Individual methodology files for project management platforms:
 | `notion-pm.md` | Notion | Knowledge + PM hybrid |
 | `trello-kanban.md` | Trello | Simple kanban |
 | `cross-tool-migration.md` | Migration | Moving between PM tools |
-| `pm-tool-selection.md` | Selection | Choosing the right PM tool |
+| `pm-tools-overview.md` | Selection | Tool profiles, requirements, best practices |
+| `pm-tools-comparison.md` | Evaluation | Comparison matrices, TCO analysis |
 | `agile-ceremonies-setup.md` | Ceremonies | Sprint planning, standups, retros |
 | `reporting-dashboards.md` | Reporting | Metrics, dashboards, KPIs |
 

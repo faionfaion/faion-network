@@ -1,30 +1,42 @@
 # Product Manager Skill
 
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-product-manager`
+
+## When to Use
+
+- Defining MVP/MLP scope
+- Feature prioritization (RICE, MoSCoW)
+- Creating product roadmaps
+- Backlog management and grooming
+- Product discovery and validation
+- OKRs and product metrics
+- Product launch planning
+- Lifecycle management (intro/growth/maturity/decline)
+
 ## Overview
 
-Product management domain skill for MVP/MLP planning, feature prioritization, roadmaps, backlog management, and product lifecycle orchestration. Combines MLP planning and project bootstrap capabilities into a comprehensive product development framework.
+Product management for MVP/MLP planning, feature prioritization, roadmaps, backlog management, and product lifecycle orchestration.
 
-**Skill ID:** faion-product-manager
-**Methodologies:** 18 core + 15 best practices (33 total)
-**Agents:** 2 (faion-mvp-scope-analyzer-agent, faion-mlp-agent)
+**Methodologies:** 33 | **Agents:** 2
 
 ## Key Capabilities
 
 | Area | Description |
 |------|-------------|
 | MVP/MLP Planning | Scope MVPs, transform to MLP with delight features |
-| Feature Prioritization | RICE and MoSCoW frameworks for objective decisions |
+| Feature Prioritization | RICE and MoSCoW frameworks |
 | Roadmap Design | Now-Next-Later, outcome-based, timeline roadmaps |
-| Backlog Management | DEEP/INVEST principles, grooming, health checks |
+| Backlog Management | DEEP/INVEST principles, grooming |
 | Product Discovery | Validate assumptions before building |
-| Product Launch | Coordinated launch planning and execution |
-| Lifecycle Management | Stage-appropriate strategies (intro/growth/maturity/decline) |
+| Product Launch | Coordinated launch planning |
+| Lifecycle Management | Stage-appropriate strategies |
 
 ## Workflows
 
 ### Project Bootstrap Pipeline
 
 ```
+<<<<<<< HEAD
 IDEA -> CONCEPT -> TECH STACK -> MVP SCOPE -> CONFIRMATION -> BACKLOG -> CONSTITUTION -> TASK_000
 ```
 
@@ -36,6 +48,9 @@ Output structure:
   features/
     backlog/{NN}-{feature}/spec.md
     00-setup/tasks/todo/TASK_000_project_setup.md
+=======
+IDEA → CONCEPT → TECH STACK → MVP SCOPE → CONFIRMATION → BACKLOG → CONSTITUTION → TASK_000
+>>>>>>> claude
 ```
 
 ### MLP Transformation
@@ -49,6 +64,7 @@ Output structure:
 6. Create implementation order
 ```
 
+<<<<<<< HEAD
 ## File Structure
 
 All methodologies and references are in the skill root folder (flat structure):
@@ -70,27 +86,32 @@ All methodologies and references are in the skill root folder (flat structure):
 | roadmap-design.md | Roadmap types and templates |
 | meth-continuous-discovery.md | Continuous Discovery Habits framework |
 
+=======
+>>>>>>> claude
 ## Agents
 
 | Agent | Purpose |
 |-------|---------|
 | faion-mvp-scope-analyzer-agent | MVP scope via competitor analysis |
-| faion-mlp-agent | MLP orchestrator with modes: analyze, find-gaps, propose, update, plan |
+| faion-mlp-agent | MLP orchestrator (analyze, find-gaps, propose, update, plan) |
 
-## Numbering Convention
+## Files
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Features | `{NN}-{name}` | `01-auth`, `02-payments` |
-| Tasks | `TASK_{NNN}_*` | `TASK_001_setup` |
-| Requirements | `FR-{NN}.{N}` | `FR-01.1` |
-| Acceptance | `AC-{NN}.{N}` | `AC-01.1` |
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Main skill with workflows, decision tree |
+| [mvp-scoping.md](mvp-scoping.md) | MVP scope framework |
+| [mlp-planning.md](mlp-planning.md) | MLP transformation framework |
+| [feature-prioritization-rice.md](feature-prioritization-rice.md) | RICE scoring |
+| [roadmap-design.md](roadmap-design.md) | Roadmap types and templates |
 
 ## Related Skills
 
 | Skill | Relationship |
-|-------|-------------|
-| faion-researcher | Provides market data for product decisions |
-| faion-project-manager | Provides project management standards |
-| faion-business-analyst | Provides business analysis standards |
-| faion-sdd | Uses product decisions for specifications |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-researcher](../faion-researcher/CLAUDE.md) | Market data for decisions |
+| [faion-project-manager](../faion-project-manager/CLAUDE.md) | Manages execution |
+| [faion-business-analyst](../faion-business-analyst/CLAUDE.md) | Requirements analysis |
+| [faion-sdd](../faion-sdd/CLAUDE.md) | Transforms decisions into specs |
+| [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) | GTM for launches |

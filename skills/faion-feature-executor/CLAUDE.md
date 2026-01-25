@@ -1,8 +1,18 @@
 # faion-feature-executor
 
-SDD feature executor with quality gates: sequential task execution, test/coverage validation after each task, code review cycles until all issues resolved.
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-feature-executor`
+
+## When to Use This Skill
+
+- Executing complete features from SDD workflow
+- Sequential task execution with quality gates
+- Post-task validation (tests, coverage, build)
+- Iterative code review cycles
+- Moving features from todo to done
 
 ## Overview
+
+SDD feature executor with quality gates: sequential task execution, test/coverage validation after each task, code review cycles until all issues resolved.
 
 This skill orchestrates complete feature implementation in the SDD workflow:
 
@@ -49,8 +59,10 @@ After all tasks:
 
 | File | Description |
 |------|-------------|
-| `SKILL.md` | Full skill specification with workflow details |
-| `CLAUDE.md` | This navigation file |
+| [SKILL.md](SKILL.md) | Skill overview, usage, decision tree, and configuration |
+| [CLAUDE.md](CLAUDE.md) | This navigation file |
+| [execution-workflow.md](execution-workflow.md) | Complete workflow (context, tasks, review, finalize) |
+| [quality-gates.md](quality-gates.md) | Validation criteria and output formats |
 
 ## Integration
 
@@ -59,8 +71,15 @@ Part of SDD workflow:
 SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> [FEATURE-EXECUTOR] -> DONE
 ```
 
-Related skills: `faion-sdd`, `faion-task-executor-agent`
+## Related Skills
+
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator, routes feature execution here |
+| [faion-sdd](../faion-sdd/CLAUDE.md) | Provides task specs and workflow |
+| [faion-software-developer](../faion-software-developer/CLAUDE.md) | Executes code tasks |
+| [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) | Executes infrastructure tasks |
 
 ---
 
-*v1.0.0 | 2026-01-18*
+*v1.1.0 | 2026-01-23*

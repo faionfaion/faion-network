@@ -231,3 +231,9 @@ ONBOARDING     → Accept and start
 ---
 
 *Methodology: recruitment-funnel-optimization | Talent Acquisition | faion-recruiter-agent*
+
+## Sources
+
+- [LinkedIn Recruiting Metrics](https://business.linkedin.com/talent-solutions/resources/talent-acquisition/recruitment-metrics)
+- [Greenhouse Recruiting Analytics](https://www.greenhouse.com/blog/recruiting-analytics)
+- [SHRM Recruitment Metrics](https://www.shrm.org/topics-tools/tools/toolkits/talent-acquisition-guide)

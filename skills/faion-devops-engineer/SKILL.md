@@ -1,32 +1,56 @@
 ---
 name: faion-devops-engineer
-description: "DevOps Engineer role: Docker, Kubernetes, Terraform, AWS/GCP/Azure, CI/CD (GitHub Actions, GitLab CI), infrastructure as code, monitoring (Prometheus, Grafana), logging, secrets management, nginx, load balancing, Platform Engineering, GitOps, AIOps, DORA metrics. 26 methodologies."
+description: "DevOps Engineer orchestrator: coordinates faion-infrastructure-engineer (Docker, K8s, Terraform, AWS/GCP) and faion-cicd-engineer (CI/CD, monitoring, GitOps, security). 58 total methodologies across 2 sub-skills."
 user-invocable: false
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
 
-# DevOps Domain Skill
+# DevOps Engineer Orchestrator
 
 **Communication: User's language. Config/code: English.**
 
 ## Purpose
 
-Orchestrates infrastructure and deployment activities. Covers containerization, orchestration, infrastructure as code, cloud services, and CI/CD pipelines.
+Orchestrates DevOps activities by coordinating two specialized sub-skills:
+- **faion-infrastructure-engineer** - Infrastructure, cloud, containerization
+- **faion-cicd-engineer** - CI/CD, monitoring, security, operations
 
 ---
 
-## Agents
+## Sub-Skills
 
-| Agent | Purpose |
-|-------|---------|
-| faion-devops-agent | Infrastructure and deployment automation |
+### faion-infrastructure-engineer
+**Focus:** Infrastructure provisioning, containerization, orchestration, cloud platforms
+
+**Methodologies (30):**
+- Docker (6): containerization, Compose, patterns, optimization
+- Kubernetes (6): basics, resources, deployment, Helm
+- Terraform & IaC (6): basics, modules, state, patterns
+- AWS (7): foundations, services, EC2/ECS, Lambda, S3, networking
+- GCP (6): basics, patterns, compute, Cloud Run, storage, networking
+
+**When to use:**
+- Docker containers and multi-stage builds
+- Kubernetes deployments and Helm charts
+- Infrastructure as Code with Terraform
+- AWS/GCP cloud infrastructure setup
+- Container orchestration
 
 ---
 
-## References
+### faion-cicd-engineer
+**Focus:** CI/CD pipelines, monitoring, observability, security, operations
 
-Detailed technical context for each area:
+**Methodologies (28):**
+- CI/CD & GitOps (7): GitHub Actions, GitLab CI, Jenkins, ArgoCD
+- Monitoring (5): Prometheus, Grafana, ELK, AIOps
+- Security (6): secrets, SSL/TLS, security as code, nginx, load balancing
+- Backup & Cost (4): backup strategies, FinOps
+- Modern Practices (2): Platform Engineering, DORA metrics
+- Azure (2): compute, networking
+- Optimization (2): Docker optimization
 
+<<<<<<< HEAD
 | Reference | Content | Lines |
 |-----------|---------|-------|
 | [docker.md](docker.md) | Containers, Compose, multi-stage builds | ~1140 |
@@ -42,300 +66,112 @@ Detailed technical context for each area:
 | [ref-security-as-code.md](ref-security-as-code.md) | Policy as Code | ~60 |
 
 **Total:** ~6,270 lines of technical reference
+=======
+**When to use:**
+- CI/CD pipeline setup
+- Monitoring and observability
+- Logging and alerting
+- Security and secrets management
+- Backup and disaster recovery
+- Cost optimization
+- GitOps workflows
+>>>>>>> claude
 
 ---
 
-## Quick Reference
+## Quick Decision Tree
 
-### Tool Selection
+| Need | Sub-Skill | Reason |
+|------|-----------|--------|
+| Dockerfile, Docker Compose | infrastructure-engineer | Containerization |
+| K8s deployment, Helm | infrastructure-engineer | Orchestration |
+| Terraform, IaC | infrastructure-engineer | Infrastructure provisioning |
+| AWS/GCP setup | infrastructure-engineer | Cloud platforms |
+| GitHub Actions, GitLab CI | cicd-engineer | CI/CD pipelines |
+| Prometheus, Grafana | cicd-engineer | Monitoring |
+| Secrets, SSL/TLS | cicd-engineer | Security |
+| ArgoCD, GitOps | cicd-engineer | GitOps deployment |
+| Backup strategies | cicd-engineer | Operations |
+| Cost optimization | cicd-engineer | FinOps |
 
-| Tool | Use Case |
-|------|----------|
-| **Docker** | Containerization, local dev, CI builds |
-| **Kubernetes** | Container orchestration, scaling |
-| **Terraform** | Multi-cloud IaC, infrastructure provisioning |
-| **Pulumi** | IaC with programming languages |
-| **Ansible** | Configuration management, server setup |
+---
 
-### Cloud Provider Selection
+## Common Workflows
 
-| Provider | Strengths |
-|----------|-----------|
-| **AWS** | Most services, enterprise, mature |
-| **GCP** | Kubernetes, ML, BigQuery |
-| **Azure** | Microsoft ecosystem, hybrid |
-| **Hetzner** | Cost-effective, EU data residency |
-| **DigitalOcean** | Simple, developer-friendly |
+### Full Stack Deployment
+```
+1. infrastructure-engineer: Create Dockerfile
+2. infrastructure-engineer: Setup K8s cluster
+3. infrastructure-engineer: Provision cloud resources with Terraform
+4. cicd-engineer: Setup CI/CD pipeline
+5. cicd-engineer: Configure monitoring and alerts
+6. cicd-engineer: Setup backup and disaster recovery
+```
+
+### New Project Setup
+```
+1. infrastructure-engineer: docker-containerization
+2. infrastructure-engineer: docker-compose for local dev
+3. cicd-engineer: github-actions-cicd
+4. infrastructure-engineer: iac-basics with Terraform
+5. cicd-engineer: secrets-management
+6. cicd-engineer: prometheus-monitoring
+```
+
+### Production Deployment
+```
+1. infrastructure-engineer: kubernetes-deployment
+2. infrastructure-engineer: helm-charts
+3. cicd-engineer: argocd-gitops
+4. cicd-engineer: prometheus-monitoring
+5. cicd-engineer: elk-stack-logging
+6. cicd-engineer: backup-basics
+```
+
+---
+
+## Tool Selection Guide
+
+### Containerization
+| Tool | Sub-Skill | Use Case |
+|------|-----------|----------|
+| Docker | infrastructure-engineer | Containerization, local dev |
+| Kubernetes | infrastructure-engineer | Container orchestration |
+| Helm | infrastructure-engineer | K8s package management |
+
+### Cloud Providers
+| Provider | Sub-Skill | Strengths |
+|----------|-----------|-----------|
+| AWS | infrastructure-engineer | Most services, enterprise |
+| GCP | infrastructure-engineer | Kubernetes, ML, BigQuery |
+| Azure | cicd-engineer | Microsoft ecosystem |
 
 ### CI/CD Tools
+| Tool | Sub-Skill | Best For |
+|------|-----------|----------|
+| GitHub Actions | cicd-engineer | GitHub repos, simple pipelines |
+| GitLab CI | cicd-engineer | GitLab repos, full DevOps |
+| Jenkins | cicd-engineer | Complex pipelines, self-hosted |
+| ArgoCD | cicd-engineer | GitOps, K8s deployments |
 
-| Tool | Best For |
-|------|----------|
-| **GitHub Actions** | GitHub repos, simple pipelines |
-| **GitLab CI** | GitLab repos, full DevOps platform |
-| **Jenkins** | Complex pipelines, self-hosted |
-| **ArgoCD** | GitOps, Kubernetes deployments |
-
----
-
-## Methodologies (20)
-
-### Docker
-
-| Name | Purpose |
-|------|---------|
-| docker-containerization | Multi-stage builds, smaller production images |
-| docker-compose | Multi-container local dev |
-| security-scanning (in docker) | Vulnerability detection |
-| layer-optimization (in docker) | Build cache efficiency |
-
-### Kubernetes
-
-| Name | Purpose |
-|------|---------|
-| kubernetes-deployment | Resource management, requests, limits, QoS |
-| helm-charts | Package management |
-| secrets-management | ConfigMaps, Secrets, configuration management |
-| load-balancing | Ingress, traffic routing |
-
-### Terraform
-
-| Name | Purpose |
-|------|---------|
-| terraform-iac | Module design, reusable infrastructure |
-| state-management (in terraform) | Remote state, locking |
-| workspaces (in terraform) | Environment separation |
-| testing (in terraform) | Terratest, plan validation |
-
-### AWS
-
-| Name | Purpose |
-|------|---------|
-| aws-architecture | IAM best practices, least privilege, roles |
-| vpc-design (in aws) | Networking, security groups |
-| finops-cloud-cost-optimization | Reserved, spot, rightsizing |
-| backup-strategies | Disaster recovery, backup, multi-region |
-
-### GCP
-
-| Name | Purpose |
-|------|---------|
-| gcp-architecture | IAM, service accounts, workload identity |
-| vpc-networking (in gcp) | Shared VPC, firewall rules, Cloud NAT |
-| gke-operations (in gcp) | Autopilot, node pools, workload identity |
-| cost-optimization (in gcp) | Committed use, preemptible/spot, rightsizing |
+### Monitoring
+| Tool | Sub-Skill | Purpose |
+|------|-----------|---------|
+| Prometheus | cicd-engineer | Metrics collection |
+| Grafana | cicd-engineer | Dashboards and visualization |
+| ELK Stack | cicd-engineer | Log aggregation and analysis |
 
 ---
 
-## Workflows
+## Orchestration Logic
 
-### Container Deployment
+### Single Sub-Skill Tasks
+If task clearly belongs to one domain, invoke that sub-skill directly.
 
-```
-1. Write Dockerfile
-2. Build and test locally
-3. Push to registry
-4. Update K8s manifests
-5. Apply to cluster
-6. Verify deployment
-7. Monitor logs/metrics
-```
-
-### Infrastructure Change
-
-```
-1. Create feature branch
-2. Write Terraform code
-3. Run `terraform plan`
-4. Review plan output
-5. Create PR
-6. Apply after approval
-7. Verify resources
-```
-
-### CI/CD Pipeline
-
-```yaml
-# GitHub Actions example
-name: Deploy
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and push
-        run: |
-          docker build -t app:${{ github.sha }} .
-          docker push registry/app:${{ github.sha }}
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy to K8s
-        run: |
-          kubectl set image deployment/app \
-            app=registry/app:${{ github.sha }}
-```
-
----
-
-## Common Commands
-
-### Docker
-
-```bash
-# Build image
-docker build -t app:latest .
-
-# Run container
-docker run -d -p 8080:80 app:latest
-
-# View logs
-docker logs -f container_id
-
-# Compose up
-docker compose up -d
-
-# Clean up
-docker system prune -af
-```
-
-### Kubernetes
-
-```bash
-# Apply manifests
-kubectl apply -f deployment.yaml
-
-# Get resources
-kubectl get pods,svc,deploy
-
-# View logs
-kubectl logs -f pod/app-xxx
-
-# Port forward
-kubectl port-forward svc/app 8080:80
-
-# Scale
-kubectl scale deploy/app --replicas=3
-```
-
-### Terraform
-
-```bash
-# Initialize
-terraform init
-
-# Plan
-terraform plan -out=tfplan
-
-# Apply
-terraform apply tfplan
-
-# Destroy
-terraform destroy
-
-# State list
-terraform state list
-```
-
-### AWS CLI
-
-```bash
-# Configure
-aws configure
-
-# S3
-aws s3 sync ./dist s3://bucket/
-
-# ECR login
-aws ecr get-login-password | docker login --username AWS --password-stdin xxx.ecr.region.amazonaws.com
-
-# Lambda invoke
-aws lambda invoke --function-name func output.json
-```
-
-### gcloud CLI
-
-```bash
-# Configure
-gcloud auth login
-gcloud config set project my-project
-
-# Cloud Storage
-gcloud storage rsync -r ./dist gs://bucket/
-
-# Artifact Registry login
-gcloud auth configure-docker us-central1-docker.pkg.dev
-
-# Cloud Run deploy
-gcloud run deploy my-service --image=us-central1-docker.pkg.dev/project/repo/image --region=us-central1
-
-# GKE credentials
-gcloud container clusters get-credentials my-cluster --zone=us-central1-a
-```
-
----
-
-## Security Checklist
-
-### Container Security
-
-- [ ] Non-root user in Dockerfile
-- [ ] Minimal base image (distroless, alpine)
-- [ ] No secrets in image
-- [ ] Image scanning enabled
-- [ ] Read-only root filesystem
-
-### Kubernetes Security
-
-- [ ] RBAC configured
-- [ ] Network policies defined
-- [ ] Pod security standards
-- [ ] Secrets encrypted at rest
-- [ ] Resource limits set
-
-### Infrastructure Security
-
-- [ ] Least privilege IAM
-- [ ] Private subnets for workloads
-- [ ] Security groups restrictive
-- [ ] Encryption enabled
-- [ ] Logging to central system
-
----
-
-## Monitoring Stack
-
-### Observability Triad
-
-| Pillar | Tools |
-|--------|-------|
-| **Metrics** | Prometheus, Grafana, CloudWatch |
-| **Logs** | Loki, ELK, CloudWatch Logs |
-| **Traces** | Jaeger, Tempo, X-Ray |
-
-### Alerting
-
-```yaml
-# Prometheus alert example
-groups:
-  - name: app
-    rules:
-      - alert: HighErrorRate
-        expr: |
-          rate(http_requests_total{status=~"5.."}[5m])
-          / rate(http_requests_total[5m]) > 0.05
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: High error rate detected
-```
+### Multi Sub-Skill Tasks
+For tasks spanning both domains, coordinate sequentially:
+1. infrastructure-engineer for cloud/container setup
+2. cicd-engineer for pipeline/monitoring setup
 
 ---
 
@@ -343,21 +179,34 @@ groups:
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-software-developer | Application code to deploy |
+| faion-net | Parent orchestrator |
+| faion-software-developer | Provides code to deploy |
 | faion-ml-engineer | ML model deployment |
 
 ---
 
-## Error Handling
+## Sub-Skill Details
 
+<<<<<<< HEAD
 | Issue | Action |
 |-------|--------|
 | Unknown cloud provider | Ask user or check existing config |
 | Complex infrastructure | Read reference files for patterns |
 | Multi-cloud setup | Combine relevant references |
+=======
+### faion-infrastructure-engineer
+- **Files:** 30 methodology files
+- **Key areas:** Docker, K8s, Terraform, AWS, GCP
+- **SKILL.md:** [faion-infrastructure-engineer/SKILL.md](faion-infrastructure-engineer/SKILL.md)
+
+### faion-cicd-engineer
+- **Files:** 28 methodology files
+- **Key areas:** CI/CD, monitoring, security, GitOps
+- **SKILL.md:** [faion-cicd-engineer/SKILL.md](faion-cicd-engineer/SKILL.md)
+>>>>>>> claude
 
 ---
 
-*DevOps Domain Skill v1.1*
-*6 Reference Files | 20 Methodologies*
-*Aggregated from: docker, kubernetes, terraform, aws, gcp, best-practices*
+*DevOps Engineer Orchestrator v2.0*
+*2 Sub-Skills | 58 Total Methodologies*
+*Infrastructure + CI/CD/Monitoring*

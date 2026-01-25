@@ -110,6 +110,62 @@ Does the project have multiple repos?
 └─ YES (multiple repos: FE, BE, mobile, etc.)
    └─ Place .aidocs/ at PARENT level (alongside repos)
       Example: myapp/.aidocs/ + myapp/myapp-fe/ + myapp/myapp-be/
+<<<<<<< HEAD
+=======
+```
+
+**Why?**
+- **Single repo:** .aidocs/ is versioned with code, easier to clone
+- **Multi-repo:** .aidocs/ is shared, avoids duplication, single source of truth
+
+**Examples:**
+
+| Project Structure | .aidocs/ Location | Reason |
+|-------------------|-------------------|--------|
+| `myapp/` (monorepo) | `myapp/.aidocs/` | Single repo |
+| `bigapp/bigapp-fe/` + `bigapp/bigapp-be/` | `bigapp/.aidocs/` | Multi-repo, shared docs |
+| `faion-net/` (Gatsby) | `faion-net/.aidocs/` | Single repo |
+| `scanmecard/scanmecard-web/` + `scanmecard/scanmecard-api/` | `scanmecard/.aidocs/` | Multi-repo |
+
+## .aidocs Structure
+
+SDD (Specification-Driven Development) documentation lives in project's `.aidocs/`:
+
+```
+.aidocs/
+├── constitution.md                 # Immutable project principles
+│   - Tech stack (for ALL repos in multi-repo setup)
+│   - Code standards (linters, formatters)
+│   - Testing requirements
+│   - Git conventions
+│   - Multi-repo: describes FE, BE, and shared standards
+│
+├── roadmap.md                      # High-level project roadmap
+│
+├── product_docs/                   # Product documentation
+│   ├── prd.md                      # Product Requirements
+│   ├── user-personas.md            # Target users
+│   └── competitive-analysis.md     # Market research
+│
+├── backlog/                        # Ideas, not prioritized
+│   ├── feature-001-auth/           # Feature folder
+│   │   ├── spec.md                 # Functional requirements (FR-X)
+│   │   ├── design.md               # Architecture decisions (AD-X)
+│   │   └── implementation-plan.md  # Task breakdown
+│   └── TASK-0001-setup.md          # Standalone task file
+│
+├── todo/                           # Specified, ready to implement
+│   ├── feature-002-payments/
+│   └── TASK-0005-database.md
+│
+├── in-progress/                    # Currently executing
+│   ├── feature-003-dashboard/
+│   └── TASK-0010-api.md
+│
+└── done/                           # Completed
+    ├── feature-000-init/
+    └── TASK-0000-scaffold.md
+>>>>>>> claude
 ```
 
 **Why?**

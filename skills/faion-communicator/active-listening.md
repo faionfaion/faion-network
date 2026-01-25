@@ -128,11 +128,12 @@ After someone finishes speaking, count to 3 before responding.
 
 ---
 
-## Related Methodologies
+## Sources
 
-- **The Mom Test:** Customer validation without bias
-- **Stakeholder Communication:** Interview, brainstorm, clarify, validate modes
-- **Feedback:** Giving & receiving feedback (SBI, Radical Candor)
+- [Harvard Active Listening Guide](https://www.ccl.org/articles/leading-effectively-articles/coaching-others-use-active-listening-skills/)
+- [MindTools Active Listening](https://www.mindtools.com/CommSkll/ActiveListening.htm)
+- [Indeed Active Listening Skills](https://www.indeed.com/career-advice/career-development/active-listening-skills)
+
 
 ---
 

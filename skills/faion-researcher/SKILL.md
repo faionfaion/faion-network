@@ -2,7 +2,7 @@
 name: faion-researcher
 description: "Researcher role: idea generation (SCAMPER, mind maps), market research, competitor analysis, persona building, pricing research, problem validation, niche evaluation, project naming, trend analysis. AI-powered research, Continuous Discovery. 9 research modes. 32 methodologies."
 user-invocable: false
-allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite
+allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite, Skill
 ---
 
 # Research Domain Skill
@@ -11,7 +11,91 @@ allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Ta
 
 ## Purpose
 
-Orchestrate all research and discovery activities for product/startup development. This domain skill combines idea discovery, product research, and project naming into a unified research workflow.
+Orchestrate all research and discovery activities for product/startup development. Coordinates 2 specialized sub-skills for comprehensive research coverage.
+
+---
+
+## Architecture
+
+```
+faion-researcher (orchestrator)
+├── faion-market-researcher (22 methodologies)
+│   ├── Market sizing (TAM/SAM/SOM)
+│   ├── Competitor analysis
+│   ├── Pricing research
+│   ├── Trend analysis
+│   ├── Niche evaluation
+│   ├── Business model planning
+│   └── Idea generation
+└── faion-user-researcher (21 methodologies)
+    ├── Persona building
+    ├── User interviews
+    ├── Pain point research
+    ├── Jobs-to-be-done
+    ├── Problem validation
+    ├── Value proposition design
+    └── Survey design
+```
+
+**Total:** 43 methodologies across 2 sub-skills
+
+---
+
+## Quick Decision Tree
+
+| If you need... | Route to Sub-Skill |
+|---------------|-------------------|
+| **Market Intelligence** | |
+| Market size (TAM/SAM/SOM) | faion-market-researcher |
+| Competitors & gaps | faion-market-researcher |
+| Pricing benchmarks | faion-market-researcher |
+| Market trends | faion-market-researcher |
+| Niche evaluation | faion-market-researcher |
+| Business models | faion-market-researcher |
+| Generate ideas | faion-market-researcher |
+| **User Understanding** | |
+| User profiles | faion-user-researcher |
+| Pain points | faion-user-researcher |
+| User motivations (JTBD) | faion-user-researcher |
+| Value proposition | faion-user-researcher |
+| Interview questions | faion-user-researcher |
+| Problem validation | faion-user-researcher |
+| Survey design | faion-user-researcher |
+| **Full Research** | |
+| Complete product research | Both (sequential) |
+
+---
+
+## Sub-Skills (2)
+
+### faion-market-researcher
+
+**Focus:** Market & business intelligence
+
+| Capability | Methodologies |
+|------------|---------------|
+| Market Analysis | TAM/SAM/SOM, market sizing, trends |
+| Competitive Intel | Competitor analysis, competitive intelligence |
+| Business Planning | Models, niche eval, risk, distribution |
+| Pricing | Research, benchmarking |
+| Ideas | Generation, frameworks |
+
+**Files:** 22 | **Location:** [faion-market-researcher/](../faion-market-researcher/)
+
+### faion-user-researcher
+
+**Focus:** User research & validation
+
+| Capability | Methodologies |
+|------------|---------------|
+| Personas | Building, segmentation, AI-assisted |
+| Interviews | Methods, analysis, at-scale |
+| Pain Points | Research, validation |
+| JTBD | Framework, motivations |
+| Validation | Methods, problem-solution fit |
+| Value Prop | Design, canvas |
+
+**Files:** 21 | **Location:** [faion-user-researcher/](../faion-user-researcher/)
 
 ---
 
@@ -22,23 +106,13 @@ Orchestrate all research and discovery activities for product/startup developmen
 | faion-research-agent | opus | Research orchestrator | ideas, market, competitors, pains, personas, validate, niche, pricing, names |
 | faion-domain-checker-agent | sonnet | Domain availability verification | - |
 
-**Mode Mapping:**
-| Mode | Replaces | Output |
-|------|----------|--------|
-| ideas | faion-research-agent (mode: ideas) | 15-20 candidates |
-| market | faion-research-agent (mode: market) | market-research.md |
-| competitors | faion-research-agent (mode: competitors) | competitive-analysis.md |
-| pains | faion-research-agent (mode: pains) | pain-points.md |
-| personas | faion-research-agent (mode: personas) | user-personas.md |
-| validate | faion-research-agent (mode: validate) | problem-validation.md |
-| niche | faion-research-agent (mode: niche) | niche-evaluation.md |
-| pricing | faion-research-agent (mode: pricing) | pricing-research.md |
-| names | faion-research-agent (mode: names) | name-candidates.md |
+**Details:** [agent-invocation.md](agent-invocation.md)
 
 ---
 
-## Methodologies (20)
+## Research Modes (9)
 
+<<<<<<< HEAD
 | Methodology | Description | Agent (Mode) |
 |-------------|-------------|--------------|
 | idea-generation | Pain, Passion, Profession, Process, Platform, People, Product | ideas |
@@ -63,11 +137,25 @@ Orchestrate all research and discovery activities for product/startup developmen
 | customer-interview-framework | Interview structure, questions, anti-patterns | validate |
 
 > **Full details:** [methodologies-detail.md](methodologies-detail.md)
+=======
+| Mode | Output | Sub-Skill Used |
+|------|--------|----------------|
+| ideas | idea-candidates.md | market-researcher |
+| market | market-research.md | market-researcher |
+| competitors | competitive-analysis.md | market-researcher |
+| pricing | pricing-research.md | market-researcher |
+| niche | niche-evaluation.md | market-researcher |
+| personas | user-personas.md | user-researcher |
+| pains | pain-points.md | user-researcher |
+| validate | problem-validation.md | user-researcher |
+| names | name-candidates.md | market-researcher |
+>>>>>>> claude
 
 ---
 
-## References
+## Core Workflows
 
+<<<<<<< HEAD
 | Reference | Content | Lines |
 |-----------|---------|-------|
 | [methodologies-detail.md](methodologies-detail.md) | Full methodology templates, examples, frameworks | ~1500 |
@@ -457,31 +545,108 @@ All outputs go to `.aidocs/product_docs/`:
 | All .com taken | Suggest .io, check premium domains |
 | Trademark conflict | Remove name, note reason |
 | Data not found | Mark as "Data not available", continue |
+=======
+### 1. Idea Discovery
+```
+Context → Generate Ideas → Select → Pain Research → Niche Eval → Results
+Sub-skills: market-researcher (ideas, niche) + user-researcher (pains)
+```
+
+### 2. Product Research
+```
+Parse Project → Read Docs → Select Modules → Sequential Execution → Summary
+Sub-skills: market-researcher (market, competitors, pricing) + user-researcher (personas, validate)
+```
+
+### 3. Project Naming
+```
+Gather Concept → Generate Names → Select → Check Domains → Results
+Sub-skill: market-researcher (naming)
+```
+
+**Details:** [workflows.md](workflows.md)
+
+---
+
+## Quick Reference
+
+| Topic | File | Description |
+|-------|------|-------------|
+| **Navigation** | [CLAUDE.md](CLAUDE.md) | Entry point, when to use |
+| **Agents** | [agent-invocation.md](agent-invocation.md) | Agent syntax, modes |
+| **Workflows** | [workflows.md](workflows.md) | Research workflows |
+| **Frameworks** | [frameworks.md](frameworks.md) | 7 Ps, JTBD, TAM/SAM/SOM |
+| **Methodologies** | [methodologies-index.md](methodologies-index.md) | Full index |
+
+---
+
+## Output Files
+
+All outputs go to `.aidocs/product_docs/`:
+
+| Module | Output File | Sub-Skill |
+|--------|-------------|-----------|
+| Idea Discovery | idea-validation.md | market-researcher |
+| Market Research | market-research.md | market-researcher |
+| Competitors | competitive-analysis.md | market-researcher |
+| Pricing | pricing-research.md | market-researcher |
+| Niche | niche-evaluation.md | market-researcher |
+| Personas | user-personas.md | user-researcher |
+| Pain Points | pain-points.md | user-researcher |
+| Validation | problem-validation.md | user-researcher |
+| Summary | executive-summary.md | Both |
+>>>>>>> claude
 
 ---
 
 ## Integration
 
 ### Entry Point
+<<<<<<< HEAD
 
 This skill is invoked via `/faion-net` when user intent is research-related:
 
 ```python
+=======
+Invoked via `/faion-net` when intent is research-related:
+```
+>>>>>>> claude
 if intent in ["idea", "research", "market", "competitors", "naming", "personas", "pricing"]:
     invoke("faion-researcher")
 ```
 
-### Next Steps After Research
+### Sub-Skill Invocation
+```
+# Market intelligence
+invoke("faion-market-researcher", mode="market")
 
+# User research
+invoke("faion-user-researcher", mode="personas")
+
+# Full research (sequential)
+invoke("faion-market-researcher", mode="market")
+invoke("faion-market-researcher", mode="competitors")
+invoke("faion-user-researcher", mode="personas")
+invoke("faion-user-researcher", mode="validate")
+```
+
+### Next Steps
 After research complete, offer:
+<<<<<<< HEAD
 - "Create GTM Manifest?" --> Call `faion-marketing-manager`
 - "Create spec.md?" --> Call `faion-sdd`
 - "Start development?" --> Call `faion-software-developer`
+=======
+- "Create GTM Manifest?" → `faion-marketing-manager`
+- "Create spec.md?" → `faion-sdd`
+- "Start development?" → `faion-software-developer`
+>>>>>>> claude
 
 ---
 
 ## Rules
 
+<<<<<<< HEAD
 - Run agents ONE BY ONE (sequential, not parallel)
 - Agents cite sources with URLs
 - If data not found --> "Data not available"
@@ -493,3 +658,15 @@ After research complete, offer:
 *Optimized: methodology details extracted to methodologies-detail.md*
 *Methodologies: 20 total (semantic names)*
 *Agents: 2 (faion-research-agent, faion-domain-checker-agent)*
+=======
+1. **Sequential execution** - Run agents ONE BY ONE (not parallel)
+2. **Sub-skill routing** - Market topics → market-researcher, User topics → user-researcher
+3. **Source citations** - All research must include URLs
+4. **Data quality** - If not found → "Data not available"
+
+---
+
+*faion-researcher v2.0*
+*Orchestrator with 2 sub-skills*
+*Total: 43 methodologies | Agents: 2 | Modes: 9*
+>>>>>>> claude

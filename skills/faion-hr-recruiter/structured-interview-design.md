@@ -321,3 +321,9 @@ Unstructured interviews are unreliable predictors of job performance. When inter
 ---
 
 *Methodology: structured-interview-design | Interviewing | faion-recruiter-agent*
+
+## Sources
+
+- [Google re:Work Interview Guide](https://rework.withgoogle.com/guides/hiring-use-structured-interviewing/steps/introduction/)
+- [SHRM Structured Interview Design](https://www.shrm.org/topics-tools/tools/toolkits/conducting-effective-interviews)
+- [Harvard Business Review Interview Design](https://hbr.org/2016/02/how-to-hire)

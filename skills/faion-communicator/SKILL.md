@@ -12,6 +12,36 @@ Universal communication skill for effective dialogue with stakeholders, customer
 
 ---
 
+## Decision Tree: Quick Routing
+
+| If you need... | Use | File |
+|----------------|-----|------|
+| **Customer validation** | The Mom Test | [mom-test](mom-test.md) |
+| **Requirements gathering** | Stakeholder Communication | [stakeholder-communication](stakeholder-communication.md) |
+| **Deep understanding** | Active Listening (RASA) | [active-listening](active-listening.md) |
+| **Resolve conflict** | Thomas-Kilmann, NVC | [conflict-resolution](conflict-resolution.md) |
+| **Give feedback** | SBI, Radical Candor | [feedback](feedback.md) |
+| **Receive feedback** | Listen, clarify, thank | [feedback](feedback.md) |
+| **Pitch to executives** | Pyramid Principle, SCQA | [selling-ideas](selling-ideas.md) + [business-storytelling](business-storytelling.md) |
+| **Technical persuasion** | Evidence-based | [selling-ideas](selling-ideas.md) |
+| **Sales context** | SPIN Selling, Challenger | [selling-ideas](selling-ideas.md) |
+| **Performance issues** | Crucial Conversations | [difficult-conversations](difficult-conversations.md) |
+| **Deliver bad news** | Direct, empathetic | [difficult-conversations](difficult-conversations.md) |
+| **Negotiate contract** | BATNA, Principled | [negotiation](negotiation.md) |
+| **Generate ideas (group)** | Classic, 6-3-5, Round Robin | [brainstorming-ideation](brainstorming-ideation.md) |
+| **Generate ideas (solo)** | SCAMPER, Mind Mapping | [brainstorming-ideation](brainstorming-ideation.md) |
+
+**By stakeholder:**
+- Customers → mom-test | Executives → selling-ideas + business-storytelling
+- Team → feedback | Peers → conflict-resolution | External → stakeholder-communication
+
+**Common sequences:**
+- Customer discovery: mom-test → active-listening → stakeholder-communication
+- Difficult feedback: feedback → difficult-conversations → active-listening
+- Proposal/pitch: selling-ideas → business-storytelling → negotiation
+
+---
+
 ## Overview
 
 This skill provides communication methodologies for:

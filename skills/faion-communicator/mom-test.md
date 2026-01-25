@@ -166,18 +166,18 @@ After 5+ interviews, look for:
 
 ---
 
-## Related Methodologies
 
-- **Active Listening:** RASA framework, empathic listening
-- **Stakeholder Communication:** Interview, brainstorm, clarify modes
-- **Problem Validation:** Research methodology for problem validation
+
 
 ---
 
-## References
+*The Mom Test | Communication / Validation | Version 1.0*
 
-- Fitzpatrick, R. (2013). The Mom Test
-- [Summary](https://tianpan.co/blog/2025-04-29-the-mom-test)
+## Sources
+
+- [The Mom Test Official Site](http://momtestbook.com/)
+- [Y Combinator Customer Interviews](https://www.ycombinator.com/library/6g-how-to-talk-to-users)
+- [First Round Review Customer Discovery](https://review.firstround.com/the-right-way-to-ask-the-right-questions)
 
 ---
 

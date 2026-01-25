@@ -1,49 +1,100 @@
 ---
 name: faion-marketing-manager
-description: "Marketing Manager role: GTM strategy, landing pages, copywriting, SEO/SEM, GEO/AEO, content marketing, social media, email campaigns, ads (Google, Meta), analytics, A/B testing, conversion optimization. 86 methodologies."
+description: "Marketing Manager orchestrator: coordinates 4 specialized sub-skills (GTM, Content, Growth, Conversion). 82 total methodologies across sub-skills."
 user-invocable: false
-allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
+allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob, Skill
 ---
 
-# Marketing Domain Skill
+# Marketing Manager Orchestrator
 
-**Communication: User's language. Content: target audience language.**
+Coordinates all marketing activities by routing to specialized sub-skills.
 
 ## Purpose
 
-Orchestrates all marketing activities from go-to-market strategy to growth experiments. Covers GTM planning, landing pages, content marketing, SEO, paid ads, email marketing, social media, and growth hacking.
+Routes marketing tasks to appropriate sub-skill based on domain: GTM strategy, content marketing, growth experiments, or conversion optimization.
 
-## Merged From
+## Architecture
 
-| Original Skill | Content |
-|----------------|---------|
-| faion-gtm-manifest | GTM Manifest from research data |
-| faion-landing-page | High-converting landing pages |
+| Sub-Skill | Purpose | Methodologies |
+|-----------|---------|---------------|
+| **faion-gtm-strategist** | GTM, launches, positioning, pricing, partnerships, customer success | 26 |
+| **faion-content-marketer** | Content, copywriting, SEO, email, social, video/podcast, AI tools | 16 + 30 refs |
+| **faion-growth-marketer** | Analytics, experiments, A/B testing, AARRR, retention, viral loops | 30 |
+| **faion-conversion-optimizer** | Landing pages, CRO, funnels, PLG, onboarding | 13 |
 
----
+**Total:** 82 methodologies + 30 media references
 
-## Agents
+## Decision Tree
 
-| Agent | Purpose | Modes/Skills |
-|-------|---------|--------------|
-| faion-landing-agent | Landing page orchestrator | analyze, copy, design |
-| faion-content-agent | Content marketing, SEO | faion-analytics-skill |
-| faion-email-agent | Email marketing campaigns | - |
-| faion-social-agent | Social media marketing | - |
-| faion-growth-agent | Growth hacking, experiments | faion-analytics-skill |
-| faion-ads-agent | Paid advertising | faion-meta-ads-skill, faion-google-ads-skill |
+| If you need... | Route to | Example Methodologies |
+|---------------|----------|----------------------|
+| **GTM & Launch** | faion-gtm-strategist | GTM strategy, Product Hunt, positioning, pricing |
+| **Content Creation** | faion-content-marketer | Content strategy, copywriting, email, social, video |
+| **Growth & Analytics** | faion-growth-marketer | AARRR, A/B testing, retention, viral loops, analytics |
+| **Conversion** | faion-conversion-optimizer | Landing pages, CRO, funnels, PLG, onboarding |
+| **Paid Ads** | faion-ppc-manager | Google Ads, Meta Ads, LinkedIn Ads (separate skill) |
+| **SEO Technical** | faion-seo-manager | Technical SEO, AEO, Core Web Vitals (separate skill) |
+| **Social Media Mgmt** | faion-smm-manager | Twitter, LinkedIn, Instagram growth (separate skill) |
 
-**Landing Agent Mode Mapping:**
-| Mode | Replaces | Purpose |
-|------|----------|---------|
-| analyze | faion-landing-agent (mode: analyze) | Conversion audit, A/B tests |
-| copy | faion-landing-agent (mode: copy) | AIDA/PAS copy, headlines |
-| design | faion-landing-agent (mode: design) | HTML/Tailwind, mobile-first |
+## Routing Examples
 
----
+### Launch Scenario
+```
+Product Launch
+├─→ faion-gtm-strategist (GTM strategy, positioning, launch plan)
+├─→ faion-content-marketer (launch content, email campaign, press release)
+├─→ faion-conversion-optimizer (landing page, free trial)
+└─→ faion-growth-marketer (metrics tracking, experiments)
+```
+
+### Content Scenario
+```
+Content Marketing
+├─→ faion-content-marketer (content strategy, SEO, copywriting)
+├─→ faion-growth-marketer (content metrics, A/B testing)
+└─→ faion-seo-manager (technical SEO, Core Web Vitals)
+```
+
+### Growth Scenario
+```
+Growth Optimization
+├─→ faion-growth-marketer (AARRR framework, experiments, analytics)
+├─→ faion-conversion-optimizer (funnel optimization, PLG)
+└─→ faion-content-marketer (growth content, email)
+```
+
+## Execution Pattern
+
+1. **Analyze** task intent and domain
+2. **Route** to appropriate sub-skill(s)
+3. **Invoke** sub-skill(s) using Skill tool
+4. **Coordinate** if multiple sub-skills needed
+5. **Report** results to user
+
+## Quick Reference
+
+| Marketing Goal | Primary Sub-Skill | Secondary Sub-Skills |
+|----------------|-------------------|---------------------|
+| Launch product | gtm-strategist | content-marketer, conversion-optimizer |
+| Acquire users | content-marketer | growth-marketer, ppc-manager |
+| Optimize conversion | conversion-optimizer | growth-marketer |
+| Scale growth | growth-marketer | ppc-manager, content-marketer |
+| Build brand | content-marketer | gtm-strategist, smm-manager |
+| Retain users | growth-marketer | content-marketer |
+| Partnerships | gtm-strategist | content-marketer |
+
+## Related Skills (External)
+
+- faion-ppc-manager (paid advertising)
+- faion-seo-manager (technical SEO, AEO)
+- faion-smm-manager (social media management)
+- faion-researcher (market research)
+- faion-product-manager (product positioning)
+- faion-ux-ui-designer (design for marketing)
 
 ## References
 
+<<<<<<< HEAD
 | Reference | Content | Lines |
 |-----------|---------|-------|
 | [ref-methodologies-detail.md](ref-methodologies-detail.md) | Detailed methodology frameworks (72) | ~1200 |
@@ -429,3 +480,14 @@ Hypothesis → Experiment Design → Run → Analyze → Learn → Iterate
 *Domain Skill v1.1 - Marketing*
 *86 Methodologies | 6 Agents*
 *Merged from: faion-gtm-manifest, faion-landing-page*
+=======
+Shared reference files remain in faion-marketing-manager/references/:
+- analytics.md (GA4, Plausible, Mixpanel)
+- google-ads.md, meta-ads.md (PPC technical refs)
+- seo.md (SEO/AEO technical)
+
+---
+
+*Marketing Manager Orchestrator v2.0*
+*4 Sub-Skills | 82 Methodologies | 30 Media References*
+>>>>>>> claude

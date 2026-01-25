@@ -305,19 +305,18 @@ NEW WAY:
 
 ---
 
-## Related Methodologies
 
-- **Selling Ideas:** SPIN Selling, Challenger Sale, elevator pitch
-- **Copywriting:** Marketing copywriting techniques
-- **Business Case:** BA business case development
+
 
 ---
 
-## References
+*Business Storytelling | Communication | Version 1.0*
 
-- Minto, B. (2009). The Pyramid Principle
-- Duarte, N. (2012). Resonate
-- Pixar Storytelling Framework
+## Sources
+
+- [Harvard Business Review Storytelling Guide](https://hbr.org/2014/03/why-storytelling-is-so-powerful-in-the-digital-era)
+- [Pixar in a Box Storytelling](https://www.khanacademy.org/computing/pixar)
+- [Nancy Duarte Presentation Resources](https://www.duarte.com/resources/)
 
 ---
 

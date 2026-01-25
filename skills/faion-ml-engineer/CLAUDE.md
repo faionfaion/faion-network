@@ -1,13 +1,63 @@
-# ML Engineer Domain Skill
+# ML Engineer Orchestrator
+
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-ml-engineer`
+
+## When to Use
+
+- Any AI/ML engineering task
+- Routes to specialized sub-skills automatically
 
 ## Overview
 
-ML Engineer skill for AI/ML engineering activities. Covers LLM APIs (OpenAI, Claude, Gemini), embeddings, RAG systems, fine-tuning, vector databases, and AI frameworks (LangChain, LlamaIndex).
+Orchestrates 5 specialized AI/ML sub-skills. Routes tasks based on intent.
 
-**Total:** 10 reference files, ~11,000 lines of technical documentation, 42 methodologies.
+**Sub-Skills:** 5 | **Total Methodologies:** 101
+
+## Sub-Skills (5)
+
+| Sub-Skill | Methodologies | Purpose |
+|-----------|---------------|---------|
+| [faion-llm-integration](../faion-llm-integration/SKILL.md) | 26 | LLM APIs, prompting, function calling |
+| [faion-rag-engineer](../faion-rag-engineer/SKILL.md) | 22 | RAG, embeddings, vector search |
+| [faion-ml-ops](../faion-ml-ops/SKILL.md) | 15 | Fine-tuning, evaluation, cost |
+| [faion-ai-agents](../faion-ai-agents/SKILL.md) | 26 | Agents, multi-agent, MCP |
+| [faion-multimodal-ai](../faion-multimodal-ai/SKILL.md) | 12 | Vision, image/video, speech |
+
+## Routing
+
+| Task Type | Sub-Skill |
+|-----------|-----------|
+| OpenAI/Claude/Gemini API | faion-llm-integration |
+| Prompts, CoT, guardrails | faion-llm-integration |
+| RAG, embeddings, chunking | faion-rag-engineer |
+| Vector DBs, hybrid search | faion-rag-engineer |
+| Fine-tuning, LoRA | faion-ml-ops |
+| Cost, evaluation, observability | faion-ml-ops |
+| Agents, LangChain, LlamaIndex | faion-ai-agents |
+| MCP, agent architectures | faion-ai-agents |
+| Vision, image/video gen | faion-multimodal-ai |
+| Speech, TTS, voice | faion-multimodal-ai |
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Orchestrator definition |
+| [decision-framework.md](decision-framework.md) | ML choices framework |
+| [llm-decision-framework.md](llm-decision-framework.md) | LLM provider selection |
+
+## Related Skills
+
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-software-developer](../faion-software-developer/CLAUDE.md) | Integrates ML into applications |
+| [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) | Deploys ML models |
+| [faion-claude-code](../faion-claude-code/CLAUDE.md) | MCP server setup |
 
 ---
 
+<<<<<<< HEAD
 ## Structure
 
 All files are now in the skill root (flat structure). Files with naming conflicts use prefixes:
@@ -90,3 +140,6 @@ See [meth-CLAUDE.md](meth-CLAUDE.md) for full listing.
 ---
 
 *ML Engineer Domain Skill v1.0*
+=======
+*ML Engineer Domain Skill v1.2*
+>>>>>>> claude

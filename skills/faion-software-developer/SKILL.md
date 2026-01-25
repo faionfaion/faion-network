@@ -1,19 +1,75 @@
 ---
 name: faion-software-developer
+<<<<<<< HEAD
 description: "Developer role: Python, JavaScript/TypeScript, backend, APIs, testing, automation, UI design. Full-stack development with 111 methodologies."
+=======
+description: "Developer orchestrator: coordinates 7 sub-skills (Python, JavaScript, Backend, Frontend, API, Testing, DevTools) with 184 total methodologies."
+>>>>>>> claude
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
 
-# Developer Domain Skill
+# Software Developer Orchestrator
 
-**Communication: User's language. Code: English.**
+Coordinates 7 specialized sub-skills for comprehensive software development.
 
 ## Purpose
 
-Orchestrates all software development activities. Covers programming languages, frameworks, testing, API design, and automation.
+Routes development tasks to appropriate specialized sub-skills based on technology, domain, and task type.
 
----
+## Sub-Skills
+
+| Sub-skill | Methodologies | Focus |
+|-----------|---------------|-------|
+| faion-python-developer | 24 | Django, FastAPI, async, pytest, type hints |
+| faion-javascript-developer | 18 | React, Node.js, Next.js, TypeScript, Bun |
+| faion-backend-developer | 47 | Go, Rust, Java, C#, PHP, Ruby, databases |
+| faion-frontend-developer | 18 | Tailwind, CSS-in-JS, design tokens, PWA, a11y |
+| faion-api-developer | 19 | REST, GraphQL, OpenAPI, auth, versioning |
+| faion-testing-developer | 12 | Unit, integration, E2E, TDD, mocking |
+| faion-devtools-developer | 46 | Automation, architecture, code quality, CI/CD |
+
+**Total:** 184 methodologies across 7 sub-skills
+
+## Routing Logic
+
+| Task Type | Route To |
+|-----------|----------|
+| Python/Django/FastAPI code | faion-python-developer |
+| JavaScript/TypeScript/React/Node.js code | faion-javascript-developer |
+| Go/Rust/Java/C#/PHP/Ruby code | faion-backend-developer |
+| Database design, caching | faion-backend-developer |
+| Tailwind/CSS/UI libraries | faion-frontend-developer |
+| Design tokens, PWA, accessibility | faion-frontend-developer |
+| REST/GraphQL API design | faion-api-developer |
+| API auth, versioning, rate limiting | faion-api-developer |
+| Testing (any type) | faion-testing-developer |
+| Browser automation, web scraping | faion-devtools-developer |
+| Code review, refactoring | faion-devtools-developer |
+| Architecture patterns (DDD, CQRS) | faion-devtools-developer |
+| CI/CD, monorepo, tooling | faion-devtools-developer |
+
+## Multi-Skill Tasks
+
+For tasks spanning multiple domains, coordinate relevant sub-skills:
+
+**Full-stack Python app:**
+1. faion-python-developer (backend)
+2. faion-api-developer (API design)
+3. faion-frontend-developer (UI)
+4. faion-testing-developer (tests)
+
+**React + Node.js app:**
+1. faion-javascript-developer (React + Node.js)
+2. faion-frontend-developer (styling)
+3. faion-api-developer (API)
+4. faion-testing-developer (tests)
+
+**Microservices architecture:**
+1. faion-backend-developer (services in Go/Rust/Java)
+2. faion-api-developer (API gateway)
+3. faion-devtools-developer (architecture patterns)
+4. faion-testing-developer (integration tests)
 
 ## Agents
 
@@ -25,6 +81,7 @@ Orchestrates all software development activities. Covers programming languages, 
 | faion-storybook-agent | Setup/maintain Storybook |
 | faion-frontend-component-agent | Develop components with stories |
 
+<<<<<<< HEAD
 ---
 
 ## References
@@ -266,16 +323,21 @@ project/
 
 ---
 
+=======
+>>>>>>> claude
 ## Related Skills
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-devops | Deployment, CI/CD |
-| faion-ml | AI/ML integrations |
+| faion-net | Parent orchestrator for all projects |
+| faion-software-architect | Architecture design decisions |
+| faion-devops-engineer | Deployment, infrastructure |
+| faion-ml-engineer | AI/ML integrations |
 | faion-sdd | Specification-driven development |
 
----
+## Usage
 
+<<<<<<< HEAD
 ## Error Handling
 
 | Issue | Action |
@@ -283,9 +345,10 @@ project/
 | Unknown language | Ask user or infer from files |
 | Missing context | Read ref-*.md files for patterns |
 | Complex architecture | Use Task tool with Explore agent |
+=======
+Invoked via `/faion-net` or directly as `/faion-software-developer`. Automatically routes to appropriate sub-skill.
+>>>>>>> claude
 
 ---
 
-*Developer Domain Skill v3.1*
-*12 Reference Areas | 70 Methodologies | 5 Agents*
-*Consolidated from: faion-development, faion-dev-django, faion-dev-docs, faion-dev-frontend*
+*faion-software-developer v2.0 | Orchestrator | 7 sub-skills | 184 methodologies*

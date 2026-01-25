@@ -274,18 +274,18 @@ For complex ideas, create a written summary:
 
 ---
 
-## Related Methodologies
 
-- **Business Storytelling:** Pyramid Principle, SCQA, Pixar framework
-- **Negotiation:** Principled negotiation, BATNA, Cialdini's 6 principles
-- **Value Proposition:** Marketing value proposition design
+
 
 ---
 
-## References
+*Selling Ideas | Communication / Persuasion | Version 1.0*
 
-- Rackham, N. (1988). SPIN Selling
-- Dixon, M. & Adamson, B. (2011). The Challenger Sale
+## Sources
+
+- [Harvard Business Review Persuasion](https://hbr.org/topic/subject/persuasion)
+- [Influence at Work (Cialdini)](https://www.influenceatwork.com/)
+- [MindTools Selling Skills](https://www.mindtools.com/CommSkll/SellingSkills.htm)
 
 ---
 

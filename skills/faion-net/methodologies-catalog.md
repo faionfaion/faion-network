@@ -4,10 +4,44 @@ Complete catalog of all 502 methodologies available in the faion-network framewo
 
 ## Overview
 
+<<<<<<< HEAD
+=======
+| Category | Count | Domain Skills | Reference |
+|----------|-------|---------------|-----------|
+| **Development** | **146** | faion-software-developer, faion-devops-engineer, faion-ml-engineer, faion-software-architect | [methodologies-dev.md](methodologies-dev.md) |
+| **Product & Research** | **175** | faion-researcher, faion-product-manager, faion-project-manager, faion-business-analyst, faion-ux-ui-designer, faion-sdd, faion-communicator, faion-hr-recruiter | [methodologies-product.md](methodologies-product.md) |
+| **Marketing & Growth** | **82** | faion-marketing-manager | [methodologies-marketing.md](methodologies-marketing.md) |
+| **Total** | **502** | | |
+
+---
+
+## Files Organization
+
+### Development (146 methodologies)
+
+File: [methodologies-dev.md](methodologies-dev.md)
+
+| Category | Count | Domain Skills |
+|----------|-------|---------------|
+| Development | 68 | faion-software-developer |
+| DevOps | 20 | faion-devops-engineer |
+| ML/AI | 30 | faion-ml-engineer |
+| Software Architecture | 28 | faion-software-architect |
+
+**Topics:** Python, JavaScript/TypeScript, Backend Languages, Architecture, API Design, Database, Testing, Code Quality, Features, UI/Frontend, XP Practices, Infrastructure, CI/CD, LLM APIs, RAG, Embeddings
+
+---
+
+### Product & Research (175 methodologies)
+
+File: [methodologies-product.md](methodologies-product.md)
+
+>>>>>>> claude
 | Category | Count | Domain Skills |
 |----------|-------|---------------|
 | Research | 14 | faion-researcher |
 | Product | 18 | faion-product-manager |
+<<<<<<< HEAD
 | Development | 68 | faion-software-developer |
 | DevOps | 20 | faion-devops-engineer |
 | ML/AI | 30 | faion-ml-engineer |
@@ -15,12 +49,15 @@ Complete catalog of all 502 methodologies available in the faion-network framewo
 | Growth | 12 | faion-marketing-manager |
 | Advertising | 16 | faion-marketing-manager |
 | Business Operations | 14 | faion-marketing-manager |
+=======
+>>>>>>> claude
 | Project Management | 32 | faion-project-manager |
 | Business Analysis | 12 | faion-business-analyst |
 | UX/UI | 32 | faion-ux-ui-designer |
 | SDD | 12 | faion-sdd |
 | Communication | 10 | faion-communicator |
 | HR/Recruiting | 45 | faion-hr-recruiter |
+<<<<<<< HEAD
 | **Total** | **502** | |
 
 ---
@@ -569,3 +606,108 @@ Categories:
 
 *Methodologies Catalog v1.0*
 *502 Methodologies | 15 Categories*
+=======
+
+**Topics:** Market Research, MVP/MLP Planning, PMBOK 7/8, Requirements Engineering, Usability Testing, SDD Workflow, Stakeholder Communication, Talent Acquisition
+
+---
+
+### Marketing & Growth (82 methodologies)
+
+File: [methodologies-marketing.md](methodologies-marketing.md)
+
+| Category | Count | Domain Skills |
+|----------|-------|---------------|
+| Marketing | 40 | faion-marketing-manager |
+| Growth | 12 | faion-marketing-manager |
+| Advertising | 16 | faion-marketing-manager |
+| Business Operations | 14 | faion-marketing-manager |
+
+**Topics:** GTM Strategy, SEO, Content Marketing, Paid Ads, Email Marketing, Social Media, Growth Loops, AARRR Metrics, Business Operations
+
+---
+
+## Quick Reference
+
+### By Domain Skill
+
+| Domain Skill | Methodologies | File |
+|--------------|---------------|------|
+| faion-software-developer | 68 | [methodologies-dev.md](methodologies-dev.md) |
+| faion-ux-ui-designer | 32 | [methodologies-product.md](methodologies-product.md) |
+| faion-marketing-manager | 82 | [methodologies-marketing.md](methodologies-marketing.md) |
+| faion-project-manager | 32 | [methodologies-product.md](methodologies-product.md) |
+| faion-ml-engineer | 30 | [methodologies-dev.md](methodologies-dev.md) |
+| faion-devops-engineer | 20 | [methodologies-dev.md](methodologies-dev.md) |
+| faion-product-manager | 18 | [methodologies-product.md](methodologies-product.md) |
+| faion-researcher | 14 | [methodologies-product.md](methodologies-product.md) |
+| faion-business-analyst | 12 | [methodologies-product.md](methodologies-product.md) |
+| faion-sdd | 12 | [methodologies-product.md](methodologies-product.md) |
+| faion-communicator | 10 | [methodologies-product.md](methodologies-product.md) |
+| faion-hr-recruiter | 45 | [methodologies-product.md](methodologies-product.md) |
+| faion-software-architect | 28 | [methodologies-dev.md](methodologies-dev.md) |
+
+### By Use Case
+
+| Use Case | Count | File |
+|----------|-------|------|
+| Backend Development | 68 | [methodologies-dev.md](methodologies-dev.md) |
+| Marketing & Growth | 82 | [methodologies-marketing.md](methodologies-marketing.md) |
+| Product Management | 18 | [methodologies-product.md](methodologies-product.md) |
+| UX/UI Design | 32 | [methodologies-product.md](methodologies-product.md) |
+| Project Management | 32 | [methodologies-product.md](methodologies-product.md) |
+| DevOps & Infrastructure | 20 | [methodologies-dev.md](methodologies-dev.md) |
+| AI/ML Development | 30 | [methodologies-dev.md](methodologies-dev.md) |
+| Research & Discovery | 14 | [methodologies-product.md](methodologies-product.md) |
+
+---
+
+## File Details
+
+### methodologies-dev.md (146 methodologies)
+
+Development-focused methodologies covering:
+- Python (Django, FastAPI, async, testing)
+- JavaScript/TypeScript (React, Next.js, Node.js)
+- Backend languages (Go, Rust, Ruby, PHP, Java, C#)
+- Architecture patterns (Clean, DDD, CQRS, Event Sourcing)
+- API design (REST, GraphQL, OpenAPI)
+- Database (SQL, NoSQL, caching, message queues)
+- Testing (unit, integration, E2E, TDD)
+- Code quality (documentation, review, refactoring)
+- DevOps (Docker, Kubernetes, Terraform, CI/CD)
+- ML/AI (LLM APIs, RAG, embeddings, fine-tuning)
+
+### methodologies-product.md (175 methodologies)
+
+Product and research methodologies covering:
+- Research (market analysis, competitor research, personas)
+- Product management (MVP/MLP, RICE, roadmaps, OKRs)
+- Project management (PMBOK 7/8, agile, risk management)
+- Business analysis (requirements, use cases, BPMN)
+- UX/UI (Nielsen's 10, usability testing, design systems)
+- SDD workflow (specifications, tasks, quality gates)
+- Communication (Mom Test, stakeholder dialogue)
+- HR/Recruiting (talent acquisition, onboarding)
+
+### methodologies-marketing.md (82 methodologies)
+
+Marketing and growth methodologies covering:
+- Marketing (GTM, SEO, content, email, social media)
+- Growth (AARRR, North Star, growth loops, A/B testing)
+- Advertising (Meta, Google, LinkedIn, retargeting)
+- Business operations (pricing, customer success, automation)
+
+---
+
+## Navigation
+
+- [Development Methodologies](methodologies-dev.md) - 146 methodologies
+- [Product & Research Methodologies](methodologies-product.md) - 175 methodologies
+- [Marketing & Growth Methodologies](methodologies-marketing.md) - 82 methodologies
+
+---
+
+*Methodologies Catalog v2.0*
+*502 Methodologies | 15 Categories | 3 Files*
+>>>>>>> claude

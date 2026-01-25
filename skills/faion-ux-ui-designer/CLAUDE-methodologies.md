@@ -43,7 +43,8 @@
 | contextual-inquiry.md | Contextual Inquiry | Field study observing users in their natural environment |
 | focus-groups.md | Focus Groups | Group discussions (6-10 participants) for qualitative insights |
 | tree-testing.md | Tree Testing | Validate information architecture by testing navigation without UI |
-| accessibility-evaluation.md | Accessibility Evaluation | Ensure WCAG compliance through automated and manual testing |
+| a11y-basics.md | Accessibility Basics | Fundamentals and quick checks for accessibility |
+| a11y-testing.md | Accessibility Testing | Complete testing process for WCAG compliance |
 | design-critique.md | Design Critique | Structured feedback sessions to improve design quality |
 
 ### Advanced Topics (7 files)
@@ -53,10 +54,14 @@
 | competitive-analysis.md | Competitive Analysis | Evaluate competitor products to identify opportunities and benchmarks |
 | content-audit.md | Content Audit | Systematic inventory and evaluation of existing content |
 | cognitive-walkthrough.md | Cognitive Walkthrough | Evaluate learnability by stepping through tasks as a new user |
-| information-architecture.md | Information Architecture | Structure and organize content for optimal findability |
-| mobile-ux.md | Mobile UX Design | Touch-first design, thumb zones, mobile-specific patterns |
-| voice-ui.md | Voice UI Design Basics | Principles for conversational interfaces and voice interactions |
-| diary-studies.md | Diary Studies | Longitudinal research capturing user experiences over time |
+| ia-framework.md | IA Framework | Framework, principles, process, and validation |
+| ia-templates.md | IA Templates | Templates, examples, patterns, tools, and checklist |
+| mobile-ux-basics.md | Mobile UX Design Basics | Touch-first design, thumb zones, mobile principles |
+| mobile-ux-patterns.md | Mobile UX Patterns & Templates | Navigation patterns, forms, loading, errors |
+| voice-ui-basics.md | Voice UI Design Basics | Framework, process, templates for conversational interfaces |
+| voice-ui-patterns.md | Voice UI Patterns & Guidelines | Prompt writing, error recovery, multimodal, platform guidelines |
+| diary-study-basics.md | Diary Study Basics | Planning and setup for longitudinal research |
+| diary-study-execution.md | Diary Study Execution | Running studies and analyzing temporal patterns |
 
 ## Usage
 

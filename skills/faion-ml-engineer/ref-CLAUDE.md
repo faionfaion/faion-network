@@ -37,7 +37,8 @@ Technical documentation for AI/ML engineering. Contains API guides, framework do
 
 | File | Description | Lines |
 |------|-------------|-------|
-| [finetuning.md](finetuning.md) | LLM fine-tuning guide: techniques (Full FT, LoRA, QLoRA, DoRA), frameworks (LLaMA-Factory, Unsloth, Axolotl), dataset formats, alignment (SFT, RLHF, DPO), evaluation, deployment (GGUF, vLLM). | ~990 |
+| [finetuning-basics.md](finetuning-basics.md) | Fine-tuning techniques and frameworks: LoRA, QLoRA, DoRA comparison, OpenAI API, LLaMA-Factory, Unsloth, Axolotl, alignment methods (SFT, RLHF, DPO, ORPO), model merging. | ~575 |
+| [finetuning-datasets.md](finetuning-datasets.md) | Fine-tuning datasets and deployment: data formats (Alpaca, ShareGPT), cleaning pipeline, training config, evaluation metrics, deployment (GGUF, vLLM, TGI), cost optimization, troubleshooting. | ~437 |
 | [best-practices-2026.md](best-practices-2026.md) | Current AI/ML best practices: Agentic RAG (RAG 2.0 with multi-hop retrieval), AI Agent patterns (CoT, ReAct, Plan-and-Execute), MCP (Model Context Protocol), LLM observability. | ~300 |
 
 ---
@@ -59,9 +60,9 @@ Technical documentation for AI/ML engineering. Contains API guides, framework do
 
 ### For Fine-tuning
 
-1. Review `finetuning.md` for technique selection
-2. Choose LoRA/QLoRA for most use cases
-3. Prepare dataset in appropriate format
+1. Review `finetuning-basics.md` for technique selection
+2. Use `finetuning-datasets.md` for data preparation
+3. Choose LoRA/QLoRA for most use cases
 
 ### For Agents
 

@@ -1,9 +1,21 @@
 # PM Domain Skill
 
-Project Manager domain skill providing professional project management methodologies for solopreneurs and teams.
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-project-manager`
+
+## When to Use
+
+- Planning projects (scope, schedule, cost, resources)
+- Stakeholder management and engagement
+- Risk management and uncertainty handling
+- Team development and RACI matrices
+- Progress tracking with EVM and metrics
+- PM tools (Jira, Linear, ClickUp, GitHub Projects)
+- Agile ceremonies and hybrid delivery
+- Project closure and lessons learned
 
 ## Overview
 
+<<<<<<< HEAD
 - **Name:** faion-project-manager
 - **Type:** Domain Skill (orchestrator)
 - **Agent:** faion-pm-agent
@@ -19,6 +31,11 @@ Project Manager domain skill providing professional project management methodolo
 | PMBoK 8 updates | SKILL.md > PMBoK 8 Updates |
 | Quick reference tables | SKILL.md > Quick Reference Tables |
 | Detailed methodology | {methodology}.md |
+=======
+Project Manager domain skill providing professional PM methodologies for solopreneurs and teams.
+
+**Methodologies:** 46 | **Agent:** faion-pm-agent
+>>>>>>> claude
 
 ## Core Framework
 
@@ -26,21 +43,22 @@ Project Manager domain skill providing professional project management methodolo
 
 | Domain | Focus |
 |--------|-------|
-| Stakeholder | Engaging stakeholders effectively |
-| Team | Building high-performing teams |
-| Development Approach | Selecting predictive/agile/hybrid |
+| Stakeholder | Engaging stakeholders |
+| Team | High-performing teams |
+| Development Approach | Predictive/agile/hybrid |
 | Planning | Scope, schedule, cost, resources |
-| Project Work | Executing and monitoring activities |
-| Delivery | Delivering value and outcomes |
-| Measurement | Tracking with EVM, metrics, dashboards |
-| Uncertainty | Managing risks and complexity |
+| Project Work | Executing and monitoring |
+| Delivery | Value and outcomes |
+| Measurement | EVM, metrics, dashboards |
+| Uncertainty | Risks and complexity |
 
 ### Core Principles (12)
 
 Stewardship, Team, Stakeholders, Value, Systems Thinking, Leadership, Tailoring, Quality, Complexity, Risk, Adaptability, Change.
 
-## Directory Structure
+## Files
 
+<<<<<<< HEAD
 ```
 faion-project-manager/
 ├── CLAUDE.md              # This file (navigation)
@@ -80,9 +98,27 @@ faion-project-manager/
 | azure-devops-boards.md | Azure DevOps | Microsoft ecosystem |
 | notion-pm.md | Notion | Knowledge + PM |
 | trello-kanban.md | Trello | Simple kanban |
+=======
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Quick methodology selector, PMBoK overview, index |
+| [ref-pmbok.md](ref-pmbok.md) | PMBoK 7/8 reference |
+| [ref-CLAUDE.md](ref-CLAUDE.md) | External resources, tools, certifications |
 
-## Integration
+## PM Tools
 
+| Tool | Best For |
+|------|----------|
+| Jira | Enterprise, scaled agile |
+| ClickUp | All-in-one workspace |
+| Linear | Engineering teams |
+| GitHub Projects | Developers |
+| Azure DevOps | Microsoft ecosystem |
+>>>>>>> claude
+
+## Related Skills
+
+<<<<<<< HEAD
 | Domain Skill | Integration Point |
 |--------------|-------------------|
 | faion-sdd | Task planning uses PMBoK scheduling |
@@ -101,3 +137,16 @@ Execute methodologies via faion-pm-agent:
 ---
 
 *PM Domain Skill v3.0 - 2026-01-21*
+=======
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-sdd](../faion-sdd/CLAUDE.md) | Task planning uses PMBoK |
+| [faion-business-analyst](../faion-business-analyst/CLAUDE.md) | Requirements feed into scope |
+| [faion-product-manager](../faion-product-manager/CLAUDE.md) | Product roadmap aligns with schedule |
+| [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) | Campaign planning |
+
+---
+
+*PM Domain Skill v3.1*
+>>>>>>> claude

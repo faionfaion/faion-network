@@ -255,12 +255,12 @@ Priority: [Must/Should/Could]
 
 ---
 
-## Related Methodologies
+## Sources
 
-- **Active Listening:** RASA framework, empathic listening
-- **Brainstorming & Ideation:** SCAMPER, Mind Mapping, 6-3-5 Brainwriting
-- **Elicitation Techniques:** BA techniques for gathering requirements
-- **Stakeholder Register:** PM stakeholder identification and management
+- [PMI Stakeholder Engagement](https://www.pmi.org/learning/library/stakeholder-engagement-plan-6090)
+- [Harvard Business Review Stakeholder Management](https://hbr.org/topic/subject/stakeholder-management)
+- [MindTools Stakeholder Analysis](https://www.mindtools.com/pages/article/newPPM_07.htm)
+
 
 ---
 

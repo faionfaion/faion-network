@@ -1,32 +1,35 @@
 # HR Recruiter Skill
 
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-hr-recruiter`
+
+## When to Use
+
+- Full-cycle recruiting (sourcing, screening, interviewing)
+- Employer branding and EVP development
+- Job description writing
+- Structured interview design (STAR method)
+- Candidate evaluation and scorecards
+- Employee onboarding (30-60-90 day plans)
+- Retention strategies and stay interviews
+- HR compliance and documentation
+
 ## Overview
 
-HR and recruiting domain skill that orchestrates all talent acquisition, employer branding, interviewing, onboarding, and retention activities. Covers full-cycle recruiting, structured hiring, candidate experience optimization, and HR compliance.
+HR and recruiting domain skill covering full-cycle recruiting, structured hiring, candidate experience optimization, and HR compliance.
 
-**Purpose:** Complete HR and recruiting orchestration for startups and growing companies.
-
-**Communication:** User's language. HR documents: target audience language.
-
-## Skill Metadata
-
-| Field | Value |
-|-------|-------|
-| Name | faion-hr-recruiter |
-| User-invocable | No |
-| Methodologies | 5 total |
-| References | 3 technical guides |
+**Methodologies:** 5 | **Agents:** 3
 
 ## Agents
 
 | Agent | Purpose |
 |-------|---------|
-| faion-recruiter-agent | Full-cycle recruiting (sourcing, screening, interviewing) |
-| faion-onboarding-agent | Employee onboarding and 30-60-90 plans |
-| faion-employer-brand-agent | Employer branding and EVP development |
+| faion-recruiter-agent | Full-cycle recruiting |
+| faion-onboarding-agent | Employee onboarding |
+| faion-employer-brand-agent | Employer branding and EVP |
 
-## Directory Structure
+## Files
 
+<<<<<<< HEAD
 ```
 faion-hr-recruiter/
 ├── SKILL.md                             # Main skill definition
@@ -120,33 +123,42 @@ Preboarding → Day 1 → 30-day plan → 60-day check → 90-day review
 | faion-communicator | Interview communication, stakeholder dialogue |
 | faion-project-manager | Hiring project management |
 | faion-marketing-manager | Employer brand content, careers page |
+=======
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Main skill definition with decision tree |
+| [meth-CLAUDE.md](meth-CLAUDE.md) | Extended methodologies reference |
+| [recruitment-funnel-optimization.md](recruitment-funnel-optimization.md) | Talent acquisition and funnel |
+| [star-interview-framework.md](star-interview-framework.md) | STAR framework and templates |
+| [structured-interview-design.md](structured-interview-design.md) | Interview process design |
+| [onboarding-30-day.md](onboarding-30-day.md) | First 30 days |
+| [onboarding-60-90-day.md](onboarding-60-90-day.md) | Days 31-90 |
+| [employee-value-proposition.md](employee-value-proposition.md) | Employer branding and EVP |
+>>>>>>> claude
 
 ## Key Frameworks
 
-### SHRM BASK Competencies
-
-Based on SHRM Body of Applied Skills and Knowledge:
-- **Leadership:** People management, ethical practice
-- **Interpersonal:** Relationship management, communication
-- **Business:** Business acumen, consultation
-
-### Gartner Human Deal
-
-EVP evolution focusing on:
-- Deeper connections
-- Radical flexibility
-- Personal growth
-- Holistic well-being
-
-### STAR Interview Method
-
-Behavioral interviewing framework:
+**STAR Interview Method:**
 - **S**ituation - Context
 - **T**ask - Responsibility
 - **A**ction - What they did
 - **R**esult - Outcome
 
+**Workflows:**
+1. **Full-Cycle Recruiting:** Requisition → Job Description → Sourcing → Screening → Interview → Offer → Onboarding
+2. **Employer Branding:** Audit → Research → EVP → Content → Career Page → Measure
+3. **Structured Hiring:** Competencies → Scorecard → Interview Design → Training → Execute → Debrief
+4. **Onboarding:** Preboarding → Day 1 → 30-day plan → 60-day check → 90-day review
+
+## Related Skills
+
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-communicator](../faion-communicator/CLAUDE.md) | Interview communication |
+| [faion-project-manager](../faion-project-manager/CLAUDE.md) | Hiring project management |
+| [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) | Employer brand content |
+
 ---
 
 *HR Recruiter Skill v1.0 | 5 Methodologies | 3 Agents*
-*Based on: SHRM, AIHR, Gartner HR Research*

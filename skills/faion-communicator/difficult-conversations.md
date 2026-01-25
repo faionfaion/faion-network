@@ -309,18 +309,18 @@ Before the conversation:
 
 ---
 
-## Related Methodologies
 
-- **Conflict Resolution:** Thomas-Kilmann 5 modes, Nonviolent Communication
-- **Feedback:** Giving & receiving feedback (SBI, Radical Candor)
-- **Negotiation:** Principled negotiation, BATNA, Cialdini's 6 principles
+
 
 ---
 
-## References
+*Difficult Conversations | Communication | Version 1.0*
 
-- Patterson et al. (2011). Crucial Conversations
-- Stone et al. (2010). Difficult Conversations
+## Sources
+
+- [Harvard Business Review Difficult Conversations](https://hbr.org/2017/05/how-to-have-difficult-conversations-when-you-dont-like-conflict)
+- [MindTools Difficult Conversations](https://www.mindtools.com/CommSkll/DiffConv.htm)
+- [VitalSmarts Crucial Conversations](https://www.cruciallearning.com/crucial-conversations/)
 
 ---
 

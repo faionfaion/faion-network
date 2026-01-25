@@ -1,6 +1,6 @@
 ---
 name: faion-net
-description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX, HR/recruiting. 60+ agents, 15 skills, 502 methodologies."
+description: "Universal orchestrator for software projects: SDD workflow, research, product planning, development, marketing, project/business analysis, UX, HR/recruiting. 60+ agents, 18 skills, 605 methodologies."
 user-invocable: true
 ---
 
@@ -12,23 +12,21 @@ Universal skill for end-to-end software project lifecycle. From idea to producti
 
 ---
 
-## Step 1: Knowledge Freshness Check
+## Quick Start
 
-**At session start, calculate:** `gap = current_date - model_cutoff` (from system prompt)
+**Auto-Flow Protocol:**
+1. Knowledge freshness check (model cutoff vs current date)
+2. Context discovery (project status + activity type)
+3. Skill routing (automatic based on answers)
+4. Execution mode selection (YOLO vs Interactive)
 
-**Output:** `Knowledge gap: ~{months} months. WebSearch needed for: {areas}`
-
-**Fast-changing areas (use WebSearch):**
-- Package versions (npm, pip, cargo, go)
-- Framework APIs (React, Next.js, Django, FastAPI)
-- Cloud pricing (AWS, GCP, Azure)
-- AI models (new releases, pricing, limits)
-- Security (CVEs, vulnerabilities)
+**Full protocol:** [session-start-protocol.md](session-start-protocol.md)
 
 ---
 
-## Step 2: Execution Mode Selection
+## Core Components
 
+<<<<<<< HEAD
 **Ask user at session start:**
 
 ```python
@@ -43,11 +41,22 @@ AskUserQuestion([
     }
 ])
 ```
+=======
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Session Protocol** | [session-start-protocol.md](session-start-protocol.md) | Auto-flow at session start |
+| **Execution Modes** | [execution-modes.md](execution-modes.md) | YOLO (autonomous) vs Interactive |
+| **Capabilities** | [capabilities.md](capabilities.md) | Full lifecycle capabilities |
+| **Domain Skills** | [domain-skills.md](domain-skills.md) | 18 specialized skills |
+| **Skill Selection** | [decision-tree-skills.md](decision-tree-skills.md) | Skill routing logic |
+| **Methodologies** | [decision-tree-methodologies.md](decision-tree-methodologies.md) | 605 methodologies selection |
+>>>>>>> claude
 
 ---
 
-### YOLO Mode (Autonomous)
+## Execution Modes
 
+<<<<<<< HEAD
 **Agent:** `faion-task-YOLO-executor-opus-agent`
 
 **Behavior:**
@@ -70,145 +79,51 @@ Task(
     subagent_type="faion-task-YOLO-executor-opus-agent"
 )
 ```
+=======
+| Mode | Agent/Skill | When to Use | Details |
+|------|-------------|-------------|---------|
+| **YOLO** | faion-task-YOLO-executor-opus-agent | Clear tasks, specs exist | [execution-modes.md](execution-modes.md) |
+| **Interactive** | faion-communicator | Vague requirements, user wants control | [execution-modes.md](execution-modes.md) |
+>>>>>>> claude
 
 ---
 
-### Interactive Mode (Dialogue)
+## Domain Skills (18)
 
-**Skill:** `faion-communicator` (9 methodologies)
+| Category | Skills | Count |
+|----------|--------|-------|
+| **Core** | faion-sdd, faion-feature-executor | 2 |
+| **Research** | faion-researcher, faion-product-manager, faion-software-architect | 3 |
+| **Development** | faion-software-developer, faion-devops-engineer, faion-ml-engineer | 3 |
+| **Marketing** | faion-marketing-manager, faion-seo-manager, faion-smm-manager, faion-ppc-manager | 4 |
+| **Management** | faion-project-manager, faion-business-analyst | 2 |
+| **Design** | faion-ux-ui-designer | 1 |
+| **Communication** | faion-communicator, faion-hr-recruiter | 2 |
+| **Tools** | faion-claude-code, faion-net | 2 |
 
-**Behavior:**
-- Execute directly in main conversation flow
-- Ask clarifying questions before proceeding
-- Validate understanding at each step
-- Use communication techniques:
-  - **Interview:** Gather requirements with probing questions
-  - **Brainstorm:** Generate options collaboratively
-  - **Clarification:** Resolve ambiguity
-  - **Validation:** Confirm before implementing
-  - **Socratic:** Deep exploration through questions
-
-**When to use:**
-- Vague or incomplete requirements
-- User wants to learn/understand
-- Complex decisions needing input
-- User prefers control over speed
-
-**Communication Protocol:**
-
-```markdown
-## For new feature requests → Interview
-"I'd like to understand your requirements:
-1. What problem are you solving?
-2. Who are the users?
-3. What's the success criteria?
-4. Any constraints?"
-
-## For design decisions → Brainstorm + Validate
-"Let's explore options:
-- Option A: [pros/cons]
-- Option B: [pros/cons]
-Which direction feels right?"
-
-## For ambiguous requirements → Clarification
-"When you say 'fast', do you mean:
-a) Response time < 100ms?
-b) Quick to implement?
-c) Fast user experience?"
-
-## Before implementation → Validation
-"Here's my understanding: [summary]
-Is this correct? Shall I proceed?"
-```
-
-**Execution:**
-- Use tools directly in conversation
-- Ask questions via AskUserQuestion or text
-- Provide step-by-step visibility
-- Confirm before significant changes
+**Full catalog:** [domain-skills.md](domain-skills.md)
 
 ---
 
-## Capabilities
+## Capabilities Highlights
 
-**Idea → Validation:**
-- Generate startup/product ideas (7 frameworks)
-- Research pain points via Reddit, forums, reviews
-- Validate problems with evidence (frequency, severity, willingness to pay)
-- Evaluate niche viability (market size, competition, barriers)
-- Generate product names, check domain availability
+| Phase | Capabilities |
+|-------|--------------|
+| **Idea → Validation** | Idea generation (7 frameworks), pain point research, problem validation, niche evaluation |
+| **Research → Strategy** | Market research (TAM/SAM/SOM), competitor analysis, personas, pricing strategies |
+| **Product Planning** | MVP/MLP, feature prioritization (RICE, MoSCoW), roadmaps, user story mapping, OKRs |
+| **SDD Workflow** | Constitution, specs, design docs, implementation plans, task parallelization, quality gates |
+| **Development** | Code gen (8 languages), testing (unit/integration/E2E), API design, DevOps (CI/CD, K8s) |
+| **AI/LLM** | RAG pipelines, embeddings, fine-tuning, prompt engineering, multimodal, voice agents |
+| **Marketing** | GTM strategy, landing pages, SEO/SEM, paid ads, email campaigns, social media |
 
-**Research → Strategy:**
-- Market research (TAM/SAM/SOM, trends, growth drivers)
-- Competitor analysis (features, pricing, positioning)
-- User personas from real feedback
-- Pricing strategies and models
-- Problem validation with evidence
-
-**Product Planning:**
-- MVP scope from competitor analysis
-- MLP planning (gap analysis, WOW moments)
-- Feature prioritization (RICE, MoSCoW)
-- Roadmap design, release planning
-- User story mapping, OKRs
-
-**SDD Workflow:**
-- Project bootstrap (constitution, roadmap)
-- Specification writing with acceptance criteria
-- Technical design documents
-- Implementation plans with task parallelization
-- Task execution with quality gates
-- Reflexion learning (patterns, mistakes)
-
-**Development:**
-- Code generation (Python, JS/TS, Go, Ruby, PHP, Java, C#, Rust)
-- Code review and refactoring
-- Testing (unit, integration, E2E, TDD)
-- API design (REST, GraphQL, OpenAPI)
-- DevOps (CI/CD, Docker, K8s, Terraform, AWS)
-- Browser automation (Puppeteer, Playwright)
-
-**AI/LLM:**
-- RAG pipelines (document Q&A, knowledge bases)
-- Embeddings (generation, indexing, search)
-- Fine-tuning (LoRA, QLoRA, PEFT)
-- Prompt engineering and optimization
-- Multimodal (image, video, audio generation)
-- Voice agents (STT, TTS, real-time)
-- Autonomous agents (LangGraph, ReAct)
-
-**Marketing:**
-- GTM strategy and execution
-- Landing pages with high conversion
-- Content marketing and SEO
-- Paid ads (Meta, Google)
-- Email campaigns and automation
-- Social media strategy
-
-**Project Management (Project Management Framework 7/8):**
-- Stakeholder management
-- Risk management
-- Earned Value Management (EVM)
-- Change control
-- Agile, Waterfall, Hybrid delivery
-
-**Business Analysis (Business Analysis Framework):**
-- Requirements elicitation
-- Traceability matrices
-- Solution assessment
-- 6 Knowledge Areas, 30 tasks
-
-**UX:**
-- User research (interviews, surveys, contextual inquiry)
-- Usability testing (moderated, unmoderated)
-- Heuristic evaluation (10 Usability Heuristics)
-- Personas, journey mapping
-- Wireframing, prototyping
+**Full list:** [capabilities.md](capabilities.md)
 
 ---
 
-## Domain Skills (14)
+## Methodologies Catalog
 
+<<<<<<< HEAD
 | Skill | Purpose |
 |-------|---------|
 | `faion-sdd` | SDD orchestrator: specs, designs, implementation plans, constitutions, task lifecycle, quality gates, reflexion |
@@ -288,12 +203,72 @@ See [Decision Trees](decision-trees.md) for detailed guidance.
 | SDD | 12 | faion-sdd |
 | Communication | 10 | faion-communicator |
 | HR/Recruiting | 45 | faion-hr-recruiter |
+=======
+**605 methodologies** organized by domain.
+
+| Category | Count | Domain Skill |
+|----------|-------|--------------|
+| Development | 135 | faion-software-developer |
+| UX/UI | 76 | faion-ux-ui-designer |
+| Marketing | 62 | faion-marketing-manager |
+| ML/AI | 57 | faion-ml-engineer |
+| Project Management | 46 | faion-project-manager |
+| Research | 36 | faion-researcher |
+| Product | 33 | faion-product-manager |
+| DevOps | 32 | faion-devops-engineer |
+| Architecture | 28 | faion-software-architect |
+| Business Analysis | 26 | faion-business-analyst |
+| SDD | 21 | faion-sdd |
+| PPC | 19 | faion-ppc-manager |
+| Communication | 11 | faion-communicator |
+| SEO | 7 | faion-seo-manager |
+| SMM | 6 | faion-smm-manager |
+| HR/Recruiting | 5 | faion-hr-recruiter |
+| Claude Code | 5 | faion-claude-code |
+
+**Full catalog:** [methodologies-catalog.md](methodologies-catalog.md)
+
+---
+
+## Decision Tree: Skill Routing
+
+| If you need... | Use Skill | Key File |
+|----------------|-----------|----------|
+| Idea generation, market research, competitors, validation | faion-researcher | [research-domain.md](research-domain.md) |
+| MVP/MLP scope, roadmap, feature prioritization (RICE/MoSCoW) | faion-product-manager | [product-domain.md](product-domain.md) |
+| System design, architecture patterns, ADRs, quality attributes | faion-software-architect | [development-domain.md](development-domain.md) |
+| Write code (Python, JS/TS, Go), tests, APIs, refactoring | faion-software-developer | [development-domain.md](development-domain.md) |
+| CI/CD, Docker, K8s, Terraform, AWS/GCP/Azure, monitoring | faion-devops-engineer | [development-domain.md](development-domain.md) |
+| LLM APIs (OpenAI/Claude/Gemini), RAG, embeddings, fine-tuning | faion-ml-engineer | [ai-llm-domain.md](ai-llm-domain.md) |
+| GTM strategy, landing pages, SEO, ads (Google/Meta), email | faion-marketing-manager | [marketing-domain.md](marketing-domain.md) |
+| SEO optimization (on-page, off-page, technical) | faion-seo-manager | [marketing-domain.md](marketing-domain.md) |
+| Social media management, content strategy, organic growth | faion-smm-manager | [marketing-domain.md](marketing-domain.md) |
+| PPC campaigns (Google/Meta), optimization, reporting | faion-ppc-manager | [marketing-domain.md](marketing-domain.md) |
+| User research, wireframes, prototypes, usability testing, WCAG | faion-ux-ui-designer | [ux-domain.md](ux-domain.md) |
+| PMBOK 7/8, agile, WBS, risk/schedule/cost mgmt, EVM, RACI | faion-project-manager | [pm-domain.md](pm-domain.md) |
+| BABOK, requirements (use cases/user stories), process modeling | faion-business-analyst | [ba-domain.md](ba-domain.md) |
+| Stakeholder interviews, Mom Test, conflict resolution, feedback | faion-communicator | [pm-domain.md](pm-domain.md) |
+| Talent acquisition, interviews (STAR), onboarding, EVP, DEI | faion-hr-recruiter | [pm-domain.md](pm-domain.md) |
+| SDD specs, design docs, implementation plans, quality gates | faion-sdd | [sdd-domain.md](sdd-domain.md) |
+| Sequential task execution with quality gates, test validation | faion-feature-executor | [sdd-domain.md](sdd-domain.md) |
+| Skills, agents, hooks, commands, MCP servers, IDE integration | faion-claude-code | [CLAUDE.md](CLAUDE.md) |
+
+### Multi-Skill Workflows
+
+| Workflow | Sequence | Use Case |
+|----------|----------|----------|
+| **Full Product Launch** | researcher → product-manager → software-architect → sdd → software-developer → devops-engineer → marketing-manager | New product from idea to market |
+| **New Feature (SDD)** | sdd (spec) → sdd (design) → sdd (plan) → feature-executor (tasks) | Structured feature development |
+| **Landing Page** | marketing-manager (strategy) + ux-ui-designer (design) → software-developer (impl) | Marketing page creation |
+| **AI Feature** | ml-engineer (architecture) → software-developer (integration) → devops-engineer (deploy) | LLM/RAG implementation |
+>>>>>>> claude
 
 ---
 
 ## References
 
 **Core:**
+<<<<<<< HEAD
 - [Decision Trees](decision-trees.md) - Skill and methodology selection
 - [Methodologies Catalog](methodologies-catalog.md) - Full 502 methodologies
 
@@ -316,8 +291,32 @@ See [Decision Trees](decision-trees.md) for detailed guidance.
 | BA | [ba-domain.md](ba-domain.md) | faion-business-analyst |
 | UX/UI | [ux-domain.md](ux-domain.md) | faion-ux-ui-designer |
 | AI/LLM | [ai-llm-domain.md](ai-llm-domain.md) | faion-ml-engineer |
+=======
+- [CLAUDE.md](CLAUDE.md) - Navigation hub
+- [session-start-protocol.md](session-start-protocol.md) - Session auto-flow
+- [execution-modes.md](execution-modes.md) - YOLO vs Interactive
+- [capabilities.md](capabilities.md) - Full capabilities list
+- [domain-skills.md](domain-skills.md) - 18 domain skills catalog
+
+**Methodologies:**
+- [methodologies-catalog.md](methodologies-catalog.md) - 605 methodologies overview
+
+**SDD Workflow:**
+- [workflow.md](workflow.md) - Phases, project/feature selection
+- [directory-structure.md](directory-structure.md) - SDD folder layout
+- [quality-assurance.md](quality-assurance.md) - Confidence checks, reflexion
+
+**Domain References:**
+- [sdd-domain.md](sdd-domain.md), [research-domain.md](research-domain.md), [product-domain.md](product-domain.md)
+- [development-domain.md](development-domain.md), [ba-domain.md](ba-domain.md), [pm-domain.md](pm-domain.md)
+- [ux-domain.md](ux-domain.md), [ai-llm-domain.md](ai-llm-domain.md), [marketing-domain.md](marketing-domain.md)
+>>>>>>> claude
 
 ---
 
 *Faion Network v2.1*
+<<<<<<< HEAD
 *15 Domain Skills | 502 Methodologies | 60+ Agents*
+=======
+*18 Domain Skills | 605 Methodologies | 60+ Agents*
+>>>>>>> claude

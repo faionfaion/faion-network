@@ -117,12 +117,17 @@
 
 ## SDD Memory
 
+**Location:** Project-local `.aidocs/memory/` (not global)
+
 ```
-~/.sdd/memory/
-├── patterns_learned.jsonl
-├── mistakes_learned.jsonl
-└── session_context.md
+.aidocs/memory/
+├── patterns.md           # Learned patterns
+├── mistakes.md           # Errors and solutions
+├── decisions.md          # Key decisions
+└── session.md            # Session state
 ```
+
+**Note:** Memory updates sync to project CLAUDE.md automatically.
 
 ## References
 

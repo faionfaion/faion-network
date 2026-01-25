@@ -1,10 +1,11 @@
 ---
 name: faion-project-manager
 user-invocable: false
-description: "Project Manager role: Project Management Framework 7/8 (8 Performance Domains, 12 Principles), PM tools (Jira, ClickUp, Linear, GitHub Projects, Azure DevOps), risk/schedule/cost management, EVM, agile ceremonies, dashboards, AI in PM, hybrid delivery. 46 methodologies."
+description: "PM orchestrator: coordinates faion-agile-pm (Scrum, Kanban, tools, modern PM) and faion-traditional-pm (PMBoK, scope, schedule, risk, EVM). 50 total methodologies across 2 sub-skills."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
 
+<<<<<<< HEAD
 # PM Domain Skill
 
 **Communication: User's language. Docs/code: English.**
@@ -25,21 +26,40 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 ## Purpose
 
 Orchestrates project management activities using PMBoK 7th Edition (2021) and PMBoK 8 principles. Provides professional PM methodologies for solopreneurs and teams.
+=======
+# PM Domain Skill (Orchestrator)
 
-## 3-Layer Architecture
+**Communication: User's language. Docs/code: English.**
+
+## Purpose
+
+Orchestrates project management activities using PMBoK 7/8 framework. Coordinates two specialized sub-skills for comprehensive PM coverage.
+>>>>>>> claude
+
+## Architecture
 
 ```
-Layer 1: Domain Skills (this) - orchestrators
+faion-project-manager (orchestrator)
     |
-    v call
-Layer 2: Agents - executors
+    +-> faion-agile-pm (28 methodologies)
+    |   - Scrum, Kanban, SAFe ceremonies
+    |   - PM tools (Jira, Linear, ClickUp, GitHub, etc.)
+    |   - Dashboards, reporting, metrics
+    |   - Team development, RACI
+    |   - AI in PM, hybrid delivery
     |
-    v use
-Layer 3: Technical Skills - tools
+    +-> faion-traditional-pm (22 methodologies)
+        - PMBoK knowledge areas
+        - Stakeholder management
+        - Planning (scope, schedule, cost, WBS)
+        - Risk management
+        - EVM, quality, change control
+        - Project closure, lessons learned
 ```
 
----
+## References
 
+<<<<<<< HEAD
 # Decision Tree: What PM Task?
 
 Use this tree to select the right methodology for your PM need.
@@ -210,9 +230,118 @@ Interactive, interrelated areas that work together throughout a project.
 | Resource Optimization | MS Project Copilot | Balance workloads |
 | Status Reporting | Various | Auto-generate summaries |
 | Decision Support | ChatGPT, Claude | Scenario analysis |
+=======
+| Reference | Content |
+|-----------|---------|
+| [ref-pmbok.md](ref-pmbok.md) | PMBoK 7/8 overview, 8 domains, 12/6 principles |
+| [ref-CLAUDE.md](ref-CLAUDE.md) | External resources, tools, certifications |
 
----
+## Sub-Skills
 
+### faion-agile-pm (28 methodologies)
+
+**Use when:**
+- Planning sprints or ceremonies
+- Selecting or setting up PM tools
+- Building dashboards and reports
+- Implementing agile/hybrid approaches
+- Team development and roles
+
+**Key methodologies:**
+- Scrum/Kanban ceremonies
+- Jira, Linear, ClickUp, GitHub Projects
+- Dashboard setup, reporting
+- Team development, RACI matrix
+- AI in PM, hybrid delivery
+
+**Location:** [faion-agile-pm/SKILL.md](faion-agile-pm/SKILL.md)
+
+### faion-traditional-pm (22 methodologies)
+
+**Use when:**
+- Planning project scope, schedule, cost
+- Managing stakeholders
+- Handling risks and uncertainty
+- Tracking performance with EVM
+- Closing projects and capturing lessons
+
+**Key methodologies:**
+- Stakeholder register and engagement
+- Scope, WBS, schedule, cost, resources
+- Risk register and management
+- EVM, quality, change control
+- Project closure, lessons learned
+
+**Location:** [faion-traditional-pm/SKILL.md](faion-traditional-pm/SKILL.md)
+
+## Decision Guide
+
+| Task Type | Sub-Skill | Examples |
+|-----------|-----------|----------|
+| **Agile Execution** | faion-agile-pm | Sprint planning, standups, retros |
+| **Tool Selection** | faion-agile-pm | Which PM tool? How to setup? |
+| **Reporting** | faion-agile-pm | Dashboards, burn charts, velocity |
+| **Team Structure** | faion-agile-pm | RACI, team development |
+| **Project Planning** | faion-traditional-pm | Scope, WBS, schedule, cost |
+| **Stakeholders** | faion-traditional-pm | Identify, analyze, engage |
+| **Risk Management** | faion-traditional-pm | Risk register, responses |
+| **Performance** | faion-traditional-pm | EVM (CPI, SPI, EAC) |
+| **Project Closure** | faion-traditional-pm | Close, lessons learned, benefits |
+
+## PMBoK 8 Overview
+
+### 8 Performance Domains
+
+| Domain | Sub-Skill |
+|--------|-----------|
+| Stakeholder | faion-traditional-pm |
+| Team | faion-agile-pm |
+| Development Approach | faion-agile-pm |
+| Planning | faion-traditional-pm |
+| Project Work | faion-traditional-pm |
+| Delivery | Both |
+| Measurement | faion-traditional-pm (EVM) + faion-agile-pm (dashboards) |
+| Uncertainty | faion-traditional-pm |
+
+### 12 Core Principles (PMBoK 7)
+
+Stewardship, Team, Stakeholders, Value, Systems Thinking, Leadership, Tailoring, Quality, Complexity, Risk, Adaptability, Change.
+
+## Common Workflows
+
+### New Project
+
+```
+1. faion-traditional-pm: stakeholder-register
+2. faion-agile-pm: raci-matrix
+3. faion-traditional-pm: scope-management, wbs-creation
+4. faion-traditional-pm: schedule-development, cost-estimation
+5. faion-traditional-pm: risk-register
+6. faion-agile-pm: pm-tools-overview (select tool)
+```
+
+### Sprint/Iteration
+
+```
+1. faion-agile-pm: scrum-ceremonies (planning)
+2. faion-agile-pm: dashboard-setup
+3. faion-traditional-pm: earned-value-management (track)
+4. faion-agile-pm: scrum-ceremonies (review, retro)
+```
+
+### Health Check
+
+```
+1. faion-traditional-pm: earned-value-management
+2. faion-traditional-pm: risk-management
+3. faion-traditional-pm: stakeholder-engagement
+4. faion-agile-pm: reporting-basics
+```
+>>>>>>> claude
+
+## Integration Points
+
+<<<<<<< HEAD
 # Quick Reference Tables
 
 ## Development Approach Selection
@@ -340,3 +469,16 @@ All methodologies are in `` folder.
 *PM Domain Skill v3.0 - 2026-01-21*
 *Based on PMBoK 7th Edition (2021) and PMBoK 8 updates*
 *8 Performance Domains | 12 Principles | 46 Methodologies*
+=======
+| Domain Skill | Integration |
+|--------------|-------------|
+| faion-sdd | Task planning uses PMBoK scheduling |
+| faion-business-analyst | Requirements feed into scope |
+| faion-product-manager | Roadmap aligns with schedule |
+| faion-software-developer | Developer tools (GitHub, Linear) |
+
+---
+
+*PM Domain Skill v4.0 - Orchestrator*
+*2 sub-skills | 50 methodologies | PMBoK 7/8*
+>>>>>>> claude

@@ -1,15 +1,43 @@
-# DevOps Engineer Skill
+# DevOps Engineer Orchestrator
+
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-devops-engineer`
+
+## When to Use
+
+- Infrastructure provisioning (Docker, K8s, Terraform, cloud)
+- CI/CD pipelines (GitHub Actions, GitLab CI, Jenkins)
+- Monitoring and observability (Prometheus, Grafana, ELK)
+- Security and operations (secrets, backup, cost optimization)
 
 ## Overview
 
-Technical skill for DevOps and infrastructure operations. Orchestrates containerization, orchestration, infrastructure as code, cloud services, and CI/CD pipelines.
+Orchestrates DevOps activities by coordinating two specialized sub-skills:
+- **faion-infrastructure-engineer** (30 methodologies)
+- **faion-cicd-engineer** (28 methodologies)
 
-**Agent:** faion-devops-agent
+**Total:** 58 methodologies across 2 sub-skills
+
+## Sub-Skills
+
+### faion-infrastructure-engineer (30 methodologies)
+**Focus:** Docker, Kubernetes, Terraform, AWS, GCP, IaC, containerization
+
+| Category | Count | Topics |
+|----------|-------|--------|
+| Docker | 6 | Basics, Compose, containerization, patterns |
+| Kubernetes | 6 | Basics, resources, deployment, Helm |
+| Terraform & IaC | 6 | Basics, modules, state, patterns |
+| AWS | 7 | Foundations, services, EC2/ECS, Lambda, S3, networking |
+| GCP | 6 | Basics, patterns, compute, Cloud Run, storage, networking |
+
+**SKILL.md:** [faion-infrastructure-engineer/SKILL.md](faion-infrastructure-engineer/SKILL.md)
 
 ---
 
-## Directory Structure
+### faion-cicd-engineer (28 methodologies)
+**Focus:** CI/CD, monitoring, security, GitOps, operations
 
+<<<<<<< HEAD
 ```
 faion-devops-engineer/
 ├── CLAUDE.md                       # This file
@@ -167,3 +195,40 @@ gcloud run deploy my-service --image=gcr.io/project/image --region=us-central1
 ---
 
 *Total: 11 reference files*
+=======
+| Category | Count | Topics |
+|----------|-------|--------|
+| CI/CD & GitOps | 7 | GitHub Actions, GitLab CI, Jenkins, ArgoCD |
+| Monitoring | 5 | Prometheus, Grafana, ELK, AIOps |
+| Security & Ops | 6 | Secrets, SSL/TLS, security as code, nginx, load balancing |
+| Backup & Cost | 4 | Backup strategies, FinOps |
+| Modern Practices | 2 | Platform Engineering, DORA metrics |
+| Azure | 2 | Compute, networking |
+| Optimization | 2 | Docker optimization |
+
+**SKILL.md:** [faion-cicd-engineer/SKILL.md](faion-cicd-engineer/SKILL.md)
+
+---
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Orchestrator definition |
+| [CLAUDE.md](CLAUDE.md) | This navigation file |
+| [faion-infrastructure-engineer/](faion-infrastructure-engineer/) | Infrastructure sub-skill (30 files) |
+| [faion-cicd-engineer/](faion-cicd-engineer/) | CI/CD sub-skill (28 files) |
+
+## Related Skills
+
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-software-developer](../faion-software-developer/CLAUDE.md) | Provides code to deploy |
+| [faion-software-architect](../faion-software-architect/CLAUDE.md) | Architecture decisions |
+| [faion-sdd](../faion-sdd/CLAUDE.md) | Infrastructure task specs |
+
+---
+
+*Total: 2 sub-skills | 58 methodologies | Infrastructure + CI/CD*
+>>>>>>> claude

@@ -9,6 +9,17 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQues
 
 **Communication: User's language. Docs/code: English.**
 
+## Navigation
+
+| File | Description |
+|------|-------------|
+| [SKILL.md](SKILL.md) | This file - overview and usage |
+| [CLAUDE.md](CLAUDE.md) | Navigation hub |
+| [execution-workflow.md](execution-workflow.md) | Complete workflow with all phases |
+| [quality-gates.md](quality-gates.md) | Validation and acceptance criteria |
+
+---
+
 ## Purpose
 
 Execute all tasks in an SDD feature with full quality gates:
@@ -18,6 +29,36 @@ Execute all tasks in an SDD feature with full quality gates:
 4. After each task: verify tests pass, coverage adequate, project runs
 5. After all tasks: code review cycle until no issues remain
 6. Move feature to `done/`
+
+## Decision Tree
+
+| If you need... | Use | Why |
+|----------------|-----|-----|
+| Create tasks before execution | [faion-sdd](../faion-sdd/) | No tasks in todo/ yet |
+| Execute single task | [faion-software-developer](../faion-software-developer/) | Direct execution faster |
+| Execute multiple dependent tasks | This skill | Sequential execution with quality gates |
+| Execute independent tasks | [faion-sdd](../faion-sdd/) | Parallelize via SDD |
+| CI/CD integration | [faion-devops-engineer](../faion-devops-engineer/) | Infrastructure tasks |
+| Return to orchestrator | [faion-net](../faion-net/) | Multi-domain coordination |
+
+### Quality Modes
+
+| Quality Level | Gates Applied | Use Case |
+|---------------|---------------|----------|
+| **High** | L1-L6 (all) | Production code |
+| **Medium** | L1-L5 | Feature development |
+| **Low** | L1-L3 | Prototypes/POC |
+
+**Quality Gates:** L1=Lint, L2=Types, L3=Unit tests, L4=Integration, L5=Code review, L6=Acceptance
+
+### Error Responses
+
+| Error Type | Action |
+|------------|--------|
+| Test failure | Fix tests, retry task, continue others |
+| Build failure | Stop execution, fix build first |
+| Git conflict | Stop execution, resolve manually |
+| Security issue | Stop execution, escalate to user |
 
 ## CRITICAL: User Permission Required
 
@@ -70,55 +111,21 @@ Proceed with YOLO execution? [Yes/No]
 
 ---
 
-## Workflow Overview
+## Workflow Phases
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    FEATURE EXECUTOR                          │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. CONTEXT LOADING                                          │
-│     ├─ constitution.md (project standards)                   │
-│     ├─ spec.md (requirements)                                │
-│     ├─ design.md (architecture)                              │
-│     └─ implementation-plan.md (task breakdown)               │
-│                                                              │
-│  2. TASK DISCOVERY                                           │
-│     ├─ in-progress/ (resume first)                          │
-│     └─ todo/ (sorted by number)                             │
-│                                                              │
-│  3. TASK EXECUTION LOOP                                      │
-│     ┌──────────────────────────────────────┐                │
-│     │  For each task:                       │                │
-│     │  ├─ Execute via faion-task-executor-agent  │                │
-│     │  ├─ Run tests                        │                │
-│     │  ├─ Check coverage                   │                │
-│     │  ├─ Verify project runs              │                │
-│     │  └─ If fails → fix → retry (max 3)   │                │
-│     └──────────────────────────────────────┘                │
-│                                                              │
-│  4. CODE REVIEW CYCLE                                        │
-│     ┌──────────────────────────────────────┐                │
-│     │  Loop until no issues:               │                │
-│     │  ├─ Run code review                  │                │
-│     │  ├─ Fix ALL issues                   │                │
-│     │  ├─ Re-run review                    │                │
-│     │  └─ Repeat until clean               │                │
-│     └──────────────────────────────────────┘                │
-│                                                              │
-│  5. FINALIZE                                                 │
-│     ├─ Move feature to done/                                │
-│     └─ Generate summary report                              │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+See [execution-workflow.md](execution-workflow.md) for complete details.
 
----
+1. **Context Loading** - Load constitution, spec, design, implementation plan
+2. **Task Discovery** - Find tasks in `in-progress/` and `todo/`
+3. **Task Execution Loop** - Execute each task with validation (tests, coverage, build)
+4. **Code Review Cycle** - Iterate until no issues remain
+5. **Finalize** - Move to `done/`, generate summary
 
-## Phase 1: Context Loading
+## Quality Gates
 
-### 1.1 Locate Feature
+See [quality-gates.md](quality-gates.md) for validation criteria.
 
+<<<<<<< HEAD
 ```python
 # Find feature in any status folder
 feature_statuses = ["in-progress", "todo", "backlog"]
@@ -321,10 +328,14 @@ go test -v -cover ./...
 ```
 
 **Validation criteria:**
+=======
+After each task:
+>>>>>>> claude
 - All tests pass
-- No new test failures
-- Coverage not decreased
+- Coverage meets threshold
+- Project builds and runs
 
+<<<<<<< HEAD
 ### 3.4 Build Verification
 
 ```bash
@@ -665,6 +676,12 @@ If not specified in constitution:
 - Push to remote without review
 - Modify spec or design (only implementation)
 - Delete or skip tasks
+=======
+After all tasks:
+- Code review passes
+- No critical/security issues
+- No style violations
+>>>>>>> claude
 
 ---
 
@@ -688,73 +705,14 @@ SPEC → DESIGN → IMPL-PLAN → TASKS → [FEATURE-EXECUTOR] → DONE
 
 ---
 
-## Examples
-
-### Example 1: Execute Auth Feature
-
-```
-User: /faion-feature-executor cashflow-planner 01-auth
-Skill: Loading context...
-- Constitution: cashflow-planner (Django 5.x, pytest, 80% coverage)
-- Feature: 01-auth (4 tasks in todo/)
-- Spec: 5 FR, Design: 3 AD
-
-Executing tasks:
-
-TASK_001_user_model ━━━━━━━━━━ EXECUTING
-├─ Creating User model...
-├─ Running tests... 12/12 ✅
-├─ Coverage: 85%
-└─ Status: SUCCESS
-
-TASK_002_auth_service ━━━━━━━━━━ EXECUTING
-├─ Creating AuthService...
-├─ Running tests... 8/8 ✅
-├─ Coverage: 82%
-└─ Status: SUCCESS
-
-...
-
-Code Review Cycle:
-├─ Iteration 1: 5 issues found
-│   ├─ Fixed: 3 style issues
-│   ├─ Fixed: 2 missing docstrings
-├─ Iteration 2: 0 issues ✅
-└─ Status: CLEAN
-
-Feature completed:
-- Tasks: 4/4
-- Coverage: 88%
-- Review: PASSED
-- Moved to: features/done/01-auth
-```
-
-### Example 2: Resume Partial Execution
-
-```
-User: /faion-feature-executor faion-net 02-landing-page
-
-Skill: Found 1 task in in-progress/, 3 in todo/
-Resuming from TASK_002...
-
-TASK_002_hero_section ━━━━━━━━━━ RESUMING
-├─ Previous progress: 60%
-├─ Completing implementation...
-├─ Running tests... 15/15 ✅
-└─ Status: SUCCESS
-
-Continuing with remaining tasks...
-```
-
----
-
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2026-01-18 | Initial release |
+| 1.1.0 | 2026-01-23 | Modularized documentation |
 
 ---
 
-*faion-feature-executor v1.0.0*
+*faion-feature-executor v1.1.0*
 *Execute features with quality gates*

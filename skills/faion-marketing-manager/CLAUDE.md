@@ -1,33 +1,43 @@
-# Marketing Manager Skill
+# Marketing Manager Orchestrator
+
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-marketing-manager`
 
 ## Overview
 
-Marketing domain skill that orchestrates all marketing activities from go-to-market strategy to growth experiments. Covers GTM planning, landing pages, content marketing, SEO/SEM, GEO/AEO, paid ads (Google, Meta, LinkedIn), email marketing, social media, and growth hacking.
+Marketing orchestrator that coordinates 4 specialized sub-skills for all marketing activities.
 
-**Purpose:** Complete marketing orchestration for startups and digital products.
+**Architecture:** Orchestrator | **Sub-Skills:** 4 | **Total Methodologies:** 82
 
-**Communication:** User's language. Content: target audience language.
+## Sub-Skills
 
-## Skill Metadata
+| Sub-Skill | Purpose | Methods | Status |
+|-----------|---------|---------|--------|
+| [faion-gtm-strategist](../faion-gtm-strategist/) | GTM, launches, positioning, pricing | 26 | Ready |
+| [faion-content-marketer](../faion-content-marketer/) | Content, copywriting, SEO, email, social | 16+30 | Ready |
+| [faion-growth-marketer](../faion-growth-marketer/) | Analytics, experiments, A/B testing, AARRR | 30 | Ready |
+| [faion-conversion-optimizer](../faion-conversion-optimizer/) | Landing pages, CRO, funnels, PLG | 13 | Ready |
 
+<<<<<<< HEAD
 | Field | Value |
 |-------|-------|
 | Name | faion-marketing-manager |
 | User-invocable | No |
 | Methodologies | 86 total |
 | References | 9 technical guides |
+=======
+## When to Use
+>>>>>>> claude
 
-## Agents
+| Task Type | Route To |
+|-----------|----------|
+| Product launch, GTM strategy | faion-gtm-strategist |
+| Content creation, email, social | faion-content-marketer |
+| Analytics, growth experiments | faion-growth-marketer |
+| Landing pages, CRO, funnels | faion-conversion-optimizer |
 
-| Agent | Purpose |
-|-------|---------|
-| faion-landing-agent | Landing page orchestrator (analyze, copy, design modes) |
-| faion-content-agent | Content marketing, SEO |
-| faion-email-agent | Email marketing campaigns |
-| faion-social-agent | Social media marketing |
-| faion-growth-agent | Growth hacking, experiments |
-| faion-ads-agent | Paid advertising (Meta, Google, LinkedIn) |
+## Files
 
+<<<<<<< HEAD
 ## Directory Structure
 
 ```
@@ -125,16 +135,29 @@ Keyword Research -> Content Plan -> Creation -> Optimization -> Distribution
 ```
 Hypothesis -> Experiment Design -> Run -> Analyze -> Learn -> Iterate
 ```
+=======
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Orchestrator routing logic |
+| [workflows.md](workflows.md) | Cross-skill workflows |
+| [methodologies-index.md](methodologies-index.md) | Complete methodology index |
+| [quick-reference.md](quick-reference.md) | Quick reference tables |
+| references/ | Shared technical references (analytics, ads, SEO) |
+>>>>>>> claude
 
 ## Related Skills
 
 | Skill | Relationship |
 |-------|--------------|
-| faion-researcher | Provides market data for marketing |
-| faion-product-manager | Provides product positioning |
-| faion-seo-skill | SEO optimization details |
-| faion-analytics-skill | Analytics integration |
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-ppc-manager](../faion-ppc-manager/) | Paid advertising specialist |
+| [faion-seo-manager](../faion-seo-manager/) | SEO specialist |
+| [faion-smm-manager](../faion-smm-manager/) | Social media specialist |
 
 ---
 
+<<<<<<< HEAD
 *Marketing Domain Skill v1.1 | 86 Methodologies | 6 Agents*
+=======
+*Marketing Orchestrator v2.0 | 4 Sub-Skills | 82 Methodologies*
+>>>>>>> claude

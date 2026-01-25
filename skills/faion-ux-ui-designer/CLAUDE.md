@@ -1,11 +1,30 @@
 # UX/UI Designer Skill
 
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-ux-ui-designer`
+
+## When to Use
+
+- Nielsen's 10 Usability Heuristics
+- User research (interviews, surveys, usability testing)
+- Wireframes and prototypes
+- Information architecture and navigation
+- Accessibility (WCAG 2.2, ADA, EAA)
+- Voice UI and conversational design
+- Spatial computing (AR/VR/XR)
+- Design systems and design tokens
+- AI design tools (Figma AI, Firefly)
+
 ## Overview
 
+<<<<<<< HEAD
 The faion-ux-ui-designer skill provides comprehensive UX/UI design methodologies and best practices. It covers 10 Usability Heuristics, UX research methods, design techniques, and 2026 industry references.
+=======
+Comprehensive UX/UI design methodologies covering 10 Usability Heuristics, UX research, design techniques, and 2026 industry references.
+>>>>>>> claude
 
-**Total Methodologies:** 75
+**Methodologies:** 75
 
+<<<<<<< HEAD
 ## Structure
 
 | File | Content |
@@ -115,7 +134,50 @@ Use decision trees to find the right methodology:
 1. Check decision trees in SKILL.md to find appropriate methodology
 2. Read detailed methodology file (flat structure in skill root)
 3. Apply methodology using appropriate agent
+=======
+## Files
+
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Main skill definition with decision guide |
+| [CLAUDE-methodologies.md](CLAUDE-methodologies.md) | Methodologies index |
+| [ref-CLAUDE.md](ref-CLAUDE.md) | References index |
+| *.md | 75 methodology files (flat structure) |
+
+## Methodology Categories
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| 10 Usability Heuristics | 10 | Visibility, Match Real World, User Control |
+| Research Methods | 12 | Interviews, Surveys, Usability Testing |
+| Evaluation Methods | 8 | Heuristic Evaluation, Cognitive Walkthrough |
+| Design Methods | 7 | IA Framework, Wireframing, Prototyping |
+| Accessibility 2026 | 8 | WCAG 2.2, AI-Assisted A11y, ADA Title II |
+| AI Design Tools 2026 | 6 | Figma AI, Adobe Firefly, Generative UI |
+| Design Systems | 8 | Design Tokens, W3C Standard, Tailwind |
+| Voice UI | 10 | VUI Principles, Conversation Design, LLM-Powered |
+| Spatial Computing | 11 | AR/VR/XR Patterns, Immersive Design |
+
+**Total:** 75 methodologies
+
+## Agents
+
+| Agent | Purpose |
+|-------|---------|
+| faion-ux-researcher-agent | User interviews, surveys, research synthesis |
+| faion-usability-agent | Usability testing, heuristic evaluation |
+
+## Related Skills
+
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-researcher](../faion-researcher/CLAUDE.md) | Personas and user research |
+| [faion-software-developer](../faion-software-developer/CLAUDE.md) | UI implementation |
+| [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) | Landing page UX, conversion |
+| [faion-product-manager](../faion-product-manager/CLAUDE.md) | Product requirements |
+>>>>>>> claude
 
 ---
 
-*UX/UI Designer Skill v2.0*
+*UX/UI Designer Skill v2.1*

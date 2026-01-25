@@ -1,39 +1,59 @@
 # faion-researcher Skill
 
+> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-researcher`
+
+## When to Use
+
+- Generate and validate business ideas
+- Market research (TAM/SAM/SOM)
+- Analyze competitors and find gaps
+- Build user personas and understand pain points
+- Research pricing strategies
+- Validate problem-solution fit
+- Evaluate niche viability
+- Generate project/product names
+
 ## Overview
 
-Research domain skill for product/startup development. Orchestrates idea discovery, market research, competitor analysis, persona building, pricing research, problem validation, niche evaluation, project naming, and trend analysis.
+Research orchestrator skill that coordinates 2 specialized sub-skills for comprehensive product/startup research.
 
-**Invocation:** `/faion-researcher`
+**Sub-Skills:** 2 | **Total Methodologies:** 43 | **Agents:** 2
 
-**Agents:** 2
-- `faion-research-agent` (opus) - Research orchestrator with 9 modes
-- `faion-domain-checker-agent` (sonnet) - Domain availability verification
+---
 
-**Methodologies:** 32 (semantic naming)
+## Sub-Skills
 
-**Tools:** Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite
+### faion-market-researcher
+Market & business intelligence: TAM/SAM/SOM, competitors, pricing, trends, niche evaluation, business models, idea generation.
+
+**Files:** 22 | [View](../faion-market-researcher/CLAUDE.md)
+
+### faion-user-researcher
+User research & validation: personas, interviews, JTBD, pain points, problem validation, value prop, surveys.
+
+**Files:** 21 | [View](../faion-user-researcher/CLAUDE.md)
 
 ---
 
 ## Research Modes
 
-| Mode | Output | Description |
-|------|--------|-------------|
-| ideas | 15-20 candidates | Idea generation using 7 Ps, Paul Graham questions |
-| market | market-research.md | TAM/SAM/SOM analysis, market trends |
-| competitors | competitive-analysis.md | Competitor mapping, feature gaps |
-| pains | pain-points.md | Reddit, forums, reviews mining |
-| personas | user-personas.md | Demographics, JTBD, behaviors |
-| validate | problem-validation.md | Evidence gathering for problem existence |
-| niche | niche-evaluation.md | Market size, competition, barriers |
-| pricing | pricing-research.md | Pricing models, benchmarking |
-| names | name-candidates.md | Project naming with domain check |
+| Mode | Output | Sub-Skill |
+|------|--------|-----------|
+| ideas | idea-candidates.md | market-researcher |
+| market | market-research.md | market-researcher |
+| competitors | competitive-analysis.md | market-researcher |
+| pricing | pricing-research.md | market-researcher |
+| niche | niche-evaluation.md | market-researcher |
+| personas | user-personas.md | user-researcher |
+| pains | pain-points.md | user-researcher |
+| validate | problem-validation.md | user-researcher |
+| names | name-candidates.md | market-researcher |
 
 ---
 
-## Directory Structure
+## Agents
 
+<<<<<<< HEAD
 ```
 faion-researcher/
 ├── SKILL.md                    # Full skill specification
@@ -61,6 +81,12 @@ Parse project → Read constitution.md → Select modules → Run agents sequent
 ```
 Gather Concept → Generate 15-20 Names → User Selection → Check Domains → Present Results → Update constitution
 ```
+=======
+| Agent | Purpose |
+|-------|---------|
+| faion-research-agent | Research orchestrator with 9 modes |
+| faion-domain-checker-agent | Domain availability verification |
+>>>>>>> claude
 
 ---
 
@@ -68,54 +94,41 @@ Gather Concept → Generate 15-20 Names → User Selection → Check Domains →
 
 All outputs go to `.aidocs/product_docs/`:
 
-| Module | Output File |
-|--------|-------------|
-| Idea Discovery | idea-validation.md |
-| Market Research | market-research.md |
-| Competitors | competitive-analysis.md |
-| Personas | user-personas.md |
-| Validation | problem-validation.md |
-| Pricing | pricing-research.md |
-| Summary | executive-summary.md |
-| Naming | Updates constitution.md |
+| Module | Output File | Sub-Skill |
+|--------|-------------|-----------|
+| Market Research | market-research.md | market-researcher |
+| Competitors | competitive-analysis.md | market-researcher |
+| Pricing | pricing-research.md | market-researcher |
+| Personas | user-personas.md | user-researcher |
+| Validation | problem-validation.md | user-researcher |
+| Summary | executive-summary.md | Both |
 
 ---
 
-## Quick Reference
+## Files
 
-### Invoke Idea Generation
-```python
-Task(
-    subagent_type="faion-research-agent (mode: ideas)",
-    prompt="Generate ideas using 7 Ps framework"
-)
-```
-
-### Invoke Market Research
-```python
-Task(
-    subagent_type="faion-research-agent (mode: market)",
-    prompt="Research TAM/SAM/SOM for {product}"
-)
-```
-
-### Invoke Competitor Analysis
-```python
-Task(
-    subagent_type="faion-research-agent (mode: competitors)",
-    prompt="Analyze competitors for {product}"
-)
-```
+| File | Purpose |
+|------|---------|
+| [SKILL.md](SKILL.md) | Orchestrator specification |
+| [methodologies-index.md](methodologies-index.md) | Index to all methodologies |
+| [workflows.md](workflows.md) | Research workflows |
+| [frameworks.md](frameworks.md) | Core frameworks (7 Ps, JTBD, TAM/SAM/SOM) |
+| [agent-invocation.md](agent-invocation.md) | Agent usage guide |
 
 ---
 
 ## Related Skills
 
-- `faion-sdd` - SDD workflow orchestrator
-- `faion-product-manager` - Product planning, roadmaps
-- `faion-marketing-manager` - GTM strategy, landing pages
-- `faion-ux-ui-designer` - User research, journey mapping
+| Skill | Relationship |
+|-------|--------------|
+| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
+| [faion-market-researcher](../faion-market-researcher/CLAUDE.md) | Sub-skill (market focus) |
+| [faion-user-researcher](../faion-user-researcher/CLAUDE.md) | Sub-skill (user focus) |
+| [faion-sdd](../faion-sdd/CLAUDE.md) | Uses research outputs for specs |
+| [faion-product-manager](../faion-product-manager/CLAUDE.md) | Uses research for decisions |
+| [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) | Uses research for GTM |
 
 ---
 
-*faion-researcher v1.1*
+*faion-researcher v2.0*
+*Orchestrator with 2 sub-skills (43 methodologies total)*

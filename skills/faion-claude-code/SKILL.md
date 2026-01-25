@@ -19,6 +19,37 @@ Orchestrate Claude Code customization and configuration:
 
 ---
 
+## Quick Decision Tree
+
+| If you need... | Use | File |
+|----------------|-----|------|
+| Create domain skill (role-based) | skills.md | `~/.claude/skills/faion-{role}/SKILL.md` |
+| Create project skill (local) | skills.md | `{project}/.claude/{project}-*/SKILL.md` |
+| Create task executor agent | agents.md | `~/.claude/agents/faion-*-agent.md` |
+| Create specialized agent | agents.md | `~/.claude/agents/faion-*-agent.md` |
+| Add slash command | commands.md | `~/.claude/commands/*.md` or SKILL.md |
+| Add validation hook | hooks.md | PreToolUse trigger → `settings.json` |
+| Add logging hook | hooks.md | PostToolUse trigger → `settings.json` |
+| Add alert on notification | hooks.md | Notification trigger → `settings.json` |
+| Develop MCP server | mcp-basics.md | TypeScript/Python template |
+| Install MCP server | mcp-servers.md | `claude mcp add <name>` |
+| Connect external tools | mcp-basics.md | MCP server development |
+| Database access (SQL) | mcp-servers.md | PostgreSQL/SQLite MCP |
+| Configure global settings | Handle directly | `~/.claude/settings.json` |
+| Configure project settings | Handle directly | `.claude/settings.json` |
+
+**Configuration Locations:**
+
+| Config | Location | Scope |
+|--------|----------|-------|
+| Global skills | `~/.claude/skills/` | All projects |
+| Project skills | `{project}/.claude/` | Single project |
+| Agents | `~/.claude/agents/` | All projects |
+| Hooks | `~/.claude/settings.json` | Global |
+| MCP | `~/.claude/settings.json` | Global |
+
+---
+
 ## References
 
 Detailed technical context for specialized areas:
@@ -29,9 +60,14 @@ Detailed technical context for specialized areas:
 | [agents.md](agents.md) | Agent files, tools, prompts, patterns | ~330 |
 | [commands.md](commands.md) | Slash commands, arguments, syntax | ~250 |
 | [hooks.md](hooks.md) | Lifecycle hooks, events, templates | ~420 |
+<<<<<<< HEAD
 | [mcp.md](mcp.md) | MCP server development, catalog, config | ~570 |
+=======
+| [mcp-basics.md](mcp-basics.md) | MCP server development, templates, config | ~370 |
+| [mcp-servers.md](mcp-servers.md) | MCP server catalog (40+ servers) | ~250 |
+>>>>>>> claude
 
-**Total:** ~1,910 lines of technical reference
+**Total:** ~1,960 lines of technical reference
 
 ---
 
@@ -47,7 +83,12 @@ User Request → Detect Type → Load Reference
 | "agent", "subagent" | [agents.md](agents.md) |
 | "command", "/cmd", "slash" | [commands.md](commands.md) |
 | "hook", "PreToolUse", "PostToolUse" | [hooks.md](hooks.md) |
+<<<<<<< HEAD
 | "MCP", "server", "install mcp" | [mcp.md](mcp.md) |
+=======
+| "create mcp", "develop mcp", "mcp template" | [mcp-basics.md](mcp-basics.md) |
+| "install mcp", "mcp catalog", "mcp server list" | [mcp-servers.md](mcp-servers.md) |
+>>>>>>> claude
 | "settings", "config" | Handle directly (below) |
 
 ---

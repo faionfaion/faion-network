@@ -76,7 +76,8 @@ methodologies/
 
 | File | ID | Description |
 |------|----|-------------|
-| 30-60-90-day-plan.md | 30-60-90-day-plan | Structured new hire ramp |
+| onboarding-30-day.md | onboarding-30-day | First 30 days learning phase |
+| onboarding-60-90-day.md | onboarding-60-90-day | Days 31-90 contributing & executing |
 | preboarding-process.md | preboarding-process | Pre-start engagement |
 | day-one-orientation.md | day-one-orientation | Great first day |
 | buddy-program.md | buddy-program | Peer support system |
