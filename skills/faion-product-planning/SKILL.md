@@ -1,5 +1,5 @@
 ---
-name: faion-product-manager:planning
+name: faion-product-planning
 description: "Product planning: MVP/MLP scoping, roadmaps, user story mapping, OKRs."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Task, AskUserQuestion, TodoWrite

@@ -1,5 +1,5 @@
 ---
-name: faion-business-analyst:core
+name: faion-ba-core
 user-invocable: false
 description: "BA Core: Planning, elicitation, requirements lifecycle, strategy analysis, solution evaluation. 21 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite

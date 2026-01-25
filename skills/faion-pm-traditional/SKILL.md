@@ -1,5 +1,5 @@
 ---
-name: faion-project-manager:traditional
+name: faion-pm-traditional
 user-invocable: false
 description: "Traditional PM specialist: PMBoK knowledge areas (scope, schedule, cost, risk, quality, stakeholder, resources), EVM, WBS, project lifecycle, PMBoK 7/8 framework. 22 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite

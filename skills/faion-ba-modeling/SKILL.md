@@ -1,5 +1,5 @@
 ---
-name: faion-business-analyst:modeling
+name: faion-ba-modeling
 user-invocable: false
 description: "BA Modeling: Use cases, user stories, process models (BPMN), data models, decision tables, interfaces, acceptance criteria. 7 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite

@@ -1,5 +1,5 @@
 ---
-name: faion-backend-developer:systems
+name: faion-backend-systems
 description: "Systems backends: Go, Rust, databases, caching."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite

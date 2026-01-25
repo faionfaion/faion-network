@@ -1,15 +1,8 @@
-# faion-backend-developer
+# Backend Developer
 
-Backend orchestrator: coordinates systems and enterprise sub-skills.
+> **Entry point:** `/faion-net` — invoke for automatic routing.
 
-## Overview
-
-**Methodologies:** 47 total | **Sub-skills:** 2
-
-## Sub-Skills
-
-**[:systems](faion-backend-developer:systems/SKILL.md)** - Go, Rust, databases, caching (22 methodologies)
-**[:enterprise](faion-backend-developer:enterprise/SKILL.md)** - Java, C#, PHP, Ruby frameworks (25 methodologies)
+Backend development routing: coordinates systems and enterprise backends.
 
 ## When to Use
 
@@ -27,8 +20,8 @@ Backend orchestrator: coordinates systems and enterprise sub-skills.
 
 ## Related Skills
 
+- [faion-backend-systems](../faion-backend-systems/CLAUDE.md) - Go, Rust, databases (22 methodologies)
+- [faion-backend-enterprise](../faion-backend-enterprise/CLAUDE.md) - Java, C#, PHP, Ruby (25 methodologies)
 - [faion-python-developer](../faion-python-developer/CLAUDE.md) - Python backends
 - [faion-javascript-developer](../faion-javascript-developer/CLAUDE.md) - Node.js
 - [faion-api-developer](../faion-api-developer/CLAUDE.md) - API design
-
-Full details in [SKILL.md](SKILL.md)

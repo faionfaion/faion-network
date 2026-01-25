@@ -1,5 +1,5 @@
 ---
-name: faion-project-manager:agile
+name: faion-pm-agile
 user-invocable: false
 description: "Agile PM specialist: Scrum, Kanban, SAFe ceremonies, PM tools (Jira, Linear, ClickUp, GitHub, Azure DevOps), dashboards, team development, AI in PM, hybrid delivery. 28 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite

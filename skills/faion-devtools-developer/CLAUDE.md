@@ -1,28 +1,8 @@
-# faion-devtools-developer
+# DevTools Developer
 
-DevTools orchestrator: coordinates code quality and automation sub-skills.
+> **Entry point:** `/faion-net` — invoke for automatic routing.
 
-## Overview
-
-**Methodologies:** 46 | **Sub-skills:** 2 (faion-code-quality, faion-automation-tooling)
-
-## Sub-Skills
-
-### faion-code-quality (23 methodologies)
-
-Architecture patterns, code quality, refactoring, development practices.
-
-**Key areas:** DDD, CQRS, Clean Architecture, Event Sourcing, code review, refactoring, tech debt, XP, pair/mob programming
-
-[Details →](faion-code-quality/CLAUDE.md)
-
-### faion-automation-tooling (23 methodologies)
-
-Browser automation, CI/CD pipelines, monorepo management, tooling.
-
-**Key areas:** Puppeteer, Playwright, web scraping, CI/CD, monorepo, performance testing, feature flags
-
-[Details →](faion-automation-tooling/CLAUDE.md)
+Developer tools: code quality, architecture patterns, automation, CI/CD.
 
 ## When to Use
 
@@ -40,7 +20,7 @@ Browser automation, CI/CD pipelines, monorepo management, tooling.
 
 ## Related Skills
 
-- [faion-software-architect](../faion-software-architect/CLAUDE.md) - Architecture decisions
+- [faion-code-quality](../faion-code-quality/CLAUDE.md) - Code quality (23 methodologies)
+- [faion-automation-tooling](../faion-automation-tooling/CLAUDE.md) - Automation (23 methodologies)
+- [faion-software-architect](../faion-software-architect/CLAUDE.md) - Architecture
 - [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) - Infrastructure
-
-Full details in [SKILL.md](SKILL.md)
