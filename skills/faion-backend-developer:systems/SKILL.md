@@ -1,9 +1,10 @@
 ---
 name: faion-backend-developer:systems
-description: "Systems-level backends: Go, Rust, databases, caching. 22 methodologies."
+description: "Systems backends: Go, Rust, databases, caching."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Backend Developer: Systems
 

@@ -1,9 +1,10 @@
 ---
 name: faion-content-marketer
-description: "Content Marketer: content strategy, copywriting, SEO, email campaigns, social media, video/podcast, AI content tools. 16 methodologies + 30 media references."
+description: "Content marketing: strategy, copywriting, SEO, email campaigns, social media."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Content Marketer Domain Skill
 

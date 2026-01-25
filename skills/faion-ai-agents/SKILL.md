@@ -1,9 +1,10 @@
 ---
 name: faion-ai-agents
-description: "AI agents: autonomous agents, multi-agent systems, LangChain agents, LlamaIndex agents, MCP (Model Context Protocol), agent architectures, reasoning-first, EU AI Act. 26 methodologies."
+description: "AI agents: autonomous agents, multi-agent systems, LangChain, LlamaIndex, MCP."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # AI Agents Skill
 

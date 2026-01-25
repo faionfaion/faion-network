@@ -1,3 +1,11 @@
+---
+name: faion-ui-designer
+description: "UI design: wireframes, prototypes, design systems, visual design."
+user-invocable: false
+---
+
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # faion-ui-designer
 
 **UI/Visual Design specialist. Wireframes, prototypes, design systems, design tokens, spatial/voice UI.**

@@ -1,9 +1,10 @@
 ---
 name: faion-conversion-optimizer
-description: "Conversion Optimizer: landing pages, CRO, funnels, free trial optimization, PLG, onboarding flows. 13 methodologies."
+description: "Conversion optimization: landing pages, CRO, funnels, PLG, onboarding flows."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Conversion Optimizer Domain Skill
 

@@ -1,9 +1,10 @@
 ---
 name: faion-backend-developer
-description: "Backend orchestrator: coordinates systems (Go, Rust, DB) and enterprise (Java, C#, PHP, Ruby). 47 methodologies."
+description: "Backend orchestrator: coordinates systems (Go, Rust, DB) and enterprise (Java, C#, PHP, Ruby)."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Backend Developer Orchestrator
 

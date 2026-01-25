@@ -1,9 +1,10 @@
 ---
 name: faion-ml-engineer
-description: "ML Engineer orchestrator: routes to 5 specialized sub-skills (LLM integration, RAG, ML Ops, AI Agents, Multimodal). 101 total methodologies."
+description: "ML/AI orchestrator: LLM integration, RAG, ML Ops, agents, multimodal."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # ML Engineer Orchestrator
 
@@ -42,21 +43,7 @@ Routes AI/ML tasks to specialized sub-skills. Orchestrates LLM integration, RAG,
 
 ## Execution Protocol
 
-<<<<<<< HEAD
-| Reference | Content | Lines |
-|-----------|---------|-------|
-| [openai-api.md](openai-api.md) | GPT-4, DALL-E, Whisper, Assistants | ~1310 |
-| [claude-api.md](claude-api.md) | Claude models, tool use, extended thinking | ~1420 |
-| [gemini-api.md](gemini-api.md) | Gemini models, multimodal, grounding | ~1150 |
-| [embeddings.md](embeddings.md) | Text embeddings, similarity, chunking | ~900 |
-| [finetuning.md](finetuning.md) | Model fine-tuning, datasets, evaluation | ~990 |
-| [langchain.md](langchain.md) | Chains, agents, memory, tools | ~1440 |
-| [llamaindex.md](llamaindex.md) | Document indexing, query engines | ~1210 |
-| [vector-databases.md](vector-databases.md) | Pinecone, Weaviate, Chroma, pgvector | ~1390 |
-| [ref-agentic-rag.md](ref-agentic-rag.md) | Agentic RAG, AI Agents, LLM Management, MCP | ~300 |
-=======
 When a task arrives:
->>>>>>> claude
 
 1. **Analyze task intent**
 2. **Select appropriate sub-skill** (use routing table above)

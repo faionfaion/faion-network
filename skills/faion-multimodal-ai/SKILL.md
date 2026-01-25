@@ -1,9 +1,10 @@
 ---
 name: faion-multimodal-ai
-description: "Multimodal AI: vision (GPT-4o Vision, Gemini), image generation (DALL-E, Midjourney), video generation (Sora, Runway), speech-to-text (Whisper), text-to-speech (TTS), voice synthesis. 12 methodologies."
+description: "Multimodal AI: vision, image/video generation, speech-to-text, text-to-speech, voice synthesis."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Multimodal AI Skill
 

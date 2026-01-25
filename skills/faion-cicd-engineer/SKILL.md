@@ -1,9 +1,10 @@
 ---
 name: faion-cicd-engineer
-description: "CI/CD Engineer: GitHub Actions, GitLab CI, Jenkins, ArgoCD, GitOps, monitoring (Prometheus, Grafana, ELK), security, backup, nginx, Platform Engineering. Sub-skill of faion-devops-engineer. 28 methodologies."
+description: "CI/CD: GitHub Actions, GitLab CI, Jenkins, ArgoCD, GitOps, monitoring."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # CI/CD Engineer Sub-Skill
 

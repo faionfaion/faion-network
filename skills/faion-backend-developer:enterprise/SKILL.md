@@ -1,9 +1,10 @@
 ---
 name: faion-backend-developer:enterprise
-description: "Enterprise web backends: Java, C#, PHP, Ruby. 25 methodologies."
+description: "Enterprise backends: Java, C#, PHP, Ruby."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Backend Developer: Enterprise
 

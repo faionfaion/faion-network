@@ -1,8 +1,10 @@
 ---
 name: faion-smm-manager
-description: "Specialized skill for Social Media Management (SMM). Manages content strategy, community building, and organic growth on platforms like Twitter, LinkedIn, and Instagram."
+description: "Social media: content strategy, community building, organic growth."
 user-invocable: true
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # SMM Manager Skill (Claude)
 
 ## Overview

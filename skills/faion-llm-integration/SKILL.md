@@ -1,9 +1,10 @@
 ---
 name: faion-llm-integration
-description: "LLM API integration: OpenAI, Claude, Gemini, local LLMs (Ollama). Prompt engineering, CoT, structured output, function calling, guardrails. 26 methodologies."
+description: "LLM APIs: OpenAI, Claude, Gemini, local LLMs, prompt engineering, function calling."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # LLM Integration Skill
 

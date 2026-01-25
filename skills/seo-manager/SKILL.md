@@ -1,8 +1,10 @@
 ---
 name: faion-seo-manager
-description: "Specialized skill for Search Engine Optimization (SEO). Manages strategies and execution for on-page, off-page, and technical SEO to increase organic visibility within the Claude ecosystem."
+description: "SEO: on-page, off-page, technical optimization."
 user-invocable: true
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # SEO Manager Skill (Claude)
 
 ## Overview

@@ -1,9 +1,10 @@
 ---
 name: faion-rag-engineer
-description: "RAG engineering: embeddings, chunking, vector databases (Qdrant, Weaviate, Chroma), hybrid search, reranking, RAG evaluation. 22 methodologies."
+description: "RAG engineering: embeddings, chunking, vector databases, hybrid search, reranking."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # RAG Engineer Skill
 

@@ -1,9 +1,10 @@
 ---
 name: faion-ml-ops
-description: "ML operations: fine-tuning (LoRA, QLoRA, OpenAI), model evaluation, cost optimization, LLM observability, benchmarking. 15 methodologies."
+description: "ML operations: fine-tuning (LoRA, QLoRA), model evaluation, cost optimization, observability."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # ML Ops Skill
 

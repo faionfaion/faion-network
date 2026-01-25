@@ -1,9 +1,10 @@
 ---
 name: faion-gtm-strategist
-description: "GTM Strategist: go-to-market strategy, product launches, positioning, pricing, partnerships, customer success, legal/financial ops. 26 methodologies."
+description: "GTM strategy: product launches, positioning, pricing, partnerships, customer success."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # GTM Strategist Domain Skill
 

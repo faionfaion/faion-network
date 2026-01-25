@@ -1,3 +1,11 @@
+---
+name: faion-accessibility-specialist
+description: "Accessibility: WCAG compliance, assistive technologies, inclusive design."
+user-invocable: false
+---
+
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # faion-accessibility-specialist
 
 **Accessibility specialist. WCAG 2.2, ADA compliance, inclusive design, assistive technology testing.**

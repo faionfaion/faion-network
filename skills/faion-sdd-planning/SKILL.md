@@ -1,9 +1,10 @@
 ---
 name: faion-sdd-planning
+description: "SDD planning: specifications, design docs, implementation plans, task creation."
 user-invocable: false
-description: "SDD Planning: specifications, design docs, implementation plans, task creation, templates, workflows. 28 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # SDD Planning Sub-Skill
 

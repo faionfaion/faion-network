@@ -1,9 +1,10 @@
 ---
 name: faion-claude-code
+description: "Claude Code: skills, agents, hooks, commands, MCP servers, IDE integrations."
 user-invocable: false
-description: "Claude Code configuration: skills, agents, hooks, commands creation. MCP servers setup, IDE integrations (VS Code, JetBrains, Vim). Settings, permissions, memory. Naming conventions, directory structure, best practices."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(ls:*), Task, AskUserQuestion
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Claude Code Configuration Skill
 
@@ -60,12 +61,8 @@ Detailed technical context for specialized areas:
 | [agents.md](agents.md) | Agent files, tools, prompts, patterns | ~330 |
 | [commands.md](commands.md) | Slash commands, arguments, syntax | ~250 |
 | [hooks.md](hooks.md) | Lifecycle hooks, events, templates | ~420 |
-<<<<<<< HEAD
-| [mcp.md](mcp.md) | MCP server development, catalog, config | ~570 |
-=======
 | [mcp-basics.md](mcp-basics.md) | MCP server development, templates, config | ~370 |
 | [mcp-servers.md](mcp-servers.md) | MCP server catalog (40+ servers) | ~250 |
->>>>>>> claude
 
 **Total:** ~1,960 lines of technical reference
 
@@ -83,12 +80,8 @@ User Request → Detect Type → Load Reference
 | "agent", "subagent" | [agents.md](agents.md) |
 | "command", "/cmd", "slash" | [commands.md](commands.md) |
 | "hook", "PreToolUse", "PostToolUse" | [hooks.md](hooks.md) |
-<<<<<<< HEAD
-| "MCP", "server", "install mcp" | [mcp.md](mcp.md) |
-=======
 | "create mcp", "develop mcp", "mcp template" | [mcp-basics.md](mcp-basics.md) |
 | "install mcp", "mcp catalog", "mcp server list" | [mcp-servers.md](mcp-servers.md) |
->>>>>>> claude
 | "settings", "config" | Handle directly (below) |
 
 ---

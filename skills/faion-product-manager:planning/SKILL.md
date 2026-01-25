@@ -1,9 +1,10 @@
 ---
 name: faion-product-manager:planning
-description: "Product Planning sub-skill: MVP/MLP scoping, roadmaps, product discovery, user story mapping, OKRs, product launch. 17 methodologies."
+description: "Product planning: MVP/MLP scoping, roadmaps, user story mapping, OKRs."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Product Planning Sub-Skill
 

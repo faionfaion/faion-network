@@ -1,9 +1,10 @@
 ---
 name: faion-devops-engineer
-description: "DevOps Engineer orchestrator: coordinates faion-infrastructure-engineer (Docker, K8s, Terraform, AWS/GCP) and faion-cicd-engineer (CI/CD, monitoring, GitOps, security). 58 total methodologies across 2 sub-skills."
+description: "DevOps orchestrator: infrastructure and CI/CD."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # DevOps Engineer Orchestrator
 
@@ -50,23 +51,6 @@ Orchestrates DevOps activities by coordinating two specialized sub-skills:
 - Azure (2): compute, networking
 - Optimization (2): Docker optimization
 
-<<<<<<< HEAD
-| Reference | Content | Lines |
-|-----------|---------|-------|
-| [docker.md](docker.md) | Containers, Compose, multi-stage builds | ~1140 |
-| [kubernetes.md](kubernetes.md) | K8s resources, Helm, operators | ~960 |
-| [terraform.md](terraform.md) | IaC, modules, state management | ~1090 |
-| [aws.md](aws.md) | AWS CLI, services, IAM, networking | ~1480 |
-| [gcp.md](gcp.md) | gcloud CLI, GCE, GKE, Cloud Run, BigQuery | ~1400 |
-| [ref-platform-engineering.md](ref-platform-engineering.md) | Platform Engineering, IDPs | ~50 |
-| [ref-gitops.md](ref-gitops.md) | GitOps, ArgoCD, Flux | ~80 |
-| [ref-aiops.md](ref-aiops.md) | AIOps, anomaly detection | ~70 |
-| [ref-dora-metrics.md](ref-dora-metrics.md) | DORA metrics | ~35 |
-| [finops.md](finops.md) | Cloud cost optimization | ~55 |
-| [ref-security-as-code.md](ref-security-as-code.md) | Policy as Code | ~60 |
-
-**Total:** ~6,270 lines of technical reference
-=======
 **When to use:**
 - CI/CD pipeline setup
 - Monitoring and observability
@@ -75,7 +59,6 @@ Orchestrates DevOps activities by coordinating two specialized sub-skills:
 - Backup and disaster recovery
 - Cost optimization
 - GitOps workflows
->>>>>>> claude
 
 ---
 
@@ -187,13 +170,6 @@ For tasks spanning both domains, coordinate sequentially:
 
 ## Sub-Skill Details
 
-<<<<<<< HEAD
-| Issue | Action |
-|-------|--------|
-| Unknown cloud provider | Ask user or check existing config |
-| Complex infrastructure | Read reference files for patterns |
-| Multi-cloud setup | Combine relevant references |
-=======
 ### faion-infrastructure-engineer
 - **Files:** 30 methodology files
 - **Key areas:** Docker, K8s, Terraform, AWS, GCP
@@ -203,7 +179,6 @@ For tasks spanning both domains, coordinate sequentially:
 - **Files:** 28 methodology files
 - **Key areas:** CI/CD, monitoring, security, GitOps
 - **SKILL.md:** [faion-cicd-engineer/SKILL.md](faion-cicd-engineer/SKILL.md)
->>>>>>> claude
 
 ---
 

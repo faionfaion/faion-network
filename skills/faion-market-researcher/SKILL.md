@@ -1,9 +1,10 @@
 ---
 name: faion-market-researcher
-description: "Market research specialist: TAM/SAM/SOM sizing, competitor analysis, competitive intelligence, pricing research, trend analysis, niche evaluation, business model planning, idea generation. 22 methodologies."
+description: "Market research: TAM/SAM/SOM sizing, competitor analysis, pricing research, trend analysis."
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Market Research Domain Skill
 

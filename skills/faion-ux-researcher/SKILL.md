@@ -1,3 +1,11 @@
+---
+name: faion-ux-researcher
+description: "UX research: user interviews, usability testing, personas, journey maps."
+user-invocable: false
+---
+
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # faion-ux-researcher
 
 **UX Research specialist. User-centered research methods, usability testing, data analysis.**

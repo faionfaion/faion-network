@@ -77,17 +77,15 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 3. **Routes** to appropriate domain skill(s)
 4. **Executes** with full methodology knowledge
 
-## Direct Skill Access (Advanced)
+## User-Invocable Skills
 
-For specific domain work, you can invoke skills directly:
+**Only `/faion-net` is user-invocable.** All other skills are marked as `user-invocable: false` in their frontmatter.
 
-```
-/faion-sdd                  # SDD workflow only
-/faion-software-developer   # Development only
-/faion-researcher           # Research only
-```
+All domain skills automatically include this reference at the top:
 
-But **faion-net** is recommended as it handles multi-skill coordination.
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
+This ensures users always go through the orchestrator for optimal routing and coordination.
 
 ## Architecture
 

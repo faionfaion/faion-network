@@ -1,9 +1,10 @@
 ---
 name: faion-javascript-developer
-description: "JavaScript/TypeScript specialist: React, Node.js, Next.js, modern JS patterns. 18 methodologies."
+description: "JavaScript/TypeScript: React, Node.js, Next.js, modern JS patterns."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # JavaScript Developer Skill
 

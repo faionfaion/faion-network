@@ -1,9 +1,10 @@
 ---
 name: faion-hr-recruiter
-description: "HR Recruiter role: talent acquisition, employer branding, EVP, structured interviews, STAR method, candidate experience, onboarding, 30-60-90 day plans, ATS optimization, retention strategies, hiring compliance, DEI in hiring. 5 methodologies."
+description: "HR recruiting: talent acquisition, employer branding, interviews, onboarding, DEI."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # HR Recruiter Domain Skill
 
@@ -68,13 +69,6 @@ Orchestrates all HR and recruiting activities from talent acquisition strategy t
 
 Methodology documentation organized by domain:
 
-<<<<<<< HEAD
-| Reference | Content | Lines |
-|-----------|---------|-------|
-| [ats-platforms.md](ats-platforms.md) | ATS comparison, AI recruiting tools | ~400 |
-| [hr-compliance.md](hr-compliance.md) | Hiring laws, DEI compliance, GDPR | ~300 |
-| [interview-questions.md](interview-questions.md) | STAR questions bank by competency | ~500 |
-=======
 | Reference | Content | Tokens |
 |-----------|---------|--------|
 | [recruiting-process.md](recruiting-process.md) | Talent acquisition, sourcing, offers | ~1400 |
@@ -82,7 +76,6 @@ Methodology documentation organized by domain:
 | [onboarding.md](onboarding.md) | 30-60-90 plans, preboarding, buddy program | ~1200 |
 | [employer-branding.md](employer-branding.md) | EVP, careers page, Glassdoor, testimonials | ~1000 |
 | [retention-compliance.md](retention-compliance.md) | Stay interviews, DEI, hiring compliance | ~1000 |
->>>>>>> claude
 
 ---
 
@@ -136,8 +129,6 @@ Pre-boarding → Day 1 orientation → 30-day plan → 60-day check → 90-day r
 
 ---
 
-<<<<<<< HEAD
-=======
 ### star-interview-method
 
 **Problem:** Vague, unhelpful interview answers.
@@ -212,7 +203,6 @@ Additional 40 methodologies organized by domain:
 
 ---
 
->>>>>>> claude
 ## Execution
 
 ### Full-Cycle Recruiting

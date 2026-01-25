@@ -1,8 +1,10 @@
 ---
 name: faion-ppc-manager
-description: "Specialized skill for Pay-Per-Click (PPC) advertising. Manages campaigns across platforms like Google, Meta, and others, using Claude agents for optimization and reporting."
+description: "PPC advertising: campaign management and optimization."
 user-invocable: true
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+
 # PPC Manager Skill (Claude)
 
 ## Overview

@@ -1,9 +1,10 @@
 ---
 name: faion-product-manager:operations
-description: "Product Operations sub-skill: prioritization (RICE, MoSCoW), backlog management, analytics, feedback, lifecycle, technical debt. 16 methodologies."
+description: "Product operations: prioritization (RICE, MoSCoW), backlog, analytics, feedback."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Product Operations Sub-Skill
 

@@ -1,9 +1,10 @@
 ---
 name: faion-growth-marketer
-description: "Growth Marketer: growth experiments, analytics, A/B testing, AARRR metrics, retention, viral loops, data-driven optimization. 30 methodologies."
+description: "Growth marketing: experiments, analytics, A/B testing, AARRR metrics, retention."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Growth Marketer Domain Skill
 

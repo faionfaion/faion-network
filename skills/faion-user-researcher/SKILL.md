@@ -1,9 +1,10 @@
 ---
 name: faion-user-researcher
-description: "User research specialist: personas, user interviews, jobs-to-be-done, pain point research, problem validation, survey design, value proposition, use case mapping, audience segmentation. 21 methodologies."
+description: "User research: personas, user interviews, jobs-to-be-done, pain point research."
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # User Research Domain Skill
 

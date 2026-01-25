@@ -1,9 +1,10 @@
 ---
 name: faion-api-developer
-description: "API specialist: REST, GraphQL, OpenAPI, versioning, auth, rate limiting. 19 methodologies."
+description: "API development: REST, GraphQL, OpenAPI, versioning, auth, rate limiting."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # API Developer Skill
 

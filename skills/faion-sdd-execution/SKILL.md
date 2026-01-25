@@ -1,9 +1,10 @@
 ---
 name: faion-sdd-execution
+description: "SDD execution: quality gates, reflexion learning, pattern/mistake memory, code review."
 user-invocable: false
-description: "SDD Execution: quality gates, reflexion learning, pattern/mistake memory, code review, context management, execution workflows. 20 methodologies."
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # SDD Execution Sub-Skill
 

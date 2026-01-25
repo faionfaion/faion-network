@@ -1,9 +1,10 @@
 ---
 name: faion-infrastructure-engineer
-description: "Infrastructure Engineer: Docker, Kubernetes, Terraform, AWS/GCP cloud platforms, IaC, containerization, orchestration. Sub-skill of faion-devops-engineer. 30 methodologies."
+description: "Infrastructure: Docker, Kubernetes, Terraform, AWS/GCP, IaC, containerization."
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Infrastructure Engineer Sub-Skill
 

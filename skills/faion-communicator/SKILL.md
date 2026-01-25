@@ -1,8 +1,9 @@
 ---
 name: faion-communicator
-description: "Communication skill: stakeholder dialogue, Mom Test, conflict resolution, feedback, selling ideas, storytelling, negotiation, difficult conversations, brainstorming. 10 methodologies."
+description: "Communication: stakeholder dialogue, Mom Test, conflict resolution, feedback, storytelling."
 user-invocable: false
 ---
+> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
 # Faion Communicator
 
