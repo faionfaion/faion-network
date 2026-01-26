@@ -38,42 +38,42 @@ Manages CI/CD pipelines, monitoring, observability, security, and operational ex
 - github-actions-workflows
 - gitlab-cicd
 - jenkins-basics
-- jenkins-pipeline-patterns
-- gitops
-- argocd-gitops
+- jenkins-pipeline-patterns/ (folder: README, checklist, examples, templates, llm-prompts)
+- gitops/ (folder: README, checklist, examples, templates, llm-prompts)
+- argocd-gitops/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Monitoring & Observability (5)
-- prometheus-monitoring
-- grafana-basics
-- grafana-setup
-- elk-stack-logging
-- aiops
+- prometheus-monitoring/ (folder: README, checklist, examples, templates, llm-prompts)
+- grafana-basics/ (folder: README, checklist, examples, templates, llm-prompts)
+- grafana-setup/ (folder: README, checklist, examples, templates, llm-prompts)
+- elk-stack-logging/ (folder: README, checklist, examples, templates, llm-prompts)
+- aiops/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Security & Operations (6)
-- secrets-management
-- ssl-tls-setup
-- security-as-code
-- nginx-configuration
-- load-balancing-concepts
-- load-balancing-implementation
+- secrets-management/ (folder: README, checklist, examples, templates, llm-prompts)
+- ssl-tls-setup/ (folder: README, checklist, examples, templates, llm-prompts)
+- security-as-code/ (folder: README, checklist, examples, templates, llm-prompts)
+- nginx-configuration/ (folder: README, checklist, examples, templates, llm-prompts)
+- load-balancing-concepts/ (folder: README, checklist, examples, templates, llm-prompts)
+- load-balancing-implementation/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Backup & Cost (4)
-- backup-basics
-- backup-implementation
-- finops
-- finops-cloud-cost-optimization
+- backup-basics/ (folder: README, checklist, examples, templates, llm-prompts)
+- backup-implementation/ (folder: README, checklist, examples, templates, llm-prompts)
+- finops/ (folder: README, checklist, examples, templates, llm-prompts)
+- finops-cloud-cost-optimization/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Modern Practices (2)
-- platform-engineering
-- dora-metrics
+- platform-engineering/ (folder: README, checklist, examples, templates, llm-prompts)
+- dora-metrics/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Azure (2)
-- azure-compute
-- azure-networking
+- azure-compute/ (folder: README, checklist, examples, templates, llm-prompts)
+- azure-networking/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ### Optimization (2)
-- docker-optimization
-- ref-docker-compose
+- docker-optimization/ (folder: README, checklist, examples, templates, llm-prompts)
+- docker-compose/ (folder: README, checklist, examples, templates, llm-prompts)
 
 ## Related Skills
 
