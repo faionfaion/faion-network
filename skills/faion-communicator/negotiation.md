@@ -297,34 +297,11 @@ What about:
 
 ---
 
-<<<<<<< HEAD
-## Related Methodologies
-
-- **Conflict Resolution:** Thomas-Kilmann 5 modes, Nonviolent Communication
-- **Selling Ideas:** SPIN Selling, Challenger Sale, elevator pitch
-- **Difficult Conversations:** Crucial Conversations, DESC script
-
----
-
 ## References
 
 - Fisher, R. & Ury, W. (1981). Getting to Yes
 - Cialdini, R. (2006). Influence: The Psychology of Persuasion
 - Voss, C. (2016). Never Split the Difference
-=======
-
-
-
----
-
-*Negotiation & Persuasion | Communication | Version 1.0*
-
-## Sources
-
-- [Harvard Program on Negotiation](https://www.pon.harvard.edu/)
-- [MindTools Negotiation Skills](https://www.mindtools.com/CommSkll/NegotiationSkills.htm)
-- [Indeed Negotiation Strategies](https://www.indeed.com/career-advice/career-development/negotiation-strategies)
->>>>>>> claude
 
 ---
 

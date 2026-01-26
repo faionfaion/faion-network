@@ -1,27 +1,20 @@
-# ML Engineer Orchestrator
+# ML Engineer
 
-> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-ml-engineer`
+> **Entry point:** `/faion-net` — invoke for automatic routing.
 
-## When to Use
+AI/ML orchestrator: LLM APIs, RAG, fine-tuning, agents, multimodal AI.
 
-- Any AI/ML engineering task
-- Routes to specialized sub-skills automatically
+## Sub-Skills
 
-## Overview
+| Sub-Skill | Focus | Methodologies |
+|-----------|-------|---------------|
+| [faion-llm-integration](../faion-llm-integration/CLAUDE.md) | OpenAI, Claude, Gemini APIs, prompting | 20 |
+| [faion-rag-engineer](../faion-rag-engineer/CLAUDE.md) | RAG, embeddings, vector DBs | 18 |
+| [faion-ml-ops](../faion-ml-ops/CLAUDE.md) | Fine-tuning, evaluation, cost | 15 |
+| [faion-ai-agents](../faion-ai-agents/CLAUDE.md) | Agents, multi-agent, MCP | 15 |
+| [faion-multimodal-ai](../faion-multimodal-ai/CLAUDE.md) | Vision, image/video, speech | 12 |
 
-Orchestrates 5 specialized AI/ML sub-skills. Routes tasks based on intent.
-
-**Sub-Skills:** 5 | **Total Methodologies:** 101
-
-## Sub-Skills (5)
-
-| Sub-Skill | Methodologies | Purpose |
-|-----------|---------------|---------|
-| [faion-llm-integration](../faion-llm-integration/SKILL.md) | 26 | LLM APIs, prompting, function calling |
-| [faion-rag-engineer](../faion-rag-engineer/SKILL.md) | 22 | RAG, embeddings, vector search |
-| [faion-ml-ops](../faion-ml-ops/SKILL.md) | 15 | Fine-tuning, evaluation, cost |
-| [faion-ai-agents](../faion-ai-agents/SKILL.md) | 26 | Agents, multi-agent, MCP |
-| [faion-multimodal-ai](../faion-multimodal-ai/SKILL.md) | 12 | Vision, image/video, speech |
+**Total:** 80 methodologies
 
 ## Routing
 
@@ -38,108 +31,54 @@ Orchestrates 5 specialized AI/ML sub-skills. Routes tasks based on intent.
 | Vision, image/video gen | faion-multimodal-ai |
 | Speech, TTS, voice | faion-multimodal-ai |
 
+## Quick Reference
+
+**LLM Provider Selection:**
+
+| Provider | Best For | Context |
+|----------|----------|---------|
+| OpenAI | General purpose, vision, tools | 128K |
+| Claude | Long context, reasoning, safety | 200K |
+| Gemini | Multimodal, grounding | 2M |
+| Local (Ollama) | Privacy, no API costs | Varies |
+
+**Vector Database Selection:**
+
+| Database | Best For |
+|----------|----------|
+| Qdrant | Production self-hosted |
+| Weaviate | Knowledge graphs, hybrid search |
+| Chroma | Local dev, prototyping |
+| pgvector | Existing PostgreSQL |
+| Pinecone | Fully managed, serverless |
+
 ## Files
 
 | File | Purpose |
 |------|---------|
 | [SKILL.md](SKILL.md) | Orchestrator definition |
-| [decision-framework.md](decision-framework.md) | ML choices framework |
-| [llm-decision-framework.md](llm-decision-framework.md) | LLM provider selection |
+| [decision-framework/](decision-framework/README.md) | ML/model selection framework (checklist, examples, templates, prompts) |
+| [llm-decision-framework/](llm-decision-framework/README.md) | LLM architecture decisions (RAG vs fine-tuning, deployment strategies, cost analysis) |
+| [cost-optimization/](cost-optimization/README.md) | Cost optimization (routing, caching, batching, tokens) |
+| [finetuning/](finetuning/README.md) | Fine-tuning guide (LoRA, QLoRA, frameworks) |
+| [fine-tuning-openai/](fine-tuning-openai/README.md) | OpenAI fine-tuning (GPT-4.1, SFT, DPO, evaluation) |
+| [model-evaluation/](model-evaluation/README.md) | Model evaluation (benchmarks, LLM-as-judge, A/B testing) |
+| [llm-observability/](llm-observability/README.md) | LLM observability (Langfuse, LangSmith, tracing, monitoring) |
+| [llm-observability-stack/](llm-observability-stack/README.md) | Observability stack (OTEL, Prometheus, Grafana, integration patterns) |
+| [image-generation/](image-generation/README.md) | Image generation (DALL-E 3, Stable Diffusion, Flux, prompts) |
+| [video-generation/](video-generation/README.md) | Video generation (Runway, Luma, Sora, Veo, text-to-video) |
+| [text-to-speech/](text-to-speech/README.md) | TTS (OpenAI, ElevenLabs, voice cloning, streaming) |
+| [voice-agents/](voice-agents/README.md) | Voice agents (real-time, telephony, Retell, LiveKit, Vapi) |
+| [eu-ai-act-compliance/](eu-ai-act-compliance/README.md) | EU AI Act compliance (risk classification, documentation, templates) |
+| [ai-governance-compliance/](ai-governance-compliance/README.md) | AI governance (model governance, audit trails, responsible AI, compliance) |
+| [reasoning-first-architectures/](reasoning-first-architectures/README.md) | Reasoning models (o3, Claude ET, DeepSeek R1, CoT, extended thinking) |
+| [vector-database-setup/](vector-database-setup/README.md) | Vector DB setup, deployment, configuration, production hardening |
+| [vector-databases/](vector-databases/README.md) | Vector DB comparison, selection, code examples |
 
 ## Related Skills
 
 | Skill | Relationship |
 |-------|--------------|
-| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator |
 | [faion-software-developer](../faion-software-developer/CLAUDE.md) | Integrates ML into applications |
 | [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) | Deploys ML models |
 | [faion-claude-code](../faion-claude-code/CLAUDE.md) | MCP server setup |
-
----
-
-<<<<<<< HEAD
-## Structure
-
-All files are now in the skill root (flat structure). Files with naming conflicts use prefixes:
-- `ref-*` - reference files
-- `meth-*` - methodology files
-
----
-
-## Key Files
-
-| File | Purpose | Lines |
-|------|---------|-------|
-| [SKILL.md](SKILL.md) | Skill definition, methodologies, quick reference, code patterns | ~360 |
-| [openai-api.md](openai-api.md) | OpenAI API: GPT-4, DALL-E, Whisper, Assistants, Batch | ~1310 |
-| [claude-api.md](claude-api.md) | Claude API: Messages, tool use, extended thinking, vision | ~1420 |
-| [gemini-api.md](gemini-api.md) | Gemini API: Multimodal, grounding, code execution, 2M context | ~1150 |
-| [embeddings.md](embeddings.md) | Text embeddings: model comparison, chunking, similarity | ~900 |
-| [finetuning.md](finetuning.md) | LLM fine-tuning: LoRA, QLoRA, datasets, evaluation | ~990 |
-| [langchain.md](langchain.md) | LangChain/LangGraph: chains, agents, memory, tools | ~1440 |
-| [llamaindex.md](llamaindex.md) | LlamaIndex: document indexing, query engines, RAG | ~1210 |
-| [vector-databases.md](vector-databases.md) | Vector DBs: Qdrant, Weaviate, Chroma, pgvector, Pinecone | ~1390 |
-| [rag.md](rag.md) | RAG pipelines: build, query, evaluate modes | ~500 |
-| [ref-agentic-rag.md](ref-agentic-rag.md) | Agentic RAG, AI Agents, MCP, LLM observability | ~300 |
-
----
-
-## Quick Reference
-
-### LLM Provider Selection
-
-| Provider | Best For | Context | Cost |
-|----------|----------|---------|------|
-| OpenAI | General purpose, vision, tools | 128K | $$$ |
-| Claude | Long context, reasoning, safety | 200K | $$$ |
-| Gemini | Multimodal, grounding, 2M context | 2M | $$ |
-| Local (Ollama) | Privacy, no API costs | Varies | Free |
-
-### Framework Selection
-
-| Framework | Use Case |
-|-----------|----------|
-| LangChain | Complex chains, agents, many integrations |
-| LlamaIndex | Document indexing, RAG, structured data |
-
-### Vector Database Selection
-
-| Database | Best For |
-|----------|----------|
-| Qdrant | Production self-hosted (recommended) |
-| Weaviate | Knowledge graphs, hybrid search |
-| Chroma | Local dev, prototyping |
-| pgvector | Existing PostgreSQL integration |
-| Pinecone | Fully managed, serverless |
-
----
-
-## Methodologies (42)
-
-See [meth-CLAUDE.md](meth-CLAUDE.md) for full listing.
-
-**Categories:**
-- **LLM API Integration (4):** openai-api-integration, claude-api-integration, gemini-api-integration, local-llm-ollama
-- **RAG and Retrieval (7):** embedding-generation, vector-database-setup, rag-pipeline-design, rag-evaluation, hybrid-search, reranking, chunking-strategies
-- **Fine-tuning (2):** fine-tuning-openai, fine-tuning-lora
-- **Prompt Engineering (5):** prompt-engineering, chain-of-thought, tool-use-function-calling, structured-output, guardrails
-- **Operations (3):** cost-optimization, model-evaluation, llm-observability
-- **Frameworks (2):** langchain-patterns, llamaindex-patterns
-- **Agents (4):** autonomous-agents, multi-agent-systems, ai-agent-patterns, multi-agent-design-patterns
-- **Multimodal (6):** image-generation, image-analysis-vision, speech-to-text, text-to-speech, voice-agents, video-generation
-- **Best Practices 2026 (9):** agentic-rag, decision-framework, mcp-model-context-protocol, ai-governance-compliance, graph-rag-advanced-retrieval, llm-observability-stack-2026, mcp-ecosystem-2026, eu-ai-act-compliance-2026, reasoning-first-architectures
-
----
-
-## Agent
-
-| Agent | Purpose |
-|-------|---------|
-| faion-ml-agent | AI/ML implementation and integration |
-
----
-
-*ML Engineer Domain Skill v1.0*
-=======
-*ML Engineer Domain Skill v1.2*
->>>>>>> claude

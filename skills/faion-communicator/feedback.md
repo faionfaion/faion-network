@@ -247,26 +247,11 @@ What blocked you? How can we prevent this?"
 
 ---
 
-<<<<<<< HEAD
-## Related Methodologies
-
-- **Active Listening:** RASA framework, empathic listening
-- **Conflict Resolution:** Thomas-Kilmann 5 modes, Nonviolent Communication
-- **Difficult Conversations:** Crucial Conversations, DESC script
-
----
-
 ## References
 
 - Scott, K. (2017). Radical Candor
 - Center for Creative Leadership - SBI Model
-=======
-## Sources
-
-- [Radical Candor Framework](https://www.radicalcandor.com/)
-- [Harvard Business Review Feedback](https://hbr.org/topic/subject/giving-feedback)
-- [MindTools SBI Feedback Model](https://www.mindtools.com/CommSkll/Feedback.htm)
->>>>>>> claude
+- Harvard Business Review - Feedback
 
 ---
 
