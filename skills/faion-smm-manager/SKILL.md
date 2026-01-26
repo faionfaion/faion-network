@@ -1,7 +1,7 @@
 ---
 name: faion-smm-manager
 description: "Social media: content strategy, community building, organic growth."
-user-invocable: true
+user-invocable: false
 ---
 > **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 

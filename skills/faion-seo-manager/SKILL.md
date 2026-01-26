@@ -1,7 +1,7 @@
 ---
 name: faion-seo-manager
 description: "SEO: on-page, off-page, technical optimization for organic visibility."
-user-invocable: true
+user-invocable: false
 ---
 > **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
 
