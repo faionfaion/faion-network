@@ -57,11 +57,16 @@ Sequential feature execution with quality gates at each step.
 # Find feature in any status folder
 feature_statuses = ["in-progress", "todo", "backlog"]
 for status in feature_statuses:
-    path = f".aidocs/features/{status}/{feature}"
+    path = f".aidocs/{status}/{feature}"
     if exists(path):
         FEATURE_DIR = path
         FEATURE_STATUS = status
         break
+
+# Tasks are INSIDE the feature folder
+TASKS_TODO = f"{FEATURE_DIR}/todo"
+TASKS_IN_PROGRESS = f"{FEATURE_DIR}/in-progress"
+TASKS_DONE = f"{FEATURE_DIR}/done"
 ```
 
 ### 1.2 Load Project Context
@@ -132,13 +137,15 @@ Create context package for task executor:
 
 ### 2.1 Find Tasks
 
+Tasks are stored INSIDE the feature folder:
+
 ```bash
-# Priority order
-1. {TASKS_DIR}/in-progress/TASK_*.md  # Resume first
-2. {TASKS_DIR}/todo/TASK_*.md         # Then new tasks
+# Priority order (inside feature folder)
+1. {FEATURE_DIR}/in-progress/TASK-*.md  # Resume first
+2. {FEATURE_DIR}/todo/TASK-*.md         # Then new tasks
 
 # Sort by task number
-TASK_001, TASK_002, TASK_003...
+TASK-001, TASK-002, TASK-003...
 ```
 
 ### 2.2 Build Execution Queue
@@ -147,7 +154,7 @@ TASK_001, TASK_002, TASK_003...
 tasks = []
 
 # In-progress first (resume)
-for task in glob("{TASKS_DIR}/in-progress/TASK_*.md"):
+for task in glob("{FEATURE_DIR}/in-progress/TASK-*.md"):
     tasks.append(task)
 
 # Then todo (sorted)

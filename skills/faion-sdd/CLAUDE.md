@@ -37,11 +37,19 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 - **Parallelization**: Wave-based execution for 1.8-3.5x speedup
 - **No Time Estimates**: Use complexity (Low/Medium/High) + token estimates (~Xk)
 
-## Task Lifecycle
+## Lifecycles
 
+**Feature lifecycle:**
 ```
 backlog/ → todo/ → in-progress/ → done/
 ```
+
+**Task lifecycle (inside feature):**
+```
+feature-NNN/todo/ → feature-NNN/in-progress/ → feature-NNN/done/
+```
+
+**Rule:** Feature moves to `done/` when ALL tasks are in `done/` subfolder.
 
 ## Project Structure
 
@@ -49,16 +57,27 @@ backlog/ → todo/ → in-progress/ → done/
 .aidocs/
 ├── constitution.md
 ├── roadmap.md
-└── features/
-    ├── backlog/
-    ├── todo/
-    ├── in-progress/
-    └── done/
-        └── {NN}-{feature}/
-            ├── spec.md
-            ├── design.md
-            ├── implementation-plan.md
-            └── tasks/{status}/
+├── backlog/
+│   └── feature-NNN-name/
+│       ├── README.md
+│       └── spec.md
+├── todo/
+│   └── feature-NNN-name/
+│       ├── README.md
+│       ├── spec.md
+│       ├── design.md
+│       ├── implementation-plan.md
+│       ├── todo/
+│       │   └── TASK-001-*.md
+│       ├── in-progress/
+│       └── done/
+├── in-progress/
+│   └── feature-NNN-name/
+│       └── ... (tasks moving through subfolders)
+└── done/
+    └── feature-NNN-name/
+        └── done/
+            └── TASK-*.md (all completed)
 ```
 
 ## Memory

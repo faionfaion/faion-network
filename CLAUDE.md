@@ -34,11 +34,13 @@
 └── .aidocs/                  # SDD documentation
     ├── constitution.md
     ├── backlog/
-    │   ├── feature-001-name/
-    │   └── TASK-0001-title.md
+    │   └── feature-NNN-name/
     ├── todo/
+    │   └── feature-NNN-name/
     ├── in-progress/
+    │   └── feature-NNN-name/
     └── done/
+        └── feature-NNN-name/
 
 # Multi-repo project:
 {project}/                    # Project root (parent of repos)
@@ -50,24 +52,30 @@
     ├── constitution.md       # Tech stack & standards (ALL repos)
     ├── roadmap.md            # Feature roadmap, releases, metrics
     │
-    ├── backlog/              # Features ready for grooming
+    ├── backlog/              # Features in queue (needs grooming)
     │   └── feature-NNN-name/
-    │       ├── spec.md       # Feature specification
-    │       ├── design.md     # Technical design
-    │       ├── implementation-plan.md  # Task breakdown
-    │       └── README.md     # Feature overview
+    │       ├── README.md
+    │       └── spec.md       # Initial spec (may be draft)
     │
     ├── todo/                 # Features ready for execution
-    │   ├── feature-NNN-name/
-    │   └── TASK-XXX-*.md     # Standalone tasks
+    │   └── feature-NNN-name/
+    │       ├── README.md
+    │       ├── spec.md
+    │       ├── design.md
+    │       ├── implementation-plan.md
+    │       ├── todo/         # Tasks ready to start
+    │       │   └── TASK-NNN-*.md
+    │       ├── in-progress/  # Tasks currently executing
+    │       └── done/         # Completed tasks
     │
-    ├── in-progress/          # Currently executing
-    │   ├── feature-NNN-name/
-    │   └── TASK-XXX-*.md
+    ├── in-progress/          # Features being executed
+    │   └── feature-NNN-name/
+    │       └── ... (tasks moving through subfolders)
     │
     ├── done/                 # Completed features
-    │   ├── feature-NNN-name/
-    │   └── TASK-XXX-*.md
+    │   └── feature-NNN-name/
+    │       └── done/         # All tasks here
+    │           └── TASK-NNN-*.md
     │
     ├── improvements/         # Feature proposals & enhancements
     │   ├── README.md
@@ -82,8 +90,9 @@
         └── articles/         # Article drafts (MDX/Markdown)
 ```
 
-**Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
-**Features:** `feature-NNN-name/` folders | **Tasks:** `TASK-NNNN-title.md` files
+**Feature Lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
+**Task Lifecycle (inside feature):** `todo/ → in-progress/ → done/`
+**Rule:** Feature moves to `done/` when ALL tasks are in `done/` subfolder
 
 **Documentation Types:**
 - **constitution.md** - Tech decisions, standards, architecture

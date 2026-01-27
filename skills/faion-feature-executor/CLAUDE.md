@@ -17,10 +17,15 @@ SDD feature executor with quality gates: sequential task execution, test/coverag
 This skill orchestrates complete feature implementation in the SDD workflow:
 
 1. **Context Loading** - Load project constitution, feature spec, design, and implementation plan
-2. **Task Discovery** - Find tasks in `in-progress/` (resume) and `todo/` (new)
+2. **Task Discovery** - Find tasks in feature's `in-progress/` (resume) and `todo/` (new) subfolders
 3. **Task Execution Loop** - Execute each task via `faion-task-executor-agent` with post-task validation (tests, coverage, build)
 4. **Code Review Cycle** - Iterate with `faion-code-agent` until no issues remain
-5. **Finalize** - Move feature to `done/`, generate summary report
+5. **Finalize** - Move all tasks to `done/` subfolder, then move feature to `done/`
+
+**Task Lifecycle (inside feature):**
+```
+feature-NNN/todo/ → feature-NNN/in-progress/ → feature-NNN/done/
+```
 
 ## Usage
 

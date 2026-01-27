@@ -117,7 +117,7 @@ All templates for SDD artifacts. Copy and customize for your project.
 | Document | Path |
 |----------|------|
 | Constitution | `.aidocs/constitution.md` |
-| Related Feature | `features/done/{NN}-{feature}/spec.md` |
+| Related Feature | `.aidocs/done/feature-{NNN}-{name}/spec.md` |
 
 ---
 
@@ -488,10 +488,24 @@ TASK_004 ─────────────────┘
 
 ## Task File Template
 
-```markdown
-# TASK_{NNN}: {Short Name}
+**Location:** `.aidocs/{status}/feature-NNN-name/{task-status}/TASK-NNN-slug.md`
 
-**Feature:** {feature-name}
+```markdown
+---
+type: task
+task_id: NNN
+feature: NNN-feature-name
+title: "Task Title"
+status: todo | in-progress | done
+priority: P0 | P1 | P2
+created: YYYY-MM-DD
+completed: YYYY-MM-DD
+est_tokens: ~Xk
+---
+
+# TASK-{NNN}: {Short Name}
+
+**Feature:** feature-{NNN}-{name}
 **Status:** todo | in-progress | done
 **Created:** YYYY-MM-DD
 
@@ -501,9 +515,9 @@ TASK_004 ─────────────────┘
 
 | Document | Path |
 |----------|------|
-| Spec | .aidocs/features/{status}/{feature}/spec.md |
-| Design | .aidocs/features/{status}/{feature}/design.md |
-| Plan | .aidocs/features/{status}/{feature}/implementation-plan.md |
+| Spec | ../spec.md |
+| Design | ../design.md |
+| Plan | ../implementation-plan.md |
 
 ---
 
