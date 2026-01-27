@@ -12,70 +12,190 @@ Universal skill for end-to-end software project lifecycle. From idea to producti
 
 ---
 
-## Quick Start
+## CRITICAL: Skill Loading Mechanism
 
-**Auto-Flow Protocol:**
-1. Knowledge freshness check (model cutoff vs current date)
-2. Context discovery (project status + activity type)
-3. Skill routing (automatic based on answers)
-4. Execution mode selection (YOLO vs Interactive)
+**This skill is an orchestrator.** After analyzing the user's task, you MUST invoke the appropriate domain skill using the **Skill tool**.
 
-**Full protocol:** [session-start-protocol.md](session-start-protocol.md)
+```
+User task → Analyze intent → Use Skill tool → Domain skill loads → Execute
+```
 
----
+**Example:**
+```
+User: "Research competitors for my SaaS"
+→ Intent: Research
+→ Action: Use Skill tool with skill: "faion-researcher"
+→ faion-researcher loads with 32 methodologies
+→ Execute research
+```
 
-## Core Components
-
-
----
-
-## Execution Modes
-
-
----
-
-## Domain Skills (18)
-
-| Category | Skills | Count |
-|----------|--------|-------|
-| **Core** | faion-sdd, faion-feature-executor | 2 |
-| **Research** | faion-researcher, faion-product-manager, faion-software-architect | 3 |
-| **Development** | faion-software-developer, faion-devops-engineer, faion-ml-engineer | 3 |
-| **Marketing** | faion-marketing-manager, faion-seo-manager, faion-smm-manager, faion-ppc-manager | 4 |
-| **Management** | faion-project-manager, faion-business-analyst | 2 |
-| **Design** | faion-ux-ui-designer | 1 |
-| **Communication** | faion-communicator, faion-hr-recruiter | 2 |
-| **Tools** | faion-claude-code, faion-net | 2 |
-
-**Full catalog:** [domain-skills.md](domain-skills.md)
+**DO NOT just list skills or provide markdown links. INVOKE them with the Skill tool.**
 
 ---
 
-## Capabilities Highlights
+## Skill Routing Decision Tree
 
-| Phase | Capabilities |
-|-------|--------------|
-| **Idea → Validation** | Idea generation (7 frameworks), pain point research, problem validation, niche evaluation |
-| **Research → Strategy** | Market research (TAM/SAM/SOM), competitor analysis, personas, pricing strategies |
-| **Product Planning** | MVP/MLP, feature prioritization (RICE, MoSCoW), roadmaps, user story mapping, OKRs |
-| **SDD Workflow** | Constitution, specs, design docs, implementation plans, task parallelization, quality gates |
-| **Development** | Code gen (8 languages), testing (unit/integration/E2E), API design, DevOps (CI/CD, K8s) |
-| **AI/LLM** | RAG pipelines, embeddings, fine-tuning, prompt engineering, multimodal, voice agents |
-| **Marketing** | GTM strategy, landing pages, SEO/SEM, paid ads, email campaigns, social media |
+Analyze the user's task and invoke the matching skill:
 
-**Full list:** [capabilities.md](capabilities.md)
-
----
-
-## Methodologies Catalog
-
-
----
-
-## References
-
-**Core:**
+| User Intent | Skill to Invoke |
+|-------------|-----------------|
+| Research, market analysis, competitors, personas, pricing | `Skill(faion-researcher)` |
+| Architecture, system design, ADRs, patterns | `Skill(faion-software-architect)` |
+| Product planning, MVP, roadmaps, OKRs, prioritization | `Skill(faion-product-manager)` |
+| Writing code, APIs, frontend, backend | `Skill(faion-software-developer)` |
+| Infrastructure, Docker, K8s, CI/CD | `Skill(faion-devops-engineer)` |
+| AI/ML, LLM APIs, RAG, embeddings, agents | `Skill(faion-ml-engineer)` |
+| Marketing, GTM, launches, positioning | `Skill(faion-marketing-manager)` |
+| UX/UI, usability, wireframes, design systems | `Skill(faion-ux-ui-designer)` |
+| Project management, Scrum, Kanban, PMBoK | `Skill(faion-project-manager)` |
+| Business analysis, requirements, BPMN | `Skill(faion-business-analyst)` |
+| Stakeholder communication, feedback | `Skill(faion-communicator)` |
+| HR, recruiting, onboarding | `Skill(faion-hr-recruiter)` |
+| SDD workflow, specs, design docs | `Skill(faion-sdd)` |
+| Sequential task execution | `Skill(faion-feature-executor)` |
+| Claude Code setup, hooks, MCP | `Skill(faion-claude-code)` |
 
 ---
 
-*Faion Network v2.1*
+## Routing Examples
+
+### Research Task
+```
+User: "Help me understand the AI coding tools market"
+
+Your action:
+1. Identify intent: Market research
+2. Invoke: Skill tool with skill: "faion-researcher"
+3. The researcher skill loads with TAM/SAM/SOM, competitor analysis, etc.
+```
+
+### Development Task
+```
+User: "Build a REST API for user authentication"
+
+Your action:
+1. Identify intent: Backend development
+2. Invoke: Skill tool with skill: "faion-software-developer"
+3. The developer skill loads with API patterns, testing, etc.
+```
+
+### Marketing Task
+```
+User: "Create a GTM strategy for product launch"
+
+Your action:
+1. Identify intent: Go-to-market
+2. Invoke: Skill tool with skill: "faion-gtm-strategist"
+3. The GTM skill loads with launch checklists, positioning, etc.
+```
+
+### Multi-Domain Task
+```
+User: "I have an idea for a SaaS product, help me validate and plan it"
+
+Your action (sequential):
+1. First: Skill tool with skill: "faion-researcher" → validate idea
+2. Then: Skill tool with skill: "faion-product-manager" → plan MVP
+3. Then: Skill tool with skill: "faion-software-architect" → design system
+```
+
+---
+
+## Available Domain Skills
+
+### Core Orchestration
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-sdd | `faion-sdd` | SDD workflow (specs, designs, plans) |
+| faion-feature-executor | `faion-feature-executor` | Sequential task execution |
+
+### Research & Strategy
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-researcher | `faion-researcher` | Market research, competitors, personas |
+| faion-product-manager | `faion-product-manager` | MVP, roadmaps, prioritization |
+| faion-software-architect | `faion-software-architect` | System design, ADRs, patterns |
+
+### Development
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-software-developer | `faion-software-developer` | Full-stack development |
+| faion-python-developer | `faion-python-developer` | Python, Django, FastAPI |
+| faion-javascript-developer | `faion-javascript-developer` | JS/TS, React, Node.js |
+| faion-frontend-developer | `faion-frontend-developer` | UI, Tailwind, PWA |
+| faion-backend-developer | `faion-backend-developer` | Backend routing |
+| faion-api-developer | `faion-api-developer` | REST, GraphQL, OpenAPI |
+| faion-testing-developer | `faion-testing-developer` | TDD, unit/E2E tests |
+
+### DevOps & Infrastructure
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-devops-engineer | `faion-devops-engineer` | DevOps orchestration |
+| faion-infrastructure-engineer | `faion-infrastructure-engineer` | Docker, K8s, Terraform |
+| faion-cicd-engineer | `faion-cicd-engineer` | GitHub Actions, GitOps |
+
+### AI/ML
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-ml-engineer | `faion-ml-engineer` | ML orchestration |
+| faion-llm-integration | `faion-llm-integration` | OpenAI, Claude, Gemini APIs |
+| faion-rag-engineer | `faion-rag-engineer` | RAG, embeddings, vector DBs |
+| faion-ai-agents | `faion-ai-agents` | LangChain, MCP, agents |
+
+### Marketing
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-marketing-manager | `faion-marketing-manager` | Marketing orchestration |
+| faion-gtm-strategist | `faion-gtm-strategist` | GTM, launches, positioning |
+| faion-content-marketer | `faion-content-marketer` | SEO, email, content |
+| faion-growth-marketer | `faion-growth-marketer` | Experiments, AARRR |
+| faion-seo-manager | `faion-seo-manager` | On-page, technical SEO |
+
+### Management & Analysis
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-project-manager | `faion-project-manager` | PM orchestration |
+| faion-business-analyst | `faion-business-analyst` | BA orchestration |
+
+### Design
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-ux-ui-designer | `faion-ux-ui-designer` | UX/UI orchestration |
+| faion-ux-researcher | `faion-ux-researcher` | User research, testing |
+| faion-ui-designer | `faion-ui-designer` | Wireframes, prototypes |
+
+### Communication & HR
+| Skill | Invoke As | Purpose |
+|-------|-----------|---------|
+| faion-communicator | `faion-communicator` | Stakeholder dialogue |
+| faion-hr-recruiter | `faion-hr-recruiter` | Talent, onboarding |
+
+---
+
+## Execution Flow
+
+1. **Receive task** from user
+2. **Analyze intent** using decision tree above
+3. **Invoke skill** using Skill tool: `Skill(skill-name)`
+4. **Domain skill loads** with its methodologies
+5. **Execute** using loaded methodologies
+6. **Report results** to user
+
+**If task spans multiple domains:**
+- Invoke skills sequentially
+- Each skill builds on previous results
+- Maintain context between invocations
+
+---
+
+## Statistics
+
+| Metric | Count |
+|--------|-------|
+| Domain Skills | 46 |
+| Methodologies | 605 |
+| Agents | 60+ |
+
+---
+
+*Faion Network v2.2 - Skill Tool Integration*

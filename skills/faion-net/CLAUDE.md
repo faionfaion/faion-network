@@ -4,66 +4,59 @@
 
 Universal orchestrator for end-to-end software project lifecycle. From idea to production, from research to marketing.
 
-## How It Works
+## CRITICAL: How This Skill Works
+
+**This is an orchestrator skill.** It does NOT contain methodologies itself. Instead, it routes to domain skills using the **Skill tool**.
 
 ```
-/faion-net  →  Analyzes task  →  Selects skill(s)  →  Routes  →  Executes
+/faion-net invoked → Analyze user task → Use Skill tool → Domain skill loads → Execute
+```
+
+**You MUST use the Skill tool to invoke domain skills. Markdown links do NOT load skills.**
+
+## Skill Routing
+
+| User Intent | Action |
+|-------------|--------|
+| Research, market, competitors | `Skill(faion-researcher)` |
+| Architecture, system design | `Skill(faion-software-architect)` |
+| Product planning, roadmaps | `Skill(faion-product-manager)` |
+| Writing code, APIs | `Skill(faion-software-developer)` |
+| Infrastructure, CI/CD | `Skill(faion-devops-engineer)` |
+| AI/ML, LLM APIs, RAG | `Skill(faion-ml-engineer)` |
+| Marketing, GTM, SEO | `Skill(faion-marketing-manager)` |
+| UX/UI, usability | `Skill(faion-ux-ui-designer)` |
+| Project management | `Skill(faion-project-manager)` |
+| Business analysis | `Skill(faion-business-analyst)` |
+| SDD workflow | `Skill(faion-sdd)` |
+| Task execution | `Skill(faion-feature-executor)` |
+
+## Example Flow
+
+```
+User: "Research competitors for my SaaS"
+
+1. Intent: Market research
+2. Action: Use Skill tool with skill: "faion-researcher"
+3. Result: faion-researcher loads with 32 methodologies
+4. Execute: Full competitor analysis using loaded methodologies
 ```
 
 ## Statistics
 
 | Metric | Count |
 |--------|-------|
-| Domain Skills | 18 |
+| Domain Skills | 46 |
 | Agents | 60+ |
 | Methodologies | 605 |
-
-## Skill Routing
-
-| User Intent | Domain Skill |
-|-------------|--------------|
-| Research, market, competitors | [faion-researcher](../faion-researcher/CLAUDE.md) |
-| Architecture, system design | [faion-software-architect](../faion-software-architect/CLAUDE.md) |
-| Product planning, roadmaps | [faion-product-manager](../faion-product-manager/CLAUDE.md) |
-| Writing code, APIs | [faion-software-developer](../faion-software-developer/CLAUDE.md) |
-| Infrastructure, CI/CD | [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) |
-| AI/ML, LLM APIs | [faion-ml-engineer](../faion-ml-engineer/CLAUDE.md) |
-| Marketing, GTM, SEO | [faion-marketing-manager](../faion-marketing-manager/CLAUDE.md) |
-| UX/UI, usability | [faion-ux-ui-designer](../faion-ux-ui-designer/CLAUDE.md) |
-| Project management | [faion-project-manager](../faion-project-manager/CLAUDE.md) |
-| Business analysis | [faion-business-analyst](../faion-business-analyst/CLAUDE.md) |
-| Communication | [faion-communicator](../faion-communicator/CLAUDE.md) |
-| HR, recruiting | [faion-hr-recruiter](../faion-hr-recruiter/CLAUDE.md) |
-| SDD workflow | [faion-sdd](../faion-sdd/CLAUDE.md) |
-| Claude Code setup | [faion-claude-code](../faion-claude-code/CLAUDE.md) |
-| Sequential execution | [faion-feature-executor](../faion-feature-executor/CLAUDE.md) |
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| [SKILL.md](SKILL.md) | Decision tree + execution modes |
-| [methodologies-catalog.md](methodologies-catalog.md) | All 605 methodologies overview |
-| [methodologies-product.md](methodologies-product.md) | Product, research, PM, BA, UX (175) |
-| [methodologies-dev.md](methodologies-dev.md) | Dev, DevOps, ML/AI, architecture (146) |
-| [methodologies-marketing.md](methodologies-marketing.md) | Marketing, growth, ads (82) |
-| [workflow.md](workflow.md) | SDD phases and lifecycle |
-| [*-domain.md](*.md) | Domain-specific references (10 files) |
-
-## Execution Modes
-
-| Mode | Agent/Skill | When to Use |
-|------|-------------|-------------|
-| **YOLO** (Autonomous) | faion-task-YOLO-executor-opus-agent | Clear tasks, specs exist |
-| **Interactive** | faion-communicator | Vague requirements, user wants control |
-
-## Quick Start
-
-1. **Invoke:** `/faion-net`
-2. **Describe task:** "Help me research competitors for my SaaS product"
-3. **Orchestrator routes:** → faion-researcher
-4. **Execution:** Full research with 32 methodologies
+| [SKILL.md](SKILL.md) | Full routing logic and skill catalog |
+| [methodologies-catalog.md](methodologies-catalog.md) | All 605 methodologies |
 
 ---
 
-*Faion Network v2.2*
+*Faion Network v2.2 - Skill Tool Integration*
