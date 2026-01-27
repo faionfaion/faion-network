@@ -18,16 +18,18 @@ Python development specialist for Django, FastAPI, async patterns, and testing.
 
 | Need | File |
 |------|------|
-| Django standards | django-coding-standards.md |
-| Django models | django-base-model.md, django-models.md |
-| Django services | django-services.md |
-| Django API | django-api.md |
-| Django testing | django-pytest.md, django-testing.md |
-| FastAPI | python-fastapi.md |
-| Async patterns | python-async.md, python-async-patterns.md |
-| Type hints | python-type-hints.md, python-typing.md |
-| Modern Python | python-modern-2026.md |
-| Code quality | python-code-quality.md |
+| Django standards | django-coding-standards/ (README, checklist, examples, templates, llm-prompts) |
+| Django imports | django-imports/ (README, checklist, examples, templates, llm-prompts) |
+| Django models | django-base-model.md, django-models/ (README, checklist, examples, templates, llm-prompts) |
+| Django services | django-services/ (README, checklist, examples, templates, llm-prompts) |
+| Django API | django-api/ (README, checklist, examples, templates, llm-prompts) |
+| Django testing | django-pytest/ (README, checklist, examples, templates, llm-prompts), django-testing/ |
+| FastAPI | python-fastapi/ (README, templates, examples) |
+| Web frameworks | python-web-frameworks/ (README, checklist, examples, templates, llm-prompts) |
+| Async patterns | python-async/ (README, checklist, examples, templates, llm-prompts) |
+| Type hints | python-typing/ (README, checklist, examples, templates, llm-prompts) |
+| Modern Python | python-modern-2026/ (README, checklist, examples, templates, llm-prompts) |
+| Code quality | python-code-quality/ (README, checklist, examples, templates, llm-prompts) |
 
 ## Related Skills
 
