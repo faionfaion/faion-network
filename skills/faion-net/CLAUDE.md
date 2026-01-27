@@ -1,62 +1,52 @@
-# Faion Network Orchestrator Skill
+# Faion Network Orchestrator
 
 **Entry Point:** `/faion-net`
 
-Universal orchestrator for end-to-end software project lifecycle. From idea to production, from research to marketing.
+Universal orchestrator: 54 skills, 605 methodologies across Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research.
 
-## CRITICAL: How This Skill Works
-
-**This is an orchestrator skill.** It does NOT contain methodologies itself. Instead, it routes to domain skills using the **Skill tool**.
+## How It Works
 
 ```
-/faion-net invoked → Analyze user task → Use Skill tool → Domain skill loads → Execute
+/faion-net → Analyze intent → Skill tool → Domain skill loads → Execute
 ```
 
-**You MUST use the Skill tool to invoke domain skills. Markdown links do NOT load skills.**
+**CRITICAL:** Invoke domain skills using `Skill(skill-name)`. Markdown links do NOT load skills.
 
-## Skill Routing
+## Decision Tree
 
-| User Intent | Action |
-|-------------|--------|
-| Research, market, competitors | `Skill(faion-researcher)` |
-| Architecture, system design | `Skill(faion-software-architect)` |
-| Product planning, roadmaps | `Skill(faion-product-manager)` |
-| Writing code, APIs | `Skill(faion-software-developer)` |
-| Infrastructure, CI/CD | `Skill(faion-devops-engineer)` |
-| AI/ML, LLM APIs, RAG | `Skill(faion-ml-engineer)` |
-| Marketing, GTM, SEO | `Skill(faion-marketing-manager)` |
-| UX/UI, usability | `Skill(faion-ux-ui-designer)` |
-| Project management | `Skill(faion-project-manager)` |
-| Business analysis | `Skill(faion-business-analyst)` |
-| SDD workflow | `Skill(faion-sdd)` |
-| Task execution | `Skill(faion-feature-executor)` |
-
-## Example Flow
-
-```
-User: "Research competitors for my SaaS"
-
-1. Intent: Market research
-2. Action: Use Skill tool with skill: "faion-researcher"
-3. Result: faion-researcher loads with 32 methodologies
-4. Execute: Full competitor analysis using loaded methodologies
-```
+| Category | Intent | Invoke |
+|----------|--------|--------|
+| **Research** | Market, competitors, TAM | `Skill(faion-researcher)` |
+| **Architecture** | System design, ADRs | `Skill(faion-software-architect)` |
+| **Product** | MVP, roadmaps, OKRs | `Skill(faion-product-manager)` |
+| **Python** | Django, FastAPI | `Skill(faion-python-developer)` |
+| **JavaScript** | React, Node, Next.js | `Skill(faion-javascript-developer)` |
+| **Backend** | Go, Rust, Java, C# | `Skill(faion-backend-systems)` or `Skill(faion-backend-enterprise)` |
+| **Frontend** | Tailwind, PWA | `Skill(faion-frontend-developer)` |
+| **APIs** | REST, GraphQL | `Skill(faion-api-developer)` |
+| **Testing** | TDD, E2E | `Skill(faion-testing-developer)` |
+| **DevOps** | Docker, K8s, CI/CD | `Skill(faion-infrastructure-engineer)` or `Skill(faion-cicd-engineer)` |
+| **LLM** | OpenAI, Claude APIs | `Skill(faion-llm-integration)` |
+| **RAG** | Embeddings, vectors | `Skill(faion-rag-engineer)` |
+| **AI Agents** | LangChain, MCP | `Skill(faion-ai-agents)` |
+| **GTM** | Launches, pricing | `Skill(faion-gtm-strategist)` |
+| **Growth** | AARRR, A/B tests | `Skill(faion-growth-marketer)` |
+| **SEO** | Technical, on-page | `Skill(faion-seo-manager)` |
+| **PM Agile** | Scrum, Kanban | `Skill(faion-pm-agile)` |
+| **BA** | Requirements, BPMN | `Skill(faion-ba-core)` |
+| **UX Research** | Interviews, testing | `Skill(faion-ux-researcher)` |
+| **UI Design** | Wireframes, tokens | `Skill(faion-ui-designer)` |
+| **SDD** | Specs, design docs | `Skill(faion-sdd-planning)` |
 
 ## Statistics
 
 | Metric | Count |
 |--------|-------|
-| Domain Skills | 46 |
-| Agents | 60+ |
-| Methodologies | 605 |
+| Skills | 54 |
+| Methodologies | 605+ |
 
-## Files
-
-| File | Purpose |
-|------|---------|
-| [SKILL.md](SKILL.md) | Full routing logic and skill catalog |
-| [methodologies-catalog.md](methodologies-catalog.md) | All 605 methodologies |
+**Full decision tree:** [SKILL.md](SKILL.md)
 
 ---
 
-*Faion Network v2.2 - Skill Tool Integration*
+*Faion Network v2.3*
