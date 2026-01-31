@@ -1,6 +1,6 @@
 ---
 name: faion-net
-description: "Universal orchestrator: 54 skills, 605 methodologies. Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research."
+description: "Universal orchestrator: 54 skills, 1297 methodologies. Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research."
 user-invocable: true
 ---
 
@@ -238,17 +238,17 @@ CLAUDE CODE
 
 | Domain | Primary Skill | Methodologies |
 |--------|--------------|---------------|
-| Research | `faion-researcher` | 30+ |
-| Architecture | `faion-software-architect` | 40 |
-| Product | `faion-product-manager` | 33 |
-| Development | `faion-software-developer` | 184 |
-| DevOps | `faion-devops-engineer` | 59 |
-| AI/ML | `faion-ml-engineer` | 80 |
-| Marketing | `faion-marketing-manager` | 117 |
-| Project Mgmt | `faion-project-manager` | 50 |
-| Business Analysis | `faion-business-analyst` | 28 |
-| UX/UI | `faion-ux-ui-designer` | 75 |
-| SDD | `faion-sdd` | 48 |
+| Research | `faion-researcher` | 40 |
+| Architecture | `faion-software-architect` | 31 |
+| Product | `faion-product-manager` | 69 |
+| Development | `faion-software-developer` | 138 |
+| DevOps | `faion-devops-engineer` | 87 |
+| AI/ML | `faion-ml-engineer` | 140 |
+| Marketing | `faion-marketing-manager` | 135 |
+| Project Mgmt | `faion-project-manager` | 97 |
+| Business Analysis | `faion-business-analyst` | 55 |
+| UX/UI | `faion-ux-ui-designer` | 179 |
+| SDD | `faion-sdd` | 71 |
 
 ---
 
@@ -297,10 +297,22 @@ CLAUDE CODE
 | Metric | Count |
 |--------|-------|
 | Skills | 54 |
-| Orchestrators | 15 |
-| Leaf skills | 39 |
-| Methodologies | 605+ |
+| Orchestrators | 3 |
+| Leaf skills | 51 |
+| Methodologies | 1297 |
+
+## Methodology Structure
+
+Each methodology is a folder with 5 files:
+```
+{methodology}/
+├── README.md       # Main content
+├── checklist.md    # Step-by-step checklist
+├── templates.md    # Code/config templates
+├── examples.md     # Practical examples
+└── llm-prompts.md  # AI prompts
+```
 
 ---
 
-*Faion Network v2.3*
+*Faion Network v3.0*

@@ -2,7 +2,7 @@
 
 **Entry Point:** `/faion-net`
 
-Universal orchestrator: 54 skills, 605 methodologies across Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research.
+Universal orchestrator: 54 skills, 1297 methodologies across Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research.
 
 ## How It Works
 
@@ -43,10 +43,24 @@ Universal orchestrator: 54 skills, 605 methodologies across Development, DevOps,
 | Metric | Count |
 |--------|-------|
 | Skills | 54 |
-| Methodologies | 605+ |
+| Orchestrators | 3 |
+| Leaf skills | 51 |
+| Methodologies | 1297 |
+
+## Methodology Structure
+
+Each methodology is a folder with 5 files:
+```
+{methodology}/
+├── README.md       # Main content
+├── checklist.md    # Step-by-step checklist
+├── templates.md    # Code/config templates
+├── examples.md     # Practical examples
+└── llm-prompts.md  # AI prompts
+```
 
 **Full decision tree:** [SKILL.md](SKILL.md)
 
 ---
 
-*Faion Network v2.3*
+*Faion Network v3.0*
