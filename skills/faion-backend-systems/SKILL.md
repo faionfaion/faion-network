@@ -14,6 +14,73 @@ Systems-level backend development in Go and Rust, plus database design and infra
 
 Handles high-performance backend services using Go and Rust, database design, caching strategies, and backend infrastructure.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `go.mod` | `Read("go.mod")` | Go module, dependencies |
+| `Cargo.toml` | `Read("Cargo.toml")` | Rust crate, dependencies |
+| `cmd/` or `internal/` | `Glob("**/cmd/*")` | Go standard layout |
+| `src/main.rs` | `Glob("**/src/main.rs")` | Rust binary |
+| Web framework | `Grep("gin\|echo\|fiber", "go.mod")` | Go web framework |
+| Async runtime | `Grep("tokio\|actix", "Cargo.toml")` | Rust async framework |
+| Database driver | `Grep("sqlx\|gorm\|diesel", "**/*")` | Database library |
+
+### Discovery Questions
+
+#### Q1: Systems Language (if not detected)
+
+```yaml
+question: "Which language for this backend?"
+header: "Language"
+multiSelect: false
+options:
+  - label: "Go"
+    description: "Simple concurrency, fast compile"
+  - label: "Rust"
+    description: "Memory safety, maximum performance"
+```
+
+#### Q2: Service Type
+
+```yaml
+question: "What type of service?"
+header: "Service"
+multiSelect: false
+options:
+  - label: "HTTP API"
+    description: "REST or GraphQL endpoints"
+  - label: "gRPC service"
+    description: "High-performance internal API"
+  - label: "Worker/processor"
+    description: "Background job processing"
+  - label: "CLI tool"
+    description: "Command-line application"
+```
+
+#### Q3: Concurrency Needs
+
+```yaml
+question: "What are your concurrency requirements?"
+header: "Concurrency"
+multiSelect: false
+options:
+  - label: "High concurrency (1000s of connections)"
+    description: "Need goroutines/async"
+  - label: "Moderate (standard web traffic)"
+    description: "Standard patterns"
+  - label: "CPU-bound processing"
+    description: "Parallel computation"
+  - label: "Simple sequential"
+    description: "Minimal concurrency"
+```
+
+---
+
 ## When to Use
 
 - Go microservices and HTTP APIs

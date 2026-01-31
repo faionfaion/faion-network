@@ -14,6 +14,156 @@ Python development specializing in Django, FastAPI, async programming, and moder
 
 Handles all Python backend development including Django full-stack apps, FastAPI async APIs, pytest testing, and Python best practices.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Gather Python project context before asking questions:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `manage.py` | `Glob("**/manage.py")` | Django project |
+| `pyproject.toml` | `Read("pyproject.toml")` | Dependencies, Python version, tools |
+| `requirements.txt` | `Read("requirements.txt")` | Dependencies (legacy setup) |
+| `settings/*.py` | `Glob("**/settings/*.py")` | Django settings structure |
+| `services/*.py` | `Glob("**/services/*.py")` | Service layer exists → follow pattern |
+| `conftest.py` | `Glob("**/conftest.py")` | pytest fixtures exist → check style |
+| `factories.py` | `Glob("**/factories.py")` | Factory Boy used for tests |
+| `tasks.py` or `celery.py` | `Glob("**/tasks.py")` | Celery async tasks used |
+| `.pre-commit-config.yaml` | `Glob("**/.pre-commit-config.yaml")` | Pre-commit hooks, linting tools |
+| `mypy.ini` or `pyproject.toml [tool.mypy]` | Check for mypy config | Type checking enforced |
+
+**Read existing code to understand patterns:**
+```
+- Read a model file to see BaseModel pattern
+- Read a service file to see service layer style
+- Read a test file to see testing conventions
+- Read serializers to see DRF patterns
+```
+
+### Discovery Questions
+
+Use `AskUserQuestion` for Python-specific decisions not clear from investigation.
+
+#### Q1: Framework Choice (only if not detected)
+
+```yaml
+question: "Which Python framework are you using?"
+header: "Framework"
+multiSelect: false
+options:
+  - label: "Django"
+    description: "Full-featured web framework with ORM"
+  - label: "FastAPI"
+    description: "Modern async API framework"
+  - label: "Flask"
+    description: "Lightweight microframework"
+  - label: "No framework (scripts/CLI)"
+    description: "Pure Python application"
+```
+
+**Routing:**
+- "Django" → django-* methodologies
+- "FastAPI" → python-fastapi, python-async
+- "Flask" → python-web-frameworks
+- "No framework" → python-basics, python-code-quality
+
+#### Q2: Code Placement (for new code in Django)
+
+```yaml
+question: "What type of code are you writing?"
+header: "Code Type"
+multiSelect: false
+options:
+  - label: "Database operations (create/update/delete)"
+    description: "Code that modifies data"
+  - label: "Business logic (calculations, transformations)"
+    description: "Pure functions, no side effects"
+  - label: "API endpoint"
+    description: "HTTP request handling"
+  - label: "Background task"
+    description: "Async/scheduled processing"
+  - label: "Not sure"
+    description: "I'll help you decide based on what it does"
+```
+
+**Routing (Django decision tree):**
+- "Database operations" → `services/` directory
+- "Business logic" → `utils/` directory (pure functions)
+- "API endpoint" → `views/` or `viewsets/`
+- "Background task" → `tasks/` with Celery
+- "Not sure" → Ask what the code does, apply decision tree
+
+#### Q3: Async Requirements
+
+```yaml
+question: "Does this need async/concurrent execution?"
+header: "Async"
+multiSelect: false
+options:
+  - label: "Yes, I/O bound (API calls, file ops)"
+    description: "Multiple external calls that can run in parallel"
+  - label: "Yes, background processing"
+    description: "Long-running tasks that shouldn't block"
+  - label: "No, synchronous is fine"
+    description: "Simple request-response flow"
+  - label: "Not sure"
+    description: "I'll analyze and recommend"
+```
+
+**Routing:**
+- "I/O bound" → python-async, asyncio patterns
+- "Background processing" → django-celery or FastAPI BackgroundTasks
+- "Synchronous" → Standard patterns
+- "Not sure" → Analyze task characteristics
+
+#### Q4: Type Safety Level
+
+```yaml
+question: "What level of type safety do you want?"
+header: "Types"
+multiSelect: false
+options:
+  - label: "Strict (full type hints, mypy strict)"
+    description: "Maximum type safety, catch errors early"
+  - label: "Gradual (key interfaces typed)"
+    description: "Type public APIs, internal can be looser"
+  - label: "Minimal (match existing code)"
+    description: "Follow project's current style"
+```
+
+**Routing:**
+- "Strict" → python-type-hints strict mode, Protocol, TypedDict
+- "Gradual" → Type annotations on public functions
+- "Minimal" → Match existing codebase style
+
+#### Q5: Testing Approach (for new features)
+
+```yaml
+question: "How should we approach testing?"
+header: "Testing"
+multiSelect: false
+options:
+  - label: "TDD (tests first)"
+    description: "Write tests before implementation"
+  - label: "Tests after implementation"
+    description: "Write tests once code works"
+  - label: "Match existing test coverage"
+    description: "Follow project's testing patterns"
+  - label: "No tests needed"
+    description: "Spike/prototype, tests later"
+```
+
+**Routing:**
+- "TDD" → tdd-workflow, write test first
+- "Tests after" → django-pytest or python-testing-pytest
+- "Match existing" → Read conftest.py, follow patterns
+- "No tests" → Skip testing methodologies
+
+---
+
 ## When to Use
 
 - Django projects (models, services, API, testing)

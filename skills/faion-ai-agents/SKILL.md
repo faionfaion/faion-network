@@ -14,6 +14,68 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Specializes in AI agent development and orchestration. Covers autonomous agents, multi-agent systems, frameworks, and MCP.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals before asking questions:
+
+| Signal | Where to Check | What to Look For |
+|--------|----------------|------------------|
+| **Dependencies** | package.json, requirements.txt | langchain, llamaindex, anthropic (MCP) |
+| **Agent code** | Grep for "agent", "tool", "ReAct" | Existing agent implementations |
+| **MCP config** | mcp.json, claude_desktop_config.json | MCP servers configuration |
+| **Tools/functions** | Grep for "function", "tool_def" | Available agent tools |
+
+### Discovery Questions
+
+```yaml
+question: "What type of agent are you building?"
+header: "Agent Architecture"
+multiSelect: false
+options:
+  - label: "Single autonomous agent"
+    description: "One agent with tools (ReAct, plan-and-execute)"
+  - label: "Multi-agent system"
+    description: "Multiple agents collaborating/delegating"
+  - label: "Agentic RAG"
+    description: "Agent-driven document retrieval"
+  - label: "MCP integration (Claude tools)"
+    description: "Model Context Protocol for Claude Code"
+```
+
+```yaml
+question: "Which agent framework?"
+header: "Framework"
+multiSelect: false
+options:
+  - label: "LangChain"
+    description: "Most mature, extensive tooling"
+  - label: "LlamaIndex"
+    description: "Best for data/document agents"
+  - label: "Custom implementation"
+    description: "Direct API calls to LLM"
+  - label: "Claude MCP (native)"
+    description: "Claude-native tool protocol"
+```
+
+```yaml
+question: "What tools/capabilities does the agent need?"
+header: "Agent Capabilities"
+multiSelect: true
+options:
+  - label: "Web search"
+    description: "Search internet for information"
+  - label: "Code execution"
+    description: "Run Python/JS code safely"
+  - label: "Database queries"
+    description: "Query SQL/NoSQL databases"
+  - label: "API calls"
+    description: "Call external REST/GraphQL APIs"
+  - label: "File operations"
+    description: "Read/write files, search codebase"
+```
+
 ## Scope
 
 | Area | Coverage |

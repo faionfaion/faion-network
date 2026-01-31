@@ -14,6 +14,69 @@ Go-to-market strategy, product launches, market positioning, pricing, partnershi
 
 Orchestrates GTM activities: market entry, product launches, positioning strategy, pricing models, partnership programs, customer success, and operational legal/financial aspects.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals to understand GTM context:
+
+| Signal | Location | What to Look For |
+|--------|----------|------------------|
+| GTM docs | `.aidocs/product_docs/gtm-manifest/` | Existing GTM strategy, target market, positioning |
+| Launch plans | `.aidocs/backlog/`, `.aidocs/todo/` | Features ready for launch, product milestones |
+| Content calendar | `.aidocs/product_docs/article-lists/` | Content strategy, announcement timing |
+| Analytics | `docs/`, `README.md` | Current metrics, user data, conversion rates |
+| Pricing | `README.md`, API docs | Current pricing model, subscription tiers |
+| Partnerships | `docs/partners/`, `.aidocs/` | Existing partnerships, affiliate programs |
+| Customer success | `docs/support/`, knowledge base | CS operations, metrics, support channels |
+
+### Discovery Questions
+
+```yaml
+question: "What's your primary GTM goal?"
+header: "GTM Goal"
+multiSelect: false
+options:
+  - label: "Launch new product"
+    description: "Product Hunt, Hacker News, press coverage, initial positioning"
+  - label: "Enter new market"
+    description: "Market positioning, pricing strategy, competitive analysis"
+  - label: "Build partnerships"
+    description: "Partnership strategy, affiliate programs, integration ecosystem"
+  - label: "Scale customer success"
+    description: "CS operations, metrics, upselling, churn prevention"
+```
+
+```yaml
+question: "What's your launch timeline?"
+header: "Launch Stage"
+multiSelect: false
+options:
+  - label: "Planning (3+ months)"
+    description: "Strategy, positioning, pricing, partnerships"
+  - label: "Pre-launch (1-3 months)"
+    description: "Press outreach, content prep, community building"
+  - label: "Launch week"
+    description: "Product Hunt, Hacker News, press coverage execution"
+  - label: "Post-launch"
+    description: "Customer success, metrics tracking, optimization"
+```
+
+```yaml
+question: "What's your business model?"
+header: "Business Model"
+multiSelect: false
+options:
+  - label: "SaaS subscription"
+    description: "Subscription models, MRR optimization, churn prevention"
+  - label: "Freemium/PLG"
+    description: "Free trial optimization, activation, conversion funnels"
+  - label: "One-time purchase"
+    description: "Pricing strategy, upselling, cross-selling"
+  - label: "Marketplace/Platform"
+    description: "Partnership strategy, affiliate programs, revenue share"
+```
+
 ## When to Use
 
 | Scenario | Methodologies |

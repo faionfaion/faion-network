@@ -58,6 +58,60 @@ This skill provides communication methodologies for:
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| Meeting notes | Interview transcripts, stakeholder feedback | Communication patterns |
+| User research docs | Customer validation notes | Mom Test usage |
+| Pitch decks | Presentation structure (SCQA, Pyramid) | Storytelling approach |
+| Feedback documents | SBI format, 1-on-1 notes | Feedback culture |
+| Conflict logs | Issue resolution patterns | Conflict style |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What's your communication goal?"
+    options:
+      - label: "Gather requirements"
+        description: "Use active-listening, stakeholder-communication"
+      - label: "Validate business idea"
+        description: "Use mom-test"
+      - label: "Resolve conflict"
+        description: "Use conflict-resolution, difficult-conversations"
+      - label: "Give/receive feedback"
+        description: "Use feedback (SBI, Radical Candor)"
+      - label: "Pitch or persuade"
+        description: "Use selling-ideas, business-storytelling"
+
+  - question: "Who is your audience?"
+    options:
+      - label: "Customers/users"
+        description: "Favor mom-test, active-listening"
+      - label: "Executives/stakeholders"
+        description: "Favor selling-ideas, business-storytelling"
+      - label: "Team members"
+        description: "Favor feedback, conflict-resolution"
+      - label: "External partners"
+        description: "Favor negotiation, stakeholder-communication"
+
+  - question: "What's the context?"
+    options:
+      - label: "Discovery/research phase"
+        description: "Use mom-test, active-listening"
+      - label: "Decision-making"
+        description: "Use selling-ideas, negotiation"
+      - label: "Performance/sensitive topic"
+        description: "Use difficult-conversations, feedback"
+      - label: "Idea generation"
+        description: "Use brainstorming-ideation"
+```
+
+---
+
 ## When to Use
 
 | Situation | Methodology |

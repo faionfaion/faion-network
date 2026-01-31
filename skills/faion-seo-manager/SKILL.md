@@ -10,6 +10,69 @@ user-invocable: false
 ## Overview
 This skill orchestrates all SEO activities, from keyword research to technical optimization, ensuring content is discoverable and ranks high on search engines. It is designed to be used by Claude agents.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals to understand SEO context:
+
+| Signal | Location | What to Look For |
+|--------|----------|------------------|
+| SEO keywords | `.aidocs/product_docs/seo/` | Target keywords, search volume, ranking positions |
+| Site audit | SEO tools, analytics | Technical issues, broken links, page speed, Core Web Vitals |
+| Content | Website, blog | Existing content, topical coverage, content gaps |
+| Backlinks | SEO tools, analytics | Link profile, domain authority, referring domains |
+| Schema markup | Page source, structured data | Rich snippets, schema types, implementation |
+| Site structure | Sitemap, internal links | URL structure, navigation, internal linking |
+| Analytics | Google Search Console, GA4 | Organic traffic, click-through rates, rankings |
+
+### Discovery Questions
+
+```yaml
+question: "What's your primary SEO focus?"
+header: "SEO Focus"
+multiSelect: false
+options:
+  - label: "Technical SEO audit"
+    description: "Site foundation, Core Web Vitals, schema markup, crawlability"
+  - label: "On-page optimization"
+    description: "Content optimization, keyword targeting, topical authority"
+  - label: "Link building"
+    description: "Backlink acquisition, outreach, link quality improvement"
+  - label: "AI search optimization (GEO/AEO)"
+    description: "Google AI Overviews, zero-click search, answer optimization"
+```
+
+```yaml
+question: "What's your SEO maturity level?"
+header: "SEO Maturity"
+multiSelect: false
+options:
+  - label: "New site (no SEO)"
+    description: "SEO fundamentals, technical foundation, basic optimization"
+  - label: "Basic SEO implemented"
+    description: "Content optimization, link building, topical authority"
+  - label: "Established SEO presence"
+    description: "Advanced tactics, AI optimization, competitive positioning"
+  - label: "SEO leader in niche"
+    description: "Cutting-edge strategies, GEO/AEO, maintaining dominance"
+```
+
+```yaml
+question: "What SEO issues are most urgent?"
+header: "SEO Priorities"
+multiSelect: true
+options:
+  - label: "Technical issues"
+    description: "Broken links, slow pages, mobile issues, crawl errors"
+  - label: "Content gaps"
+    description: "Missing topical coverage, keyword opportunities"
+  - label: "Link profile"
+    description: "Low authority, few backlinks, toxic links"
+  - label: "AI search visibility"
+    description: "Not appearing in AI Overviews, zero-click optimization"
+```
+
 ## Decision Tree
 
 | If you need... | Use | File |

@@ -14,6 +14,126 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 Orchestrates project management activities using PMBoK 7/8 framework. Coordinates two specialized sub-skills for comprehensive PM coverage.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing PM artifacts and project setup:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `.aidocs/` | `Glob("**/.aidocs/*")` | SDD project structure |
+| `roadmap.md` | `Glob("**/roadmap.md")` | Roadmap exists |
+| `constitution.md` | `Glob("**/constitution.md")` | Project standards defined |
+| Jira/Linear refs | `Grep("jira\|linear\|clickup", "**/*.md")` | PM tool in use |
+| Sprint folders | `Glob("**/sprint-*/**")` | Agile sprints used |
+| Risk register | `Glob("**/risk*.md")` | Risk management in place |
+
+**Read existing artifacts:**
+- constitution.md for project scope and constraints
+- roadmap.md for current plans
+- Any existing sprint/planning docs
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand PM needs.
+
+#### Q1: PM Approach
+
+```yaml
+question: "What project management approach do you prefer?"
+header: "Approach"
+multiSelect: false
+options:
+  - label: "Agile (Scrum, Kanban)"
+    description: "Iterative, sprints, flexible scope"
+  - label: "Traditional (Waterfall, PMBoK)"
+    description: "Sequential, fixed scope, detailed planning"
+  - label: "Hybrid"
+    description: "Mix of agile and traditional"
+  - label: "Not sure / recommend"
+    description: "I'll suggest based on your project"
+```
+
+**Routing:**
+- "Agile" → `Skill(faion-pm-agile)`
+- "Traditional" → `Skill(faion-pm-traditional)`
+- "Hybrid" → Both skills as needed
+- "Not sure" → Ask Q2 to determine
+
+#### Q2: Project Characteristics (if "Not sure")
+
+```yaml
+question: "What describes your project best?"
+header: "Project"
+multiSelect: false
+options:
+  - label: "Requirements likely to change"
+    description: "User feedback, evolving product"
+  - label: "Requirements are fixed"
+    description: "Clear deliverables, contract"
+  - label: "Small team (1-5 people)"
+    description: "Lightweight process needed"
+  - label: "Large team / multiple teams"
+    description: "Coordination, dependencies"
+```
+
+**Recommendation:**
+- "Change" → Agile (Scrum or Kanban)
+- "Fixed" → Traditional (WBS, schedule)
+- "Small team" → Kanban or lightweight Scrum
+- "Large team" → Scaled Agile or traditional PMBoK
+
+#### Q3: PM Task Type
+
+```yaml
+question: "What PM help do you need right now?"
+header: "Task"
+multiSelect: true
+options:
+  - label: "Planning (scope, schedule, WBS)"
+    description: "Define what, when, how"
+  - label: "Team coordination (RACI, ceremonies)"
+    description: "Roles, meetings, communication"
+  - label: "Risk management"
+    description: "Identify and mitigate risks"
+  - label: "Progress tracking (EVM, metrics)"
+    description: "Monitor and report status"
+  - label: "Tool setup (Jira, Linear, etc.)"
+    description: "Configure PM tooling"
+```
+
+**Routing:**
+- "Planning" → wbs-creation, schedule-development
+- "Team" → team-charter, raci-matrix, ceremonies
+- "Risk" → risk-register, risk-response-planning
+- "Progress" → earned-value-management, dashboards
+- "Tool" → pm-tools-setup
+
+#### Q4: Current PM Maturity
+
+```yaml
+question: "What's your current PM setup?"
+header: "Maturity"
+multiSelect: false
+options:
+  - label: "No formal process"
+    description: "Ad-hoc, need structure"
+  - label: "Basic process exists"
+    description: "Have backlog, need improvement"
+  - label: "Established process"
+    description: "Working well, need optimization"
+```
+
+**Context impact:**
+- "No formal" → Start with basics, don't overwhelm
+- "Basic exists" → Build on what works, fill gaps
+- "Established" → Optimize, metrics, continuous improvement
+
+---
+
 ## Architecture
 
 ```

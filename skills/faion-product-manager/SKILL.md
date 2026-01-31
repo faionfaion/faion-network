@@ -18,6 +18,124 @@ Orchestrates product management activities: planning, operations, discovery, lau
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing product artifacts:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `constitution.md` | `Glob("**/.aidocs/constitution.md")` | Product defined |
+| `roadmap.md` | `Glob("**/.aidocs/roadmap.md")` | Roadmap exists |
+| `backlog/` | `Glob("**/.aidocs/backlog/*")` | Backlog items exist |
+| `todo/` | `Glob("**/.aidocs/todo/*")` | Ready-to-execute features |
+| `user-personas.md` | `Glob("**/user-personas.md")` | Users defined |
+| `mvp-scope.md` | `Glob("**/mvp*.md")` | MVP defined |
+
+**Read existing artifacts:**
+- constitution.md for product vision and constraints
+- roadmap.md for current plans and priorities
+- Any existing specs or design docs
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand product management needs.
+
+#### Q1: Product Stage
+
+```yaml
+question: "What stage is your product at?"
+header: "Stage"
+multiSelect: false
+options:
+  - label: "Idea (need to define MVP)"
+    description: "No code yet, scoping what to build"
+  - label: "MVP defined (need to plan execution)"
+    description: "Scope clear, need roadmap and backlog"
+  - label: "Building (need to manage backlog)"
+    description: "Development in progress, prioritizing"
+  - label: "Launched (need to iterate)"
+    description: "Live product, improving based on feedback"
+```
+
+**Routing:**
+- "Idea" → mvp-scoping, user-story-mapping
+- "MVP defined" → roadmap-design, backlog-creation
+- "Building" → `Skill(faion-product-operations)` → prioritization, grooming
+- "Launched" → feedback-management, product-analytics
+
+#### Q2: Planning Need (if Idea or MVP stage)
+
+```yaml
+question: "What planning help do you need?"
+header: "Planning"
+multiSelect: true
+options:
+  - label: "Define what to build (MVP scope)"
+    description: "Features, user stories, acceptance criteria"
+  - label: "Create a roadmap"
+    description: "Phases, milestones, feature sequence"
+  - label: "Set goals and metrics (OKRs)"
+    description: "Success criteria, KPIs"
+  - label: "Plan a launch"
+    description: "Launch checklist, GTM coordination"
+```
+
+**Routing:**
+- "MVP scope" → `Skill(faion-product-planning)` → mvp-scoping
+- "Roadmap" → `Skill(faion-product-planning)` → roadmap-design
+- "OKRs" → `Skill(faion-product-planning)` → okr-setting
+- "Launch" → `Skill(faion-product-planning)` → launch-planning + coordinate with marketing
+
+#### Q3: Operations Need (if Building or Launched)
+
+```yaml
+question: "What operations help do you need?"
+header: "Operations"
+multiSelect: true
+options:
+  - label: "Prioritize features (what's next?)"
+    description: "RICE, MoSCoW, impact vs effort"
+  - label: "Manage backlog"
+    description: "Groom, refine, organize"
+  - label: "Track metrics and analytics"
+    description: "Understand user behavior"
+  - label: "Process user feedback"
+    description: "Collect and act on feedback"
+```
+
+**Routing:**
+- "Prioritize" → `Skill(faion-product-operations)` → prioritization-rice/moscow
+- "Backlog" → `Skill(faion-product-operations)` → backlog-management
+- "Metrics" → `Skill(faion-product-operations)` → product-analytics
+- "Feedback" → `Skill(faion-product-operations)` → feedback-management
+
+#### Q4: Decision Framework Preference
+
+```yaml
+question: "How do you prefer to make product decisions?"
+header: "Framework"
+multiSelect: false
+options:
+  - label: "Data-driven (metrics, analytics)"
+    description: "Decisions backed by numbers"
+  - label: "User-centric (feedback, interviews)"
+    description: "Decisions based on user input"
+  - label: "Intuition + validation"
+    description: "Hypothesize then test"
+  - label: "Stakeholder consensus"
+    description: "Align with team/investors"
+```
+
+**Context impact:**
+- "Data-driven" → Emphasize metrics, A/B testing, analytics
+- "User-centric" → Emphasize user research, feedback loops
+- "Intuition" → Faster decisions, MVP experiments, iterate
+- "Stakeholder" → Prioritization frameworks, alignment docs
+
+---
+
 ## Sub-Skills
 
 | Sub-Skill | Focus | Methodologies |

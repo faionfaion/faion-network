@@ -14,6 +14,105 @@ Frontend development specializing in styling, UI libraries, design systems, and 
 
 Handles frontend styling, design systems, UI component libraries, accessibility, PWA, and responsive design.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Detect frontend styling setup:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `tailwind.config.*` | `Glob("**/tailwind.config.*")` | Tailwind CSS used |
+| `styled-components` | `Grep("styled-components", "package.json")` | Styled Components |
+| `emotion` | `Grep("@emotion", "package.json")` | Emotion CSS-in-JS |
+| `shadcn` components | `Glob("**/components/ui/*.tsx")` | shadcn/ui used |
+| `.storybook/` | `Glob("**/.storybook/*")` | Storybook setup |
+| Design tokens | `Glob("**/tokens.*")` | Design system exists |
+| PWA manifest | `Glob("**/manifest.json")` | PWA configured |
+
+**Read existing patterns:**
+- tailwind.config for theme/tokens
+- Existing components for styling patterns
+- Storybook stories for component API
+
+### Discovery Questions
+
+#### Q1: Styling Approach
+
+```yaml
+question: "What styling approach are you using?"
+header: "Styling"
+multiSelect: false
+options:
+  - label: "Tailwind CSS"
+    description: "Utility-first CSS framework"
+  - label: "CSS-in-JS (Styled Components, Emotion)"
+    description: "JavaScript-based styling"
+  - label: "CSS Modules"
+    description: "Scoped CSS files"
+  - label: "Plain CSS/SCSS"
+    description: "Traditional stylesheets"
+  - label: "Not decided / recommend"
+    description: "I'll suggest based on project"
+```
+
+#### Q2: UI Component Library
+
+```yaml
+question: "Are you using a UI component library?"
+header: "UI Lib"
+multiSelect: false
+options:
+  - label: "shadcn/ui"
+    description: "Copy-paste Radix-based components"
+  - label: "Material UI"
+    description: "Google Material Design"
+  - label: "Chakra UI"
+    description: "Accessible component library"
+  - label: "Custom components"
+    description: "Building from scratch"
+  - label: "None yet"
+    description: "Need recommendation"
+```
+
+#### Q3: Design System Status
+
+```yaml
+question: "Do you have a design system?"
+header: "Design"
+multiSelect: false
+options:
+  - label: "Yes, with design tokens"
+    description: "Colors, spacing, typography defined"
+  - label: "Figma designs exist"
+    description: "Designs to implement"
+  - label: "No formal system"
+    description: "Ad-hoc styling"
+  - label: "Need to create one"
+    description: "Want to establish system"
+```
+
+#### Q4: Accessibility Requirements
+
+```yaml
+question: "What are your accessibility requirements?"
+header: "A11y"
+multiSelect: false
+options:
+  - label: "WCAG 2.1 AA compliance"
+    description: "Standard accessibility"
+  - label: "WCAG 2.1 AAA compliance"
+    description: "Highest accessibility"
+  - label: "Basic accessibility"
+    description: "Semantic HTML, keyboard nav"
+  - label: "Not a priority yet"
+    description: "Focus on functionality first"
+```
+
+---
+
 ## When to Use
 
 - Tailwind CSS styling and architecture

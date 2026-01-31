@@ -14,6 +14,47 @@ Coordinates code quality and automation sub-skills for development tooling.
 
 Orchestrates two specialized sub-skills for developer tooling, architecture patterns, and automation.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| Architecture docs | ADRs, design patterns | Code quality focus |
+| Automation scripts | Browser automation, CI/CD | Tooling focus |
+| Code review process | Review guidelines, checklists | Quality culture |
+| Monorepo setup | Turborepo, pnpm workspaces | Tooling complexity |
+| Testing infrastructure | E2E tests, performance tests | Automation maturity |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "Which area do you need?"
+    options:
+      - label: "Code quality/architecture"
+        description: "Route to faion-code-quality"
+      - label: "Automation/tooling"
+        description: "Route to faion-automation-tooling"
+      - label: "Both"
+        description: "Use both sub-skills"
+
+  - question: "What's your primary concern?"
+    options:
+      - label: "Architecture patterns (DDD, CQRS)"
+        description: "Use faion-code-quality"
+      - label: "Browser automation"
+        description: "Use faion-automation-tooling"
+      - label: "CI/CD pipelines"
+        description: "Use faion-automation-tooling"
+      - label: "Code review/refactoring"
+        description: "Use faion-code-quality"
+```
+
+---
+
 ## When to Use
 
 - Browser automation (Puppeteer, Playwright)

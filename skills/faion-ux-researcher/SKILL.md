@@ -14,6 +14,80 @@ user-invocable: false
 
 Execute UX research activities: interviews, testing, analysis, persona development, journey mapping. Validate design decisions with evidence.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these signals before starting research:
+
+| Signal | Location | What to Check |
+|--------|----------|---------------|
+| Existing personas | .aidocs/product_docs/user-personas.md | Current user archetypes |
+| User interview data | .aidocs/product_docs/interview-notes/ | Previous interview findings |
+| Usability test reports | .aidocs/product_docs/usability-tests/ | Past testing results |
+| Journey maps | .aidocs/product_docs/journey-maps/ | Existing customer journeys |
+| Research repository | .aidocs/product_docs/research/ | Historical research data |
+| Analytics data | .aidocs/product_docs/analytics/ | Quantitative user behavior |
+| Competitor research | .aidocs/product_docs/competitive-analysis/ | Competitor UX patterns |
+| Design files | Figma project URL | Current design state |
+| User feedback | Support tickets, NPS scores | User complaints/praises |
+
+### Discovery Questions
+
+```yaml
+- question: "What research method do you need?"
+  header: "Research Method"
+  multiSelect: false
+  options:
+    - label: "User interviews"
+      description: "Qualitative insights through 1-on-1 conversations"
+    - label: "Usability testing"
+      description: "Task-based testing to validate design decisions"
+    - label: "Surveys"
+      description: "Quantitative data from larger sample sizes"
+    - label: "A/B testing"
+      description: "Compare two variants to measure effectiveness"
+    - label: "Heuristic evaluation"
+      description: "Expert review against usability principles"
+
+- question: "What stage is your product in?"
+  header: "Product Stage"
+  multiSelect: false
+  options:
+    - label: "Discovery"
+      description: "Understanding user needs, no product yet"
+    - label: "Design validation"
+      description: "Testing prototypes/mockups before development"
+    - label: "Post-launch"
+      description: "Validating live product with real users"
+    - label: "Optimization"
+      description: "Improving existing features based on data"
+
+- question: "Do you have target users identified?"
+  header: "User Access"
+  multiSelect: false
+  options:
+    - label: "Yes, have access to real users"
+      description: "Can recruit from existing user base"
+    - label: "Need to recruit users"
+      description: "Need help finding representative participants"
+    - label: "No users yet (pre-launch)"
+      description: "Will use personas/proxy users"
+
+- question: "What's your primary research goal?"
+  header: "Research Goal"
+  multiSelect: false
+  options:
+    - label: "Understand user needs/pain points"
+      description: "Discovery research to inform product direction"
+    - label: "Validate design decisions"
+      description: "Test if current design solves user problems"
+    - label: "Measure usability"
+      description: "Quantify how easy product is to use"
+    - label: "Compare alternatives"
+      description: "Decide between design options A vs B"
+```
+
 ## Core Domains
 
 ### User Research Methods

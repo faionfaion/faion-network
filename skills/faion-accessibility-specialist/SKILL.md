@@ -14,6 +14,81 @@ user-invocable: false
 
 Ensure digital products are accessible to all users. Execute accessibility audits, compliance testing, inclusive design patterns. Focus on WCAG 2.2, ADA Title II (2026), assistive technology.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these signals before starting accessibility work:
+
+| Signal | Location | What to Check |
+|--------|----------|---------------|
+| WCAG compliance level | .aidocs/constitution.md | Target level (A, AA, AAA) |
+| A11y config files | .eslintrc, axe.config.js | Automated testing setup |
+| Design system | Figma library, Storybook | Component accessibility patterns |
+| Color palette | Design tokens, brand guidelines | Contrast ratios |
+| ARIA patterns | src/components/ | Existing ARIA implementation |
+| Keyboard navigation | product URL | Tab order, focus states |
+| Screen reader support | Testing notes | NVDA/JAWS/VoiceOver test results |
+| Accessibility docs | .aidocs/product_docs/accessibility/ | Previous audit reports |
+| VPAT document | Compliance folder | Voluntary Product Accessibility Template |
+| Regulatory requirements | Legal docs | ADA Title II, EAA, Section 508 |
+
+### Discovery Questions
+
+```yaml
+- question: "What type of accessibility work do you need?"
+  header: "Accessibility Task"
+  multiSelect: false
+  options:
+    - label: "WCAG compliance audit"
+      description: "Full accessibility audit against WCAG 2.2"
+    - label: "Assistive technology testing"
+      description: "Test with screen readers, magnifiers, voice control"
+    - label: "Accessibility-first design review"
+      description: "Review designs before development"
+    - label: "Remediation plan"
+      description: "Fix existing accessibility issues"
+    - label: "VPAT creation"
+      description: "Create Voluntary Product Accessibility Template"
+
+- question: "What WCAG level do you need to meet?"
+  header: "WCAG Compliance Level"
+  multiSelect: false
+  options:
+    - label: "Level A (minimum)"
+      description: "Basic accessibility, legal minimum"
+    - label: "Level AA (recommended)"
+      description: "Standard for most websites, ADA compliance"
+    - label: "Level AAA (optimal)"
+      description: "Highest accessibility standard"
+
+- question: "What's your current accessibility state?"
+  header: "Accessibility Maturity"
+  multiSelect: false
+  options:
+    - label: "No accessibility work done"
+      description: "Starting from scratch"
+    - label: "Some accessibility features"
+      description: "Partial implementation, needs audit"
+    - label: "Regular accessibility testing"
+      description: "Ongoing testing, optimization needed"
+
+- question: "Do you have legal compliance requirements?"
+  header: "Legal Requirements"
+  multiSelect: true
+  options:
+    - label: "ADA Title II (US government)"
+      description: "2026 requirements for state/local government"
+    - label: "Section 508 (US federal)"
+      description: "Federal agency compliance"
+    - label: "EAA (European Accessibility Act)"
+      description: "EU accessibility directive"
+    - label: "AODA (Ontario)"
+      description: "Accessibility for Ontarians with Disabilities Act"
+    - label: "No specific requirement"
+      description: "General best practices only"
+```
+
 ## Core Domains
 
 ### Accessibility Standards

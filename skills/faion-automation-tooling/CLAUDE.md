@@ -6,40 +6,47 @@ Automation and tooling: browser automation, CI/CD, monorepo, performance testing
 
 ## Methodologies
 
+All methodologies now have folder structure with:
+- README.md - Main methodology content
+- checklist.md - Step-by-step checklist
+- templates.md - Code/config templates
+- examples.md - Real-world examples
+- llm-prompts.md - AI-assisted prompts
+
 ### Browser Automation
-- browser-automation-overview.md - Browser automation
-- puppeteer-automation.md - Puppeteer
-- playwright-automation.md - Playwright
-- web-scraping.md - Web scraping
+- browser-automation-overview/ - Browser automation
+- puppeteer-automation/ - Puppeteer
+- playwright-automation/ - Playwright
+- web-scraping/ - Web scraping
 
 ### CI/CD
-- cd-basics.md - CD basics
-- cd-pipelines.md - CD pipelines
-- continuous-delivery.md - Continuous delivery
-- feature-flags.md - Feature flags
+- cd-basics/ - CD basics
+- cd-pipelines/ - CD pipelines
+- continuous-delivery/ - Continuous delivery
+- feature-flags/ - Feature flags
 
 ### Testing
-- ab-testing-basics.md - A/B testing basics
-- ab-testing-implementation.md - A/B testing impl
-- perf-test-basics.md - Performance testing
-- perf-test-tools.md - Performance tools
+- ab-testing-basics/ - A/B testing basics
+- ab-testing-implementation/ - A/B testing impl
+- perf-test-basics/ - Performance testing
+- perf-test-tools/ - Performance tools
 
 ### Tooling
-- monorepo-turborepo.md - Turborepo monorepo
-- pnpm-package-management.md - pnpm management
-- logging-patterns.md - Logging patterns
-- internationalization.md - i18n
+- monorepo-turborepo/ - Turborepo monorepo
+- pnpm-package-management/ - pnpm management
+- logging-patterns/ - Logging patterns
+- internationalization/ - i18n
 
 ### Development Practices
-- trunk-based-dev-principles.md - Trunk-based principles
-- trunk-based-dev-patterns.md - Trunk-based patterns
-- ai-assisted-dev.md - AI-assisted development
-- best-practices-2026.md - Best practices 2026
+- trunk-based-dev-principles/ - Trunk-based principles
+- trunk-based-dev-patterns/ - Trunk-based patterns
+- ai-assisted-dev/ - AI-assisted development
+- best-practices-2026/ - Best practices 2026
 
 ### Reference
-- dev-methodologies-architecture.md - Architecture methods
-- dev-methodologies-practices.md - Dev practices
-- dev-methodologies-testing.md - Testing methods
+- dev-methodologies-architecture/ - Architecture methods
+- dev-methodologies-practices/ - Dev practices
+- dev-methodologies-testing/ - Testing methods
 
 ## Related Skills
 

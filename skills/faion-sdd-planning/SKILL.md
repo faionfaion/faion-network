@@ -14,6 +14,52 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.aidocs/` structure | SDD workflow in use (backlog, todo, in-progress, done) | SDD adoption status |
+| `spec.md` files | Specification format and quality | Spec standards present |
+| `design.md` files | Design doc patterns | Design approach |
+| `implementation-plan.md` | Task breakdown structure | Planning methodology |
+| `TASK-*.md` files | Task format, token estimates | Task creation standards |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "Which SDD phase are you in?"
+    options:
+      - label: "Writing specification"
+        description: "Use writing-specifications, spec-structure"
+      - label: "Creating design doc"
+        description: "Use design-doc-structure, design-doc-writing-process"
+      - label: "Breaking down into tasks"
+        description: "Use writing-implementation-plans, task-creation-principles"
+      - label: "Setting up SDD workflow"
+        description: "Use workflows, templates"
+
+  - question: "Do you have existing SDD documentation?"
+    options:
+      - label: "Yes, following SDD"
+        description: "Continue with established patterns"
+      - label: "Partial/inconsistent"
+        description: "Standardize using templates"
+      - label: "No, starting fresh"
+        description: "Start with spec-structure, templates"
+
+  - question: "What's your task complexity?"
+    options:
+      - label: "Simple features (<50k tokens)"
+        description: "Standard task breakdown"
+      - label: "Complex features (>100k tokens)"
+        description: "Apply impl-plan-100k-rule, split features"
+```
+
+---
+
 ## Philosophy
 
 **"Intent is the source of truth"** - specification is the main artifact, code is implementation.

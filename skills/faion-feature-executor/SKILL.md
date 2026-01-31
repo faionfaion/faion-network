@@ -31,6 +31,52 @@ Execute all tasks in an SDD feature with full quality gates:
 5. After all tasks: code review cycle until no issues remain
 6. Move feature to `done/`
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.aidocs/todo/` or `in-progress/` | Feature folders with tasks | Features ready for execution |
+| `constitution.md` | Tech stack, testing requirements | Project standards |
+| Test suite config | Testing framework, coverage tools | Quality gate setup |
+| CI/CD pipelines | Automated test runs | Integration readiness |
+| Feature tasks count | Number of TASK-*.md files | Execution scope estimation |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What execution mode do you prefer?"
+    options:
+      - label: "YOLO (autonomous)"
+        description: "Full automation, no confirmations (requires permission)"
+      - label: "Interactive"
+        description: "Task-by-task confirmation"
+      - label: "Review-only"
+        description: "Review existing implementation"
+
+  - question: "How many tasks are in this feature?"
+    options:
+      - label: "1-3 tasks"
+        description: "Fast sequential execution"
+      - label: "4-10 tasks"
+        description: "Standard execution with checkpoints"
+      - label: "10+ tasks"
+        description: "Consider splitting feature or batching"
+
+  - question: "What quality gates do you need?"
+    options:
+      - label: "All gates (L1-L6)"
+        description: "Production-ready code"
+      - label: "Essential (L1-L5)"
+        description: "Development quality"
+      - label: "Minimal (L1-L3)"
+        description: "Prototype/POC quality"
+```
+
 ## Decision Tree
 
 | If you need... | Use | Why |

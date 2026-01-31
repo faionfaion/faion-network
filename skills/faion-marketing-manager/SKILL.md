@@ -14,6 +14,148 @@ Pure orchestrator that coordinates marketing activities by routing to specialize
 
 Routes marketing tasks to appropriate sub-skill based on domain. No methodologies in this skill - all execution happens in sub-skills.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing marketing context:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `.aidocs/product_docs/gtm-manifest/` | `Glob("**/*gtm*")` | GTM strategy exists |
+| `.aidocs/product_docs/seo/` | `Glob("**/seo/*.md")` | SEO strategy exists |
+| `landing page files` | `Glob("**/pages/index.*")` | Landing page exists |
+| `analytics config` | `Grep("GA4\|gtag\|analytics", "**/*")` | Analytics setup |
+| `email templates` | `Glob("**/email*/**")` | Email marketing exists |
+
+**Check existing assets:**
+- Read landing page copy to understand current messaging
+- Check meta tags for SEO status
+- Look for pricing page to understand monetization
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand marketing goals and context.
+
+#### Q1: Marketing Goal
+
+```yaml
+question: "What's your primary marketing goal right now?"
+header: "Goal"
+multiSelect: false
+options:
+  - label: "Launch a product"
+    description: "Prepare and execute a product launch"
+  - label: "Get more traffic"
+    description: "Increase visitors to site/app"
+  - label: "Convert more visitors"
+    description: "Improve signup/purchase rates"
+  - label: "Retain & grow users"
+    description: "Reduce churn, increase engagement"
+  - label: "Build brand awareness"
+    description: "Establish presence and recognition"
+```
+
+**Routing:**
+- "Launch" → `Skill(faion-gtm-strategist)` for full launch workflow
+- "Traffic" → Ask Q2 (Budget) to decide organic vs paid
+- "Convert" → `Skill(faion-conversion-optimizer)`
+- "Retain & grow" → `Skill(faion-growth-marketer)`
+- "Brand awareness" → `Skill(faion-content-marketer)` + `Skill(faion-smm-manager)`
+
+#### Q2: Budget for Acquisition (if goal is traffic)
+
+```yaml
+question: "Do you have budget for paid acquisition?"
+header: "Budget"
+multiSelect: false
+options:
+  - label: "No budget (organic only)"
+    description: "Focus on SEO, content, social"
+  - label: "Small budget ($100-500/mo)"
+    description: "Test paid channels carefully"
+  - label: "Growth budget ($500+/mo)"
+    description: "Scale what works with paid ads"
+```
+
+**Routing:**
+- "No budget" → `Skill(faion-seo-manager)` + `Skill(faion-content-marketer)`
+- "Small budget" → Test with `Skill(faion-ppc-manager)`, measure ROI
+- "Growth budget" → `Skill(faion-ppc-manager)` + `Skill(faion-growth-marketer)`
+
+#### Q3: Business Model
+
+```yaml
+question: "What's your business model?"
+header: "Model"
+multiSelect: false
+options:
+  - label: "B2C (consumers)"
+    description: "Selling to individual consumers"
+  - label: "B2B (businesses)"
+    description: "Selling to companies/teams"
+  - label: "B2B2C (platform)"
+    description: "Businesses serve their customers through you"
+  - label: "Marketplace"
+    description: "Connecting buyers and sellers"
+```
+
+**Context impact:**
+- "B2C" → Emotional messaging, social proof, viral loops
+- "B2B" → ROI focus, case studies, LinkedIn, longer sales cycle
+- "B2B2C" → Both B2B acquisition + B2C activation
+- "Marketplace" → Chicken-egg problem, liquidity focus
+
+#### Q4: Current Stage
+
+```yaml
+question: "What's your current traction?"
+header: "Traction"
+multiSelect: false
+options:
+  - label: "Pre-launch (no users yet)"
+    description: "Building audience before launch"
+  - label: "Early (< 100 users)"
+    description: "Finding product-market fit"
+  - label: "Growing (100-1000 users)"
+    description: "Scaling what works"
+  - label: "Scaling (1000+ users)"
+    description: "Optimizing and expanding"
+```
+
+**Context impact:**
+- "Pre-launch" → Audience building, waitlist, launch prep
+- "Early" → Focus on learning, manual outreach, founder sales
+- "Growing" → Test channels, find scalable acquisition
+- "Scaling" → Optimize funnels, expand channels, retention
+
+#### Q5: Existing Audience (multiSelect)
+
+```yaml
+question: "What audience/channels do you already have?"
+header: "Channels"
+multiSelect: true
+options:
+  - label: "Email list"
+    description: "Newsletter or customer emails"
+  - label: "Social following"
+    description: "Twitter, LinkedIn, Instagram, etc."
+  - label: "Existing customers"
+    description: "People already paying/using"
+  - label: "None yet"
+    description: "Starting from zero"
+```
+
+**Context impact:**
+- "Email list" → Leverage for launches, nurture sequences
+- "Social following" → Distribution channel, engagement
+- "Existing customers" → Referrals, case studies, upsell
+- "None" → Focus on audience building first
+
+---
+
 ## Architecture
 
 | Sub-Skill | Purpose | Methodologies |

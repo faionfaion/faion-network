@@ -13,6 +13,56 @@ Architecture patterns, code quality, refactoring, and development practices.
 
 Handles architecture patterns, code decomposition, refactoring, code review, development practices, and tech debt management.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| Architecture docs | ADRs, C4 diagrams, domain models | Architecture patterns in use |
+| Code review comments | Review patterns, quality standards | Review culture |
+| Linting config | ESLint, Prettier, ruff rules | Code quality standards |
+| Tech debt tracking | Issue labels, debt backlog | Tech debt awareness |
+| Documentation quality | CLAUDE.md, README patterns | Documentation standards |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What's your code quality need?"
+    options:
+      - label: "Architecture design"
+        description: "Use clean-architecture, domain-driven-design, cqrs-pattern"
+      - label: "Code review"
+        description: "Use code-review, code-review-process"
+      - label: "Refactoring"
+        description: "Use refactoring-patterns, code-decomposition-patterns"
+      - label: "Tech debt management"
+        description: "Use tech-debt-basics, tech-debt-management"
+
+  - question: "What's your architecture approach?"
+    options:
+      - label: "Domain-driven"
+        description: "Apply domain-driven-design"
+      - label: "Microservices"
+        description: "Apply microservices-design"
+      - label: "Event-driven"
+        description: "Apply event-sourcing-basics"
+      - label: "Clean/layered"
+        description: "Apply clean-architecture"
+
+  - question: "Are you working with LLMs for code generation?"
+    options:
+      - label: "Yes, AI-assisted development"
+        description: "Apply llm-friendly-architecture"
+      - label: "No, traditional development"
+        description: "Standard architecture patterns"
+```
+
+---
+
 ## When to Use
 
 - Architecture patterns (DDD, CQRS, Clean Architecture, Event Sourcing)

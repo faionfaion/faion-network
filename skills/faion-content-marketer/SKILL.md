@@ -14,6 +14,71 @@ Content strategy, copywriting, SEO/AEO, email marketing, social media, video/pod
 
 Orchestrates content marketing: strategy development, copywriting, SEO optimization, email campaigns, social media content, video/podcast production, and AI content tools.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals to understand content marketing context:
+
+| Signal | Location | What to Look For |
+|--------|----------|------------------|
+| Content strategy | `.aidocs/product_docs/article-lists/` | Editorial calendar, content themes, publication schedule |
+| SEO keywords | `.aidocs/product_docs/seo/` | Target keywords, search intent, content gaps |
+| Existing content | `content/`, `blog/`, `docs/` | Published articles, documentation, content quality |
+| Email campaigns | `templates/email/`, analytics | Email sequences, onboarding flows, newsletter |
+| Social presence | Social media profiles, analytics | Platform activity, engagement, content performance |
+| Video/audio | YouTube, podcast platforms | Video content, podcast episodes, production quality |
+| Analytics | Google Analytics, content metrics | Top pages, traffic sources, engagement rates |
+
+### Discovery Questions
+
+```yaml
+question: "What's your primary content goal?"
+header: "Content Goal"
+multiSelect: false
+options:
+  - label: "Build SEO traffic"
+    description: "Content marketing, SEO optimization, keyword targeting"
+  - label: "Grow email list"
+    description: "Lead magnets, email marketing, onboarding sequences"
+  - label: "Social media growth"
+    description: "Platform-specific content, viral mechanics, engagement"
+  - label: "Launch video/podcast"
+    description: "Video strategy, podcast planning, production workflows"
+```
+
+```yaml
+question: "Which content channels are priorities?"
+header: "Content Channels"
+multiSelect: true
+options:
+  - label: "Blog/SEO content"
+    description: "Long-form articles, pillar pages, SEO optimization"
+  - label: "Email campaigns"
+    description: "Newsletters, onboarding sequences, drip campaigns"
+  - label: "Social media"
+    description: "Twitter, LinkedIn, Reddit, TikTok, YouTube"
+  - label: "Video content"
+    description: "YouTube, TikTok, short-form video"
+  - label: "Podcast"
+    description: "Podcast strategy, production, distribution"
+```
+
+```yaml
+question: "What's your content maturity level?"
+header: "Content Maturity"
+multiSelect: false
+options:
+  - label: "Starting from scratch"
+    description: "Content strategy, editorial calendar, foundational content"
+  - label: "Have basic content"
+    description: "Optimize existing content, expand channels, grow traffic"
+  - label: "Scaling content"
+    description: "AI tools, workflows, multi-channel distribution"
+  - label: "Advanced optimization"
+    description: "A/B testing, personalization, conversion optimization"
+```
+
 ## When to Use
 
 | Scenario | Methodologies |

@@ -12,6 +12,55 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.aidocs/` | Requirements docs, stakeholder lists | BA artifacts present |
+| `docs/` or `requirements/` | Existing requirement patterns | Documentation standards |
+| `STAKEHOLDERS.md` | Stakeholder registry | BA governance exists |
+| `requirements.md` | Requirements format (user stories, use cases) | Elicitation approach |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "Do you have existing requirements documentation?"
+    options:
+      - label: "Yes, user stories (agile)"
+        description: "Agile BA approach needed"
+      - label: "Yes, formal requirements docs"
+        description: "Traditional BA approach needed"
+      - label: "No documentation yet"
+        description: "Start with elicitation"
+      - label: "Mixed/inconsistent"
+        description: "Requirements lifecycle management needed"
+
+  - question: "What's the current state of requirements?"
+    options:
+      - label: "Planning phase"
+        description: "Use ba-planning, stakeholder-analysis"
+      - label: "Gathering requirements"
+        description: "Use elicitation-techniques"
+      - label: "Analyzing/prioritizing"
+        description: "Use requirements-prioritization"
+      - label: "Validating/refining"
+        description: "Use requirements-validation"
+
+  - question: "Are you working in an agile or traditional environment?"
+    options:
+      - label: "Agile/Scrum"
+        description: "Apply agile-ba-frameworks"
+      - label: "Waterfall/traditional"
+        description: "Apply traditional BA lifecycle"
+      - label: "Hybrid"
+        description: "Mix methodologies as needed"
+```
+
+---
+
 ## Methodologies (21)
 
 ### Planning & Governance (2)

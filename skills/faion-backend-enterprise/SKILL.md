@@ -14,6 +14,77 @@ Enterprise web backend development in Java, C#, PHP, and Ruby.
 
 Handles enterprise-grade web applications using Spring Boot, ASP.NET Core, Laravel, and Rails frameworks.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `pom.xml` | `Glob("**/pom.xml")` | Java Maven |
+| `build.gradle` | `Glob("**/build.gradle*")` | Java Gradle |
+| Spring Boot | `Grep("spring-boot", "**/pom.xml")` | Spring Boot project |
+| `*.csproj` | `Glob("**/*.csproj")` | .NET project |
+| `Program.cs` | `Glob("**/Program.cs")` | .NET entry point |
+| `composer.json` | `Read("composer.json")` | PHP dependencies |
+| Laravel | `Grep("laravel", "composer.json")` | Laravel framework |
+| `Gemfile` | `Read("Gemfile")` | Ruby dependencies |
+| Rails | `Grep("rails", "Gemfile")` | Rails framework |
+
+### Discovery Questions
+
+#### Q1: Enterprise Framework (if not detected)
+
+```yaml
+question: "Which enterprise framework?"
+header: "Framework"
+multiSelect: false
+options:
+  - label: "Java Spring Boot"
+    description: "Enterprise Java, microservices"
+  - label: "C# ASP.NET Core"
+    description: "Microsoft .NET ecosystem"
+  - label: "PHP Laravel"
+    description: "Elegant PHP web framework"
+  - label: "Ruby on Rails"
+    description: "Convention over configuration"
+```
+
+#### Q2: Application Type
+
+```yaml
+question: "What type of application?"
+header: "Type"
+multiSelect: false
+options:
+  - label: "REST API"
+    description: "Backend API service"
+  - label: "Full-stack web app"
+    description: "Server-rendered + API"
+  - label: "Microservice"
+    description: "Part of larger system"
+  - label: "Background jobs"
+    description: "Async processing, queues"
+```
+
+#### Q3: ORM/Data Access
+
+```yaml
+question: "How do you access data?"
+header: "ORM"
+multiSelect: false
+options:
+  - label: "Framework ORM (JPA/EF/Eloquent/ActiveRecord)"
+    description: "Standard ORM patterns"
+  - label: "Raw SQL / Query builder"
+    description: "Direct database access"
+  - label: "Mix of both"
+    description: "ORM for simple, SQL for complex"
+```
+
+---
+
 ## When to Use
 
 - Java Spring Boot applications

@@ -20,6 +20,91 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, Skill, AskUserQu
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing SDD structure:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `.aidocs/` | `Glob("**/.aidocs/")` | SDD structure exists |
+| `constitution.md` | `Read(".aidocs/constitution.md")` | Tech stack, standards defined |
+| `roadmap.md` | `Read(".aidocs/roadmap.md")` | Features planned |
+| `backlog/` | `Glob("**/.aidocs/backlog/*")` | Features in queue |
+| `todo/` | `Glob("**/.aidocs/todo/*")` | Ready features |
+| `in-progress/` | `Glob("**/.aidocs/in-progress/*")` | Active work |
+| `memory/` | `Glob("**/.aidocs/memory/*")` | Learning artifacts |
+
+**Read existing artifacts:**
+- constitution.md for constraints and standards
+- Any existing specs/designs for patterns
+- memory/patterns.md for learned patterns
+
+### Discovery Questions
+
+#### Q1: SDD Phase
+
+```yaml
+question: "What phase of SDD workflow are you in?"
+header: "Phase"
+multiSelect: false
+options:
+  - label: "Starting new project (need constitution)"
+    description: "Bootstrap SDD structure"
+  - label: "Planning a feature (spec/design)"
+    description: "Write spec, design, impl-plan"
+  - label: "Ready to execute (have tasks)"
+    description: "Implement planned tasks"
+  - label: "Reviewing/improving"
+    description: "Quality gates, code review"
+```
+
+**Routing:**
+- "Starting" → constitution-guidelines, project bootstrap
+- "Planning" → `Skill(faion-sdd-planning)`
+- "Execute" → `Skill(faion-sdd-execution)` or `Skill(faion-feature-executor)`
+- "Reviewing" → `Skill(faion-sdd-execution)` → quality-gates
+
+#### Q2: Document Type (if planning)
+
+```yaml
+question: "What document do you need to create?"
+header: "Document"
+multiSelect: false
+options:
+  - label: "Specification (what to build)"
+    description: "Requirements, success criteria"
+  - label: "Design document (how to build)"
+    description: "Architecture, API contracts"
+  - label: "Implementation plan (tasks)"
+    description: "Task breakdown, dependencies"
+  - label: "All of the above"
+    description: "Full planning cycle"
+```
+
+#### Q3: Feature Complexity
+
+```yaml
+question: "How complex is the feature?"
+header: "Complexity"
+multiSelect: false
+options:
+  - label: "Low (< 50k tokens)"
+    description: "Single task, straightforward"
+  - label: "Medium (50-150k tokens)"
+    description: "Multiple tasks, some complexity"
+  - label: "High (> 150k tokens)"
+    description: "Many tasks, architectural changes"
+```
+
+**Context impact:**
+- "Low" → Single task, less formal docs
+- "Medium" → Standard SDD workflow
+- "High" → Detailed spec, parallel execution
+
+---
+
 ## Architecture
 
 This skill orchestrates 2 sub-skills:

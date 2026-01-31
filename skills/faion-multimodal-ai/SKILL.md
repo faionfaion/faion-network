@@ -14,6 +14,68 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Handles multimodal AI applications. Covers vision, image generation, video generation, speech, and voice synthesis.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals before asking questions:
+
+| Signal | Where to Check | What to Look For |
+|--------|----------------|------------------|
+| **Dependencies** | package.json, requirements.txt | openai, PIL/pillow, ffmpeg-python, elevenlabs |
+| **Media files** | /images, /audio, /video | Input files to process |
+| **API usage** | Grep for "images.generate", "audio.transcriptions" | Existing multimodal APIs |
+| **Output dirs** | /generated, /output | Where generated content goes |
+
+### Discovery Questions
+
+```yaml
+question: "Which modality are you working with?"
+header: "Modality"
+multiSelect: true
+options:
+  - label: "Vision (image understanding)"
+    description: "GPT-4o Vision, Gemini Vision for OCR/analysis"
+  - label: "Image generation"
+    description: "DALL-E 3, Midjourney, Stable Diffusion"
+  - label: "Video generation/understanding"
+    description: "Sora, Runway, or video analysis"
+  - label: "Speech-to-text"
+    description: "Whisper, Deepgram for transcription"
+  - label: "Text-to-speech"
+    description: "OpenAI TTS, ElevenLabs for voice synthesis"
+```
+
+```yaml
+question: "What's your primary use case?"
+header: "Use Case"
+multiSelect: false
+options:
+  - label: "Document/receipt OCR and analysis"
+    description: "Extract structured data from images"
+  - label: "Content generation (images/videos)"
+    description: "Create marketing/creative assets"
+  - label: "Accessibility (vision/speech conversion)"
+    description: "Convert between modalities for a11y"
+  - label: "Voice assistant/bot"
+    description: "Speech → Text → LLM → TTS pipeline"
+```
+
+```yaml
+question: "Volume and latency requirements?"
+header: "Scale"
+multiSelect: false
+options:
+  - label: "Low volume, quality over speed"
+    description: "Use premium models (HD TTS, GPT-4o Vision)"
+  - label: "High volume, optimize for cost"
+    description: "Batch APIs, smaller models"
+  - label: "Real-time required"
+    description: "Streaming APIs (Deepgram, OpenAI TTS)"
+  - label: "Async processing OK"
+    description: "Queue-based approach"
+```
+
 ## Scope
 
 | Area | Coverage |

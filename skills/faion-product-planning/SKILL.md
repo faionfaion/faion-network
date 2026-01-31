@@ -18,6 +18,84 @@ Product planning from ideation to launch: MVP/MLP scoping, roadmaps, discovery, 
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Detect existing product planning artifacts:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Roadmap | `Glob("**/roadmap*.md")` or `Glob("**/.aidocs/roadmap.md")` | Roadmap exists |
+| MVP/MLP docs | `Grep("MVP\\|MLP\\|MMP")` | Minimum product scope defined |
+| User stories | `Glob("**/stories/*")` or `Grep("As a .* I want")` | User story mapping |
+| OKRs | `Grep("OKR\\|Objective\\|Key Result")` | Goals framework in use |
+| Product specs | `Glob("**/spec*.md")` or `Glob("**/.aidocs/*/spec.md")` | Product specifications |
+| Launch plans | `Glob("**/launch*.md")` or `Grep("go-to-market")` | Launch planning |
+| Discovery notes | `Glob("**/discovery/*")` or `Grep("Five Whys")` | Discovery process documented |
+| Feature backlog | `Glob("**/.aidocs/backlog/feature-*")` | Feature queue |
+
+**Read existing planning artifacts:**
+- roadmap.md for product timeline
+- Feature specs for scope
+- OKRs or goals
+- User story maps or epics
+
+### Discovery Questions
+
+#### Q1: Planning Stage
+
+```yaml
+question: "What planning stage are you at?"
+header: "Stage"
+multiSelect: false
+options:
+  - label: "Ideation (new product concept)"
+    description: "Need discovery, MVP scoping, positioning"
+  - label: "MVP definition (scope a first version)"
+    description: "Define minimum features, validation experiments"
+  - label: "Roadmap planning (prioritize features)"
+    description: "Now-Next-Later roadmap, release planning"
+  - label: "Launch preparation (GTM plan)"
+    description: "Launch timeline, positioning, messaging"
+```
+
+#### Q2: Product Maturity
+
+```yaml
+question: "What's your product maturity?"
+header: "Maturity"
+multiSelect: false
+options:
+  - label: "Pre-MVP (idea stage)"
+    description: "Need micro-MVPs, landing pages, validation"
+  - label: "MVP in progress"
+    description: "Building first version, iterating on scope"
+  - label: "Post-MVP, scaling (MLP)"
+    description: "MVP validated, adding lovability and features"
+  - label: "Mature product (portfolio strategy)"
+    description: "Multiple products, long-term roadmap"
+```
+
+#### Q3: Planning Framework
+
+```yaml
+question: "What planning framework do you prefer?"
+header: "Framework"
+multiSelect: false
+options:
+  - label: "Outcome-based roadmaps"
+    description: "Focus on outcomes, not features or dates"
+  - label: "Now-Next-Later (uncertain timeline)"
+    description: "Flexible roadmap without specific dates"
+  - label: "OKRs (objectives and key results)"
+    description: "Goal-based planning with measurable KRs"
+  - label: "User story mapping"
+    description: "User journeys, activities, releases"
+```
+
+---
+
 ## Decision Tree
 
 | If you need... | Use | File |

@@ -14,6 +14,77 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Specializes in RAG (Retrieval Augmented Generation) systems. Covers document processing, embeddings, vector search, and retrieval optimization.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals before asking questions:
+
+| Signal | Where to Check | What to Look For |
+|--------|----------------|------------------|
+| **Dependencies** | package.json, requirements.txt | langchain, llamaindex, qdrant-client, chromadb, weaviate-client |
+| **Vector DB** | docker-compose.yml, .env | Qdrant, Weaviate, Chroma config/containers |
+| **Document dirs** | /docs, /data, /content | Documents to index (PDF, MD, TXT) |
+| **Existing embeddings** | Grep for "embed", "vector", "retriever" | Current RAG implementation |
+
+### Discovery Questions
+
+```yaml
+question: "What's your RAG use case?"
+header: "RAG Goal"
+multiSelect: false
+options:
+  - label: "Documentation Q&A"
+    description: "Answer questions from internal docs"
+  - label: "Knowledge base search"
+    description: "Semantic search over articles/guides"
+  - label: "Code search/retrieval"
+    description: "Find relevant code snippets"
+  - label: "Customer support"
+    description: "Context-aware support responses"
+```
+
+```yaml
+question: "Which vector database?"
+header: "Vector DB"
+multiSelect: false
+options:
+  - label: "Qdrant (recommended for production)"
+    description: "Fast, scalable, rich filtering"
+  - label: "Chroma (recommended for dev/prototyping)"
+    description: "Simple, local, easy setup"
+  - label: "Weaviate (for knowledge graphs)"
+    description: "Hybrid search, graph features"
+  - label: "pgvector (for PostgreSQL projects)"
+    description: "Vector extension for existing Postgres"
+```
+
+```yaml
+question: "Document volume and type?"
+header: "Data Characteristics"
+multiSelect: false
+options:
+  - label: "Small (<1000 docs, mostly text)"
+    description: "Simple chunking sufficient"
+  - label: "Medium (1000-10000 docs)"
+    description: "Consider hybrid search + reranking"
+  - label: "Large (>10000 docs, mixed formats)"
+    description: "Advanced chunking + metadata filtering"
+  - label: "Code repository"
+    description: "AST-aware chunking needed"
+```
+
+```yaml
+question: "Do you need hybrid search (vector + keyword)?"
+header: "Search Strategy"
+multiSelect: false
+options:
+  - label: "Yes - combine semantic + exact matching"
+    description: "Hybrid search for best results"
+  - label: "No - semantic search only"
+    description: "Vector similarity sufficient"
+```
+
 ## Scope
 
 | Area | Coverage |

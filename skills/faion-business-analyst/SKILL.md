@@ -12,6 +12,93 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing BA artifacts:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Requirements docs | `Glob("**/requirements*.md")` | Requirements exist |
+| Use cases | `Glob("**/use-case*.md")` | Use cases defined |
+| User stories | `Glob("**/user-stories*.md")` | Stories written |
+| BPMN diagrams | `Glob("**/*.bpmn")` | Process models exist |
+| Stakeholder docs | `Glob("**/stakeholder*.md")` | Stakeholders mapped |
+| `.aidocs/` | `Glob("**/.aidocs/")` | SDD structure |
+
+**Read existing artifacts:**
+- Any requirements or spec documents
+- constitution.md for business context
+- Existing user stories or use cases
+
+### Discovery Questions
+
+#### Q1: BA Activity Type
+
+```yaml
+question: "What BA activity do you need help with?"
+header: "Activity"
+multiSelect: false
+options:
+  - label: "Understand stakeholders"
+    description: "Map stakeholders, plan engagement"
+  - label: "Gather requirements"
+    description: "Elicitation, interviews, workshops"
+  - label: "Document requirements"
+    description: "Use cases, user stories, specs"
+  - label: "Model processes"
+    description: "BPMN, workflows, data models"
+  - label: "Analyze strategy"
+    description: "Current state, future state, gaps"
+```
+
+**Routing:**
+- "Stakeholders" → `Skill(faion-ba-core)` → stakeholder-analysis
+- "Gather" → `Skill(faion-ba-core)` → elicitation-techniques
+- "Document" → `Skill(faion-ba-modeling)` → use-cases, user-stories
+- "Model" → `Skill(faion-ba-modeling)` → bpmn, data-models
+- "Strategy" → `Skill(faion-ba-core)` → strategy-analysis
+
+#### Q2: Requirements Format
+
+```yaml
+question: "How should requirements be documented?"
+header: "Format"
+multiSelect: false
+options:
+  - label: "User stories (Agile)"
+    description: "As a... I want... So that..."
+  - label: "Use cases (detailed)"
+    description: "Actor, preconditions, flow"
+  - label: "Functional requirements"
+    description: "System shall... statements"
+  - label: "Mixed / not sure"
+    description: "I'll recommend based on context"
+```
+
+#### Q3: Stakeholder Access
+
+```yaml
+question: "Can you access stakeholders for elicitation?"
+header: "Access"
+multiSelect: false
+options:
+  - label: "Yes, can interview/workshop"
+    description: "Direct stakeholder engagement"
+  - label: "Limited (email, async)"
+    description: "Remote, asynchronous"
+  - label: "No access (documents only)"
+    description: "Work from existing docs"
+```
+
+**Context impact:**
+- "Direct" → Full elicitation techniques
+- "Limited" → Surveys, document analysis
+- "No access" → Document analysis, assumptions log
+
+---
+
 ## Architecture
 
 ```

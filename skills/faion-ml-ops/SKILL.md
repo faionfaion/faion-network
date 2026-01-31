@@ -14,6 +14,66 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Handles ML model operations. Covers fine-tuning, evaluation, cost management, and observability.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals before asking questions:
+
+| Signal | Where to Check | What to Look For |
+|--------|----------------|------------------|
+| **Dependencies** | requirements.txt | transformers, peft, openai, tiktoken, langsmith |
+| **Training data** | /data, /datasets | JSONL files for fine-tuning |
+| **Logs/metrics** | Grep for "langsmith", "wandb", "mlflow" | Existing observability tools |
+| **Cost tracking** | Grep for "tiktoken", "count_tokens" | Token counting implementation |
+
+### Discovery Questions
+
+```yaml
+question: "What ML operation are you working on?"
+header: "Operation Type"
+multiSelect: false
+options:
+  - label: "Fine-tuning LLM"
+    description: "Custom model training (OpenAI API, LoRA, QLoRA)"
+  - label: "Model evaluation"
+    description: "Benchmark performance, LLM-as-judge"
+  - label: "Cost optimization"
+    description: "Reduce API costs, prompt caching, batching"
+  - label: "Observability/monitoring"
+    description: "Track LLM usage, traces, performance"
+```
+
+```yaml
+question: "For fine-tuning: dataset size and approach?"
+header: "Fine-tuning Strategy"
+multiSelect: false
+options:
+  - label: "<100 examples - use few-shot prompting instead"
+    description: "Too small for fine-tuning, improve prompts"
+  - label: "100-1000 examples - OpenAI fine-tuning"
+    description: "Use OpenAI API fine-tuning endpoint"
+  - label: ">1000 examples - LoRA/QLoRA"
+    description: "Efficient parameter fine-tuning"
+  - label: "Not fine-tuning"
+    description: "Skip this question"
+```
+
+```yaml
+question: "Which observability tools?"
+header: "Monitoring Stack"
+multiSelect: true
+options:
+  - label: "LangSmith (recommended)"
+    description: "LangChain native tracing"
+  - label: "Langfuse (open-source)"
+    description: "Self-hosted observability"
+  - label: "Custom logging"
+    description: "Build custom tracking"
+  - label: "None yet"
+    description: "Starting from scratch"
+```
+
 ## Scope
 
 | Area | Coverage |

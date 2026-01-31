@@ -18,6 +18,121 @@ Orchestrates UX/UI design activities by coordinating specialized sub-skills. Rou
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing design artifacts and UI setup:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Figma links | `Grep("figma.com", "**/*.md")` | Design files exist |
+| Storybook | `Glob("**/.storybook/*")` | Component library exists |
+| Design tokens | `Glob("**/tokens.*")` | Design system exists |
+| Tailwind config | `Glob("**/tailwind.config.*")` | Tailwind used |
+| a11y config | `Grep("eslint-plugin-jsx-a11y", "**/package.json")` | A11y linting enabled |
+| User personas | `Glob("**/personas*.md")` | User research done |
+
+**Read existing assets:**
+- Check existing components for design patterns
+- Read Storybook stories for component API
+- Review tailwind.config for design tokens
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand UX/UI needs.
+
+#### Q1: Design Phase
+
+```yaml
+question: "What phase of design work are you in?"
+header: "Phase"
+multiSelect: false
+options:
+  - label: "Research (understand users)"
+    description: "User interviews, testing, personas"
+  - label: "Design (create solutions)"
+    description: "Wireframes, prototypes, visual design"
+  - label: "Evaluate (test designs)"
+    description: "Usability testing, heuristic evaluation"
+  - label: "Accessibility audit"
+    description: "WCAG compliance, a11y improvements"
+```
+
+**Routing:**
+- "Research" → `Skill(faion-ux-researcher)`
+- "Design" → `Skill(faion-ui-designer)`
+- "Evaluate" → `Skill(faion-ux-researcher)` → usability-testing
+- "Accessibility" → `Skill(faion-accessibility-specialist)`
+
+#### Q2: Design Fidelity (if Design phase)
+
+```yaml
+question: "What fidelity of design do you need?"
+header: "Fidelity"
+multiSelect: false
+options:
+  - label: "Low-fi (wireframes, structure)"
+    description: "Layout and flow, not visuals"
+  - label: "High-fi (visual design)"
+    description: "Colors, typography, polished UI"
+  - label: "Design system / components"
+    description: "Reusable component library"
+  - label: "Code implementation"
+    description: "Turn designs into working UI"
+```
+
+**Routing:**
+- "Low-fi" → wireframing, information-architecture
+- "High-fi" → visual-design, prototyping
+- "Design system" → design-tokens, component-library
+- "Code" → Coordinate with `Skill(faion-frontend-developer)`
+
+#### Q3: User Access (if Research phase)
+
+```yaml
+question: "Do you have access to real users?"
+header: "Users"
+multiSelect: false
+options:
+  - label: "Yes, can recruit users easily"
+    description: "Have user base or recruitment budget"
+  - label: "Limited (internal team, friends)"
+    description: "Can do guerrilla testing"
+  - label: "No user access"
+    description: "Need proxy methods"
+```
+
+**Context impact:**
+- "Easy access" → Full user interviews, usability testing
+- "Limited" → Guerrilla testing, shorter sessions
+- "No access" → Heuristic evaluation, competitor analysis, personas from research
+
+#### Q4: Platform (affects design patterns)
+
+```yaml
+question: "What platform are you designing for?"
+header: "Platform"
+multiSelect: true
+options:
+  - label: "Web (desktop)"
+    description: "Desktop browser experience"
+  - label: "Web (mobile responsive)"
+    description: "Mobile-first or responsive"
+  - label: "Native mobile app"
+    description: "iOS or Android native"
+  - label: "Voice UI"
+    description: "Voice assistants, conversational"
+```
+
+**Context impact:**
+- "Desktop" → Standard web patterns, larger screens
+- "Mobile responsive" → Mobile-first, touch targets, responsive
+- "Native mobile" → Platform guidelines (HIG, Material)
+- "Voice UI" → VUI methodologies, conversation design
+
+---
+
 ## Architecture
 
 ```

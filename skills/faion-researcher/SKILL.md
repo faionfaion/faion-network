@@ -16,6 +16,121 @@ Orchestrate all research and discovery activities for product/startup developmen
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing research and product context:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `.aidocs/product_docs/` | `Glob("**/.aidocs/product_docs/*")` | Product docs exist |
+| `market-research.md` | `Glob("**/market-research.md")` | Market research done |
+| `competitive-analysis.md` | `Glob("**/competitive-analysis.md")` | Competitors analyzed |
+| `user-personas.md` | `Glob("**/user-personas.md")` | Personas defined |
+| `constitution.md` | `Glob("**/.aidocs/constitution.md")` | Product defined |
+| Landing page | `Glob("**/pages/index.*")` | Positioning visible |
+
+**Read existing assets:**
+- Check landing page for current positioning/messaging
+- Read constitution.md for product context
+- Check any existing research docs
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand research needs.
+
+#### Q1: Research Stage
+
+```yaml
+question: "What stage of research are you in?"
+header: "Stage"
+multiSelect: false
+options:
+  - label: "Exploring ideas (no specific direction)"
+    description: "Generate and evaluate new ideas"
+  - label: "Have an idea, need validation"
+    description: "Test if idea is worth pursuing"
+  - label: "Committed, need market intelligence"
+    description: "Understand market, competitors, pricing"
+  - label: "Building, need user insights"
+    description: "Understand users for better product"
+```
+
+**Routing:**
+- "Exploring ideas" → `Skill(faion-market-researcher)` → idea-generation
+- "Need validation" → `Skill(faion-user-researcher)` → problem-validation
+- "Market intelligence" → `Skill(faion-market-researcher)` → competitors, TAM, pricing
+- "User insights" → `Skill(faion-user-researcher)` → personas, JTBD, pain points
+
+#### Q2: Research Focus (if market intelligence)
+
+```yaml
+question: "What do you need to understand?"
+header: "Focus"
+multiSelect: true
+options:
+  - label: "Market size (TAM/SAM/SOM)"
+    description: "How big is the opportunity?"
+  - label: "Competitors & alternatives"
+    description: "Who else solves this problem?"
+  - label: "Pricing benchmarks"
+    description: "What do customers pay for similar?"
+  - label: "Industry trends"
+    description: "Where is the market heading?"
+```
+
+**Routing:**
+- "Market size" → tam-sam-som-analysis
+- "Competitors" → competitor-analysis
+- "Pricing" → pricing-research
+- "Trends" → trend-analysis
+
+#### Q3: User Research Type (if user insights)
+
+```yaml
+question: "What user insights do you need?"
+header: "Insights"
+multiSelect: true
+options:
+  - label: "Who are my users? (personas)"
+    description: "User profiles and segments"
+  - label: "What problems do they have?"
+    description: "Pain points and frustrations"
+  - label: "What are they trying to achieve?"
+    description: "Jobs-to-be-done, goals"
+  - label: "Would they pay for a solution?"
+    description: "Willingness to pay, value perception"
+```
+
+**Routing:**
+- "Personas" → persona-building
+- "Problems" → pain-point-research
+- "Achieve" → jobs-to-be-done
+- "Pay" → value-proposition + pricing-research
+
+#### Q4: Evidence Standards
+
+```yaml
+question: "What would convince you the research is solid?"
+header: "Evidence"
+multiSelect: false
+options:
+  - label: "Quick directional insights"
+    description: "Enough to make a decision, move fast"
+  - label: "Backed by data sources"
+    description: "Links to research, reports, data"
+  - label: "Primary research (interviews/surveys)"
+    description: "Talk to real users/customers"
+```
+
+**Context impact:**
+- "Quick" → Web search, secondary research, fast output
+- "Backed by data" → Include sources, citations, methodology
+- "Primary research" → Interview guides, survey design, synthesis
+
+---
+
 ## Architecture
 
 ```

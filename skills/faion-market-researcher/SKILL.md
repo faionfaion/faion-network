@@ -16,6 +16,54 @@ Market research and business analysis for product/startup development. Handles m
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.aidocs/product_docs/` | Market research docs, competitor analysis | Research artifacts |
+| Business plan | TAM/SAM/SOM calculations | Market sizing done |
+| Competitor docs | Competitor profiles, SWOT | Competitive intel |
+| Pricing sheets | Pricing models, benchmarks | Pricing research |
+| Trend reports | Market trends, forecasts | Trend analysis |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What research do you need?"
+    options:
+      - label: "Market size (TAM/SAM/SOM)"
+        description: "Use market-research-tam-sam-som"
+      - label: "Competitor analysis"
+        description: "Use competitor-analysis, competitive-intelligence-methods"
+      - label: "Pricing research"
+        description: "Use pricing-research"
+      - label: "Trend analysis"
+        description: "Use trend-analysis"
+
+  - question: "What's your business stage?"
+    options:
+      - label: "Idea validation"
+        description: "Use market-research-tam-sam-som, niche-evaluation"
+      - label: "Pre-launch planning"
+        description: "Use competitor-analysis, pricing-research"
+      - label: "Growth stage"
+        description: "Use trend-analysis, competitive-intelligence"
+
+  - question: "Do you have existing market data?"
+    options:
+      - label: "Yes, need to update"
+        description: "Update existing research docs"
+      - label: "Partial data"
+        description: "Fill gaps with targeted research"
+      - label: "No data yet"
+        description: "Start with market-research-tam-sam-som"
+```
+
+---
+
 ## Quick Reference
 
 | Research Area | Key Files |

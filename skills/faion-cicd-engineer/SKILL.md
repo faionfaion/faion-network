@@ -16,6 +16,85 @@ Manages CI/CD pipelines, monitoring, observability, security, and operational ex
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Detect existing CI/CD and monitoring from project:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| GitHub Actions | `Glob("**/.github/workflows/*.yml")` | GitHub CI/CD |
+| GitLab CI | `Glob("**/.gitlab-ci.yml")` | GitLab pipelines |
+| Jenkins | `Glob("**/Jenkinsfile")` | Jenkins pipelines |
+| ArgoCD | `Glob("**/argocd/*")` or `Grep("argocd")` | GitOps deployment |
+| Prometheus | `Glob("**/prometheus*.yml")` | Metrics collection |
+| Grafana | `Glob("**/grafana/*")` or `Grep("grafana")` | Dashboards setup |
+| ELK/Loki | `Grep("elasticsearch\\|logstash\\|loki")` | Log aggregation |
+| Secrets | `Glob("**/vault/*")` or `Grep("sealed-secrets")` | Secrets management |
+| SSL certs | `Glob("**/cert-manager/*")` or `Grep("letsencrypt")` | TLS automation |
+
+**Read existing CI/CD setup:**
+- Workflow files for pipeline stages
+- Prometheus/Grafana configs for monitoring
+- Secrets management approach
+- Deployment strategies (blue-green, canary)
+
+### Discovery Questions
+
+#### Q1: CI/CD Focus
+
+```yaml
+question: "What CI/CD area do you need help with?"
+header: "Focus"
+multiSelect: false
+options:
+  - label: "Pipeline setup (build, test, deploy)"
+    description: "GitHub Actions, GitLab CI, Jenkins configuration"
+  - label: "GitOps deployment (ArgoCD)"
+    description: "Automated K8s deployments from Git"
+  - label: "Monitoring and observability"
+    description: "Prometheus, Grafana, ELK, alerts"
+  - label: "Security (secrets, SSL, scanning)"
+    description: "Vault, sealed secrets, TLS, SAST/DAST"
+```
+
+#### Q2: Deployment Platform
+
+```yaml
+question: "Where are you deploying?"
+header: "Platform"
+multiSelect: false
+options:
+  - label: "Kubernetes cluster"
+    description: "Need K8s-native CI/CD with ArgoCD or Flux"
+  - label: "Cloud PaaS (AWS ECS, Cloud Run, App Engine)"
+    description: "Managed container platforms"
+  - label: "VMs or bare metal"
+    description: "Traditional deployment with Ansible or scripts"
+  - label: "Serverless (Lambda, Cloud Functions)"
+    description: "FaaS deployment pipelines"
+```
+
+#### Q3: Observability Maturity
+
+```yaml
+question: "What's your monitoring setup?"
+header: "Observability"
+multiSelect: false
+options:
+  - label: "No monitoring yet"
+    description: "Need metrics, logs, and alerting from scratch"
+  - label: "Basic monitoring (logs, uptime)"
+    description: "Have logs but need metrics and dashboards"
+  - label: "Metrics + logs (need optimization)"
+    description: "Have Prometheus/Grafana but need SLOs, cost optimization"
+  - label: "Full observability (traces + advanced)"
+    description: "OpenTelemetry, distributed tracing, AIOps"
+```
+
+---
+
 ## Quick Decision Tree
 
 | If you need... | Use | File |

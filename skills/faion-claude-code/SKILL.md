@@ -20,6 +20,54 @@ Orchestrate Claude Code customization and configuration:
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `~/.claude/skills/` | Existing skills, naming patterns | Skill framework adoption |
+| `~/.claude/agents/` | Agent definitions | Agent usage patterns |
+| `~/.claude/settings.json` | Hooks, MCP servers, permissions | Configuration maturity |
+| `.claude/` (project) | Project-specific customizations | Local overrides |
+| MCP server logs | Active MCP integrations | Tool ecosystem |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What are you configuring?"
+    options:
+      - label: "Creating skill"
+        description: "Use skills.md"
+      - label: "Creating agent"
+        description: "Use agents.md"
+      - label: "Adding command"
+        description: "Use commands.md"
+      - label: "Setting up hooks"
+        description: "Use hooks.md"
+      - label: "Installing MCP server"
+        description: "Use mcp-servers.md"
+
+  - question: "Is this global or project-specific?"
+    options:
+      - label: "Global (all projects)"
+        description: "Use faion-* prefix, no gitignore"
+      - label: "Project-specific"
+        description: "Use {project}-* prefix, add to gitignore"
+
+  - question: "Do you have Claude Code experience?"
+    options:
+      - label: "Expert user"
+        description: "Jump to specific reference"
+      - label: "Some experience"
+        description: "Use quick reference + examples"
+      - label: "First time setup"
+        description: "Start with skills.md basics"
+```
+
+---
+
 ## Quick Decision Tree
 
 | If you need... | Use | File |

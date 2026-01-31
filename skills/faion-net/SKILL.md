@@ -18,6 +18,155 @@ User task → Analyze intent → Skill tool → Domain skill loads → Execute
 
 ---
 
+## Context Discovery
+
+Before routing to a domain skill, gather context to make informed decisions.
+
+### Auto-Investigation
+
+If user has an existing project, check these signals FIRST:
+
+| Signal | How to Check | Detected → Skip Question |
+|--------|--------------|--------------------------|
+| Python/Django | `Glob("**/manage.py")` | Stack question, route to faion-python-developer |
+| Python/FastAPI | `Grep("fastapi", "**/pyproject.toml")` | Stack question, route to faion-python-developer |
+| Node.js/React | `Glob("**/package.json")` + check for react | Stack question, route to faion-javascript-developer |
+| Go project | `Glob("**/go.mod")` | Stack question, route to faion-backend-systems |
+| Rust project | `Glob("**/Cargo.toml")` | Stack question, route to faion-backend-systems |
+| Docker setup | `Glob("**/Dockerfile")` | Infra exists, context for faion-devops-engineer |
+| CI/CD config | `Glob("**/.github/workflows/*.yml")` | CI exists, context for faion-cicd-engineer |
+| SDD docs | `Glob("**/.aidocs/constitution.md")` | SDD project, can read spec/design |
+
+### Discovery Questions
+
+Use `AskUserQuestion` if intent is unclear after auto-investigation.
+
+#### Q1: Primary Intent (required if unclear)
+
+```yaml
+question: "What do you need help with?"
+header: "Intent"
+multiSelect: false
+options:
+  - label: "Research & Discovery"
+    description: "Ideas, market research, competitors, validation"
+  - label: "Planning & Strategy"
+    description: "Product roadmap, architecture, project planning"
+  - label: "Build & Implement"
+    description: "Write code, create designs, develop features"
+  - label: "Launch & Market"
+    description: "GTM, marketing, SEO, ads, content"
+  - label: "Fix & Improve"
+    description: "Bug fixes, refactoring, optimization, tests"
+```
+
+**Routing:**
+- "Research & Discovery" → `Skill(faion-researcher)`
+- "Planning & Strategy" → Ask Q1b (Planning type)
+- "Build & Implement" → Ask Q1c (Build type) or auto-detect from project
+- "Launch & Market" → `Skill(faion-marketing-manager)`
+- "Fix & Improve" → Auto-detect stack, then route to dev skill
+
+#### Q1b: Planning Type (if "Planning & Strategy")
+
+```yaml
+question: "What kind of planning?"
+header: "Planning"
+multiSelect: false
+options:
+  - label: "Product scope & roadmap"
+    description: "MVP definition, features, priorities"
+  - label: "Technical architecture"
+    description: "System design, tech stack, APIs"
+  - label: "Project schedule & resources"
+    description: "Timeline, team, milestones"
+  - label: "Business requirements"
+    description: "Use cases, processes, stakeholders"
+```
+
+**Routing:**
+- "Product scope & roadmap" → `Skill(faion-product-manager)`
+- "Technical architecture" → `Skill(faion-software-architect)`
+- "Project schedule & resources" → `Skill(faion-project-manager)`
+- "Business requirements" → `Skill(faion-business-analyst)`
+
+#### Q1c: Build Type (if "Build & Implement" and no auto-detect)
+
+```yaml
+question: "What are you building?"
+header: "Build"
+multiSelect: false
+options:
+  - label: "Backend / API"
+    description: "Server-side code, database, APIs"
+  - label: "Frontend / UI"
+    description: "User interface, components, styling"
+  - label: "Full-stack feature"
+    description: "Both frontend and backend"
+  - label: "Infrastructure / DevOps"
+    description: "Deployment, CI/CD, containers"
+  - label: "AI / ML feature"
+    description: "LLM integration, RAG, agents"
+```
+
+**Routing:**
+- "Backend / API" → Detect stack or ask, then route
+- "Frontend / UI" → `Skill(faion-frontend-developer)` or `Skill(faion-javascript-developer)`
+- "Full-stack feature" → Detect stack, coordinate skills
+- "Infrastructure / DevOps" → `Skill(faion-devops-engineer)`
+- "AI / ML feature" → `Skill(faion-ml-engineer)`
+
+#### Q2: Project Stage (context for methodology depth)
+
+```yaml
+question: "What stage is your project at?"
+header: "Stage"
+multiSelect: false
+options:
+  - label: "Idea phase"
+    description: "Exploring, not committed yet"
+  - label: "Planning phase"
+    description: "Defining scope, architecture"
+  - label: "Active development"
+    description: "Building features"
+  - label: "Pre-launch"
+    description: "Preparing for release"
+  - label: "Live product"
+    description: "Has users, iterating"
+```
+
+**Context impact:**
+- "Idea phase" → Research-heavy, validation methodologies
+- "Planning phase" → Architecture, specs, design docs
+- "Active development" → Implementation patterns, testing
+- "Pre-launch" → QA, performance, launch prep
+- "Live product" → Monitoring, optimization, growth
+
+#### Q3: Primary Concerns (optional, multiSelect)
+
+```yaml
+question: "What are your main concerns for this task?"
+header: "Concerns"
+multiSelect: true
+options:
+  - label: "Speed of delivery"
+    description: "Ship fast, iterate later"
+  - label: "Code quality"
+    description: "Clean, maintainable, tested"
+  - label: "Performance"
+    description: "Fast, scalable, efficient"
+  - label: "Security"
+    description: "Protect data, prevent attacks"
+```
+
+**Context impact:**
+- "Speed of delivery" → Pragmatic patterns, skip optional steps
+- "Code quality" → Full testing, code review, documentation
+- "Performance" → Optimization methodologies, profiling
+- "Security" → Security testing, auth patterns, OWASP
+
+---
+
 ## Decision Tree
 
 ### What does the user want?

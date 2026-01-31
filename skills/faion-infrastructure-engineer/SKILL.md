@@ -16,6 +16,84 @@ Manages infrastructure provisioning, containerization, orchestration, and cloud 
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Detect existing infrastructure from project:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Dockerfile | `Glob("**/Dockerfile")` or `Glob("**/.dockerfile")` | Docker containerization |
+| docker-compose | `Glob("**/docker-compose*.yml")` | Multi-container local dev |
+| K8s manifests | `Glob("**/k8s/**/*.yaml")` or `Glob("**/kubernetes/*")` | Kubernetes deployment |
+| Helm charts | `Glob("**/charts/*")` or `Glob("**/Chart.yaml")` | Helm package management |
+| Terraform | `Glob("**/*.tf")` or `Glob("**/terraform/*")` | IaC with Terraform |
+| AWS config | `Grep("aws_", "**/*.tf")` or `Glob("**/.aws/*")` | AWS infrastructure |
+| GCP config | `Grep("google_", "**/*.tf")` or `Glob("**/.gcp/*")` | GCP infrastructure |
+| Cloud init | `Glob("**/cloud-init*.yaml")` | VM provisioning |
+
+**Read existing infrastructure:**
+- docker-compose.yml for service architecture
+- Kubernetes manifests for deployment patterns
+- Terraform files for cloud resources
+- README for infrastructure setup instructions
+
+### Discovery Questions
+
+#### Q1: Infrastructure Layer
+
+```yaml
+question: "What infrastructure layer do you need help with?"
+header: "Focus"
+multiSelect: false
+options:
+  - label: "Containerization (Docker)"
+    description: "Dockerfile, image optimization, local development"
+  - label: "Orchestration (Kubernetes, Helm)"
+    description: "K8s deployments, services, scaling, Helm charts"
+  - label: "Infrastructure as Code (Terraform)"
+    description: "Cloud provisioning, modules, state management"
+  - label: "Cloud platform (AWS or GCP)"
+    description: "Compute, storage, networking, managed services"
+```
+
+#### Q2: Deployment Stage
+
+```yaml
+question: "What stage is your infrastructure at?"
+header: "Maturity"
+multiSelect: false
+options:
+  - label: "Local dev only (docker-compose)"
+    description: "Need to containerize or improve local setup"
+  - label: "Manual deployment (no automation)"
+    description: "Need IaC or orchestration"
+  - label: "Basic K8s or cloud (needs optimization)"
+    description: "Running but needs scaling, monitoring, cost optimization"
+  - label: "Multi-environment (staging, prod)"
+    description: "Need consistency, GitOps, or advanced patterns"
+```
+
+#### Q3: Cloud Provider
+
+```yaml
+question: "Which cloud provider are you using?"
+header: "Platform"
+multiSelect: false
+options:
+  - label: "AWS"
+    description: "EC2, ECS, Lambda, S3, networking"
+  - label: "GCP"
+    description: "GKE, Cloud Run, Compute, storage"
+  - label: "Multi-cloud or cloud-agnostic"
+    description: "Need portable IaC with Terraform"
+  - label: "On-premise or bare metal"
+    description: "Self-hosted Kubernetes or VMs"
+```
+
+---
+
 ## Quick Decision Tree
 
 | If you need... | Use | File |

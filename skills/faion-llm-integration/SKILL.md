@@ -14,6 +14,62 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Handles direct integration with LLM APIs. Covers OpenAI, Claude, Gemini, local models, prompt engineering, and output structuring.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals before asking questions:
+
+| Signal | Where to Check | What to Look For |
+|--------|----------------|------------------|
+| **Dependencies** | package.json, requirements.txt, go.mod | openai, anthropic, google-generativeai, langchain |
+| **Config files** | .env, config/*.{yml,json} | API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY) |
+| **Existing code** | Grep for "openai", "anthropic", "genai" | Existing LLM integrations |
+| **Documentation** | README.md, docs/ | LLM usage patterns |
+
+### Discovery Questions
+
+```yaml
+question: "What LLM task are you building?"
+header: "Task Type"
+multiSelect: false
+options:
+  - label: "Chat/completion API"
+    description: "Direct LLM API calls for text generation"
+  - label: "Function calling / tool use"
+    description: "LLM selects and executes functions"
+  - label: "Structured output (JSON mode)"
+    description: "Constrain LLM to return valid JSON/schemas"
+  - label: "Prompt optimization"
+    description: "Improve existing prompts (few-shot, CoT, templates)"
+```
+
+```yaml
+question: "Which LLM provider(s)?"
+header: "Provider"
+multiSelect: true
+options:
+  - label: "OpenAI (GPT-4o, o1)"
+    description: "OpenAI API integration"
+  - label: "Claude (Anthropic)"
+    description: "Claude Opus/Sonnet via Anthropic API"
+  - label: "Gemini (Google)"
+    description: "Gemini Pro/Flash via Google AI"
+  - label: "Local LLM (Ollama)"
+    description: "Self-hosted models for privacy"
+```
+
+```yaml
+question: "Do you need safety/content moderation?"
+header: "Guardrails"
+multiSelect: false
+options:
+  - label: "Yes - content filtering/PII detection"
+    description: "Implement guardrails for safety"
+  - label: "No - internal use only"
+    description: "Skip guardrails"
+```
+
 ## Scope
 
 | Area | Coverage |

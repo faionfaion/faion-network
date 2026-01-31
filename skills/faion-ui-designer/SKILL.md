@@ -14,6 +14,85 @@ user-invocable: false
 
 Create production-ready UI designs. Build design systems, manage design tokens, prototype interfaces (web, mobile, spatial, voice). Execute visual design with AI tools.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these signals before starting design work:
+
+| Signal | Location | What to Check |
+|--------|----------|---------------|
+| Design system | Figma library, Storybook | Existing components, patterns |
+| Design tokens | tokens.json, tailwind.config.js | Current token structure |
+| Brand guidelines | .aidocs/product_docs/brand/ | Colors, typography, spacing |
+| UX research | .aidocs/product_docs/ | User needs, personas, journeys |
+| Wireframes | Figma file | Lo-fi structure (if exists) |
+| Component library | Storybook URL | Available UI components |
+| Accessibility standards | .aidocs/constitution.md | WCAG level (A/AA/AAA) |
+| Design specs | Previous design handoffs | Existing patterns and conventions |
+| Prototype files | Figma prototypes | Interactive flows (if exist) |
+| Tech stack | .aidocs/constitution.md | Frontend framework, CSS approach |
+
+### Discovery Questions
+
+```yaml
+- question: "What are you designing?"
+  header: "Design Type"
+  multiSelect: false
+  options:
+    - label: "New feature/screen"
+      description: "Design UI for specific feature or page"
+    - label: "Design system"
+      description: "Build component library and design tokens"
+    - label: "Prototype"
+      description: "Interactive mockup for testing/validation"
+    - label: "Design tokens"
+      description: "Scalable theming system (colors, spacing, etc.)"
+    - label: "Voice UI (VUI)"
+      description: "Conversational interface design"
+    - label: "Spatial UI (XR)"
+      description: "3D/immersive interface design"
+
+- question: "Do you have a design system?"
+  header: "Design System Status"
+  multiSelect: false
+  options:
+    - label: "Yes, mature design system"
+      description: "Established components, tokens, documentation"
+    - label: "Partial design system"
+      description: "Some components, needs expansion"
+    - label: "No design system"
+      description: "Starting from scratch"
+
+- question: "What fidelity do you need?"
+  header: "Design Fidelity"
+  multiSelect: false
+  options:
+    - label: "Low-fidelity wireframes"
+      description: "Structure and layout only, no visual design"
+    - label: "Mid-fidelity mockups"
+      description: "Some styling, greyscale or basic colors"
+    - label: "High-fidelity designs"
+      description: "Pixel-perfect, production-ready visuals"
+    - label: "Interactive prototype"
+      description: "Clickable flows for testing"
+
+- question: "What platform(s) are you targeting?"
+  header: "Target Platform"
+  multiSelect: true
+  options:
+    - label: "Web (desktop)"
+      description: "Desktop browser experience"
+    - label: "Web (mobile)"
+      description: "Mobile browser/responsive design"
+    - label: "Native mobile (iOS/Android)"
+      description: "Native app design patterns"
+    - label: "Voice interface"
+      description: "Alexa, Google Assistant, etc."
+    - label: "Spatial/XR"
+      description: "Vision Pro, Quest, AR/VR"
+```
+
 ## Core Domains
 
 ### Foundation Design

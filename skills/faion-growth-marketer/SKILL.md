@@ -14,6 +14,71 @@ Data-driven growth: experiments, analytics, A/B testing, AARRR metrics, retentio
 
 Orchestrates growth activities: metrics tracking, experimentation framework, A/B testing, AARRR optimization, retention strategies, viral mechanics, analytics setup.
 
+## Context Discovery
+
+### Auto-Investigation
+
+Check these project signals to understand growth marketing context:
+
+| Signal | Location | What to Look For |
+|--------|----------|------------------|
+| Analytics setup | `docs/analytics/`, config files | Google Analytics, Plausible, tracking implementation |
+| Metrics dashboard | Analytics platform, internal docs | KPIs, North Star metric, AARRR funnel metrics |
+| Experiment docs | `.aidocs/`, `docs/experiments/` | A/B tests, MVT tests, experiment results |
+| Cohort data | Analytics, retention reports | User cohorts, retention curves, churn rates |
+| Growth loops | Product docs, user flows | Viral loops, referral programs, PLG mechanics |
+| Conversion funnels | Analytics, funnel reports | Acquisition → Activation → Retention metrics |
+| User data | Database schema, analytics | User properties, events, behavioral data |
+
+### Discovery Questions
+
+```yaml
+question: "What's your primary growth focus?"
+header: "Growth Focus"
+multiSelect: false
+options:
+  - label: "Establish metrics foundation"
+    description: "AARRR framework, North Star metric, analytics setup"
+  - label: "Improve activation"
+    description: "Onboarding optimization, aha moment, time-to-value"
+  - label: "Increase retention"
+    description: "Retention strategies, churn prevention, engagement loops"
+  - label: "Build viral growth"
+    description: "Viral loops, referral programs, K-factor optimization"
+```
+
+```yaml
+question: "What's your experimentation maturity?"
+header: "Experimentation"
+multiSelect: false
+options:
+  - label: "No experiments yet"
+    description: "A/B testing basics, experiment setup, statistical foundations"
+  - label: "Basic A/B testing"
+    description: "Advanced testing, MVT, prioritization frameworks"
+  - label: "Regular experiments"
+    description: "Optimization tactics, velocity, statistical rigor"
+  - label: "Advanced program"
+    description: "Growth loops, sophisticated attribution, scaling experiments"
+```
+
+```yaml
+question: "What metrics do you need to improve?"
+header: "Metrics to Optimize"
+multiSelect: true
+options:
+  - label: "Acquisition (AARRR)"
+    description: "Traffic sources, CAC, conversion rates"
+  - label: "Activation (AARRR)"
+    description: "Onboarding, aha moment, time-to-value"
+  - label: "Retention (AARRR)"
+    description: "Engagement, churn, cohort analysis"
+  - label: "Revenue (AARRR)"
+    description: "Monetization, LTV, upsells"
+  - label: "Referral (AARRR)"
+    description: "Viral coefficient, K-factor, referral loops"
+```
+
 ## When to Use
 
 | Scenario | Methodologies |

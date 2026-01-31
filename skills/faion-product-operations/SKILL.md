@@ -18,6 +18,84 @@ Day-to-day product operations: prioritization, backlog, analytics, feedback, lif
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+Detect existing product operations artifacts:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Backlog | `Glob("**/.aidocs/backlog/*")` or `Glob("**/backlog/*")` | Feature backlog exists |
+| Prioritization | `Grep("RICE\\|MoSCoW\\|priority")` | Prioritization framework in use |
+| Analytics | `Grep("analytics\\|metrics\\|KPI")` or `Glob("**/analytics/*")` | Product metrics tracked |
+| Feedback | `Glob("**/feedback/*")` or `Grep("user feedback")` | Feedback process exists |
+| Tech debt | `Glob("**/tech-debt/*")` or `Grep("technical debt")` | Tech debt managed |
+| Experiments | `Grep("A/B test\\|experiment")` | Experimentation culture |
+| Lifecycle docs | `Grep("lifecycle\\|maturity\\|growth")` | Lifecycle awareness |
+| Stakeholder map | `Grep("stakeholder")` | Stakeholder management |
+
+**Read existing operations artifacts:**
+- Backlog structure and feature prioritization
+- Analytics dashboards or KPI definitions
+- Feedback collection process
+- Tech debt register
+
+### Discovery Questions
+
+#### Q1: Operations Focus
+
+```yaml
+question: "What product operations area do you need help with?"
+header: "Focus"
+multiSelect: false
+options:
+  - label: "Prioritization (choose what to build)"
+    description: "RICE, MoSCoW, or other prioritization framework"
+  - label: "Backlog management (grooming)"
+    description: "Organize features, epics, technical debt"
+  - label: "Analytics and metrics (track performance)"
+    description: "Define KPIs, setup dashboards, data analysis"
+  - label: "Feedback management (user input)"
+    description: "Collect, organize, and act on feedback"
+```
+
+#### Q2: Data Maturity
+
+```yaml
+question: "How data-driven is your product process?"
+header: "Data"
+multiSelect: false
+options:
+  - label: "No metrics yet"
+    description: "Need to define KPIs and setup analytics"
+  - label: "Basic analytics (usage, retention)"
+    description: "Have metrics but need better insights"
+  - label: "A/B testing and experiments"
+    description: "Running experiments, optimizing based on data"
+  - label: "Advanced (cohorts, funnels, ML)"
+    description: "Sophisticated analytics, predictive models"
+```
+
+#### Q3: Product Type
+
+```yaml
+question: "What type of product are you managing?"
+header: "Product"
+multiSelect: false
+options:
+  - label: "SaaS B2B"
+    description: "Enterprise or SMB software product"
+  - label: "SaaS B2C"
+    description: "Consumer software, focus on growth"
+  - label: "AI-native or AI agent product"
+    description: "LLM-powered, agentic AI considerations"
+  - label: "Traditional software (non-SaaS)"
+    description: "On-premise, desktop, or mobile app"
+```
+
+---
+
 ## Decision Tree
 
 | If you need... | Use | File |

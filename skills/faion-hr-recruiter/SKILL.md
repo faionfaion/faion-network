@@ -16,6 +16,54 @@ Orchestrates all HR and recruiting activities from talent acquisition strategy t
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `job-descriptions/` | JD templates, competency frameworks | Recruiting standards |
+| `interview-guides/` | STAR questions, scorecards | Structured interviewing |
+| `onboarding/` | 30-60-90 plans, checklists | Onboarding process |
+| `employer-brand/` | EVP statement, careers page content | Branding efforts |
+| HRIS/ATS config | Recruitment funnel metrics | Hiring analytics |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What's your hiring stage?"
+    options:
+      - label: "Defining role/writing JD"
+        description: "Use recruitment-funnel-optimization"
+      - label: "Interviewing candidates"
+        description: "Use structured-interview-design, star-interview-method"
+      - label: "Onboarding new hire"
+        description: "Use onboarding-30-day, onboarding-60-90-day"
+      - label: "Building employer brand"
+        description: "Use employee-value-proposition, employer-branding"
+
+  - question: "What's your interview approach?"
+    options:
+      - label: "Structured/standardized"
+        description: "Continue with structured-interview-design"
+      - label: "Ad-hoc/inconsistent"
+        description: "Implement structured-interview-design, scorecards"
+      - label: "No process yet"
+        description: "Start with star-interview-framework"
+
+  - question: "How long is your onboarding?"
+    options:
+      - label: "Less than 30 days"
+        description: "Extend to 30-60-90 day plan"
+      - label: "30-90 days"
+        description: "Use existing onboarding methodologies"
+      - label: "No formal onboarding"
+        description: "Create onboarding-30-day plan"
+```
+
+---
+
 ## Quick Reference
 
 | If you need... | Use | File |

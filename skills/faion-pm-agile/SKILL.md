@@ -13,6 +13,89 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 Agile project management methodologies, tools, ceremonies, and modern PM practices. Supports Scrum, Kanban, SAFe, and hybrid approaches.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Detect existing agile setup from project:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| Jira config | `Glob("**/.jira/*")` or `Grep("jira.atlassian.com")` | Jira in use |
+| GitHub Projects | `Grep("projects/", "**/.github/*")` | GitHub Projects setup |
+| Linear config | `Glob("**/.linear/*")` or `Grep("linear.app")` | Linear tracking |
+| Sprint docs | `Grep("sprint", "**/*.md")` | Sprint ceremonies documented |
+| Kanban board | `Grep("kanban", "**/*.md")` or `Grep("WIP limit")` | Kanban in use |
+| Retrospectives | `Glob("**/retro*.md")` or `Glob("**/retrospectives/*")` | Retros documented |
+| Velocity metrics | `Grep("velocity", "**/*.md")` | Metrics tracked |
+| Standup notes | `Glob("**/standup*.md")` or `Glob("**/daily/*")` | Daily standups documented |
+
+**Read existing agile artifacts:**
+- Any sprint planning docs
+- Retrospective notes
+- Dashboard configs
+- Team charter or working agreements
+- Definition of Done
+
+### Discovery Questions
+
+#### Q1: Agile Maturity
+
+```yaml
+question: "What's your current agile setup?"
+header: "Maturity"
+multiSelect: false
+options:
+  - label: "No agile process yet"
+    description: "Starting from scratch, need to choose approach"
+  - label: "Basic ceremonies (standups, planning)"
+    description: "Have ceremonies but inconsistent or need improvement"
+  - label: "Established Scrum/Kanban"
+    description: "Working process, optimizing or scaling"
+  - label: "SAFe or scaled agile"
+    description: "Multiple teams, program increments, coordination"
+```
+
+#### Q2: PM Tool Status
+
+```yaml
+question: "What PM tool are you using or considering?"
+header: "Tooling"
+multiSelect: false
+options:
+  - label: "No tool yet, need to select one"
+    description: "Need tool comparison and recommendation"
+  - label: "Jira (cloud or server)"
+    description: "Using Jira, need workflow optimization"
+  - label: "GitHub Projects or GitLab Boards"
+    description: "Developer-centric tool, integrated with git"
+  - label: "Linear, ClickUp, Notion, or Trello"
+    description: "Modern agile tool for team collaboration"
+  - label: "Migrating between tools"
+    description: "Moving from one PM tool to another"
+```
+
+#### Q3: Team Challenge
+
+```yaml
+question: "What's your main agile challenge?"
+header: "Focus"
+multiSelect: false
+options:
+  - label: "Setup ceremonies and workflows"
+    description: "Need structure for sprints, standups, retros"
+  - label: "Improve velocity or predictability"
+    description: "Metrics, estimation, sprint commitment issues"
+  - label: "Tool configuration or automation"
+    description: "Setup dashboards, workflows, integrations"
+  - label: "Hybrid approach (agile + waterfall)"
+    description: "Blending predictive and agile practices"
+```
+
+---
+
 ## Methodology Categories
 
 ### Agile Ceremonies (2)

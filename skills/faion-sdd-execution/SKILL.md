@@ -14,6 +14,50 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.aidocs/memory/` | Pattern/mistake memory files | Learning system in use |
+| Test files | Test coverage, testing patterns | Quality gate readiness |
+| CI/CD config | Automated quality gates | Pipeline integration |
+| Code review comments | Review patterns, common issues | Review cycle effectiveness |
+| `TASK-*.md` status | Task completion rate, blockers | Execution health |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What quality level do you need?"
+    options:
+      - label: "High (Production)"
+        description: "Apply L1-L6 quality gates"
+      - label: "Medium (Development)"
+        description: "Apply L1-L5 gates"
+      - label: "Low (Prototype)"
+        description: "Apply L1-L3 gates"
+
+  - question: "Are you executing or reviewing?"
+    options:
+      - label: "Executing tasks"
+        description: "Use workflow-execution-phase, quality-gates"
+      - label: "Code review"
+        description: "Use code-review-cycle, confidence-checks"
+      - label: "Learning from mistakes"
+        description: "Use reflexion-learning, mistake-tracking"
+
+  - question: "Do you have context/token constraints?"
+    options:
+      - label: "Yes, large codebase"
+        description: "Apply context-strategies, task-parallelization"
+      - label: "No, small project"
+        description: "Standard execution workflow"
+```
+
+---
+
 ## Philosophy
 
 **Quality → Execution → Reflection → Learning** - continuous improvement through systematic gates and memory.

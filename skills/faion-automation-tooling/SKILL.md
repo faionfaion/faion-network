@@ -13,6 +13,56 @@ Browser automation, CI/CD pipelines, monorepo management, and developer tooling.
 
 Handles browser automation, web scraping, CI/CD pipelines, monorepo management, performance testing, feature flags, and development tooling.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| CI/CD config | `.github/workflows/`, `.gitlab-ci.yml` | Pipeline automation |
+| Monorepo structure | `turbo.json`, `pnpm-workspace.yaml` | Monorepo tooling |
+| Testing setup | Performance test suites, k6 scripts | Testing automation |
+| Feature flag config | LaunchDarkly, Unleash SDK | Feature flag usage |
+| Browser automation | Puppeteer/Playwright scripts | Automation scripts |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What automation do you need?"
+    options:
+      - label: "Browser automation/scraping"
+        description: "Use puppeteer-automation or playwright-automation"
+      - label: "CI/CD pipeline"
+        description: "Use cd-basics, cd-pipelines"
+      - label: "Monorepo management"
+        description: "Use monorepo-turborepo, pnpm-package-management"
+      - label: "Performance testing"
+        description: "Use perf-test-basics, perf-test-tools"
+
+  - question: "What's your monorepo scale?"
+    options:
+      - label: "Small (2-5 packages)"
+        description: "Simple workspace setup"
+      - label: "Medium (5-15 packages)"
+        description: "Use Turborepo for caching"
+      - label: "Large (15+ packages)"
+        description: "Full Turborepo + pnpm optimization"
+
+  - question: "Are you using feature flags?"
+    options:
+      - label: "Yes, in production"
+        description: "Use feature-flags for best practices"
+      - label: "Planning to implement"
+        description: "Start with feature-flags basics"
+      - label: "No"
+        description: "Skip feature flag methodologies"
+```
+
+---
+
 ## When to Use
 
 - Browser automation (Puppeteer, Playwright)

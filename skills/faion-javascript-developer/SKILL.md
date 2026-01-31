@@ -14,6 +14,94 @@ JavaScript and TypeScript development covering React, Node.js, Next.js, and mode
 
 Handles all JavaScript/TypeScript development including React frontends, Node.js backends, Next.js full-stack apps, and modern JS tooling.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Detect JS/TS stack from project files:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `package.json` | `Read("package.json")` | Dependencies, scripts, type |
+| React | `Grep("react", "package.json")` | React framework used |
+| Next.js | `Grep("next", "package.json")` | Next.js framework |
+| Express | `Grep("express", "package.json")` | Express backend |
+| Fastify | `Grep("fastify", "package.json")` | Fastify backend |
+| TypeScript | `Glob("**/tsconfig.json")` | TypeScript enabled |
+| Bun | `Glob("**/bun.lockb")` | Bun runtime |
+| ESLint config | `Glob("**/.eslintrc*")` | Linting setup |
+| Jest/Vitest | `Grep("jest\|vitest", "package.json")` | Test framework |
+
+**Read existing patterns:**
+- Check src/ structure for architecture
+- Read existing components for patterns
+- Check tsconfig.json for strictness level
+
+### Discovery Questions
+
+#### Q1: Project Type
+
+```yaml
+question: "What type of JS/TS project is this?"
+header: "Type"
+multiSelect: false
+options:
+  - label: "React frontend (SPA)"
+    description: "Client-side React application"
+  - label: "Next.js full-stack"
+    description: "Server components, API routes, SSR"
+  - label: "Node.js backend"
+    description: "Express, Fastify, or plain Node"
+  - label: "Library/package"
+    description: "Reusable npm package"
+```
+
+**Routing:**
+- "React" → react-*, component architecture
+- "Next.js" → nextjs-app-router, server components
+- "Node.js" → nodejs-express or nodejs-fastify
+- "Library" → TypeScript strict, build config
+
+#### Q2: TypeScript Strictness
+
+```yaml
+question: "What TypeScript strictness level?"
+header: "TypeScript"
+multiSelect: false
+options:
+  - label: "Strict mode (recommended)"
+    description: "Full type safety, no any"
+  - label: "Standard"
+    description: "Basic type checking"
+  - label: "JavaScript only"
+    description: "No TypeScript"
+  - label: "Match existing config"
+    description: "Follow tsconfig.json"
+```
+
+#### Q3: State Management (if React)
+
+```yaml
+question: "How do you manage state?"
+header: "State"
+multiSelect: false
+options:
+  - label: "React hooks (useState, useContext)"
+    description: "Built-in React state"
+  - label: "Zustand"
+    description: "Lightweight global state"
+  - label: "Redux/RTK"
+    description: "Full Redux toolkit"
+  - label: "Server state (React Query/SWR)"
+    description: "Remote data fetching"
+  - label: "Not sure / recommend"
+    description: "I'll suggest based on needs"
+```
+
+---
+
 ## When to Use
 
 - React applications (hooks, components, state)

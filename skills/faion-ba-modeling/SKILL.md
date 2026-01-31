@@ -12,6 +12,50 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion,
 
 ---
 
+## Context Discovery
+
+### Auto-Investigation
+
+| Signal | Check For | Why |
+|--------|-----------|-----|
+| `.md` files with scenarios | Use case patterns (Actor, Precondition, Main Flow) | Use case modeling in use |
+| `*.bpmn` or process diagrams | BPMN process models | Process analysis present |
+| `user-stories/` or backlog | User story format | Agile modeling approach |
+| Database schema files | ERD or data models | Data modeling needed |
+| `acceptance-criteria/` | Given-When-Then format | BDD approach |
+
+### Discovery Questions
+
+```yaml
+questions:
+  - question: "What type of system are you modeling?"
+    options:
+      - label: "Business processes"
+        description: "Use business-process-analysis (BPMN)"
+      - label: "User interactions"
+        description: "Use use-case-modeling or user-story-mapping"
+      - label: "Data structures"
+        description: "Use data-analysis (ERD)"
+      - label: "Complex logic/rules"
+        description: "Use decision-analysis"
+
+  - question: "What's your development methodology?"
+    options:
+      - label: "Agile/iterative"
+        description: "Favor user-story-mapping, acceptance-criteria"
+      - label: "Waterfall/formal"
+        description: "Favor use-case-modeling, detailed docs"
+
+  - question: "Are you defining system interfaces/APIs?"
+    options:
+      - label: "Yes, integration requirements"
+        description: "Use interface-analysis"
+      - label: "No, internal logic only"
+        description: "Skip interface analysis"
+```
+
+---
+
 ## Methodologies (7)
 
 ### Behavioral Models (2)

@@ -14,6 +14,127 @@ Coordinates 7 specialized sub-skills for comprehensive software development.
 
 Routes development tasks to appropriate specialized sub-skills based on technology, domain, and task type.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Detect tech stack from project files BEFORE asking questions:
+
+| Signal | How to Check | Detected Stack |
+|--------|--------------|----------------|
+| `manage.py` | `Glob("**/manage.py")` | Django → faion-python-developer |
+| `pyproject.toml` with fastapi | `Grep("fastapi", "**/pyproject.toml")` | FastAPI → faion-python-developer |
+| `pyproject.toml` with django | `Grep("django", "**/pyproject.toml")` | Django → faion-python-developer |
+| `package.json` with react | `Grep("react", "**/package.json")` | React → faion-javascript-developer |
+| `package.json` with next | `Grep("next", "**/package.json")` | Next.js → faion-javascript-developer |
+| `package.json` with express | `Grep("express", "**/package.json")` | Node.js → faion-javascript-developer |
+| `go.mod` | `Glob("**/go.mod")` | Go → faion-backend-systems |
+| `Cargo.toml` | `Glob("**/Cargo.toml")` | Rust → faion-backend-systems |
+| `pom.xml` or `build.gradle` | `Glob("**/pom.xml")` | Java → faion-backend-enterprise |
+| `*.csproj` | `Glob("**/*.csproj")` | C# → faion-backend-enterprise |
+| `composer.json` | `Glob("**/composer.json")` | PHP → faion-backend-enterprise |
+| `Gemfile` | `Glob("**/Gemfile")` | Ruby → faion-backend-enterprise |
+| `tailwind.config.*` | `Glob("**/tailwind.config.*")` | Tailwind → faion-frontend-developer |
+
+**Also check for patterns:**
+- `Glob("**/services/*.py")` → Service layer exists, follow pattern
+- `Glob("**/tests/**")` → Tests exist, check style
+- `Grep("class.*ViewSet", "**/*.py")` → DRF ViewSets used
+
+### Discovery Questions
+
+Use `AskUserQuestion` if stack not detected or task type unclear.
+
+#### Q1: Task Type (if unclear from request)
+
+```yaml
+question: "What type of development task is this?"
+header: "Task"
+multiSelect: false
+options:
+  - label: "Build new feature"
+    description: "Create new functionality from scratch"
+  - label: "Fix a bug"
+    description: "Something isn't working correctly"
+  - label: "Refactor / improve"
+    description: "Restructure without changing behavior"
+  - label: "Add tests"
+    description: "Improve test coverage"
+  - label: "Review / audit code"
+    description: "Check quality, find issues"
+```
+
+**Routing:**
+- "Build new feature" → Full workflow, may need architecture
+- "Fix a bug" → Investigate first, minimal targeted changes
+- "Refactor / improve" → `Skill(faion-code-quality)`
+- "Add tests" → `Skill(faion-testing-developer)`
+- "Review / audit code" → `Skill(faion-code-quality)`
+
+#### Q2: Tech Stack (only if not auto-detected)
+
+```yaml
+question: "What's the primary technology?"
+header: "Stack"
+multiSelect: false
+options:
+  - label: "Python (Django/FastAPI)"
+    description: "Python backend development"
+  - label: "JavaScript/TypeScript"
+    description: "React, Node.js, Next.js"
+  - label: "Go"
+    description: "Go backend services"
+  - label: "Other (Rust/Java/C#/PHP/Ruby)"
+    description: "Enterprise or systems languages"
+```
+
+**Routing:**
+- "Python" → `Skill(faion-python-developer)`
+- "JavaScript/TypeScript" → `Skill(faion-javascript-developer)`
+- "Go" → `Skill(faion-backend-systems)`
+- "Other" → `Skill(faion-backend-enterprise)`
+
+#### Q3: Code Area (for large codebases)
+
+```yaml
+question: "Which area of the codebase?"
+header: "Area"
+multiSelect: false
+options:
+  - label: "Backend / API"
+    description: "Server-side logic, database"
+  - label: "Frontend / UI"
+    description: "User interface, components"
+  - label: "Both (full-stack)"
+    description: "Changes span frontend and backend"
+  - label: "Infrastructure"
+    description: "Build, deploy, CI/CD"
+```
+
+#### Q4: Existing Patterns (for existing codebases)
+
+```yaml
+question: "Should I follow existing patterns in the codebase?"
+header: "Patterns"
+multiSelect: false
+options:
+  - label: "Yes, match existing style"
+    description: "I'll investigate and follow conventions"
+  - label: "No, use best practices"
+    description: "Apply modern patterns regardless"
+  - label: "Improve while matching"
+    description: "Follow style but suggest improvements"
+```
+
+**Action:**
+- "Yes, match existing" → Read existing code first, extract patterns
+- "No, use best practices" → Apply methodology defaults
+- "Improve while matching" → Note improvements in comments/TODOs
+
+---
+
 ## Sub-Skills
 
 | Sub-skill | Methodologies | Focus |

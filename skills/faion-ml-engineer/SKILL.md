@@ -14,6 +14,121 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoW
 
 Routes AI/ML tasks to specialized sub-skills. Orchestrates LLM integration, RAG, operations, agents, and multimodal AI.
 
+---
+
+## Context Discovery
+
+### Auto-Investigation
+
+Check for existing AI/ML setup:
+
+| Signal | How to Check | What It Tells Us |
+|--------|--------------|------------------|
+| `openai` in dependencies | `Grep("openai", "**/requirements.txt")` | OpenAI SDK used |
+| `anthropic` in dependencies | `Grep("anthropic", "**/requirements.txt")` | Claude SDK used |
+| `langchain` in dependencies | `Grep("langchain", "**/requirements.txt")` | LangChain framework |
+| `llamaindex` in dependencies | `Grep("llama-index", "**/requirements.txt")` | LlamaIndex framework |
+| Vector DB config | `Grep("qdrant\|chroma\|pinecone\|weaviate", "**/*")` | Vector DB setup exists |
+| Embedding models | `Grep("embed\|embedding", "**/*.py")` | Embeddings used |
+| `.env` with API keys | `Grep("OPENAI_API_KEY\|ANTHROPIC_API_KEY", "**/.env*")` | Which APIs configured |
+
+### Discovery Questions
+
+Use `AskUserQuestion` to understand AI/ML requirements.
+
+#### Q1: AI/ML Goal
+
+```yaml
+question: "What do you want to achieve with AI/ML?"
+header: "Goal"
+multiSelect: false
+options:
+  - label: "Use LLM APIs (chat, generation)"
+    description: "Integrate OpenAI, Claude, or Gemini"
+  - label: "Build RAG system (knowledge base)"
+    description: "Search and retrieve from documents"
+  - label: "Create AI agent (autonomous tasks)"
+    description: "Agent that uses tools and reasons"
+  - label: "Fine-tune a model"
+    description: "Train model on custom data"
+  - label: "Add vision/image/voice"
+    description: "Multimodal AI capabilities"
+```
+
+**Routing:**
+- "LLM APIs" → `Skill(faion-llm-integration)`
+- "RAG system" → `Skill(faion-rag-engineer)`
+- "AI agent" → `Skill(faion-ai-agents)`
+- "Fine-tune" → `Skill(faion-ml-ops)`
+- "Multimodal" → `Skill(faion-multimodal-ai)`
+
+#### Q2: LLM Provider Preference (if LLM task)
+
+```yaml
+question: "Which LLM provider do you prefer?"
+header: "Provider"
+multiSelect: false
+options:
+  - label: "OpenAI (GPT-4)"
+    description: "Best general purpose, good tools support"
+  - label: "Anthropic (Claude)"
+    description: "Best for long context, reasoning, safety"
+  - label: "Google (Gemini)"
+    description: "Multimodal, 2M context, grounding"
+  - label: "Local (Ollama)"
+    description: "Privacy, no API costs, offline"
+  - label: "Not sure / recommend"
+    description: "I'll suggest based on your use case"
+```
+
+#### Q3: Data Situation (if RAG or fine-tuning)
+
+```yaml
+question: "What data do you have?"
+header: "Data"
+multiSelect: true
+options:
+  - label: "Documents (PDF, markdown, text)"
+    description: "Unstructured text content"
+  - label: "Structured data (database, CSV)"
+    description: "Tabular or relational data"
+  - label: "Code repositories"
+    description: "Source code to search/understand"
+  - label: "Conversation logs"
+    description: "Chat history, support tickets"
+```
+
+**Routing:**
+- "Documents" → RAG with chunking strategies
+- "Structured data" → Text-to-SQL or structured RAG
+- "Code repos" → Code embeddings, AST-aware chunking
+- "Conversations" → Fine-tuning dataset prep
+
+#### Q4: Deployment Requirements
+
+```yaml
+question: "How will this be deployed?"
+header: "Deploy"
+multiSelect: false
+options:
+  - label: "API endpoint (backend service)"
+    description: "Part of web application"
+  - label: "CLI tool"
+    description: "Command-line interface"
+  - label: "Batch processing"
+    description: "Process data in bulk"
+  - label: "Real-time/streaming"
+    description: "Live interactions, low latency"
+```
+
+**Context impact:**
+- "API endpoint" → Async patterns, rate limiting, caching
+- "CLI tool" → Simple integration, local models option
+- "Batch processing" → Cost optimization, parallel processing
+- "Real-time" → Streaming responses, edge deployment
+
+---
+
 ## Sub-Skills (5)
 
 | Sub-Skill | Purpose | Methodologies |
