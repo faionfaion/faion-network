@@ -1,6 +1,6 @@
-# Creational Patterns Checklist
+# Creational Design Patterns Checklist
 
-> Step-by-step guidance for selecting and implementing creational patterns.
+> Comprehensive step-by-step guidance for selecting and implementing creational patterns (Factory, Builder, Singleton, Prototype, DI, Object Pool).
 
 ## Phase 1: Requirements Analysis
 
