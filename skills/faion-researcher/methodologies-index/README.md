@@ -1,5 +1,15 @@
 # Methodologies Index
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Look up methodology by category | haiku | Mechanical pattern matching and index search |
+| Apply market analysis methodologies | sonnet | Medium-complexity research and data synthesis |
+| Conduct user research interviews | sonnet | User research planning and analysis |
+| Score niche viability | sonnet | Multi-criteria evaluation and comparison |
+| Design business model | opus | Complex strategic architecture and trade-offs |
+
 Quick reference index for all 20 detailed research methodologies.
 
 Decomposed from methodologies-detail.md into 5 focused topic files.

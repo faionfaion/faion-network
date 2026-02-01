@@ -1,5 +1,15 @@
 # Key Trends Summary 2025-2026
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Research 2025-2026 trends | sonnet | Medium-complexity trend identification and analysis |
+| Analyze specification-driven development adoption | sonnet | Medium-complexity market and practice analysis |
+| Review living documentation tools | haiku | Mechanical tool comparison and feature listing |
+| Synthesize findings into summary | sonnet | Analysis and synthesis into actionable insights |
+| Create strategic recommendations | opus | Complex strategic assessment and planning |
+
 Summary of major trends in Specification-Driven Development and documentation practices.
 
 **Research Date:** 2026-01-19

@@ -1,5 +1,15 @@
 # SDD Section Summaries
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Guide through workflow sections | sonnet | Medium-complexity workflow explanation |
+| Create specification documents | sonnet | Medium-complexity document authoring |
+| Generate implementation plans | sonnet | Medium-complexity task decomposition |
+| Execute task workflow | haiku | Mechanical task execution orchestration |
+| Analyze parallelization opportunities | opus | Complex dependency analysis and optimization |
+
 Quick overview of all 13 workflow sections.
 
 ---

@@ -1,5 +1,15 @@
 # Continuous Discovery
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Review daily analytics and support tickets | haiku | Mechanical data collection and logging |
+| Schedule and conduct weekly interviews | sonnet | User research planning and analysis |
+| Monitor competitor changes | haiku | Pattern-based tracking of signals |
+| Test product assumptions | sonnet | Medium-complexity validation planning |
+| Synthesize discovery findings | opus | Complex pattern recognition and insight generation |
+
 ## Problem
 
 Discovery treated as one-time project start activity.

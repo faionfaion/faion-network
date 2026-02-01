@@ -8,6 +8,16 @@ category: "sdd"
 
 # Mistake Prevention
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Define prevention rules from mistakes | sonnet | Medium-complexity rule extraction and formulation |
+| Set up automated pattern detection | haiku | Mechanical regex and pattern configuration |
+| Create pre-task warning system | opus | Complex logic for context-aware warnings |
+| Generate checklists from mistakes | haiku | Template-based extraction and compilation |
+| Review prevention rule effectiveness | sonnet | Medium-complexity analysis of metrics |
+
 ## Overview
 
 Mistake prevention transforms documented errors into automated checks, warnings, and process improvements. The goal is to catch potential issues before they occur through proactive detection systems and pre-task warnings.

@@ -8,6 +8,16 @@ category: "ai-research-2026"
 
 ## Product Development Trends 2026
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Research agile and data-driven approaches | sonnet | Medium-complexity methodology research |
+| Analyze AI impact on product development | opus | Complex strategic assessment |
+| Study cross-functional collaboration patterns | sonnet | Medium-complexity process analysis |
+| Synthesize trend findings | sonnet | Analysis and synthesis into insights |
+| Create development methodology guide | sonnet | Medium-complexity synthesis and documentation |
+
 ### Problem
 
 Traditional waterfall development can't keep pace with market demands.

@@ -1,5 +1,15 @@
 # Synthetic Users
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create synthetic user profiles | sonnet | Medium-complexity profile generation |
+| Generate synthetic research responses | haiku | Pattern-based response generation |
+| Validate synthetic findings with real data | opus | Complex comparison and validation logic |
+| Create governance framework for synthetic users | opus | Complex policy and decision architecture |
+| Document synthetic user limitations | sonnet | Medium-complexity analysis and documentation |
+
 ## Problem
 
 Real user research is slow and expensive for early validation.

@@ -8,6 +8,16 @@ category: "best-practices-2026"
 
 # Design Docs Patterns (Big Tech)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Mechanically format design doc | haiku | Pattern-based formatting application |
+| Compare design doc alternatives | sonnet | Medium-complexity analysis of trade-offs |
+| Review design doc completeness | sonnet | Medium-complexity quality assessment |
+| Facilitate design review meeting | opus | Complex facilitation and strategic decision |
+| Generate design doc from outline | haiku | Template-based mechanical document generation |
+
 ### Problem
 
 Design docs written without structure lead to:

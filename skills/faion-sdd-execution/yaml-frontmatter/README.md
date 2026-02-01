@@ -1,5 +1,15 @@
 # YAML Frontmatter Standards
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Parse frontmatter from documents | haiku | Pattern-based YAML extraction and parsing |
+| Validate frontmatter fields | haiku | Mechanical schema validation |
+| Generate frontmatter for documents | haiku | Template-based YAML generation |
+| Update version numbers | haiku | Mechanical semantic versioning application |
+| Migrate old format to frontmatter | sonnet | Medium-complexity structural transformation |
+
 Standard for metadata in all SDD documentation.
 
 ---

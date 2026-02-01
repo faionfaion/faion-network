@@ -1,5 +1,15 @@
 # Task Creation Template Guide
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Build task dependency trees | sonnet | Medium-complexity task relationship analysis |
+| Create task templates | haiku | Template-based mechanical generation |
+| Estimate task complexity | sonnet | Medium-complexity analysis and judgment |
+| Identify risks and blockers | sonnet | Medium-complexity risk assessment |
+| Generate task files from plan | haiku | Mechanical template instantiation |
+
 ## Context Management (for AI Execution)
 
 ### Context Budget

@@ -1,5 +1,15 @@
 # AI-Assisted Persona Building
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Parse and aggregate behavioral data | haiku | Mechanical extraction of user behavior patterns |
+| Identify persona clusters | opus | Complex unsupervised learning and segmentation |
+| Create persona narratives | sonnet | Synthesis of data into coherent user descriptions |
+| Define persona pain points | sonnet | Analysis of user frustrations and needs |
+| Build JTBD maps per persona | sonnet | Medium-complexity motivation mapping |
+
 ## Problem
 
 Personas based on assumptions, not data.

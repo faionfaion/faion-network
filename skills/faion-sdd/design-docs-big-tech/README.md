@@ -1,5 +1,15 @@
 # Design Docs at Big Tech Companies
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Research design doc practices | sonnet | Medium-complexity research and comparison |
+| Create design doc templates | sonnet | Medium-complexity template generation |
+| Review design doc drafts | sonnet | Medium-complexity document analysis and feedback |
+| Adapt big tech patterns to project | sonnet | Medium-complexity contextualization and decision-making |
+| Train team on design doc process | opus | Complex methodology and strategy explanation |
+
 Comprehensive guide to design document practices at Google, Amazon, Meta, Uber, Stripe, Spotify, Netflix, Microsoft, and other leading tech companies.
 
 **Last Updated:** 2026-01-25

@@ -1,5 +1,15 @@
 # Code Review Cycle
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Set up AI code review tools | haiku | Mechanical configuration of linters and rules |
+| Perform AI pre-screening review | haiku | Pattern-based style and anti-pattern detection |
+| Conduct human peer review | sonnet | Medium-complexity logic and design analysis |
+| Explain complex code sections | sonnet | Medium-complexity code comprehension and explanation |
+| Make architectural review decisions | opus | Complex system design and trade-off analysis |
+
 ## Overview
 
 The Code Review Cycle in SDD ensures quality, knowledge sharing, and continuous improvement through structured review processes. This methodology integrates human expertise with LLM assistance to create efficient, thorough reviews.

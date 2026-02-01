@@ -8,6 +8,16 @@ category: "sdd"
 
 # Reflexion Learning
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Execute post-task reflexion analysis | sonnet | Medium-complexity outcome analysis |
+| Extract patterns from experience | sonnet | Medium-complexity pattern recognition |
+| Document lessons learned | sonnet | Medium-complexity synthesis into documentation |
+| Update pattern and mistake memory | haiku | Mechanical JSON record creation and filing |
+| Generate improvement recommendations | opus | Complex strategic analysis and decision-making |
+
 ## Overview
 
 Reflexion Learning is an SDD methodology for continuous improvement through systematic analysis of task execution, identification of patterns and mistakes, and integration of lessons learned into future work. It creates a feedback loop that improves both AI agent and human developer performance over time.

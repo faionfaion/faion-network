@@ -1,5 +1,15 @@
 # Competitive Intelligence
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Set up monitoring for competitor signals | haiku | Pattern-based automation of tracking rules |
+| Collect pricing and feature data | haiku | Mechanical data extraction from sources |
+| Analyze competitor positioning | sonnet | Medium-complexity strategy analysis |
+| Generate threat assessments | opus | Complex strategic evaluation and recommendations |
+| Create competitive battlecards | sonnet | Synthesis of analysis into actionable content |
+
 ## Problem
 
 Point-in-time competitor snapshots become stale.

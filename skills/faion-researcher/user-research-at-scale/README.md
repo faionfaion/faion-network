@@ -1,5 +1,15 @@
 # User Research at Scale
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Set up AI-powered research automation | sonnet | Medium-complexity automation design |
+| Conduct unmoderated user testing | haiku | Mechanical test execution and recording |
+| Analyze large-scale user data | opus | Complex pattern recognition across thousands |
+| Create real-time sentiment dashboards | sonnet | Medium-complexity analysis and visualization |
+| Generate cross-demographic insights | opus | Complex comparative analysis and strategic insights |
+
 ## Problem
 
 Traditional research doesn't scale with product velocity.

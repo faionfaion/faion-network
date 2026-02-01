@@ -8,6 +8,16 @@ category: "best-practices-2026"
 
 # Living Documentation (Docs-as-Code)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Set up CI/CD for documentation | haiku | Mechanical configuration of automation pipeline |
+| Generate API docs from code | haiku | Pattern-based extraction and formatting |
+| Implement link validation | haiku | Mechanical pattern matching for broken links |
+| Create documentation strategy | sonnet | Medium-complexity planning and approach design |
+| Build documentation portal | opus | Complex system architecture and integration decisions |
+
 ### Problem
 
 Documentation becomes outdated immediately after creation:

@@ -8,6 +8,16 @@ category: "ai-research-2026"
 
 ## AI-Assisted Persona Building
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Aggregate user data from analytics | haiku | Pattern matching and data extraction from existing sources |
+| Apply AI clustering algorithms | opus | Complex pattern recognition and algorithm design decisions |
+| Validate persona drafts with team | sonnet | Analysis of feedback and refinement of persona attributes |
+| Create JTBD statements | sonnet | Medium-complexity mapping of motivations to job statements |
+| Update personas from new data | haiku | Mechanical updates following established persona structure |
+
 ### Problem
 
 Personas based on assumptions, not data.

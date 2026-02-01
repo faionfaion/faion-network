@@ -1,5 +1,15 @@
 # AI Research Tools
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Execute research queries | haiku | Mechanical tool invocation and parameter setup |
+| Synthesize findings across tools | sonnet | Analysis and integration of multi-source data |
+| Verify critical data points | opus | Complex validation and fact-checking decisions |
+| Create research reports | sonnet | Analysis-driven synthesis and narrative building |
+| Document research methodology | haiku | Pattern-based documentation of process |
+
 ## Problem
 
 Manual research is slow and limited in scope.

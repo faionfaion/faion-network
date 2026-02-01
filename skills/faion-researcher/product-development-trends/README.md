@@ -1,5 +1,15 @@
 # Product Development Trends 2026
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Research current development methodologies | sonnet | Medium-complexity trend analysis |
+| Analyze AI-augmented ideation | opus | Complex strategic implications of AI adoption |
+| Conduct competitive trend analysis | sonnet | Market research and synthesis |
+| Create trend report | sonnet | Analysis-driven synthesis into recommendations |
+| Identify emerging consumer patterns | sonnet | Medium-complexity market analysis |
+
 ## Problem
 
 Traditional waterfall development can't keep pace with market demands.

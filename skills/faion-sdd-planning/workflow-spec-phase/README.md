@@ -1,5 +1,15 @@
 # SDD Workflow: Specification Phase
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Analyze codebase for constitution | sonnet | Medium-complexity codebase analysis |
+| Facilitate requirements brainstorming | sonnet | Medium-complexity dialogue and questioning |
+| Research existing codebase patterns | haiku | Mechanical pattern search and listing |
+| Write specification documents | sonnet | Medium-complexity document composition |
+| Create roadmap and plan releases | opus | Complex strategic planning and prioritization |
+
 Detailed workflows for creating specification documents (constitution, spec, contracts, roadmap).
 
 ---

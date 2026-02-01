@@ -1,5 +1,15 @@
 # Perplexity AI for Research
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Formulate research queries | sonnet | Medium-complexity query optimization |
+| Execute Pro Search queries | haiku | Mechanical tool invocation |
+| Analyze search results | sonnet | Medium-complexity synthesis of findings |
+| Verify source citations | sonnet | Quality assurance and fact-checking |
+| Create research documentation | haiku | Pattern-based summary formatting |
+
 ## Problem
 
 Need quick, cited research synthesis from multiple sources.

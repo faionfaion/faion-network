@@ -1,5 +1,15 @@
 # SDD Workflow: Design Phase
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Read and extract specification requirements | haiku | Mechanical content extraction |
+| Research codebase for patterns | sonnet | Medium-complexity exploration and analysis |
+| Make architecture decisions | opus | Complex decision-making with trade-offs |
+| Write design document | sonnet | Medium-complexity document composition |
+| Create implementation plan with tasks | sonnet | Medium-complexity task decomposition |
+
 Detailed workflows for creating design documents and implementation plans.
 
 ---

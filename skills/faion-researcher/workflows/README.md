@@ -1,5 +1,15 @@
 # Research Workflows
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Execute workflow step sequences | haiku | Mechanical workflow orchestration |
+| Gather context from users | sonnet | Medium-complexity dialogue and questioning |
+| Generate research ideas | sonnet | Medium-complexity ideation and synthesis |
+| Create research summaries | sonnet | Analysis-driven synthesis of findings |
+| Plan domain-specific research | opus | Complex research strategy and methodology design |
+
 Detailed workflow documentation for faion-researcher skill.
 
 ---

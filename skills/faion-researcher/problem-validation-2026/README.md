@@ -8,6 +8,16 @@ category: "ai-research-2026"
 
 ## Problem Validation 2026
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Design user interview questions | sonnet | Medium-complexity UX research planning |
+| Conduct validation interviews | sonnet | User research execution and analysis |
+| Analyze commitment signals | sonnet | Medium-complexity pattern recognition |
+| Identify red flags in feedback | haiku | Mechanical pattern matching of anti-patterns |
+| Create validation report | sonnet | Synthesis of evidence into conclusions |
+
 ### Problem
 
 Building products nobody needs.

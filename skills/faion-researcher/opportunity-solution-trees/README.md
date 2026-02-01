@@ -1,5 +1,15 @@
 # Opportunity Solution Trees (OST)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Facilitate OST brainstorming session | sonnet | Medium-complexity collaborative framework facilitation |
+| Map outcomes to opportunities | sonnet | Analysis of business goals and customer needs |
+| Generate solution alternatives | sonnet | Creative synthesis of potential approaches |
+| Design experiments for testing | sonnet | Planning and structured validation approach |
+| Build OST visual diagram | haiku | Mechanical diagram generation from structured data |
+
 ## Problem
 
 Teams lack structured framework for connecting outcomes to solutions.

@@ -1,5 +1,15 @@
 # Research Frameworks
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Apply 7Ps ideation framework | haiku | Pattern-based systematic framework application |
+| Evaluate niche viability scores | sonnet | Multi-criteria analysis and trade-off decisions |
+| Conduct TAM/SAM/SOM market sizing | sonnet | Analytical calculation and research synthesis |
+| Build value proposition canvas | sonnet | Medium-complexity customer-value alignment |
+| Create competitive intelligence framework | opus | Complex strategy and decision architecture design |
+
 Quick reference for key research frameworks used in faion-researcher skill.
 
 ---

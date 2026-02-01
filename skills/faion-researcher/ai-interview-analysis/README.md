@@ -1,5 +1,15 @@
 # AI-Assisted Interview Analysis
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Transcribe interview recordings | haiku | Pattern matching for audio-to-text conversion |
+| Extract themes from transcripts | sonnet | Medium-complexity analysis of recurring topics |
+| Perform sentiment analysis | haiku | Mechanical classification of emotional tone |
+| Identify user insights and patterns | opus | Complex cross-interview pattern recognition |
+| Create summary reports | sonnet | Analysis and synthesis of findings into narrative |
+
 ## Problem
 
 Manual interview transcription and analysis is time-consuming.
