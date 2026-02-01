@@ -148,6 +148,15 @@ Agent System
 - [LangGraph](https://langchain-ai.github.io/langgraph/)
 - [CrewAI](https://www.crewai.com/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Autonomous loop implementation | opus | Complex pattern |
+| Goal decomposition | sonnet | Planning expertise |
+| Safety guardrails | opus | Security design |
+
 ## Sources
 
 - [Agentic AI Trends 2026](https://machinelearningmastery.com/7-agentic-ai-trends-to-watch-in-2026/)

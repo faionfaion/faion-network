@@ -24,6 +24,14 @@
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Tool category mapping | haiku | Classification |
+| Tool feature analysis | sonnet | Comparison framework |
+
 ## Sources
 
 - [Shopify Product Research Guide](https://www.shopify.com/blog/product-research)

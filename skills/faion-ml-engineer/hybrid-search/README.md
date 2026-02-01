@@ -263,3 +263,11 @@ metrics = {
 | [examples.md](examples.md) | Code examples for various vector DBs |
 | [templates.md](templates.md) | Pipeline and configuration templates |
 | [llm-prompts.md](llm-prompts.md) | Prompts for implementation and debugging |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Hybrid search setup | sonnet | Search architecture |
+| Weight optimization | sonnet | Parameter tuning |
+| Performance comparison | sonnet | Evaluation |

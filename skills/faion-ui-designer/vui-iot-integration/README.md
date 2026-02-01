@@ -33,6 +33,12 @@ Smart home devices need coherent voice control.
 - Handle partial failures gracefully
 - Allow undo for recent actions
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice UI pattern application | sonnet | Complex interaction: designing multimodal conversational flows |
+
 ## Sources
 
 - [Amazon Alexa Smart Home Skills](https://developer.amazon.com/en-US/docs/alexa/smarthome/understand-the-smart-home-skill-api.html)

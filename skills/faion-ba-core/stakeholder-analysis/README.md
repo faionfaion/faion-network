@@ -266,3 +266,11 @@ After stakeholder analysis:
 
 - BA Framework Guide v3 - Business Analysis Planning and Monitoring
 - BA industry Stakeholder Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement stakeholder-analysis pattern | haiku | Straightforward implementation |
+| Review stakeholder-analysis implementation | sonnet | Requires code analysis |
+| Optimize stakeholder-analysis design | opus | Complex trade-offs |
+

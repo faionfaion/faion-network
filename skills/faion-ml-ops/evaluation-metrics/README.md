@@ -421,3 +421,11 @@ def create_metric_summary(results: List[Dict]) -> Dict:
 - [ROUGE Score](https://www.aclweb.org/anthology/W04-1013.pdf)
 - [Perspective API](https://perspectiveapi.com/)
 - [HuggingFace Evaluate](https://huggingface.co/docs/evaluate/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Metric selection | sonnet | Evaluation approach |
+| Baseline establishment | sonnet | Reference setting |
+| Threshold definition | sonnet | Criteria setting |

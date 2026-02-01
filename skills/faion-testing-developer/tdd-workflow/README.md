@@ -125,6 +125,14 @@ Configure automatic test runs after edits:
 | [templates.md](templates.md) | Test templates for pytest, Jest, go test |
 | [llm-prompts.md](llm-prompts.md) | Prompts for test-first development with LLMs |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 ### Foundational TDD

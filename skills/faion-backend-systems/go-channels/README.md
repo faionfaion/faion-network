@@ -539,3 +539,15 @@ func process() {
 - [Go Concurrency Patterns: Context](https://go.dev/blog/context)
 - [Go by Example: Channels](https://gobyexample.com/channels)
 - [Effective Go: Channels](https://go.dev/doc/effective_go#channels)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Database schema design and normalization | opus | Requires architectural decisions and complex trade-offs |
+| Implement Go concurrency patterns | sonnet | Coding with existing patterns, medium complexity |
+| Write database migration scripts | haiku | Mechanical task using templates |
+| Review error handling implementation | sonnet | Code review and refactoring |
+| Profile and optimize slow queries | opus | Novel optimization problem, deep analysis |
+| Setup Redis caching layer | sonnet | Medium complexity implementation task |
+

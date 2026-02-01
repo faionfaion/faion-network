@@ -308,6 +308,12 @@ For each component:
 - UX research community: 10 Usability Heuristics
 - Atomic Design by Brad Frost
 - Design System Best Practices
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Consistency and Standards Heuristic](https://www.nngroup.com/articles/consistency-and-standards/) - Nielsen Norman Group

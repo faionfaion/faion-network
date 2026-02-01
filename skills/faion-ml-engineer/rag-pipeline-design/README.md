@@ -165,6 +165,15 @@ Hybrid Score = alpha * vector_score + (1 - alpha) * bm25_score
 | Retrieval recall@10 | >85% | Chunking, embedding model |
 | Answer relevance | >90% | Reranking, prompt engineering |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Pipeline architecture | opus | System design |
+| Component integration | sonnet | Integration planning |
+| Workflow orchestration | sonnet | Process design |
+
 ## Sources
 
 - [RAG Architecture Explained 2025](https://orq.ai/blog/rag-architecture)

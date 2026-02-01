@@ -127,6 +127,14 @@ ssml = (
 - Ignoring latency in real-time apps
 - Abbreviations read literally
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate speech from text | haiku | API calls and voice selection |
+| Create voice cloning workflow | sonnet | Integration and parameter tuning |
+| Build text-to-speech service | opus | Service design and quality control |
+
 ## Sources
 
 - [OpenAI TTS API Documentation](https://platform.openai.com/docs/guides/text-to-speech)

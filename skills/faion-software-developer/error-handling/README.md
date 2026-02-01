@@ -162,6 +162,14 @@ async def generic_exception_handler(request: Request, exc: Exception):
 - Document all error codes in API docs
 - Include links to documentation in error type
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [RFC 7807 - Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc7807)

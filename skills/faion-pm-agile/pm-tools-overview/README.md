@@ -275,3 +275,11 @@ requirements:
 - [G2 PM Software Comparison](https://www.g2.com/categories/project-management)
 - [Capterra PM Software Reviews](https://www.capterra.com/project-management-software/)
 - [PM Tool Selection Framework](https://www.pmi.org/learning/library)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

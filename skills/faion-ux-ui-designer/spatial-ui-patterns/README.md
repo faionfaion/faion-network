@@ -38,3 +38,9 @@ DON'T:
 → Use tiny touch targets
 → Ignore field of view limits
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design pattern synthesis | sonnet | Complex integration: combining multiple patterns into coherent system |

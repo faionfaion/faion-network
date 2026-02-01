@@ -231,6 +231,14 @@ from apps.orders import models as order_models
 order = order_models.Order.objects.get(pk=pk)
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Django Documentation](https://docs.djangoproject.com/en/stable/) - Official Django docs

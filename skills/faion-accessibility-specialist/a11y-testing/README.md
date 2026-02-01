@@ -279,6 +279,14 @@ Prioritize issues:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate test cases from requirements | haiku | Pattern-based generation |
+| Review test coverage gaps | sonnet | Requires code understanding |
+| Design test architecture | opus | Complex coverage strategies |
+
 ## Sources
 
 - [WebAIM: Accessibility Testing](https://webaim.org/articles/testing/)

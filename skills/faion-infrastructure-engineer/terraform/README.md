@@ -283,6 +283,16 @@ terraform/
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Terraform module creation | sonnet | IaC pattern expertise |
+| State management strategy | sonnet | Infrastructure knowledge |
+| Workspace configuration | haiku | Standard setup |
+| Remote backend setup | haiku | Mechanical configuration |
+
 ## Sources
 
 - [Terraform Documentation](https://developer.hashicorp.com/terraform)

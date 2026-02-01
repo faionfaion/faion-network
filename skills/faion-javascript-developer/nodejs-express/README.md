@@ -304,6 +304,15 @@ app.post('/users', async (req, res, next) => {
 });
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Express middleware ordering | sonnet | Request pipeline design |
+| Error handling strategy | sonnet | Robustness patterns |
+| Route organization | haiku | File structure convention |
+
 ## Sources
 
 - [Express.js Documentation](https://expressjs.com/en/guide/) - Official guide

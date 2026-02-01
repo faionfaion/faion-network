@@ -395,6 +395,15 @@ if (isUser(data)) {
 }
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| null/undefined handling | sonnet | Type safety analysis |
+| Type error resolution | sonnet | Type debugging |
+| Strict flag configuration | haiku | Configuration setup |
+
 ## Sources
 
 - [TypeScript Documentation](https://www.typescriptlang.org/docs/) - Official TypeScript docs

@@ -586,3 +586,11 @@ th, td {
 - [Google Mobile-Friendly Guidelines](https://developers.google.com/search/mobile-sites)
 - [CSS Tricks - A Complete Guide to Flexbox](https://css-tricks.com/snippets/css/a-guide-to-flexbox/)
 - [CSS Tricks - A Complete Guide to Grid](https://css-tricks.com/snippets/css/complete-guide-grid/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

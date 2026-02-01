@@ -126,6 +126,15 @@ Reasoning-first architectures represent a paradigm shift from "System 1" (fast, 
 - [faion-ai-agents](../faion-ai-agents/CLAUDE.md) - Agent architectures
 - [cost-optimization](../cost-optimization/README.md) - Cost strategies
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Architecture design | opus | System design |
+| Reasoning pipeline | opus | Complex logic |
+| Output refinement | sonnet | Quality improvement |
+
 ## Sources
 
 - [OpenAI o3 and o4-mini Introduction](https://openai.com/index/introducing-o3-and-o4-mini/)

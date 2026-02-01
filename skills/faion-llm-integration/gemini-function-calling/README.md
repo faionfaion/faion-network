@@ -436,6 +436,14 @@ data = ExtractedData.model_validate_json(response.text)
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Function definition | haiku | Schema creation |
+| Response parsing | sonnet | Integration |
+
 ## Sources
 
 - [Gemini Function Calling](https://ai.google.dev/docs/function_calling)

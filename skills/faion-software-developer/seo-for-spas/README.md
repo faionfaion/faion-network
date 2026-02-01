@@ -602,3 +602,11 @@ export default function OGImage(request: Request) {
 - [Schema.org](https://schema.org/)
 - [Open Graph Protocol](https://ogp.me/)
 - [Core Web Vitals](https://web.dev/vitals/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

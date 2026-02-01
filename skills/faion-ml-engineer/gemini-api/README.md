@@ -217,6 +217,14 @@ model = GenerativeModel("gemini-1.5-pro")
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gemini setup | haiku | Configuration |
+| Multimodal features | sonnet | Feature utilization |
+
 ## Sources
 
 - [Google AI Studio](https://aistudio.google.com/)

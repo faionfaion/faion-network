@@ -84,3 +84,11 @@ spacing = { 0, 1, 2, 4, 8, 16 }
 
 - `npm run storybook` — dev server
 - `npm run build-storybook` — static build
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

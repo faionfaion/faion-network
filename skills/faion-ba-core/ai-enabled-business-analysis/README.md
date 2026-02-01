@@ -77,3 +77,11 @@ Gartner's AI TRiSM (Trust, Risk, and Security Management) helps ensure AI model 
 - [ ] Performance monitoring planned
 - [ ] Continuous improvement process
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ai-enabled-business-analysis pattern | haiku | Straightforward implementation |
+| Review ai-enabled-business-analysis implementation | sonnet | Requires code analysis |
+| Optimize ai-enabled-business-analysis design | opus | Complex trade-offs |
+

@@ -612,3 +612,11 @@ faion-net (analyze further)
 
 *Decision Trees v1.0*
 *Reference: Azure AI Agent Design Patterns, InfoQ Architectural Decisions Framework*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

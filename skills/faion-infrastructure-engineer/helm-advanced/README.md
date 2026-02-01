@@ -330,3 +330,12 @@ annotations:
 - [Helm Chart Tests](https://helm.sh/docs/topics/chart_tests/)
 - [Chart Tips and Tricks](https://helm.sh/docs/howto/charts_tips_and_tricks/)
 - [Best Practices Guide](https://helm.sh/docs/chart_best_practices/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Library chart design | opus | Architecture decision |
+| Helm hooks implementation | sonnet | Hook pattern expertise |
+| Umbrella chart composition | sonnet | Chart orchestration |
+| Helm test framework setup | sonnet | Testing pattern |

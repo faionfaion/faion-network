@@ -287,6 +287,12 @@ Testing multiple changes at once requires exponentially more traffic:
 - [ ] Decision documented
 - [ ] Learnings shared
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User experience testing feedback | sonnet | Analysis required: synthesizing usability testing results |
+
 ## Sources
 
 - [Trustworthy Online Controlled Experiments: A Practical Guide to A/B Testing](https://experimentguide.com/) - Comprehensive guide by Microsoft researchers

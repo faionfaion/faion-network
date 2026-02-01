@@ -515,6 +515,14 @@ jobs:
 - **Disabled focus outlines** - Make them better, not invisible
 - **Inaccessible custom components** - Use native elements or ARIA properly
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)

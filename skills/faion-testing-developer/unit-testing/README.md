@@ -188,6 +188,14 @@ Examples:
 - [xUnit Test Patterns](http://xunitpatterns.com/)
 - [Martin Fowler on Unit Tests](https://martinfowler.com/bliki/UnitTest.html)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [LLM Testing Best Practices](https://www.confident-ai.com/blog/llm-testing-in-2024-top-methods-and-strategies)

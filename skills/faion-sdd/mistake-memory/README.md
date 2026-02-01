@@ -217,6 +217,14 @@ Mistake Memory feeds into the PDCA reflexion cycle:
 3. **Regular review** - Are preventions working?
 4. **Low friction** - Easy to follow
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
+
 ## Related Methodologies
 
 | File | Description |

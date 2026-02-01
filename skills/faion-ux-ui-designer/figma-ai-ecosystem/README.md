@@ -38,6 +38,12 @@ Figma has evolved from a design tool to an end-to-end platform for bringing idea
 
 **Advantage:** Works directly on canvas, no export/re-import cycle.
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Figma component updates | haiku | Mechanical task: updating UI components based on design specs |
+
 ## Sources
 
 - [Figma AI Official](https://www.figma.com/ai/)

@@ -41,3 +41,9 @@ Accessibility testing is time-consuming. Manual audits require significant exper
 ```
 
 **Key Insight:** "AI is a force multiplier for accessibility programs. By combining automation with human expertise, organizations can scale faster, reduce manual effort, and demonstrate ROI."
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Accessibility audit | haiku | Systematic check: verifying WCAG compliance criteria |

@@ -319,6 +319,12 @@ Detect card type automatically.
 - UX research community: Heuristic Evaluation
 - How to Conduct a Heuristic Evaluation
 - Usability Inspection Methods
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Heuristic evaluation | haiku | Pattern application: checking against established usability heuristics |
+
 ## Sources
 
 - [10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) - Nielsen Norman Group original

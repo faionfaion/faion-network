@@ -121,3 +121,11 @@ flying cars and glass buildings,
 - [Black Forest Labs (Flux)](https://bfl.ai/)
 - [Replicate API](https://replicate.com/docs)
 - [HuggingFace SDXL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Prompt crafting | sonnet | Prompt engineering |
+| Model selection | haiku | Tool selection |
+| Image quality optimization | sonnet | Quality tuning |

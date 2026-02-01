@@ -40,3 +40,11 @@ None directly - uses research and SDD skills.
 - Product Lifecycle
 - Product Launch
 - Backlog Management
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

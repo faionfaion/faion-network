@@ -137,6 +137,15 @@ spec:
 | [gcp-compute/](../gcp-compute/) | Compute Engine |
 | [gcp-networking/](../gcp-networking/) | VPC, subnets |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cloud Run service deployment | haiku | Straightforward deployment |
+| Memory/CPU allocation | sonnet | Performance analysis |
+| Traffic splitting strategy | sonnet | Deployment patterns |
+
 ## Sources
 
 - [Cloud Run Documentation](https://cloud.google.com/run/docs)

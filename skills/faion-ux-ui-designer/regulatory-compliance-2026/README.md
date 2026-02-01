@@ -22,3 +22,9 @@
 - [ ] User testing with assistive tech
 - [ ] Regular audits scheduled
 - [ ] Remediation plan for issues
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Regulatory Compliance 2026 | haiku | Task execution: applying established methodologies |

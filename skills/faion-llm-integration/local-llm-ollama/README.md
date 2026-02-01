@@ -481,3 +481,11 @@ docker exec -it <container_id> ollama pull llama3.1:8b
 - [Ollama GitHub](https://github.com/ollama/ollama)
 - [Ollama Model Library](https://ollama.com/library)
 - [Ollama Python Library](https://github.com/ollama/ollama-python)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Ollama setup | haiku | Installation |
+| Model loading | haiku | Configuration |
+| Performance optimization | sonnet | Tuning expertise |

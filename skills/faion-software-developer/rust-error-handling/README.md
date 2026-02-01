@@ -431,3 +431,11 @@ fn process() -> Result<(), ProcessError> {
 - [thiserror crate](https://docs.rs/thiserror)
 - [anyhow crate](https://docs.rs/anyhow)
 - [Error Handling in Rust](https://blog.burntsushi.net/rust-error-handling/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

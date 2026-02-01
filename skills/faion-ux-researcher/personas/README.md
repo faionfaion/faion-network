@@ -335,6 +335,12 @@ make her look informed in leadership meetings (job).
 - About Face by Alan Cooper
 - The Inmates Are Running the Asylum
 - UX research community: Personas
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Personas | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Personas](https://www.nngroup.com/articles/persona/) - Nielsen Norman Group guide

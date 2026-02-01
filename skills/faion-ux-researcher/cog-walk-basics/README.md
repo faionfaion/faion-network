@@ -169,6 +169,12 @@ A usability inspection method where evaluators step through a task from first-ti
 - Track fixes
 - Consider re-evaluation
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cognitive Walkthrough: Basics | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Usability Inspection Methods](https://www.nngroup.com/articles/how-to-conduct-a-heuristic-evaluation/) - Nielsen Norman Group comprehensive guide

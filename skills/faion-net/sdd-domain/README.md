@@ -31,3 +31,11 @@ None directly - uses methodologies embedded in faion-sdd.
 - Quality Gates & Confidence
 - Reflexion Learning
 - Backlog Grooming & Roadmapping
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -265,6 +265,14 @@ Keep all interactions in comfortable zone:
 - Understandable: Clear instructions
 - Robust: Works with AT
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Scan page for WCAG violations | haiku | Pattern-based automated detection |
+| Review accessibility audit results | sonnet | Requires expert judgment |
+| Design accessible system architecture | opus | Complex trade-offs |
+
 ## Sources
 
 - [W3C: XR Accessibility User Requirements](https://www.w3.org/TR/xaur/)

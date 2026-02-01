@@ -33,6 +33,12 @@ The W3C Design Tokens Community Group is developing a standard format for design
 4. Plan migration strategy
 5. Monitor standard progress
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [W3C Design Tokens Community Group](https://www.w3.org/community/design-tokens/)

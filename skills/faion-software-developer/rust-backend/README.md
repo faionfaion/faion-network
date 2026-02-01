@@ -568,6 +568,14 @@ async fn test_list_users_pagination() {
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Rust Axum](https://docs.rs/axum/latest/axum/)

@@ -32,3 +32,11 @@ GTM strategy, landing pages, content marketing. Ads (Meta/Google), email campaig
 - SEO (12 methodologies)
 - Paid Ads (12 methodologies)
 - Email Marketing (12 methodologies)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -310,6 +310,14 @@ class BatchImageGenerator:
 - Content violations → rejections
 - Overcomplication → conflicting details
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate images from prompts | haiku | API calls and parameter tuning |
+| Create batch image variations | haiku | Mechanical image generation workflow |
+| Design image generation pipeline | sonnet | Architecture and error handling |
+
 ## Sources
 
 - [DALL-E 3 API Documentation](https://platform.openai.com/docs/guides/images)

@@ -48,3 +48,11 @@ Building AI/LLM applications. RAG pipelines, embeddings, fine-tuning, multimodal
 - Fine-tuning (6 methodologies)
 - Prompt Engineering (6 methodologies)
 - Multimodal (8 methodologies)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

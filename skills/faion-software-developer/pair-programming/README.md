@@ -353,3 +353,11 @@ then we can compare."
 - [On Pair Programming - Martin Fowler](https://martinfowler.com/articles/on-pair-programming.html)
 - [Strong-Style Pairing - Llewellyn Falco](https://llewellynfalco.blogspot.com/2014/06/llewellyns-strong-style-pairing.html)
 - [Tuple - The Pairing Tool](https://tuple.app/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

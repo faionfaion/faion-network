@@ -422,3 +422,11 @@ fn good_return() -> String {
 - [Rust by Example - Ownership](https://doc.rust-lang.org/rust-by-example/scope.html)
 - [The Rustonomicon](https://doc.rust-lang.org/nomicon/)
 - [Too Many Linked Lists](https://rust-unofficial.github.io/too-many-lists/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

@@ -242,6 +242,14 @@ def generate_debt_report(directory: str) -> dict:
 - [The Pragmatic Programmer](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/)
 - [Refactoring: Improving the Design of Existing Code](https://refactoring.com/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [tech-debt-management.md](tech-debt-management.md) - Prioritization and payoff strategies

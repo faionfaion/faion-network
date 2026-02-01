@@ -36,6 +36,12 @@ spacing.component.button
 typography.heading.xl
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token organization | haiku | Systematic task: creating and organizing design tokens |
+
 ## Sources
 
 - [Design Token Naming Best Practices](https://www.designsystems.com/token-naming/)

@@ -385,3 +385,12 @@ console.log(message.content[0].text);
 - [claude-advanced-features.md](claude-advanced-features.md) - Extended Thinking, Computer Use, Caching, Batch
 - [claude-tool-use.md](claude-tool-use.md) - Tool use, function calling, structured output
 - [claude-best-practices.md](claude-best-practices.md) - Best practices, optimization, patterns
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| API key configuration | haiku | Credential setup |
+| Model selection for task | sonnet | Model trade-off analysis |
+| Token counting | haiku | Straightforward calculation |
+| Rate limit handling | sonnet | Retry strategy design |

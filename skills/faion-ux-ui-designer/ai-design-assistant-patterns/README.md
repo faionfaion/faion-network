@@ -44,6 +44,12 @@ Designers need context-aware help without breaking flow.
 - Brand judgment
 - Strategic decisions
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Figma AI Features](https://www.figma.com/blog/ai/)

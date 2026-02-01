@@ -262,6 +262,14 @@ tokens/
 - [Tokens Studio](https://tokens.studio/)
 - [Design Tokens Format Module](https://tr.designtokens.org/format/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [design-tokens-implementation.md](design-tokens-implementation.md) - Implementation, tooling, usage

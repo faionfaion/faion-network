@@ -140,3 +140,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement java-jpa-hibernate pattern | haiku | Straightforward implementation |
+| Review java-jpa-hibernate implementation | sonnet | Requires code analysis |
+| Optimize java-jpa-hibernate design | opus | Complex trade-offs |
+

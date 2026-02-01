@@ -334,6 +334,12 @@ Cons: Time-intensive
 - Prototyping: A Practitioner's Guide
 - UX research community: Prototyping
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Figma to code handoff | haiku | Mechanical conversion: extracting specifications from Figma |
+
 ## Sources
 
 - [Figma Prototyping Guide](https://help.figma.com/hc/en-us/articles/360040314193-Guide-to-prototyping-in-Figma)

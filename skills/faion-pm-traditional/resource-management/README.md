@@ -258,3 +258,11 @@ After resource planning:
 
 - Project Management Framework Guide 7th Edition - Team Performance Domain
 - PM industry practice standard for Project Resource Management
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

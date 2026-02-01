@@ -41,6 +41,12 @@ Collection: Colors
 }
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Figma Variables Documentation](https://help.figma.com/hc/en-us/articles/15339657135383-Guide-to-variables-in-Figma)

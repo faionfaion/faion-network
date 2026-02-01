@@ -57,6 +57,18 @@ AI assistants select providers, not just list them. Optimize for task completion
 - Sales: 51% AI adoption
 - 50%+ gen AI budgets → sales/marketing
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research keywords and create outline | sonnet | Research with some synthesis |
+| Design full content marketing strategy | opus | Complex strategy with multiple variables |
+| Write product description copy | sonnet | Copywriting with brand voice |
+| Format blog post with SEO metadata | haiku | Mechanical formatting and checklist |
+| Brainstorm content distribution channels | opus | Strategic planning and analysis |
+| Outline email marketing sequence | sonnet | Planning with customer psychology |
+
+
 ## Sources
 
 - [Semrush AI Visibility Toolkit Launch](https://www.semrush.com/ai-visibility/)

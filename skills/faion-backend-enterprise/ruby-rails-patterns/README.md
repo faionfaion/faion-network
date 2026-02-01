@@ -117,3 +117,11 @@ end
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ruby-rails-patterns pattern | haiku | Straightforward implementation |
+| Review ruby-rails-patterns implementation | sonnet | Requires code analysis |
+| Optimize ruby-rails-patterns design | opus | Complex trade-offs |
+

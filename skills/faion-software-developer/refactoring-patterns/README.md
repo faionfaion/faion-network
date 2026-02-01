@@ -581,3 +581,11 @@ class Order:
 - [Refactoring Catalog](https://refactoring.com/catalog/)
 - [Working Effectively with Legacy Code](https://www.oreilly.com/library/view/working-effectively-with/0131177052/)
 - [Clean Code by Robert Martin](https://www.oreilly.com/library/view/clean-code-a/9780136083238/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

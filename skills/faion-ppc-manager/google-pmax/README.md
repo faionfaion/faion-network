@@ -333,6 +333,14 @@ def get_pmax_performance(client, customer_id, campaign_id, start_date, end_date)
 
 *Part of faion-ppc-manager skill*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Performance Max Campaigns](https://support.google.com/google-ads/answer/10724817)

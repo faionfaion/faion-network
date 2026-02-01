@@ -102,6 +102,15 @@ Modern AI systems use 2-3 models with intelligent routing:
 - [cost-optimization/](../cost-optimization/README.md) - Cost optimization strategies
 - [model-evaluation/](../model-evaluation/README.md) - Evaluation frameworks
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Framework design | sonnet | Architecture planning |
+| Decision logic | sonnet | Algorithm design |
+| Trade-off analysis | opus | Complex decisions |
+
 ## Sources
 
 - [LLM Model Comparison Guide 2025](https://www.helicone.ai/blog/the-complete-llm-model-comparison-guide)

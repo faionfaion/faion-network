@@ -141,3 +141,11 @@ Text-to-Speech (TTS) converts written text into natural-sounding audio. Modern A
 - [Azure Speech Service](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/)
 - [SSML Reference](https://cloud.google.com/text-to-speech/docs/ssml)
 - [Coqui TTS](https://github.com/coqui-ai/TTS)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| TTS model selection | haiku | Tool selection |
+| Voice synthesis tuning | sonnet | Quality optimization |
+| Real-time streaming | sonnet | Performance pattern |

@@ -250,6 +250,14 @@ What would you change for [Python/TypeScript/Go]?"
 | [templates.md](templates.md) | Copy-paste templates for each pattern |
 | [llm-prompts.md](llm-prompts.md) | Effective prompts for LLM-assisted design |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [creational-patterns/](../creational-patterns/) - Object creation patterns

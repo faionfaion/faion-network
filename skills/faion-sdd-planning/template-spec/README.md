@@ -158,6 +158,14 @@ After spec is approved:
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
 ## Related
 
 - **Design template:** [template-design.md](template-design.md)

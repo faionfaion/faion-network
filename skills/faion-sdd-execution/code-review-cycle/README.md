@@ -356,6 +356,14 @@ review_metrics:
     - knowledge_sharing: "FYI comments"
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Sources
 
 - [Google Code Review Guidelines](https://google.github.io/eng-practices/review/)

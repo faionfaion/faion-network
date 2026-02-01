@@ -463,6 +463,12 @@ After analysis:
 - Just Enough Research by Erika Hall
 - Competitive Strategy by Michael Porter
 - UX research community: Competitive Usability Evaluations
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Card sorting analysis | haiku | Systematic analysis: categorizing and counting sort results |
+
 ## Sources
 
 - [Competitive Usability Evaluations](https://www.nngroup.com/articles/competitive-usability-evaluations/) - Nielsen Norman Group guide

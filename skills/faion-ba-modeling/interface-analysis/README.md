@@ -342,3 +342,11 @@ After interface analysis:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Interface Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement interface-analysis pattern | haiku | Straightforward implementation |
+| Review interface-analysis implementation | sonnet | Requires code analysis |
+| Optimize interface-analysis design | opus | Complex trade-offs |
+

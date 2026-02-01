@@ -330,6 +330,14 @@ class ImagePipeline:
 - Hardcoded prompts → difficult to maintain
 - No error handling → service failures break pipeline
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate images from prompts | haiku | API calls and parameter tuning |
+| Create batch image variations | haiku | Mechanical image generation workflow |
+| Design image generation pipeline | sonnet | Architecture and error handling |
+
 ## Sources
 
 - [Replicate API Documentation](https://replicate.com/docs)

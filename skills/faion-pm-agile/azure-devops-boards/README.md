@@ -429,3 +429,11 @@ curl -X POST \
 - [WIQL Syntax](https://learn.microsoft.com/en-us/azure/devops/boards/queries/wiql-syntax)
 - [Azure DevOps REST API](https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/)
 - [Analytics Service](https://learn.microsoft.com/en-us/azure/devops/report/powerbi/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

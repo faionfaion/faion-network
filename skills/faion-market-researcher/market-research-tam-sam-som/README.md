@@ -376,3 +376,11 @@ Year 3 target: X customers × $X = $X
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| TAM calculation | sonnet | Market sizing |
+| SAM determination | sonnet | Target market |
+| SOM forecasting | sonnet | Growth projection |

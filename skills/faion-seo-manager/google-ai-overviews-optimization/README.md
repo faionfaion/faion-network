@@ -71,6 +71,14 @@ High AI Overview presence = more optimization needed:
 - Computers & Electronics
 - People & Society
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Keyword research and extraction | haiku | Data lookup, list compilation |
+| Analyzing SEO metrics | sonnet | Comparative analysis, pattern detection |
+| Developing SEO strategy | opus | Complex strategy formulation, market positioning |
+
 ## Sources
 
 - [Google AI Overview Documentation](https://support.google.com/websearch/answer/13451556)

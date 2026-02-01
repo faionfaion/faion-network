@@ -424,3 +424,15 @@ def test_password_reset_sends_email():
 - [pytest-cov](https://pytest-cov.readthedocs.io/)
 - [Jest Coverage](https://jestjs.io/docs/configuration#collectcoverage-boolean)
 - [Codecov Documentation](https://docs.codecov.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Review code for architectural violations | sonnet | Code review with pattern matching |
+| Refactor legacy code to clean architecture | opus | Complex refactoring with trade-offs |
+| Calculate code coverage for module | haiku | Metric collection and reporting |
+| Design domain-driven architecture | opus | Strategic design decision |
+| Write test cases for edge cases | sonnet | Testing with reasoning about coverage |
+| Apply decomposition pattern to class | sonnet | Refactoring with patterns |
+

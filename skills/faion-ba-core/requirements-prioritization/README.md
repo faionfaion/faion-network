@@ -343,3 +343,11 @@ After prioritization:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Prioritization Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract requirements from documents | haiku | Pattern matching |
+| Validate requirement completeness | sonnet | Requires BA expertise |
+| Analyze requirement trade-offs | opus | Complex business analysis |
+

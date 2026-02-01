@@ -508,3 +508,11 @@ class ChatRoomManager:
 - [FastAPI WebSockets](https://fastapi.tiangolo.com/advanced/websockets/)
 - [Socket.io Documentation](https://socket.io/docs/v4/)
 - [RFC 6455 - WebSocket Protocol](https://datatracker.ietf.org/doc/html/rfc6455)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

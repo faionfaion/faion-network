@@ -221,6 +221,14 @@ Frequency: Continuous (every deploy)
 - AI in CMS platforms (WordPress, Drupal)
 - AI in testing frameworks (Playwright, Cypress)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Scan page for WCAG violations | haiku | Pattern-based automated detection |
+| Review accessibility audit results | sonnet | Requires expert judgment |
+| Design accessible system architecture | opus | Complex trade-offs |
+
 ## Sources
 
 - [WebAIM: The WebAIM Million - 2026 Report](https://webaim.org/projects/million/)

@@ -280,3 +280,11 @@ if __name__ == "__main__":
 - [pytest-benchmark](https://pytest-benchmark.readthedocs.io/)
 - [Google Web Vitals](https://web.dev/vitals/)
 - [Performance Testing Guidance](https://www.perfmatrix.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

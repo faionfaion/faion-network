@@ -279,6 +279,12 @@ Prioritize issues:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Accessibility audit | haiku | Systematic check: verifying WCAG compliance criteria |
+
 ## Sources
 
 - [WebAIM: Accessibility Testing](https://webaim.org/articles/testing/)

@@ -202,6 +202,14 @@ Last updated: [Date]
 - Caption videos before posting
 - Use alt text on images
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ada-title-ii-compliance-2026 pattern | haiku | Straightforward implementation |
+| Review ada-title-ii-compliance-2026 implementation | sonnet | Requires code analysis |
+| Optimize ada-title-ii-compliance-2026 design | opus | Complex trade-offs |
+
 ## Sources
 
 - [DOJ: Web Accessibility Rule (Final Rule)](https://www.ada.gov/resources/2024-03-08-web-rule/)

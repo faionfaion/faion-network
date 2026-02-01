@@ -196,6 +196,15 @@ infrastructure/
 - [Crossplane Documentation](https://docs.crossplane.io/)
 - [GitOps Principles](https://opengitops.dev/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| IaC tool selection | sonnet | Evaluation of tools |
+| GitOps integration planning | sonnet | Workflow design |
+| Version control strategy | haiku | Standard practices |
+
 ## Sources
 
 - [Infrastructure as Code Best Practices](https://spacelift.io/blog/infrastructure-as-code)

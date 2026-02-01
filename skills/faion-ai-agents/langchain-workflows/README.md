@@ -403,3 +403,11 @@ def smart_route(state: WorkflowState) -> str:
 
 *Part of faion-langchain-skill v1.0*
 *See also: [langchain-chains.md](langchain-chains.md), [langchain-agents-architectures.md](langchain-agents-architectures.md), [langchain-agents-multi-agent.md](langchain-agents-multi-agent.md), [langchain-memory.md](langchain-memory.md)*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement langchain-workflows pattern | haiku | Straightforward implementation |
+| Review langchain-workflows implementation | sonnet | Requires code analysis |
+| Optimize langchain-workflows design | opus | Complex trade-offs |
+

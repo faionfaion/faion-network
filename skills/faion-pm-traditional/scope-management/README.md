@@ -325,3 +325,11 @@ After scope definition:
 
 - Project Management Framework Guide 7th Edition - Planning Performance Domain
 - PM industry practice standard for Project Scope Management
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Document scope baseline | haiku | Scope statement creation |
+| Track scope changes | sonnet | Impact analysis and approval |
+| Manage scope creep | opus | Strategic scope decisions |
+

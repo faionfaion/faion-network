@@ -608,3 +608,11 @@ module.exports = {
 - [Headless UI](https://headlessui.dev/)
 - [Class Variance Authority](https://cva.style/docs)
 - [tailwind-merge](https://github.com/dcastil/tailwind-merge)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

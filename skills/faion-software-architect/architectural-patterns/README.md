@@ -393,6 +393,14 @@ These patterns work exceptionally well with LLM coding assistants because:
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Pattern implementation | sonnet | Code structure and dependencies |
+| Architecture decision | opus | Comparing architectural trade-offs |
+| Module organization | haiku | Applying standard folder structures |
 ## Related Files
 
 | File | Purpose |

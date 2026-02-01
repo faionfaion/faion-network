@@ -332,6 +332,12 @@ Testing phase:
 - Material Design: Mobile Guidelines
 - iOS Human Interface Guidelines
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Mobile UX Design Basics | sonnet | Design work: Mobile UX Design Basics requires analysis and iteration |
+
 ## Sources
 
 - [Mobile UX Design](https://www.nngroup.com/articles/mobile-ux/) - Nielsen Norman Group

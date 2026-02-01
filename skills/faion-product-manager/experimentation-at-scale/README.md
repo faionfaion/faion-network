@@ -63,3 +63,11 @@ Ad-hoc A/B testing doesn't build organizational learning.
 | Statsig | Enterprise scale (1T+ events/day) |
 | Amplitude | All-in-one analytics + experimentation |
 | Eppo | Warehouse-native, statistical rigor |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

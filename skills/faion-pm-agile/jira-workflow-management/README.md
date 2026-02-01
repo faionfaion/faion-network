@@ -231,3 +231,11 @@ custom_fields:
 - [Jira Automation](https://www.atlassian.com/software/jira/guides/automation)
 - [JQL Reference](https://support.atlassian.com/jira-software-cloud/docs/jql-fields/)
 - [Jira REST API](https://developer.atlassian.com/cloud/jira/platform/rest/v3/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -346,3 +346,11 @@ After strategy analysis:
 
 - BA Framework Guide v3 - Strategy Analysis
 - BA industry Strategy Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement strategy-analysis pattern | haiku | Straightforward implementation |
+| Review strategy-analysis implementation | sonnet | Requires code analysis |
+| Optimize strategy-analysis design | opus | Complex trade-offs |
+

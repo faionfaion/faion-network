@@ -363,6 +363,14 @@ pattern_usage_report:
 - **Version control** - Track pattern evolution
 - **Index optimization** - Fast retrieval
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Sources
 
 - [Design Patterns (GoF)](https://www.oreilly.com/library/view/design-patterns-elements/0201633612/)

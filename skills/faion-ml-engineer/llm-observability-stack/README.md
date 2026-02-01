@@ -159,6 +159,15 @@ Need self-hosting (privacy/compliance)?
 - [cost-optimization/](../cost-optimization/README.md) - Cost reduction strategies
 - [model-evaluation/](../model-evaluation/README.md) - Quality evaluation frameworks
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Stack architecture | sonnet | System design |
+| Tool integration | sonnet | Integration |
+| Dashboard design | sonnet | Visualization |
+
 ## Sources
 
 - [Datadog LLM Observability](https://www.datadoghq.com/product/llm-observability/)

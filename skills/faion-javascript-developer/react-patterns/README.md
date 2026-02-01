@@ -218,6 +218,15 @@ const redStyle = { color: 'red' };
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Render props pattern | sonnet | Pattern expertise |
+| Compound components design | sonnet | API design |
+| Higher-order components | sonnet | Pattern trade-offs |
+
 ## Sources
 
 - [React Documentation](https://react.dev/) - Official React docs

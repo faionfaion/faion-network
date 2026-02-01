@@ -345,6 +345,12 @@ Validation phase:
 - [ ] Navigation tested
 - [ ] Iterations made
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Information architecture strategy | opus | Strategic design: planning complete IA for complex applications |
+
 ## Sources
 
 - [IA Deliverables](https://www.nngroup.com/articles/ia-deliverables/) - Nielsen Norman Group

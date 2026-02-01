@@ -238,6 +238,14 @@ See [llm-prompts.md](llm-prompts.md) for effective prompts.
 - "Software Architecture in Practice" by Bass, Clements, and Kazman
 - "Design It!" by Michael Keeling
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
 ## Related Files
 
 - [checklist.md](checklist.md) - Step-by-step checklist for writing ADRs

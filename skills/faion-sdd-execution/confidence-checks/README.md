@@ -145,6 +145,14 @@ GENERATE → ASSESS → VERIFY → DECIDE
 | No evidence gathering | Always verify with tests or review |
 | Skipping uncertainty documentation | Document what you're unsure about |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Sources
 
 - [AI Confidence Calibration](https://arxiv.org/abs/2207.08799)

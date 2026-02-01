@@ -514,3 +514,11 @@ module.exports = {
 - [Babel Documentation](https://babel.pocoo.org/)
 - [react-intl Documentation](https://formatjs.io/docs/react-intl/)
 - [W3C Internationalization](https://www.w3.org/International/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

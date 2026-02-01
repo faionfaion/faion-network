@@ -60,3 +60,15 @@ Key takeaways and trends for business analysis practices in 2025-2026.
 - **Created:** 2026-01-19
 - **Research Sources:** BA industry, Gartner, PwC, SAP Signavio, SS&C Blue Prism, Simplilearn, Modern Analyst, AdaptiveUS, Turing, SelectHub, Analytics8, Cprime
 - **Next Update:** 2026-06 (semi-annual review recommended)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gather and analyze requirements | sonnet | Complex reasoning about stakeholder needs |
+| Write acceptance criteria for features | sonnet | Requires testing perspective and detail |
+| Create process flow diagrams (BPMN) | opus | Architecture and complex modeling decisions |
+| Format requirements in templates | haiku | Mechanical formatting and pattern application |
+| Validate requirements with stakeholders | sonnet | Needs reasoning and communication planning |
+| Perform gap analysis between states | opus | Strategic analysis and trade-off evaluation |
+

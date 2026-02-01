@@ -313,6 +313,12 @@ Tree testing validates if users can find items in your proposed navigation.
 - UX research community: Card Sorting
 - Information Architecture: For the Web and Beyond
 - Optimal Workshop Resources
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Card sorting analysis | haiku | Systematic analysis: categorizing and counting sort results |
+
 ## Sources
 
 - [Card Sorting: A Definitive Guide](https://www.nngroup.com/articles/card-sorting-definition/) - Nielsen Norman Group methodology

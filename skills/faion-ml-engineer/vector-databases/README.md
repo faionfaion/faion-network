@@ -354,3 +354,11 @@ vector-databases/
 
 *Vector Databases v2.0*
 *Part of faion-ml-engineer skill*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Vector DB selection | sonnet | Tool evaluation |
+| Index optimization | sonnet | Performance tuning |
+| Query optimization | sonnet | Search tuning |

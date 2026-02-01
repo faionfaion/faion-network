@@ -348,3 +348,11 @@ result = debate.debate("AI will create more jobs than it eliminates")
 - [CrewAI](https://github.com/joaomdmoura/crewAI)
 - [MetaGPT](https://github.com/geekan/MetaGPT)
 - [Multi-Agent Survey](https://arxiv.org/abs/2308.08155)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

@@ -340,6 +340,12 @@ Vague: "How often do you use it?"
 - Survey Design Best Practices
 - Questionnaire Design by Oppenheim
 - Measuring the User Experience
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Testing strategy and framework | opus | Strategic design: planning comprehensive research methodology |
+
 ## Sources
 
 - [Survey Design 101](https://www.nngroup.com/articles/qualitative-surveys/) - Nielsen Norman Group

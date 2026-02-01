@@ -269,6 +269,12 @@ User must subscribe or refresh page
 - UX research community: 10 Usability Heuristics
 - Don Norman: The Design of Everyday Things
 - Inclusive Design Patterns
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [User Control and Freedom Heuristic](https://www.nngroup.com/articles/user-control-and-freedom/) - Nielsen Norman Group

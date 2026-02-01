@@ -141,3 +141,11 @@ $batch = Bus::batch([
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement php-laravel-queues pattern | haiku | Straightforward implementation |
+| Review php-laravel-queues implementation | sonnet | Requires code analysis |
+| Optimize php-laravel-queues design | opus | Complex trade-offs |
+

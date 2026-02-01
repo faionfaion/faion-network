@@ -424,3 +424,11 @@ def test_password_reset_sends_email():
 - [pytest-cov](https://pytest-cov.readthedocs.io/)
 - [Jest Coverage](https://jestjs.io/docs/configuration#collectcoverage-boolean)
 - [Codecov Documentation](https://docs.codecov.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

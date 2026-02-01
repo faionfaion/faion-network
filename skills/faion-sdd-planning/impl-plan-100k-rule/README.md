@@ -260,6 +260,14 @@ Wave 3: Create TASK_005, TASK_006 files (incorporate patterns)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Anthropic Claude Context Windows](https://docs.anthropic.com/claude/docs/models-overview) - Token limits documentation

@@ -703,3 +703,11 @@ command example
 ---
 
 *Development Practices - 40 Patterns*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement dev-methodologies-practices pattern | haiku | Straightforward implementation |
+| Review dev-methodologies-practices implementation | sonnet | Requires code analysis |
+| Optimize dev-methodologies-practices design | opus | Complex trade-offs |
+

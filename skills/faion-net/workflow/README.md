@@ -81,3 +81,11 @@ AskUserQuestion: "Що хочеш зробити?" options:
 1. Move feature from in-progress/ to done/
 2. Update roadmap.md status
 3. Offer next feature
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

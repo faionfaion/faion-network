@@ -321,6 +321,14 @@ def get_search_terms_report(client, customer_id, campaign_id, start_date, end_da
 
 *Part of faion-ppc-manager skill*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Search Campaign Guide](https://support.google.com/google-ads/answer/1722047)

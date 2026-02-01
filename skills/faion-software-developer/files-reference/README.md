@@ -251,3 +251,11 @@ Complete listing of all files in faion-software-developer skill.
 | [ab-testing-basics.md](ab-testing-basics.md) | A/B testing design and assignment |
 | [ab-testing-implementation.md](ab-testing-implementation.md) | Event tracking, analysis, reporting |
 | [claude-md-creation.md](claude-md-creation.md) | CLAUDE.md creation guide |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

@@ -295,6 +295,12 @@ Recognition-based design helps:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Recognition Rather Than Recall | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Nielsen Norman Group: Recognition vs. Recall in UX](https://www.nngroup.com/articles/recognition-and-recall/)

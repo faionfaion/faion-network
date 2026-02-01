@@ -402,6 +402,14 @@ end
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ruby-rails pattern | haiku | Straightforward implementation |
+| Review ruby-rails implementation | sonnet | Requires code analysis |
+| Optimize ruby-rails design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Ruby on Rails Guides](https://guides.rubyonrails.org/)

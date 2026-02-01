@@ -163,3 +163,11 @@ Open-source framework for RAG evaluation with reference-free metrics.
 - [RAG Evaluation - Pinecone](https://www.pinecone.io/learn/rag-evaluation/)
 - [RAG Evaluation - Qdrant](https://qdrant.tech/blog/rag-evaluation-guide/)
 - [LlamaIndex Evaluation](https://docs.llamaindex.ai/en/stable/module_guides/evaluating/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Retrieval metrics | sonnet | Evaluation framework |
+| Generation quality | sonnet | Quality assessment |
+| End-to-end evaluation | sonnet | System evaluation |

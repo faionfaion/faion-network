@@ -1727,6 +1727,14 @@ Executed by: faion-code-agent
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Python Documentation](https://docs.python.org/3/)

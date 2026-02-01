@@ -475,3 +475,11 @@ result = agent.run("Write a Python function to parse JSON", success_check=succes
 - [ReAct Paper](https://arxiv.org/abs/2210.03629)
 - [Reflexion Paper](https://arxiv.org/abs/2303.11366)
 - [LangChain Agents](https://python.langchain.com/docs/modules/agents/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

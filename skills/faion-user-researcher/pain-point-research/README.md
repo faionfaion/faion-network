@@ -309,3 +309,9 @@ So I can [outcome]
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research insights analysis | sonnet | Analysis required: identifying patterns and themes in qualitative data |

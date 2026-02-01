@@ -38,6 +38,12 @@ Audio output
 - Handle off-topic gracefully
 - Escalate when uncertain
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| LLM-Powered Conversational AI | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [OpenAI Speech-to-Text](https://platform.openai.com/docs/guides/speech-to-text)

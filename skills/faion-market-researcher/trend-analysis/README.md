@@ -259,7 +259,15 @@ Trend analysis is identifying and evaluating emerging patterns that could create
 |-------|----------|---------|--------|
 | [Name] | Early | Mainstream | [What changed] |
 
-### Sources Checked
+#
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Industry trend research | sonnet | Research and analysis |
+| Future prediction | opus | Speculative analysis |
+
+## Sources Checked
 - [ ] Google Trends
 - [ ] Product Hunt (last 30 days)
 - [ ] Hacker News front page (weekly)

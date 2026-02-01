@@ -200,3 +200,11 @@ How to identify and address solution limitations?
 
 *BA Strategy Methods*
 *Knowledge Areas: KA-4 Strategy, KA-6 Evaluation*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement strategy-methods pattern | haiku | Straightforward implementation |
+| Review strategy-methods implementation | sonnet | Requires code analysis |
+| Optimize strategy-methods design | opus | Complex trade-offs |
+

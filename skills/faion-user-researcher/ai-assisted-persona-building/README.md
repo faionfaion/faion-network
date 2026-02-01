@@ -39,3 +39,11 @@ When [situation],
 I want to [motivation],
 So I can [expected outcome].
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| AI-assisted persona synthesis | sonnet | Complex synthesis: combining multiple data sources into coherent personas |
+| Persona documentation | haiku | Mechanical task: formatting and organizing existing persona data |
+| Persona iteration and refinement | sonnet | Design feedback: iterating personas based on new data and validation |

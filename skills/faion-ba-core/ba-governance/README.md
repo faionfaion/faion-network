@@ -147,3 +147,11 @@ How to prepare effectively for elicitation activities?
 
 *BA Governance & Planning Methodologies*
 *Knowledge Area: KA-1 Planning*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ba-governance pattern | haiku | Straightforward implementation |
+| Review ba-governance implementation | sonnet | Requires code analysis |
+| Optimize ba-governance design | opus | Complex trade-offs |
+

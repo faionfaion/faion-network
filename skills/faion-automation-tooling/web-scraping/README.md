@@ -475,3 +475,11 @@ async function scrapeToCSV(page, url, outputPath) {
 | Count elements | `(await page.$$(sel)).length` | `await page.locator(sel).count()` |
 | Check existence | `await page.$(sel) !== null` | `await page.locator(sel).count() > 0` |
 | Wait for element | `page.waitForSelector(sel)` | `page.waitForSelector(sel)` |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+

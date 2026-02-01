@@ -82,6 +82,20 @@ CLG = Community of consumers drives growth instead of company marketing.
 - Webflow: No-code designer community
 - Duolingo: Language learning forums
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Map funnel metrics and baseline metrics | haiku | Direct query of existing data |
+| A/B test hypothesis generation and prioritization | sonnet | Reasoning about impact/confidence/ease |
+| Landing page copywriting and design feedback | sonnet | Creative iteration, user psychology |
+| Funnel optimization campaign setup | opus | Complex multi-funnel strategy, org-wide impact |
+| Free trial flow analysis and recommendations | sonnet | Understanding conversion psychology |
+| PLG product strategy and feature design | opus | Architecture decisions, product-market fit |
+| Onboarding flow user testing interpretation | sonnet | Qualitative analysis and recommendations |
+
+---
+
 ## Sources
 
 - [CMX Community Industry Report 2026](https://cmxhub.com/community-industry-report/)

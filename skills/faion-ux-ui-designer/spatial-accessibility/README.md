@@ -32,3 +32,9 @@ Spatial interfaces introduce new accessibility challenges.
 → Allow teleportation only
 → Adjust interaction zones
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Accessibility audit | haiku | Systematic check: verifying WCAG compliance criteria |

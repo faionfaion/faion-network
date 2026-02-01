@@ -508,6 +508,15 @@ class MonitoredClaudeClient:
 - [claude-advanced-features.md](claude-advanced-features.md) - Extended Thinking, Computer Use, Caching, Batch
 - [claude-tool-use.md](claude-tool-use.md) - Tool use, function calling, structured output
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Prompt quality assessment | sonnet | Evaluation expertise |
+| Token efficiency optimization | sonnet | Performance tuning |
+| Cost-quality balance | sonnet | Trade-off analysis |
+
 ## Sources
 
 - [Anthropic API Documentation](https://docs.anthropic.com/)

@@ -119,3 +119,11 @@ await browser.close();
 *Browser Automation Skills v2.0 - 2026-01-23*
 *Decomposed from single 4712-line file into 4 modular files*
 *Each file <2000 tokens for efficient loading*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create CI/CD pipeline template | haiku | Pattern application |
+| Optimize pipeline performance | sonnet | Requires optimization skills |
+| Design CD rollback strategy | opus | Complex risk management |
+

@@ -37,3 +37,9 @@ Object recognition:
 → Provide clear virtual/real distinction
 → Allow environment scanning
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

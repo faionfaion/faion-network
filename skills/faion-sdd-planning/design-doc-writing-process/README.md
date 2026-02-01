@@ -240,6 +240,14 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Zalando RESTful API Guidelines](https://opensource.zalando.com/restful-api-guidelines/) - API design practices

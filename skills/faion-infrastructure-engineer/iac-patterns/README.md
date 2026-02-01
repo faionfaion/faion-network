@@ -125,6 +125,15 @@ PR Merged → terraform apply → post-deploy tests → notify
 | [terraform-modules/](../terraform-modules/) | Module development details |
 | [terraform-state/](../terraform-state/) | State management patterns |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| DRY principle application | sonnet | Pattern refactoring |
+| Module composition strategy | sonnet | Architecture design |
+| Testing IaC changes | sonnet | Validation patterns |
+
 ## Sources
 
 - [HashiCorp Module Creation Pattern](https://developer.hashicorp.com/terraform/tutorials/modules/pattern-module-creation)

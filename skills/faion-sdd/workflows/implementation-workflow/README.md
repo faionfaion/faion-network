@@ -1053,6 +1053,14 @@ git checkout feature-branch
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
 ## Related Workflows
 
 | Workflow | Relationship |

@@ -245,3 +245,15 @@ def generate_debt_report(directory: str) -> dict:
 ## Related
 
 - [tech-debt-management.md](tech-debt-management.md) - Prioritization and payoff strategies
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Review code for architectural violations | sonnet | Code review with pattern matching |
+| Refactor legacy code to clean architecture | opus | Complex refactoring with trade-offs |
+| Calculate code coverage for module | haiku | Metric collection and reporting |
+| Design domain-driven architecture | opus | Strategic design decision |
+| Write test cases for edge cases | sonnet | Testing with reasoning about coverage |
+| Apply decomposition pattern to class | sonnet | Refactoring with patterns |
+

@@ -139,3 +139,11 @@ public class UserService {
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement java-spring-boot pattern | haiku | Straightforward implementation |
+| Review java-spring-boot implementation | sonnet | Requires code analysis |
+| Optimize java-spring-boot design | opus | Complex trade-offs |
+

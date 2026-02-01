@@ -96,3 +96,11 @@ Need phone integration?
 - [Vapi Documentation](https://docs.vapi.ai/)
 - [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime)
 - [Twilio ConversationRelay](https://www.twilio.com/en-us/products/conversational-ai/conversationrelay)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice interface design | sonnet | UX pattern |
+| Real-time processing | sonnet | Performance optimization |
+| Conversation flow | sonnet | Dialog design |

@@ -328,6 +328,14 @@ $200/day seems optimal. Beyond that, efficiency drops too much. Better to add ne
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Ads Budget Report](https://support.google.com/google-ads/answer/6167135)

@@ -363,3 +363,10 @@ For [segment 2]: [Value delivered]
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Business model identification | sonnet | Pattern recognition |
+| Revenue stream analysis | sonnet | Financial modeling |

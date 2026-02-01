@@ -113,3 +113,11 @@ end
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ruby-activerecord pattern | haiku | Straightforward implementation |
+| Review ruby-activerecord implementation | sonnet | Requires code analysis |
+| Optimize ruby-activerecord design | opus | Complex trade-offs |
+

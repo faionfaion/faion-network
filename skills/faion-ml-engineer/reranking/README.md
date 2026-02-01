@@ -389,3 +389,11 @@ Use self-hosted for:
 | [examples.md](examples.md) | Code examples with different models |
 | [templates.md](templates.md) | Pipeline & configuration templates |
 | [llm-prompts.md](llm-prompts.md) | Prompts for debugging & optimization |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Reranker model selection | sonnet | Model evaluation |
+| Reranking pipeline | sonnet | Architecture design |
+| Quality improvement measurement | sonnet | Evaluation |

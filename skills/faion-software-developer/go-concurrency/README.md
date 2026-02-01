@@ -521,3 +521,11 @@ func increment(key string) {
 - [Go Concurrency Patterns: Context](https://go.dev/blog/context)
 - [Share Memory By Communicating](https://go.dev/blog/codelab-share)
 - [Advanced Go Concurrency Patterns](https://go.dev/blog/io2013-talk-concurrency)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

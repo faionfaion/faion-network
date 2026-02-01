@@ -30,6 +30,12 @@
 - Good for accessibility
 - Avoids arm fatigue
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice UI pattern application | sonnet | Complex interaction: designing multimodal conversational flows |
+
 ## Sources
 
 - [Apple Vision Pro Interaction](https://developer.apple.com/design/human-interface-guidelines/eyes)

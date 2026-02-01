@@ -237,6 +237,14 @@ Break-even: 1-3 audits per year
 - Build accessibility into development workflow
 - Use AI to make it sustainable
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Scan page for WCAG violations | haiku | Pattern-based automated detection |
+| Review accessibility audit results | sonnet | Requires expert judgment |
+| Design accessible system architecture | opus | Complex trade-offs |
+
 ## Sources
 
 - [Deque: AI-Powered Accessibility](https://www.deque.com/blog/ai-accessibility/)

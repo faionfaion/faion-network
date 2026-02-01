@@ -136,6 +136,14 @@ Recent research (2025-2026) shows LLM-based multi-agent systems can automate the
 
 Key insight: Keep specifications small and focused for better LLM generation quality.
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
 ## Related Files
 
 - [checklist.md](checklist.md) - API-first development checklist

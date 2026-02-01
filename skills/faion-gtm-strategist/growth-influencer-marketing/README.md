@@ -344,6 +344,20 @@ Why it worked: [Analysis]
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Update pricing table, format case study, organize docs | haiku | Direct content organization |
+| Evaluate Product Hunt launch readiness | sonnet | Strategic assessment and feedback |
+| Analyze competitor positioning vs our messaging | sonnet | Competitive analysis |
+| Design go-to-market strategy for new market | opus | Comprehensive strategic planning |
+| Create financial model and revenue projections | sonnet | Analysis and calculations |
+| Plan annual planning process and templates | opus | Organization-wide strategy design |
+| Review customer success playbook for churn | sonnet | Operational analysis and recommendations |
+
+---
+
 ## Sources
 
 - [HypeAuditor Influencer Marketing Guide](https://hypeauditor.com/blog/) - Influencer analytics and fraud detection

@@ -423,3 +423,11 @@ response = query_engine.query("What is RAG?")
 ---
 
 *LlamaIndex Agents & Evaluation v1.0*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

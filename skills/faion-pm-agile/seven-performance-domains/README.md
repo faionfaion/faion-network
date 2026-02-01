@@ -30,3 +30,11 @@ category: "pmbok8"
 - **Systems Thinking** - understand project in broader organizational context
 - **Sustainability** - environmental, social, and economic impact
 - **Governance Integration** - stronger portfolio/program/project links
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

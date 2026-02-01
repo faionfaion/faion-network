@@ -36,3 +36,11 @@ category: "pmbok8"
 - AI handles routine analysis and alerts
 - PMs focus on strategy, relationships, leadership
 - Build systems that complement human expertise
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

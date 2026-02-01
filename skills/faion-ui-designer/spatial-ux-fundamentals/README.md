@@ -32,6 +32,12 @@
 - Navigation aids
 - Background content
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Spatial UI design strategy | opus | Novel patterns: designing for XR/3D environments with new interaction models |
+
 ## Sources
 
 - [Spatial UX Design Principles](https://www.nngroup.com/articles/spatial-ux/)

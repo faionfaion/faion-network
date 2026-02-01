@@ -497,3 +497,11 @@ standup:
 - [Scrum Framework](https://scrumguides.org/)
 - [Agile Retrospectives (Derby & Larsen)](https://pragprog.com/titles/dlret/agile-retrospectives/)
 - [Retromat - Retro Ideas](https://retromat.org/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

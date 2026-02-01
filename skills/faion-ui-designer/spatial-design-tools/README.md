@@ -35,6 +35,12 @@ Traditional design tools don't support spatial design.
 - Performance optimization
 - Accessibility review
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [ShapesXR](https://www.shapesxr.com/)

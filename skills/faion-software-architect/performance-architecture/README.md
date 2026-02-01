@@ -435,6 +435,14 @@ Question: [What you need help with]
 - [awesome-scalability GitHub](https://github.com/binhnguyennus/awesome-scalability)
 - [System Design Primer](https://github.com/donnemartin/system-design-primer)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Capacity planning | opus | Complex infrastructure analysis |
+| Caching strategy | sonnet | Cache invalidation patterns |
+| Cache configuration | haiku | Redis/Memcached setup |
 ## Related Methodologies
 
 | Methodology | Relationship |

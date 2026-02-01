@@ -330,3 +330,11 @@ if response.tool_calls:
 *faion-langchain-agents-architectures v1.0*
 *LangChain 0.3.x / LangGraph 0.2.x*
 *Covers: ReAct, Plan-and-Execute, LATS, tool integration*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

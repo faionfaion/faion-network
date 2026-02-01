@@ -123,6 +123,15 @@ gcloud storage buckets describe gs://my-bucket
 | [templates.md](templates.md) | Terraform/gcloud templates |
 | [llm-prompts.md](llm-prompts.md) | Prompts for AI assistance |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cloud Storage bucket setup | haiku | Basic configuration |
+| Lifecycle rule configuration | haiku | Policy application |
+| CMEK encryption strategy | sonnet | Security decisions |
+
 ## Sources
 
 - [Cloud Storage Documentation](https://cloud.google.com/storage/docs)

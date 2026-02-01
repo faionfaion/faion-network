@@ -236,6 +236,14 @@ Exceeding causes disconnect
 - Supersampling for quality
 - Dynamic resolution scaling
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement immersive-design-principles pattern | haiku | Straightforward implementation |
+| Review immersive-design-principles implementation | sonnet | Requires code analysis |
+| Optimize immersive-design-principles design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Meta: VR Best Practices](https://developer.oculus.com/resources/bp-overview/)

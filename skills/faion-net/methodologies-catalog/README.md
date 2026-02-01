@@ -96,3 +96,11 @@ File: [methodologies-marketing.md](methodologies-marketing.md)
 
 *Methodologies Catalog v2.0*
 *605+ Methodologies | 15 Categories | 3 Files*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -325,3 +325,9 @@ Importance vs Satisfaction matrix:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Survey data tabulation | haiku | Systematic task: organizing quantitative survey results |

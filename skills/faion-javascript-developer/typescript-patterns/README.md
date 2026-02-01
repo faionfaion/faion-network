@@ -169,6 +169,15 @@ function safeValidateUser(data: unknown): Result<User> {
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Union type usage | haiku | Type pattern application |
+| Generic type definition | sonnet | Type system expertise |
+| Type inference analysis | sonnet | Complex type reasoning |
+
 ## Sources
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/) - Official TypeScript docs

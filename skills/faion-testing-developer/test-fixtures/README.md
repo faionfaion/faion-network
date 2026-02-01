@@ -302,6 +302,14 @@ When working with LLMs to generate fixtures:
 - [SQLAlchemy Transactional Tests](https://aalvarez.me/posts/python-transactional-tests-using-sqlalchemy-pytest-and-factory-boy/)
 - [Pytest SQL Database Testing](https://pytest-with-eric.com/database-testing/pytest-sql-database-testing/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Files
 
 | File | Content |

@@ -459,6 +459,15 @@ async function Header() {
 }
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| App Router file structure | haiku | Convention application |
+| Server vs client components | sonnet | Performance trade-offs |
+| Data fetching strategy | sonnet | SSR/ISR decisions |
+
 ## Sources
 
 - [Next.js App Router Documentation](https://nextjs.org/docs/app) - Official app router guide

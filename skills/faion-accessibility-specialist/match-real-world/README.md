@@ -249,6 +249,14 @@ Match user's locale
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement match-real-world pattern | haiku | Straightforward implementation |
+| Review match-real-world implementation | sonnet | Requires code analysis |
+| Optimize match-real-world design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Match Between System and Real World](https://www.nngroup.com/articles/match-system-real-world/)

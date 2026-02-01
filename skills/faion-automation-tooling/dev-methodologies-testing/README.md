@@ -164,3 +164,11 @@ mod tests {
 ---
 
 *Testing Methodologies - 9 Patterns*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate test cases from requirements | haiku | Pattern-based generation |
+| Review test coverage gaps | sonnet | Requires code understanding |
+| Design test architecture | opus | Complex coverage strategies |
+

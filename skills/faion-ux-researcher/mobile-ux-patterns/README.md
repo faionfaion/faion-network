@@ -483,6 +483,12 @@ Keep it short:
 - Touch Design for Mobile Interfaces by Steven Hoober
 - Mobile First by Luke Wroblewski
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Mobile UX Patterns & Templates | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Mobile UX Patterns](https://www.mobile-patterns.com/) - Pattern library

@@ -176,6 +176,14 @@ See [impl-plan-examples.md](impl-plan-examples.md#common-mistakes)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Critical Path Method](https://www.pmi.org/learning/library/critical-path-method-schedule-control-6879) - PMI CPM guide

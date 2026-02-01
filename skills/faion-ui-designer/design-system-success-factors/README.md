@@ -35,6 +35,12 @@
 | Bug/issue count | Quality indicator |
 | Design-dev sync | Tokens aligned |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Design Systems Handbook](https://www.designbetter.co/design-systems-handbook)

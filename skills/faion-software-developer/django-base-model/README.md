@@ -273,6 +273,14 @@ user = models.ForeignKey(User, on_delete=models.CASCADE)
 user = models.ForeignKey(User, on_delete=models.PROTECT)
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Django Model Field Reference](https://docs.djangoproject.com/en/5.0/ref/models/fields/) - All model field types

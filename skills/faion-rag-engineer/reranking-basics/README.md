@@ -372,6 +372,17 @@ def diverse_rerank(
 5. **Over-truncating** - Cutting off important document content
 6. **Score Misinterpretation** - Different rerankers have different score scales
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Analyze and assess | sonnet | Evaluation and planning |
+| Execute implementation | haiku | Apply established patterns |
+| Review and validate | sonnet | Quality assurance |
+| Strategic decision | opus | Novel scenarios |
+| Optimize and refine | haiku | Performance tuning |
+| Document approach | haiku | Create documentation |
+
 ## Sources
 
 - [Cross-Encoders - SBERT](https://www.sbert.net/examples/applications/cross-encoder/README.html)

@@ -35,3 +35,11 @@ EU AI Act and regulations require compliance.
 - Model cards: Hugging Face format
 - Bias detection: Fairlearn, AI Fairness 360
 - Explainability: SHAP, LIME, Captum
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ai-governance-compliance pattern | haiku | Straightforward implementation |
+| Review ai-governance-compliance implementation | sonnet | Requires code analysis |
+| Optimize ai-governance-compliance design | opus | Complex trade-offs |
+

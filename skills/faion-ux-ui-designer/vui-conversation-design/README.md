@@ -40,6 +40,12 @@ VUI: "5-minute timer started"
 | Option prompts | "Red, blue, or green?" |
 | Confirmation | "Is that correct?" (yes/no) |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Conversation Design Principles](https://developers.google.com/assistant/conversation-design/welcome) - Google official guide

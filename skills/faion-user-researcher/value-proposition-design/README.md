@@ -388,3 +388,9 @@ Everything you need is in one simple tool
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Value Proposition Design | sonnet | Design work: Value Proposition Design requires analysis and iteration |

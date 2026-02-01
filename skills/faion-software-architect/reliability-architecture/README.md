@@ -490,6 +490,14 @@ See [llm-prompts.md](llm-prompts.md) for ready-to-use prompts.
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 | File | Description |

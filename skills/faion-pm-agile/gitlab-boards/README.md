@@ -418,3 +418,11 @@ curl --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
 - [GitLab Iterations](https://docs.gitlab.com/ee/user/group/iterations/)
 - [GitLab Quick Actions](https://docs.gitlab.com/ee/user/project/quick_actions.html)
 - [GitLab API](https://docs.gitlab.com/ee/api/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

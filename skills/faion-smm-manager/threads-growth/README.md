@@ -263,6 +263,14 @@ Has this ever happened to you?"
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating social media content | haiku | Template adaptation, copying |
+| Analyzing engagement metrics | sonnet | Pattern analysis, audience insights |
+| Developing content strategy | opus | Strategic planning, audience modeling |
+
 ## Sources
 
 - [Threads Help Center](https://help.instagram.com/788669719351544)

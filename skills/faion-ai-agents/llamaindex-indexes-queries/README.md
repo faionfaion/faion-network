@@ -487,3 +487,11 @@ result: AnalysisResult = response.response
 ---
 
 *LlamaIndex Indexes & Query Engines v1.0*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement llamaindex-indexes-queries pattern | haiku | Straightforward implementation |
+| Review llamaindex-indexes-queries implementation | sonnet | Requires code analysis |
+| Optimize llamaindex-indexes-queries design | opus | Complex trade-offs |
+

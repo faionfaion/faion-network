@@ -49,3 +49,11 @@ Decision Logs -> Track predictions vs outcomes
 ```
 
 **Key Insight 2026:** In a world where AI lets anyone clone products in weeks, the real moat is how quickly your org notices changes, updates beliefs, and ships different answers.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

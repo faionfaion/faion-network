@@ -33,3 +33,9 @@ Then AI can:
 → Suggest improvements
 → Identify patterns
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

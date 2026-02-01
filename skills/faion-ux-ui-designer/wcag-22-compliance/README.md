@@ -34,3 +34,9 @@ Released October 2023, baseline compliance standard by 2025-2026.
 | Drag to reorder | Up/down buttons |
 | Drag to resize | Input field for value |
 | Drag to select area | Click corners |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| WCAG 2.2 Compliance | haiku | Task execution: applying established methodologies |

@@ -335,3 +335,10 @@ LTV:CAC: X:1
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Channel analysis | sonnet | Distribution research |
+| Go-to-market planning | sonnet | Strategy |

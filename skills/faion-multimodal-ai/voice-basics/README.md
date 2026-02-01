@@ -345,3 +345,10 @@ tool_functions = {
 - [OpenAI Audio API](https://platform.openai.com/docs/guides/speech-to-text)
 - [Whisper API](https://platform.openai.com/docs/guides/speech-to-text)
 - [Real-time Voice Agents](https://cookbook.openai.com/examples/how_to_build_a_real_time_voice_agent)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Process voice input | haiku | File handling and format conversion |
+| Implement voice synthesis | sonnet | Integration and quality control |
+

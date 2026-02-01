@@ -233,3 +233,9 @@ faion-research-agent (mode: niche)
 ---
 
 *Validation Methods Reference | 3 methodologies*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Validation Methods | haiku | Task execution: applying established methodologies |

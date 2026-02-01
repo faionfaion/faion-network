@@ -348,3 +348,11 @@ views:
 - [Linear Keyboard Shortcuts](https://linear.app/docs/keyboard-shortcuts)
 - [Linear API](https://developers.linear.app/)
 - [Linear Integrations](https://linear.app/integrations)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

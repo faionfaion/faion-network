@@ -214,6 +214,20 @@ REFERRAL: 5% invite rate, 15% conversion, K=0.075
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Pull analytics data from Mixpanel, format report | haiku | Data extraction and formatting |
+| Analyze A/B test results for statistical significance | sonnet | Statistical analysis and interpretation |
+| Generate cohort retention curve analysis | sonnet | Data interpretation and visualization |
+| Design growth loop for new product vertical | opus | Strategic design with multiple levers |
+| Recommend optimization tactics for viral coefficient | sonnet | Metrics understanding and recommendations |
+| Plan AARRR framework for pre-launch phase | opus | Comprehensive growth strategy |
+| Implement custom analytics event tracking schema | sonnet | Technical setup and validation |
+
+---
+
 ## Sources
 
 - [Dave McClure's Startup Metrics for Pirates (2007)](https://www.slideshare.net/dmc500hats/startup-metrics-for-pirates-long-version)

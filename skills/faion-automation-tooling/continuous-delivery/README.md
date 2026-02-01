@@ -81,3 +81,11 @@ Continuous Delivery is a software development practice where code changes are au
 - [tdd-workflow.md](tdd-workflow.md) - Test-driven development
 - [trunk-based-dev-principles.md](trunk-based-dev-principles.md) - Core TBD principles
 - [trunk-based-dev-patterns.md](trunk-based-dev-patterns.md) - TBD patterns and practices
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement continuous-delivery pattern | haiku | Straightforward implementation |
+| Review continuous-delivery implementation | sonnet | Requires code analysis |
+| Optimize continuous-delivery design | opus | Complex trade-offs |
+

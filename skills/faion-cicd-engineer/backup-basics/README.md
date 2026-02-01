@@ -132,6 +132,18 @@ Most SaaS platforms lack robust native backup:
 - [secrets-management](../secrets-management/) - Encryption key management
 - [finops](../finops/) - Backup cost optimization
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Set up GitHub Actions workflow from template | haiku | Pattern application, simple configuration |
+| Design CI/CD pipeline architecture | opus | Complex system design with many variables |
+| Write terraform code for infrastructure | sonnet | Implementation with moderate complexity |
+| Debug failing pipeline step | sonnet | Debugging and problem-solving |
+| Implement AIOps anomaly detection | opus | Novel ML approach, complex decision |
+| Configure webhook and secret management | haiku | Mechanical setup using checklists |
+
+
 ## Sources
 
 - [Acronis 3-2-1 Backup Strategy Guide 2025](https://www.acronis.com/en/blog/posts/backup-rule/)

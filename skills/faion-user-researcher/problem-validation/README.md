@@ -53,3 +53,9 @@ Vision -> Framing -> Weakness -> Pedestal -> Ask
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Problem Validation 2026 | haiku | Task execution: applying established methodologies |

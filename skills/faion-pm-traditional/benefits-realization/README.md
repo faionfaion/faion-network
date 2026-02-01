@@ -310,3 +310,11 @@ After benefits planning:
 
 - Project Management Framework Guide 7th Edition - Measurement Performance Domain
 - PM industry practice standard for Benefits Realization
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

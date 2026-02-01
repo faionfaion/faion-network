@@ -412,6 +412,14 @@ def get_user(id: int) -> User | None:
     return User.objects.filter(id=id).first()
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Python typing Documentation](https://docs.python.org/3/library/typing.html) - Official typing module reference

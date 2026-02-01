@@ -319,3 +319,11 @@ After story mapping:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - Jeff Patton - User Story Mapping (Book)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement user-story-mapping pattern | haiku | Straightforward implementation |
+| Review user-story-mapping implementation | sonnet | Requires code analysis |
+| Optimize user-story-mapping design | opus | Complex trade-offs |
+

@@ -278,3 +278,11 @@ MTEB scores are general benchmarks. Always benchmark on your specific data:
 
 *Last updated: January 2026*
 *Sources: [MTEB Leaderboard](https://huggingface.co/spaces/mteb/leaderboard), [Voyage AI Blog](https://blog.voyageai.com/), [Cohere Docs](https://docs.cohere.com/), [OpenAI Docs](https://platform.openai.com/docs/)*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Embedding model selection | sonnet | Model evaluation |
+| Embedding generation | haiku | API usage |
+| Vector normalization | haiku | Math application |

@@ -44,6 +44,12 @@ Designers need context-aware help without breaking flow.
 - Brand judgment
 - Strategic decisions
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Figma AI Features](https://www.figma.com/blog/ai/)

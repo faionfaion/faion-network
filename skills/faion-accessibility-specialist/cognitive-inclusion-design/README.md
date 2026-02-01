@@ -263,6 +263,14 @@ Positive, clear messages:
 - User confidence
 - Stress levels
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement cognitive-inclusion-design pattern | haiku | Straightforward implementation |
+| Review cognitive-inclusion-design implementation | sonnet | Requires code analysis |
+| Optimize cognitive-inclusion-design design | opus | Complex trade-offs |
+
 ## Sources
 
 - [W3C: Cognitive Accessibility Guidance](https://www.w3.org/WAI/WCAG2/supplemental/objectives/o3-clear/)

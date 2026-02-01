@@ -303,6 +303,14 @@ When to use: Multi-step workflows, multiple actors, complex validations.
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [SMART Goals Framework](https://www.projectsmart.co.uk/brief-history-of-smart-goals.php) - Goal-setting methodology

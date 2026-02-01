@@ -340,6 +340,14 @@ When using LLMs for distributed system design:
 - [ByteByteGo System Design](https://blog.bytebytego.com/)
 - [Martin Fowler's Patterns](https://martinfowler.com/articles/patterns-of-distributed-systems/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Files
 
 - [checklist.md](checklist.md) - Step-by-step implementation checklist

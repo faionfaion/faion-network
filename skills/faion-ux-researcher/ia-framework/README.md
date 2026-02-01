@@ -160,6 +160,12 @@ Test with users:
 - How to Make Sense of Any Mess by Abby Covert
 - Everyday Information Architecture by Lisa Maria Martin
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Testing strategy and framework | opus | Strategic design: planning comprehensive research methodology |
+
 ## Sources
 
 - [Information Architecture Basics](https://www.nngroup.com/articles/information-architecture-101/) - Nielsen Norman Group

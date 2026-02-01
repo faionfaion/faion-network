@@ -215,6 +215,14 @@ jobs:
 - Version your API contracts
 - Generate documentation from spec
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [OpenAPI Specification](https://spec.openapis.org/oas/latest.html)

@@ -46,3 +46,11 @@ Retrospective: Improve discovery process
 | Pendo | In-app analytics |
 | Hotjar | User behavior |
 | Maze | Rapid testing |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

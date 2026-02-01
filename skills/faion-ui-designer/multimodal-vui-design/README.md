@@ -30,6 +30,12 @@ Voice-only interfaces lack visual feedback and complex data display.
 
 Always provide multiple input modes.
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Multimodal Design Patterns - Google](https://designguidelines.withgoogle.com/conversation/multimodal/)

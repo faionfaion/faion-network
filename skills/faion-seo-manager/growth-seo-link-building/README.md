@@ -356,6 +356,14 @@ Day 14+: Move to next batch
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Keyword research and extraction | haiku | Data lookup, list compilation |
+| Analyzing SEO metrics | sonnet | Comparative analysis, pattern detection |
+| Developing SEO strategy | opus | Complex strategy formulation, market positioning |
+
 ## Sources
 
 - [Google Link Schemes Guide](https://developers.google.com/search/docs/essentials/spam-policies#link-spam)

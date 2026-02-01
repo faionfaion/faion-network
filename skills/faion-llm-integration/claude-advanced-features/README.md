@@ -240,6 +240,15 @@ if batch.processing_status == "ended":
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Extended thinking prompts | opus | Novel reasoning patterns |
+| Batch processing workflow | sonnet | Cost optimization |
+| Prompt caching strategy | sonnet | Cache design |
+
 ## Sources
 
 - [Anthropic API Documentation](https://docs.anthropic.com/)

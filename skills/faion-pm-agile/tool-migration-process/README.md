@@ -306,3 +306,11 @@ communications:
 - [Atlassian Migration Guide](https://support.atlassian.com/jira-cloud/docs/migrate-from-jira-server-to-jira-cloud/)
 - [Linear Import](https://linear.app/docs/import)
 - [Change Management (ADKAR)](https://www.prosci.com/methodology/adkar)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

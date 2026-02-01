@@ -58,3 +58,11 @@ AI productivity gains evaporate when lacking end-to-end visibility. Teams optimi
 5. Optimize flow, not just individual stages
 6. Monitor AI productivity paradox
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

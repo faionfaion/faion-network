@@ -176,3 +176,11 @@ ollama run llama3.1:8b "Hello!"
 - [Ollama Python Library](https://github.com/ollama/ollama-python)
 - [Tool Calling Docs](https://docs.ollama.com/capabilities/tool-calling)
 - [Structured Outputs Blog](https://ollama.com/blog/structured-outputs)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Ollama setup | haiku | Installation |
+| Model loading | haiku | Configuration |
+| Performance optimization | sonnet | Tuning expertise |

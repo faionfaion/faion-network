@@ -253,6 +253,14 @@ class TranscriptionService:
 - Not using diarization for multi-speaker audio
 - Loading entire large files into memory
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Transcribe audio files | haiku | API calls and file handling |
+| Implement speaker diarization | sonnet | Algorithm configuration and integration |
+| Build multi-speaker transcription system | opus | Architecture and optimization |
+
 ## Sources
 
 - [pyannote-audio Documentation](https://github.com/pyannote/pyannote-audio)

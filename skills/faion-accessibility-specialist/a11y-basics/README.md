@@ -200,6 +200,14 @@ Before code review:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement a11y-basics pattern | haiku | Straightforward implementation |
+| Review a11y-basics implementation | sonnet | Requires code analysis |
+| Optimize a11y-basics design | opus | Complex trade-offs |
+
 ## Sources
 
 - [W3C: WCAG 2.1 Quick Reference](https://www.w3.org/WAI/WCAG21/quickref/)

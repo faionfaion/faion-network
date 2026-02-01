@@ -304,6 +304,16 @@ Importance vs Satisfaction matrix:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating screener questions | haiku | Question generation from criteria |
+| Filling survey template | haiku | Form completion, mechanical setup |
+| Reviewing questions for bias | sonnet | Language analysis, testing logic |
+| Designing sampling strategy | sonnet | Distribution channel selection, bias mitigation |
+| Designing complex multi-stage survey | opus | Branching logic, novel question combinations |
+
 ## Related Methodologies
 
 - **problem-validation:** Problem Validation

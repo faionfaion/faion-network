@@ -502,3 +502,11 @@ for chunk in chain.stream({"input": "Hello"}):
 *faion-langchain-basics v1.0*
 *LangChain 0.3.x*
 *Covers: core concepts, chains, prompts, parsers, streaming, error handling*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement langchain-basics pattern | haiku | Straightforward implementation |
+| Review langchain-basics implementation | sonnet | Requires code analysis |
+| Optimize langchain-basics design | opus | Complex trade-offs |
+

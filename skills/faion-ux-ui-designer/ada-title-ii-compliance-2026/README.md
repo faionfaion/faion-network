@@ -36,3 +36,9 @@ US government entities and state/local services must comply with ADA Title II by
 5. Establish ongoing monitoring
 6. Document conformance (VPAT/ACR)
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| ADA Title II Compliance 2026 | haiku | Task execution: applying established methodologies |

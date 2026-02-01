@@ -389,6 +389,14 @@ See [llm-prompts.md](llm-prompts.md) for detailed prompts.
 | [caching-architecture/](../caching-architecture/) | Gateway caching strategies |
 | [event-driven-architecture/](../event-driven-architecture/) | Async patterns complement gateway |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Gateway configuration | haiku | Mechanical setup using templates |
+| Pattern selection | sonnet | Trade-offs between gateway patterns |
+| Performance tuning | opus | Complex optimization across layers |
 ## Files in This Methodology
 
 | File | Purpose |

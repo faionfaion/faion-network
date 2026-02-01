@@ -567,3 +567,11 @@ if __name__ == "__main__":
 - [LaunchDarkly Docs](https://docs.launchdarkly.com/)
 - [Unleash Feature Flags](https://www.getunleash.io/)
 - [Feature Flag Best Practices](https://featureflags.io/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement feature-flags pattern | haiku | Straightforward implementation |
+| Review feature-flags implementation | sonnet | Requires code analysis |
+| Optimize feature-flags design | opus | Complex trade-offs |
+

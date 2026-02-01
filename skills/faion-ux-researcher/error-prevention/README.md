@@ -294,6 +294,12 @@ User never knew email was wrong
 - UX research community: 10 Usability Heuristics
 - Forms that Work by Caroline Jarrett
 - Defensive Design for the Web
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Error Prevention | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Error Prevention Heuristic](https://www.nngroup.com/articles/slips/) - Nielsen Norman Group

@@ -363,3 +363,11 @@ After process analysis:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Business Process Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract process from documentation | haiku | Pattern recognition |
+| Review BPMN for efficiency | sonnet | Requires process analysis |
+| Redesign process flow | opus | Complex optimization |
+

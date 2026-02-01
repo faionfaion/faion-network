@@ -1484,3 +1484,11 @@ class BrowserPool {
 *Browser Automation Skill v1.0 - 2026-01-18*
 *Layer 3 Technical Skill - Used by faion-browser-agent*
 *Covers: Puppeteer, Playwright, Web Scraping, Testing, Screenshots/PDF*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

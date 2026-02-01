@@ -193,3 +193,11 @@ Weekend: Learning/planning (investment)
 ---
 
 *Methodology from Project Management Framework 7 - Planning Performance Domain*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create project schedule | haiku | Task sequencing and timing |
+| Track schedule progress | sonnet | Variance analysis and adjustments |
+| Optimize critical path | opus | Schedule optimization strategy |
+

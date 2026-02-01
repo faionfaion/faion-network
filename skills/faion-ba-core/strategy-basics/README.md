@@ -256,3 +256,11 @@ Phase 3 (Q3): {scope}
 
 *BA Strategy Basics*
 *Knowledge Area: KA-4 Strategy*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement strategy-basics pattern | haiku | Straightforward implementation |
+| Review strategy-basics implementation | sonnet | Requires code analysis |
+| Optimize strategy-basics design | opus | Complex trade-offs |
+

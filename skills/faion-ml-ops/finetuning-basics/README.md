@@ -573,3 +573,11 @@ merged.save_pretrained("merged_model")
 
 *Last updated: 2026-01-23*
 *Part 1 of 2: Techniques & Frameworks*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Fine-tuning concept understanding | sonnet | Learning |
+| Dataset preparation | sonnet | Data preparation |
+| Training job configuration | haiku | Configuration |

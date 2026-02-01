@@ -319,3 +319,11 @@ prompt = create_structured_prompt(
 - [Anthropic Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering)
 - [Prompt Engineering Guide](https://www.promptingguide.ai/)
 - See also: [prompt-techniques.md](prompt-techniques.md)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| System prompt creation | sonnet | Prompt engineering |
+| Role definition | haiku | Template application |
+| Instruction clarity | sonnet | Writing quality review |

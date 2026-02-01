@@ -540,3 +540,11 @@ class PlaceOrderUseCase:
 - [Implementing Domain-Driven Design by Vaughn Vernon](https://www.oreilly.com/library/view/implementing-domain-driven-design/9780133039900/)
 - [DDD Reference](https://www.domainlanguage.com/ddd/reference/)
 - [Martin Fowler's DDD Articles](https://martinfowler.com/tags/domain%20driven%20design.html)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

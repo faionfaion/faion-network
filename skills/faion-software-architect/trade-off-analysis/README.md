@@ -242,6 +242,14 @@ Consider: performance, maintainability, cost, team expertise.
 Format as decision matrix with weighted scores."
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 | Methodology | Location |

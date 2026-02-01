@@ -287,6 +287,14 @@ trade-offs between different approaches?"
 - [Airflow Best Practices](https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html)
 - [Kafka Best Practices](https://www.instaclustr.com/education/apache-kafka/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 - [event-driven-architecture/](../event-driven-architecture/) - Event patterns, Kafka, messaging

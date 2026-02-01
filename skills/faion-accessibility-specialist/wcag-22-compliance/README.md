@@ -283,6 +283,14 @@ Login doesn't require object or user recognition (no CAPTCHA with images).
 - Future-proof your accessibility
 - Easier to implement incrementally
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement wcag-22-compliance pattern | haiku | Straightforward implementation |
+| Review wcag-22-compliance implementation | sonnet | Requires code analysis |
+| Optimize wcag-22-compliance design | opus | Complex trade-offs |
+
 ## Sources
 
 - [W3C: WCAG 2.2 Recommendation](https://www.w3.org/TR/WCAG22/)

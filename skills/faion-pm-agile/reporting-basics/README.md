@@ -272,3 +272,11 @@ status_colors:
 - [Scrum Metrics](https://www.scrum.org/resources/blog/agile-metrics)
 - [Kanban Metrics](https://www.kanbanize.com/kanban-resources/kanban-analytics)
 - [Information Dashboard Design (Stephen Few)](https://www.perceptualedge.com/library.php)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -192,3 +192,9 @@ faion-research-agent (mode: validate)
 
 *User Interview Methods | 2 methodologies*
 *Part of faion-researcher v1.3*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Interview transcription analysis | haiku | Pattern matching: extracting themes from transcripts |

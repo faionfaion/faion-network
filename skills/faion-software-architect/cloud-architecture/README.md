@@ -406,6 +406,14 @@ API Gateway → Lambda → DynamoDB
 - [CIS Benchmarks](https://www.cisecurity.org/cis-benchmarks)
 - [Cloud Security Alliance](https://cloudsecurityalliance.org/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [serverless-architecture/](../serverless-architecture/) - Serverless patterns

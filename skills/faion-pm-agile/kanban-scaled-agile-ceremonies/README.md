@@ -438,3 +438,11 @@ Overall: 4.5/5
 - [Enterprise Agile Framework Framework](https://scaledagileframework.com/)
 - [Kanban Metrics](https://www.atlassian.com/agile/kanban/metrics)
 - [PI Planning Guide](https://scaledagileframework.com/pi-planning/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

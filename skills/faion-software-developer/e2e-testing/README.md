@@ -510,6 +510,14 @@ test('authenticated user can view profile', async ({ authenticatedPage }) => {
 - **Testing through UI for API logic** - use integration tests instead
 - **Missing cleanup** - test data accumulating in environment
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Playwright Documentation](https://playwright.dev/docs/intro) - official Playwright docs

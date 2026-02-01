@@ -63,6 +63,15 @@ The EU AI Act is the world's first comprehensive AI regulation. It entered into 
 5. **Document** - Create compliance documentation
 6. **Monitor** - Establish ongoing compliance processes
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Compliance assessment | opus | Legal/regulatory analysis |
+| Risk documentation | sonnet | Documentation |
+| Control implementation | sonnet | Process design |
+
 ## Sources
 
 - [EU AI Act Official Text](https://artificialintelligenceact.eu/)

@@ -132,3 +132,11 @@ Can prompting solve the problem?
 ---
 
 *Last updated: 2026-01-25*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Fine-tuning strategy | sonnet | Approach selection |
+| Data preparation | sonnet | Preprocessing |
+| Model evaluation | sonnet | Validation |

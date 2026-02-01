@@ -34,3 +34,9 @@ Far field (3m+):
 → Navigation aids
 → Background content
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Spatial UX Fundamentals | haiku | Task execution: applying established methodologies |

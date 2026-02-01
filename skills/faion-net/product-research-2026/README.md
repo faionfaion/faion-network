@@ -682,3 +682,11 @@ Faion-network має унікальну позицію: найглибший т�
 *Report prepared by faion-research-agent*
 *Data sources: Web search, internal documentation analysis*
 *Date: January 24, 2026*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -378,3 +378,11 @@ class ShippingAddressChanged(Event):
 ## See Also
 
 - [event-sourcing-implementation.md](event-sourcing-implementation.md) - Event store, snapshots, projections
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

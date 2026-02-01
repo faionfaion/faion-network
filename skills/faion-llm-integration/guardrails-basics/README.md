@@ -329,3 +329,10 @@ Return JSON:
 ## See Also
 
 - [guardrails-implementation.md](guardrails-implementation.md) - Complete pipeline and advanced patterns
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Safety filter setup | sonnet | Security implementation |
+| Output validation | haiku | Validation rules |

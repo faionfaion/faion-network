@@ -331,3 +331,11 @@ Unlike Obsidian, we work great out of the box."
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Feature audit | haiku | Feature listing |
+| Pricing analysis | sonnet | Pricing strategy |
+| Market positioning | sonnet | Strategy assessment |

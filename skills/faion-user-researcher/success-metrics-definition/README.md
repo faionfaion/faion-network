@@ -349,3 +349,9 @@ Break down by:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Success Metrics Definition | haiku | Task execution: applying established methodologies |

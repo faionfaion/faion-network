@@ -81,6 +81,18 @@ DELETE /users/{id}         # Delete user
 - Include `Location` header for 201 responses
 - Return created/updated resource in response body
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate CRUD endpoints from schema | haiku | Mechanical pattern application |
+| Add pagination/filtering to existing API | haiku | Standard patterns, no design decisions |
+| Review API for REST compliance | sonnet | Requires understanding of conventions |
+| Design new resource hierarchy | sonnet | Requires domain modeling |
+| Refactor API versioning strategy | sonnet | Multiple valid approaches, trade-offs |
+| Design complex nested resources | opus | Novel architecture, business rules |
+| API security architecture review | opus | Security requires deep reasoning |
+
 ## Sources
 
 - [REST API Tutorial](https://restfulapi.net/)

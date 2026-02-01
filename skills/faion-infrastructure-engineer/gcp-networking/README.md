@@ -153,6 +153,15 @@ gcloud compute forwarding-rules create my-lb \
 | [templates.md](templates.md) | Terraform/gcloud templates |
 | [llm-prompts.md](llm-prompts.md) | Prompts for AI assistance |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VPC design for GCP | sonnet | Network architecture |
+| Firewall rule creation | sonnet | Security configuration |
+| Cloud NAT setup | haiku | Standard configuration |
+
 ## Sources
 
 - [Best practices for VPC design](https://docs.cloud.google.com/architecture/best-practices-vpc-design)

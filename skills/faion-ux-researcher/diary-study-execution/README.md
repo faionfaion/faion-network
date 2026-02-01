@@ -350,6 +350,12 @@ Make it actionable:
 - dscout Diary Study Guide
 - Practical Guide to Running Diary Studies
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Card sorting analysis | haiku | Systematic analysis: categorizing and counting sort results |
+
 ## Sources
 
 - [Diary Study Analysis](https://www.nngroup.com/articles/diary-studies/) - Nielsen Norman Group

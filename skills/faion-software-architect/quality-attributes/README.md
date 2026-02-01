@@ -328,3 +328,11 @@ Response Measure: How to verify (latency < 200ms, 99.9% success)
 ---
 
 *Part of [faion-software-architect](../CLAUDE.md) skill | 605+ methodologies*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

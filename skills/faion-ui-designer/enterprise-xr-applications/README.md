@@ -32,6 +32,12 @@ Enterprise needs differ from consumer XR experiences.
 - Track completion
 - Allow retry
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice UI pattern application | sonnet | Complex interaction: designing multimodal conversational flows |
+
 ## Sources
 
 - [Microsoft HoloLens Enterprise Guide](https://www.microsoft.com/en-us/hololens)

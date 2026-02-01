@@ -330,3 +330,11 @@ print(response)
 
 *LlamaIndex Skill v2.0 - 2026-01-25*
 *RAG and Agentic Framework for Production AI Applications*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Index creation | sonnet | Data structure design |
+| Query optimization | sonnet | Performance tuning |
+| Custom node parser | sonnet | Component customization |

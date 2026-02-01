@@ -159,6 +159,14 @@ extend type User @key(fields: "id") {
 - Use persisted queries in production
 - Add field-level authorization
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+
 ## Sources
 
 - [GraphQL Specification](https://spec.graphql.org/)

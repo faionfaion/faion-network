@@ -298,3 +298,10 @@ Willingness to Pay: [Evidence]
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Niche market assessment | sonnet | Market analysis |
+| Opportunity evaluation | sonnet | Strategy assessment |

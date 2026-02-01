@@ -518,3 +518,11 @@ npm run build  # Production build
 - [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
 - [Memory and Context](https://docs.anthropic.com/en/docs/claude-code/memory)
 - [Project Setup Best Practices](https://docs.anthropic.com/en/docs/claude-code/project-setup)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

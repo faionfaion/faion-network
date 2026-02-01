@@ -295,6 +295,14 @@ class WarmableCache:
 - No monitoring (can't detect low hit rates)
 - Over-aggressive invalidation
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Redis Caching Patterns](https://redis.io/docs/manual/patterns/)

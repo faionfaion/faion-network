@@ -323,6 +323,16 @@ For each feature, ask users:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Analyzing support tickets for features | haiku | Pattern extraction from structured data |
+| Writing feature discovery board | haiku | Templating, mechanical setup |
+| Prioritizing features with RICE | sonnet | Trade-off analysis, contextual scoring |
+| Validating feature assumptions | sonnet | Research design, hypothesis testing |
+| Designing feature validation experiments | opus | Multi-variable testing strategy, novel combinations |
+
 ## Related Methodologies
 
 - **problem-validation:** Problem Validation

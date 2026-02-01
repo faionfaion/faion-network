@@ -373,3 +373,11 @@ class FineTuningPipeline:
 - [OpenAI Fine-tuning Guide](https://platform.openai.com/docs/guides/fine-tuning)
 - [Fine-tuning Best Practices](https://platform.openai.com/docs/guides/fine-tuning/preparing-your-dataset)
 - [OpenAI Cookbook Fine-tuning](https://cookbook.openai.com/examples/how_to_finetune_chat_models)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Production deployment | sonnet | Deployment strategy |
+| Model versioning | sonnet | Version management |
+| Performance monitoring | sonnet | Observability |

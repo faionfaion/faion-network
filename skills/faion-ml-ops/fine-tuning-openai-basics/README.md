@@ -228,3 +228,11 @@ Return as JSON array of objects with 'user' and 'assistant' keys."""
 - [OpenAI Fine-tuning Guide](https://platform.openai.com/docs/guides/fine-tuning)
 - [Fine-tuning Best Practices](https://platform.openai.com/docs/guides/fine-tuning/preparing-your-dataset)
 - [OpenAI Cookbook Fine-tuning](https://cookbook.openai.com/examples/how_to_finetune_chat_models)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| OpenAI fine-tuning setup | haiku | Configuration |
+| Job submission | haiku | API usage |
+| Result retrieval | haiku | Data collection |

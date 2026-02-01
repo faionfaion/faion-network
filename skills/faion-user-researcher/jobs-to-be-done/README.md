@@ -380,3 +380,9 @@ So I can switch careers and earn more money
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Jobs to Be Done (JTBD) | haiku | Task execution: applying established methodologies |

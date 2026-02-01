@@ -357,6 +357,14 @@ gtag('event', 'add_to_wishlist');
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Analytics 4 Documentation](https://support.google.com/analytics/answer/10089681)

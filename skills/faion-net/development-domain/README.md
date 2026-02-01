@@ -37,3 +37,11 @@ Writing code (Python, JS, Go, etc.), code review, refactoring. CI/CD, testing, A
 - JavaScript (8 methodologies)
 - Backend languages (Go, Ruby, PHP, Java, C#, Rust)
 - DevOps (28 methodologies)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

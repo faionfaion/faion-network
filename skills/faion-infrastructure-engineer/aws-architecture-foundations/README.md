@@ -186,6 +186,17 @@ Root
 | [aws-s3-storage/](../aws-s3-storage/) | Storage patterns |
 | [terraform/](../terraform/) | IaC for AWS |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Well-Architected pillar assessment | opus | Deep analysis across multiple dimensions |
+| Multi-account landing zone design | opus | Strategic architecture decision |
+| IAM permission strategy | sonnet | Complex but established patterns |
+| Disaster recovery planning | sonnet | Requires trade-off analysis |
+| Cost optimization audit | sonnet | Pattern-based analysis |
+
 ## Sources
 
 - [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)

@@ -389,3 +389,11 @@ print(comparison)
 - See also: [evaluation-benchmarks.md](evaluation-benchmarks.md) for benchmarking and production monitoring
 - [OpenAI Evals](https://github.com/openai/evals)
 - [RAGAS](https://docs.ragas.io/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Framework design | sonnet | Architecture |
+| Metric definition | sonnet | KPI selection |
+| Test data preparation | sonnet | Data preparation |

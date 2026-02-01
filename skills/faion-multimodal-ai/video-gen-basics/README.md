@@ -348,3 +348,11 @@ class VideoProcessor:
 - [Luma AI](https://lumalabs.ai/)
 - [Stable Video Diffusion](https://stability.ai/stable-video)
 - [Pika](https://pika.art/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate video from text prompts | haiku | API execution and monitoring |
+| Create video generation workflow | sonnet | Pipeline design and integration |
+| Optimize video generation quality | opus | Complex trade-offs and strategy |
+

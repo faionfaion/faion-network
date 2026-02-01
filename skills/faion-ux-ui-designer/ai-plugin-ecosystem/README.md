@@ -26,3 +26,9 @@ DON'T:
 → Ignore design system constraints
 → Over-rely on generation
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system evaluation | sonnet | Analysis required: assessing design system effectiveness and coverage |

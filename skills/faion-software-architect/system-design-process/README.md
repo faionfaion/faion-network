@@ -186,6 +186,14 @@ Before finalizing architecture:
 - [Mermaid](https://mermaid.js.org/syntax/c4.html) - Diagrams in markdown
 - [Excalidraw](https://excalidraw.com/) - Whiteboard-style diagrams
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 - [architecture-decision-records.md](../architecture-decision-records.md) - ADR deep dive

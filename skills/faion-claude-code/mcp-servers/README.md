@@ -276,3 +276,15 @@ claude mcp add memory -s user -- npx -y @anthropic/memory-mcp
 - [Awesome MCP Servers](https://github.com/wong2/awesome-mcp-servers)
 - [Official MCP Servers](https://github.com/modelcontextprotocol/servers)
 - [MCP Documentation](https://docs.anthropic.com/en/docs/claude-code/mcp)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Create new skill from template | haiku | Mechanical task with clear structure |
+| Design agent architecture for complex task | opus | Requires reasoning about delegation and isolation |
+| Configure MCP server for Claude | sonnet | Implementation with moderate complexity |
+| Write agent system prompt | sonnet | Requires clear communication and nuance |
+| Set up hook for pre-commit security | haiku | Mechanical script configuration |
+| Implement custom slash command | sonnet | Coding with context and interaction |
+

@@ -567,3 +567,11 @@ if __name__ == "__main__":
 - [LaunchDarkly Docs](https://docs.launchdarkly.com/)
 - [Unleash Feature Flags](https://www.getunleash.io/)
 - [Feature Flag Best Practices](https://featureflags.io/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

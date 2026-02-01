@@ -318,6 +318,14 @@ export class UserController {
 - **Dependency injection** - Testability
 - **Domain errors** - Better debugging
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Service implementation | sonnet | Architectural patterns |
+| Data access layer design | sonnet | Architecture decisions |
+
 ## Sources
 
 - [Service Layer Pattern](https://martinfowler.com/eaaCatalog/serviceLayer.html) - Martin Fowler pattern catalog

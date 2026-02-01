@@ -60,3 +60,11 @@ August 2026 marks major enforcement milestone for AI regulation.
 ---
 
 *AI/ML Best Practices 2026*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement eu-ai-act-compliance pattern | haiku | Straightforward implementation |
+| Review eu-ai-act-compliance implementation | sonnet | Requires code analysis |
+| Optimize eu-ai-act-compliance design | opus | Complex trade-offs |
+

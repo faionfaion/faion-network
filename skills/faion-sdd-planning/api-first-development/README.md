@@ -161,6 +161,14 @@ components:
 | Missing error schemas | Define all error response formats |
 | No examples | Include request/response examples in spec |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0) - Official OpenAPI standard

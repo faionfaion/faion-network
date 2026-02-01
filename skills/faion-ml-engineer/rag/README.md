@@ -280,3 +280,12 @@ Response Generation
 | [faion-rag-engineer](../../faion-rag-engineer/CLAUDE.md) | Specialized RAG skill |
 | [faion-llm-integration](../../faion-llm-integration/CLAUDE.md) | LLM APIs for generation |
 | [faion-ai-agents](../../faion-ai-agents/CLAUDE.md) | Agentic RAG patterns |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Embedding selection | sonnet | Vector model choice |
+| Vector DB setup | haiku | Database configuration |
+| Retrieval optimization | sonnet | Performance tuning |
+| RAG pipeline design | opus | Architecture decisions |

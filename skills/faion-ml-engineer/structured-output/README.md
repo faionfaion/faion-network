@@ -334,3 +334,11 @@ def safe_extract(response: str, model: Type[T]) -> T:
 | [faion-llm-integration](../faion-llm-integration/CLAUDE.md) | LLM API usage patterns |
 | [faion-ai-agents](../faion-ai-agents/CLAUDE.md) | Tool use and agent outputs |
 | [faion-rag-engineer](../faion-rag-engineer/CLAUDE.md) | Document extraction |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Schema design | sonnet | Output format |
+| Validation implementation | sonnet | Quality assurance |
+| Format conversion | haiku | Data transformation |

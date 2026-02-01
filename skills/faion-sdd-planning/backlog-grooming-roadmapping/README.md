@@ -403,6 +403,14 @@ Items explicitly not on roadmap:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Product Backlog Management](https://www.scrum.org/resources/what-is-a-product-backlog) - Official Scrum Guide

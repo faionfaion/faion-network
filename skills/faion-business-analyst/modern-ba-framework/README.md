@@ -79,3 +79,15 @@ Business Analysis Framework shifted from process-based to competency-based frame
 | Agile Analysis Certification | Agile Analysis | Critical for agile teams |
 | Business Data Analytics Cert | Business Data Analytics | Data-driven BA |
 | Product Ownership Analysis Cert | Product Ownership | Product-focused BA |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gather and analyze requirements | sonnet | Complex reasoning about stakeholder needs |
+| Write acceptance criteria for features | sonnet | Requires testing perspective and detail |
+| Create process flow diagrams (BPMN) | opus | Architecture and complex modeling decisions |
+| Format requirements in templates | haiku | Mechanical formatting and pattern application |
+| Validate requirements with stakeholders | sonnet | Needs reasoning and communication planning |
+| Perform gap analysis between states | opus | Strategic analysis and trade-off evaluation |
+

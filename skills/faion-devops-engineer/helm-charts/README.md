@@ -149,3 +149,15 @@ A 2025 analysis of 100+ open-source Helm charts found:
 - [Artifact Hub](https://artifacthub.io/)
 - [Helm Charts 2025 Guide](https://atmosly.com/knowledge/helm-charts-in-kubernetes-definitive-guide-for-2025)
 - [Helm Reliability Study 2025](https://www.prequel.dev/blog-post/the-real-state-of-helm-chart-reliability-2025-hidden-risks-in-100-open-source-charts)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run terraform plan, docker build, kubectl get commands | haiku | Mechanical CLI operations |
+| Review Dockerfile for best practices | sonnet | Code review, security patterns |
+| Debug pod crashes, container networking issues | sonnet | Diagnosis and error analysis |
+| Design multi-region failover architecture | opus | Complex distributed systems decisions |
+| Write Helm values for production rollout | sonnet | Configuration and templating |
+| Create monitoring strategy for microservices | opus | System-wide observability design |
+| Troubleshoot Kubernetes pod evictions under load | sonnet | Performance debugging and analysis |

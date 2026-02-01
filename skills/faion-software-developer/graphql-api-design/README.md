@@ -658,3 +658,11 @@ async def users(self, first: int = 20, after: str = None) -> UserConnection:
 - [GraphQL Best Practices](https://graphql.org/learn/best-practices/)
 - [Relay Connection Spec](https://relay.dev/graphql/connections.htm)
 - [Strawberry GraphQL](https://strawberry.rocks/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

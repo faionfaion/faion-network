@@ -288,6 +288,16 @@ So I can [outcome]
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Mining Reddit/Twitter for complaints | haiku | Data extraction, pattern scanning |
+| Filling pain point scorecard | haiku | Template completion, formula application |
+| Extracting root causes with 5 Whys | sonnet | Causal analysis, reasoning chain |
+| Categorizing and prioritizing pain points | sonnet | Comparative analysis, pattern grouping |
+| Identifying business opportunities from pain points | opus | Strategic inference, market positioning |
+
 ## Related Methodologies
 
 - **idea-generation:** Idea Generation

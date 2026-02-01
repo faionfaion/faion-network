@@ -103,3 +103,11 @@ Is this correct? Shall I proceed?"
 ---
 
 *Execution modes for faion-net orchestrator*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

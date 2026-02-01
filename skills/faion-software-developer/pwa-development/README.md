@@ -374,3 +374,11 @@ function InstallBanner() {
 - [Workbox Documentation](https://developer.chrome.com/docs/workbox/)
 - [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
 - [PWA Builder](https://www.pwabuilder.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

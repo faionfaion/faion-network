@@ -45,3 +45,9 @@ Traditional accessibility focuses on visual/motor impairments. Cognitive disabil
 - [ ] Customizable color schemes
 - [ ] Reducible cognitive load options
 - [ ] Clear feedback on all actions
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

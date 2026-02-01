@@ -244,6 +244,14 @@ Use fixtures from conftest.py and parametrize for edge cases."
 - [pytest 8.4.0 Release](https://docs.pytest.org/en/stable/announce/release-8.4.0.html)
 - [pytest Changelog](https://docs.pytest.org/en/stable/changelog.html)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 | Methodology | Path |

@@ -345,6 +345,12 @@ Validation phase:
 - [ ] Navigation tested
 - [ ] Iterations made
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Information Architecture - Templates | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [IA Deliverables](https://www.nngroup.com/articles/ia-deliverables/) - Nielsen Norman Group

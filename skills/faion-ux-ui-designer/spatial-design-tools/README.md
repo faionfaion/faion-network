@@ -37,3 +37,9 @@ Production:
 → Performance optimization
 → Accessibility review
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

@@ -230,6 +230,14 @@ Feedback:
 4. **Unstable Tracking** - Jittery, drifting AR content
 5. **No Safety Consideration** - AR blocks hazards from view
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ar-design-patterns pattern | haiku | Straightforward implementation |
+| Review ar-design-patterns implementation | sonnet | Requires code analysis |
+| Optimize ar-design-patterns design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Apple ARKit: Design Guidelines](https://developer.apple.com/design/human-interface-guidelines/ar)

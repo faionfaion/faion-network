@@ -295,6 +295,14 @@ Recognition-based design helps:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement recognition-over-recall pattern | haiku | Straightforward implementation |
+| Review recognition-over-recall implementation | sonnet | Requires code analysis |
+| Optimize recognition-over-recall design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Recognition vs. Recall in UX](https://www.nngroup.com/articles/recognition-and-recall/)

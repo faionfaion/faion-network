@@ -274,6 +274,14 @@ CREATE TABLE model_name (
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
 ## Related Designs
 
 | Feature | Relationship | Patterns to Reuse |

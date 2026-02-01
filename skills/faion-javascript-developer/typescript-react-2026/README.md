@@ -441,3 +441,10 @@
 
 *TypeScript & React 2026 v1.0*
 *Last updated: 2026-01-23*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Modern React with TypeScript | sonnet | Current best practices |
+| Type-safe props | sonnet | API design |

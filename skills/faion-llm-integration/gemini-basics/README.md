@@ -386,6 +386,14 @@ def generate_with_retry(prompt, max_retries=3):
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gemini API authentication | haiku | Setup |
+| Model capabilities | sonnet | Capability analysis |
+
 ## Sources
 
 - [Google AI Studio](https://aistudio.google.com/)

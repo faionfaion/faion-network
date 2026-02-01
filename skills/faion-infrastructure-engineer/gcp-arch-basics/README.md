@@ -78,6 +78,15 @@ Organization (root)
 | [gcp-compute](../gcp-compute/) | VMs, autoscaling |
 | [terraform](../terraform/) | Infrastructure as Code |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| GCP resource hierarchy design | sonnet | Organization planning |
+| Project-folder-org structure | sonnet | Governance architecture |
+| Billing account setup | haiku | Administrative task |
+
 ## Sources
 
 - [Google Cloud Architecture Framework](https://cloud.google.com/architecture/framework)

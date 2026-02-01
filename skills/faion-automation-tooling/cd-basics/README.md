@@ -293,3 +293,11 @@ async def dashboard(user: User):
 ## Related
 
 - [cd-pipelines.md](cd-pipelines.md) - Pipeline implementation and deployment strategies
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement cd-basics pattern | haiku | Straightforward implementation |
+| Review cd-basics implementation | sonnet | Requires code analysis |
+| Optimize cd-basics design | opus | Complex trade-offs |
+

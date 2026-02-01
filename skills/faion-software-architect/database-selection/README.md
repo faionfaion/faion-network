@@ -257,6 +257,14 @@ Sensors --> InfluxDB (real-time, sub-ms alerts)
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Database selection | opus | Complex requirements and trade-offs |
+| Schema design | sonnet | Logical to physical transformation |
+| Query optimization | haiku | Applying index and join patterns |
 ## Related Files
 
 | File | Purpose |

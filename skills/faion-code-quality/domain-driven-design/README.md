@@ -540,3 +540,15 @@ class PlaceOrderUseCase:
 - [Implementing Domain-Driven Design by Vaughn Vernon](https://www.oreilly.com/library/view/implementing-domain-driven-design/9780133039900/)
 - [DDD Reference](https://www.domainlanguage.com/ddd/reference/)
 - [Martin Fowler's DDD Articles](https://martinfowler.com/tags/domain%20driven%20design.html)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Review code for architectural violations | sonnet | Code review with pattern matching |
+| Refactor legacy code to clean architecture | opus | Complex refactoring with trade-offs |
+| Calculate code coverage for module | haiku | Metric collection and reporting |
+| Design domain-driven architecture | opus | Strategic design decision |
+| Write test cases for edge cases | sonnet | Testing with reasoning about coverage |
+| Apply decomposition pattern to class | sonnet | Refactoring with patterns |
+

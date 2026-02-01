@@ -32,3 +32,9 @@ Immersion can overwhelm or disorient users.
 | Disorientation | Clear grounding, consistent horizon |
 | Eye strain | Proper depth of field, breaks |
 | Arm fatigue | Support positions, alternative inputs |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

@@ -161,3 +161,10 @@ faion-research-agent (mode: competitors)
 ---
 
 *Competitive Intelligence Methods Reference | 2 methodologies*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research methodology | sonnet | Framework design |
+| Data collection | haiku | Data gathering |

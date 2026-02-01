@@ -170,6 +170,14 @@ async def generic_exception_handler(request: Request, exc: Exception):
 - Document all error codes in API docs
 - Include links to documentation in error type
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+
 ## Sources
 
 - [RFC 7807 Problem Details](https://datatracker.ietf.org/doc/html/rfc7807)

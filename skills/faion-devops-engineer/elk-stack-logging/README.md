@@ -144,6 +144,20 @@ Applications → Beats/Fluentd → Logstash → Elasticsearch → Kibana
 - [Filebeat Documentation](https://www.elastic.co/guide/en/beats/filebeat/current/index.html)
 - [Elastic Cloud on Kubernetes](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run terraform plan, docker build, kubectl get commands | haiku | Mechanical CLI operations |
+| Review Dockerfile for best practices | sonnet | Code review, security patterns |
+| Debug pod crashes, container networking issues | sonnet | Diagnosis and error analysis |
+| Design multi-region failover architecture | opus | Complex distributed systems decisions |
+| Write Helm values for production rollout | sonnet | Configuration and templating |
+| Create monitoring strategy for microservices | opus | System-wide observability design |
+| Troubleshoot Kubernetes pod evictions under load | sonnet | Performance debugging and analysis |
+
+---
+
 ## Sources
 
 - [Elk Stack: A Comprehensive Guide for 2025 - Shadecoder](https://www.shadecoder.com/topics/elk-stack-a-comprehensive-guide-for-2025)

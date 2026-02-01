@@ -234,6 +234,14 @@ Is it external to your system? (API, DB, file system, time)
 - [WireMock](https://wiremock.org/) - API mocking server
 - [Testcontainers](https://testcontainers.com/) - Docker-based integration testing
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Files
 
 - [checklist.md](checklist.md) - Step-by-step mocking checklist

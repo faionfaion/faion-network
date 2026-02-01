@@ -351,6 +351,20 @@ Completion: Survey + testimonial request
 
 *Methodology: customer-success-basics | Operations & Business | faion-growth-agent*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Update pricing table, format case study, organize docs | haiku | Direct content organization |
+| Evaluate Product Hunt launch readiness | sonnet | Strategic assessment and feedback |
+| Analyze competitor positioning vs our messaging | sonnet | Competitive analysis |
+| Design go-to-market strategy for new market | opus | Comprehensive strategic planning |
+| Create financial model and revenue projections | sonnet | Analysis and calculations |
+| Plan annual planning process and templates | opus | Organization-wide strategy design |
+| Review customer success playbook for churn | sonnet | Operational analysis and recommendations |
+
+---
+
 ## Sources
 
 - [Gainsight Customer Success Resources](https://www.gainsight.com/resources/) - CS platform and methodology leader

@@ -513,3 +513,11 @@ client.receive_and_process(queue_url, handler)
 - [Celery Documentation](https://docs.celeryq.dev/)
 - [AWS SQS Best Practices](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-best-practices.html)
 - [Enterprise Integration Patterns](https://www.enterpriseintegrationpatterns.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

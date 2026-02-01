@@ -584,3 +584,11 @@ app.post('/users', async (req, res, next) => {
 - [Fastify Documentation](https://fastify.dev/docs/latest/)
 - [TypeBox](https://github.com/sinclairzx81/typebox)
 - [Node.js Best Practices](https://github.com/goldbergyoni/nodebestpractices)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

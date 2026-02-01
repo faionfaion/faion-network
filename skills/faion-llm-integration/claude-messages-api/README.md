@@ -348,3 +348,11 @@ data: {"type":"message_stop"}
 - [claude-advanced-features.md](claude-advanced-features.md) - Extended Thinking, Computer Use, Caching, Batch
 - [claude-tool-use.md](claude-tool-use.md) - Tool use, function calling, structured output
 - [claude-best-practices.md](claude-best-practices.md) - Best practices, optimization, patterns
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Message formatting | haiku | Protocol application |
+| Streaming setup | sonnet | Real-time pattern |
+| Vision capabilities | sonnet | Multimodal implementation |

@@ -40,6 +40,12 @@ VUI: "5-minute timer started"
 | Option prompts | "Red, blue, or green?" |
 | Confirmation | "Is that correct?" (yes/no) |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VUI Conversation Design | sonnet | Design work: VUI Conversation Design requires analysis and iteration |
+
 ## Sources
 
 - [Conversation Design Principles](https://developers.google.com/assistant/conversation-design/welcome) - Google official guide

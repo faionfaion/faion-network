@@ -316,3 +316,11 @@ If using old patterns:
 *LangChain Methodology v2.0*
 *LangChain 1.0+ / LangGraph 1.0+*
 *Part of faion-ml-engineer skill*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Chain design | sonnet | Architecture pattern |
+| Agent implementation | sonnet | Integration pattern |
+| LangChain debugging | sonnet | Troubleshooting |

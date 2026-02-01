@@ -350,3 +350,11 @@ After decision analysis:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Decision Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement decision-analysis pattern | haiku | Straightforward implementation |
+| Review decision-analysis implementation | sonnet | Requires code analysis |
+| Optimize decision-analysis design | opus | Complex trade-offs |
+

@@ -332,3 +332,11 @@ After elicitation:
 
 - BA Framework Guide v3 - Elicitation and Collaboration
 - BA industry Elicitation Techniques Guide
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement elicitation-techniques pattern | haiku | Straightforward implementation |
+| Review elicitation-techniques implementation | sonnet | Requires code analysis |
+| Optimize elicitation-techniques design | opus | Complex trade-offs |
+

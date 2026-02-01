@@ -903,7 +903,15 @@ Entrepreneurs don't know where customers express frustrations.
 ```markdown
 ## Topic: {Area}
 
-### Sources Searched
+### Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Researching market data | haiku | Data lookup and compilation |
+| Analyzing research patterns | sonnet | Pattern recognition and comparison |
+| Strategic market positioning | opus | Complex market strategy formulation |
+
+## Sources Searched
 - Reddit: r/x, r/y, r/z
 - App Store: {app1}, {app2}
 - Forums: {forum1}

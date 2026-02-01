@@ -490,3 +490,11 @@ jobs:
 - [Turborepo Examples](https://github.com/vercel/turbo/tree/main/examples)
 - [Monorepo Tools](https://monorepo.tools/)
 - [pnpm Workspaces](https://pnpm.io/workspaces)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

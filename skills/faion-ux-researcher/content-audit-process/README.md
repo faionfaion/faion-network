@@ -249,6 +249,12 @@ After audit:
 - [ ] Timeline established
 - [ ] Follow-up scheduled
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Content Audit - Process | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Content Audit Process Guide](https://www.nngroup.com/articles/content-audits/) - Nielsen Norman Group

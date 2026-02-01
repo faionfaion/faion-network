@@ -406,3 +406,11 @@ class ExperimentReporter:
 - [ab-testing-basics.md](ab-testing-basics.md) - Experiment design and assignment
 - [feature-flags.md](feature-flags.md) - Feature flag patterns
 - [api-monitoring.md](api-monitoring.md) - Monitoring and alerting
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate test cases from requirements | haiku | Pattern-based generation |
+| Review test coverage gaps | sonnet | Requires code understanding |
+| Design test architecture | opus | Complex coverage strategies |
+

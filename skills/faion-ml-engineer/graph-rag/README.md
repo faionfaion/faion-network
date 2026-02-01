@@ -204,3 +204,11 @@ Microsoft GraphRAG uses the **Leiden algorithm** hierarchically:
 | [examples.md](examples.md) | Code examples |
 | [templates.md](templates.md) | Configuration templates |
 | [llm-prompts.md](llm-prompts.md) | Entity/relationship extraction prompts |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Knowledge graph design | opus | Architecture |
+| Graph RAG implementation | opus | Complex integration |
+| Query traversal | sonnet | Algorithms |

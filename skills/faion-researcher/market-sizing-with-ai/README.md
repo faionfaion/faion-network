@@ -38,4 +38,16 @@ Triangulate: If both approaches give similar numbers, confidence increases.
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Looking up industry report numbers | haiku | Data retrieval, number extraction |
+| Calculating top-down TAM | haiku | Formula application |
+| Performing bottom-up estimation | sonnet | Building logic from components, unit economics |
+| Triangulating estimates with validation | sonnet | Comparative analysis, confidence assessment |
+| Stress-testing market assumptions | opus | Complex scenario modeling, edge cases |
+
+---
+
 *AI Research Best Practices 2026*

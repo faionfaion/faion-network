@@ -222,6 +222,15 @@ LIMIT 10'
 | [gcp-storage.md](../gcp-storage.md) | Cloud Storage, Cloud SQL, BigQuery |
 | [gcp-networking.md](../gcp-networking.md) | VPC, IAM, Secret Manager |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| GCP CLI setup | haiku | Tool configuration |
+| Project organization strategy | sonnet | Governance planning |
+| IAM role assignment | sonnet | Access control |
+
 ## Sources
 
 - [GCP Documentation](https://cloud.google.com/docs)

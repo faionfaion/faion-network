@@ -34,6 +34,12 @@ with sunny conditions. Humidity is 45 percent."
 - Maintain context across sessions
 - Adapt to user preferences
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Google Conversation Design](https://designguidelines.withgoogle.com/conversation/)

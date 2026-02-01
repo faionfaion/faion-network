@@ -105,3 +105,11 @@ By 2026, human oversight, ethical thinking, and leadership around AI will be as 
 - [ ] Certifications pursued: [List]
 - [ ] Knowledge shared: [Presentations, articles]
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ba-strategic-partnership pattern | haiku | Straightforward implementation |
+| Review ba-strategic-partnership implementation | sonnet | Requires code analysis |
+| Optimize ba-strategic-partnership design | opus | Complex trade-offs |
+

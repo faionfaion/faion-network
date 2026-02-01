@@ -358,3 +358,10 @@ def extract_invoice(text: str) -> Invoice:
 - [OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
 - [Pydantic Documentation](https://docs.pydantic.dev/)
 - [JSON Schema](https://json-schema.org/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| JSON schema definition | sonnet | Schema design |
+| Output validation | haiku | Format checking |

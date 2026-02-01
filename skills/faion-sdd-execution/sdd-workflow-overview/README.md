@@ -214,6 +214,14 @@ project/
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Related Methodologies
 
 - **writing-specifications:** Writing Specifications

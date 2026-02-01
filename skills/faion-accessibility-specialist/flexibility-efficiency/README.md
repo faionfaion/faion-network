@@ -307,6 +307,14 @@ Cannot add frequently used actions
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement flexibility-efficiency pattern | haiku | Straightforward implementation |
+| Review flexibility-efficiency implementation | sonnet | Requires code analysis |
+| Optimize flexibility-efficiency design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Flexibility and Efficiency of Use](https://www.nngroup.com/articles/flexibility-efficiency-heuristic/)

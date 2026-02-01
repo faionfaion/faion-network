@@ -299,3 +299,11 @@ After writing acceptance criteria:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Acceptance Criteria Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement acceptance-criteria pattern | haiku | Straightforward implementation |
+| Review acceptance-criteria implementation | sonnet | Requires code analysis |
+| Optimize acceptance-criteria design | opus | Complex trade-offs |
+

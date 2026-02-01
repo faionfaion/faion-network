@@ -401,6 +401,14 @@ class ExperimentReporter:
 - **Document decisions**: Record why experiments were run and results
 - **Clean experiment data**: Remove bots, invalid users
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [ab-testing-basics.md](ab-testing-basics.md) - Experiment design and assignment

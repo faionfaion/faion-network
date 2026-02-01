@@ -160,3 +160,11 @@ User-controlled instruction templates.
 ---
 
 *MCP Reference 2025-11-25 | faion-ml-engineer*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| MCP integration | sonnet | Protocol implementation |
+| Tool definition | sonnet | API design |
+| Server implementation | sonnet | Backend integration |

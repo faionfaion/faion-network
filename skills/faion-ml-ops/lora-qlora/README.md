@@ -298,3 +298,11 @@ gradient_accumulation_steps = 8
 ---
 
 *See also: [finetuning-basics.md](finetuning-basics.md), [finetuning-datasets.md](finetuning-datasets.md)*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| LoRA vs QLoRA selection | sonnet | Approach choice |
+| Memory optimization | opus | Advanced tuning |
+| Training efficiency | sonnet | Performance |

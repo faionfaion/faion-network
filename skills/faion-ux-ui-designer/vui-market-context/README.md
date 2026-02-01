@@ -20,6 +20,12 @@
 | Bixby | Samsung devices | Bixby Developer Studio |
 | Custom LLM | Any platform | API integration |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VUI Market Context | sonnet | Design work: VUI Market Context requires analysis and iteration |
+
 ## Sources
 
 - [Voice Assistant Statistics 2026](https://www.statista.com/topics/4642/voice-assistants/) - Statista data

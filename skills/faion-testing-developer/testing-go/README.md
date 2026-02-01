@@ -300,3 +300,11 @@ Less effective:
 
 ### Videos
 - [Advanced Testing with Go](https://www.youtube.com/watch?v=8hQG7QlcLBk) - Mitchell Hashimoto
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

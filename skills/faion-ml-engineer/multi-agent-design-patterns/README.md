@@ -293,6 +293,15 @@ Shared workspace for collaborative knowledge synthesis.
 | [templates.md](templates.md) | Reusable templates and scaffolds |
 | [llm-prompts.md](llm-prompts.md) | Prompts for agent roles |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Agent pattern selection | sonnet | Architecture |
+| Coordination patterns | opus | Complex coordination |
+| Communication protocols | sonnet | Design |
+
 ## Sources
 
 - [Google ADK Multi-Agent Documentation](https://google.github.io/adk-docs/agents/multi-agents/)

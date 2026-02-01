@@ -146,6 +146,15 @@ project/
 | [terraform/](../terraform/) | Advanced patterns, workspaces |
 | [iac-basics/](../iac-basics/) | IaC principles, tool comparison |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| HCL syntax review | haiku | Syntax checking |
+| Provider configuration | haiku | Setup automation |
+| Resource creation | sonnet | Infrastructure patterns |
+
 ## Sources
 
 - [Terraform Documentation](https://www.terraform.io/docs)

@@ -477,3 +477,10 @@ class ToolService:
 - [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [Anthropic Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
 - [LangChain Agents](https://python.langchain.com/docs/modules/agents/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Tool schema definition | sonnet | API design |
+| Error recovery patterns | sonnet | Robustness design |

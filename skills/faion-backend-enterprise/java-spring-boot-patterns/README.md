@@ -644,3 +644,11 @@ List<User> findAllWithOrganization();
 - [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
 - [Baeldung Spring Tutorials](https://www.baeldung.com/spring-boot)
 - [Spring Guides](https://spring.io/guides)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement java-spring-boot-patterns pattern | haiku | Straightforward implementation |
+| Review java-spring-boot-patterns implementation | sonnet | Requires code analysis |
+| Optimize java-spring-boot-patterns design | opus | Complex trade-offs |
+

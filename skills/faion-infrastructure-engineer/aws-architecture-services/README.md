@@ -102,6 +102,16 @@ Six pillars for architecture decisions:
 5. **Missing monitoring** - CloudWatch alarms are essential
 6. **Hardcoded credentials** - Use IAM roles, Secrets Manager
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Serverless vs containers decision | opus | Strategic choice with implications |
+| Lambda vs ECS vs EKS selection | sonnet | Requires understanding trade-offs |
+| Service integration patterns | sonnet | Established architectural patterns |
+| Event-driven architecture design | opus | Novel problem, needs deep reasoning |
+
 ## Sources
 
 - [AWS Architecture Center](https://aws.amazon.com/architecture/)

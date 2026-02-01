@@ -389,6 +389,12 @@ Prepare:
 - Google Conversation Design
 - Voice UX Design Patterns (Nielsen Norman Group)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice UI pattern application | sonnet | Complex interaction: designing multimodal conversational flows |
+
 ## Sources
 
 - [Google Conversation Design Guidelines](https://designguidelines.withgoogle.com/conversation/)

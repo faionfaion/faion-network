@@ -31,3 +31,10 @@ Need quick, cited research synthesis from multiple sources.
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Perplexity query formation | sonnet | Prompt design |
+| Research synthesis | sonnet | Information organization |

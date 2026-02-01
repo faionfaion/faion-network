@@ -35,3 +35,9 @@ Step-by-step guidance:
 → Track completion
 → Allow retry
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Enterprise XR Applications | haiku | Task execution: applying established methodologies |

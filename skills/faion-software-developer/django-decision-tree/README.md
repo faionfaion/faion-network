@@ -238,6 +238,14 @@ def create_order(...):
     update_user_stats_task.delay(order.user_id)  # async, no import
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Django Best Practices](https://django-best-practices.readthedocs.io/) - Community guidelines

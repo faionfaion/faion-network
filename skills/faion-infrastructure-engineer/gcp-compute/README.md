@@ -128,6 +128,15 @@ gcloud compute instance-groups managed set-autoscaling my-mig \
     --target-cpu-utilization=0.6
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VM instance group setup | sonnet | Scaling configuration |
+| Autoscaling policy definition | sonnet | Performance tuning |
+| Spot VM usage strategy | sonnet | Cost optimization |
+
 ## Sources
 
 - [Compute Engine Documentation](https://cloud.google.com/compute/docs)

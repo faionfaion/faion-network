@@ -117,3 +117,11 @@ See individual files for full details:
 
 *Product Manager Methodologies v1.0*
 *33 methodologies | 18 core + 15 extended*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -129,6 +129,15 @@ kubectl port-forward <pod> 8080:80      # Local access
 | [helm-basics/](../helm-basics/) | Helm charts and templating |
 | [k8s-resources](../k8s-resources.md) | Resource management deep-dive |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Pod lifecycle understanding | sonnet | Conceptual learning |
+| Service discovery setup | haiku | Standard configuration |
+| Namespace isolation strategy | sonnet | Security planning |
+
 ## Sources
 
 - [Kubernetes Documentation](https://kubernetes.io/docs/)

@@ -326,3 +326,11 @@ After assessment:
 
 - BA Framework Guide v3 - Solution Evaluation
 - BA industry Solution Assessment Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement solution-assessment pattern | haiku | Straightforward implementation |
+| Review solution-assessment implementation | sonnet | Requires code analysis |
+| Optimize solution-assessment design | opus | Complex trade-offs |
+

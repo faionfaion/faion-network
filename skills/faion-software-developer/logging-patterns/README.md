@@ -571,3 +571,11 @@ app.get('/users/:id', async (req, res) => {
 - [12 Factor App - Logs](https://12factor.net/logs)
 - [Pino Logger](https://getpino.io/)
 - [OpenTelemetry Logging](https://opentelemetry.io/docs/specs/otel/logs/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

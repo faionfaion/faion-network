@@ -356,6 +356,12 @@ Understand organizational context:
 - Contextual Design by Beyer and Holtzblatt
 - Rapid Contextual Design by Holtzblatt et al.
 - Observing the User Experience by Goodman et al.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Contextual Inquiry | sonnet | Design work: Contextual Inquiry requires analysis and iteration |
+
 ## Sources
 
 - [Contextual Inquiry](https://www.nngroup.com/articles/contextual-inquiry/) - Nielsen Norman Group

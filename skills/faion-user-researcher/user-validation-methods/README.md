@@ -314,3 +314,9 @@ faion-research-agent (mode: pains)
 
 *User Validation Methods | 4 methodologies*
 *Part of faion-researcher v1.3*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User journey mapping | sonnet | Analysis required: synthesizing user flows from research data |

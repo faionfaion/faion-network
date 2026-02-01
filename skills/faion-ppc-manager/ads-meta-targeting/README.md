@@ -325,6 +325,14 @@ Loyalty:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Meta Audience Targeting Options](https://www.facebook.com/business/help/633474486707199)

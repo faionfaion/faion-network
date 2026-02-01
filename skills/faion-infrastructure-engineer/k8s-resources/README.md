@@ -170,3 +170,11 @@ Complete resource management
 ---
 
 *k8s-resources | Resource Management Reference*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| QoS class assignment | sonnet | Trade-off analysis |
+| Resource quota configuration | sonnet | Cluster governance |
+| LimitRange enforcement | haiku | Policy application |

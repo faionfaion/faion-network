@@ -352,3 +352,11 @@ Default --> Recursive chunking with 15% overlap
 |---------|------|---------|
 | 2.0.0 | 2025-01 | Reorganized into folder, added late/agentic chunking |
 | 1.0.0 | 2024-09 | Initial version |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Chunk size analysis | sonnet | Parameter tuning |
+| Chunking strategy selection | sonnet | Approach choice |
+| Overlap optimization | sonnet | Performance tuning |

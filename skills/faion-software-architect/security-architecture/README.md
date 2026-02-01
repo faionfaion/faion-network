@@ -484,6 +484,14 @@ The Application Security Verification Standard provides approximately **350 secu
 - [CISA Zero Trust Maturity Model](https://www.cisa.gov/zero-trust-maturity-model)
 - [AWS Security Best Practices](https://docs.aws.amazon.com/security/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Threat modeling | opus | Complex security analysis |
+| Auth system design | sonnet | OAuth/JWT patterns |
+| Security checklist | haiku | Verifying security practices |
 ## Related Methodologies
 
 | Methodology | Path |

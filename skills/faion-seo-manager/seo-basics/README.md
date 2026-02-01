@@ -272,6 +272,14 @@ Sitemap: https://faion.net/sitemap-articles.xml
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Keyword research and extraction | haiku | Data lookup, list compilation |
+| Analyzing SEO metrics | sonnet | Comparative analysis, pattern detection |
+| Developing SEO strategy | opus | Complex strategy formulation, market positioning |
+
 ## Sources
 
 - [Google Search Central](https://developers.google.com/search)

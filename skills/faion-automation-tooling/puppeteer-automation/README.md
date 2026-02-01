@@ -568,3 +568,11 @@ async function createBrowserWithProxy() {
   });
 }
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create CI/CD pipeline template | haiku | Pattern application |
+| Optimize pipeline performance | sonnet | Requires optimization skills |
+| Design CD rollback strategy | opus | Complex risk management |
+

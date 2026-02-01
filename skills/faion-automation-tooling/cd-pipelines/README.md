@@ -383,3 +383,11 @@ def track_deployment(version: str, success: bool, duration: float):
 - [cd-basics.md](cd-basics.md) - CD principles and practices
 - [feature-flags.md](feature-flags.md) - Feature flag patterns
 - [monitoring-patterns.md](monitoring-patterns.md) - Monitoring and observability
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement cd-pipelines pattern | haiku | Straightforward implementation |
+| Review cd-pipelines implementation | sonnet | Requires code analysis |
+| Optimize cd-pipelines design | opus | Complex trade-offs |
+

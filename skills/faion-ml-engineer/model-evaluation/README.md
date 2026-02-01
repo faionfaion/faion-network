@@ -176,3 +176,11 @@ Use a powerful LLM to evaluate outputs on criteria like:
 - [DeepEval](https://deepeval.com/)
 - [Evidently AI Benchmarks Guide](https://www.evidentlyai.com/llm-guide/llm-benchmarks)
 - [Hugging Face Evaluation Guidebook](https://huggingface.co/spaces/OpenEvals/evaluation-guidebook)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Benchmark selection | sonnet | Evaluation framework |
+| Metric interpretation | sonnet | Analysis |
+| Model comparison | sonnet | Evaluation |

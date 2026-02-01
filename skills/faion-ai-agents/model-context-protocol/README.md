@@ -42,3 +42,11 @@ MCP Server (tools/data) <-> MCP Client (Claude Code, etc.)
 ---
 
 *AI/ML Best Practices 2026*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement model-context-protocol pattern | haiku | Straightforward implementation |
+| Review model-context-protocol implementation | sonnet | Requires code analysis |
+| Optimize model-context-protocol design | opus | Complex trade-offs |
+

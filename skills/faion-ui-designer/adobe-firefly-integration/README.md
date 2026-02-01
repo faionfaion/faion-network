@@ -32,6 +32,12 @@ Adobe Firefly is integrated across Creative Cloud with commercial usage framewor
 - Developer handoff
 - Design system management
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Adobe Firefly Integration | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Adobe Firefly Official](https://www.adobe.com/products/firefly.html)

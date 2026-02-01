@@ -122,6 +122,14 @@ def create_order(user: User, amount: Decimal) -> Order:
     ...
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Django Service Layer Pattern](https://www.dabapps.com/insights/django-models-and-encapsulation/) - Service layer architecture

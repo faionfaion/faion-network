@@ -145,6 +145,20 @@ Where to store?
 - [AWS Backup](https://docs.aws.amazon.com/aws-backup/)
 - [PostgreSQL Backup and Recovery](https://www.postgresql.org/docs/current/backup.html)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run terraform plan, docker build, kubectl get commands | haiku | Mechanical CLI operations |
+| Review Dockerfile for best practices | sonnet | Code review, security patterns |
+| Debug pod crashes, container networking issues | sonnet | Diagnosis and error analysis |
+| Design multi-region failover architecture | opus | Complex distributed systems decisions |
+| Write Helm values for production rollout | sonnet | Configuration and templating |
+| Create monitoring strategy for microservices | opus | System-wide observability design |
+| Troubleshoot Kubernetes pod evictions under load | sonnet | Performance debugging and analysis |
+
+---
+
 ## Sources
 
 - [Acronis 3-2-1 Backup Strategy Guide 2025](https://www.acronis.com/en/blog/posts/backup-rule/)

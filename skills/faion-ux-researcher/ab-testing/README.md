@@ -287,6 +287,12 @@ Testing multiple changes at once requires exponentially more traffic:
 - [ ] Decision documented
 - [ ] Learnings shared
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| A/B test setup | haiku | Mechanical task: configuring test parameters and tracking |
+
 ## Sources
 
 - [Trustworthy Online Controlled Experiments: A Practical Guide to A/B Testing](https://experimentguide.com/) - Comprehensive guide by Microsoft researchers

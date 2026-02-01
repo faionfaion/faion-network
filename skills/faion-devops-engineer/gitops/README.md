@@ -232,3 +232,15 @@ Emerging capabilities:
 - [GitOps in 2025 - CNCF](https://www.cncf.io/blog/2025/06/09/gitops-in-2025-from-old-school-updates-to-the-modern-way/)
 - [Push vs Pull GitOps - Aviator](https://www.aviator.co/blog/choosing-between-pull-vs-push-based-gitops/)
 - [Top GitOps Tools 2026 - Spacelift](https://spacelift.io/blog/gitops-tools)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run terraform plan, docker build, kubectl get commands | haiku | Mechanical CLI operations |
+| Review Dockerfile for best practices | sonnet | Code review, security patterns |
+| Debug pod crashes, container networking issues | sonnet | Diagnosis and error analysis |
+| Design multi-region failover architecture | opus | Complex distributed systems decisions |
+| Write Helm values for production rollout | sonnet | Configuration and templating |
+| Create monitoring strategy for microservices | opus | System-wide observability design |
+| Troubleshoot Kubernetes pod evictions under load | sonnet | Performance debugging and analysis |

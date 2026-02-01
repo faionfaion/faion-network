@@ -586,6 +586,14 @@ public class CleanupService : BackgroundService
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement csharp-dotnet pattern | haiku | Straightforward implementation |
+| Review csharp-dotnet implementation | sonnet | Requires code analysis |
+| Optimize csharp-dotnet design | opus | Complex trade-offs |
+
 ## Sources
 
 - [ASP.NET Core Documentation](https://docs.microsoft.com/en-us/aspnet/core/)

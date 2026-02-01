@@ -105,3 +105,11 @@ Real-time processing    → GPT-4o Mini / Gemini Flash
 - [Claude Vision Docs](https://docs.anthropic.com/en/docs/vision)
 - [Gemini Image Understanding](https://ai.google.dev/gemini-api/docs/image-understanding)
 - [Top Vision Language Models 2026](https://www.datacamp.com/blog/top-vision-language-models)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Vision model selection | sonnet | Model evaluation |
+| Image processing | sonnet | Data preprocessing |
+| Multi-image analysis | sonnet | Complex analysis |

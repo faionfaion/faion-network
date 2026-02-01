@@ -246,3 +246,11 @@ plugins: [
 
 *Tailwind Architecture*
 *Sources: [Tailwind Best Practices 2025](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns), [Infinum Handbook](https://infinum.com/handbook/frontend/react/tailwind/best-practices)*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

@@ -31,3 +31,9 @@ Predictive UI:
 
 **Convergence of AI + XR:**
 > "Major technology companies are investing heavily in this convergence, recognizing that spatial computing combined with generative AI will create completely new categories of user experiences."
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| AI + Spatial Computing | haiku | Task execution: applying established methodologies |

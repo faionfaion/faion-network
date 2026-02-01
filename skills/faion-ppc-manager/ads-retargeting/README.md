@@ -338,6 +338,14 @@ Stage 4 (Day 14+):
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Meta Retargeting Guide](https://www.facebook.com/business/help/1474662202748341)

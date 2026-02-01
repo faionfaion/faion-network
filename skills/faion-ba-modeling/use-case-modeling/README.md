@@ -345,3 +345,11 @@ After use case modeling:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Use Case Modeling Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create use case from description | haiku | Structured template filling |
+| Review use case for completeness | sonnet | Requires BA judgment |
+| Design complex actor interactions | opus | Complex scenarios |
+

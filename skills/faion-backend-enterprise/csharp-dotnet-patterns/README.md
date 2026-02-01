@@ -616,3 +616,11 @@ public async Task<UserDto> GetUser(Guid id)
 - [Clean Architecture Template](https://github.com/jasontaylordev/CleanArchitecture)
 - [MediatR](https://github.com/jbogard/MediatR)
 - [FluentValidation](https://docs.fluentvalidation.net/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement csharp-dotnet-patterns pattern | haiku | Straightforward implementation |
+| Review csharp-dotnet-patterns implementation | sonnet | Requires code analysis |
+| Optimize csharp-dotnet-patterns design | opus | Complex trade-offs |
+

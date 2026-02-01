@@ -346,3 +346,11 @@ $[X]/mo
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Price research | sonnet | Market analysis |
+| Pricing strategy | sonnet | Financial planning |
+| Comparison table | haiku | Data organization |

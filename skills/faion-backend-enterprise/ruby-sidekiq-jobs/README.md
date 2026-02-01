@@ -96,3 +96,11 @@ end
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ruby-sidekiq-jobs pattern | haiku | Straightforward implementation |
+| Review ruby-sidekiq-jobs implementation | sonnet | Requires code analysis |
+| Optimize ruby-sidekiq-jobs design | opus | Complex trade-offs |
+

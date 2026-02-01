@@ -72,3 +72,9 @@ Each methodology file includes:
 - **Checklist**: Verification items
 
 Reference by file name when applying to design work (e.g., "Apply error-prevention methodology").
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| UX/UI Methodologies | sonnet | Design work: UX/UI Methodologies requires analysis and iteration |

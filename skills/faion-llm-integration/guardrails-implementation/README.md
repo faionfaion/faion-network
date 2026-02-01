@@ -513,3 +513,10 @@ class GuardrailsMonitor:
 - [guardrails-basics.md](guardrails-basics.md) - Fundamentals and core concepts
 - [prompt-basics.md](prompt-basics.md) - Prompt engineering best practices
 - [rag-evaluation.md](rag-evaluation.md) - RAG evaluation metrics
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Custom guardrails | sonnet | Pattern implementation |
+| Prompt injection prevention | opus | Security-critical design |

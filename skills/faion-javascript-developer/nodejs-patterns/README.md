@@ -279,6 +279,15 @@ export const requestLogger: RequestHandler = (req, res, next) => {
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Event emitter patterns | sonnet | Async pattern expertise |
+| Stream handling | sonnet | Data flow design |
+| Worker threads usage | sonnet | Concurrency decisions |
+
 ## Sources
 
 - [Node.js Documentation](https://nodejs.org/docs/) - Official Node.js docs

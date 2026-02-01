@@ -33,3 +33,9 @@ For banking, health, personal info:
 → Confirm before actions
 → Offer private mode
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |

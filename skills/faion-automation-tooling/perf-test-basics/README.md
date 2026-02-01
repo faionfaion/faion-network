@@ -280,3 +280,11 @@ if __name__ == "__main__":
 - [pytest-benchmark](https://pytest-benchmark.readthedocs.io/)
 - [Google Web Vitals](https://web.dev/vitals/)
 - [Performance Testing Guidance](https://www.perfmatrix.com/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement perf-test-basics pattern | haiku | Straightforward implementation |
+| Review perf-test-basics implementation | sonnet | Requires code analysis |
+| Optimize perf-test-basics design | opus | Complex trade-offs |
+

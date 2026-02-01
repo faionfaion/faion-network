@@ -284,3 +284,11 @@ RETURN path
 - [Redis Data Types](https://redis.io/docs/data-types/)
 - [Cassandra Data Modeling](https://cassandra.apache.org/doc/latest/cassandra/data_modeling/)
 - [Neo4j Graph Patterns](https://neo4j.com/docs/getting-started/data-modeling/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

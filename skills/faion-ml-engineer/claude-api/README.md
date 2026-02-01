@@ -169,3 +169,11 @@ Real-time response delivery:
 | [faion-ai-agents](../../faion-ai-agents/CLAUDE.md) | Agent architectures |
 | [faion-rag-engineer](../../faion-rag-engineer/CLAUDE.md) | RAG with Claude |
 | [faion-claude-code](../../faion-claude-code/CLAUDE.md) | Claude Code CLI |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| API integration | sonnet | Integration patterns |
+| Model selection | sonnet | Capability matching |
+| Rate limit handling | sonnet | Reliability patterns |

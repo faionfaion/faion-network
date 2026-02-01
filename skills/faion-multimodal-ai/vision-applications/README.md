@@ -457,3 +457,11 @@ if result["success"]:
 - [Claude Vision](https://docs.anthropic.com/en/docs/vision)
 - [Gemini Vision](https://ai.google.dev/tutorials/python_quickstart#vision)
 - Related: [vision-basics.md](vision-basics.md)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Analyze image content and objects | haiku | Pattern recognition and structured output |
+| Compare multiple images for differences | sonnet | Complex visual analysis and reasoning |
+| Build vision-based chatbot interface | sonnet | Code integration and architecture |
+

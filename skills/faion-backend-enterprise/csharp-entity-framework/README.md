@@ -152,3 +152,11 @@ public class UserRepository : IUserRepository
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement csharp-entity-framework pattern | haiku | Straightforward implementation |
+| Review csharp-entity-framework implementation | sonnet | Requires code analysis |
+| Optimize csharp-entity-framework design | opus | Complex trade-offs |
+

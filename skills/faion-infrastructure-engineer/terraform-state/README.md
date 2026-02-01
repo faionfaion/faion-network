@@ -68,6 +68,15 @@ Terraform state is the source of truth for your infrastructure. It maps real-wor
 | [templates.md](templates.md) | Copy-paste ready configurations |
 | [llm-prompts.md](llm-prompts.md) | AI-assisted state management |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Remote state locking | sonnet | Concurrency handling |
+| State import operations | sonnet | State management |
+| State file cleanup | haiku | Mechanical task |
+
 ## Sources
 
 - [Terraform State Documentation](https://developer.hashicorp.com/terraform/language/state)

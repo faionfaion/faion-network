@@ -501,6 +501,14 @@ async def test_rate_limiting_by_endpoint():
 - **No automation** - manual-only security testing
 - **Skipping low severity issues** - all vulnerabilities matter
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/) - comprehensive testing methodology

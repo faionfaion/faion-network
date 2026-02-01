@@ -350,6 +350,14 @@ When refactoring existing codebase:
 7. [ ] Create/update CLAUDE.md
 8. [ ] Verify all imports are explicit
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 - `react-component-architecture.md` - Component patterns

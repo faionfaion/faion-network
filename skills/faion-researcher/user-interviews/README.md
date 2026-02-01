@@ -325,6 +325,14 @@ Learn about:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Researching market data | haiku | Data lookup and compilation |
+| Analyzing research patterns | sonnet | Pattern recognition and comparison |
+| Strategic market positioning | opus | Complex market strategy formulation |
+
 ## Related Methodologies
 
 - **problem-validation:** Problem Validation

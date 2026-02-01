@@ -54,3 +54,11 @@ AI-Native: Infrastructure + Inference (60%) + Development (40%)
 ```
 
 **Key Insight 2026:** 40% of AI-mature organizations are piloting agentic systems. Model selection (right tool for right job) is critical for cost management.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

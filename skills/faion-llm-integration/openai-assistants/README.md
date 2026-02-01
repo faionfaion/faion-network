@@ -343,3 +343,10 @@ curl https://api.openai.com/v1/threads \
 - [openai-chat-completions.md](openai-chat-completions.md) - Chat API basics
 - [openai-function-calling.md](openai-function-calling.md) - Tool use and structured outputs
 - [openai-embeddings.md](openai-embeddings.md) - Text embeddings
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Assistant creation | haiku | Setup |
+| File handling | sonnet | State management |

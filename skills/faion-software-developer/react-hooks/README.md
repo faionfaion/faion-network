@@ -414,6 +414,14 @@ useEffect(() => {
 const options = useMemo(() => ({ page, limit }), [page, limit]);
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [React Hooks API Reference](https://react.dev/reference/react) - Official hooks docs

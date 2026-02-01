@@ -334,6 +334,14 @@ CTA: Read Case Study
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [LinkedIn Campaign Manager Guide](https://business.linkedin.com/marketing-solutions/ad-targeting)

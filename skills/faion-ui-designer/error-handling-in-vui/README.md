@@ -32,6 +32,12 @@ Voice recognition errors frustrate users and break conversations.
 - Suggest example phrases
 - Know when to escalate
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and prototype creation | haiku | Mechanical task: converting requirements to wireframe sketches |
+
 ## Sources
 
 - [Voice Error Handling - NNG](https://www.nngroup.com/articles/voice-error-handling/)

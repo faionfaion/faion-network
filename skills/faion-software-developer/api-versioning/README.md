@@ -86,6 +86,14 @@ Link: </api/v2/users>; rel="successor-version"
 - Log version usage for sunset planning
 - Use feature flags for gradual rollout
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [REST API Versioning](https://restfulapi.net/versioning/)

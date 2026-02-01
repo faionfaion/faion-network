@@ -367,6 +367,17 @@ def smart_sampling(
 - [RAGAS Documentation](https://docs.ragas.io/)
 - [Information Retrieval Metrics](https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval))
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Analyze and assess | sonnet | Evaluation and planning |
+| Execute implementation | haiku | Apply established patterns |
+| Review and validate | sonnet | Quality assurance |
+| Strategic decision | opus | Novel scenarios |
+| Optimize and refine | haiku | Performance tuning |
+| Document approach | haiku | Create documentation |
+
 ## Sources
 
 - [RAGAS Paper](https://arxiv.org/abs/2309.15217)

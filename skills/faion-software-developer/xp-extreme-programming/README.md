@@ -264,3 +264,11 @@ git push origin main
 - [XP Website](http://www.extremeprogramming.org/)
 - [C2 Wiki - Extreme Programming](https://wiki.c2.com/?ExtremeProgramming)
 - [Agile Manifesto](https://agilemanifesto.org/) (co-authored by XP creators)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

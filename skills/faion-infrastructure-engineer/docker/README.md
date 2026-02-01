@@ -490,6 +490,16 @@ dive myapp:latest
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Dockerfile optimization | sonnet | Layer optimization expertise |
+| Base image selection | haiku | Straightforward choice |
+| Multi-stage builds | sonnet | Pattern application |
+| Build cache management | haiku | Mechanical configuration |
+
 ## Sources
 
 - [Docker Documentation](https://docs.docker.com/)

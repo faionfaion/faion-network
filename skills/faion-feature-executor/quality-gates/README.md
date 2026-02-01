@@ -193,3 +193,15 @@ If not specified in constitution:
 ---
 
 *faion-feature-executor/quality-gates.md*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run test suite, update task status, commit code | haiku | Mechanical execution and status updates |
+| Review acceptance criteria completeness | sonnet | Evaluation and analysis |
+| Unblock task dependencies, triage failures | sonnet | Problem-solving and diagnosis |
+| Plan complex feature spanning multiple services | opus | Architecture and coordination |
+| Implement quality gates and CI/CD checks | sonnet | Engineering patterns and practices |
+| Resolve production incidents blocking releases | opus | Complex troubleshooting, high-impact decisions |
+| Refactor shared code across multiple tasks | sonnet | Code analysis and transformation |

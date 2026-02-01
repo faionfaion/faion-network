@@ -34,3 +34,9 @@ with sunny conditions. Humidity is 45 percent."
 - Understand follow-up questions
 - Maintain context across sessions
 - Adapt to user preferences
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

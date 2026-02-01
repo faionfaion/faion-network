@@ -47,6 +47,12 @@ Design tokens are named values that store design decisions (colors, spacing, typ
 | Theming | Easy mode switching (dark/light) |
 | Maintenance | Single source of truth |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Design Tokens W3C Community Group](https://design-tokens.github.io/community-group/)

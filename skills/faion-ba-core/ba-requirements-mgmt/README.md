@@ -162,3 +162,11 @@ How to organize requirements into a coherent structure?
 
 *BA Requirements Management Methodologies*
 *Knowledge Area: KA-3 Lifecycle*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract requirements from documents | haiku | Pattern matching |
+| Validate requirement completeness | sonnet | Requires BA expertise |
+| Analyze requirement trade-offs | opus | Complex business analysis |
+

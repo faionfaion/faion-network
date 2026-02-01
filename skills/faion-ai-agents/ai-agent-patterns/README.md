@@ -58,3 +58,11 @@ tools = [
 | AutoGen | Multi-agent conversations |
 | CrewAI | Role-based agent teams |
 | OpenAI Agents SDK | Official OpenAI support |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

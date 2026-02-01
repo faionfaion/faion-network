@@ -616,3 +616,11 @@ public async Task<UserDto> GetUser(Guid id)
 - [Clean Architecture Template](https://github.com/jasontaylordev/CleanArchitecture)
 - [MediatR](https://github.com/jbogard/MediatR)
 - [FluentValidation](https://docs.fluentvalidation.net/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

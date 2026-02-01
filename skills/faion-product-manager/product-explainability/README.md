@@ -41,3 +41,11 @@ How clearly a product communicates its purpose, value, behavior, and limits to p
 ```
 
 **Key Insight 2026:** Keeping the product knowledge base aligned with the product itself is essential for AI-mediated consideration and discovery.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

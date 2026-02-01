@@ -353,3 +353,15 @@ then we can compare."
 - [On Pair Programming - Martin Fowler](https://martinfowler.com/articles/on-pair-programming.html)
 - [Strong-Style Pairing - Llewellyn Falco](https://llewellynfalco.blogspot.com/2014/06/llewellyns-strong-style-pairing.html)
 - [Tuple - The Pairing Tool](https://tuple.app/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Review code for architectural violations | sonnet | Code review with pattern matching |
+| Refactor legacy code to clean architecture | opus | Complex refactoring with trade-offs |
+| Calculate code coverage for module | haiku | Metric collection and reporting |
+| Design domain-driven architecture | opus | Strategic design decision |
+| Write test cases for edge cases | sonnet | Testing with reasoning about coverage |
+| Apply decomposition pattern to class | sonnet | Refactoring with patterns |
+

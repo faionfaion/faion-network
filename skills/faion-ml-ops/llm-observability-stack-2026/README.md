@@ -160,6 +160,15 @@ eval_df = llm_classify(
 4. **No User Feedback Loop** - Automated metrics miss user satisfaction
 5. **Alert Fatigue** - Too many alerts = ignored alerts
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| 2026 stack selection | sonnet | Tool evaluation |
+| Integration planning | sonnet | Architecture |
+| Dashboard implementation | sonnet | Development |
+
 ## Sources
 
 - [Langfuse Documentation](https://langfuse.com/docs)

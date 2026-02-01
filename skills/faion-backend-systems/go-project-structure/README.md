@@ -488,3 +488,15 @@ func HandleUserRequest() {}
 - [Effective Go](https://go.dev/doc/effective_go)
 - [Go Modules Reference](https://go.dev/ref/mod)
 - [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Database schema design and normalization | opus | Requires architectural decisions and complex trade-offs |
+| Implement Go concurrency patterns | sonnet | Coding with existing patterns, medium complexity |
+| Write database migration scripts | haiku | Mechanical task using templates |
+| Review error handling implementation | sonnet | Code review and refactoring |
+| Profile and optimize slow queries | opus | Novel optimization problem, deep analysis |
+| Setup Redis caching layer | sonnet | Medium complexity implementation task |
+

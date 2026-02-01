@@ -496,6 +496,14 @@ describe('User API Integration', () => {
 - **Mocking integrations** - defeats the purpose of integration testing
 - **Ignoring edge cases** - network failures, timeouts, partial failures
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Testcontainers Python](https://testcontainers-python.readthedocs.io/) - Docker containers for tests

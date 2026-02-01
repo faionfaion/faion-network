@@ -52,4 +52,16 @@ Vision -> Framing -> Weakness -> Pedestal -> Ask
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing interview scripts | haiku | Template adaptation, question generation |
+| Scoring validation evidence | haiku | Rubric application, categorization |
+| Analyzing interview transcripts | sonnet | Qualitative analysis, insight extraction |
+| Identifying red flags in responses | sonnet | Pattern recognition, skeptical reasoning |
+| Deciding next validation steps | opus | Strategy development based on evidence |
+
+---
+
 *AI Research Best Practices 2026*

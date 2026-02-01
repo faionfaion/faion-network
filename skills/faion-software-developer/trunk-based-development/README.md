@@ -486,3 +486,11 @@ TBD correlates with elite DORA performers:
 - [Accelerate - Nicole Forsgren et al.](https://itrevolution.com/accelerate-book/)
 - [Continuous Delivery - Jez Humble](https://continuousdelivery.com/)
 - [Feature Flags - Martin Fowler](https://martinfowler.com/articles/feature-toggles.html)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

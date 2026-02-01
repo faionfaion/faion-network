@@ -48,6 +48,14 @@ Pillar: "Complete Guide to RAG"
     - RAG Case Studies
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Keyword research and extraction | haiku | Data lookup, list compilation |
+| Analyzing SEO metrics | sonnet | Comparative analysis, pattern detection |
+| Developing SEO strategy | opus | Complex strategy formulation, market positioning |
+
 ## Sources
 
 - [Google Topic Authority Guide](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)

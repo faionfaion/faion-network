@@ -388,3 +388,9 @@ UC-001 ──────► UC-002
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User journey mapping | sonnet | Analysis required: synthesizing user flows from research data |

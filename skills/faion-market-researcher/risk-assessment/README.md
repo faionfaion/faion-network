@@ -331,3 +331,10 @@ After review:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Risk identification | sonnet | Analysis framework |
+| Mitigation planning | sonnet | Strategic planning |

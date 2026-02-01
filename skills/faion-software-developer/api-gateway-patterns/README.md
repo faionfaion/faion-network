@@ -214,6 +214,14 @@ async def get_dashboard(user_id: str):
 - Version gateway configuration
 - Implement request tracing
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Kong Gateway Documentation](https://docs.konghq.com/gateway/latest/)

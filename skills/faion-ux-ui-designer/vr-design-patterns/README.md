@@ -34,3 +34,9 @@ Full VR lacks real-world context and can cause discomfort.
 → Provide spatial audio feedback
 → Use gaze + confirm for selection
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

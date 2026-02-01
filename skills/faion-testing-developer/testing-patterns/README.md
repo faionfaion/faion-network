@@ -293,6 +293,14 @@ Always review AI-generated tests for:
 | Page Object | UI tests | Maintainable selectors |
 | Property-Based | Edge case discovery | Automatic generation |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 ### Core Patterns

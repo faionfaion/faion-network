@@ -488,3 +488,11 @@ func HandleUserRequest() {}
 - [Effective Go](https://go.dev/doc/effective_go)
 - [Go Modules Reference](https://go.dev/ref/mod)
 - [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

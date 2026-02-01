@@ -229,3 +229,15 @@ KA-4 (Strategy) provides context
 
 *BA Knowledge Areas v1.0*
 *Based on Business Analysis Framework (BABOK)*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gather and analyze requirements | sonnet | Complex reasoning about stakeholder needs |
+| Write acceptance criteria for features | sonnet | Requires testing perspective and detail |
+| Create process flow diagrams (BPMN) | opus | Architecture and complex modeling decisions |
+| Format requirements in templates | haiku | Mechanical formatting and pattern application |
+| Validate requirements with stakeholders | sonnet | Needs reasoning and communication planning |
+| Perform gap analysis between states | opus | Strategic analysis and trade-off evaluation |
+

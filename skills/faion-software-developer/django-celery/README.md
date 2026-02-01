@@ -107,6 +107,14 @@ send_reminder.apply_async(
 )
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Celery Documentation](https://docs.celeryq.dev/) - Official Celery docs

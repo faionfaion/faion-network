@@ -257,6 +257,14 @@ Threads is actively developing. Stay updated on:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating social media content | haiku | Template adaptation, copying |
+| Analyzing engagement metrics | sonnet | Pattern analysis, audience insights |
+| Developing content strategy | opus | Strategic planning, audience modeling |
+
 ## Sources
 
 - [Threads Official Help](https://help.instagram.com/788669719351544)

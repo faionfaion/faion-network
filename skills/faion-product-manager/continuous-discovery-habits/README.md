@@ -67,3 +67,11 @@ Team Capacity Allocation:
 - No structured way to share insights
 
 **Key Insight 2026:** Continuous discovery is the mindset of developing a cadence of customer conversations and getting regular feedback. Teams at Spotify, Tesco, and CarMax use this framework successfully.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

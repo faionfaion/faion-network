@@ -249,6 +249,12 @@ Match user's locale
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Nielsen Norman Group: Match Between System and Real World](https://www.nngroup.com/articles/match-system-real-world/)

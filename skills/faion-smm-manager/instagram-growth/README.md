@@ -220,6 +220,14 @@ Reels (Discovery) → Profile Visit → Follow
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating social media content | haiku | Template adaptation, copying |
+| Analyzing engagement metrics | sonnet | Pattern analysis, audience insights |
+| Developing content strategy | opus | Strategic planning, audience modeling |
+
 ## Sources
 
 - [Instagram Algorithm Guide](https://about.instagram.com/blog/announcements/instagram-ranking-explained)

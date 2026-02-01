@@ -36,6 +36,12 @@ Voice interfaces are hard to test in controlled environments.
 | Time to complete | Efficiency metric |
 | User satisfaction | Post-interaction survey |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| A/B test setup | haiku | Mechanical task: configuring test parameters and tracking |
+
 ## Sources
 
 - [Testing Voice Interfaces](https://www.nngroup.com/articles/testing-voice-usability/) - Nielsen Norman Group

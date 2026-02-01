@@ -45,3 +45,10 @@ Manual research is slow and limited in scope.
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research tool comparison | sonnet | Evaluation |
+| Tool selection | sonnet | Decision making |

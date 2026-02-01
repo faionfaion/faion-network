@@ -218,6 +218,12 @@ New content:
 - Content Strategy for the Web by Kristina Halvorson
 - The Elements of Content Strategy by Erin Kissane
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Accessibility audit | haiku | Systematic check: verifying WCAG compliance criteria |
+
 ## Sources
 
 - [Content Audits](https://www.nngroup.com/articles/content-audits/) - Nielsen Norman Group guide

@@ -109,6 +109,14 @@ Generate a specification for [FEATURE_NAME]:
 | Specs too large for context window | Break into focused, modular specs |
 | Ignoring AI suggestions | Review all suggestions; AI catches edge cases humans miss |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [AWS Kiro Documentation](https://aws.amazon.com/kiro/) - Enterprise AI-assisted development

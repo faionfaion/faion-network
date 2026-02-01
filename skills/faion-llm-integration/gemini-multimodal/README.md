@@ -474,6 +474,14 @@ response = model.generate_content("Your prompt")
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Image input processing | sonnet | Multimodal handling |
+| Video analysis | sonnet | Complex input |
+
 ## Sources
 
 - [Gemini API Documentation](https://ai.google.dev/docs)

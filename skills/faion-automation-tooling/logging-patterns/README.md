@@ -571,3 +571,11 @@ app.get('/users/:id', async (req, res) => {
 - [12 Factor App - Logs](https://12factor.net/logs)
 - [Pino Logger](https://getpino.io/)
 - [OpenTelemetry Logging](https://opentelemetry.io/docs/specs/otel/logs/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement logging-patterns pattern | haiku | Straightforward implementation |
+| Review logging-patterns implementation | sonnet | Requires code analysis |
+| Optimize logging-patterns design | opus | Complex trade-offs |
+

@@ -404,6 +404,14 @@ When using LLMs for serverless architecture:
 - [Powertools for AWS Lambda](https://docs.powertools.aws.dev/lambda/)
 - [Lumigo CLI](https://github.com/lumigo-io/lumigo-CLI)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 - [event-driven-architecture/](../event-driven-architecture/) - Event patterns, EventBridge, messaging

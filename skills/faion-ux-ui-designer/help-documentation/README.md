@@ -333,6 +333,12 @@ Jargon without explanation
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Nielsen Norman Group: Help and Documentation](https://www.nngroup.com/articles/help-and-documentation/)

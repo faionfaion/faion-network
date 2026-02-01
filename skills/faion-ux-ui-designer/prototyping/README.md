@@ -334,6 +334,12 @@ Cons: Time-intensive
 - Prototyping: A Practitioner's Guide
 - UX research community: Prototyping
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Prototyping | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Figma Prototyping Guide](https://help.figma.com/hc/en-us/articles/360040314193-Guide-to-prototyping-in-Figma)

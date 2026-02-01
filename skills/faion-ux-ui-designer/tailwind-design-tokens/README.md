@@ -40,6 +40,12 @@ module.exports = {
 4. Enforce consistent usage
 5. Generate CSS variables from tokens
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs/theme)

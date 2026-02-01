@@ -40,3 +40,11 @@ AI-Era Ratio: 2 PMs : 1 Engineer (Andrew Ng observation)
 | Data | Participate in product decisions |
 
 **Key Insight 2026:** Modern product teams feel more like overlapping Venn diagrams than relay-race handoffs. This overlap is not a bug - it's the operating model.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -235,6 +235,14 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY order_stats;
 - Storing computed values that can become stale
 - VARCHAR(255) everywhere without considering requirements
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/current/)

@@ -141,6 +141,18 @@ aws ecs wait services-stable --cluster my-cluster --services my-service
 | [aws-architecture-foundations.md](../aws-architecture-foundations.md) | VPC design, Well-Architected |
 | [aws-architecture-services.md](../aws-architecture-services.md) | Service architecture patterns |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| AWS CLI configuration | haiku | Mechanical setup with clear commands |
+| VPC network design | opus | Complex architecture decisions with trade-offs |
+| EC2 instance provisioning | sonnet | Moderate complexity, standard patterns |
+| S3 bucket lifecycle policies | sonnet | Policy creation requires reasoning |
+| Security group rules audit | haiku | Straightforward permission review |
+| CloudFormation template writing | sonnet | IaC pattern application |
+
 ## Sources
 
 - [AWS CLI Documentation](https://docs.aws.amazon.com/cli/latest/userguide/)

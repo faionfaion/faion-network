@@ -124,3 +124,11 @@ public class NotificationService {
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement java-spring-async pattern | haiku | Straightforward implementation |
+| Review java-spring-async implementation | sonnet | Requires code analysis |
+| Optimize java-spring-async design | opus | Complex trade-offs |
+

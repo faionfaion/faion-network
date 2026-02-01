@@ -85,3 +85,15 @@ For complete patterns and examples, see framework-specific files:
 - [code-decomposition-patterns.md](code-decomposition-patterns.md) - Decomposition patterns and examples
 - [llm-friendly-architecture.md](llm-friendly-architecture.md) - LLM optimization
 - [../faion-sdd/ai-context-aware-decomposition.md](../faion-sdd/ai-context-aware-decomposition.md) - Task decomposition
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Review code for architectural violations | sonnet | Code review with pattern matching |
+| Refactor legacy code to clean architecture | opus | Complex refactoring with trade-offs |
+| Calculate code coverage for module | haiku | Metric collection and reporting |
+| Design domain-driven architecture | opus | Strategic design decision |
+| Write test cases for edge cases | sonnet | Testing with reasoning about coverage |
+| Apply decomposition pattern to class | sonnet | Refactoring with patterns |
+

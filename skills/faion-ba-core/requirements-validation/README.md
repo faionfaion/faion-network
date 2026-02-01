@@ -357,3 +357,11 @@ After validation:
 
 - BA Framework Guide v3 - Requirements Lifecycle Management
 - BA industry Requirements Validation Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract requirements from documents | haiku | Pattern matching |
+| Validate requirement completeness | sonnet | Requires BA expertise |
+| Analyze requirement trade-offs | opus | Complex business analysis |
+

@@ -219,6 +219,14 @@ When discussing caching with LLMs:
 - [Azure Caching Guidance](https://learn.microsoft.com/en-us/azure/architecture/best-practices/caching)
 - [Cloudflare: Lock-free Probabilistic Caching](https://blog.cloudflare.com/sometimes-i-cache/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 | Methodology | Relationship |

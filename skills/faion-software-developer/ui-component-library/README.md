@@ -364,3 +364,11 @@ Input.displayName = 'Input';
 - [shadcn/ui](https://ui.shadcn.com/)
 - [Storybook](https://storybook.js.org/)
 - [React Aria](https://react-spectrum.adobe.com/react-aria/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

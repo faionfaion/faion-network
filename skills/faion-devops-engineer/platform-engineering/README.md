@@ -111,6 +111,20 @@ Infrastructure       →  Cloud resources, Kubernetes, networking
 | [templates.md](templates.md) | Ready-to-use templates |
 | [llm-prompts.md](llm-prompts.md) | AI prompts for platform engineering |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Run terraform plan, docker build, kubectl get commands | haiku | Mechanical CLI operations |
+| Review Dockerfile for best practices | sonnet | Code review, security patterns |
+| Debug pod crashes, container networking issues | sonnet | Diagnosis and error analysis |
+| Design multi-region failover architecture | opus | Complex distributed systems decisions |
+| Write Helm values for production rollout | sonnet | Configuration and templating |
+| Create monitoring strategy for microservices | opus | System-wide observability design |
+| Troubleshoot Kubernetes pod evictions under load | sonnet | Performance debugging and analysis |
+
+---
+
 ## Sources
 
 - [Gartner Platform Engineering Market Guide](https://www.gartner.com/en/documents/platform-engineering)

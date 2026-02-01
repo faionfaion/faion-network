@@ -321,3 +321,9 @@ Project management with client portal and time tracking built-in.
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Persona documentation | haiku | Mechanical task: formatting and organizing existing persona data |

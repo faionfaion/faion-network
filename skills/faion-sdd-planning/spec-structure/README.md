@@ -54,6 +54,14 @@ It does NOT answer "how" - that's for the design document.
 ## Assumptions & Constraints
 [What we assume, limitations]
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
 ## Related Features
 [Feature dependencies, related specs]
 

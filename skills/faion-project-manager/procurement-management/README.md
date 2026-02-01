@@ -278,6 +278,17 @@ After procurement planning:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Analyze and assess | sonnet | Evaluation and planning |
+| Execute implementation | haiku | Apply established patterns |
+| Review and validate | sonnet | Quality assurance |
+| Strategic decision | opus | Novel scenarios |
+| Optimize and refine | haiku | Performance tuning |
+| Document approach | haiku | Create documentation |
+
 ## References
 
 - Project Management Framework Guide 7th Edition - Delivery Performance Domain

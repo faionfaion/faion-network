@@ -221,6 +221,14 @@ Shows:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Requirements Engineering Fundamentals](https://www.ireb.org/en/cpre/fundamentals/) - IREB certification standard

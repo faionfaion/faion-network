@@ -326,3 +326,10 @@ curl https://api.openai.com/v1/embeddings \
 - [openai-chat-completions.md](openai-chat-completions.md) - Chat API basics
 - [openai-function-calling.md](openai-function-calling.md) - Tool use and structured outputs
 - [openai-assistants.md](openai-assistants.md) - Assistants API
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Embedding generation | haiku | API call |
+| Similarity calculation | sonnet | Vector operations |

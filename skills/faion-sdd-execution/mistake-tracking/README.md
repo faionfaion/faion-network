@@ -345,6 +345,14 @@ mistake_metrics:
 - **Actionable prevention** - Concrete steps to avoid
 - **Keep updated** - Prevention evolves
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Sources
 
 - [Blameless Post-Mortems (Google SRE)](https://sre.google/sre-book/postmortem-culture/)

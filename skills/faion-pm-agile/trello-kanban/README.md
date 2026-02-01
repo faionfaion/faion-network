@@ -477,3 +477,11 @@ await fetch(
 - [Butler Automation](https://trello.com/butler)
 - [Trello REST API](https://developer.atlassian.com/cloud/trello/rest/)
 - [Trello Templates](https://trello.com/templates)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

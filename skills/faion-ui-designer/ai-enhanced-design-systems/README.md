@@ -32,6 +32,12 @@ AI will not magically correct deficiencies within a design system. It will ampli
 - Suggest improvements
 - Identify patterns
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [AI in Design Systems](https://www.designsystems.com/ai-enhanced-workflows/)

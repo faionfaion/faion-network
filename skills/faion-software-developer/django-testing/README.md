@@ -131,6 +131,14 @@ def test_user_detail_api(api_client, user):
 - Edge cases covered (None, empty list, negative)
 - Test will fail if code breaks
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [pytest Documentation](https://docs.pytest.org/) - Official pytest docs

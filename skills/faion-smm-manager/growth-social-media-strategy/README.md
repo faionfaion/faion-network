@@ -354,6 +354,14 @@ Engagement Rate = (Likes + Comments + Shares) / Impressions x 100%
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating social media content | haiku | Template adaptation, copying |
+| Analyzing engagement metrics | sonnet | Pattern analysis, audience insights |
+| Developing content strategy | opus | Strategic planning, audience modeling |
+
 ## Sources
 
 - [Hootsuite Social Media Guide](https://blog.hootsuite.com/social-media-marketing/)

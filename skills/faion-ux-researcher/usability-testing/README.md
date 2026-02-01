@@ -341,6 +341,12 @@ Better: "Find your order history"
 - UX research community: Usability Testing
 - Rocket Surgery Made Easy by Steve Krug
 - Measuring the User Experience
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| A/B test setup | haiku | Mechanical task: configuring test parameters and tracking |
+
 ## Sources
 
 - [Usability Testing 101](https://www.nngroup.com/articles/usability-testing-101/) - Nielsen Norman Group

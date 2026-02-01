@@ -191,6 +191,14 @@ groups:
 - Monitor downstream dependencies
 - Track business metrics alongside technical
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+
 ## Sources
 
 - [Prometheus Best Practices](https://prometheus.io/docs/practices/naming/)

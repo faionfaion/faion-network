@@ -218,6 +218,14 @@ openapi-generator generate \
 - Version control your OpenAPI spec
 - Generate SDK clients from spec
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [OpenAPI Specification 3.1](https://spec.openapis.org/oas/v3.1.0)

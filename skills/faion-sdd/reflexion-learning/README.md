@@ -376,6 +376,14 @@ Reflexion integrates with SDD quality gates:
 - [Kaizen](https://en.wikipedia.org/wiki/Kaizen)
 - [5 Whys Root Cause Analysis](https://en.wikipedia.org/wiki/Five_whys)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
+
 ## Related Methodologies
 
 - [Pattern Memory](../pattern-memory/) - Pattern storage and retrieval

@@ -540,3 +540,11 @@ const response = await notion.databases.query({
 - [Notion Templates](https://www.notion.so/templates)
 - [Notion Formulas](https://www.notion.so/help/formulas)
 - [Notion Automations](https://www.notion.so/help/automations)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

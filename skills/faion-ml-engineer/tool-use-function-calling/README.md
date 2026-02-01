@@ -245,3 +245,11 @@ Best for: Large number of tools (>20), specialized domains.
 | [examples.md](examples.md) | Code examples for all providers |
 | [templates.md](templates.md) | Reusable templates for tools and agents |
 | [llm-prompts.md](llm-prompts.md) | Prompts for tool design and debugging |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Tool definition | sonnet | API design |
+| Tool result handling | sonnet | Integration |
+| Error recovery | sonnet | Robustness |

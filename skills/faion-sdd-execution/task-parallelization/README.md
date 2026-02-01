@@ -239,6 +239,14 @@ Speedup: 22h / 2.5 days (assuming 8h/day) = ~1.1x (limited by dependencies)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Executing design patterns | haiku | Pattern application, code generation |
+| Reviewing implementation against spec | sonnet | Quality assurance, consistency check |
+| Resolving design-execution conflicts | opus | Trade-off analysis, adaptive decisions |
+
 ## Related Methodologies
 
 | ID | Name | Relationship |

@@ -487,3 +487,11 @@ asyncio.run(main())
 - [Runway ML API](https://runwayml.com/api)
 - [Luma AI API](https://lumalabs.ai/api)
 - [Replicate Models](https://replicate.com/collections/video-generation)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate video from text prompts | haiku | API execution and monitoring |
+| Create video generation workflow | sonnet | Pipeline design and integration |
+| Optimize video generation quality | opus | Complex trade-offs and strategy |
+

@@ -33,3 +33,9 @@ Tertiary: Keyboard input
 
 Always provide multiple input modes
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

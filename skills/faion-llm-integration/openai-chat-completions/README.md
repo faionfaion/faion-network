@@ -444,3 +444,10 @@ curl https://api.openai.com/v1/chat/completions \
 - [openai-function-calling.md](openai-function-calling.md) - Tool use and structured outputs
 - [openai-embeddings.md](openai-embeddings.md) - Text embeddings
 - [openai-assistants.md](openai-assistants.md) - Assistants API
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Chat format usage | haiku | API usage |
+| Temperature tuning | sonnet | Quality optimization |

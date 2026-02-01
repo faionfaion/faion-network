@@ -60,3 +60,11 @@ None directly - uses UX methodologies and browser automation for testing.
 - ROI of UX
 - Competitive UX Analysis
 - Design Critique
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Review wireframes | haiku | Quick assessment and feedback |
+| Evaluate UX design | sonnet | UX analysis and recommendations |
+| Define product experience vision | opus | Strategic UX direction |
+

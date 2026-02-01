@@ -236,3 +236,11 @@ end
 - [ruby-rails.md](ruby-rails.md) - Rails reference
 - [ruby-rails-patterns.md](ruby-rails-patterns.md) - Rails patterns
 - [llm-friendly-architecture.md](llm-friendly-architecture.md) - LLM optimization
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement decomposition-rails pattern | haiku | Straightforward implementation |
+| Review decomposition-rails implementation | sonnet | Requires code analysis |
+| Optimize decomposition-rails design | opus | Complex trade-offs |
+

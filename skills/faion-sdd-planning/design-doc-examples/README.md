@@ -237,6 +237,14 @@ interface PasswordInputProps {
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Software Architecture Patterns](https://www.oreilly.com/library/view/software-architecture-patterns/9781491971437/) - O'Reilly architecture guide

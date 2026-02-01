@@ -303,3 +303,11 @@ integrations:
 - [ClickUp University](https://university.clickup.com/)
 - [ClickUp API](https://clickup.com/api)
 - [ClickUp Templates](https://clickup.com/templates)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

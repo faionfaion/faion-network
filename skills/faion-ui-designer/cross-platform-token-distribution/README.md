@@ -53,6 +53,12 @@ struct Colors {
 <dimen name="spacing_md">16dp</dimen>
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token organization | haiku | Systematic task: creating and organizing design tokens |
+
 ## Sources
 
 - [Style Dictionary Documentation](https://amzn.github.io/style-dictionary/)

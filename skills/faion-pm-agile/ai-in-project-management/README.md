@@ -42,3 +42,11 @@ First dedicated coverage of AI in Project Management Framework. Addresses ethica
 - 96% prediction accuracy (Intelligent Project Prediction tool)
 - 15% reduction in budget overruns (Acciona)
 - 84% improved efficiency (Project.co survey)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

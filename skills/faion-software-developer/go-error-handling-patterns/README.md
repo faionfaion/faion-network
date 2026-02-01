@@ -539,3 +539,11 @@ func GetUser(id string) (*User, error) {
 - [Working with Errors in Go 1.13](https://go.dev/blog/go1.13-errors)
 - [Don't Just Check Errors, Handle Them Gracefully](https://dave.cheney.net/2016/04/27/dont-just-check-errors-handle-them-gracefully)
 - [Uber Go Style Guide - Errors](https://github.com/uber-go/guide/blob/master/style.md#errors)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

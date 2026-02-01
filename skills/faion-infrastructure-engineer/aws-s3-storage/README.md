@@ -93,6 +93,16 @@ Amazon S3 (Simple Storage Service) best practices for secure, cost-optimized, an
 | Glue | ETL and data catalog |
 | EventBridge | Event notifications |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| S3 bucket policy creation | sonnet | Access control reasoning |
+| Lifecycle policy configuration | haiku | Rule-based application |
+| Cross-region replication setup | sonnet | Distributed system knowledge |
+| S3 encryption strategy | sonnet | Security trade-off analysis |
+
 ## Sources
 
 - [S3 Security Best Practices](https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html)

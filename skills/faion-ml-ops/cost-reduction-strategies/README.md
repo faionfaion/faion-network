@@ -336,6 +336,15 @@ class CostOptimizedLLM:
 3. **Cache Without TTL** - Outdated responses
 4. **Premature Optimization** - Sacrificing quality for cost
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cost analysis | sonnet | Financial analysis |
+| Optimization opportunities | sonnet | Strategy development |
+| Implementation planning | sonnet | Action planning |
+
 ## Sources
 
 - [OpenAI Batch API](https://platform.openai.com/docs/guides/batch)

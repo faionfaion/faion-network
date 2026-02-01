@@ -438,6 +438,12 @@ After critique:
 - Discussing Design by Adam Connor & Aaron Irizarry
 - Articulating Design Decisions by Tom Greever
 - Design Critiques: Encourage a Positive Culture - NNg
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Discussing Design by Connor & Irizarry](https://www.oreilly.com/library/view/discussing-design/9781491902394/) - Definitive guide

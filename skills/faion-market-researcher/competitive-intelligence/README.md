@@ -66,3 +66,11 @@ monitors = [
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Competitor analysis | sonnet | Comparison framework |
+| Competitive positioning | sonnet | Strategy planning |
+| Feature comparison matrix | haiku | Data compilation |

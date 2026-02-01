@@ -244,3 +244,11 @@ After building your risk register:
 
 - Project Management Framework Guide 7th Edition - Uncertainty Performance Domain
 - PM industry practice standard for Project Risk Management
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

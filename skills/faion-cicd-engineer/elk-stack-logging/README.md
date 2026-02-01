@@ -120,6 +120,18 @@ Applications/Servers/Containers
 - [Filebeat Documentation](https://www.elastic.co/guide/en/beats/filebeat/current/index.html)
 - [Elastic Cloud on Kubernetes](https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Set up GitHub Actions workflow from template | haiku | Pattern application, simple configuration |
+| Design CI/CD pipeline architecture | opus | Complex system design with many variables |
+| Write terraform code for infrastructure | sonnet | Implementation with moderate complexity |
+| Debug failing pipeline step | sonnet | Debugging and problem-solving |
+| Implement AIOps anomaly detection | opus | Novel ML approach, complex decision |
+| Configure webhook and secret management | haiku | Mechanical setup using checklists |
+
+
 ## Sources
 
 - [Elk Stack: A Comprehensive Guide for 2025](https://www.shadecoder.com/topics/elk-stack-a-comprehensive-guide-for-2025)

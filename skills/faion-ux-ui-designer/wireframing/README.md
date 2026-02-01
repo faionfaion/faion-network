@@ -361,6 +361,12 @@ Label
 - About Face by Alan Cooper
 - Wireframing Best Practices
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Figma Wireframing Guide](https://www.figma.com/resource-library/wireframing/)

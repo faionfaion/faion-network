@@ -236,6 +236,15 @@ Validates generated answers against source documents.
 | [faion-ai-agents](../../faion-ai-agents/CLAUDE.md) | Agent architectures |
 | [faion-llm-integration](../../faion-llm-integration/CLAUDE.md) | LLM APIs, function calling |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Agentic RAG design | opus | Advanced architecture |
+| Agent query planning | sonnet | Planning pattern |
+| Adaptive retrieval | sonnet | Dynamic strategy |
+
 ## Sources
 
 - [Agentic RAG Survey (arXiv)](https://arxiv.org/abs/2501.09136)

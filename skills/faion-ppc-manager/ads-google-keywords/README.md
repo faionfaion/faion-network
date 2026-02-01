@@ -368,6 +368,14 @@ Negatives:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Add keywords to campaigns | haiku | Keyword input and formatting |
+| Analyze keyword performance | sonnet | Data analysis and optimization |
+| Plan keyword strategy | opus | Strategic keyword targeting |
+
 ## Sources
 
 - [Google Keyword Planner](https://ads.google.com/home/tools/keyword-planner/)

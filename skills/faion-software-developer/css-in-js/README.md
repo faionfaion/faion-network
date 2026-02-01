@@ -326,3 +326,11 @@ const InteractiveCard = styled.div`
 - [vanilla-extract](https://vanilla-extract.style/)
 - [Linaria](https://linaria.dev/) (Zero-runtime)
 - [CSS-in-JS Benchmarks](https://css-tricks.com/a-thorough-analysis-of-css-in-js/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

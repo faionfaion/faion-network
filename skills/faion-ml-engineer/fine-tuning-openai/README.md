@@ -129,6 +129,15 @@ Use Supervised Fine-Tuning (SFT)
 - [DPO Guide](https://cookbook.openai.com/examples/fine_tuning_direct_preference_optimization_guide)
 - [OpenAI Evals](https://github.com/openai/evals)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Fine-tuning dataset prep | sonnet | Data preparation |
+| Training job setup | haiku | Configuration |
+| Model evaluation | sonnet | Quality assessment |
+
 ## Sources
 
 - [OpenAI Fine-tuning Guide](https://platform.openai.com/docs/guides/fine-tuning/)

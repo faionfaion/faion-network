@@ -57,3 +57,10 @@ Together: Generate data-grounded product ideas
 - Sustainable business practices
 - Eco-friendly products
 - Blending quantitative + qualitative in single platform
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| 2026 trends identification | sonnet | Current research |
+| Innovation opportunities | opus | Strategic thinking |

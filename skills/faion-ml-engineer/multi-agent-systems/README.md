@@ -152,6 +152,15 @@ Decision Tree:
 - [AutoGen Documentation](https://microsoft.github.io/autogen/)
 - [OpenAI Swarm](https://github.com/openai/swarm)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Agent architecture | opus | System design |
+| Agent coordination | opus | Communication patterns |
+| Agent synchronization | sonnet | Orchestration |
+
 ## Sources
 
 - [Top Agentic AI Frameworks 2026](https://research.aimultiple.com/agentic-frameworks/)

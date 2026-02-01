@@ -445,6 +445,14 @@ async def handle():
     task.add_done_callback(tasks.discard)
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Python asyncio Documentation](https://docs.python.org/3/library/asyncio.html) - Official asyncio reference

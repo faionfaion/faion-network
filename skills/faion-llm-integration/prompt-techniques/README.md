@@ -379,3 +379,11 @@ class PromptABTest:
 - [Anthropic Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering)
 - [Prompt Engineering Guide](https://www.promptingguide.ai/)
 - See also: [prompt-basics.md](prompt-basics.md)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Chain-of-thought prompting | sonnet | Reasoning technique |
+| Few-shot examples | sonnet | Prompt design |
+| Advanced jailbreak protection | opus | Security implications |

@@ -416,3 +416,11 @@ shamefully-hoist=false
 - [pnpm Workspaces](https://pnpm.io/workspaces)
 - [pnpm CLI](https://pnpm.io/cli/add)
 - [Changesets](https://github.com/changesets/changesets)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement pnpm-package-management pattern | haiku | Straightforward implementation |
+| Review pnpm-package-management implementation | sonnet | Requires code analysis |
+| Optimize pnpm-package-management design | opus | Complex trade-offs |
+

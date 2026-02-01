@@ -430,3 +430,10 @@ class ChainOfThoughtService:
 
 - [cot-basics.md](cot-basics.md) - Basic CoT techniques (zero-shot, few-shot, self-consistency)
 - [prompt-engineering.md](prompt-engineering.md) - General prompt engineering patterns
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Self-consistency prompting | sonnet | Advanced technique |
+| Tree-of-thought implementation | opus | Novel pattern |

@@ -405,3 +405,11 @@ def robust_claude(messages: list, system: str = "") -> str:
 - [Claude Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering)
 - [Anthropic Cookbook](https://github.com/anthropics/anthropic-cookbook)
 - [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Configuration task | haiku | Straightforward setup |
+| Implementation task | sonnet | Moderate complexity |
+| Architecture decision | opus | Complex reasoning |

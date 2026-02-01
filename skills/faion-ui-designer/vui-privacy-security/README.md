@@ -30,6 +30,12 @@ Voice data is sensitive and persistent.
 - Confirm before actions
 - Offer private mode
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and prototype creation | haiku | Mechanical task: converting requirements to wireframe sketches |
+
 ## Sources
 
 - [Voice Privacy Best Practices - NIST](https://www.nist.gov/privacy-framework)

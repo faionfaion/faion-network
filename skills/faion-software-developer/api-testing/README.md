@@ -184,6 +184,14 @@ def test_response_matches_spec():
 - Test rate limiting behavior
 - Include security tests (auth, injection)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Pact Contract Testing](https://docs.pact.io/)

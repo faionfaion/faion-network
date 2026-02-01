@@ -333,6 +333,14 @@ Jargon without explanation
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement help-documentation pattern | haiku | Straightforward implementation |
+| Review help-documentation implementation | sonnet | Requires code analysis |
+| Optimize help-documentation design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Help and Documentation](https://www.nngroup.com/articles/help-and-documentation/)

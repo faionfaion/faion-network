@@ -214,6 +214,14 @@ async def get_dashboard(user_id: str):
 - Version gateway configuration
 - Implement request tracing
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+
 ## Sources
 
 - [Kong Gateway Documentation](https://docs.konghq.com/gateway/latest/)

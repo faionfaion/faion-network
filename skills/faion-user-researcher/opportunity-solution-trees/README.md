@@ -45,3 +45,9 @@ Outcome (Business/Product Goal)
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Opportunity Solution Trees (OST) | haiku | Task execution: applying established methodologies |

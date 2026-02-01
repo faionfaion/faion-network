@@ -608,3 +608,15 @@ module.exports = {
 - [Headless UI](https://headlessui.dev/)
 - [Class Variance Authority](https://cva.style/docs)
 - [tailwind-merge](https://github.com/dcastil/tailwind-merge)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Fix CSS typo, update Tailwind class, run prettier | haiku | Direct text replacement and formatting |
+| Code review component accessibility compliance | sonnet | WCAG standards evaluation |
+| Debug responsive layout issues across breakpoints | sonnet | Testing and debugging |
+| Design system architecture and token structure | opus | Complex organization and scaling |
+| Refactor React component for performance | sonnet | Optimization and code quality |
+| Plan design token migration across 50+ components | opus | Large-scale coordination |
+| Build storybook automation and interactions | sonnet | Testing and documentation setup |

@@ -107,6 +107,14 @@ Recent academic research (2025) confirms:
 - Human-AI synergy produces best results: LLMs draft, humans refine and validate
 - 150-200 instruction limit per spec maintains model consistency
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
 ## Related Files
 
 | File | Description |

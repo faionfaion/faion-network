@@ -204,3 +204,11 @@ else:
 ## Related
 
 - [ab-testing-implementation.md](ab-testing-implementation.md) - Event tracking, analysis, reporting
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate test cases from requirements | haiku | Pattern-based generation |
+| Review test coverage gaps | sonnet | Requires code understanding |
+| Design test architecture | opus | Complex coverage strategies |
+

@@ -45,3 +45,11 @@ Q2: Increase activation rate to 40%
 - Show data supporting the priority
 - Present options, not THE solution
 - Include success metrics
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Add features to roadmap | haiku | Roadmap item entry |
+| Adjust roadmap priorities | sonnet | Priority analysis and sequencing |
+| Plan product roadmap | opus | Strategic product planning |
+

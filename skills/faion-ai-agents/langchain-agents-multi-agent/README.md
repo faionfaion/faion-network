@@ -300,3 +300,11 @@ def test_full_workflow():
 *faion-langchain-agents-multi-agent v1.0*
 *LangChain 0.3.x / LangGraph 0.2.x*
 *Covers: Supervisor, Debate, Hierarchical patterns, testing*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

@@ -70,6 +70,18 @@ AI Research → AI Draft → Human Expert Edit → QA → Publish
 - 51% sales teams adopt AI
 - Over half of gen AI enterprise budgets → sales/marketing
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research keywords and create outline | sonnet | Research with some synthesis |
+| Design full content marketing strategy | opus | Complex strategy with multiple variables |
+| Write product description copy | sonnet | Copywriting with brand voice |
+| Format blog post with SEO metadata | haiku | Mechanical formatting and checklist |
+| Brainstorm content distribution channels | opus | Strategic planning and analysis |
+| Outline email marketing sequence | sonnet | Planning with customer psychology |
+
+
 ## Sources
 
 - [Google's E-E-A-T Guidelines](https://developers.google.com/search/docs/fundamentals/creating-helpful-content)

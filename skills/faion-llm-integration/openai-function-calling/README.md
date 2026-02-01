@@ -372,3 +372,10 @@ with client.audio.speech.with_streaming_response.create(
 - [openai-chat-completions.md](openai-chat-completions.md) - Chat API basics
 - [openai-embeddings.md](openai-embeddings.md) - Text embeddings
 - [openai-assistants.md](openai-assistants.md) - Assistants API
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Function schema | haiku | Schema creation |
+| Multi-step function use | sonnet | Integration pattern |

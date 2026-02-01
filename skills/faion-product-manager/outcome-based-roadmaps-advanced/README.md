@@ -56,3 +56,11 @@ Business Goal: Increase revenue 20%
 | Airfocus | Intuitive outcome-based builder |
 | ProductBoard | Integrates customer feedback |
 | Jira Plans | Engineering execution alignment |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Add features to roadmap | haiku | Roadmap item entry |
+| Adjust roadmap priorities | sonnet | Priority analysis and sequencing |
+| Plan product roadmap | opus | Strategic product planning |
+

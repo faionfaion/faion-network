@@ -128,3 +128,11 @@ Need to fine-tune LLM?
 - [Databricks: Efficient Fine-Tuning with LoRA](https://www.databricks.com/blog/efficient-fine-tuning-lora-guide-llms)
 - [Sebastian Raschka: Practical Tips for LoRA](https://magazine.sebastianraschka.com/p/practical-tips-for-finetuning-llms)
 - [LoRA Without Regret](https://thinkingmachines.ai/blog/lora/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| LoRA configuration | sonnet | Parameter tuning |
+| Training optimization | opus | Advanced optimization |
+| Model merging | sonnet | Model composition |

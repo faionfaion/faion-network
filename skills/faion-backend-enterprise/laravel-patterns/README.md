@@ -667,3 +667,11 @@ $users = User::with('organization')->get();
 - [Laravel Best Practices](https://github.com/alexeymezenin/laravel-best-practices)
 - [Laravel News](https://laravel-news.com/)
 - [Laracasts](https://laracasts.com/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement laravel-patterns pattern | haiku | Straightforward implementation |
+| Review laravel-patterns implementation | sonnet | Requires code analysis |
+| Optimize laravel-patterns design | opus | Complex trade-offs |
+

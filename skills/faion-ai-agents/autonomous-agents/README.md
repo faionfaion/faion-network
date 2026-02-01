@@ -84,3 +84,11 @@ See [agent-architectures.md](agent-architectures.md#common-pitfalls) for details
 - [LangChain Agents](https://python.langchain.com/docs/modules/agents/)
 - [agent-architectures.md](agent-architectures.md)
 - [agent-patterns.md](agent-patterns.md)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

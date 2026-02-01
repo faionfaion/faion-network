@@ -320,6 +320,14 @@ def list_campaigns(client, customer_id):
 *Technical Skill (Layer 3)*
 *Part of: faion-google-ads-skill*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Ads API Documentation](https://developers.google.com/google-ads/api/docs/start)

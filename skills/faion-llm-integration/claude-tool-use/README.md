@@ -401,3 +401,11 @@ Provide specific, actionable feedback."""
 - [claude-best-practices.md](claude-best-practices.md) - Best practices, optimization, patterns
 - [mcp-model-context-protocol.md](mcp-model-context-protocol.md) - MCP deep dive
 - [mcp-ecosystem-2026.md](mcp-ecosystem-2026.md) - MCP ecosystem and servers
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Tool definition schema | haiku | Schema creation |
+| Tool result handling | sonnet | Integration pattern |
+| Multi-step tool use | sonnet | Agent pattern design |

@@ -112,3 +112,11 @@ Modern tools enable BAs to perform analytics without data science expertise:
 - [ ] Sample size calculated
 - [ ] Success criteria documented
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract requirements from documents | haiku | Pattern matching |
+| Validate requirement completeness | sonnet | Requires BA expertise |
+| Analyze requirement trade-offs | opus | Complex business analysis |
+

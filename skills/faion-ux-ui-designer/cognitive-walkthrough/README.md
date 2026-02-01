@@ -278,6 +278,12 @@ After walkthrough:
 - [ ] Fixes assigned
 - [ ] Re-evaluation scheduled
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cognitive Walkthrough: Process | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Cognitive Walkthrough Process](https://www.nngroup.com/articles/cognitive-walkthrough-workshop/) - NNG workshop guide

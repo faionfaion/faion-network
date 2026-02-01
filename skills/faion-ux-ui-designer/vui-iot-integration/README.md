@@ -35,3 +35,9 @@ System:
 → Handle partial failures gracefully
 → Allow undo for recent actions
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VUI + IoT Integration | sonnet | Design work: VUI + IoT Integration requires analysis and iteration |

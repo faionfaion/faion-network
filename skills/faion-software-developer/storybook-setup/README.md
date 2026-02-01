@@ -588,3 +588,11 @@ export default {
 - [Chromatic](https://www.chromatic.com/)
 - [Component Story Format](https://storybook.js.org/docs/api/csf)
 - [Storybook Addons](https://storybook.js.org/addons)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

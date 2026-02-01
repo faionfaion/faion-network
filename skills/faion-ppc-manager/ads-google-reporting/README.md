@@ -330,6 +330,14 @@ Campaign C: Increase to $100/day (best CPA, low share)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Ads Reporting Overview](https://support.google.com/google-ads/answer/2375431)

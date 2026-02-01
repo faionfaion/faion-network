@@ -167,6 +167,18 @@ Scale-out/batch (10%) → Spot Instances
 | [templates.md](templates.md) | Cost analysis templates |
 | [llm-prompts.md](llm-prompts.md) | AI prompts for cost optimization |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Set up GitHub Actions workflow from template | haiku | Pattern application, simple configuration |
+| Design CI/CD pipeline architecture | opus | Complex system design with many variables |
+| Write terraform code for infrastructure | sonnet | Implementation with moderate complexity |
+| Debug failing pipeline step | sonnet | Debugging and problem-solving |
+| Implement AIOps anomaly detection | opus | Novel ML approach, complex decision |
+| Configure webhook and secret management | haiku | Mechanical setup using checklists |
+
+
 ## Sources
 
 - [FinOps Foundation](https://www.finops.org/)

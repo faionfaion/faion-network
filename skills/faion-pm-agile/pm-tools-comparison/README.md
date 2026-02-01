@@ -312,3 +312,11 @@ We will migrate to Linear as our primary project management tool.
 
 - See [pm-tools-overview.md](pm-tools-overview.md) for tool profiles
 - See [cross-tool-migration.md](cross-tool-migration.md) for migration guidance
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -49,3 +49,11 @@ H3 - Transformational: New business models or technologies
 ```
 
 **Key Insight 2026:** Economic growth predicted to weaken through 2026 (Morgan Stanley). Product managers must balance high-risk, high-reward initiatives with stable, revenue-generating products.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

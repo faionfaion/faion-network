@@ -340,6 +340,12 @@ Vague: "How often do you use it?"
 - Survey Design Best Practices
 - Questionnaire Design by Oppenheim
 - Measuring the User Experience
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Survey Design 101](https://www.nngroup.com/articles/qualitative-surveys/) - Nielsen Norman Group

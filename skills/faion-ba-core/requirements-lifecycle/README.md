@@ -319,3 +319,11 @@ After lifecycle setup:
 
 - BA Framework Guide v3 - Requirements Lifecycle Management
 - BA industry Requirements Management Standards
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extract requirements from documents | haiku | Pattern matching |
+| Validate requirement completeness | sonnet | Requires BA expertise |
+| Analyze requirement trade-offs | opus | Complex business analysis |
+

@@ -29,3 +29,11 @@ Decision Framework:
 5. Is it sustainable?
 6. Does it empower the team?
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

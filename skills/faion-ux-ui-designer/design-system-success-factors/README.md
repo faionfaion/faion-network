@@ -37,3 +37,9 @@ Then:
 | Contribution rate | External contributions |
 | Bug/issue count | Quality indicator |
 | Design-dev sync | Tokens aligned |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |

@@ -37,3 +37,9 @@ Third failure:
 → Suggest example phrases
 → Know when to escalate
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |

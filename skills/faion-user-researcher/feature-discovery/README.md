@@ -344,3 +344,9 @@ For each feature, ask users:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Feature Discovery | haiku | Task execution: applying established methodologies |

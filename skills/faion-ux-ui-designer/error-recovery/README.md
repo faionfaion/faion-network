@@ -361,6 +361,12 @@ Recovery: Retry, offline mode, check connection
 - UX research community: 10 Usability Heuristics
 - Error Message Guidelines
 - Microcopy Best Practices
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Wireframing and sketching | haiku | Mechanical task: translating requirements into wireframes |
+
 ## Sources
 
 - [Error Message Guidelines](https://www.nngroup.com/articles/error-message-guidelines/) - Nielsen Norman Group

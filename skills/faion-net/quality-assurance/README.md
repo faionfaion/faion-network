@@ -22,3 +22,11 @@
 
 - Success → Store pattern in `~/.sdd/memory/patterns_learned.jsonl`
 - Failure → Store error + solution in `~/.sdd/memory/mistakes_learned.jsonl`
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

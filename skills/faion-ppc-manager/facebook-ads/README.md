@@ -400,6 +400,14 @@ Ad: Video-15s_v1_2026-01-20
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Meta Marketing API Documentation](https://developers.facebook.com/docs/marketing-apis/)

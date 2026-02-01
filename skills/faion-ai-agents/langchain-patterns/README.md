@@ -607,3 +607,11 @@ responses = chain.batch([
 - [LangChain Expression Language](https://python.langchain.com/docs/expression_language/)
 - [LangSmith](https://smith.langchain.com/)
 - [LangChain Hub](https://smith.langchain.com/hub)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement langchain-patterns pattern | haiku | Straightforward implementation |
+| Review langchain-patterns implementation | sonnet | Requires code analysis |
+| Optimize langchain-patterns design | opus | Complex trade-offs |
+

@@ -317,3 +317,10 @@ faion-research-agent (mode: pricing)
 
 *Business Model Planning | 4 methodologies*
 *Part of faion-researcher v1.3*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Business model canvas | sonnet | Strategic planning |
+| Revenue projection | sonnet | Financial forecasting |

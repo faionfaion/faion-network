@@ -76,3 +76,11 @@ See: [code-quality-trends.md](code-quality-trends.md)
 *Best Practices 2026 Navigation Hub v1.0*
 *Last updated: 2026-01-23*
 *Content decomposed for better organization and token efficiency*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement best-practices-2026 pattern | haiku | Straightforward implementation |
+| Review best-practices-2026 implementation | sonnet | Requires code analysis |
+| Optimize best-practices-2026 design | opus | Complex trade-offs |
+

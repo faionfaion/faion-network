@@ -312,6 +312,18 @@ NEW WAY:
 
 *Methodology | Communication | Version 1.0*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Conduct user interviews | sonnet | Requires active listening and adaptation |
+| Write business storytelling pitch | opus | Complex persuasion with narrative structure |
+| Format meeting notes from transcript | haiku | Mechanical transcription and organization |
+| Facilitate conflict resolution meeting | sonnet | Medium complexity interpersonal task |
+| Generate brainstorming session ideas | opus | Creative ideation with strategic thinking |
+| Prepare stakeholder communication plan | sonnet | Planning with multiple perspectives |
+
+
 ## Sources
 
 - [Harvard Business Review Storytelling](https://hbr.org/2014/03/why-storytelling-is-so-powerful-in-the-digital-era)

@@ -230,3 +230,10 @@ print(f"Answer: {answer} (confidence: {confidence:.0%})")
 ## See Also
 
 - [cot-techniques.md](cot-techniques.md) - Advanced CoT techniques (ToT, Least-to-Most, domain-specific)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Step-by-step reasoning | haiku | Format application |
+| Thinking process extraction | sonnet | Analysis pattern |

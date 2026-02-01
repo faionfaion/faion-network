@@ -60,3 +60,11 @@ Key takeaways and trends for business analysis practices in 2025-2026.
 - **Created:** 2026-01-19
 - **Research Sources:** BA industry, Gartner, PwC, SAP Signavio, SS&C Blue Prism, Simplilearn, Modern Analyst, AdaptiveUS, Turing, SelectHub, Analytics8, Cprime
 - **Next Update:** 2026-06 (semi-annual review recommended)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ba-trends-summary pattern | haiku | Straightforward implementation |
+| Review ba-trends-summary implementation | sonnet | Requires code analysis |
+| Optimize ba-trends-summary design | opus | Complex trade-offs |
+

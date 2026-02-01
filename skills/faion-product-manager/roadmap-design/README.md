@@ -357,3 +357,11 @@ Timing is approximate.*
 ---
 
 *Methodology | Product | Version 1.0*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Add features to roadmap | haiku | Roadmap item entry |
+| Adjust roadmap priorities | sonnet | Priority analysis and sequencing |
+| Plan product roadmap | opus | Strategic product planning |
+

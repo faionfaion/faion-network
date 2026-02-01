@@ -218,3 +218,11 @@ Add $6,000 to contingency for this risk
 ---
 
 *Methodology from Project Management Framework 7 - Uncertainty Performance Domain*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

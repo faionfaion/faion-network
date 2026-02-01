@@ -164,6 +164,14 @@ For autonomous execution:
 - [Taskmaster AI](https://www.task-master.dev/) - AI-powered task management for IDEs
 - [Claude Task Master (GitHub)](https://github.com/eyaltoledano/claude-task-master) - Open source task management
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
+
 ## Related Methodologies
 
 | Methodology | Relationship |

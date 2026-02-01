@@ -35,6 +35,12 @@ Traditional UI components don't work in 3D space.
 - Use tiny touch targets
 - Ignore field of view limits
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Voice UI pattern application | sonnet | Complex interaction: designing multimodal conversational flows |
+
 ## Sources
 
 - [Apple visionOS Design Principles](https://developer.apple.com/design/human-interface-guidelines/designing-for-visionos)

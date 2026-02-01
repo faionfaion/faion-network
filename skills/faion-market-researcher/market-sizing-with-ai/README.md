@@ -39,3 +39,10 @@ Triangulate: If both approaches give similar numbers, confidence increases.
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| AI-assisted market sizing | sonnet | Research methodology |
+| Data synthesis | sonnet | Analysis |

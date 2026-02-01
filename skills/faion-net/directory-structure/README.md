@@ -219,3 +219,11 @@ Features in `.aidocs/` may touch one or multiple repos.
 3. **Task lifecycle**: `todo/ → in-progress/ → done/` (inside feature)
 4. **Feature is done** when all tasks are in `done/` subfolder
 5. **No time estimates** - use complexity (Low/Medium/High) + token estimates
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

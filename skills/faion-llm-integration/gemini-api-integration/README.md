@@ -423,3 +423,10 @@ class GeminiService:
 - [Gemini API Documentation](https://ai.google.dev/docs)
 - [Google AI Python SDK](https://github.com/google/generative-ai-python)
 - [Gemini Cookbook](https://github.com/google-gemini/cookbook)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Gemini API setup | haiku | Configuration |
+| Multimodal input handling | sonnet | Input processing |

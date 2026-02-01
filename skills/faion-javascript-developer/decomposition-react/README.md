@@ -283,6 +283,14 @@ export async function deleteUser(id: string) {
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Component decomposition strategy | sonnet | Refactoring expertise |
+| Reusability analysis | sonnet | Code quality assessment |
+
 ## Sources
 
 - [Bulletproof React](https://github.com/alan2207/bulletproof-react) - React architecture guide

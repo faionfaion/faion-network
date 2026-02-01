@@ -57,3 +57,11 @@ Vision -> Framing -> Weakness -> Pedestal -> Ask
 - Fishing for approval responses
 
 **Key 2025 Principle:** Validating your startup idea isn't a one-time event - it's an ongoing process. The goal isn't to prove your idea is right; it's to find out if it's wrong as quickly and cheaply as possible.
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Problem validation interviews | sonnet | User research: designing and conducting Mom Test interviews |
+| Validation framework design | sonnet | Research design: planning comprehensive validation approach |
+| Signal interpretation | opus | Strategic decision: evaluating commitment signals and pivot decisions |

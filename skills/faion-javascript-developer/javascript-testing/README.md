@@ -189,6 +189,15 @@ afterAll(() => server.close());
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Jest configuration | haiku | Test setup automation |
+| Mock strategy | sonnet | Mocking pattern expertise |
+| Test structure design | sonnet | Testing architecture |
+
 ## Sources
 
 - [Vitest Documentation](https://vitest.dev/) - Fast unit test framework

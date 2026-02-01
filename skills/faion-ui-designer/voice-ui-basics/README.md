@@ -381,6 +381,12 @@ Testing phase:
 - Amazon Alexa Design Guide
 - Google Conversation Design
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Designing Voice User Interfaces by Cathy Pearl](https://www.oreilly.com/library/view/designing-voice-user/9781491955406/)

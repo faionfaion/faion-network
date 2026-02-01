@@ -179,3 +179,11 @@ logger.info(
 ---
 
 *Architecture Methodologies - 10 Patterns*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement dev-methodologies-architecture pattern | haiku | Straightforward implementation |
+| Review dev-methodologies-architecture implementation | sonnet | Requires code analysis |
+| Optimize dev-methodologies-architecture design | opus | Complex trade-offs |
+

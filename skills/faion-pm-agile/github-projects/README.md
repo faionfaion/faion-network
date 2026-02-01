@@ -388,3 +388,11 @@ query GetProjectItems($projectId: ID!) {
 - [GitHub GraphQL API](https://docs.github.com/en/graphql)
 - [Issue Templates](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests)
 - [GitHub CLI](https://cli.github.com/manual/gh_project)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

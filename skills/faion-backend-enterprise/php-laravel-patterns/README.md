@@ -139,3 +139,11 @@ class UserService
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement php-laravel-patterns pattern | haiku | Straightforward implementation |
+| Review php-laravel-patterns implementation | sonnet | Requires code analysis |
+| Optimize php-laravel-patterns design | opus | Complex trade-offs |
+

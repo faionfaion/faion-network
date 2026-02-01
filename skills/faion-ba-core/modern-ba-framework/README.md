@@ -79,3 +79,11 @@ Business Analysis Framework shifted from process-based to competency-based frame
 | Agile Analysis Certification | Agile Analysis | Critical for agile teams |
 | Business Data Analytics Cert | Business Data Analytics | Data-driven BA |
 | Product Ownership Analysis Cert | Product Ownership | Product-focused BA |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement modern-ba-framework pattern | haiku | Straightforward implementation |
+| Review modern-ba-framework implementation | sonnet | Requires code analysis |
+| Optimize modern-ba-framework design | opus | Complex trade-offs |
+

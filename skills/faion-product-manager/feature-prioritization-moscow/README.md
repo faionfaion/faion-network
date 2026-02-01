@@ -312,3 +312,11 @@ Once agreed:
 ---
 
 *Methodology | Product | Version 1.0*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Write user stories | haiku | Template application and formatting |
+| Review feature requirements | sonnet | Specification review and improvement |
+| Design feature strategy | opus | Product strategy and differentiation |
+

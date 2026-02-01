@@ -395,6 +395,14 @@ TASK-001 → TASK-003 → TASK-005 → TASK-008 → TASK-011 → TASK-012
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Scrum Task Board Examples](https://www.atlassian.com/agile/scrum/boards) - Visual task management

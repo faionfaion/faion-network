@@ -294,3 +294,11 @@ class OpenAIService:
 - [OpenAI Cookbook](https://cookbook.openai.com/)
 - [tiktoken Library](https://github.com/openai/tiktoken)
 - [OpenAI Python SDK](https://github.com/openai/openai-python)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| OpenAI API setup | haiku | Configuration |
+| Model selection | sonnet | Capability matching |
+| Cost optimization | sonnet | Pricing analysis |

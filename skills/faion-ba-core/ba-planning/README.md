@@ -263,3 +263,11 @@ After BA planning:
 
 - BA Framework Guide v3 - Business Analysis Planning and Monitoring
 - BA industry Standards
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ba-planning pattern | haiku | Straightforward implementation |
+| Review ba-planning implementation | sonnet | Requires code analysis |
+| Optimize ba-planning design | opus | Complex trade-offs |
+

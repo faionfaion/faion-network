@@ -160,3 +160,11 @@ With shadcn MCP server installed, use natural language:
 
 *shadcn/ui Component Architecture*
 *Sources: [shadcn/ui docs](https://ui.shadcn.com/docs), [Anatomy of shadcn/ui](https://manupa.dev/blog/anatomy-of-shadcn-ui)*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

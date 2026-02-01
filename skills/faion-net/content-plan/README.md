@@ -1253,3 +1253,11 @@ Remaining 23 articles at 3-4 per week.
 
 *faion-network content-plan v1.0*
 *35 articles planned across 18 skills*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

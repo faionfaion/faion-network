@@ -276,6 +276,14 @@ def get_display_performance(client, customer_id, campaign_id, start_date, end_da
 
 *Part of faion-ppc-manager skill*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Display Network Overview](https://support.google.com/google-ads/answer/2404190)

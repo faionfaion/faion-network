@@ -203,6 +203,14 @@ Digital accessibility regulations vary by region with different standards, deadl
 - A11y Project: a11yproject.com
 - W3C WAI: w3.org/WAI/
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement regulatory-compliance-2026 pattern | haiku | Straightforward implementation |
+| Review regulatory-compliance-2026 implementation | sonnet | Requires code analysis |
+| Optimize regulatory-compliance-2026 design | opus | Complex trade-offs |
+
 ## Sources
 
 - [DOJ: ADA Web Accessibility Rule](https://www.ada.gov/resources/2024-03-08-web-rule/)

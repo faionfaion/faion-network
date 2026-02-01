@@ -369,6 +369,14 @@ fbq('track', 'Purchase', {
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Meta Pixel Implementation Guide](https://developers.facebook.com/docs/meta-pixel)

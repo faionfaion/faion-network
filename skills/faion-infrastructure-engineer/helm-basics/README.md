@@ -187,6 +187,16 @@ Maintain one Helm Chart per application to simplify ownership and limit failure 
 - [Chart Development Tips](https://helm.sh/docs/howto/charts_tips_and_tricks/)
 - [Artifact Hub](https://artifacthub.io/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Chart templating | sonnet | Templating patterns |
+| Values override strategy | sonnet | Configuration management |
+| Dependency chart management | sonnet | Chart composition |
+| Release naming conventions | haiku | Simple naming rules |
+
 ## Sources
 
 - [Helm Official Best Practices](https://helm.sh/docs/chart_best_practices/)

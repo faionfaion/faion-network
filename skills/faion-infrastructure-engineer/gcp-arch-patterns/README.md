@@ -102,3 +102,11 @@ Google Cloud Architecture Framework organizes best practices into 6 pillars:
 ---
 
 *GCP Architecture Patterns | faion-infrastructure-engineer*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| GKE cluster architecture | sonnet | Infrastructure design |
+| Microservices pattern on GCP | opus | Complex architecture |
+| Data pipeline orchestration | sonnet | Dataflow design |

@@ -295,3 +295,11 @@ async def process_order(order: Order):
 - [Feature Flags - Martin Fowler](https://martinfowler.com/articles/feature-toggles.html)
 - [Branch by Abstraction](https://martinfowler.com/bliki/BranchByAbstraction.html)
 - [Dark Launching](https://martinfowler.com/bliki/DarkLaunching.html)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement trunk-based-dev-patterns pattern | haiku | Straightforward implementation |
+| Review trunk-based-dev-patterns implementation | sonnet | Requires code analysis |
+| Optimize trunk-based-dev-patterns design | opus | Complex trade-offs |
+

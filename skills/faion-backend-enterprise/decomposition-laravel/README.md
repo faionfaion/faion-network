@@ -223,3 +223,11 @@ class UserController extends Controller
 - [php-laravel.md](php-laravel.md) - Laravel reference
 - [php-laravel-patterns.md](php-laravel-patterns.md) - Laravel patterns
 - [llm-friendly-architecture.md](llm-friendly-architecture.md) - LLM optimization
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement decomposition-laravel pattern | haiku | Straightforward implementation |
+| Review decomposition-laravel implementation | sonnet | Requires code analysis |
+| Optimize decomposition-laravel design | opus | Complex trade-offs |
+

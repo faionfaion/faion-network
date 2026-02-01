@@ -323,6 +323,12 @@ Currently, [pain point/gap].
 - UX research community: User Interviews
 - Interviewing Users by Steve Portigal
 - Qualitative Research Methods
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User experience testing feedback | sonnet | Analysis required: synthesizing usability testing results |
+
 ## Sources
 
 - [User Interviews](https://www.nngroup.com/articles/user-interviews/) - Nielsen Norman Group

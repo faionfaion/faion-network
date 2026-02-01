@@ -147,6 +147,18 @@ Central Store (Vault/ASM/Infisical)
 | [templates.md](templates.md) | Ready-to-use configurations |
 | [llm-prompts.md](llm-prompts.md) | AI prompts for secrets tasks |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Set up GitHub Actions workflow from template | haiku | Pattern application, simple configuration |
+| Design CI/CD pipeline architecture | opus | Complex system design with many variables |
+| Write terraform code for infrastructure | sonnet | Implementation with moderate complexity |
+| Debug failing pipeline step | sonnet | Debugging and problem-solving |
+| Implement AIOps anomaly detection | opus | Novel ML approach, complex decision |
+| Configure webhook and secret management | haiku | Mechanical setup using checklists |
+
+
 ## Sources
 
 - [HashiCorp Vault Documentation](https://www.vaultproject.io/docs)

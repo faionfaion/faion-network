@@ -403,6 +403,12 @@ Look for patterns:
 - Information Architecture by Rosenfeld, Morville, Arango
 - Optimal Workshop: Tree Testing Guide
 - UX research community: Tree Testing
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User experience testing feedback | sonnet | Analysis required: synthesizing usability testing results |
+
 ## Sources
 
 - [Tree Testing](https://www.nngroup.com/articles/tree-testing/) - Nielsen Norman Group

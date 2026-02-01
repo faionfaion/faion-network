@@ -91,6 +91,16 @@ Layer 7 inspection with IDS/IPS capabilities for all egress paths. Blocks C2 cal
 5. **Flow Logs** - Enable on all VPCs for visibility
 6. **GuardDuty** - Threat detection across all regions
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| VPC subnet calculation | haiku | Mathematical task |
+| Security group rules audit | sonnet | Access control analysis |
+| Transit Gateway design | opus | Complex multi-region networking |
+| Load balancer configuration | sonnet | Standard pattern application |
+
 ## Sources
 
 - [AWS VPC User Guide](https://docs.aws.amazon.com/vpc/latest/userguide/)

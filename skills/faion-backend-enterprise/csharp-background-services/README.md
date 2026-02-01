@@ -142,3 +142,11 @@ public class CleanupService : BackgroundService
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement csharp-background-services pattern | haiku | Straightforward implementation |
+| Review csharp-background-services implementation | sonnet | Requires code analysis |
+| Optimize csharp-background-services design | opus | Complex trade-offs |
+

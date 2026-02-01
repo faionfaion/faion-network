@@ -346,3 +346,9 @@ Learn about:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Interview transcription analysis | haiku | Pattern matching: extracting themes from transcripts |

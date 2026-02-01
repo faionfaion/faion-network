@@ -55,3 +55,9 @@ Humans handle:
 4. Human review → validation + edge cases
 5. Continuous AI monitoring → regression prevention
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Accessibility audit | haiku | Systematic check: verifying WCAG compliance criteria |

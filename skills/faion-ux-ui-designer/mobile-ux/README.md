@@ -332,6 +332,12 @@ Testing phase:
 - Material Design: Mobile Guidelines
 - iOS Human Interface Guidelines
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Mobile UX Design](https://www.nngroup.com/articles/mobile-ux/) - Nielsen Norman Group

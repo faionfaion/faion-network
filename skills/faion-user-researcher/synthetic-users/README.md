@@ -54,3 +54,9 @@ Synthetic Research -> Real User Validation -> Decision
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User journey mapping | sonnet | Analysis required: synthesizing user flows from research data |

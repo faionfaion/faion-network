@@ -303,6 +303,14 @@ Reading controls: Swipe up/down
 3. **Rotor:** VO + U (navigation menu)
 4. **Practice:** Try on apple.com
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate test cases from requirements | haiku | Pattern-based generation |
+| Review test coverage gaps | sonnet | Requires code understanding |
+| Design test architecture | opus | Complex coverage strategies |
+
 ## Sources
 
 - [WebAIM: Screen Reader Testing](https://webaim.org/articles/screenreader_testing/)

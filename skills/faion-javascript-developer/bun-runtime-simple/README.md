@@ -334,6 +334,14 @@ import { $ } from 'bun';
 await $`ls -la`;
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Bun project setup | haiku | Quick start automation |
+| Bun vs Node performance | sonnet | Comparison analysis |
+
 ## Sources
 
 - [Bun Documentation](https://bun.sh/docs) - Official docs and API reference

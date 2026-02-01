@@ -196,6 +196,14 @@ BACKLOG → TODO → IN_PROGRESS → DONE
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [INVEST User Stories](https://agileforall.com/new-to-agile-invest-in-good-user-stories/) - User story quality criteria

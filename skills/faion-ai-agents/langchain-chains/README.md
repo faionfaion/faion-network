@@ -342,3 +342,11 @@ async for event in chain.astream_events({"input": "Hello"}, version="v2"):
 
 *Part of faion-langchain-skill v1.0*
 *See also: [langchain-agents-architectures.md](langchain-agents-architectures.md), [langchain-agents-multi-agent.md](langchain-agents-multi-agent.md), [langchain-memory.md](langchain-memory.md), [langchain-workflows.md](langchain-workflows.md)*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement langchain-chains pattern | haiku | Straightforward implementation |
+| Review langchain-chains implementation | sonnet | Requires code analysis |
+| Optimize langchain-chains design | opus | Complex trade-offs |
+

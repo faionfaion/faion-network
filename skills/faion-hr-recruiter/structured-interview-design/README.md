@@ -322,6 +322,20 @@ Unstructured interviews are unreliable predictors of job performance. When inter
 
 *Methodology: structured-interview-design | Interviewing | faion-recruiter-agent*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Format job description, update HRIS data, send offer | haiku | Content formatting and data updates |
+| Evaluate resume fit for role requirements | sonnet | Assessment and analysis |
+| Provide STAR interview feedback on candidates | sonnet | Qualitative evaluation and scoring |
+| Design interview process and rubrics | opus | Systematic process design |
+| Create onboarding program for new team | sonnet | Planning and documentation |
+| Plan compensation strategy and salary bands | opus | Complex organizational decisions |
+| Analyze retention data and recommend interventions | sonnet | Data analysis and recommendations |
+
+---
+
 ## Sources
 
 - [Google re:Work Interview Guide](https://rework.withgoogle.com/guides/hiring-use-structured-interviewing/steps/introduction/)

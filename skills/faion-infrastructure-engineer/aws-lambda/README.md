@@ -411,6 +411,16 @@ aws lambda update-function-configuration \
 | [templates.md](templates.md) | IaC templates |
 | [llm-prompts.md](llm-prompts.md) | AI prompts for Lambda tasks |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Lambda layer organization | haiku | Mechanical file structuring |
+| Cold start optimization | sonnet | Requires performance analysis |
+| Event source mapping setup | sonnet | Pattern configuration |
+| Lambda permission policies | sonnet | Security-critical decisions |
+
 ## Sources
 
 - [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/)

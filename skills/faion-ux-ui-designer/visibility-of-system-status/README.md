@@ -233,6 +233,12 @@ Red dot: Offline (with retry option)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system evaluation | sonnet | Analysis required: assessing design system effectiveness and coverage |
+
 ## Sources
 
 - [Nielsen Norman Group: Visibility of System Status](https://www.nngroup.com/articles/visibility-system-status/)

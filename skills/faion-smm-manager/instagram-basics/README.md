@@ -241,6 +241,14 @@ Slide 10 (CTA):
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Creating social media content | haiku | Template adaptation, copying |
+| Analyzing engagement metrics | sonnet | Pattern analysis, audience insights |
+| Developing content strategy | opus | Strategic planning, audience modeling |
+
 ## Sources
 
 - [Instagram Business Guide](https://business.instagram.com/getting-started)

@@ -361,3 +361,11 @@ After data analysis:
 
 - BA Framework Guide v3 - Requirements Analysis and Design Definition
 - BA industry Data Analysis Guidelines
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement data-analysis pattern | haiku | Straightforward implementation |
+| Review data-analysis implementation | sonnet | Requires code analysis |
+| Optimize data-analysis design | opus | Complex trade-offs |
+

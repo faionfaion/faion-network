@@ -227,6 +227,14 @@ See [llm-prompts.md](llm-prompts.md) for specific prompts covering:
 - [Google Docs](https://docs.google.com) - Most common authoring tool
 - [Notion](https://notion.so) - Alternative with templates
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Writing specification templates | haiku | Form completion, mechanical setup |
+| Reviewing specifications for clarity | sonnet | Language analysis, logical consistency |
+| Architecting complex system specs | opus | Holistic design, novel combinations |
+
 ## Related Methodologies
 
 - [writing-design-documents.md](../methodologies/writing-design-documents.md) - Core SDD design doc methodology

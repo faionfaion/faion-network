@@ -59,3 +59,11 @@ None directly - uses Business Analysis Framework techniques embedded in domain s
 - Assess Solution Limitations
 - Assess Enterprise Limitations
 - Recommend Actions
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

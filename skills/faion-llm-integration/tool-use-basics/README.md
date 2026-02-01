@@ -445,3 +445,10 @@ CODE_EXECUTION_TOOL = {
 - [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 - [Anthropic Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use)
 - [LangChain Tools](https://python.langchain.com/docs/modules/tools/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Tool definition format | haiku | Format application |
+| Basic tool execution | sonnet | Integration |

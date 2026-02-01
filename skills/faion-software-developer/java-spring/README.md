@@ -567,6 +567,14 @@ public class NotificationService {
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Spring Boot Reference](https://docs.spring.io/spring-boot/docs/current/reference/html/)

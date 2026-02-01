@@ -35,3 +35,9 @@
 → Good for accessibility
 → Avoids arm fatigue
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design pattern synthesis | sonnet | Complex integration: combining multiple patterns into coherent system |

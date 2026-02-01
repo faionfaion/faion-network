@@ -183,3 +183,11 @@ Use small models for classification/extraction, mid-tier for general queries, fr
 - [LLM Inference Optimization](https://deepsense.ai/blog/llm-inference-optimization-how-to-speed-up-cut-costs-and-scale-ai-models/)
 - [Scaling LLMs with Batch Processing](https://latitude-blog.ghost.io/blog/scaling-llms-with-batch-processing-ultimate-guide/)
 - [Reducing Latency and Costs in Agentic AI](https://georgian.io/reduce-llm-costs-and-latency-guide/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Model cost analysis | haiku | Cost calculation |
+| Batch processing setup | sonnet | Efficiency improvement |
+| Caching strategy | sonnet | Performance optimization |

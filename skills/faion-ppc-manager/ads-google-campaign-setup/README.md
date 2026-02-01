@@ -373,6 +373,14 @@ Campaign: Ecom_PMax_Sales
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Ads Campaign Setup Guide](https://support.google.com/google-ads/answer/6324971)

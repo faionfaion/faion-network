@@ -243,6 +243,15 @@ terraform apply -var-file="environments/prod.tfvars"
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Module interface design | opus | Architecture decision |
+| Module versioning strategy | sonnet | Release management |
+| Input validation | sonnet | Pattern implementation |
+
 ## Sources
 
 - [HashiCorp: Module Creation Pattern](https://developer.hashicorp.com/terraform/tutorials/modules/pattern-module-creation)

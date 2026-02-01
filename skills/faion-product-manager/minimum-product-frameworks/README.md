@@ -37,3 +37,11 @@ category: "best-practices-2026"
 | Technical uncertainty | MFP then expand |
 
 **Key Insight 2026:** In crowded markets, MVP can be "suicide" - users already have "good enough" solutions. You need to be "awesome" or "lovable" to switch them.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

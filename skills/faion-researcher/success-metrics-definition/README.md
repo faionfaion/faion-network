@@ -328,6 +328,16 @@ Break down by:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Filling AARRR framework template | haiku | Templating, form completion |
+| Writing metric definitions | haiku | Definition synthesis from examples |
+| Identifying primary KPIs from business goals | sonnet | Goal decomposition, metric selection |
+| Setting targets with benchmarks | sonnet | Research-based reasoning, market analysis |
+| Designing guardrail metrics and thresholds | opus | Complex trade-off analysis, system optimization |
+
 ## Related Methodologies
 
 - **business-model-research:** Business Model Research

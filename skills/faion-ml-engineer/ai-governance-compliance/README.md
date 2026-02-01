@@ -187,6 +187,15 @@ Phase 4: Continuous
 - [LLM Observability](../llm-observability/README.md) - Monitoring and tracing
 - [Model Evaluation](../model-evaluation/README.md) - Testing and benchmarks
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Governance framework | opus | Strategic planning |
+| Policy development | sonnet | Document creation |
+| Audit readiness | sonnet | Compliance checking |
+
 ## Sources
 
 - [Keyrus: AI in 2026 - Building Trustworthy AI Systems](https://keyrus.com/us/en/insights/ai-in-2026-how-to-build-trustworthy-safe-and-governed-ai-systems-noram)

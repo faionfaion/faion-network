@@ -238,6 +238,15 @@ What does the code do?
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| ES6+ feature selection | haiku | Feature knowledge |
+| Async/await patterns | sonnet | Async flow expertise |
+| Module import/export | haiku | Module system application |
+
 ## Sources
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/) - Official TypeScript documentation

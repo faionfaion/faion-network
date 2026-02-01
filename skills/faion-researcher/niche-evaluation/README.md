@@ -277,6 +277,16 @@ Willingness to Pay: [Evidence]
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Extracting TAM/SAM/SOM numbers from reports | haiku | Data lookup and calculation |
+| Filling scorecard templates | haiku | Mechanical form completion |
+| Finding competitors in a niche | sonnet | Web research, systematic discovery |
+| Analyzing competition positioning | sonnet | Comparative analysis across dimensions |
+| Strategic niche selection between options | opus | Multi-factor trade-offs, business implications |
+
 ## Related Methodologies
 
 - **idea-generation:** Idea Generation

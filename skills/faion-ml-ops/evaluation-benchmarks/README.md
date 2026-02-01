@@ -448,3 +448,11 @@ print(metrics)
 - [HELM Benchmark](https://crfm.stanford.edu/helm/)
 - [LM Evaluation Harness](https://github.com/EleutherAI/lm-evaluation-harness)
 - [OpenAI Evals](https://github.com/openai/evals)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Benchmark selection | sonnet | Evaluation suite |
+| Score interpretation | sonnet | Analysis |
+| Comparison analysis | sonnet | Evaluation |

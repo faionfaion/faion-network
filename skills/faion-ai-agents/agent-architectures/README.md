@@ -388,6 +388,14 @@ Has the goal been fully achieved? Respond with JSON:
 | No Guardrails | Unsafe tool execution | Sandbox and approve |
 | Poor Error Recovery | Failing on first error | Implement retry logic |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+
 ## Sources
 
 - [ReAct Paper](https://arxiv.org/abs/2210.03629) - Reasoning and Acting

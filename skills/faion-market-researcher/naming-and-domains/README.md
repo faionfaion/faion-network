@@ -172,3 +172,10 @@ faion-domain-checker-agent
 ---
 
 *Naming and Domain Methods Reference | 2 methodologies*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Product naming brainstorm | sonnet | Creative ideation |
+| Domain name research | haiku | Search and verification |

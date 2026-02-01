@@ -159,6 +159,14 @@ extend type User @key(fields: "id") {
 - Use persisted queries in production
 - Add field-level authorization
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [GraphQL Specification](https://spec.graphql.org/)

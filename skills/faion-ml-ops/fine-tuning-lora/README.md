@@ -641,3 +641,11 @@ class LoRATrainingPipeline:
 - [QLoRA Paper](https://arxiv.org/abs/2305.14314)
 - [PEFT Library](https://huggingface.co/docs/peft)
 - [TRL Library](https://huggingface.co/docs/trl)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| LoRA configuration | sonnet | Parameter tuning |
+| Training optimization | opus | Advanced optimization |
+| Model merging | sonnet | Model composition |

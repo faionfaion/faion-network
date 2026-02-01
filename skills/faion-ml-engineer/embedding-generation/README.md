@@ -140,6 +140,15 @@ Embeddings are dense vector representations of text that capture semantic meanin
 | Warm cache (vector DB) | <50ms | Production search |
 | Cold (API call) | 100-300ms | First-time queries |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Embedding model selection | sonnet | Model evaluation |
+| Vector generation | haiku | API usage |
+| Batch processing | haiku | Scaling configuration |
+
 ## Sources
 
 - [OpenAI Embeddings Guide](https://platform.openai.com/docs/guides/embeddings)

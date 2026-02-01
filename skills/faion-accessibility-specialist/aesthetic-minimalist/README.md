@@ -303,6 +303,14 @@ Mobile demands even more minimalism:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement aesthetic-minimalist pattern | haiku | Straightforward implementation |
+| Review aesthetic-minimalist implementation | sonnet | Requires code analysis |
+| Optimize aesthetic-minimalist design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Aesthetic and Minimalist Design](https://www.nngroup.com/articles/aesthetic-minimalist-design/)

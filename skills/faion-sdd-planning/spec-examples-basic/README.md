@@ -161,6 +161,14 @@ This is a minimal, condensed specification example showing the core sections nee
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [OAuth 2.0 Framework](https://oauth.net/2/) - Authentication standard

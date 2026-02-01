@@ -230,6 +230,20 @@ Full-cycle talent acquisition methodologies: sourcing, screening, evaluation, of
 
 *Recruiting Process Methodologies | faion-hr-recruiter*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Format job description, update HRIS data, send offer | haiku | Content formatting and data updates |
+| Evaluate resume fit for role requirements | sonnet | Assessment and analysis |
+| Provide STAR interview feedback on candidates | sonnet | Qualitative evaluation and scoring |
+| Design interview process and rubrics | opus | Systematic process design |
+| Create onboarding program for new team | sonnet | Planning and documentation |
+| Plan compensation strategy and salary bands | opus | Complex organizational decisions |
+| Analyze retention data and recommend interventions | sonnet | Data analysis and recommendations |
+
+---
+
 ## Sources
 
 - [LinkedIn Talent Solutions Recruiting](https://business.linkedin.com/talent-solutions)

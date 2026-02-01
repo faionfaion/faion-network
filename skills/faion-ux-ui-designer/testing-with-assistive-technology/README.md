@@ -37,3 +37,9 @@ Automated (30-50%) → Manual review → Screen reader → Keyboard-only → Use
 4. Missing alt text
 5. Poor focus management
 6. Keyboard traps
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User experience testing feedback | sonnet | Analysis required: synthesizing usability testing results |

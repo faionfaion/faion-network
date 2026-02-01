@@ -313,6 +313,14 @@ Before finalizing a full specification, verify:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [IEEE 29148-2018](https://standards.ieee.org/standard/29148-2018.html) - Requirements engineering standard

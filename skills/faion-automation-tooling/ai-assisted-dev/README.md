@@ -196,3 +196,11 @@
 
 *AI-Assisted Development v1.0*
 *Last updated: 2026-01-23*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ai-assisted-dev pattern | haiku | Straightforward implementation |
+| Review ai-assisted-dev implementation | sonnet | Requires code analysis |
+| Optimize ai-assisted-dev design | opus | Complex trade-offs |
+

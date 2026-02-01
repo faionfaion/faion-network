@@ -128,6 +128,18 @@ After someone finishes speaking, count to 3 before responding.
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Conduct user interviews | sonnet | Requires active listening and adaptation |
+| Write business storytelling pitch | opus | Complex persuasion with narrative structure |
+| Format meeting notes from transcript | haiku | Mechanical transcription and organization |
+| Facilitate conflict resolution meeting | sonnet | Medium complexity interpersonal task |
+| Generate brainstorming session ideas | opus | Creative ideation with strategic thinking |
+| Prepare stakeholder communication plan | sonnet | Planning with multiple perspectives |
+
+
 ## Sources
 
 - [Harvard Active Listening Guide](https://www.ccl.org/articles/leading-effectively-articles/coaching-others-use-active-listening-skills/)

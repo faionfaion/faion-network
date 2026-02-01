@@ -315,3 +315,11 @@ After capturing lessons:
 
 - Project Management Framework Guide 7th Edition - Development Approach Performance Domain
 - PM industry practice standard for Knowledge Management
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -299,3 +299,11 @@ faion-research-agent (mode: competitors)
 
 *Market Analysis | 5 methodologies*
 *Part of faion-researcher v1.3*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Market size calculation | sonnet | TAM/SAM analysis |
+| Market segmentation | sonnet | Segment identification |
+| Trend identification | sonnet | Pattern recognition |

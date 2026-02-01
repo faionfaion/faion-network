@@ -311,6 +311,14 @@ See [llm-prompts.md](llm-prompts.md) for comprehensive prompts for each pattern.
 - [LogRocket - TypeScript Decorators Guide](https://blog.logrocket.com/practical-guide-typescript-decorators/)
 - [Technology & Strategy - Design Patterns 2025](https://www.technologyandstrategy.com/news/design-patterns-the-complete-guide-2025)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Patterns
 
 | Pattern Category | Link |

@@ -364,3 +364,9 @@ Savvy High | Hacker"      | Needs: Collaboration
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Segmentation strategy | opus | Strategic decision: defining and prioritizing user segments for product |

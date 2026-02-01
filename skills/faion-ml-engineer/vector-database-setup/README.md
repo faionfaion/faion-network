@@ -473,6 +473,15 @@ vector-database-setup/
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Vector DB selection | sonnet | Tool evaluation |
+| Schema design | sonnet | Data structure |
+| Index configuration | sonnet | Performance tuning |
+
 ## Sources
 
 - [Qdrant Documentation](https://qdrant.tech/documentation/)

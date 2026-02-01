@@ -198,6 +198,15 @@ Explores multiple reasoning branches simultaneously.
 | [templates.md](templates.md) | Reusable prompt templates |
 | [llm-prompts.md](llm-prompts.md) | LLM prompts for agent creation |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Agent loop design | sonnet | Pattern expertise |
+| Agent state management | sonnet | State design |
+| Error handling in agents | sonnet | Robustness |
+
 ## Sources
 
 - [Google Cloud: Choose a design pattern for agentic AI](https://docs.cloud.google.com/architecture/choose-design-pattern-agentic-ai-system)

@@ -25,6 +25,12 @@
 - Ignore design system constraints
 - Over-rely on generation
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design system documentation | haiku | Pattern application: organizing and documenting existing design tokens |
+
 ## Sources
 
 - [Figma Community Plugins](https://www.figma.com/community/plugins)

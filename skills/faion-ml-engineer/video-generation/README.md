@@ -91,3 +91,11 @@ Video generation has evolved rapidly with commercial APIs from Runway, Luma, Ope
 - [image-generation/](../image-generation/README.md) - Image generation (DALL-E, Stable Diffusion)
 - [text-to-speech/](../text-to-speech/README.md) - TTS and voice synthesis
 - [faion-multimodal-ai](../../faion-multimodal-ai/CLAUDE.md) - Multimodal AI routing
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Video prompt design | sonnet | Prompt engineering |
+| Model capability assessment | sonnet | Feature understanding |
+| Video quality optimization | sonnet | Quality tuning |

@@ -310,6 +310,16 @@ Unlike Obsidian, we work great out of the box."
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Finding competitors via searches | haiku | Information lookup, list generation |
+| Filling competitor snapshot template | haiku | Data transcription, form completion |
+| Analyzing competitor positioning | sonnet | Comparative analysis across dimensions |
+| Identifying feature/price gaps | sonnet | Gap analysis, pattern matching |
+| Developing differentiation strategy | opus | Strategic positioning, market maneuvering |
+
 ## Related Methodologies
 
 - **niche-evaluation:** Niche Evaluation

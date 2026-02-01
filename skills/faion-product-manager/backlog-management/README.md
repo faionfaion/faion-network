@@ -375,3 +375,11 @@ Priority: P2 (high usage feature)
 ---
 
 *Methodology | Product | Version 1.0*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Groom backlog items | haiku | Formatting and clarity improvements |
+| Prioritize user stories | sonnet | Trade-off analysis and ranking |
+| Plan roadmap priorities | opus | Strategic roadmap decisions |
+

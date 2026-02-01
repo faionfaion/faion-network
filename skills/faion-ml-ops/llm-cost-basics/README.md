@@ -230,6 +230,15 @@ class ModelRouter:
 3. **Ignoring Output Tokens** - They cost more than input
 4. **No Budget Limits** - Runaway costs in production
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Cost model understanding | haiku | Concept learning |
+| Usage tracking | haiku | Monitoring |
+| Basic calculation | haiku | Math |
+
 ## Sources
 
 - [OpenAI Pricing](https://openai.com/pricing)

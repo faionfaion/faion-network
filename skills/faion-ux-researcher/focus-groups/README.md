@@ -407,6 +407,12 @@ Changes for online:
 - Focus Groups: A Practical Guide by Krueger & Casey
 - The Moderator's Survival Guide by Donna Tedesco
 - UX research community: Focus Groups in UX
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Focus Groups | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Focus Groups by Krueger & Casey](https://us.sagepub.com/en-us/nam/focus-groups/book243860) - Definitive research guide

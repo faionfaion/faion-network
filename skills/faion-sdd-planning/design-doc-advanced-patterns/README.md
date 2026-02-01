@@ -158,6 +158,14 @@ interface RegisterFormProps {
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Planning task breakdown | haiku | Task decomposition from checklist |
+| Estimating task complexity | sonnet | Comparative complexity assessment |
+| Creating strategic roadmaps | opus | Long-term planning, dependency chains |
+
 ## Sources
 
 - [Google Engineering Practices](https://google.github.io/eng-practices/review/) - Google's design doc review process

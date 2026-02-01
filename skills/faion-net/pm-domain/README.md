@@ -39,3 +39,11 @@ Project management using Project Management Framework 7/8. Stakeholder managemen
 - Project Charter Creation
 - Lessons Learned
 - Project Closure
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

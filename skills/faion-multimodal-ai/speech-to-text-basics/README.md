@@ -197,6 +197,14 @@ class FasterWhisperTranscriber:
 - Missing timestamp information
 - Using large models unnecessarily
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Transcribe audio files | haiku | API calls and file handling |
+| Implement speaker diarization | sonnet | Algorithm configuration and integration |
+| Build multi-speaker transcription system | opus | Architecture and optimization |
+
 ## Sources
 
 - [OpenAI Whisper API Documentation](https://platform.openai.com/docs/guides/speech-to-text)

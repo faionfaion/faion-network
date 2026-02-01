@@ -233,6 +233,14 @@ Red dot: Offline (with retry option)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement visibility-of-system-status pattern | haiku | Straightforward implementation |
+| Review visibility-of-system-status implementation | sonnet | Requires code analysis |
+| Optimize visibility-of-system-status design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Nielsen Norman Group: Visibility of System Status](https://www.nngroup.com/articles/visibility-system-status/)

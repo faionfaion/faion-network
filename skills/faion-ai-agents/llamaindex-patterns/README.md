@@ -632,3 +632,11 @@ responses = await query_engine.abatch_query(queries)
 - [LlamaIndex Documentation](https://docs.llamaindex.ai/)
 - [LlamaIndex GitHub](https://github.com/run-llama/llama_index)
 - [LlamaIndex Hub](https://llamahub.ai/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement llamaindex-patterns pattern | haiku | Straightforward implementation |
+| Review llamaindex-patterns implementation | sonnet | Requires code analysis |
+| Optimize llamaindex-patterns design | opus | Complex trade-offs |
+

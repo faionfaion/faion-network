@@ -70,6 +70,14 @@ Stop tracking only sessions. New scorecard includes:
 - Authority building: 3-6 months
 - Measurable citation improvements: ~90 days
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Keyword research and extraction | haiku | Data lookup, list compilation |
+| Analyzing SEO metrics | sonnet | Comparative analysis, pattern detection |
+| Developing SEO strategy | opus | Complex strategy formulation, market positioning |
+
 ## Sources
 
 - [SparkToro Zero-Click Search Report](https://sparktoro.com/blog/less-than-half-of-google-searches-now-result-in-a-click/)

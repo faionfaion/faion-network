@@ -95,3 +95,11 @@ Map BA competencies to agile roles and ceremonies. Understand where BA skills ad
 - [ ] Share BA process improvements
 - [ ] Identify collaboration gaps
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement agile-ba-frameworks pattern | haiku | Straightforward implementation |
+| Review agile-ba-frameworks implementation | sonnet | Requires code analysis |
+| Optimize agile-ba-frameworks design | opus | Complex trade-offs |
+

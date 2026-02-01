@@ -551,6 +551,14 @@ def test_order_with_multiple_items(order_builder):
 - **Over-engineering** - complex fixtures for simple test data
 - **Missing cleanup** - resources leaking between tests
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [pytest Fixtures Documentation](https://docs.pytest.org/en/latest/how-to/fixtures.html) - official pytest fixtures guide

@@ -97,3 +97,11 @@ Need real-time transcription?
 - [AssemblyAI Streaming](https://www.assemblyai.com/products/streaming-speech-to-text)
 - [ElevenLabs Scribe](https://elevenlabs.io/realtime-speech-to-text)
 - [Deepgram](https://deepgram.com/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| STT model selection | haiku | Tool selection |
+| Audio preprocessing | sonnet | Data preparation |
+| Language handling | sonnet | Multilingual setup |

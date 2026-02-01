@@ -239,3 +239,11 @@ Constraints: [any requirements]
 | [faion-llm-integration](../faion-llm-integration/CLAUDE.md) | API implementation |
 | [faion-rag-engineer](../faion-rag-engineer/CLAUDE.md) | RAG prompt patterns |
 | [faion-ai-agents](../faion-ai-agents/CLAUDE.md) | Agent prompting |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Prompt optimization | sonnet | Quality improvement |
+| Few-shot design | sonnet | Example selection |
+| Prompt testing | sonnet | Validation framework |

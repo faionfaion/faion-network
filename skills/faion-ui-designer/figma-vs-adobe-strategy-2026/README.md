@@ -28,6 +28,12 @@
 
 The smartest teams use both: Firefly for asset creation and Figma as the collaborative canvas where products come to life.
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Figma to code handoff | haiku | Mechanical conversion: extracting specifications from Figma |
+
 ## Sources
 
 - [Figma 2026 Strategy](https://www.figma.com/blog/figma-2026/)

@@ -213,6 +213,14 @@ class Query:
 - Use union types for error handling
 - Always paginate list fields
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate OpenAPI spec from code | haiku | Pattern extraction |
+| Review API design for consistency | sonnet | Requires API expertise |
+| Design API security model | opus | Security trade-offs |
+
 ## Sources
 
 - [GraphQL Specification](https://spec.graphql.org/)

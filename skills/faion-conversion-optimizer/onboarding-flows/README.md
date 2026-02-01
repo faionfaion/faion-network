@@ -472,6 +472,20 @@ Watch 10+ users go through onboarding:
 - **product-led-growth:** PLG relies on great onboarding
 - **funnel-optimization:** Onboarding is a critical funnel
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Map funnel metrics and baseline metrics | haiku | Direct query of existing data |
+| A/B test hypothesis generation and prioritization | sonnet | Reasoning about impact/confidence/ease |
+| Landing page copywriting and design feedback | sonnet | Creative iteration, user psychology |
+| Funnel optimization campaign setup | opus | Complex multi-funnel strategy, org-wide impact |
+| Free trial flow analysis and recommendations | sonnet | Understanding conversion psychology |
+| PLG product strategy and feature design | opus | Architecture decisions, product-market fit |
+| Onboarding flow user testing interpretation | sonnet | Qualitative analysis and recommendations |
+
+---
+
 ## Sources
 
 - [The Elements of User Onboarding (Samuel Hulick)](https://www.useronboard.com/user-onboarding-teardowns/)

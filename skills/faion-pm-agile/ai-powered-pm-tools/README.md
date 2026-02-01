@@ -70,3 +70,11 @@ category: "pmbok8"
 | Free | $0 | Trial access, limited automations |
 | AI Standard | $9/user/mo | Unlimited essentials, Brain MAX |
 | AI Autopilot | $28/user/mo | Unlimited agents, Enterprise Search |
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

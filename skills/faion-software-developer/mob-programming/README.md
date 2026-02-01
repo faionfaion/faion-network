@@ -418,3 +418,11 @@ mob done
 - [mob.sh - CLI Tool](https://mob.sh/)
 - [Mobti.me - Online Timer](https://mobti.me/)
 - [Remote Mob Programming](https://www.remotemobprogramming.org/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

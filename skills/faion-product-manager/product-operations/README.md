@@ -53,3 +53,11 @@ Level 3: Transformational -> AI automation, predictive analytics
 - Automated stakeholder communication
 
 **Key Insight 2026:** Product Ops is evolving from "process orchestration" to "strategic enablement." Teams must prove impact through business outcomes, not just efficiency gains.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

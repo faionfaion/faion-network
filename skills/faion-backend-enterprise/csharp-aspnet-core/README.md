@@ -163,3 +163,11 @@ public class UserService : IUserService
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement csharp-aspnet-core pattern | haiku | Straightforward implementation |
+| Review csharp-aspnet-core implementation | sonnet | Requires code analysis |
+| Optimize csharp-aspnet-core design | opus | Complex trade-offs |
+

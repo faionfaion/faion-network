@@ -426,6 +426,15 @@ function OrderForm() {
 }
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Component composition planning | sonnet | Architecture design |
+| Props interface definition | sonnet | TypeScript interface design |
+| Component API review | sonnet | Usability analysis |
+
 ## Sources
 
 - [React Documentation](https://react.dev/) - Official React docs

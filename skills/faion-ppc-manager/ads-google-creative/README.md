@@ -350,6 +350,14 @@ easy collaboration, powerful reporting. Rated 4.9/5 by G2 users.
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Google Responsive Search Ads Best Practices](https://support.google.com/google-ads/answer/7684791)

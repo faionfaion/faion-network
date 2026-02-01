@@ -184,3 +184,11 @@ Problem
 | [faion-llm-integration](../../faion-llm-integration/CLAUDE.md) | API implementation |
 | [prompt-engineering](../prompt-engineering/README.md) | General prompting techniques |
 | [faion-ai-agents](../../faion-ai-agents/CLAUDE.md) | Agent reasoning patterns |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| CoT prompting | sonnet | Prompt technique |
+| Step extraction | sonnet | Analysis pattern |
+| Tree of thought | opus | Advanced technique |

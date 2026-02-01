@@ -193,3 +193,11 @@ for chunk in stream:
 | [faion-rag-engineer](../faion-rag-engineer/CLAUDE.md) | Embeddings for RAG pipelines |
 | [faion-ai-agents](../faion-ai-agents/CLAUDE.md) | Function calling for agents |
 | [faion-ml-ops](../faion-ml-ops/CLAUDE.md) | Fine-tuning and evaluation |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| API setup | haiku | Configuration |
+| Model selection | sonnet | Capability analysis |
+| Cost tracking | sonnet | Financial management |

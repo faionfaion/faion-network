@@ -49,3 +49,11 @@ Traditional sales-led growth is expensive and doesn't scale for modern SaaS.
 - Hybrid PLG + sales-assist for enterprise
 
 **Key Insight:** PLG companies achieve higher revenue per employee. Ahrefs reached $40M ARR with just 40 employees using pure PLG.
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -289,3 +289,11 @@ After establishing communication plan:
 
 - Project Management Framework Guide 7th Edition - Stakeholder Performance Domain
 - PM industry practice standard for Communications
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

@@ -210,6 +210,20 @@ Research shows 20% of turnover happens in the first 45 days, but effective onboa
 
 *Methodology: onboarding-30-day | Onboarding | faion-onboarding-agent*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Format job description, update HRIS data, send offer | haiku | Content formatting and data updates |
+| Evaluate resume fit for role requirements | sonnet | Assessment and analysis |
+| Provide STAR interview feedback on candidates | sonnet | Qualitative evaluation and scoring |
+| Design interview process and rubrics | opus | Systematic process design |
+| Create onboarding program for new team | sonnet | Planning and documentation |
+| Plan compensation strategy and salary bands | opus | Complex organizational decisions |
+| Analyze retention data and recommend interventions | sonnet | Data analysis and recommendations |
+
+---
+
 ## Sources
 
 - [SHRM Onboarding New Employees](https://www.shrm.org/topics-tools/tools/toolkits/onboarding-new-employees)

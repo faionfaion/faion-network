@@ -235,6 +235,14 @@ def check_merchant_center_link(client, customer_id):
 
 *Part of faion-ppc-manager skill*
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+
 ## Sources
 
 - [Shopping Campaigns Overview](https://support.google.com/google-ads/answer/2454022)

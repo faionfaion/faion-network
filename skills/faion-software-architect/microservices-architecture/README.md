@@ -427,6 +427,14 @@ See [llm-prompts.md](llm-prompts.md) for practical prompts.
 | [templates.md](templates.md) | Service templates, docker-compose |
 | [llm-prompts.md](llm-prompts.md) | Prompts for AI-assisted design |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Service decomposition | opus | Complex domain boundary analysis |
+| Communication pattern | sonnet | Sync vs async trade-offs |
+| Service template | haiku | Deploying standard service structure |
 ## Related Methodologies
 
 - [monolith-architecture.md](../monolith-architecture.md) - Simpler alternative

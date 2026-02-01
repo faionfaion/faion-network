@@ -4,6 +4,14 @@ Quick reference for invoking faion-researcher agents.
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Researching market data | haiku | Data lookup and compilation |
+| Analyzing research patterns | sonnet | Pattern recognition and comparison |
+| Strategic market positioning | opus | Complex market strategy formulation |
+
 ## Agent Overview
 
 | Agent | Model | Purpose | Modes |

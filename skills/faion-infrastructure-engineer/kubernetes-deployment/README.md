@@ -326,6 +326,16 @@ maxSurge: 25%
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Deployment manifest creation | sonnet | K8s pattern application |
+| Rolling update strategy | sonnet | Availability trade-offs |
+| Resource requests/limits | sonnet | Capacity planning |
+| Health probe configuration | haiku | Simple rule application |
+
 ## Sources
 
 - [Kubernetes Documentation](https://kubernetes.io/docs/home/)

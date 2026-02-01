@@ -22,6 +22,12 @@ Spatial computing blends digital content with physical space through AR (Augment
 | Microsoft HoloLens | MR | Enterprise, industrial |
 | Magic Leap | AR | Industrial applications |
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Spatial UI design strategy | opus | Novel patterns: designing for XR/3D environments with new interaction models |
+
 ## Sources
 
 - [Apple Vision Pro Design Guidelines](https://developer.apple.com/design/human-interface-guidelines/designing-for-visionos)

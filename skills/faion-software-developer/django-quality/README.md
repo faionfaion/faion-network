@@ -111,6 +111,14 @@ except requests.HTTPError as e:
 - Migrations created if models changed
 - Documentation updated if API changed
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [Black Documentation](https://black.readthedocs.io/) - Python code formatter

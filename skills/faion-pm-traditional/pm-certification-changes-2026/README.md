@@ -31,3 +31,11 @@ category: "pmbok8"
 3. Strategic alignment
 4. Organizational change
 5. Value stream mapping
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

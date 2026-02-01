@@ -239,3 +239,11 @@ TBD correlates with elite DORA performers:
 - [Accelerate - Nicole Forsgren et al.](https://itrevolution.com/accelerate-book/)
 - [Continuous Delivery - Jez Humble](https://continuousdelivery.com/)
 - [Feature Flags - Martin Fowler](https://martinfowler.com/articles/feature-toggles.html)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement trunk-based-dev-principles pattern | haiku | Straightforward implementation |
+| Review trunk-based-dev-principles implementation | sonnet | Requires code analysis |
+| Optimize trunk-based-dev-principles design | opus | Complex trade-offs |
+

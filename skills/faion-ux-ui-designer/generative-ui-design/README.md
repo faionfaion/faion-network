@@ -31,6 +31,12 @@ Implementation  → AI-assisted coding
 - Accessibility must be manually verified
 - Edge cases need human attention
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Galileo AI](https://www.usegalileo.ai/)

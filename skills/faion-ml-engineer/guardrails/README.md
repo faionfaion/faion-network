@@ -315,3 +315,11 @@ Never log:
 |---------|------|---------|
 | 2.0.0 | 2026-01 | Reorganized into folder structure |
 | 1.0.0 | 2024-11 | Initial guardrails methodology |
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Guardrail implementation | sonnet | Safety pattern |
+| Output filtering | sonnet | Content validation |
+| Prompt injection prevention | opus | Security design |

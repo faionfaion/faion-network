@@ -313,6 +313,12 @@ Full relationship with brand over time
 - UX research community: Journey Mapping
 - Mapping Experiences by Jim Kalbach
 - This Is Service Design Doing
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Customer Journey Mapping | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Journey Mapping 101](https://www.nngroup.com/articles/journey-mapping-101/) - Nielsen Norman Group

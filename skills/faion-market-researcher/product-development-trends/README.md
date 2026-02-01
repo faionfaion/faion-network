@@ -53,3 +53,10 @@ Together: Generate data-grounded product ideas
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Trend research | sonnet | Market analysis |
+| Future roadmap | opus | Strategic vision |

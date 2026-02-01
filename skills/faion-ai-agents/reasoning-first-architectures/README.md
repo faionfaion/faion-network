@@ -62,3 +62,11 @@ Generate improved response
     |
 Repeat until satisfactory
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement reasoning-first-architectures pattern | haiku | Straightforward implementation |
+| Review reasoning-first-architectures implementation | sonnet | Requires code analysis |
+| Optimize reasoning-first-architectures design | opus | Complex trade-offs |
+

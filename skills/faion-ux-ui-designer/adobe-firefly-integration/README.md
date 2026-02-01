@@ -33,3 +33,9 @@ When to use Figma:
 → Developer handoff
 → Design system management
 ```
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Adobe Firefly Integration | haiku | Task execution: applying established methodologies |

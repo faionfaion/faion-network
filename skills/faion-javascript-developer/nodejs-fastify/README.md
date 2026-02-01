@@ -415,6 +415,15 @@ app.get<{
 );
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Fastify plugin system | sonnet | Plugin architecture |
+| Schema validation setup | sonnet | Input validation patterns |
+| Performance optimization | sonnet | Benchmarking analysis |
+
 ## Sources
 
 - [Fastify Documentation](https://fastify.dev/docs/latest/) - Official docs

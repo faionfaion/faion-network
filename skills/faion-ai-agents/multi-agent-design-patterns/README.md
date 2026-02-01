@@ -50,3 +50,11 @@ Orchestrator Agent
 - Gartner: 1,445% surge in multi-agent inquiries (Q1 2024 -> Q2 2025)
 - Prediction: 40% of enterprise apps include AI agents by 2026 (Gartner)
 - IDC: 80% of workplace apps will have AI copilots by 2026
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

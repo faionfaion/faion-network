@@ -403,6 +403,12 @@ Look for patterns:
 - Information Architecture by Rosenfeld, Morville, Arango
 - Optimal Workshop: Tree Testing Guide
 - UX research community: Tree Testing
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| A/B test setup | haiku | Mechanical task: configuring test parameters and tracking |
+
 ## Sources
 
 - [Tree Testing](https://www.nngroup.com/articles/tree-testing/) - Nielsen Norman Group

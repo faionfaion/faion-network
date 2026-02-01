@@ -514,3 +514,11 @@ module.exports = {
 - [Babel Documentation](https://babel.pocoo.org/)
 - [react-intl Documentation](https://formatjs.io/docs/react-intl/)
 - [W3C Internationalization](https://www.w3.org/International/)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement internationalization pattern | haiku | Straightforward implementation |
+| Review internationalization implementation | sonnet | Requires code analysis |
+| Optimize internationalization design | opus | Complex trade-offs |
+

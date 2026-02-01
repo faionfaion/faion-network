@@ -414,6 +414,16 @@ useEffect(() => {
 const options = useMemo(() => ({ page, limit }), [page, limit]);
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| useState pattern selection | haiku | Hook selection by rule |
+| useEffect dependency analysis | sonnet | Closure/dependency reasoning |
+| Custom hook extraction | sonnet | Refactoring expertise |
+| useReducer vs useState | sonnet | State management trade-offs |
+
 ## Sources
 
 - [React Hooks API Reference](https://react.dev/reference/react) - Official hooks docs

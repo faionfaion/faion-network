@@ -241,6 +241,14 @@ Visual update: <10ms
 7. **No grounding** - Floating in void (disorientation)
 8. **Frame drops** - Performance issues (motion sickness)
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement vr-design-patterns pattern | haiku | Straightforward implementation |
+| Review vr-design-patterns implementation | sonnet | Requires code analysis |
+| Optimize vr-design-patterns design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Meta: VR Best Practices](https://developer.oculus.com/resources/bp-overview/)

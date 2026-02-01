@@ -52,3 +52,9 @@ Recording -> Transcription -> Speaker ID -> Summarization
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Interview transcription analysis | haiku | Pattern matching: extracting themes from transcripts |

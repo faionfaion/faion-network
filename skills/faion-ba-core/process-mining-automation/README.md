@@ -111,3 +111,11 @@ Event Log Extraction -> Process Discovery -> Conformance Checking -> Enhancement
 - **Implementation Cost:** [$]
 - **Payback Period:** [months]
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Create CI/CD pipeline template | haiku | Pattern application |
+| Optimize pipeline performance | sonnet | Requires optimization skills |
+| Design CD rollback strategy | opus | Complex risk management |
+

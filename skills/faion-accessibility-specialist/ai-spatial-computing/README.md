@@ -194,6 +194,14 @@ User looks at coffee maker
 - Cognitive load adaptation
 - Personalized accessibility profiles
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement ai-spatial-computing pattern | haiku | Straightforward implementation |
+| Review ai-spatial-computing implementation | sonnet | Requires code analysis |
+| Optimize ai-spatial-computing design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Apple Vision Pro: Spatial Computing Platform](https://developer.apple.com/visionos/)

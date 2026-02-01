@@ -325,6 +325,14 @@ repository/
 - [GoDataDriven C4 Example](https://github.com/godatadriven/c4-model-example) - Complete Structurizr example
 - [c4-draw.io Templates](https://github.com/kaminzo/c4-draw.io) - draw.io shape libraries
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related Methodologies
 
 | Methodology | Relationship |

@@ -139,6 +139,15 @@ Application Layer
 - [prompt-engineering.md](../methodologies/prompt-engineering.md) - Prompt versioning
 - [cost-optimization.md](../methodologies/cost-optimization.md) - Cost reduction strategies
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Observability setup | sonnet | Monitoring infrastructure |
+| Metric selection | sonnet | KPI design |
+| Analysis and debugging | sonnet | Problem-solving |
+
 ## Sources
 
 - [Langfuse Documentation](https://langfuse.com/docs)

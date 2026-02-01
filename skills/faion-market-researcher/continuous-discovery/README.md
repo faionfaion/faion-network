@@ -56,3 +56,10 @@ Discovery -> Hypothesis -> Experiment -> Learn -> Repeat
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| User interview planning | sonnet | Research methodology |
+| Feedback synthesis | sonnet | Insight extraction |

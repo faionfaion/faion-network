@@ -289,6 +289,17 @@ Create `.cursorrules` or similar for consistent AI output:
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Analyze and assess | sonnet | Evaluation and planning |
+| Execute implementation | haiku | Apply established patterns |
+| Review and validate | sonnet | Quality assurance |
+| Strategic decision | opus | Novel scenarios |
+| Optimize and refine | haiku | Performance tuning |
+| Document approach | haiku | Create documentation |
+
 ## External Resources
 
 ### Official Documentation

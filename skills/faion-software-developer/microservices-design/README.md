@@ -571,3 +571,11 @@ class OrderService:
 - [Microservices Patterns by Chris Richardson](https://microservices.io/patterns/)
 - [Martin Fowler - Microservices](https://martinfowler.com/articles/microservices.html)
 - [12-Factor App](https://12factor.net/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

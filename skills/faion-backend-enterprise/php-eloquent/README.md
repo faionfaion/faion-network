@@ -158,3 +158,11 @@ class UserRepository
 ### Agent
 
 faion-backend-agent
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement php-eloquent pattern | haiku | Straightforward implementation |
+| Review php-eloquent implementation | sonnet | Requires code analysis |
+| Optimize php-eloquent design | opus | Complex trade-offs |
+

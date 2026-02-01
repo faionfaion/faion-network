@@ -35,3 +35,9 @@ So I can [expected outcome].
 ---
 
 *AI Research Best Practices 2026*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Persona documentation | haiku | Mechanical task: formatting and organizing existing persona data |

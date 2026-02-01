@@ -46,3 +46,11 @@ None directly - uses web research tools (WebSearch, WebFetch).
 - Distribution Channel Research
 - Success Metrics Definition
 - Risk Assessment
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

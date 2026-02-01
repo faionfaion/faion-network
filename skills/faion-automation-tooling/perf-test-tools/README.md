@@ -289,3 +289,11 @@ jobs:
 - [Locust Documentation](https://docs.locust.io/)
 - [k6 Documentation](https://k6.io/docs/)
 - [GitHub Actions for Performance Testing](https://docs.github.com/en/actions)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement perf-test-tools pattern | haiku | Straightforward implementation |
+| Review perf-test-tools implementation | sonnet | Requires code analysis |
+| Optimize perf-test-tools design | opus | Complex trade-offs |
+

@@ -398,3 +398,10 @@ for i, result in enumerate(results):
 - [Pydantic Documentation](https://docs.pydantic.dev/)
 - [JSON Schema](https://json-schema.org/)
 - [Tenacity (Retry Library)](https://tenacity.readthedocs.io/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Multi-level JSON structures | sonnet | Schema complexity |
+| Discriminated unions | sonnet | Type pattern |

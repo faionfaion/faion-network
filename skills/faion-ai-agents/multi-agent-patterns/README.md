@@ -445,3 +445,11 @@ Synthesize into a coherent final result."""
 - [AutoGen](https://microsoft.github.io/autogen/)
 - [CrewAI](https://github.com/joaomdmoura/crewAI)
 - [MetaGPT](https://github.com/geekan/MetaGPT)
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Generate tool definitions from API | haiku | Mechanical transformation |
+| Review agent reasoning chains | sonnet | Requires logic analysis |
+| Design multi-agent orchestration | opus | Complex coordination patterns |
+

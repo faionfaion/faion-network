@@ -278,3 +278,10 @@ Rate each idea 1-5:
 ---
 
 *Methodology | Research | Version 1.0*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Brainstorming facilitation | sonnet | Idea generation |
+| Concept validation | sonnet | Feasibility assessment |

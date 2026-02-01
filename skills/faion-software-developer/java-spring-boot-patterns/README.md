@@ -644,3 +644,11 @@ List<User> findAllWithOrganization();
 - [Spring Data JPA](https://spring.io/projects/spring-data-jpa)
 - [Baeldung Spring Tutorials](https://www.baeldung.com/spring-boot)
 - [Spring Guides](https://spring.io/guides)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

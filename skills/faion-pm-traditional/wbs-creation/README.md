@@ -247,3 +247,11 @@ After creating your WBS:
 
 - Project Management Framework Guide 7th Edition - Planning Performance Domain
 - PM industry practice standard for Work Breakdown Structures
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

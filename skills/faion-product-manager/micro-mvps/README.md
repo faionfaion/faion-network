@@ -43,3 +43,11 @@ Micro-MVP: 3-minute video explaining concept
 Result: Waitlist jumped from 5K to 75K overnight
 Cost: Video production time only
 ```
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

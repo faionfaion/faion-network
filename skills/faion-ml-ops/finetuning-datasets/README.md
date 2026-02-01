@@ -435,3 +435,11 @@ class LogCallback(TrainerCallback):
 
 *Last updated: 2026-01-23*
 *Part 2 of 2: Datasets, Training & Deployment*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Dataset format preparation | haiku | Data transformation |
+| Quality assessment | sonnet | Data validation |
+| Preprocessing strategy | sonnet | Approach selection |

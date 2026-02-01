@@ -660,6 +660,16 @@ docker compose config --quiet
 
 ---
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Service orchestration YAML | sonnet | Configuration patterns |
+| Volume mount strategy | sonnet | Storage architecture |
+| Network configuration | haiku | Straightforward setup |
+| Environment variable management | haiku | Simple configuration |
+
 ## Sources
 
 - [Docker Compose Documentation](https://docs.docker.com/compose/)

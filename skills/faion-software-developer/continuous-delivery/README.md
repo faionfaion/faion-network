@@ -657,3 +657,11 @@ def track_deployment(version: str, success: bool, duration: float):
 - [The DevOps Handbook](https://itrevolution.com/the-devops-handbook/)
 - [DORA Metrics](https://www.devops-research.com/research.html)
 - [Martin Fowler - Continuous Delivery](https://martinfowler.com/bliki/ContinuousDelivery.html)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

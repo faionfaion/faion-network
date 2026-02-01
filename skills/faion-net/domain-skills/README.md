@@ -121,3 +121,11 @@ See [decision-tree-skills.md](decision-tree-skills.md) for detailed skill select
 ---
 
 *Domain skills catalog for faion-net orchestrator*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

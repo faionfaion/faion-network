@@ -97,6 +97,15 @@ RAFT (hybrid: fine-tuning + RAG)
 - [finetuning/](../finetuning/README.md) - Fine-tuning implementation
 - [vector-databases/](../vector-databases/README.md) - RAG infrastructure
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Model selection framework | sonnet | Decision criteria |
+| Cost-quality trade-off | sonnet | Analysis |
+| Provider comparison | sonnet | Evaluation |
+
 ## Sources
 
 - [RAG vs Fine-Tuning - Monte Carlo](https://www.montecarlodata.com/blog-rag-vs-fine-tuning/)

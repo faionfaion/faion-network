@@ -214,3 +214,11 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY daily_sales_stats;
 - [Use The Index, Luke](https://use-the-index-luke.com/)
 - [pgMustard - EXPLAIN Analyzer](https://www.pgmustard.com/)
 - [Percona Blog - Query Optimization](https://www.percona.com/blog/)
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |

@@ -360,6 +360,12 @@ Recruitment:
 - dscout Diary Study Guide
 - Practical Guide to Running Diary Studies
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Diary Study Basics | haiku | Task execution: applying established methodologies |
+
 ## Sources
 
 - [Diary Studies](https://www.nngroup.com/articles/diary-studies/) - Nielsen Norman Group comprehensive guide

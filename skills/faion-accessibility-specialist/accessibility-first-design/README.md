@@ -188,6 +188,14 @@ Start with accessible baseline:
 4. Ensure core functionality works without JS
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Scan page for WCAG violations | haiku | Pattern-based automated detection |
+| Review accessibility audit results | sonnet | Requires expert judgment |
+| Design accessible system architecture | opus | Complex trade-offs |
+
 ## Sources
 
 - [WebAIM: Introduction to Web Accessibility](https://webaim.org/intro/)

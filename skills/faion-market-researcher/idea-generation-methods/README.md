@@ -237,3 +237,10 @@ faion-research-agent (mode: niche)
 
 *Idea Generation Methods | 4 methodologies*
 *Part of faion-researcher v1.3*
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Brainstorming framework | sonnet | Process design |
+| Idea validation | sonnet | Feasibility check |

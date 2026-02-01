@@ -378,6 +378,18 @@ TRUSTED BY 500+ GROWING COMPANIES
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Research keywords and create outline | sonnet | Research with some synthesis |
+| Design full content marketing strategy | opus | Complex strategy with multiple variables |
+| Write product description copy | sonnet | Copywriting with brand voice |
+| Format blog post with SEO metadata | haiku | Mechanical formatting and checklist |
+| Brainstorm content distribution channels | opus | Strategic planning and analysis |
+| Outline email marketing sequence | sonnet | Planning with customer psychology |
+
+
 ## Sources
 
 - [Testimonial.to Best Practices Guide](https://testimonial.to/blog)

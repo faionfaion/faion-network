@@ -271,6 +271,20 @@ After:  9.5% trial-to-paid conversion (+90%)
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Map funnel metrics and baseline metrics | haiku | Direct query of existing data |
+| A/B test hypothesis generation and prioritization | sonnet | Reasoning about impact/confidence/ease |
+| Landing page copywriting and design feedback | sonnet | Creative iteration, user psychology |
+| Funnel optimization campaign setup | opus | Complex multi-funnel strategy, org-wide impact |
+| Free trial flow analysis and recommendations | sonnet | Understanding conversion psychology |
+| PLG product strategy and feature design | opus | Architecture decisions, product-market fit |
+| Onboarding flow user testing interpretation | sonnet | Qualitative analysis and recommendations |
+
+---
+
 ## Sources
 
 - [Funnel Conversion Benchmarks 2026 (Unbounce)](https://unbounce.com/conversion-rate-optimization/conversion-benchmark-report/)

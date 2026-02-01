@@ -347,3 +347,11 @@ for node in response.source_nodes:
 ---
 
 *LlamaIndex Basics - Part 1 of 3*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement llamaindex-basics pattern | haiku | Straightforward implementation |
+| Review llamaindex-basics implementation | sonnet | Requires code analysis |
+| Optimize llamaindex-basics design | opus | Complex trade-offs |
+

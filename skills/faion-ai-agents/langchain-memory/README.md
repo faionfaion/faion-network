@@ -467,3 +467,11 @@ for chunk in workflow.stream(
 *faion-langchain-memory v1.0*
 *LangChain 0.3.x / LangGraph 0.2.x*
 *Covers: memory types, conversation management, LangGraph workflows, state machines*
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement langchain-memory pattern | haiku | Straightforward implementation |
+| Review langchain-memory implementation | sonnet | Requires code analysis |
+| Optimize langchain-memory design | opus | Complex trade-offs |
+

@@ -36,6 +36,12 @@ spacing.component.button
 typography.heading.xl
 ```
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| Design token implementation | haiku | Pattern application: applying design tokens to components |
+
 ## Sources
 
 - [Design Token Naming Best Practices](https://www.designsystems.com/token-naming/)

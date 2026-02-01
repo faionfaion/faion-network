@@ -295,6 +295,14 @@ ws.send({
 - Missing reconnection logic
 - Silent error failures
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement websocket-design pattern | haiku | Straightforward implementation |
+| Review websocket-design implementation | sonnet | Requires code analysis |
+| Optimize websocket-design design | opus | Complex trade-offs |
+
 ## Sources
 
 - [WebSocket API - MDN](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)

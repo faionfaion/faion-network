@@ -94,6 +94,16 @@ AWS compute services: EC2 instances, ECS Fargate, task definitions, and services
 | Task definitions | [templates.md](templates.md) |
 | LLM prompts | [llm-prompts.md](llm-prompts.md) |
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|----------|
+| ECS task definition creation | sonnet | Standard configuration pattern |
+| EC2 instance type selection | sonnet | Performance/cost analysis |
+| ECS service scaling policies | sonnet | Metric-driven configuration |
+| Container health checks | haiku | Simple configuration |
+
 ## Sources
 
 - [Amazon ECS Best Practices](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-best-practices.html)

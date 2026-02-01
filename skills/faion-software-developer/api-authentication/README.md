@@ -169,6 +169,14 @@ async def delete_user(id: str, _: dict = Depends(require_scope("delete:users")))
 - Log authentication events
 - Use asymmetric keys (RS256) for distributed systems
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [OAuth 2.0 RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749)

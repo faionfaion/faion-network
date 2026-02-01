@@ -38,3 +38,11 @@ Initiating <-> Planning <-> Executing
 - Describe how work is commonly performed
 - Allow tailoring based on environment and project needs
 - Updated, streamlined, and reorganized from Project Management Framework 6
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement methodology | haiku | Pattern application and configuration |
+| Review implementation | sonnet | Code analysis and verification |
+| Design strategy | opus | Complex decision-making |
+

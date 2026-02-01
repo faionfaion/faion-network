@@ -350,6 +350,14 @@ Please provide:
 - [The Singleton Pattern Is a Refactoring Nightmare](https://thenewstack.io/unmasking-the-singleton-anti-pattern/)
 - [Dependency Injection in Go: Patterns & Best Practices](https://www.glukhov.org/post/2025/12/dependency-injection-in-go/)
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Related
 
 - [checklist.md](checklist.md) - Step-by-step pattern selection

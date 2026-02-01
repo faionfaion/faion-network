@@ -96,6 +96,14 @@ def get_user_balance(user: User) -> Decimal:
     ...
 ```
 
+
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implementation setup | haiku | Applying standard methodology patterns |
+| Design decisions | sonnet | Trade-offs analysis |
+| Complex scenarios | opus | Novel or complex solutions |
 ## Sources
 
 - [PEP 8 - Import Style](https://peps.python.org/pep-0008/#imports) - Python import conventions

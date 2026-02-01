@@ -573,6 +573,14 @@ $batch = Bus::batch([
 
 ---
 
+## Agent Selection
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Implement php-laravel pattern | haiku | Straightforward implementation |
+| Review php-laravel implementation | sonnet | Requires code analysis |
+| Optimize php-laravel design | opus | Complex trade-offs |
+
 ## Sources
 
 - [Laravel Documentation](https://laravel.com/docs)
