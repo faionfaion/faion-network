@@ -37,7 +37,7 @@ Universal orchestrator: 54 skills, 1297 methodologies across Development, DevOps
 | **BA** | Requirements, BPMN | `Skill(faion-ba-core)` |
 | **UX Research** | Interviews, testing | `Skill(faion-ux-researcher)` |
 | **UI Design** | Wireframes, tokens | `Skill(faion-ui-designer)` |
-| **Improve** | Audit, gaps, fix, log | `Skill(faion-session-improver)` |
+| **Improve** | Audit, gaps, fix, log | `Skill(faion-improver)` |
 | **SDD** | Specs, design docs | `Skill(faion-sdd-planning)` |
 
 ## Statistics

@@ -1,4 +1,4 @@
-# faion-session-improver
+# faion-improver
 
 Session-based continuous improvement workflow.
 

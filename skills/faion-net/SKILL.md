@@ -233,7 +233,7 @@ CLAUDE CODE
 └── Skills, hooks, MCP servers, IDE → Skill(faion-claude-code)
 
 CONTINUOUS IMPROVEMENT
-└── Audit, gaps, brainstorm, fix, log → Skill(faion-session-improver)
+└── Audit, gaps, brainstorm, fix, log → Skill(faion-improver)
 ```
 
 ---

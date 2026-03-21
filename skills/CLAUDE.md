@@ -111,7 +111,7 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 | faion-communicator | 14 | Stakeholder dialogue |
 | faion-hr-recruiter | 15 | Talent, onboarding |
 | faion-claude-code | 9 | Claude Code config |
-| faion-session-improver | 5 | Audit, improve, log |
+| faion-improver | 5 | Audit, improve, log |
 
 ## Task Routing
 
