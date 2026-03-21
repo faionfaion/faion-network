@@ -1,7 +1,7 @@
 ---
 name: faion-improver
 description: "Session-based continuous improvement: investigate system, find gaps, brainstorm, apply fixes, log improvements, commit, create skills from experience. 5 methodologies."
-user-invocable: false
+user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate, TaskList, AskUserQuestion, Skill
 ---
 
