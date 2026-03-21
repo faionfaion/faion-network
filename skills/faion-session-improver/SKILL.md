@@ -58,14 +58,48 @@ Run `Skill(faion-brainstorm)` with:
 
 **Output:** Brainstorm document with insights, ideas, action items
 
+### Phase 3.5: User Approval
+
+**MANDATORY before any changes.** Use `AskUserQuestion` to present findings and get explicit approval.
+
+For each improvement:
+1. Describe the problem found
+2. Explain the risk if left unfixed
+3. Propose 2-3 implementation options with trade-offs
+4. Ask which option to apply (or skip)
+
+Example:
+```
+Found: RabbitMQ AMQP (5672) and Management UI (15672) exposed to internet.
+
+Options:
+A) Bind both ports to 127.0.0.1 — keeps services, blocks external access
+B) Remove Management UI entirely, bind AMQP to localhost — smaller attack surface
+C) Keep as-is but add fail2ban jail for RabbitMQ — detect brute force
+
+Recommended: B
+
+Which option? (A/B/C/skip)
+```
+
+For security changes — always explain:
+- What's currently exposed/vulnerable
+- What each option changes
+- Whether services need restart (and downtime impact)
+
+Group related changes together (e.g., all Docker port changes as one approval) but separate unrelated categories (security vs DX vs performance).
+
+**Never apply changes without user approval, even if CRITICAL.**
+
 ### Phase 4: Apply Fixes
 
-Apply improvements using parallel agents:
+Apply only user-approved improvements using parallel agents:
 - Agent for config fixes (systemd, Docker, nginx)
 - Agent for documentation updates (CLAUDE.md, .aidocs)
 - Agent for new files (.bash_aliases, sysctl configs)
 
 **Rules:**
+- Only apply changes explicitly approved in Phase 3.5
 - Never restart production services without user approval
 - Always backup before modifying system configs
 - Read before edit — never blind-write
@@ -152,8 +186,11 @@ If the session produced enough domain knowledge:
 
 ## Anti-patterns
 
+- Don't apply ANY fix without explicit user approval via AskUserQuestion
+- Don't present a single option — always offer 2-3 alternatives with trade-offs
 - Don't apply fixes without reading current state first
 - Don't restart services without user confirmation
 - Don't commit everything at once — commit logically grouped changes
 - Don't create skills for one-off tasks — only for reusable knowledge
 - Don't log ephemeral state — log patterns and decisions
+- Don't assume CRITICAL = auto-apply. Even critical fixes need user sign-off
