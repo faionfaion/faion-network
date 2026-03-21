@@ -1,0 +1,159 @@
+---
+name: faion-session-improver
+description: "Session-based continuous improvement: investigate system, find gaps, brainstorm, apply fixes, log improvements, commit, create skills from experience. 5 methodologies."
+user-invocable: false
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate, TaskList, AskUserQuestion, Skill
+---
+
+# Session Improver
+
+A structured workflow for turning hands-on experience into persistent improvements. When you solve a problem, configure a system, or discover a pattern, this skill captures that knowledge and feeds it back into the codebase, documentation, skills, and memory.
+
+**Entry point:** `/faion-net` (routes here for improvement/audit/retrospective tasks)
+
+---
+
+## How It Works
+
+```
+Experience → Investigate → Find gaps → Brainstorm → Apply → Log → Commit → Skill
+```
+
+Each session produces:
+1. **Improvements** applied to the system (configs, code, docs)
+2. **Knowledge** captured in skills, memory, or .aidocs
+3. **Patterns** extracted for future reuse
+
+---
+
+## Workflow Phases
+
+### Phase 1: Investigate
+
+Audit the current state of the target system. Use parallel agents for speed.
+
+```
+Agent 1: Read all configs (shell, SSH, nginx, systemd, Docker, cron)
+Agent 2: Check security posture (firewall, fail2ban, SSL, exposed ports)
+Agent 3: Check performance (kernel tuning, swap, resource limits)
+Agent 4: Check developer experience (tools, aliases, tmux, git config)
+```
+
+**Output:** Detailed findings list with priority (CRITICAL/HIGH/MEDIUM/LOW)
+
+### Phase 2: Classify & Prioritize
+
+Group findings by:
+- **Critical**: Security vulnerabilities, data loss risks
+- **High**: Missing resource limits, performance gaps
+- **Medium**: DX improvements, missing documentation
+- **Low**: Nice-to-haves, cosmetic issues
+
+### Phase 3: Brainstorm
+
+Run `Skill(faion-brainstorm)` with:
+- Session context (what was done, what was learned)
+- Investigation findings
+- Questions about reusability, patterns, new skills
+
+**Output:** Brainstorm document with insights, ideas, action items
+
+### Phase 4: Apply Fixes
+
+Apply improvements using parallel agents:
+- Agent for config fixes (systemd, Docker, nginx)
+- Agent for documentation updates (CLAUDE.md, .aidocs)
+- Agent for new files (.bash_aliases, sysctl configs)
+
+**Rules:**
+- Never restart production services without user approval
+- Always backup before modifying system configs
+- Read before edit — never blind-write
+
+### Phase 5: Log
+
+Create/update improvement log at project-specific path:
+- `{project}/operations/improvement-log.md` for project improvements
+- `~/.claude/projects/{project}/memory/` for cross-session memory
+
+Log format:
+```markdown
+## YYYY-MM-DD — Session Title
+
+### Changes
+- [CRITICAL] Fixed exposed RabbitMQ ports → bound to 127.0.0.1
+- [HIGH] Added MemoryMax to systemd services
+- [MEDIUM] Created .bash_aliases with 30+ shortcuts
+
+### Patterns Learned
+- Workspace/runtime separation for deploy safety
+- Claude Code hooks for environment persistence
+
+### Skills Created
+- faion-server-craft (27 methodologies)
+```
+
+### Phase 6: Commit
+
+If changes touch git repos:
+1. `git diff` to review changes
+2. Stage only relevant files
+3. Commit with descriptive message
+4. Push if user approves
+
+### Phase 7: Skill Creation
+
+If the session produced enough domain knowledge:
+1. Create skill directory in `~/.claude/skills/faion-{name}/`
+2. Write SKILL.md with frontmatter, decision tree, methodology list
+3. Write CLAUDE.md with overview
+4. Create methodology folders with 5-file structure
+5. Register in faion-net routing
+6. Commit to faion-network repo
+
+---
+
+## Decision Tree
+
+| User Intent | Phase |
+|-------------|-------|
+| "Audit this server" / "find issues" | Phase 1 (Investigate) |
+| "What can be improved?" | Phase 1 + 2 (Investigate + Classify) |
+| "Brainstorm improvements" | Phase 3 (Brainstorm) |
+| "Fix the issues you found" | Phase 4 (Apply) |
+| "Log what we did" | Phase 5 (Log) |
+| "Commit improvements" | Phase 6 (Commit) |
+| "Create a skill from this" | Phase 7 (Skill Creation) |
+| "Full improvement cycle" | All phases |
+
+---
+
+## Methodologies (5)
+
+| Methodology | Focus |
+|-------------|-------|
+| `system-audit/` | How to investigate a system thoroughly |
+| `gap-analysis/` | Classifying and prioritizing findings |
+| `improvement-application/` | Safely applying fixes |
+| `knowledge-capture/` | Logging, memory, .aidocs patterns |
+| `skill-extraction/` | Creating skills from experience |
+
+---
+
+## Integration Points
+
+- **faion-brainstorm**: Multi-agent brainstorming for improvement ideas
+- **faion-server-craft**: Server-specific configurations and tuning
+- **faion-devops-engineer**: Infrastructure and CI/CD improvements
+- **faion-sdd**: SDD workflow improvements
+- **.aidocs/memory/**: Project-specific pattern/mistake/decision capture
+
+---
+
+## Anti-patterns
+
+- Don't apply fixes without reading current state first
+- Don't restart services without user confirmation
+- Don't commit everything at once — commit logically grouped changes
+- Don't create skills for one-off tasks — only for reusable knowledge
+- Don't log ephemeral state — log patterns and decisions

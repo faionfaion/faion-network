@@ -190,6 +190,7 @@ DEVELOPMENT
 
 INFRASTRUCTURE & DEVOPS
 ├── Docker, K8s, Terraform, AWS/GCP → Skill(faion-infrastructure-engineer)
+├── Server config, hardening, tuning → Skill(faion-server-craft)
 └── CI/CD, GitHub Actions, GitOps → Skill(faion-cicd-engineer)
 
 AI & MACHINE LEARNING
@@ -230,6 +231,9 @@ COMMUNICATION & HR
 
 CLAUDE CODE
 └── Skills, hooks, MCP servers, IDE → Skill(faion-claude-code)
+
+CONTINUOUS IMPROVEMENT
+└── Audit, gaps, brainstorm, fix, log → Skill(faion-session-improver)
 ```
 
 ---

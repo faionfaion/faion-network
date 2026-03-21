@@ -46,6 +46,7 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 |-------|---------------|-------|
 | faion-devops-engineer | - | DevOps routing |
 | faion-infrastructure-engineer | 23 | Docker, K8s, Terraform |
+| faion-server-craft | 27 | SSH, nginx, systemd, tuning |
 | faion-cicd-engineer | 18 | GitHub Actions, GitOps |
 
 ### ML/AI
@@ -110,6 +111,7 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 | faion-communicator | 14 | Stakeholder dialogue |
 | faion-hr-recruiter | 15 | Talent, onboarding |
 | faion-claude-code | 9 | Claude Code config |
+| faion-session-improver | 5 | Audit, improve, log |
 
 ## Task Routing
 
@@ -120,6 +122,7 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 | Product planning, MVP/MLP | faion-product-manager |
 | Writing code, APIs | faion-software-developer |
 | Infrastructure, CI/CD | faion-devops-engineer |
+| Server config, hardening, tuning | faion-server-craft |
 | AI/ML, LLM APIs, RAG | faion-ml-engineer |
 | Marketing, GTM, SEO | faion-marketing-manager |
 | UX/UI, usability | faion-ux-ui-designer |
@@ -134,7 +137,7 @@ This is the **ONLY skill you need to invoke directly**. It automatically selects
 
 | Metric | Count |
 |--------|-------|
-| Total Skills | 54 |
+| Total Skills | 56 |
 | Routing Skills | 12 |
 | Methodologies | 605+ |
 
