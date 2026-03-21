@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdat
 
 # Session Improver
 
-A structured workflow for turning hands-on experience into persistent improvements. When you solve a problem, configure a system, or discover a pattern, this skill captures that knowledge and feeds it back into the codebase, documentation, skills, and memory.
+Turns the current session's experience into persistent knowledge. **First priority: analyze what happened THIS session** — what was built, what broke, what patterns emerged. Then optionally investigate broader system state.
 
 **Entry point:** `/faion-net` (routes here for improvement/audit/retrospective tasks)
 
@@ -16,19 +16,38 @@ A structured workflow for turning hands-on experience into persistent improvemen
 ## How It Works
 
 ```
-Experience → Investigate → Find gaps → Brainstorm → Apply → Log → Commit → Skill
+Session Review → Investigate (optional) → Classify → Apply → Log → Commit → Skill
 ```
 
 Each session produces:
-1. **Improvements** applied to the system (configs, code, docs)
-2. **Knowledge** captured in skills, memory, or .aidocs
-3. **Patterns** extracted for future reuse
+1. **Patterns** — what worked well, extracted for reuse (→ `.aidocs/memory/patterns.md`)
+2. **Mistakes** — what broke and why, with prevention steps (→ `.aidocs/memory/mistakes.md`)
+3. **Improvements** — applied to system (configs, code, docs)
+4. **Skills** — new or updated skills from domain knowledge gained
 
 ---
 
 ## Workflow Phases
 
-### Phase 1: Investigate
+### Phase 0: Session Review (ALWAYS DO FIRST)
+
+Before any investigation, analyze the **current conversation context**:
+
+1. **What was built/changed this session?** List features, fixes, configs touched
+2. **What broke?** Bugs found, deploy failures, silent errors, wrong assumptions
+3. **What patterns emerged?** Recurring approaches that worked (or didn't)
+4. **What was surprising?** Non-obvious findings, undocumented behavior
+5. **What should future sessions know?** Context that would save time next time
+
+**Output:** Structured list of patterns (PAT-NNN) and mistakes (ERR-NNN)
+
+Write immediately to:
+- `.aidocs/memory/patterns.md` — append new PAT entries
+- `.aidocs/memory/mistakes.md` — append new ERR entries
+
+**This phase is the core value.** Phases 1-7 are optional extensions.
+
+### Phase 1: Investigate (optional — when user asks for system audit)
 
 Audit the current state of the target system. Use parallel agents for speed.
 
@@ -174,14 +193,18 @@ If the session produced enough domain knowledge:
 
 | User Intent | Phase |
 |-------------|-------|
-| "Audit this server" / "find issues" | Phase 1 (Investigate) |
-| "What can be improved?" | Phase 1 + 2 (Investigate + Classify) |
-| "Brainstorm improvements" | Phase 3 (Brainstorm) |
+| `/faion-improver` (no args) | Phase 0 (Session Review) — analyze current session |
+| "What did we learn?" / "що ми зробили?" | Phase 0 (Session Review) |
+| "Audit this server" / "find issues" | Phase 0 + 1 (Session Review + Investigate) |
+| "What can be improved?" | Phase 0 + 1 + 2 (Session + Investigate + Classify) |
+| "Brainstorm improvements" | Phase 0 + 3 (Session + Brainstorm) |
 | "Fix the issues you found" | Phase 4 (Apply) |
-| "Log what we did" | Phase 5 (Log) |
+| "Log what we did" | Phase 0 + 5 (Session Review + Log) |
 | "Commit improvements" | Phase 6 (Commit) |
 | "Create a skill from this" | Phase 7 (Skill Creation) |
 | "Full improvement cycle" | All phases |
+
+**Rule: Phase 0 (Session Review) runs FIRST in every invocation.** It costs nothing (just reads conversation context) and produces the highest-value output (patterns + mistakes for future sessions).
 
 ---
 
