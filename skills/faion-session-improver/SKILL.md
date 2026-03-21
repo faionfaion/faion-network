@@ -43,11 +43,17 @@ Agent 4: Check developer experience (tools, aliases, tmux, git config)
 
 ### Phase 2: Classify & Prioritize
 
-Group findings by:
+Group findings by priority:
 - **Critical**: Security vulnerabilities, data loss risks
 - **High**: Missing resource limits, performance gaps
 - **Medium**: DX improvements, missing documentation
 - **Low**: Nice-to-haves, cosmetic issues
+
+Group findings by scope:
+- **System** — server configs, kernel tuning, firewall, packages → apply directly (Phase 4)
+- **Project** — code changes, API improvements, new features, refactoring → create SDD tasks via `Skill(faion-sdd-planning)` (Phase 4b)
+
+This distinction is important: system improvements are applied in the current session, project improvements go through SDD workflow with proper specs, design, and implementation plans.
 
 ### Phase 3: Brainstorm
 
@@ -103,6 +109,23 @@ Apply only user-approved improvements using parallel agents:
 - Never restart production services without user approval
 - Always backup before modifying system configs
 - Read before edit — never blind-write
+
+### Phase 4b: SDD Tasks for Project Improvements
+
+For findings that require code changes, new features, or architectural work — don't apply directly. Instead, create SDD artifacts:
+
+1. Classify as feature or improvement
+2. Create `.aidocs/improvements/AI-NNN-*.md` or `.aidocs/backlog/feature-NNN-*/`
+3. If user approves full planning → `Skill(faion-sdd-planning)` for spec + design + implementation plan
+4. If user wants quick tracking → create task files in `.aidocs/todo/`
+
+Examples of project-scope findings:
+- "Health endpoint should return service dependency status" → feature task
+- "Celery concurrency=20 is too high for 16 cores" → improvement with benchmarking needed
+- "Missing Redis auth" → security task with migration plan
+- "PostgreSQL not tuned for write-heavy workload" → performance task with spec
+
+The key difference: system changes are config edits (immediate), project changes are code (need planning, testing, deploy).
 
 ### Phase 5: Log
 
