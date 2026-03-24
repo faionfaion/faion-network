@@ -16,9 +16,9 @@ Specification-Driven Development: "Intent is the source of truth" - specificatio
 ## Workflow
 
 ```
-CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → DONE
-                |        |         |           |          |         |        |
-             PLANNING  PLANNING  PLANNING   PLANNING  PLANNING  EXECUTION  EXECUTION
+CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE
+                |        |         |           |          |         |          |
+             PLANNING  PLANNING  PLANNING   PLANNING  PLANNING  EXECUTION  REVIEW+FIX+TEST
 ```
 
 ## Quick Decision

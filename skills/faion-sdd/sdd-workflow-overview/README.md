@@ -55,10 +55,10 @@ When working with AI coding agents, specifications become even more critical:
 ### Phase Overview
 
 ```
-CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → DONE
-      |          |        |         |           |          |         |
-   Standards  WHAT to   HOW to   HOW to      Task      Parallel   Validated
-   & Stack    build     build    verify     breakdown   waves     delivery
+CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → REVIEW → DONE
+      |          |        |         |           |          |         |          |
+   Standards  WHAT to   HOW to   HOW to      Task      Parallel   Code    Independent
+   & Stack    build     build    verify     breakdown   waves     done    review+fix+test
 ```
 
 ### Detailed Phase Breakdown
@@ -211,19 +211,39 @@ CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECU
 
 ---
 
-#### Phase 5: Validation & Delivery
+#### Phase 5: Review (Independent Verification)
 
-**Purpose:** Verify implementation matches specification.
+**Purpose:** Independent subagent reviews implementation against spec, test-plan, and design. Catches issues the executor missed.
 
-**Quality Gates:**
+**Process:**
+1. **Review** — independent subagent (not the executor) reads spec, design, test-plan, and the implemented code
+2. **Report** — produces review findings: bugs, spec deviations, missed ACs, code quality issues
+3. **Fix** — executor (or new agent) addresses review findings
+4. **Test** — run full test suite from test-plan.md against fixed code
+5. **Re-review** — if critical issues found, repeat cycle (max 2 iterations)
+
+**Why independent subagent:**
+- Executor has implementation bias — sees what they intended, not what they wrote
+- Fresh context catches assumptions that became invisible during execution
+- Mirrors real code review: author ≠ reviewer
+
+**Quality Gates (during test step):**
 - L1: Syntax valid
 - L2: Linting passes
 - L3: Type checking passes
-- L4: Unit tests pass
-- L5: Integration tests pass
-- L6: Acceptance criteria verified
+- L4: Unit tests pass (from test-plan.md)
+- L5: Integration tests pass (from test-plan.md)
+- L6: All ACs verified against spec.md
 
-**Self-verification pattern:** "After implementing, compare the result with the spec and confirm all requirements are met. List any spec items not addressed."
+**Key artifact:** Review report appended to task execution report
+
+---
+
+#### Phase 6: Done
+
+**Purpose:** Feature validated and delivered.
+
+**Entry criteria:** Review cycle complete, all tests green, no critical findings open.
 
 ---
 
@@ -240,6 +260,8 @@ Before transitioning between phases, validate readiness:
 | Design → Test Plan | 90%+ | Architecture clarity |
 | Test Plan → Impl Plan | 90%+ | All ACs have test cases |
 | Impl Plan → Execute | 95%+ | Task dependencies resolved |
+| Execute → Review | 100% | All tasks executed, code committed |
+| Review → Done | 100% | All findings fixed, tests green |
 
 ### Transition Gates
 
