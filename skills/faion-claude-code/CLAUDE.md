@@ -26,6 +26,7 @@ Claude Code configuration: skills, agents, commands, hooks, MCP servers, IDE int
 | [mcp-basics.md](mcp-basics.md) | MCP server development | ~370 lines |
 | [mcp-servers.md](mcp-servers.md) | MCP server catalog (40+ servers) | ~250 lines |
 | [ref-CLAUDE.md](ref-CLAUDE.md) | Extended references | - |
+| [project-docs-convention/](project-docs-convention/) | AGENTS.md + .agents/ documentation convention | ~120 lines |
 
 ## Routing Logic
 
@@ -37,6 +38,7 @@ Claude Code configuration: skills, agents, commands, hooks, MCP servers, IDE int
 | hook, PreToolUse, PostToolUse | hooks.md |
 | MCP development, create mcp | mcp-basics.md |
 | MCP catalog, install mcp | mcp-servers.md |
+| CLAUDE.md, AGENTS.md, docs convention, .agents | project-docs-convention/ |
 
 ## Naming Conventions
 
