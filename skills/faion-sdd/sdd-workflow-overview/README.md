@@ -213,19 +213,32 @@ CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECU
 
 #### Phase 5: Review (Independent Verification)
 
-**Purpose:** Independent subagent reviews implementation against spec, test-plan, and design. Catches issues the executor missed.
+**Purpose:** Independent reviewers check implementation against spec, test-plan, and design. Catches issues the executor missed.
 
 **Process:**
-1. **Review** — independent subagent (not the executor) reads spec, design, test-plan, and the implemented code
-2. **Report** — produces review findings: bugs, spec deviations, missed ACs, code quality issues
+1. **Review** — launch independent reviewers in parallel (see below)
+2. **Merge** — combine findings from all reviewers into unified report
 3. **Fix** — executor (or new agent) addresses review findings
 4. **Test** — run full test suite from test-plan.md against fixed code
 5. **Re-review** — if critical issues found, repeat cycle (max 2 iterations)
 
-**Why independent subagent:**
+**Reviewers (parallel):**
+
+| Reviewer | Condition | How |
+|----------|-----------|-----|
+| Claude Code subagent | Always | Agent tool, fresh context, reads spec+design+test-plan+code |
+| Codex CLI | `codex` installed and authed | `codex -q "Review code against spec..."` |
+| Kiro CLI | `kiro` installed and authed | `kiro review ...` |
+
+Check availability: `bash ~/.claude/scripts/check-review-tools.sh`
+
+All available reviewers run **in parallel**. Findings are merged — duplicates removed, unique issues from each reviewer kept. More reviewers = more diverse perspectives = fewer blind spots.
+
+**Why multiple independent reviewers:**
 - Executor has implementation bias — sees what they intended, not what they wrote
+- Different models catch different issues (Claude vs GPT vs Kiro)
 - Fresh context catches assumptions that became invisible during execution
-- Mirrors real code review: author ≠ reviewer
+- Mirrors real code review: multiple reviewers > single reviewer
 
 **Quality Gates (during test step):**
 - L1: Syntax valid
@@ -235,7 +248,7 @@ CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECU
 - L5: Integration tests pass (from test-plan.md)
 - L6: All ACs verified against spec.md
 
-**Key artifact:** Review report appended to task execution report
+**Key artifact:** Merged review report appended to task execution report
 
 ---
 
