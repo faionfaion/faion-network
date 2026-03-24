@@ -11,7 +11,8 @@ Copy-paste ready templates for Specification-Driven Development. Optimized for L
 | [constitution.md](constitution.md) | Project standards, tech stack, constraints | Project setup, once per project |
 | [spec.md](spec.md) | Feature specification (WHAT) | Before design, for each feature |
 | [design.md](design.md) | Technical design (HOW) | After spec approval |
-| [implementation-plan.md](implementation-plan.md) | Task breakdown, dependencies | After design approval |
+| [test-plan.md](test-plan.md) | Test strategy per AC (HOW to verify) | After design approval, before impl-plan |
+| [implementation-plan.md](implementation-plan.md) | Task breakdown, dependencies | After test-plan approval |
 | [task.md](task.md) | Single executable task | During implementation |
 | [roadmap.md](roadmap.md) | Feature timeline, metrics | Project planning |
 | [memory.md](memory.md) | Patterns, mistakes, decisions | Continuous learning |
@@ -24,10 +25,10 @@ Copy-paste ready templates for Specification-Driven Development. Optimized for L
 constitution.md (once)
         |
         v
-    spec.md  -->  design.md  -->  implementation-plan.md  -->  task.md (N)
-        |             |                    |                       |
-    "What to      "How to           "What tasks,             "Execute
-     build"        build"            what order"              this now"
+    spec.md  -->  design.md  -->  test-plan.md  -->  implementation-plan.md  -->  task.md (N)
+        |             |               |                      |                       |
+    "What to      "How to        "How to              "What tasks,             "Execute
+     build"        build"         verify"              what order"              this now"
 ```
 
 ---
@@ -43,8 +44,9 @@ constitution.md (once)
 
 1. **Create `spec.md`** - Define requirements, user stories, acceptance criteria
 2. **Create `design.md`** - Architecture decisions, data models, APIs
-3. **Create `implementation-plan.md`** - Break into tasks, identify dependencies
-4. **Create `task.md` files** - One per task, ready for execution
+3. **Create `test-plan.md`** - Test cases per AC, test types, edge cases
+4. **Create `implementation-plan.md`** - Break into tasks, identify dependencies
+5. **Create `task.md` files** - One per task, ready for execution
 
 ### Learning from Execution
 

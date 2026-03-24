@@ -55,10 +55,10 @@ When working with AI coding agents, specifications become even more critical:
 ### Phase Overview
 
 ```
-CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
-      |          |        |          |          |         |
-   Standards  WHAT to   HOW to    Task      Parallel   Validated
-   & Stack    build     build    breakdown   waves     delivery
+CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → DONE
+      |          |        |         |           |          |         |
+   Standards  WHAT to   HOW to   HOW to      Task      Parallel   Validated
+   & Stack    build     build    verify     breakdown   waves     delivery
 ```
 
 ### Detailed Phase Breakdown
@@ -142,6 +142,38 @@ CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
 
 ---
 
+#### Phase 2.5: Test Plan (HOW to Verify)
+
+**Purpose:** Define test strategy for the feature before task breakdown. Forces concrete thinking about each AC and reveals ambiguities in spec/design early.
+
+**Inputs:**
+- Approved specification (acceptance criteria)
+- Approved design (architecture, API contracts)
+
+**Outputs:**
+- Test cases for every AC (Given/When/Then → test)
+- Test type classification (unit, integration, e2e)
+- Mock/stub strategy
+- Edge cases not obvious from ACs
+
+**Key artifact:** `test-plan.md` (required at feature level)
+
+**Why before implementation plan:**
+- Tasks become testable by design — each task links to specific tests
+- Implementation plan is shaped by test requirements (what needs to be mockable, what needs test infrastructure)
+- Reveals missing ACs or unclear requirements before any code is written
+- "Done" becomes objective: tests pass, not subjective review
+
+**Test Plan Structure:**
+1. Test strategy overview (what's tested how)
+2. Per-AC test cases with type, preconditions, expected results
+3. Edge cases and error scenarios
+4. Test infrastructure needs (fixtures, mocks, test DB)
+
+**Note:** Individual tasks may optionally include a `## Test Plan` section for task-specific test details not covered at feature level.
+
+---
+
 #### Phase 3: Implementation Plan (Task Breakdown)
 
 **Purpose:** Decompose design into executable tasks with clear dependencies.
@@ -205,8 +237,9 @@ Before transitioning between phases, validate readiness:
 |------------|---------------------|-------------------|
 | Idea → Spec | 70%+ | Problem validation evidence |
 | Spec → Design | 90%+ | Requirements completeness |
-| Design → Plan | 90%+ | Architecture clarity |
-| Plan → Execute | 95%+ | Task dependencies resolved |
+| Design → Test Plan | 90%+ | Architecture clarity |
+| Test Plan → Impl Plan | 90%+ | All ACs have test cases |
+| Impl Plan → Execute | 95%+ | Task dependencies resolved |
 
 ### Transition Gates
 
@@ -223,6 +256,13 @@ DESIGN COMPLETE?
 ├── File structure defined? → Yes
 ├── API contracts specified? → Yes
 └── Dependencies identified? → Yes
+    → Proceed to TEST-PLAN
+
+TEST-PLAN COMPLETE?
+├── Every AC has test case(s)? → Yes
+├── Test types classified? → Yes
+├── Edge cases identified? → Yes
+└── Test infra needs documented? → Yes
     → Proceed to IMPL-PLAN
 ```
 
@@ -334,6 +374,7 @@ project/
 │   │   └── feature-XXX-name/
 │   │       ├── spec.md
 │   │       ├── design.md
+│   │       ├── test-plan.md
 │   │       └── implementation-plan.md
 │   │
 │   ├── todo/                  # Ready for execution

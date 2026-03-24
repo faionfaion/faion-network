@@ -51,6 +51,7 @@ Full convention: `skills/faion-claude-code/project-docs-convention/README.md`
 - **roadmap.md** - Feature timeline, releases, success metrics
 - **spec.md** - What to build (requirements, success criteria)
 - **design.md** - How to build (architecture, API contracts)
+- **test-plan.md** - How to verify (test cases per AC, required at feature level)
 - **implementation-plan.md** - Task breakdown, dependencies, token estimates
 
 ## No Time Estimates

@@ -16,9 +16,9 @@ Specification-Driven Development: "Intent is the source of truth" - specificatio
 ## Workflow
 
 ```
-CONSTITUTION → SPEC → DESIGN → IMPL-PLAN → TASKS → EXECUTE → DONE
-                |        |          |          |         |        |
-             PLANNING  PLANNING  PLANNING  PLANNING  EXECUTION  EXECUTION
+CONSTITUTION → SPEC → DESIGN → TEST-PLAN → IMPL-PLAN → TASKS → EXECUTE → DONE
+                |        |         |           |          |         |        |
+             PLANNING  PLANNING  PLANNING   PLANNING  PLANNING  EXECUTION  EXECUTION
 ```
 
 ## Quick Decision
@@ -66,6 +66,7 @@ feature-NNN/todo/ → feature-NNN/in-progress/ → feature-NNN/done/
 │       ├── README.md
 │       ├── spec.md
 │       ├── design.md
+│       ├── test-plan.md
 │       ├── implementation-plan.md
 │       ├── todo/
 │       │   └── TASK-001-*.md
