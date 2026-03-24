@@ -1,5 +1,5 @@
 ---
-name: faion-sdd-executor-agent
+name: nero-sdd-executor-agent
 description: "SDD task executor: picks up tasks from .aidocs, executes them, manages lifecycle (todo→done), commits with project git flow. IMPORTANT: Always ask user permission before launching."
 model: opus
 tools: ["*"]
