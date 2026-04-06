@@ -16,6 +16,8 @@ NC='\033[0m' # No Color
 AUTO_YES=false
 FORCE_REMOTE=false
 SKIP_CONFLICTS=false
+DRY_RUN=false
+DO_ROLLBACK=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -32,6 +34,14 @@ while [[ $# -gt 0 ]]; do
             SKIP_CONFLICTS=true
             shift
             ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --rollback)
+            DO_ROLLBACK=true
+            shift
+            ;;
         -h|--help)
             echo "Faion Network Updater"
             echo ""
@@ -41,12 +51,16 @@ while [[ $# -gt 0 ]]; do
             echo "  -y, --yes          Non-interactive mode"
             echo "  --theirs           Always take remote version on conflicts"
             echo "  --skip-conflicts   Skip conflicting files, update only clean ones"
+            echo "  --dry-run          Preview changes without modifying anything"
+            echo "  --rollback         Restore the most recent snapshot"
             echo "  -h, --help         Show this help message"
             echo ""
             echo "Examples:"
             echo "  ./update.sh                    # Interactive update"
             echo "  ./update.sh -y --theirs        # Auto-update, take all from remote"
             echo "  ./update.sh -y --skip-conflicts # Auto-update, skip conflicts"
+            echo "  ./update.sh --dry-run           # Preview pending changes"
+            echo "  ./update.sh --rollback          # Restore last snapshot"
             exit 0
             ;;
         *)
@@ -115,17 +129,109 @@ select_option() {
     done
 }
 
+# Exit code — set to 1 when rollback happens
+EXIT_CODE=0
+SNAPSHOT_FRESH=false
+
+restore_stash() {
+    if git stash list | grep -q "Auto-stash before faion-network update"; then
+        echo ""
+        if confirm "Restore your stashed local changes?"; then
+            if git stash pop; then
+                log_success "Local changes restored"
+            else
+                log_warning "Could not auto-restore changes (conflicts)"
+                log_info "Your changes are saved in: git stash list"
+                log_info "Restore manually with: git stash pop"
+            fi
+        else
+            log_info "Changes kept in stash"
+            log_info "Restore later with: git stash pop"
+        fi
+    fi
+}
+
+integrity_check_or_rollback() {
+    if ! integrity_check "$REPO_DIR"; then
+        echo ""
+        log_error "Post-update integrity check failed!"
+        if confirm "Rollback to pre-update snapshot?"; then
+            git reset --hard "$PRE_MERGE_HEAD" 2>/dev/null || true
+            if [[ "$SNAPSHOT_FRESH" != true ]]; then
+                log_warning "Snapshot predates this update (creation failed earlier)"
+            fi
+            if ! snapshot_restore "$REPO_DIR"; then
+                log_error "Snapshot restore FAILED — manual recovery required"
+                log_info "Check 'git reflog' for pre-update commit: ${PRE_MERGE_HEAD:0:8}"
+                EXIT_CODE=1
+                return 1
+            fi
+            log_success "Rolled back to pre-update state"
+            EXIT_CODE=1
+        else
+            log_warning "Continuing with potentially broken state"
+            log_info "Run './scripts/update.sh --rollback' to restore later"
+        fi
+    fi
+}
+
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Source libraries
+source "${SCRIPT_DIR}/lib/snapshot.sh"
+source "${SCRIPT_DIR}/lib/integrity-check.sh"
 
 # Verify we're in .claude directory
-if [[ ! -d "$SCRIPT_DIR/skills" ]] || [[ ! -d "$SCRIPT_DIR/.git" ]]; then
+if [[ ! -d "${REPO_DIR}/skills" ]] || [[ ! -d "${REPO_DIR}/.git" ]]; then
     log_error "This script must be run from the .claude directory"
     log_error "Expected to find 'skills/' directory and git repository"
     exit 1
 fi
 
-cd "$SCRIPT_DIR"
+cd "$REPO_DIR"
+
+# Handle --rollback before anything else
+if [[ "$DO_ROLLBACK" = true ]]; then
+    echo ""
+    log_info "Faion Network Rollback"
+    echo ""
+
+    latest=$(snapshot_latest)
+    if [[ -z "$latest" ]]; then
+        log_error "No snapshots available"
+        exit 1
+    fi
+
+    log_info "Latest snapshot: $(basename "$latest")"
+
+    # Check for saved git HEAD
+    head_file="${latest%.tar.gz}.head"
+    if [[ -f "$head_file" ]]; then
+        saved_head=$(cat "$head_file")
+        log_info "Will reset git HEAD to pre-update commit: ${saved_head:0:8}"
+    else
+        log_warning "No saved git HEAD found — will restore files only"
+        log_info "After restore, check 'git reflog' to find the pre-update commit"
+    fi
+    echo ""
+
+    if ! confirm "Restore this snapshot?"; then
+        log_info "Rollback cancelled"
+        exit 0
+    fi
+
+    # Reset git HEAD if we have the saved commit
+    if [[ -f "$head_file" ]]; then
+        git reset --hard "$saved_head" 2>/dev/null || {
+            log_warning "Failed to reset git HEAD. Check 'git reflog' manually."
+        }
+    fi
+
+    snapshot_restore "$REPO_DIR" "$latest"
+    exit $?
+fi
 
 echo ""
 log_info "Faion Network Updater"
@@ -176,6 +282,19 @@ git log --oneline HEAD..origin/master | while read line; do
     log_file "$line"
 done
 
+echo ""
+log_info "Files changed:"
+git diff --name-only HEAD..origin/master | while read file; do
+    log_file "$file"
+done
+
+# Dry-run exits here
+if [[ "$DRY_RUN" = true ]]; then
+    echo ""
+    log_info "Dry-run complete. No files were modified (git fetch was performed to check for updates)."
+    exit 0
+fi
+
 # Check for local changes
 LOCAL_CHANGES=$(git status --porcelain)
 if [[ -n "$LOCAL_CHANGES" ]]; then
@@ -195,6 +314,18 @@ if [[ -n "$LOCAL_CHANGES" ]]; then
     log_success "Local changes stashed"
 fi
 
+# Create snapshot before any git modification
+echo ""
+log_info "Creating pre-update snapshot..."
+if snapshot_create "$REPO_DIR"; then
+    SNAPSHOT_FRESH=true
+else
+    log_warning "Snapshot creation failed — rollback will use stale snapshot if available"
+fi
+
+# Save pre-merge HEAD for reliable rollback
+PRE_MERGE_HEAD=$(git rev-parse HEAD)
+
 # Try to merge
 echo ""
 log_info "Attempting to merge..."
@@ -206,11 +337,14 @@ if git merge origin/master --no-edit 2>/dev/null; then
     # Show updated files
     echo ""
     log_info "Updated files:"
-    git diff --name-only HEAD~$COMMITS_BEHIND HEAD | while read file; do
+    git diff --name-only "$PRE_MERGE_HEAD" HEAD | while read file; do
         log_file "$file"
     done
 
-    exit 0
+    integrity_check_or_rollback
+
+    restore_stash
+    exit $EXIT_CODE
 fi
 
 # Merge failed - we have conflicts
@@ -242,9 +376,11 @@ case $CHOICE in
 
         echo ""
         log_info "Updated files:"
-        git diff --name-only HEAD~$COMMITS_BEHIND HEAD 2>/dev/null | while read file; do
+        git diff --name-only "$PRE_MERGE_HEAD" HEAD 2>/dev/null | while read file; do
             log_file "$file"
         done
+
+        integrity_check_or_rollback
         ;;
     2)
         # Skip conflicts, update only clean files
@@ -263,12 +399,12 @@ case $CHOICE in
             # Check if this file is in conflict list
             if echo "$CONFLICTING_FILES" | grep -q "^$file$"; then
                 log_warning "  Skipped (conflict): $file"
-                ((SKIPPED_COUNT++))
+                SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
             else
                 # Checkout this file from remote
                 git checkout origin/master -- "$file" 2>/dev/null && {
                     log_success "  Updated: $file"
-                    ((UPDATED_COUNT++))
+                    UPDATED_COUNT=$((UPDATED_COUNT + 1))
                 } || {
                     log_warning "  Failed: $file"
                 }
@@ -279,7 +415,7 @@ case $CHOICE in
         log_info "Summary: $UPDATED_COUNT updated, $SKIPPED_COUNT skipped"
 
         if [[ $UPDATED_COUNT -gt 0 ]]; then
-            git add -A
+            # Files are already staged by git checkout -- above; no git add -A
             git commit -m "Partial update from faion-network (skipped $SKIPPED_COUNT conflicts)"
             log_success "Changes committed"
         fi
@@ -288,33 +424,26 @@ case $CHOICE in
         log_warning "Skipped files still have your local version"
         log_info "To update them later, resolve conflicts manually or run:"
         log_info "  ./update.sh --theirs"
+
+        integrity_check_or_rollback
         ;;
     3)
         # Cancel
         git merge --abort 2>/dev/null || true
         log_info "Update cancelled"
         log_info "Your local files are unchanged"
+        restore_stash
         exit 0
         ;;
 esac
 
-# Restore stashed changes if any
-if git stash list | grep -q "Auto-stash before faion-network update"; then
-    echo ""
-    if confirm "Restore your stashed local changes?"; then
-        if git stash pop; then
-            log_success "Local changes restored"
-        else
-            log_warning "Could not auto-restore changes (conflicts)"
-            log_info "Your changes are saved in: git stash list"
-            log_info "Restore manually with: git stash pop"
-        fi
-    else
-        log_info "Changes kept in stash"
-        log_info "Restore later with: git stash pop"
-    fi
-fi
+restore_stash
 
 echo ""
-log_success "Update complete!"
-log_info "Restart Claude Code to load updated skills"
+if [[ $EXIT_CODE -eq 0 ]]; then
+    log_success "Update complete!"
+    log_info "Restart Claude Code to load updated skills"
+else
+    log_warning "Update was rolled back due to integrity check failure"
+fi
+exit $EXIT_CODE

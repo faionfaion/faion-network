@@ -97,11 +97,14 @@ Read the task file. If it's a stub ("See implementation-plan.md"), extract detai
 
 ```bash
 cd {repo_dir}
-git add {specific files}
+# Update CHANGELOG.md under [Unreleased] with your change
+git add CHANGELOG.md {specific files}
 git commit -m "type(TASK-ID): description"
 ```
 
 **Commit format:** `type(TASK-ID): description` (50 char max, no emoji, no Co-Authored-By)
+
+**CHANGELOG.md is REQUIRED.** Pre-commit hook blocks commits without it. Add entry under `## [Unreleased]` matching the commit type and description.
 Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `perf`, `test`
 
 Follow project-specific git conventions from CLAUDE.md if they exist.

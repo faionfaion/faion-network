@@ -6,6 +6,7 @@
 - NO "Co-Authored-By: Claude"
 - NO emojis
 - Format: `type: short description`
+- **CHANGELOG.md required** — pre-commit hook blocks without it. Add entry under `## [Unreleased]`
 
 ## Language
 
@@ -36,6 +37,8 @@ any-dir/
 - `.agents/` = architecture, API refs, decisions, deep dives
 - `.product/` = per-project SDD + product docs (specs, designs, plans, roadmap)
 - `.aidocs/` = workspace-level SDD (multi-repo projects like NERO)
+
+**Per-module coverage:** `CLAUDE.md` + `AGENTS.md` required in every directory that contains source code — not just repo roots, but also subpackages, module folders, test dirs. When creating or modifying a directory, always ensure the pair exists. AGENTS.md: 20-80 lines, file table, key types. Skip only empty `__init__.py`-only dirs with no logic.
 
 Full convention: `skills/faion-claude-code/project-docs-convention/README.md`
 
