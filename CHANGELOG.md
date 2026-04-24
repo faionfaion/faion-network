@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: solution-assessment (business-analyst) — agent-integration.md (178 lines).
 - Research: process-mining-automation — agent-integration.md (245 lines).
 - Research: agile-ba-frameworks — agent-integration.md (188 lines).
 - Research: data-analysis (ba-modeling) — agent-integration.md (186 lines).
