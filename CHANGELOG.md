@@ -5,6 +5,7 @@
 ### Added
 - Research: decision-analysis (ba-modeling) — agent-integration.md (159 lines).
 - Research: use-case-modeling (ba-modeling) — agent-integration.md (182 lines).
+- Research: requirements-lifecycle (business-analyst) — agent-integration.md (176 lines).
 - **Methodology research subsystem (`skills/faion-knowledge/.research/`):**
   per-methodology `agent-integration.md` enrichment loop. Subagent researches
   each methodology for agentic workflow, CLI tools, services, when-to-use /
