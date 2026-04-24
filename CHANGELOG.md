@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: ba-requirements-mgmt (ba-core) — agent-integration.md (256 lines).
 - Research: requirements-prioritization (business-analyst) — agent-integration.md (241 lines).
 - Research: ba-strategic-partnership — agent-integration.md (165 lines).
 - Research: data-analysis (business-analyst) — agent-integration.md (202 lines).
