@@ -7,6 +7,7 @@
 - Research: batch of 8 methodologies in dev/software-architect + dev/software-developer — data-pipeline-design, distributed-patterns, microservices-architecture, container-orchestration, service-mesh, cloud-architecture, java-spring-boot-patterns, laravel-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev/software-developer — php-laravel-queues, php-laravel, csharp-dotnet, java-jpa-hibernate, ruby-sidekiq-jobs, php-phpunit-testing, csharp-xunit-testing, csharp-entity-framework (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev (mixed group: code-quality, software-architect) — event-sourcing-implementation, event-sourcing-basics, microservices-design, clean-architecture, event-driven-architecture, quality-attributes-analysis, reliability-architecture, observability-architecture (see agent-integration.md per dir).
+- Research: batch of 8 methodologies in pro/dev/backend-systems — error-handling, rust-project-structure, go-concurrency-patterns, go-http-handlers, rust-tokio-async, database-design, rust-backend, go-project-structure (see agent-integration.md per dir).
 - Research: TICK.md — explicit "main thread orchestrates only, agents do the work" rule.
 - Research: cqrs-pattern (code-quality) — agent-integration.md (159 lines).
 - Research: domain-driven-design (code-quality) — agent-integration.md (150 lines).
