@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/dev/backend-enterprise — java-spring-async, php-laravel-patterns, php-laravel-queues, php-laravel, csharp-dotnet, java-jpa-hibernate, ruby-sidekiq-jobs, php-phpunit-testing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev/backend-systems — nosql-patterns, go-backend, go-channels, go-goroutines, caching-strategy, message-queues, go-error-handling, rust-http-handlers (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev (mixed group: backend-systems + backend-enterprise) — rust-error-handling, rust-ownership, go-error-handling-patterns, java-spring-boot-patterns, laravel-patterns, ruby-rails-patterns, csharp-background-services, java-spring (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev/software-developer — ruby-rails-patterns, csharp-background-services, java-spring, php-eloquent, api-gateway-patterns, csharp-aspnet-core, ruby-activerecord, domain-driven-design (see agent-integration.md per dir).
