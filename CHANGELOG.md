@@ -11,6 +11,7 @@
 - **Research round 1: 5 methodologies enriched with `agent-integration.md`**
   — risk-assessment, workflows, market-research-tam-sam-som,
   competitive-intelligence, trend-analysis (pro/research/researcher).
+- Research: technical-debt-management (product-manager) — agent-integration.md (161 lines).
 - Research: frameworks — agent-integration.md (167 lines).
 - Research: user-research-at-scale — agent-integration.md (206 lines).
 - Research: continuous-discovery — agent-integration.md (207 lines).
