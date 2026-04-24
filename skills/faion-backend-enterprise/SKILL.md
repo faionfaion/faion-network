@@ -1,6 +1,7 @@
 ---
 name: faion-backend-enterprise
 description: "Enterprise backends: Java, C#, PHP, Ruby."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

@@ -1,6 +1,7 @@
 ---
 name: faion-sdd-planning
 description: "SDD planning: specifications, design docs, implementation plans, task creation."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

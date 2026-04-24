@@ -1,6 +1,7 @@
 ---
 name: faion-ppc-manager
 description: "PPC advertising: Google, Meta campaigns, optimization, reporting."
+tier: pro
 user-invocable: false
 ---
 > **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.

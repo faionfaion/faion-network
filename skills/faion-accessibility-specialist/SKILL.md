@@ -1,6 +1,7 @@
 ---
 name: faion-accessibility-specialist
 description: "Accessibility: WCAG compliance, assistive technologies, inclusive design."
+tier: pro
 user-invocable: false
 ---
 

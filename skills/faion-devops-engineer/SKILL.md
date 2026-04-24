@@ -1,6 +1,7 @@
 ---
 name: faion-devops-engineer
 description: "DevOps orchestrator: infrastructure and CI/CD."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

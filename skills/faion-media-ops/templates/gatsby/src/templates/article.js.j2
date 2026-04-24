@@ -1,0 +1,139 @@
+import React from "react";
+import { graphql, Link } from "gatsby";
+import Layout from "../components/layout";
+import SEO from "../components/seo";
+
+const ArticleTemplate = ({ data, pageContext }) => {
+  const article = data.markdownRemark;
+  const { readingTime, prevArticle: prevJson, nextArticle: nextJson } = pageContext;
+  const prev = prevJson ? JSON.parse(prevJson) : null;
+  const next = nextJson ? JSON.parse(nextJson) : null;
+  const fm = article.frontmatter;
+
+  // Source URLs: support both single source_url/source_name and arrays
+  const sourceUrls = fm.source_urls || (fm.source_url ? [fm.source_url] : []);
+  const sourceNames = fm.source_names || (fm.source_name ? [fm.source_name] : []);
+
+  {% if multilang %}
+  const articlePath = (slug, lang) => `/${lang}/${slug}/`;
+  {% else %}
+  const articlePath = (slug) => `/${slug}/`;
+  {% endif %}
+
+  return (
+    <Layout>
+      <SEO
+        title={fm.title}
+        description={fm.description}
+        image={fm.image}
+        url={`{{site_url}}${articlePath(fm.slug{% if multilang %}, fm.lang{% endif %})}`}
+        {% if multilang %}lang={fm.lang}{% endif %}
+        type="article"
+        article={fm}
+        readingTime={readingTime}
+      />
+      <article className="article-full" data-iv="true">
+        <header>
+          <div className="article-top">
+            <span className={`type-badge type-${fm.type}`}>{fm.type}</span>
+            <time dateTime={fm.date}>
+              {new Date(fm.date + "T12:00:00").toLocaleDateString("{{date_locale|default('en-US')}}", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+          </div>
+          <h1>{fm.title}</h1>
+          <div className="article-meta">
+            {fm.author && <span className="author">{fm.author}</span>}
+            <span className="reading-time">
+              {readingTime || Math.ceil(article.wordCount.words / 200)} {{reading_time_label|default('min read')}}
+            </span>
+          </div>
+        </header>
+
+        <div className="article-body">
+          {fm.image && (
+            <div className="hero-wrap">
+              <img src={fm.image} alt={fm.title} loading="eager" />
+            </div>
+          )}
+          <div dangerouslySetInnerHTML={% raw %}{{ __html: article.html }}{% endraw %} />
+        </div>
+
+        {fm.tags && (
+          <div className="article-tags">
+            {fm.tags.map((tag) => (
+              <Link
+                key={tag}
+                to={{% if multilang %}`/${fm.lang}/tag/${encodeURIComponent(tag)}/`{% else %}`/tag/${encodeURIComponent(tag)}/`{% endif %}}
+                className="tag"
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {sourceUrls.length > 0 && (
+          <footer className="sources">
+            <h3>{{sources_label|default('Sources')}}</h3>
+            <ul>
+              {sourceUrls.map((url, i) => (
+                <li key={i}>
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {sourceNames[i]
+                      ? sourceNames[i]
+                      : (() => { try { return new URL(url).hostname; } catch { return url; } })()}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </footer>
+        )}
+
+        <nav className="article-nav">
+          {prev && (
+            <Link to={articlePath(prev.slug{% if multilang %}, prev.lang{% endif %})} className="nav-prev">
+              &larr; {prev.title}
+            </Link>
+          )}
+          {next && (
+            <Link to={articlePath(next.slug{% if multilang %}, next.lang{% endif %})} className="nav-next">
+              {next.title} &rarr;
+            </Link>
+          )}
+        </nav>
+      </article>
+    </Layout>
+  );
+};
+
+export const query = graphql`
+  query ($slug: String!) {
+    markdownRemark(frontmatter: { slug: { eq: $slug } }) {
+      html
+      wordCount {
+        words
+      }
+      frontmatter {
+        title
+        slug
+        date
+        type
+        {% if multilang %}lang{% endif %}
+        author
+        description
+        tags
+        source_url
+        source_name
+        source_urls
+        source_names
+        image
+      }
+    }
+  }
+`;
+
+export default ArticleTemplate;

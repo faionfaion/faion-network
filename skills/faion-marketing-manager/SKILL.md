@@ -1,6 +1,7 @@
 ---
 name: faion-marketing-manager
 description: "Marketing orchestrator: GTM, content, growth, conversion optimization."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob, Skill
 ---

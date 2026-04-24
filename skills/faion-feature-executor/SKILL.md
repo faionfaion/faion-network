@@ -1,6 +1,7 @@
 ---
 name: faion-feature-executor
 description: "SDD feature executor: sequential task execution with quality gates, test validation."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
 ---

@@ -1,6 +1,7 @@
 ---
 name: faion-product-operations
 description: "Product operations: prioritization (RICE, MoSCoW), backlog, analytics, feedback."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

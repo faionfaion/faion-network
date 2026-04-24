@@ -345,10 +345,10 @@ Multi-repository project with shared `.aidocs/` structure:
 │   ├── apps/                       # 10 Django apps
 │   └── manage.py
 │
-├── faion-cli/                      # CLI tool repo (Go)
+├── faion-cli/                      # CLI tool repo (Go, DEPRECATED — replaced by Python Agent SDK pipelines in faion-network/skills/)
 │   ├── .git/
-│   ├── cmd/                        # Commands
-│   └── tui/                        # Bubble Tea TUI
+│   ├── cmd/                        # Commands (legacy)
+│   └── tui/                        # Bubble Tea TUI (legacy)
 │
 └── faion-network-storybook/        # Component library (React)
     ├── .git/

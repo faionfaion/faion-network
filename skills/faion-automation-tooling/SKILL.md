@@ -1,6 +1,7 @@
 ---
 name: faion-automation-tooling
 description: "Automation & tooling specialist: browser automation, CI/CD, monorepo, performance testing, feature flags. 23 methodologies."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

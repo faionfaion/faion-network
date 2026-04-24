@@ -1,6 +1,7 @@
 # faion-media-ops
 
-Media operations skill: setup and run any media resource — Telegram channels, news sites, podcasts, newsletters, social media.
+Media Pipeline Factory: build and operate complete AI media publishing pipelines.
+All outlets managed centrally by **media-manager** (@nero_media_manager_bot).
 
 ## Entry Point
 
@@ -8,37 +9,65 @@ Media operations skill: setup and run any media resource — Telegram channels, 
 
 ## What It Does
 
-1. **Discovery** — interviews user to understand media resource requirements
-2. **Setup** — creates project structure, scripts, prompts, site, channels
-3. **Content** — generates initial content batch with parallel agents
-4. **Automation** — configures `/loop` + sub-agents for ongoing operation
-5. **Operations** — monitoring, analytics, content calendar management
+| Phase | Action | Output |
+|-------|--------|--------|
+| 1. Discovery | Structured interview (8 questions) | Requirements spec |
+| 2. Propose | Suggest architecture + content plan | Approved blueprint |
+| 3. Scaffold | Create project from templates | Full project structure |
+| 4. Infrastructure | TG channel, DNS, nginx, Gatsby | Running infrastructure |
+| 5. Content | Generate seed articles batch | 10-20 initial articles |
+| 6. Register | Add to media-manager + landing page | Centralized management |
+| 7. Iterate | Review, improve, expand | Evolving media |
 
-## Supported Media Types
+## Pipeline Complexity Levels
 
-| Type | Channels | Site | Automation |
-|------|----------|------|------------|
-| **telegram-news** | TG channels (multi-lang) | Gatsby/SSG site | /loop + sub-agents |
-| **newsletter** | Email (subscribe form) | Landing page | Scheduled sends |
-| **podcast** | TG + RSS feed | Episode pages | Script generation |
-| **social-media** | TG + X/Twitter | Link hub | Cross-posting |
-| **blog** | — | Full blog site | Content calendar |
+| Level | Stages | LOC | Best For |
+|-------|--------|-----|----------|
+| Minimal | 5 | ~500 | Simple blog, single topic |
+| Standard | 8 | ~1200 | News outlet, moderate volume |
+| Full | 12+ | ~2500 | Professional multi-lang media |
 
-## Methodologies
+## Active Outlets (4)
 
-1. **Media Resource Setup** — from requirements to running system
-2. **Character/Brand Creation** — AI persona, voice, visual identity
-3. **Content Pipeline** — research → write → image → publish
-4. **Multi-Channel Distribution** — site + TG + email + social
-5. **Automated Operations** — scheduling, dedup, state, silent hours
+| Project | Type | TG | Languages | Pipeline |
+|---------|------|----|-----------|----------|
+| neromedia-faion-net | AI/tech news | 8 channels | 8 (EN + 7 translations) | Full (15 stages) |
+| pashtelka-faion-net | UA diaspora in PT | @pashtelka_news | 1 (Ukrainian) | Standard (11 stages) |
+| longlife-faion-net | Health & longevity | @long_life_media | 1 (Ukrainian) | Standard (11 stages) |
+| ender-faion-net | Roblox for kids | @ender_faion_ua + @ender_faion_en | 2 (UA + EN) | Standard (12 stages) |
 
-## Reference Implementation
+## Central Control Plane
 
-`~/workspace/projects/neromedia-faion-net/` — full working example with 86 articles, 2 TG channels, Gatsby site, image generation pipeline.
+`~/workspace/projects/media-manager-faion-net/` manages all outlets:
+- **Bot:** @nero_media_manager_bot — 20 commands (status, generate, publish, ask, fix, etc.)
+- **Dashboard:** media-manager.faion.net — landing page with live data
+- **Scheduler:** cron every minute — queue processing, health monitoring, morning briefing
+- **Security:** 10 guardrails (injection detection, rate limiting, audit logging)
+- **Agent:** Claude SDK integration (ask, analyze, fix, improve)
+
+## Key Patterns (extracted from production)
+
+- **SDK**: structured_query (no tools, JSON) + agent_query (with tools, text)
+- **Prompts**: inline strings or Jinja2 XML templates with ===SPLIT=== marker
+- **Review loop**: min 1 revision, max 3 cycles, structured feedback
+- **Batch generation**: editorial plan → loop topics → single deploy
+- **TG publishing**: text links (not buttons), OG preview, silent mode
+- **State**: JSON files for plans, teasers, summaries, run reports
+- **Characters**: each outlet can have named characters with distinct voices
+- **Image generation**: OpenAI gpt-image-1, character-consistent visuals
+- **Scheduling**: media-manager handles all cron, NOT individual crontabs
 
 ## Files
 
-- `README.md` — this file
-- `skill.md` — full skill instructions (loaded by Claude Code)
-- `templates/` — reusable project templates
-- `methodologies/` — detailed methodology guides
+| Path | Purpose |
+|------|---------|
+| `skill.md` | Full skill instructions with interview + process |
+| `templates/pipeline/` | Python code templates (SDK, context, stages) |
+| `templates/prompts/` | XML prompt templates + JSON schemas |
+| `templates/gatsby/` | Static site templates (Gatsby 5) |
+| `templates/scripts/` | Cron runner, TG sender, state management |
+
+## Monitoring
+
+- Health checks: `~/workspace/scripts/media-monitoring-checklist.md`
+- Operations guide: `~/workspace/scripts/media-healthcheck-guide.md`

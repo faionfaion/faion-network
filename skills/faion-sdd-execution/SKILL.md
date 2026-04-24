@@ -1,6 +1,7 @@
 ---
 name: faion-sdd-execution
 description: "SDD execution: quality gates, reflexion learning, pattern/mistake memory, code review."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

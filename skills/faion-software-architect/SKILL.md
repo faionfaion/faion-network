@@ -1,6 +1,7 @@
 ---
 name: faion-software-architect
 description: "Software architecture: system design, patterns, ADRs, quality attributes."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite
 ---

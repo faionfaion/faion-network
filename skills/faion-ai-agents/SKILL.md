@@ -1,6 +1,7 @@
 ---
 name: faion-ai-agents
 description: "AI agents: autonomous agents, multi-agent systems, LangChain, LlamaIndex, MCP."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---
@@ -75,6 +76,16 @@ options:
   - label: "File operations"
     description: "Read/write files, search codebase"
 ```
+
+## Mandatory Conventions
+
+When building autonomous agents (cron-based, tmux-based, pipeline agents, daemon agents):
+
+1. **Structured output ONLY** — every LLM call MUST use a JSON schema. No "Output ONLY JSON" inline instructions. Schema files in `schemas/*.json`.
+2. **XML prompts ONLY** — all prompts MUST be in XML template files. Use Jinja2 (`prompts/*.xml.j2`) or plain XML with placeholders (`prompts/*.xml`). Never put prompt text in Python code as f-strings.
+3. **Render → schema → call → extract → validate** — the universal pipeline for every LLM interaction.
+
+These rules apply to Claude Code Agent SDK agents, claude CLI wrappers, and any autonomous process that calls an LLM.
 
 ## Scope
 

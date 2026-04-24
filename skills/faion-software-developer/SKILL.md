@@ -1,6 +1,7 @@
 ---
 name: faion-software-developer
 description: "Full-stack development: Python, JavaScript, Go, APIs, testing, frontend."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

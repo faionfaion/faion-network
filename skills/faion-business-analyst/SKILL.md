@@ -1,6 +1,7 @@
 ---
 name: faion-business-analyst
 description: "Business analysis: requirements engineering, stakeholder analysis, process modeling."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

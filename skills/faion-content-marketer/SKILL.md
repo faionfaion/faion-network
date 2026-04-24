@@ -1,6 +1,7 @@
 ---
 name: faion-content-marketer
 description: "Content marketing: strategy, copywriting, SEO, email campaigns, social media."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

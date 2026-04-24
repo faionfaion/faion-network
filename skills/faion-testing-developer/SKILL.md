@@ -1,6 +1,7 @@
 ---
 name: faion-testing-developer
 description: "Testing: unit, integration, E2E, TDD, mocking, security testing."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

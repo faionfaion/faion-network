@@ -1,6 +1,7 @@
 ---
 name: faion-growth-marketer
 description: "Growth marketing: experiments, analytics, A/B testing, AARRR metrics, retention."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

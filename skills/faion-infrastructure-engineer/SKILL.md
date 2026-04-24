@@ -1,6 +1,7 @@
 ---
 name: faion-infrastructure-engineer
 description: "Infrastructure: Docker, Kubernetes, Terraform, AWS/GCP, IaC, containerization."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

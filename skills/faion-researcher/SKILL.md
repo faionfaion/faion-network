@@ -1,6 +1,7 @@
 ---
 name: faion-researcher
 description: "Research: idea generation, market research, competitors, personas, pricing, validation."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, AskUserQuestion, Task, TodoWrite, Skill
 ---

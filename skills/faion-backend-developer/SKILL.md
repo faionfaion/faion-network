@@ -1,6 +1,7 @@
 ---
 name: faion-backend-developer
 description: "Backend orchestrator: coordinates systems (Go, Rust, DB) and enterprise (Java, C#, PHP, Ruby)."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

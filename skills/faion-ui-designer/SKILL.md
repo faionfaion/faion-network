@@ -1,6 +1,7 @@
 ---
 name: faion-ui-designer
 description: "UI design: wireframes, prototypes, design systems, visual design."
+tier: solo
 user-invocable: false
 ---
 

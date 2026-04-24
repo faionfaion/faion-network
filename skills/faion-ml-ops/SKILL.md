@@ -1,6 +1,7 @@
 ---
 name: faion-ml-ops
 description: "ML operations: fine-tuning (LoRA, QLoRA), model evaluation, cost optimization, observability."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

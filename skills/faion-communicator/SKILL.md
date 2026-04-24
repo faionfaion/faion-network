@@ -1,6 +1,7 @@
 ---
 name: faion-communicator
 description: "Communication: stakeholder dialogue, Mom Test, conflict resolution, feedback, storytelling."
+tier: solo
 user-invocable: false
 ---
 > **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.

@@ -281,10 +281,11 @@ git pull origin master
 ### Licensing
 
 - **Free:** Personal learning, non-commercial projects (attribution required)
-- **Plus ($19/mo):** Your own commercial products
-- **Pro ($35/mo):** + Client and agency work
-- **Team ($35/seat/mo):** Organization management, invites, roles
-- **Ultimate ($2,100/yr):** 20 seats, 70% discount
+- **Solo ($19/mo):** Ship your own commercial products
+- **Pro ($35/mo):** Client and agency work, full professional toolkit
+- **Geek ($99/mo):** AI agents, ML, RAG — golden shelf access
+- **Team ($35/seat/mo):** Organization management, Pro access per seat
+- **Ultimate ($2,100/yr):** 20 seats, Geek access, dedicated support
 
 ---
 

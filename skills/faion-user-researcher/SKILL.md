@@ -1,6 +1,7 @@
 ---
 name: faion-user-researcher
 description: "User research: personas, user interviews, jobs-to-be-done, pain point research."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, TodoWrite
 ---

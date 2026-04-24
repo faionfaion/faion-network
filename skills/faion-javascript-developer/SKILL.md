@@ -1,6 +1,7 @@
 ---
 name: faion-javascript-developer
 description: "JavaScript/TypeScript: React, Node.js, Next.js, modern JS patterns."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

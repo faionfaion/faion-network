@@ -1,6 +1,7 @@
 ---
 name: faion-devtools-developer
 description: "DevTools orchestrator: code quality and automation."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

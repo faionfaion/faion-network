@@ -1,6 +1,7 @@
 ---
 name: faion-ml-engineer
 description: "ML/AI orchestrator: LLM integration, RAG, ML Ops, agents, multimodal."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

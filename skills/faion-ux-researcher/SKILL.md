@@ -1,6 +1,7 @@
 ---
 name: faion-ux-researcher
 description: "UX research: user interviews, usability testing, personas, journey maps."
+tier: pro
 user-invocable: false
 ---
 

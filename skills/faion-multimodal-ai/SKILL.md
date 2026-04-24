@@ -1,6 +1,7 @@
 ---
 name: faion-multimodal-ai
 description: "Multimodal AI: vision, image/video generation, speech-to-text, text-to-speech, voice synthesis."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

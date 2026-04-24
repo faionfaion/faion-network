@@ -1,6 +1,7 @@
 ---
 name: faion-hr-recruiter
 description: "HR recruiting: talent acquisition, employer branding, interviews, onboarding, DEI."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

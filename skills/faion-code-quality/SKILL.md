@@ -1,6 +1,7 @@
 ---
 name: faion-code-quality
 description: "Code quality specialist: architecture patterns, refactoring, code review, development practices. 23 methodologies."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

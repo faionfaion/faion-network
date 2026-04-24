@@ -1,6 +1,7 @@
 ---
 name: faion-conversion-optimizer
 description: "Conversion optimization: landing pages, CRO, funnels, PLG, onboarding flows."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

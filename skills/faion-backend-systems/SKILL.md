@@ -1,6 +1,7 @@
 ---
 name: faion-backend-systems
 description: "Systems backends: Go, Rust, databases, caching."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

@@ -1,6 +1,7 @@
 ---
 name: faion-llm-integration
 description: "LLM APIs: OpenAI, Claude, Gemini, local LLMs, prompt engineering, function calling."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

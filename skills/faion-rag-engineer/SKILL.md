@@ -1,6 +1,7 @@
 ---
 name: faion-rag-engineer
 description: "RAG engineering: embeddings, chunking, vector databases, hybrid search, reranking."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

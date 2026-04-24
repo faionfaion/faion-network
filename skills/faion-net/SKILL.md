@@ -1,6 +1,7 @@
 ---
 name: faion-net
 description: "Universal orchestrator: 54 skills, 1297 methodologies. Development, DevOps, AI/ML, Product, Marketing, PM, BA, UX, Research."
+tier: free
 user-invocable: true
 ---
 

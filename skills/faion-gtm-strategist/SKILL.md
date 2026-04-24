@@ -1,6 +1,7 @@
 ---
 name: faion-gtm-strategist
 description: "GTM strategy: product launches, positioning, pricing, partnerships, customer success."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Task, WebSearch, AskUserQuestion, TodoWrite, Glob
 ---

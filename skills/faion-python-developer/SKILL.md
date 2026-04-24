@@ -1,6 +1,7 @@
 ---
 name: faion-python-developer
 description: "Python development: Django, FastAPI, async patterns, testing, type hints."
+tier: free
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

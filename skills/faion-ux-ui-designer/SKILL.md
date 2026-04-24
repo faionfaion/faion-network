@@ -1,6 +1,7 @@
 ---
 name: faion-ux-ui-designer
 description: "UX/UI orchestrator: user research, UI design, accessibility."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite, Skill
 ---

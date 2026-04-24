@@ -1,6 +1,7 @@
 ---
 name: faion-claude-code
 description: "Claude Code: skills, agents, hooks, commands, MCP servers, IDE integrations."
+tier: geek
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(mkdir:*), Bash(ls:*), Task, AskUserQuestion
 ---

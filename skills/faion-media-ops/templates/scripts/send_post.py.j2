@@ -1,0 +1,114 @@
+"""Telegram message sender with OG preview and text links."""
+
+import argparse
+import os
+import sys
+
+import requests
+
+BOT_TOKEN = os.environ["{{ env_bot_token_name | default('TG_BOT_TOKEN') }}"]
+API = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
+CHANNELS = {
+{%- for lang, channel in channels.items() %}
+    "{{ lang }}": "{{ channel.chat_id }}",
+{%- endfor %}
+}
+
+LINK_LABELS = {
+{%- for lang, label in link_labels.items() %}
+    "{{ lang }}": "{{ label }}",
+{%- endfor %}
+}
+
+
+def send_photo(chat_id: str, image_path: str, caption: str, silent: bool = False) -> int | None:
+    with open(image_path, "rb") as f:
+        payload = {
+            "chat_id": int(chat_id),
+            "caption": caption,
+            "parse_mode": "HTML",
+        }
+        if silent:
+            payload["disable_notification"] = True
+        r = requests.post(f"{API}/sendPhoto", data=payload, files={"photo": f}).json()
+    if r.get("ok"):
+        return r["result"]["message_id"]
+    print(f"Error: {r.get('description')}", file=sys.stderr)
+    return None
+
+
+def send_text(
+    chat_id: str,
+    caption: str,
+    preview_url: str | None = None,
+    silent: bool = False,
+    article_url: str | None = None,
+    link_label: str = "Read more",
+) -> int | None:
+    # Append article link as text (not a button)
+    if article_url:
+        caption = f'{caption}\n\n<a href="{article_url}">{link_label} \u2192</a>'
+    # Prepend invisible link for OG preview
+    if preview_url:
+        caption = f'<a href="{preview_url}">\u00a0</a>{caption}'
+    link_opts: dict = {"prefer_large_media": True, "show_above_text": True}
+    if preview_url:
+        link_opts["url"] = preview_url
+    payload = {
+        "chat_id": int(chat_id),
+        "text": caption,
+        "parse_mode": "HTML",
+        "link_preview_options": link_opts,
+    }
+    if silent:
+        payload["disable_notification"] = True
+    r = requests.post(f"{API}/sendMessage", json=payload).json()
+    if r.get("ok"):
+        return r["result"]["message_id"]
+    print(f"Error: {r.get('description')}", file=sys.stderr)
+    return None
+
+
+def add_reaction(chat_id: str, msg_id: int, emoji: str = "\U0001f525"):
+    requests.post(
+        f"{API}/setMessageReaction",
+        json={
+            "chat_id": int(chat_id),
+            "message_id": msg_id,
+            "reaction": [{"type": "emoji", "emoji": emoji}],
+        },
+    )
+
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--caption", required=True)
+    p.add_argument("--image", default=None)
+    p.add_argument("--url", default=None, help="Article URL for link preview + text link")
+    p.add_argument("--reaction", default="\U0001f525")
+    p.add_argument("--channel", default="{{ default_channel }}", choices=list(CHANNELS.keys()))
+    p.add_argument("--silent", action="store_true")
+    args = p.parse_args()
+
+    chat_id = CHANNELS[args.channel]
+    link_label = LINK_LABELS.get(args.channel, "Read more")
+
+    if args.image:
+        msg_id = send_photo(chat_id, args.image, args.caption, silent=args.silent)
+    else:
+        msg_id = send_text(
+            chat_id, args.caption,
+            preview_url=args.url, silent=args.silent,
+            article_url=args.url, link_label=link_label,
+        )
+
+    if msg_id:
+        add_reaction(chat_id, msg_id, args.reaction)
+        print(msg_id)
+    else:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

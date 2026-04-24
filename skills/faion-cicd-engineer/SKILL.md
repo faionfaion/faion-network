@@ -1,6 +1,7 @@
 ---
 name: faion-cicd-engineer
 description: "CI/CD: GitHub Actions, GitLab CI, Jenkins, ArgoCD, GitOps, monitoring."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite
 ---

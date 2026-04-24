@@ -1,0 +1,171 @@
+import React, { useState, useMemo } from "react";
+import { graphql, Link } from "gatsby";
+import Layout from "../components/layout";
+import SEO from "../components/seo";
+
+const IndexPage = ({ data }) => {
+  const articles = data.allMarkdownRemark.nodes;
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+
+  // Collect available types for filter
+  const types = useMemo(() => {
+    const set = new Set();
+    articles.forEach((a) => {
+      if (a.frontmatter.type) set.add(a.frontmatter.type);
+    });
+    return Array.from(set).sort();
+  }, [articles]);
+
+  // Filter articles
+  const filtered = useMemo(() => {
+    return articles.filter((a) => {
+      const fm = a.frontmatter;
+      if (typeFilter && fm.type !== typeFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const haystack = [fm.title, fm.description, fm.slug, ...(fm.tags || [])].join(" ").toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [articles, search, typeFilter]);
+
+  // Group by date
+  const grouped = useMemo(() => {
+    const g = {};
+    filtered.forEach((article) => {
+      const date = article.frontmatter.date;
+      if (!g[date]) g[date] = [];
+      g[date].push(article);
+    });
+    return g;
+  }, [filtered]);
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr + "T12:00:00");
+    return d.toLocaleDateString("{{date_locale|default('en-US')}}", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  {% if multilang %}
+  const articlePath = (slug, lang) => `/${lang}/${slug}/`;
+  {% else %}
+  const articlePath = (slug) => `/${slug}/`;
+  {% endif %}
+
+  return (
+    <Layout>
+      <SEO
+        title="{{site_title}}"
+        description="{{site_description}}"
+      />
+      <div className="hero-section">
+        <span className="badge">{{hero_badge|default(site_description)}}</span>
+        <p className="subtitle">
+          {{hero_subtitle|default(site_description)}}
+        </p>
+      </div>
+
+      <div className="filters">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="{{search_placeholder|default('Search articles...')}}"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="type-filters">
+          <button
+            className={`filter-btn ${typeFilter === "" ? "active" : ""}`}
+            onClick={() => setTypeFilter("")}
+          >
+            {{all_label|default('All')}}
+          </button>
+          {types.map((t) => (
+            <button
+              key={t}
+              className={`filter-btn ${typeFilter === t ? "active" : ""}`}
+              onClick={() => setTypeFilter(t)}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([date, posts]) => (
+        <div key={date} className="date-group">
+          <h2 className="date-header">{formatDate(date)}</h2>
+          <div className="articles-grid">
+            {posts.map((article) => (
+              <article key={article.frontmatter.slug} className="article-card">
+                <Link to={articlePath(article.frontmatter.slug{% if multilang %}, article.frontmatter.lang{% endif %})}>
+                  {article.frontmatter.image && (
+                    <img
+                      className="card-image"
+                      src={article.frontmatter.image}
+                      alt=""
+                      loading="lazy"
+                    />
+                  )}
+                  <div className="card-content">
+                    <span className={`type-badge type-${article.frontmatter.type}`}>
+                      {article.frontmatter.type}
+                    </span>
+                    <h3>{article.frontmatter.title}</h3>
+                    <p className="description">{article.frontmatter.description}</p>
+                    <div className="meta">
+                      {article.frontmatter.author && <span>{article.frontmatter.author}</span>}
+                      <span>{Math.ceil(article.wordCount.words / 200)} {{reading_time_unit|default('min')}}</span>
+                    </div>
+                  </div>
+                </Link>
+              </article>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {filtered.length === 0 && (
+        <div className="empty-state">
+          <p>{{no_results_text|default('No articles found matching your criteria.')}}</p>
+        </div>
+      )}
+    </Layout>
+  );
+};
+
+export const query = graphql`
+  {
+    allMarkdownRemark(
+      sort: { frontmatter: { date: DESC } }
+      limit: 100
+    ) {
+      nodes {
+        frontmatter {
+          slug
+          title
+          date
+          type
+          {% if multilang %}lang{% endif %}
+          description
+          tags
+          image
+          author
+        }
+        wordCount {
+          words
+        }
+      }
+    }
+  }
+`;
+
+export default IndexPage;

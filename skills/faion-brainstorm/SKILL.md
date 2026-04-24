@@ -1,6 +1,7 @@
 ---
 name: faion-brainstorm
 description: "Multi-agent brainstorming: structured diverge-converge-review cycles for technical and product ideation."
+tier: free
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, AskUserQuestion
 ---

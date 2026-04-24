@@ -1,6 +1,7 @@
 ---
 name: faion-market-researcher
 description: "Market research: TAM/SAM/SOM sizing, competitor analysis, pricing research, trend analysis."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Glob, Grep, WebSearch, WebFetch, Task, TodoWrite
 ---

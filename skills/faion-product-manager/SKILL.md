@@ -1,6 +1,7 @@
 ---
 name: faion-product-manager
 description: "Product orchestrator: planning (MVP, roadmaps) and operations (prioritization, backlog)."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Bash(ls:*), Bash(mkdir:*), Task, AskUserQuestion, TodoWrite
 ---

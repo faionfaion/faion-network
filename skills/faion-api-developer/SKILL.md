@@ -1,6 +1,7 @@
 ---
 name: faion-api-developer
 description: "API development: REST, GraphQL, OpenAPI, versioning, auth, rate limiting."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

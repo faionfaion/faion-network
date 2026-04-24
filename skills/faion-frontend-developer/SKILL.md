@@ -1,6 +1,7 @@
 ---
 name: faion-frontend-developer
 description: "Frontend: Tailwind, CSS-in-JS, design tokens, UI libraries, PWA, accessibility."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, AskUserQuestion, TodoWrite, Skill
 ---

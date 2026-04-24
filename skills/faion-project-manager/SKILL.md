@@ -1,6 +1,7 @@
 ---
 name: faion-project-manager
 description: "PM orchestrator: coordinates agile and traditional PM approaches."
+tier: pro
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---

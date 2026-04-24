@@ -1,6 +1,7 @@
 ---
 name: faion-sdd
 description: "SDD workflow: specs, designs, implementation plans, quality gates."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, Skill, AskUserQuestion, TodoWrite
 ---

@@ -1,6 +1,7 @@
 ---
 name: faion-server-craft
 description: "Server configuration & tuning: SSH hardening, firewall, nginx, systemd, tmux, shell productivity, Docker, backups, agent dev tuning, deploy scripts. 27 methodologies."
+tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdate, TaskList, AskUserQuestion, Skill
 ---
