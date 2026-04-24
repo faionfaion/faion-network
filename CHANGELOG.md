@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: data-analysis (ba-modeling) — agent-integration.md (186 lines).
 - Research: decision-analysis (ba-modeling) — agent-integration.md (159 lines).
 - Research: use-case-modeling (ba-modeling) — agent-integration.md (182 lines).
 - Research: requirements-lifecycle (business-analyst) — agent-integration.md (176 lines).
