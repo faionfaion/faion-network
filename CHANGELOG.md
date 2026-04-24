@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: ba-strategic-partnership (ba-core) — agent-integration.md (161 lines).
 - Research: modern-ba-framework (ba-core) — agent-integration.md (182 lines).
 - Research: requirements-traceability (ba-core) — agent-integration.md (199 lines).
 - Research: elicitation-techniques (ba-core) — agent-integration.md (191 lines).
