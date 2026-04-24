@@ -34,6 +34,7 @@
 - Research: product-led-growth — agent-integration.md (146 lines).
 - Research: product-development-trends (market-researcher) — agent-integration.md (142 lines).
 - Research: stakeholder-management — agent-integration.md (156 lines).
+- Research: blurred-roles-team-evolution — agent-integration.md (131 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
