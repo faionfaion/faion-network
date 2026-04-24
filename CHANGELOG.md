@@ -52,6 +52,7 @@
 - Research: continuous-discovery-habits (product-manager) — agent-integration.md (278 lines).
 - Research: product-operations (pro/product/product-manager) — agent-integration.md (297 lines).
 - Research: competitive-positioning (product-manager) — agent-integration.md (193 lines).
+- Research: product-lifecycle (product-manager) — agent-integration.md (157 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
