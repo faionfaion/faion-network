@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: requirements-validation (ba-core) — agent-integration.md (167 lines).
 - Research: solution-assessment (ba-core) — agent-integration.md (238 lines).
 - Research: process-mining-automation (ba-core) — agent-integration.md (281 lines).
 - Research: agile-ba-frameworks (ba-core) — agent-integration.md (172 lines).
