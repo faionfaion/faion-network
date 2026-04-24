@@ -3,6 +3,18 @@
 ## [Unreleased]
 
 ### Changed
+- **Intra-domain tier reclassification round 1 (name heuristic): 90 methodology
+  folders promoted to higher tier** — enterprise stacks
+  (`java-spring*`, `php-laravel*`, `ruby-rails*`, `csharp-dotnet*`,
+  `cqrs-pattern`, `event-sourcing*`, `microservices-design`) moved from
+  `free/dev/` to `pro/dev/`; API design (`api-graphql`, `api-openapi-spec`,
+  `api-rest-design`, `contract-first-development`, `pwa-development`,
+  `nextjs-app-router`, `monorepo-turborepo`) moved `free/dev/` → `solo/dev/`;
+  AI-adjacent topics (`claude-md-creation`, `llm-friendly-architecture`,
+  `ai-*-pm-tools`, `ai-interview-analysis`, `ai-research-tool*`,
+  `ai-assisted-specification-writing`, etc.) moved to `geek/`. Applied via
+  `skills/faion-knowledge/.reclass/` (rules + scripts + audit log).
+  Remaining 1009 ambiguous methodologies queued for content-review ticks.
 - **Knowledge partitioned by tier: 52 domains now live under
   `faion-knowledge/knowledge/<tier>/<group>/<name>/`** (tiers: `free`, `solo`,
   `pro`, `geek`) matching the pricing manifest. Free tier gets 8 domains,
