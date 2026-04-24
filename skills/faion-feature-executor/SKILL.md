@@ -82,11 +82,11 @@ questions:
 
 | If you need... | Use | Why |
 |----------------|-----|-----|
-| Create tasks before execution | [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/) | No tasks in todo/ yet |
-| Execute single task | [faion-knowledge/knowledge/dev/software-developer/](../faion-knowledge/knowledge/dev/software-developer/) | Direct execution faster |
+| Create tasks before execution | [faion-knowledge/knowledge/solo/sdd/sdd/](../faion-knowledge/knowledge/solo/sdd/sdd/) | No tasks in todo/ yet |
+| Execute single task | [faion-knowledge/knowledge/free/dev/software-developer/](../faion-knowledge/knowledge/free/dev/software-developer/) | Direct execution faster |
 | Execute multiple dependent tasks | This skill | Sequential execution with quality gates |
-| Execute independent tasks | [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/) | Parallelize via SDD |
-| CI/CD integration | [faion-knowledge/knowledge/infra/devops-engineer/](../faion-knowledge/knowledge/infra/devops-engineer/) | Infrastructure tasks |
+| Execute independent tasks | [faion-knowledge/knowledge/solo/sdd/sdd/](../faion-knowledge/knowledge/solo/sdd/sdd/) | Parallelize via SDD |
+| CI/CD integration | [faion-knowledge/knowledge/pro/infra/devops-engineer/](../faion-knowledge/knowledge/pro/infra/devops-engineer/) | Infrastructure tasks |
 | Broad domain knowledge | [faion-knowledge](../faion-knowledge/) | Umbrella knowledge |
 
 ### Quality Modes

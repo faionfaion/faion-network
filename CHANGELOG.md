@@ -3,6 +3,19 @@
 ## [Unreleased]
 
 ### Changed
+- **Knowledge partitioned by tier: 52 domains now live under
+  `faion-knowledge/knowledge/<tier>/<group>/<name>/`** (tiers: `free`, `solo`,
+  `pro`, `geek`) matching the pricing manifest. Free tier gets 8 domains,
+  solo adds 13, pro adds 24, geek adds 7. Tier gating becomes a directory
+  boundary — a free-tier session reads only `knowledge/free/`, solo reads
+  `free + solo`, pro reads `free + solo + pro`, geek reads all four.
+  `tier-manifest.json` bumped to v3 with tier-prefixed `knowledge_paths`
+  and new `knowledge_root` per tier. Top-level docs (`SKILL.md`,
+  `CLAUDE.md`, `README.md`, `skills/CLAUDE.md`, `docs/directory-structure.md`,
+  `GEMINI.md`) rewritten for the new layout. Applied-tool cross-refs in
+  `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`
+  updated to tier-prefixed paths (e.g. `knowledge/solo/sdd/sdd/`,
+  `knowledge/pro/infra/devops-engineer/`).
 - **Knowledge consolidation: 52 domain skills merged into `faion-knowledge` umbrella.**
   Renamed orchestrator skill `faion-net` → `faion-knowledge`. All knowledge
   skills (dev, AI, infra, product, PM, BA, UX, marketing, research, comms, SDD)

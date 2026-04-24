@@ -1,6 +1,6 @@
 ---
 name: faion-knowledge
-description: "Umbrella knowledge skill: 52 domain knowledge bases across dev, AI, infra, product, PM, BA, UX, marketing, research. 1300+ methodologies."
+description: "Umbrella knowledge skill: 52 domain knowledge bases, 1300+ methodologies. Content organized by pricing tier (free/solo/pro/geek)."
 tier: free
 user-invocable: true
 ---
@@ -9,154 +9,118 @@ user-invocable: true
 
 **Communication: User's language.**
 
-Single umbrella skill bundling all domain knowledge. No per-domain sub-skills to invoke — all knowledge lives here as markdown, loaded on demand with Read.
+Single umbrella skill bundling all domain knowledge. No per-domain sub-skills — all content is markdown, loaded on demand with Read, organized into tier subtrees (`free`, `solo`, `pro`, `geek`) matching the pricing manifest.
 
 ## Structure
 
 ```
 knowledge/
-├── dev/           13 skills   Python, JS, Go, Rust, Java, C#, backend, frontend, API, testing, arch, automation, code quality
-├── ai/             7 skills   ML engineer, AI agents, RAG, ML ops, multimodal, LLM integration, Claude Code
-├── infra/          4 skills   DevOps, CI/CD, infrastructure, server craft
-├── product/        3 skills   PM, product planning, product operations
-├── pm/             3 skills   Project manager, Agile PM, Traditional PM
-├── ba/             3 skills   BA, BA core, BA modeling
-├── ux/             5 skills   UX/UI, UI designer, UX researcher, user researcher, accessibility
-├── marketing/      8 skills   Marketing, GTM, content, growth, CRO, SEO, PPC, SMM
-├── research/       2 skills   Researcher, market researcher
-├── comms/          2 skills   Communicator, HR recruiter
-└── sdd/            2 skills   SDD, SDD planning
+├── free/   8 skills   dev core (Python, JS, testing, quality, backend/devtools router, full-stack) + marketing router
+├── solo/  13 skills   frontend, API, architect, automation, server-craft, SDD, product planning/ops, UI, content, SEO, comms
+├── pro/   24 skills   backend systems/enterprise, DevOps/CI/CD/infra, PM, product-manager, BA, UX research, growth/GTM/PPC/SMM/CRO, research, HR
+└── geek/   7 skills   ML engineer, AI agents, RAG, ML ops, multimodal AI, LLM integration, Claude Code
 ```
 
-Each skill = folder with `SKILL.md` + methodology subfolders. Each methodology = `README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`.
+Each tier holds per-group subdirs (`dev/`, `infra/`, `marketing/`, etc.). Each skill = folder with `SKILL.md` + methodology subfolders. Each methodology = `README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`.
 
 ## How It Works
 
 ```
-User task → Identify domain → Read knowledge/<group>/<name>/README.md → Apply
+User task → Identify domain → Resolve tier → Read knowledge/<tier>/<group>/<name>/README.md → Apply
 ```
 
-No `Skill(faion-X)` calls — those sub-skills no longer exist. Load domain content with `Read` or `Grep` against `knowledge/<group>/...`.
+No `Skill(faion-X)` calls — those sub-skills no longer exist. Load domain content with `Read` or `Grep` against `knowledge/<tier>/<group>/...`. Tier gating is a directory boundary: a free-tier session should only read from `knowledge/free/`, solo from `free + solo`, pro from `free + solo + pro`, geek from all four.
 
-## Domain Routing
+## Tier Map
 
-### Development (`knowledge/dev/`)
+### Free (8) — `knowledge/free/`
 
-| Need | Read |
-|------|------|
-| Full-stack overview | `dev/software-developer/` |
-| System design, ADRs | `dev/software-architect/` |
-| Python (Django, FastAPI) | `dev/python-developer/` |
-| JS/TS (React, Node, Next.js) | `dev/javascript-developer/` |
-| Frontend (Tailwind, PWA, a11y) | `dev/frontend-developer/` |
-| APIs (REST, GraphQL, OpenAPI) | `dev/api-developer/` |
-| Backend router | `dev/backend-developer/` |
-| Go, Rust, DBs, caching | `dev/backend-systems/` |
-| Java, C#, PHP, Ruby | `dev/backend-enterprise/` |
-| Testing (TDD, E2E, mocking) | `dev/testing-developer/` |
-| Code quality, DDD, refactoring | `dev/code-quality/` |
-| Puppeteer, monorepo, automation | `dev/automation-tooling/` |
-| DevTools overview | `dev/devtools-developer/` |
-
-### AI / ML (`knowledge/ai/`)
+Core developer skill set + marketing router. Everyone gets these.
 
 | Need | Read |
 |------|------|
-| ML/AI overview | `ai/ml-engineer/` |
-| LLM APIs (OpenAI, Claude, Gemini) | `ai/llm-integration/` |
-| RAG, embeddings, vector DBs | `ai/rag-engineer/` |
-| Fine-tuning, evals, ML Ops | `ai/ml-ops/` |
-| AI agents, LangChain, MCP | `ai/ai-agents/` |
-| Vision, image/video, TTS/STT | `ai/multimodal-ai/` |
-| Claude Code setup, skills, hooks | `ai/claude-code/` |
+| Full-stack overview | `free/dev/software-developer/` |
+| Python (Django, FastAPI) | `free/dev/python-developer/` |
+| JS/TS (React, Node, Next.js) | `free/dev/javascript-developer/` |
+| Testing (TDD, E2E, mocking) | `free/dev/testing-developer/` |
+| Code quality, DDD, refactoring | `free/dev/code-quality/` |
+| Backend router | `free/dev/backend-developer/` |
+| DevTools overview | `free/dev/devtools-developer/` |
+| Marketing overview | `free/marketing/marketing-manager/` |
 
-### Infrastructure (`knowledge/infra/`)
+### Solo (13) — `knowledge/solo/`
 
-| Need | Read |
-|------|------|
-| DevOps overview | `infra/devops-engineer/` |
-| Docker, K8s, Terraform, AWS/GCP | `infra/infrastructure-engineer/` |
-| CI/CD, GitHub Actions, GitOps | `infra/cicd-engineer/` |
-| SSH, nginx, systemd, tuning | `infra/server-craft/` |
-
-### Product (`knowledge/product/`)
+Extends free with solopreneur / small-team essentials: frontend polish, API design, architecture, SDD, product planning, UI, content/SEO, comms.
 
 | Need | Read |
 |------|------|
-| Product management overview | `product/product-manager/` |
-| MVP, roadmaps, OKRs | `product/product-planning/` |
-| Prioritization, backlog, analytics | `product/product-operations/` |
+| Frontend (Tailwind, PWA, a11y) | `solo/dev/frontend-developer/` |
+| APIs (REST, GraphQL, OpenAPI) | `solo/dev/api-developer/` |
+| System design, ADRs | `solo/dev/software-architect/` |
+| Puppeteer, monorepo, automation | `solo/dev/automation-tooling/` |
+| SSH, nginx, systemd, tuning | `solo/infra/server-craft/` |
+| SDD workflow overview | `solo/sdd/sdd/` |
+| Specs, design docs, impl plans | `solo/sdd/sdd-planning/` |
+| MVP, roadmaps, OKRs | `solo/product/product-planning/` |
+| Prioritization, backlog, analytics | `solo/product/product-operations/` |
+| Wireframes, design systems | `solo/ux/ui-designer/` |
+| Copy, email, social, SEO content | `solo/marketing/content-marketer/` |
+| Technical + on-page SEO | `solo/marketing/seo-manager/` |
+| Stakeholder dialogue, Mom Test | `solo/comms/communicator/` |
 
-### Project Management (`knowledge/pm/`)
+### Pro (24) — `knowledge/pro/`
 
-| Need | Read |
-|------|------|
-| PM overview | `pm/project-manager/` |
-| Scrum, Kanban, SAFe | `pm/pm-agile/` |
-| PMBoK, EVM, WBS | `pm/pm-traditional/` |
-
-### Business Analysis (`knowledge/ba/`)
-
-| Need | Read |
-|------|------|
-| BA overview | `ba/business-analyst/` |
-| Requirements, elicitation, strategy | `ba/ba-core/` |
-| Use cases, BPMN, data models | `ba/ba-modeling/` |
-
-### UX / UI (`knowledge/ux/`)
+Extends solo with enterprise / agency breadth: heavy backend stacks, full DevOps pipeline, PM/BA rigor, UX research, paid marketing, user research, HR.
 
 | Need | Read |
 |------|------|
-| UX/UI overview | `ux/ux-ui-designer/` |
-| Wireframes, design systems | `ux/ui-designer/` |
-| User interviews, usability | `ux/ux-researcher/` |
-| Personas, JTBD | `ux/user-researcher/` |
-| WCAG, a11y | `ux/accessibility-specialist/` |
+| Go, Rust, DBs, caching | `pro/dev/backend-systems/` |
+| Java, C#, PHP, Ruby | `pro/dev/backend-enterprise/` |
+| DevOps overview | `pro/infra/devops-engineer/` |
+| CI/CD, GitHub Actions, GitOps | `pro/infra/cicd-engineer/` |
+| Docker, K8s, Terraform, AWS/GCP | `pro/infra/infrastructure-engineer/` |
+| PM overview | `pro/pm/project-manager/` |
+| Scrum, Kanban, SAFe | `pro/pm/pm-agile/` |
+| PMBoK, EVM, WBS | `pro/pm/pm-traditional/` |
+| Product management overview | `pro/product/product-manager/` |
+| BA overview | `pro/ba/business-analyst/` |
+| Requirements, elicitation, strategy | `pro/ba/ba-core/` |
+| Use cases, BPMN, data models | `pro/ba/ba-modeling/` |
+| UX/UI overview | `pro/ux/ux-ui-designer/` |
+| User interviews, usability | `pro/ux/ux-researcher/` |
+| Personas, JTBD | `pro/ux/user-researcher/` |
+| WCAG, a11y | `pro/ux/accessibility-specialist/` |
+| Growth, AARRR, experiments | `pro/marketing/growth-marketer/` |
+| Launches, positioning, pricing | `pro/marketing/gtm-strategist/` |
+| Google, Meta, LinkedIn ads | `pro/marketing/ppc-manager/` |
+| Social media strategy | `pro/marketing/smm-manager/` |
+| Landing pages, CRO, funnels | `pro/marketing/conversion-optimizer/` |
+| TAM/SAM, competitors, pricing | `pro/research/market-researcher/` |
+| Research overview | `pro/research/researcher/` |
+| Hiring, onboarding, DEI | `pro/comms/hr-recruiter/` |
 
-### Marketing (`knowledge/marketing/`)
+### Geek (7) — `knowledge/geek/`
 
-| Need | Read |
-|------|------|
-| Marketing overview | `marketing/marketing-manager/` |
-| Launches, positioning, pricing | `marketing/gtm-strategist/` |
-| Copy, email, social, SEO content | `marketing/content-marketer/` |
-| Growth, AARRR, experiments | `marketing/growth-marketer/` |
-| Landing pages, CRO, funnels | `marketing/conversion-optimizer/` |
-| Technical + on-page SEO | `marketing/seo-manager/` |
-| Google, Meta, LinkedIn ads | `marketing/ppc-manager/` |
-| Social media strategy | `marketing/smm-manager/` |
-
-### Research (`knowledge/research/`)
-
-| Need | Read |
-|------|------|
-| Research overview | `research/researcher/` |
-| TAM/SAM, competitors, pricing | `research/market-researcher/` |
-
-### Communication & HR (`knowledge/comms/`)
-
-| Need | Read |
-|------|------|
-| Stakeholder dialogue, Mom Test | `comms/communicator/` |
-| Hiring, onboarding, DEI | `comms/hr-recruiter/` |
-
-### SDD (`knowledge/sdd/`)
+AI agent-builder tier. Everything else plus the full AI/ML knowledge stack.
 
 | Need | Read |
 |------|------|
-| SDD workflow overview | `sdd/sdd/` |
-| Specs, design docs, impl plans | `sdd/sdd-planning/` |
-
-Execution tooling lives outside this skill — see `faion-sdd-execution` and `faion-feature-executor`.
+| ML/AI overview | `geek/ai/ml-engineer/` |
+| AI agents, LangChain, MCP | `geek/ai/ai-agents/` |
+| RAG, embeddings, vector DBs | `geek/ai/rag-engineer/` |
+| Fine-tuning, evals, ML Ops | `geek/ai/ml-ops/` |
+| Vision, image/video, TTS/STT | `geek/ai/multimodal-ai/` |
+| LLM APIs (OpenAI, Claude, Gemini) | `geek/ai/llm-integration/` |
+| Claude Code setup, skills, hooks | `geek/ai/claude-code/` |
 
 ## Related User-Invocable Skills
 
 Independent skills — tools, not knowledge bases:
 
-- `faion-brainstorm` — multi-agent diverge/converge/review
-- `faion-sdd-execution` — quality gates, code review cycle
-- `faion-feature-executor` — sequential SDD task execution
-- `faion-improver` — session-based audit/improve loop
+- `faion-brainstorm` — multi-agent diverge/converge/review (free+)
+- `faion-sdd-execution` — quality gates, code review cycle (solo+)
+- `faion-feature-executor` — sequential SDD task execution (solo+)
+- `faion-improver` — session-based audit/improve loop (pro+)
 - `faion-media-ops` — media pipeline templates
 
 ## Methodology File Structure
@@ -178,8 +142,11 @@ Read `README.md` first; pull the others on demand.
 |--------|-------|
 | Knowledge skills | 52 |
 | Methodologies | 1300+ |
+| Tiers | 4 |
 | Groups | 11 |
+
+See [tier-manifest.json](../tier-manifest.json) for the authoritative tier-to-path mapping.
 
 ---
 
-*Faion Network v4.0 — unified knowledge umbrella*
+*Faion Network v4.1 — tier-partitioned knowledge umbrella*

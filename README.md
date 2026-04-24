@@ -56,7 +56,7 @@ git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify
 ls ~/.claude/skills       # faion-knowledge, faion-brainstorm, faion-feature-executor, ...
-ls ~/.claude/skills/faion-knowledge/knowledge/   # dev/ ai/ infra/ product/ pm/ ba/ ux/ marketing/ research/ comms/ sdd/
+ls ~/.claude/skills/faion-knowledge/knowledge/   # free/ solo/ pro/ geek/
 ```
 
 ### Merge into Existing Setup
@@ -107,16 +107,18 @@ claude
 # Invoke: /faion-knowledge
 ```
 
-All domain knowledge lives under `faion-knowledge/knowledge/<group>/<name>/`. Read domain content on demand:
+All domain knowledge lives under `faion-knowledge/knowledge/<tier>/<group>/<name>/`, partitioned by pricing tier. Read on demand:
 
-- Dev: `knowledge/dev/python-developer/`, `knowledge/dev/frontend-developer/`, ...
-- AI: `knowledge/ai/ai-agents/`, `knowledge/ai/rag-engineer/`, ...
-- Infra: `knowledge/infra/devops-engineer/`, `knowledge/infra/server-craft/`, ...
-- Product/PM/BA/UX/Marketing/Research/Comms/SDD — see [faion-knowledge/SKILL.md](skills/faion-knowledge/SKILL.md)
+- **Free (8):** `knowledge/free/dev/python-developer/`, `knowledge/free/dev/javascript-developer/`, `knowledge/free/marketing/marketing-manager/`, ...
+- **Solo (13):** `knowledge/solo/dev/frontend-developer/`, `knowledge/solo/sdd/sdd/`, `knowledge/solo/infra/server-craft/`, ...
+- **Pro (24):** `knowledge/pro/infra/devops-engineer/`, `knowledge/pro/ba/business-analyst/`, `knowledge/pro/marketing/growth-marketer/`, ...
+- **Geek (7):** `knowledge/geek/ai/ai-agents/`, `knowledge/geek/ai/rag-engineer/`, `knowledge/geek/ai/claude-code/`, ...
+
+Full tier map: [faion-knowledge/SKILL.md](skills/faion-knowledge/SKILL.md). Authoritative path list: [tier-manifest.json](skills/tier-manifest.json).
 
 ### SDD Workflow
 
-Read `knowledge/sdd/sdd/` and `knowledge/sdd/sdd-planning/` for specs, designs, implementation plans. Then:
+Read `knowledge/solo/sdd/sdd/` and `knowledge/solo/sdd/sdd-planning/` for specs, designs, implementation plans. Then:
 
 ```bash
 /faion-feature-executor {project} {feature}
@@ -150,17 +152,10 @@ skills/
 │   ├── SKILL.md
 │   ├── CLAUDE.md
 │   └── knowledge/
-│       ├── dev/          (13)  Python, JS, Go, Rust, Java, C#, backend, frontend, API, testing, architecture, automation, code quality
-│       ├── ai/            (7)  ML, agents, RAG, ML ops, multimodal, LLM integration, Claude Code
-│       ├── infra/         (4)  DevOps, CI/CD, infrastructure, server craft
-│       ├── product/       (3)  PM, planning, operations
-│       ├── pm/            (3)  Project, Agile, Traditional
-│       ├── ba/            (3)  BA, core, modeling
-│       ├── ux/            (5)  UX/UI, UI, UX research, user research, accessibility
-│       ├── marketing/     (8)  Marketing, GTM, content, growth, CRO, SEO, PPC, SMM
-│       ├── research/      (2)  Researcher, market research
-│       ├── comms/         (2)  Communicator, HR recruiter
-│       └── sdd/           (2)  SDD, SDD planning
+│       ├── free/          (8)  dev core (Python, JS, testing, quality, backend/devtools, full-stack) + marketing-manager router
+│       ├── solo/         (13)  frontend, API, architect, automation, server-craft, SDD, product planning/ops, UI, content, SEO, comms
+│       ├── pro/          (24)  backend systems/enterprise, DevOps/CI-CD/infra, PM, product-manager, BA, UX research, growth/GTM/PPC/SMM/CRO, research, HR
+│       └── geek/          (7)  ML engineer, AI agents, RAG, ML ops, multimodal AI, LLM integration, Claude Code
 ├── faion-brainstorm/                  # Multi-agent diverge/converge/review
 ├── faion-sdd-execution/               # Quality gates, reflexion learning
 ├── faion-feature-executor/            # Sequential SDD task execution
@@ -182,10 +177,13 @@ Error: Skill 'faion-*' not found
 
 Only top-level skills are invocable: `faion-knowledge`, `faion-brainstorm`, `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`, `faion-media-ops`.
 
-Domain knowledge is NOT invocable as sub-skills — load via Read:
+Domain knowledge is NOT invocable as sub-skills — load via Read. Knowledge paths are tier-prefixed:
 
 ```
-Read: ~/.claude/skills/faion-knowledge/knowledge/dev/python-developer/SKILL.md
+Read: ~/.claude/skills/faion-knowledge/knowledge/free/dev/python-developer/SKILL.md
+Read: ~/.claude/skills/faion-knowledge/knowledge/solo/sdd/sdd/SKILL.md
+Read: ~/.claude/skills/faion-knowledge/knowledge/pro/infra/devops-engineer/SKILL.md
+Read: ~/.claude/skills/faion-knowledge/knowledge/geek/ai/ai-agents/SKILL.md
 ```
 
 ### Permission Denied

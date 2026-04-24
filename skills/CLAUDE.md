@@ -8,7 +8,7 @@ Claude Code skills for the faion-network framework.
 
 | Skill | Description |
 |-------|-------------|
-| `faion-knowledge` | 52 domain knowledge bases, 1300+ methodologies. Load content from `faion-knowledge/knowledge/<group>/<name>/` on demand with Read. |
+| `faion-knowledge` | 52 domain knowledge bases, 1300+ methodologies. Tier-partitioned. Load content from `faion-knowledge/knowledge/<tier>/<group>/<name>/` on demand with Read. |
 
 ### Applied tools
 
@@ -30,24 +30,36 @@ Claude Code skills for the faion-network framework.
 
 ## Knowledge Structure
 
-All domain knowledge consolidated inside `faion-knowledge/knowledge/`:
+All domain knowledge consolidated inside `faion-knowledge/knowledge/`, partitioned by pricing tier:
 
 ```
 faion-knowledge/
 ├── SKILL.md
 ├── CLAUDE.md
 └── knowledge/
-    ├── dev/          (13)  Python, JS, Go, Rust, Java, C#, backend, frontend, API, testing, architecture, automation, code quality
-    ├── ai/            (7)  ML, agents, RAG, ML ops, multimodal, LLM integration, Claude Code
-    ├── infra/         (4)  DevOps, CI/CD, infrastructure, server craft
-    ├── product/       (3)  PM, planning, operations
-    ├── pm/            (3)  Project, Agile, Traditional
-    ├── ba/            (3)  BA, core, modeling
-    ├── ux/            (5)  UX/UI, UI, UX research, user research, accessibility
-    ├── marketing/     (8)  Marketing, GTM, content, growth, CRO, SEO, PPC, SMM
-    ├── research/      (2)  Researcher, market research
-    ├── comms/         (2)  Communicator, HR recruiter
-    └── sdd/           (2)  SDD, SDD planning
+    ├── free/   (8)   dev core + marketing-manager
+    │   ├── dev/        software-developer, python-developer, javascript-developer, testing-developer, code-quality, backend-developer, devtools-developer
+    │   └── marketing/  marketing-manager
+    ├── solo/  (13)   solopreneur essentials
+    │   ├── dev/        frontend-developer, api-developer, software-architect, automation-tooling
+    │   ├── infra/      server-craft
+    │   ├── sdd/        sdd, sdd-planning
+    │   ├── product/    product-planning, product-operations
+    │   ├── ux/         ui-designer
+    │   ├── marketing/  content-marketer, seo-manager
+    │   └── comms/      communicator
+    ├── pro/   (24)   enterprise / agency breadth
+    │   ├── dev/        backend-systems, backend-enterprise
+    │   ├── infra/      devops-engineer, cicd-engineer, infrastructure-engineer
+    │   ├── pm/         pm-agile, pm-traditional, project-manager
+    │   ├── product/    product-manager
+    │   ├── ba/         business-analyst, ba-core, ba-modeling
+    │   ├── ux/         ux-ui-designer, ux-researcher, user-researcher, accessibility-specialist
+    │   ├── marketing/  growth-marketer, gtm-strategist, ppc-manager, smm-manager, conversion-optimizer
+    │   ├── research/   market-researcher, researcher
+    │   └── comms/      hr-recruiter
+    └── geek/   (7)   AI agent-builder stack
+        └── ai/         ml-engineer, ai-agents, rag-engineer, ml-ops, multimodal-ai, llm-integration, claude-code
 ```
 
 Each skill folder: `SKILL.md` + methodology subfolders. Each methodology: 5-file pattern (`README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`).
@@ -59,6 +71,7 @@ Each skill folder: `SKILL.md` + methodology subfolders. Each methodology: 5-file
 | User-invocable skills | 9 |
 | Knowledge skills (inside faion-knowledge) | 52 |
 | Methodologies | 1300+ |
+| Tiers | 4 (free / solo / pro / geek) |
 
 ## Related
 
