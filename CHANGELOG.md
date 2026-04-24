@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: use-case-modeling (business-analyst) — agent-integration.md (280 lines).
 - Research: knowledge-areas-detail (business-analyst) — agent-integration.md (133 lines).
 - Research: knowledge-areas-overview (business-analyst) — agent-integration.md (154 lines).
 - Research: stakeholder-analysis (business-analyst) — agent-integration.md (185 lines).
