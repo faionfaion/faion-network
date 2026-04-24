@@ -41,6 +41,7 @@
 - Research: blurred-roles-team-evolution (product-manager) — agent-integration.md (148 lines).
 - Research: product-operations (pro/product) — agent-integration.md (184 lines).
 - Research: experimentation-at-scale — agent-integration.md (253 lines).
+- Research: methodologies-summary (product-manager) — agent-integration.md (70 lines).
 - Research: learning-speed-competitive-moat — agent-integration.md (189 lines).
 - Research: product-explainability — agent-integration.md (168 lines).
 - Research: continuous-discovery-habits (product-planning) — agent-integration.md (229 lines).
