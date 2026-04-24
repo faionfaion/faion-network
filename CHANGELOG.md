@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: elicitation-techniques (business-analyst) — agent-integration.md (200 lines).
 - Research: use-case-modeling (business-analyst) — agent-integration.md (280 lines).
 - Research: knowledge-areas-detail (business-analyst) — agent-integration.md (133 lines).
 - Research: knowledge-areas-overview (business-analyst) — agent-integration.md (154 lines).
