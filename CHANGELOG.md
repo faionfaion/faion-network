@@ -32,6 +32,7 @@
 - Research: competitive-intelligence-methods — agent-integration.md (207 lines).
 - Research: product-development-trends-2026 (market-researcher) — agent-integration.md (174 lines).
 - Research: product-led-growth — agent-integration.md (146 lines).
+- Research: product-development-trends (market-researcher) — agent-integration.md (142 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
