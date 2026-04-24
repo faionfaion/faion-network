@@ -14,6 +14,7 @@
 - Research: technical-debt-management (product-manager) — agent-integration.md (161 lines).
 - Research: feedback-management (product-manager) — agent-integration.md (155 lines).
 - Research: product-explainability (product-manager) — agent-integration.md (184 lines).
+- Research: business-process-analysis — agent-integration.md (204 lines).
 - Research: frameworks — agent-integration.md (167 lines).
 - Research: user-research-at-scale — agent-integration.md (206 lines).
 - Research: continuous-discovery — agent-integration.md (207 lines).
