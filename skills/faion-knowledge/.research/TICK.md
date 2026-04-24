@@ -1,48 +1,50 @@
-# Research Tick — Always-5-Active Dispatch
+# Research Tick — Always-5-Active Worktree Dispatch
 
-**Policy:** keep 5 subagents concurrently active at all times. Each completion → dispatch one replacement from `QUEUE.txt`.
+**Policy:** keep 5 subagents concurrently active. Each agent runs in its own git worktree and ships the full lifecycle (research → edit → commit → merge-to-main). On every completion → dispatch one replacement.
 
-Two entry paths trigger this workflow:
-1. **Cron tick** (`*/5 * * * *`) — safety net: top up pool to 5 if the session has fewer live agents (e.g. after a stall).
-2. **`<task-notification>` completion** — primary signal: on every agent-complete, immediately dispatch 1 replacement.
+Cron fires every 5 minutes as a safety net (tops up pool to 5 if the session has fewer live agents).
 
 ## State files (gitignored)
 
-- `QUEUE.txt` — remaining methodology absolute paths.
-- `DONE.txt` — audit log: `path<TAB>WROTE|SKIP|FAIL<TAB>iso-date`.
-- `BRIEF.md` — committed subagent prompt template.
+- `QUEUE.txt` — remaining methodology absolute paths (one per line).
+- `DONE.txt` — audit log: `path<TAB>OK|SKIP|FAIL<TAB>iso-date`.
+- `BRIEF.md` — committed subagent prompt template. Agents do research+commit+merge themselves.
 
 ## On completion notification (primary)
 
-1. **Record.** Append to `DONE.txt`:
-   `<target-path>\tWROTE\t<iso-date>`
+1. **Parse summary line** from the returned result. Expected formats:
+   - `OK <slug> — agent-integration.md (N lines), merged to main` → success
+   - `FAIL <slug> — <reason>` → failure
 
-2. **Commit gate.** `git status --short skills/faion-knowledge/knowledge | grep agent-integration.md | wc -l`. If ≥ 5 new files:
-   - Update `CHANGELOG.md` `## [Unreleased]` `### Changed` with `- Research: enriched N more methodologies with agent-integration.md`
-   - `git add skills/faion-knowledge/knowledge/ CHANGELOG.md`
-   - Commit: `research: enrich N methodologies with agent-integration.md`
-   - Push every 3rd commit.
+2. **Record** to `DONE.txt`: `<target-path>\tOK|FAIL\t<iso-date>`.
 
-3. **Replacement dispatch.** If `QUEUE.txt` non-empty:
+3. **Pull main** (agent merged into the shared `.git` but our working copy may be stale):
+   `git -C <repo> pull --ff-only || true` (no-op if already up to date; fails loudly if main diverged).
+
+4. **Replacement dispatch.** If `QUEUE.txt` non-empty:
    - Take first line → `TARGET`, `sed -i '1d' QUEUE.txt`.
-   - If `<TARGET>/agent-integration.md` already exists: append `SKIP` to `DONE.txt`, loop to next queue line (up to 10 skips, then give up this round).
-   - Launch one `general-purpose` Agent with `BRIEF.md` + `Target: <TARGET>` as prompt, `run_in_background: true`.
+   - If `<TARGET>/agent-integration.md` already exists: append `SKIP` to DONE, loop to next queue line (up to 10 skips, then stop this round).
+   - **Launch Agent with `isolation: "worktree"`** and prompt = `BRIEF.md` contents + `\n\nTarget: <TARGET>`. `run_in_background: true`.
 
-4. **Queue empty check.** If `QUEUE.txt` empty AND no active agents: final commit/push, `CronDelete` this cron, tell user research complete.
+5. **Queue empty check.** If `QUEUE.txt` is empty AND no active agents remain:
+   - Push final state: `git push`.
+   - `CronDelete <this-cron-id>`.
+   - Report to user: `Research complete. N methodologies enriched.`
 
 ## On cron tick (safety net)
 
-1. Count new `agent-integration.md` files since last commit.
-2. Count "active agents" = recent Agent tool calls without completion notifications in this turn (heuristic: assume missing = still running).
-3. **If fewer than 5 believed active**, top up: dispatch `(5 - estimated_active)` replacements from `QUEUE.txt` using the same BRIEF + Target pattern.
-4. Run commit gate (step 2 above).
-5. Report: `Cron tick: topped up pool by N. Queue: M. Done: K.`
+1. `git -C <repo> pull --ff-only` to pick up any agent merges.
+2. Estimate active agents (heuristic: count of Agent tool calls dispatched this session without a completion notification yet).
+3. If fewer than 5 active and `QUEUE.txt` non-empty, top up: dispatch `(5 - estimated_active)` agents, each with `isolation: "worktree"`.
+4. Push any local commits we accumulated (`git -C <repo> push`).
+5. Report: `Cron tick: topped up by N. Queue: M. Done: K.`
 
-## Rules
+## Why worktree + agent-driven merge
 
-- **Drop queue lines immediately on dispatch** (before the agent returns) to prevent collision if a cron tick fires while a completion notification is being handled.
-- **Never exceed 5 concurrent agents.** If unsure, err low — a cron tick will top up.
-- **Commit in batches of 5**, push every 3 commits.
+- **Concurrency-safe.** Agents never trip on each other's working dirs. Each has its own worktree.
+- **Serialized merges.** Agents merge via `flock /tmp/faion-research-merge.lock` — one merge at a time.
+- **ff-only + rebase fallback.** Agent rebases onto latest main if needed. No force-push ever.
+- **Pre-commit hook runs.** CHANGELOG.md check passes because each agent updates it.
 
 ## Rerun from scratch
 
@@ -53,5 +55,5 @@ bash skills/faion-knowledge/.research/build-queue.sh
 
 ## Stop conditions
 
-- Queue empty + no active agents → CronDelete, done.
-- 3+ consecutive agent failures → pause, tell user, keep cron running but stop dispatching new agents until user says go.
+- Queue empty + no active agents → push, CronDelete, done.
+- 3+ consecutive FAIL results → pause, tell user, keep cron running but stop new dispatches.

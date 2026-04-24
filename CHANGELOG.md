@@ -11,6 +11,11 @@
 - **Research round 1: 5 methodologies enriched with `agent-integration.md`**
   — risk-assessment, workflows, market-research-tam-sam-som,
   competitive-intelligence, trend-analysis (pro/research/researcher).
+- Research: frameworks — agent-integration.md (167 lines).
+- Research: user-research-at-scale — agent-integration.md (206 lines).
+- **Worktree-dispatch policy for research**: each subagent now runs in its own
+  git worktree and ships the full lifecycle (research → edit → commit → merge
+  into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
 
 ### Changed
 - **Intra-domain tier reclassification round 1 (name heuristic): 90 methodology
