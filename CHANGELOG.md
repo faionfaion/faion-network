@@ -71,6 +71,7 @@
   INTEGRITY_VERBOSE=1 for detailed output
 
 ### Added
+- Research: methodologies-index — agent-integration.md (33 lines).
 - Atomic update with snapshot rollback for `scripts/update.sh`
   - Pre-update snapshot creation (tarball in `~/.cache/faion-network/snapshots/`)
   - Post-update integrity check (SKILL.md, hooks, AGENTS.md)
