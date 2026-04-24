@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: requirements-traceability (business-analyst) — agent-integration.md (192 lines).
 - Research: elicitation-techniques (business-analyst) — agent-integration.md (200 lines).
 - Research: use-case-modeling (business-analyst) — agent-integration.md (280 lines).
 - Research: knowledge-areas-detail (business-analyst) — agent-integration.md (133 lines).
