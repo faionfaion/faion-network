@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: ba-planning (business-analyst) — agent-integration.md (177 lines).
 - Research: requirements-validation (business-analyst) — agent-integration.md (162 lines).
 - Research: user-story-mapping (business-analyst) — agent-integration.md (163 lines).
 - Research: solution-assessment (business-analyst) — agent-integration.md (178 lines).
