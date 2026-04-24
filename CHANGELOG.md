@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: knowledge-areas-detail (business-analyst) — agent-integration.md (133 lines).
 - Research: knowledge-areas-overview (business-analyst) — agent-integration.md (154 lines).
 - Research: stakeholder-analysis (business-analyst) — agent-integration.md (185 lines).
 - Research: decision-analysis (business-analyst) — agent-integration.md (201 lines).
