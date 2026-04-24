@@ -13,6 +13,7 @@
 - Research: ba-governance (ba-core) — agent-integration.md (153 lines).
 - Research: ba-planning (ba-core) — agent-integration.md (278 lines).
 - Research: requirements-validation (ba-core) — agent-integration.md (167 lines).
+- Research: requirements-documentation (ba-core) — agent-integration.md (218 lines).
 - Research: solution-assessment (ba-core) — agent-integration.md (238 lines).
 - Research: process-mining-automation (ba-core) — agent-integration.md (281 lines).
 - Research: agile-ba-frameworks (ba-core) — agent-integration.md (172 lines).
