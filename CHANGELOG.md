@@ -23,6 +23,7 @@
 - Research: persona-building — agent-integration.md (137 lines).
 - Research: business-model-planning — agent-integration.md (159 lines).
 - Research: market-research-tam-sam-som (market-researcher) — agent-integration.md (201 lines).
+- Research: trend-analysis (market-researcher) — agent-integration.md (217 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
