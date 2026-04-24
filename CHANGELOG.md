@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: process-mining-automation (ba-core) — agent-integration.md (281 lines).
 - Research: agile-ba-frameworks (ba-core) — agent-integration.md (172 lines).
 - Research: data-driven-requirements (ba-core) — agent-integration.md (192 lines).
 - Research: strategy-basics (ba-core) — agent-integration.md (158 lines).
