@@ -1,34 +1,36 @@
-# Methodology Research Brief (subagent prompt template)
+# Methodology Research Brief (batch mode — 5-10 adjacent methodologies per agent)
 
-You are researching ONE methodology inside `skills/faion-knowledge/knowledge/` and shipping the change end-to-end: research → write file → update CHANGELOG → commit in your worktree → merge into `main`.
+You are researching a **batch of 5-10 adjacent methodologies** inside `skills/faion-knowledge/knowledge/` and shipping the whole batch end-to-end: research each → write each file → update CHANGELOG (single entry for batch) → commit → merge into `main`.
 
-You run inside an isolated git worktree (your parent invoked you with `isolation: "worktree"`). The worktree is on a fresh branch off `main`. The main repo path is `/home/nero/workspace/projects/faion-net/faion-network`.
+You run inside an isolated git worktree (parent invoked with `isolation: "worktree"`). Worktree is on a fresh branch off `main`. Main repo path: `/home/nero/workspace/projects/faion-net/faion-network`.
 
 ## Inputs (provided to you)
 
-- `TARGET_PATH` — absolute path to the methodology directory inside the worktree.
-  (It contains `README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`.)
+- `TARGETS` — list of absolute paths (one per line) to methodology directories. Each contains `README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`.
 
-## Step 1 — research (deep, multi-angle)
+## Step 1 — research each target
 
-1. Read the existing methodology (README first, then skim the other 4 files).
-2. **Agentic usage** — how does this methodology fit with Claude subagents? Which subagents in this repo (look in `agents/` or `skills/*/agents/` — use Glob) are relevant? What prompt patterns work best?
-3. **CLI tools & APIs** — industry standard for this methodology (WebSearch allowed).
+For EACH target path in turn, do the research steps below. Don't parallelize inside your agent — go sequentially, one methodology at a time. That's fine: the gain is fewer parent-agent turns, not per-target speed.
+
+Research per target:
+1. Read `README.md` (full), skim other four files.
+2. **Agentic usage** — Claude subagent fit; look in `agents/` or `skills/*/agents/` via Glob. Name specific agents if relevant.
+3. **CLI tools & APIs** — industry standard (WebSearch allowed).
 4. **Services & apps** — SaaS/OSS with APIs/CLIs agents can drive.
-5. **Templates & scripts** — reusable script/config/boilerplate. Inline a small script (≤50 lines bash/python) if it materially helps.
-6. **When to use / when NOT to use / where it fails** — concrete situations, not hand-waving.
-7. **Best practices** — non-obvious, from real-world usage.
-8. **AI-agent-specific gotchas** — where LLM execution breaks; human-in-the-loop checkpoints.
+5. **Templates & scripts** — inline ≤50-line script if it materially helps.
+6. **When to use / NOT use / failure modes** — concrete situations.
+7. **Best practices** — non-obvious real-world usage.
+8. **AI-agent-specific gotchas** — LLM-execution breakpoints, human-in-loop checkpoints.
 
-## Step 2 — write `agent-integration.md`
+## Step 2 — write `agent-integration.md` for EACH target
 
-Create `<TARGET_PATH>/agent-integration.md` with this exact skeleton:
+Create `<TARGET_PATH>/agent-integration.md` using this exact skeleton:
 
 ```markdown
 # Agent Integration — <Methodology Name>
 
 ## When to use
-- <bullet: concrete situation>
+- <bullet>
 
 ## When NOT to use
 - <bullet>
@@ -37,13 +39,13 @@ Create `<TARGET_PATH>/agent-integration.md` with this exact skeleton:
 - <bullet>
 
 ## Agentic workflow
-<2–4 sentences on how to drive this methodology with Claude subagents. Name specific subagents from this repo if relevant.>
+<2–4 sentences on driving this methodology with Claude subagents.>
 
 ### Recommended subagents
-- `<agent-name>` — <what it does in this flow>
+- `<agent-name>` — <what>
 
 ### Prompt pattern
-<1–2 short prompt snippets>
+<1–2 short snippets>
 
 ## CLI tools
 | Tool | Purpose | Install / docs |
@@ -54,7 +56,7 @@ Create `<TARGET_PATH>/agent-integration.md` with this exact skeleton:
 |---------|-----------------|-----------------|-------|
 
 ## Templates & scripts
-<Either: "See `templates.md` for X" OR inline a new script/template. Keep inline ≤50 lines.>
+<"See templates.md for X" OR inline script ≤50 lines>
 
 ## Best practices
 - <bullet>
@@ -66,37 +68,34 @@ Create `<TARGET_PATH>/agent-integration.md` with this exact skeleton:
 - <URL or book/paper>
 ```
 
-Rules for the file:
+Rules per file:
 - **Do not edit** existing methodology files. Only create `agent-integration.md`.
 - No filler. Every bullet specific. "Use best practices" banned.
-- Length: 150–300 lines; shorter if topic is narrow.
+- Length: 100–300 lines (shorter OK for narrow topics).
 - No emojis. English only.
-- If methodology is too thin for a useful deliverable, write a 30-line note explaining why — that's acceptable.
+- If methodology too thin for a useful deliverable: write a 20-30 line note explaining why — that's acceptable.
 
-## Step 3 — update CHANGELOG.md (in your worktree root)
+## Step 3 — update CHANGELOG.md (single batch entry)
 
-Under `## [Unreleased]` → `### Added`, append (or create if missing):
+Under `## [Unreleased]` → `### Added`, append ONE line summarizing the whole batch:
 
 ```
-- Research: <methodology-slug> — agent-integration.md (<lines> lines).
+- Research: batch of N methodologies in <group>/<subgroup> — <methodology-slug-1>, <methodology-slug-2>, ... (see agent-integration.md per dir).
 ```
 
-Keep it to one line. Don't restructure the file.
+Keep to one line. Don't restructure. If the batch spans multiple groups, say "mixed group" and list slugs.
 
 ## Step 4 — commit in your worktree
 
 ```bash
-cd <worktree-root>  # your pwd is already the worktree root
-git add skills/faion-knowledge/knowledge/<tier>/<group>/<domain>/<methodology>/agent-integration.md CHANGELOG.md
-git commit -m "research: <methodology-slug> agent-integration"
+# you're in the worktree root
+git add skills/faion-knowledge/knowledge/**/agent-integration.md CHANGELOG.md
+git commit -m "research: enrich batch of N methodologies"
 ```
 
-Commit message format: 50-char title, no body needed, no "Co-Authored-By", no emojis.
-Pre-commit hook will run. If it fails, read the error, fix, re-stage, re-commit. Never `--no-verify`.
+Commit message: 50-char title; optional body listing slugs; no "Co-Authored-By"; no emojis; no `--no-verify`. Pre-commit hook MUST pass — fix issues if it fails, re-stage, re-commit.
 
-## Step 5 — merge into main (serialized via file lock)
-
-Merges are serialized across parallel agents via a flock on `.research/merge.lock`:
+## Step 5 — merge into main (serialized via flock)
 
 ```bash
 WORKTREE=$(pwd)
@@ -107,7 +106,6 @@ flock /tmp/faion-research-merge.lock bash -euc "
   cd $MAIN_REPO
   git fetch $WORKTREE $BRANCH:refs/research/$BRANCH
   git merge --ff-only refs/research/$BRANCH || {
-    # Main moved; rebase our branch onto main then merge
     cd $WORKTREE
     git fetch $MAIN_REPO main:refs/heads/main-latest
     git rebase refs/heads/main-latest
@@ -118,21 +116,21 @@ flock /tmp/faion-research-merge.lock bash -euc "
 "
 ```
 
-If the merge step fails despite the rebase, abort: do NOT force-push, do NOT reset main. Return a FAIL status in your summary.
+If merge still fails: return FAIL, don't force-push, don't reset main.
 
 ## Step 6 — return summary (one line only)
 
 On success:
-`OK <methodology-slug> — agent-integration.md (<lines> lines), merged to main`
+`OK batch of N — <short-batch-label>, merged to main`
 
-On failure at any step:
-`FAIL <methodology-slug> — <step-name>: <reason>`
+On failure:
+`FAIL batch of N — <step-name>: <reason>`
 
-No other output. No recap. No explanation of process.
+No other output, no per-file recap.
 
 ## Hard rules
 
-- Never force-push, never `--no-verify`, never touch `main` except through the locked ff-only merge above.
-- Never edit files outside `<TARGET_PATH>` and `CHANGELOG.md`.
-- If pre-commit hook modifies files, re-stage and re-commit (not amend).
-- If anything in steps 3–5 fails irrecoverably, leave your worktree as-is and return FAIL. The parent will clean up.
+- Never force-push, never `--no-verify`, never touch `main` except via locked ff-only merge.
+- Never edit files outside target methodology dirs and CHANGELOG.md.
+- One commit for the whole batch (not per-file).
+- If mid-batch a target is already enriched (agent-integration.md exists), skip it and note in commit body.
