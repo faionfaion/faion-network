@@ -47,6 +47,7 @@
 - Research: portfolio-strategy — agent-integration.md (146 lines).
 - Research: product-led-growth (product-manager) — agent-integration.md (192 lines).
 - Research: workflows (product-manager) — agent-integration.md (175 lines).
+- Research: continuous-discovery-habits (product-manager) — agent-integration.md (278 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
