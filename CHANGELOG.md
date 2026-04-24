@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: data-driven-requirements (ba-core) — agent-integration.md (192 lines).
 - Research: strategy-basics (ba-core) — agent-integration.md (158 lines).
 - Research: requirements-lifecycle (ba-core) — agent-integration.md (180 lines).
 - Research: strategy-analysis (business-analyst) — agent-integration.md (231 lines).
