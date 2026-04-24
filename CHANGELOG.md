@@ -38,6 +38,7 @@
 - Research: product-operations (pro/product) — agent-integration.md (184 lines).
 - Research: experimentation-at-scale — agent-integration.md (253 lines).
 - Research: learning-speed-competitive-moat — agent-integration.md (189 lines).
+- Research: product-explainability — agent-integration.md (168 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
