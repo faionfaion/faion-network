@@ -6,7 +6,7 @@
 
 ## Entry Point
 
-Invoked via [faion-sdd](../faion-sdd/SKILL.md) orchestrator or [faion-net](../faion-net/CLAUDE.md).
+Invoked directly as `/faion-sdd-execution`, or referenced from SDD knowledge at [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/).
 
 ---
 

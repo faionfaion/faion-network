@@ -1,6 +1,6 @@
 #!/bin/bash
 # Auto-update hook for faion-network
-# Runs once per session when /faion-net is invoked
+# Runs once per session when /faion-knowledge is invoked
 
 CLAUDE_DIR="${HOME}/.claude"
 UPDATE_CHECK_FILE="/tmp/faion-network-update-check-$$"

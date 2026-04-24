@@ -5,7 +5,7 @@ tier: free
 user-invocable: true
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, WebSearch, WebFetch, AskUserQuestion
 ---
-> **Entry point:** `/faion-brainstorm` — invoke directly or via `/faion-net`.
+> **Entry point:** `/faion-brainstorm` — invoke directly.
 
 # Multi-Agent Brainstorm Skill
 

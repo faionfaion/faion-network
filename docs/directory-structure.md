@@ -19,9 +19,12 @@ Claude Code loads `.claude/` from TWO locations:
 │   ├── settings.json                   # Global settings
 │   │
 │   ├── skills/                         # ALL skills (global + project)
-│   │   ├── faion-net/                  # Global: main orchestrator
-│   │   ├── faion-sdd/                  # Global: SDD workflow
-│   │   ├── faion-{role}/               # Global: role-based skills (e.g., faion-software-developer)
+│   │   ├── faion-knowledge/            # Global: umbrella knowledge (52 domain knowledge bases)
+│   │   │   └── knowledge/              #   ├── dev/, ai/, infra/, product/, pm/, ba/, ux/, marketing/, research/, comms/, sdd/
+│   │   ├── faion-brainstorm/           # Global: multi-agent brainstorm
+│   │   ├── faion-feature-executor/     # Global: SDD feature executor
+│   │   ├── faion-sdd-execution/        # Global: SDD quality gates + reflexion
+│   │   ├── faion-improver/             # Global: session-based improvement
 │   │   └── {project}-*/                # Project: gitignored
 │   │
 │   ├── agents/                         # ALL agents (global + project)

@@ -44,5 +44,5 @@ Phase 1-7: (optional, when requested)
 ## Related Skills
 
 - `faion-brainstorm` (multi-agent brainstorming)
-- `faion-server-craft` (server config/tuning)
 - `faion-sdd-execution` (quality gates, reflexion learning)
+- `faion-knowledge/knowledge/infra/server-craft/` (server config/tuning)

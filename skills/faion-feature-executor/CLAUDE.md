@@ -1,6 +1,6 @@
 # faion-feature-executor
 
-> **Entry Point:** Invoked via [/faion-net](../faion-net/CLAUDE.md) or directly as `/faion-feature-executor`
+> **Entry Point:** `/faion-feature-executor` — invoked directly.
 
 ## When to Use This Skill
 
@@ -78,12 +78,12 @@ SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> [FEATURE-EXECUTOR] -> DONE
 
 ## Related Skills
 
-| Skill | Relationship |
-|-------|--------------|
-| [faion-net](../faion-net/CLAUDE.md) | Parent orchestrator, routes feature execution here |
-| [faion-sdd](../faion-sdd/CLAUDE.md) | Provides task specs and workflow |
-| [faion-software-developer](../faion-software-developer/CLAUDE.md) | Executes code tasks |
-| [faion-devops-engineer](../faion-devops-engineer/CLAUDE.md) | Executes infrastructure tasks |
+| Skill/Knowledge | Relationship |
+|-----------------|--------------|
+| [faion-knowledge](../faion-knowledge/CLAUDE.md) | Umbrella knowledge layer (domains, methodologies) |
+| [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/) | Provides task specs and workflow |
+| [faion-knowledge/knowledge/dev/software-developer/](../faion-knowledge/knowledge/dev/software-developer/) | Code task patterns |
+| [faion-knowledge/knowledge/infra/devops-engineer/](../faion-knowledge/knowledge/infra/devops-engineer/) | Infrastructure task patterns |
 
 ---
 

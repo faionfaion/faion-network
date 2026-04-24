@@ -4,7 +4,7 @@
 
 You're one person. You want to earn $20K+/month working for yourself. The challenge? You need to be a product manager, developer, marketer, and business strategist — all at once.
 
-**Faion Network solves this.** It's a complete AI framework with 15 role-based skills and 501 battle-tested methodologies. Each skill is an expert in their field — from market research to product management to marketing.
+**Faion Network solves this.** A complete AI framework with 52 domain knowledge bases and 1,300+ battle-tested methodologies, plus applied-workflow skills for SDD execution, multi-agent brainstorming, and session-based improvement.
 
 Stop reading endless guides. Stop watching tutorials. Start building.
 
@@ -14,9 +14,9 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| **Skills** | 15 | Role-based expertise (Product, Dev, Marketing, DevOps, UX, BA, PM, HR...) |
-| **Agent** | 1 | Task executor with maximum autonomy (YOLO mode) |
-| **Methodologies** | 501 | Battle-tested frameworks (Project Management Framework 7/8, Business Analysis Framework, 10 Usability Heuristics, GTM) |
+| **Umbrella skill** | 1 | `faion-knowledge` — 52 domain knowledge bases routed by topic |
+| **Applied skills** | 5 | Brainstorm, SDD execution, feature executor, improver, media ops |
+| **Methodologies** | 1,300+ | Battle-tested frameworks across dev, AI, infra, product, PM, BA, UX, marketing, research |
 
 ### Who This Is For
 
@@ -28,8 +28,6 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 ## Quick Start
 
-Get your first result in under 5 minutes.
-
 ```bash
 # 1. Clone the repository
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
@@ -37,11 +35,9 @@ git clone https://github.com/faionfaion/faion-network.git ~/.claude
 # 2. Run Claude Code
 claude
 
-# 3. Type the main orchestrator command:
-/faion-net
+# 3. Invoke the knowledge umbrella:
+/faion-knowledge
 ```
-
-That's it. You now have access to the entire framework.
 
 ---
 
@@ -49,34 +45,27 @@ That's it. You now have access to the entire framework.
 
 ### Prerequisites
 
-- **Claude Code** CLI installed ([docs.anthropic.com/en/docs/claude-code](https://docs.anthropic.com/en/docs/claude-code))
+- **Claude Code** CLI ([docs.anthropic.com/en/docs/claude-code](https://docs.anthropic.com/en/docs/claude-code))
 - **Node.js** 18+ (for frontend development)
-- **Python** 3.11+ (for Django/Flask projects)
+- **Python** 3.11+ (for Django/FastAPI projects)
 
-### Step-by-Step
-
-**Option A: Fresh Installation**
+### Fresh Installation
 
 ```bash
-# Clone to Claude's config directory
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
-# Verify installation
-ls ~/.claude/skills      # Should show 15 faion-* folders
-ls ~/.claude/agents      # Should show faion-task-YOLO-executor-opus-agent.md
+# Verify
+ls ~/.claude/skills       # faion-knowledge, faion-brainstorm, faion-feature-executor, ...
+ls ~/.claude/skills/faion-knowledge/knowledge/   # dev/ ai/ infra/ product/ pm/ ba/ ux/ marketing/ research/ comms/ sdd/
 ```
 
-**Option B: Add to Existing Setup**
+### Merge into Existing Setup
 
 ```bash
-# Backup your current setup
 cp -r ~/.claude ~/.claude.backup
-
-# Clone and merge
 git clone https://github.com/faionfaion/faion-network.git temp
-cp -r temp/skills/faion-* ~/.claude/skills/
-cp -r temp/agents/faion-* ~/.claude/agents/
-cp -r temp/docs/* ~/.claude/docs/
+cp -r temp/skills/* ~/.claude/skills/
+cp -r temp/agents/faion-* ~/.claude/agents/ 2>/dev/null || true
 rm -rf temp
 ```
 
@@ -86,7 +75,7 @@ rm -rf temp
 
 ### Recommended Settings
 
-Add to your `~/.claude/settings.json`:
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -98,10 +87,8 @@ Add to your `~/.claude/settings.json`:
 
 ### Optional: API Keys
 
-Some skills benefit from external APIs:
-
 ```bash
-# ~/.secrets/openai (for DALL-E image generation)
+# ~/.secrets/openai (for image generation)
 export OPENAI_API_KEY="sk-..."
 
 # ~/.secrets/cloudflare (for domain management)
@@ -111,151 +98,107 @@ export CF_API_KEY="..."
 
 ---
 
-## Usage Examples
+## Usage
 
-### Start with Main Orchestrator
+### Knowledge Umbrella
 
 ```bash
 claude
-# Type: /faion-net
+# Invoke: /faion-knowledge
 ```
 
-The main orchestrator routes your request to the appropriate skill:
-- Research questions → `faion-researcher`
-- Product planning → `faion-product-manager`
-- Development tasks → `faion-software-developer`
-- Marketing needs → `faion-marketing-manager`
+All domain knowledge lives under `faion-knowledge/knowledge/<group>/<name>/`. Read domain content on demand:
+
+- Dev: `knowledge/dev/python-developer/`, `knowledge/dev/frontend-developer/`, ...
+- AI: `knowledge/ai/ai-agents/`, `knowledge/ai/rag-engineer/`, ...
+- Infra: `knowledge/infra/devops-engineer/`, `knowledge/infra/server-craft/`, ...
+- Product/PM/BA/UX/Marketing/Research/Comms/SDD — see [faion-knowledge/SKILL.md](skills/faion-knowledge/SKILL.md)
 
 ### SDD Workflow
 
-```bash
-claude
-# Type: /faion-sdd
-```
-
-Specification-Driven Development workflow:
-1. Create specifications (spec.md)
-2. Design architecture (design.md)
-3. Generate implementation plan
-4. Execute tasks with quality gates
-
-### Execute Feature with Quality Gates
+Read `knowledge/sdd/sdd/` and `knowledge/sdd/sdd-planning/` for specs, designs, implementation plans. Then:
 
 ```bash
-claude
-# Type: /faion-feature-executor
+/faion-feature-executor {project} {feature}
 ```
 
-Sequential task execution with:
-- Test runs after each task
-- Coverage verification
-- Code review cycle until all issues fixed
-- Automatic task status updates
+Sequential task execution with test runs, coverage checks, and code review cycles.
+
+### Multi-Agent Brainstorm
+
+```bash
+/faion-brainstorm How to improve our deployment pipeline?
+```
+
+Diverge (10 research agents) → Converge (synthesis) → Review (8 adversarial reviewers) → Finalize.
+
+### Session Improvement
+
+```bash
+/faion-improver
+```
+
+Capture patterns, mistakes, and decisions from the current session into `.aidocs/memory/`.
 
 ---
 
-## Skills Overview (15)
+## Knowledge Structure
 
-### Orchestrators
+```
+skills/
+├── faion-knowledge/                   # Umbrella — all domain knowledge
+│   ├── SKILL.md
+│   ├── CLAUDE.md
+│   └── knowledge/
+│       ├── dev/          (13)  Python, JS, Go, Rust, Java, C#, backend, frontend, API, testing, architecture, automation, code quality
+│       ├── ai/            (7)  ML, agents, RAG, ML ops, multimodal, LLM integration, Claude Code
+│       ├── infra/         (4)  DevOps, CI/CD, infrastructure, server craft
+│       ├── product/       (3)  PM, planning, operations
+│       ├── pm/            (3)  Project, Agile, Traditional
+│       ├── ba/            (3)  BA, core, modeling
+│       ├── ux/            (5)  UX/UI, UI, UX research, user research, accessibility
+│       ├── marketing/     (8)  Marketing, GTM, content, growth, CRO, SEO, PPC, SMM
+│       ├── research/      (2)  Researcher, market research
+│       ├── comms/         (2)  Communicator, HR recruiter
+│       └── sdd/           (2)  SDD, SDD planning
+├── faion-brainstorm/                  # Multi-agent diverge/converge/review
+├── faion-sdd-execution/               # Quality gates, reflexion learning
+├── faion-feature-executor/            # Sequential SDD task execution
+├── faion-improver/                    # Session-based audit/improve loop
+└── faion-media-ops/                   # Media pipeline templates
+```
 
-| Skill | Purpose |
-|-------|---------|
-| `faion-net` | Universal orchestrator — routes to appropriate domain skill |
-| `faion-sdd` | SDD workflow (specs, designs, tasks, lifecycle) |
-| `faion-feature-executor` | Execute tasks with quality gates |
-
-### Domain Skills
-
-| Skill | Methodologies | Purpose |
-|-------|---------------|---------|
-| `faion-researcher` | 29 | Idea generation, market research, personas, validation |
-| `faion-product-manager` | 33 | MVP/MLP, RICE, MoSCoW, roadmaps, OKRs |
-| `faion-software-developer` | 82 | Python, JS/TS, Django, React, APIs, testing |
-| `faion-devops-engineer` | 30 | Docker, K8s, Terraform, CI/CD, monitoring |
-| `faion-ml-engineer` | 30 | LLM APIs, RAG, embeddings, AI Agents, MCP |
-| `faion-marketing-manager` | 77 | GTM, landing pages, SEO/GEO/AEO, ads, email |
-| `faion-project-manager` | 46 | Project Management Framework 7/8, PM tools, risk, EVM, AI in PM |
-| `faion-business-analyst` | 24 | Business Analysis Framework, requirements, stakeholder analysis |
-| `faion-ux-ui-designer` | 75 | 10 Usability Heuristics, accessibility, WCAG 2.2 |
-| `faion-hr-recruiter` | 45 | Talent acquisition, employer branding, onboarding |
-| `faion-communicator` | 9 | Mom Test, conflict resolution, SPIN selling |
-| `faion-claude-code` | — | Skills, agents, hooks, MCP server configuration |
-
----
-
-## Agent
-
-One autonomous executor for maximum efficiency:
-
-| Agent | Purpose |
-|-------|---------|
-| `faion-task-YOLO-executor-opus-agent` | Maximum autonomy task execution. Full framework knowledge, all tools access, no interruptions. |
-
-The agent has access to all 502 methodologies and executes tasks using the appropriate skill's knowledge.
-
----
-
-## Methodology Categories
-
-| Prefix | Domain | Count |
-|--------|--------|-------|
-| M-RES-* | Research | 29 |
-| M-PRD-* | Product Management | 33 |
-| M-DEV-*, M-BP-* | Development | 82 |
-| M-OPS-*, M-DOC-*, M-K8S-*, M-TF-* | DevOps | 30 |
-| M-ML-* | ML/AI | 30 |
-| M-PM-*, M-PMT-* | Project Management | 46 |
-| M-BA-* | Business Analysis | 24 |
-| M-UX-* | UX/UI Design | 75 |
-| M-COM-* | Communication | 9 |
-| M-SDD-* | SDD Workflow | 17 |
-| semantic naming | Marketing | 77 |
-| semantic naming | HR/Recruiting | 45 |
-| **TOTAL** | | **501** |
+Each methodology = 5-file pattern: `README.md`, `checklist.md`, `templates.md`, `examples.md`, `llm-prompts.md`.
 
 ---
 
 ## Troubleshooting
 
-### Skills Not Found
+### Skill Not Found
 
 ```
 Error: Skill 'faion-*' not found
 ```
 
-**Solution:** Verify skills are in correct location:
-```bash
-ls ~/.claude/skills/faion-*/SKILL.md
+Only top-level skills are invocable: `faion-knowledge`, `faion-brainstorm`, `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`, `faion-media-ops`.
+
+Domain knowledge is NOT invocable as sub-skills — load via Read:
+
+```
+Read: ~/.claude/skills/faion-knowledge/knowledge/dev/python-developer/SKILL.md
 ```
 
 ### Permission Denied
 
-```
-Error: Permission denied for Bash tool
-```
+Update `settings.json`:
 
-**Solution:** Update settings.json to allow required tools:
 ```json
-{
-  "permissions": {
-    "allow": ["Bash", "Read", "Write", "Edit"]
-  }
-}
+{"permissions": {"allow": ["Bash", "Read", "Write", "Edit"]}}
 ```
-
-### Context Too Large
-
-```
-Error: Context limit exceeded
-```
-
-**Solution:** Use Task tool with subagents to split work into smaller chunks.
 
 ---
 
 ## Updating
-
-Keep your framework up to date:
 
 ```bash
 cd ~/.claude
@@ -274,16 +217,12 @@ git pull origin master
 
 **Full Documentation:** [faion.net](https://faion.net)
 
-- 501 Methodologies with step-by-step guides
-- Real success stories
-- Premium support
-
 ### Licensing
 
-- **Free:** Personal learning, non-commercial projects (attribution required)
+- **Free:** Personal learning, non-commercial (attribution required)
 - **Solo ($19/mo):** Ship your own commercial products
 - **Pro ($35/mo):** Client and agency work, full professional toolkit
-- **Geek ($99/mo):** AI agents, ML, RAG — golden shelf access
+- **Geek ($99/mo):** AI agents, ML, RAG — advanced methodologies
 - **Team ($35/seat/mo):** Organization management, Pro access per seat
 - **Ultimate ($2,100/yr):** 20 seats, Geek access, dedicated support
 

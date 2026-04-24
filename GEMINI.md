@@ -22,8 +22,9 @@
 **Full documentation:** [docs/directory-structure.md](docs/directory-structure.md)
 
 ```
-~/.claude/                    # Global framework (faion-network)
-├── skills/faion-{role}/      # Role-based skills (e.g., faion-software-developer)
+~/.claude/                                     # Global framework (faion-network)
+├── skills/faion-knowledge/knowledge/<group>/  # Umbrella knowledge (dev/, ai/, infra/, product/, ...)
+├── skills/faion-{applied}/                    # Applied tools (brainstorm, feature-executor, improver, ...)
 ├── agents/faion-*-agent.md
 └── docs/
 

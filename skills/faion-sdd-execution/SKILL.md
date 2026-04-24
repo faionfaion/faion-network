@@ -5,7 +5,7 @@ tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash(ls:*), Task, AskUserQuestion, TodoWrite
 ---
-> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+> **Entry point:** `/faion-sdd-execution` — invoke directly for SDD quality gates, code review, and reflexion learning.
 
 # SDD Execution Sub-Skill
 

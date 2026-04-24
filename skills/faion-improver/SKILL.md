@@ -9,7 +9,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, TaskCreate, TaskUpdat
 
 Turns the current session's experience into persistent knowledge. **First priority: analyze what happened THIS session** — what was built, what broke, what patterns emerged. Then optionally investigate broader system state.
 
-**Entry point:** `/faion-net` (routes here for improvement/audit/retrospective tasks)
+**Entry point:** `/faion-improver` (invoked directly)
 
 ---
 
@@ -70,7 +70,7 @@ Group findings by priority:
 
 Group findings by scope:
 - **System** — server configs, kernel tuning, firewall, packages → apply directly (Phase 4)
-- **Project** — code changes, API improvements, new features, refactoring → create SDD tasks via `Skill(faion-sdd-planning)` (Phase 4b)
+- **Project** — code changes, API improvements, new features, refactoring → create SDD tasks using `faion-knowledge/knowledge/sdd/sdd-planning/` (Phase 4b)
 
 This distinction is important: system improvements are applied in the current session, project improvements go through SDD workflow with proper specs, design, and implementation plans.
 
@@ -135,7 +135,7 @@ For findings that require code changes, new features, or architectural work — 
 
 1. Classify as feature or improvement
 2. Create `.aidocs/improvements/AI-NNN-*.md` or `.aidocs/backlog/feature-NNN-*/`
-3. If user approves full planning → `Skill(faion-sdd-planning)` for spec + design + implementation plan
+3. If user approves full planning → read `faion-knowledge/knowledge/sdd/sdd-planning/` for spec + design + implementation plan guidance
 4. If user wants quick tracking → create task files in `.aidocs/todo/`
 
 Examples of project-scope findings:
@@ -184,7 +184,7 @@ If the session produced enough domain knowledge:
 2. Write SKILL.md with frontmatter, decision tree, methodology list
 3. Write CLAUDE.md with overview
 4. Create methodology folders with 5-file structure
-5. Register in faion-net routing
+5. Register in faion-knowledge routing
 6. Commit to faion-network repo
 
 ---
@@ -223,9 +223,9 @@ If the session produced enough domain knowledge:
 ## Integration Points
 
 - **faion-brainstorm**: Multi-agent brainstorming for improvement ideas
-- **faion-server-craft**: Server-specific configurations and tuning
-- **faion-devops-engineer**: Infrastructure and CI/CD improvements
-- **faion-sdd**: SDD workflow improvements
+- **faion-knowledge/knowledge/infra/server-craft/**: Server-specific configurations and tuning
+- **faion-knowledge/knowledge/infra/devops-engineer/**: Infrastructure and CI/CD improvements
+- **faion-knowledge/knowledge/sdd/sdd/**: SDD workflow improvements
 - **.aidocs/memory/**: Project-specific pattern/mistake/decision capture
 
 ---

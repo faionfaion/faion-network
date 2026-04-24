@@ -5,7 +5,7 @@ tier: solo
 user-invocable: false
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Task, TodoWrite, AskUserQuestion
 ---
-> **Entry point:** `/faion-net` — invoke this skill for automatic routing to the appropriate domain.
+> **Entry point:** `/faion-feature-executor` — invoked directly.
 
 # Feature Executor Skill
 
@@ -82,12 +82,12 @@ questions:
 
 | If you need... | Use | Why |
 |----------------|-----|-----|
-| Create tasks before execution | [faion-sdd](../faion-sdd/) | No tasks in todo/ yet |
-| Execute single task | [faion-software-developer](../faion-software-developer/) | Direct execution faster |
+| Create tasks before execution | [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/) | No tasks in todo/ yet |
+| Execute single task | [faion-knowledge/knowledge/dev/software-developer/](../faion-knowledge/knowledge/dev/software-developer/) | Direct execution faster |
 | Execute multiple dependent tasks | This skill | Sequential execution with quality gates |
-| Execute independent tasks | [faion-sdd](../faion-sdd/) | Parallelize via SDD |
-| CI/CD integration | [faion-devops-engineer](../faion-devops-engineer/) | Infrastructure tasks |
-| Return to orchestrator | [faion-net](../faion-net/) | Multi-domain coordination |
+| Execute independent tasks | [faion-knowledge/knowledge/sdd/sdd/](../faion-knowledge/knowledge/sdd/sdd/) | Parallelize via SDD |
+| CI/CD integration | [faion-knowledge/knowledge/infra/devops-engineer/](../faion-knowledge/knowledge/infra/devops-engineer/) | Infrastructure tasks |
+| Broad domain knowledge | [faion-knowledge](../faion-knowledge/) | Umbrella knowledge |
 
 ### Quality Modes
 
