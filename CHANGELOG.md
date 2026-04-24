@@ -16,6 +16,7 @@
 - Research: continuous-discovery — agent-integration.md (207 lines).
 - Research: opportunity-solution-trees — agent-integration.md (159 lines).
 - Research: business-model-research — agent-integration.md (178 lines).
+- Research: business-model-research (market-researcher) — agent-integration.md (201 lines).
 - Research: distribution-channel-research — agent-integration.md (145 lines).
 - Research: agent-invocation — agent-integration.md (166 lines).
 - Research: competitor-analysis (researcher) — agent-integration.md (162 lines).
