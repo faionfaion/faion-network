@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: user-story-mapping (business-analyst) — agent-integration.md (163 lines).
 - Research: solution-assessment (business-analyst) — agent-integration.md (178 lines).
 - Research: process-mining-automation — agent-integration.md (245 lines).
 - Research: agile-ba-frameworks — agent-integration.md (188 lines).
