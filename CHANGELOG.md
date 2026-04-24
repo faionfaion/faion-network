@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: cqrs-pattern (code-quality) — agent-integration.md (159 lines).
 - Research: domain-driven-design (code-quality) — agent-integration.md (150 lines).
 - Research: strategy-analysis (ba-core) — agent-integration.md (184 lines).
 - Research: requirements-prioritization (ba-core) — agent-integration.md (250 lines).
