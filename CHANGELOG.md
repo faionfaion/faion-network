@@ -30,6 +30,7 @@
 - Research: agile-ba-frameworks — agent-integration.md (188 lines).
 - Research: data-analysis (ba-modeling) — agent-integration.md (186 lines).
 - Research: ba-trends-summary — agent-integration.md (39 lines, too-thin note).
+- Research: ba-trends-summary (ba-core) — agent-integration.md (40 lines, too-thin note).
 - Research: data-driven-requirements (business-analyst) — agent-integration.md (166 lines).
 - Research: decision-analysis (ba-modeling) — agent-integration.md (159 lines).
 - Research: use-case-modeling (ba-modeling) — agent-integration.md (182 lines).
