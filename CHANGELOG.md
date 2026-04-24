@@ -6,8 +6,11 @@
 - **Methodology research subsystem (`skills/faion-knowledge/.research/`):**
   per-methodology `agent-integration.md` enrichment loop. Subagent researches
   each methodology for agentic workflow, CLI tools, services, when-to-use /
-  when-NOT-to-use, failure modes. Driven by 5-min cron + TICK.md workflow
-  over 1275-item queue.
+  when-NOT-to-use, failure modes. Always-5-active dispatch policy (cron as
+  safety net; completion notifications drive replacement).
+- **Research round 1: 5 methodologies enriched with `agent-integration.md`**
+  — risk-assessment, workflows, market-research-tam-sam-som,
+  competitive-intelligence, trend-analysis (pro/research/researcher).
 
 ### Changed
 - **Intra-domain tier reclassification round 1 (name heuristic): 90 methodology

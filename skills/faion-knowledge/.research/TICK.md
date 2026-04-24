@@ -1,50 +1,57 @@
-# Research Tick — Per-Cron Workflow
+# Research Tick — Always-5-Active Dispatch
 
-Run every 5 minutes. One tick = dispatch **5 parallel subagents**, each researching one methodology.
+**Policy:** keep 5 subagents concurrently active at all times. Each completion → dispatch one replacement from `QUEUE.txt`.
 
-## Inputs (state files, gitignored)
+Two entry paths trigger this workflow:
+1. **Cron tick** (`*/5 * * * *`) — safety net: top up pool to 5 if the session has fewer live agents (e.g. after a stall).
+2. **`<task-notification>` completion** — primary signal: on every agent-complete, immediately dispatch 1 replacement.
 
-- `QUEUE.txt` — remaining methodology absolute paths (one per line). Built once by `build-queue.sh`.
-- `DONE.txt` — completed methodology paths (append-only audit).
+## State files (gitignored)
+
+- `QUEUE.txt` — remaining methodology absolute paths.
+- `DONE.txt` — audit log: `path<TAB>WROTE|SKIP|FAIL<TAB>iso-date`.
 - `BRIEF.md` — committed subagent prompt template.
 
-## Tick procedure
+## On completion notification (primary)
 
-1. **Queue check.** If `QUEUE.txt` is missing or empty:
-   - If missing → run `bash skills/faion-knowledge/.research/build-queue.sh` then continue.
-   - If empty → research complete. Report to user, `CronList` + `CronDelete` this cron, and stop.
+1. **Record.** Append to `DONE.txt`:
+   `<target-path>\tWROTE\t<iso-date>`
 
-2. **Pick next 5 methodologies.** Read first 5 lines of `QUEUE.txt` → `TARGET_PATHS` (array). If fewer than 5 remain, take what's left.
+2. **Commit gate.** `git status --short skills/faion-knowledge/knowledge | grep agent-integration.md | wc -l`. If ≥ 5 new files:
+   - Update `CHANGELOG.md` `## [Unreleased]` `### Changed` with `- Research: enriched N more methodologies with agent-integration.md`
+   - `git add skills/faion-knowledge/knowledge/ CHANGELOG.md`
+   - Commit: `research: enrich N methodologies with agent-integration.md`
+   - Push every 3rd commit.
 
-3. **Skip already-enriched.** For each target, if `<TARGET_PATH>/agent-integration.md` already exists, append to `DONE.txt` with marker `SKIP` and omit from dispatch.
+3. **Replacement dispatch.** If `QUEUE.txt` non-empty:
+   - Take first line → `TARGET`, `sed -i '1d' QUEUE.txt`.
+   - If `<TARGET>/agent-integration.md` already exists: append `SKIP` to `DONE.txt`, loop to next queue line (up to 10 skips, then give up this round).
+   - Launch one `general-purpose` Agent with `BRIEF.md` + `Target: <TARGET>` as prompt, `run_in_background: true`.
 
-4. **Drop picked lines from QUEUE.txt IMMEDIATELY** (before dispatch) to avoid collision with concurrent ticks or prior still-running agents:
-   `sed -i "1,5d" skills/faion-knowledge/.research/QUEUE.txt` (use actual count if <5).
+4. **Queue empty check.** If `QUEUE.txt` empty AND no active agents: final commit/push, `CronDelete` this cron, tell user research complete.
 
-5. **Dispatch 5 general-purpose Agents IN PARALLEL** (single message, multiple Agent tool calls):
-   - Each: `description`: `Research methodology: <basename>`, `subagent_type`: `general-purpose`
-   - Each: `prompt` = full contents of `BRIEF.md` + final line `Target: <TARGET_PATH>`
-   - Launch async (tool returns immediately); rely on completion notifications, or SendMessage to check, but do NOT block this tick.
+## On cron tick (safety net)
 
-6. **This tick ends after dispatch.** Completion notifications arrive as the agents finish. When each one completes:
-   - Append `TARGET_PATH\tWROTE\t<date-iso>` to `DONE.txt`.
-   - Count new `agent-integration.md` files since last commit. If ≥ 5:
-     - `git add skills/faion-knowledge/knowledge/ CHANGELOG.md`
-     - Update `CHANGELOG.md` under `## [Unreleased]` `### Changed` with `- Research: enriched N methodologies`
-     - Commit: `research: add agent-integration.md for N methodologies (round R)`
-     - Push every 3rd commit.
+1. Count new `agent-integration.md` files since last commit.
+2. Count "active agents" = recent Agent tool calls without completion notifications in this turn (heuristic: assume missing = still running).
+3. **If fewer than 5 believed active**, top up: dispatch `(5 - estimated_active)` replacements from `QUEUE.txt` using the same BRIEF + Target pattern.
+4. Run commit gate (step 2 above).
+5. Report: `Cron tick: topped up pool by N. Queue: M. Done: K.`
 
-7. **Report to user after dispatch** (one line):
-   `Tick R: launched 5 agents (<basename-list>). Queue remaining: N. Done total: M.`
+## Rules
 
-## Stop conditions
+- **Drop queue lines immediately on dispatch** (before the agent returns) to prevent collision if a cron tick fires while a completion notification is being handled.
+- **Never exceed 5 concurrent agents.** If unsure, err low — a cron tick will top up.
+- **Commit in batches of 5**, push every 3 commits.
 
-- Queue empty → complete, delete cron.
-- 3+ consecutive agent failures → pause, tell user, keep cron paused (await guidance).
-
-## Rerun
+## Rerun from scratch
 
 ```bash
 rm skills/faion-knowledge/.research/QUEUE.txt skills/faion-knowledge/.research/DONE.txt
 bash skills/faion-knowledge/.research/build-queue.sh
 ```
+
+## Stop conditions
+
+- Queue empty + no active agents → CronDelete, done.
+- 3+ consecutive agent failures → pause, tell user, keep cron running but stop dispatching new agents until user says go.
