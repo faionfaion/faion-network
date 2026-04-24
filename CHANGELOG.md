@@ -19,6 +19,7 @@
 - Research: distribution-channel-research — agent-integration.md (145 lines).
 - Research: agent-invocation — agent-integration.md (166 lines).
 - Research: competitor-analysis (researcher) — agent-integration.md (162 lines).
+- Research: competitive-intelligence (market-researcher) — agent-integration.md (187 lines).
 - Research: persona-building — agent-integration.md (137 lines).
 - Research: business-model-planning — agent-integration.md (159 lines).
 - Research: market-research-tam-sam-som (market-researcher) — agent-integration.md (201 lines).
