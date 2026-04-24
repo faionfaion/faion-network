@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: elicitation-techniques (ba-core) — agent-integration.md (191 lines).
 - Research: stakeholder-analysis (ba-core) — agent-integration.md (173 lines).
 - Research: strategy-methods (ba-core) — agent-integration.md (220 lines).
 - Research: ba-governance (ba-core) — agent-integration.md (153 lines).
