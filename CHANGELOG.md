@@ -56,6 +56,7 @@
 - Research: stakeholder-management — agent-integration.md (156 lines).
 - Research: stakeholder-management (product-manager) — agent-integration.md (182 lines).
 - Research: interface-analysis (ba-modeling) — agent-integration.md (134 lines).
+- Research: interface-analysis (business-analyst) — agent-integration.md (167 lines).
 - Research: blurred-roles-team-evolution — agent-integration.md (131 lines).
 - Research: portfolio-strategy (product-manager) — agent-integration.md (157 lines).
 - Research: blurred-roles-team-evolution (product-manager) — agent-integration.md (148 lines).
