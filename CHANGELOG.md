@@ -13,6 +13,9 @@
   competitive-intelligence, trend-analysis (pro/research/researcher).
 - Research: frameworks — agent-integration.md (167 lines).
 - Research: user-research-at-scale — agent-integration.md (206 lines).
+- Research: continuous-discovery — agent-integration.md (207 lines).
+- Research: opportunity-solution-trees — agent-integration.md (159 lines).
+- Research: business-model-research — agent-integration.md (178 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
