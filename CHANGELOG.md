@@ -39,6 +39,7 @@
 - Research: stakeholder-management — agent-integration.md (156 lines).
 - Research: stakeholder-management (product-manager) — agent-integration.md (182 lines).
 - Research: blurred-roles-team-evolution — agent-integration.md (131 lines).
+- Research: portfolio-strategy (product-manager) — agent-integration.md (157 lines).
 - Research: blurred-roles-team-evolution (product-manager) — agent-integration.md (148 lines).
 - Research: product-operations (pro/product) — agent-integration.md (184 lines).
 - Research: experimentation-at-scale — agent-integration.md (253 lines).
