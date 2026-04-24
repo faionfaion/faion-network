@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/dev/software-developer — ruby-rails-patterns, csharp-background-services, java-spring, php-eloquent, api-gateway-patterns, csharp-aspnet-core, ruby-activerecord, domain-driven-design (see agent-integration.md per dir).
 - Research: TICK.md — explicit "main thread orchestrates only, agents do the work" rule.
 - Research: cqrs-pattern (code-quality) — agent-integration.md (159 lines).
 - Research: domain-driven-design (code-quality) — agent-integration.md (150 lines).
