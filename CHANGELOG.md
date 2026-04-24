@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- **Methodology research subsystem (`skills/faion-knowledge/.research/`):**
+  per-methodology `agent-integration.md` enrichment loop. Subagent researches
+  each methodology for agentic workflow, CLI tools, services, when-to-use /
+  when-NOT-to-use, failure modes. Driven by 5-min cron + TICK.md workflow
+  over 1275-item queue.
+
 ### Changed
 - **Intra-domain tier reclassification round 1 (name heuristic): 90 methodology
   folders promoted to higher tier** — enterprise stacks
