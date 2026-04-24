@@ -81,6 +81,7 @@
 - Research: audience-segmentation — agent-integration.md (141 lines).
 - Research: product-development-trends — agent-integration.md (133 lines).
 - Research: survey-design — agent-integration.md (158 lines).
+- Research: market-researcher/risk-assessment — agent-integration.md (162 lines).
 - Atomic update with snapshot rollback for `scripts/update.sh`
   - Pre-update snapshot creation (tarball in `~/.cache/faion-network/snapshots/`)
   - Post-update integrity check (SKILL.md, hooks, AGENTS.md)
