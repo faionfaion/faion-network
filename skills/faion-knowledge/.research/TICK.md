@@ -2,6 +2,17 @@
 
 **Policy:** keep 5 subagents concurrently active. Each agent processes a **batch of 5-10 adjacent methodologies** from `QUEUE.txt` (each in its own worktree, full lifecycle). On every completion → dispatch one replacement batch.
 
+## Main-thread rule: orchestration only
+
+The parent agent NEVER does the actual work — no research, no file writes, no commits, no merges. Its job is purely:
+- pop paths from `QUEUE.txt`
+- dispatch worktree subagents
+- record `DONE.txt`
+- run `git pull` / `git push` for the bare repo
+- delete the cron when queue drains
+
+All research, all `agent-integration.md` writes, all `CHANGELOG.md` edits, all commits, and all `git merge --ff-only` into main happen **inside subagent worktrees** per `BRIEF.md`. If the parent finds itself reading a target README or editing a methodology file, it's doing the wrong thing — dispatch a batch instead.
+
 Cron fires every 5 minutes as a safety net (tops up pool to 5 if the session has fewer live agents).
 
 ## State files (gitignored)
