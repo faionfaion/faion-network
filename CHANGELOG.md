@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: data-analysis (business-analyst) — agent-integration.md (202 lines).
 - Research: methodologies-detail (business-analyst) — agent-integration.md (241 lines).
 - Research: modern-ba-framework (business-analyst) — agent-integration.md (160 lines).
 - Research: requirements-traceability (business-analyst) — agent-integration.md (192 lines).
