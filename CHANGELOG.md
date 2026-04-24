@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: process-mining-automation — agent-integration.md (245 lines).
 - Research: agile-ba-frameworks — agent-integration.md (188 lines).
 - Research: data-analysis (ba-modeling) — agent-integration.md (186 lines).
 - Research: ba-trends-summary — agent-integration.md (39 lines, too-thin note).
