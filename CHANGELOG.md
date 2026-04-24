@@ -18,6 +18,7 @@
 - Research: business-model-research — agent-integration.md (178 lines).
 - Research: distribution-channel-research — agent-integration.md (145 lines).
 - Research: agent-invocation — agent-integration.md (166 lines).
+- Research: competitor-analysis (researcher) — agent-integration.md (162 lines).
 - **Worktree-dispatch policy for research**: each subagent now runs in its own
   git worktree and ships the full lifecycle (research → edit → commit → merge
   into main via flock-serialized ff-only merge). See `.research/BRIEF.md`.
