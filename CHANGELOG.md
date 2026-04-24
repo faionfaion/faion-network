@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: ba-strategic-partnership — agent-integration.md (165 lines).
 - Research: data-analysis (business-analyst) — agent-integration.md (202 lines).
 - Research: methodologies-detail (business-analyst) — agent-integration.md (241 lines).
 - Research: modern-ba-framework (business-analyst) — agent-integration.md (160 lines).
