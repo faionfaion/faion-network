@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: strategy-analysis (ba-core) — agent-integration.md (184 lines).
 - Research: requirements-prioritization (ba-core) — agent-integration.md (250 lines).
 - Research: ba-strategic-partnership (ba-core) — agent-integration.md (161 lines).
 - Research: modern-ba-framework (ba-core) — agent-integration.md (182 lines).
