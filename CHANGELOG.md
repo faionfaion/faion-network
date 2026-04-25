@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in free/dev/software-developer — e2e-testing, rust-testing, test-fixtures, shadcn-ui, code-review, tailwind, bun-runtime, typescript-strict-mode (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/software-developer — go-backend, files-reference, django-models, refactoring-patterns, pair-programming, mocking-strategies, javascript, python-fastapi (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group free/dev/code-quality + free/dev/software-developer — code-decomposition-principles, tech-debt-basics, code-review-basics, code-coverage, mob-programming, documentation, code-decomposition-patterns, pnpm-package-management (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/ux/ux-researcher + free/dev/code-quality — diary-study-execution, cog-walk-basics, cog-walk-process, code-review, code-review-process, refactoring-patterns, pair-programming, code-quality-trends (see agent-integration.md per dir).
