@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group free/dev/testing-developer + free/dev/javascript-developer — mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript, testing-patterns, integration-testing, typescript-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group free/dev/javascript-developer + solo/research/researcher — nodejs-patterns, typescript-react-2026, nodejs-express, pain-point-research, idea-generation, pricing-research, problem-validation, jobs-to-be-done (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/javascript-developer — react-patterns, typescript-strict-mode, javascript-modern, bun-runtime-simple, react-hooks, decomposition-react, javascript-testing, nodejs-fastify (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/python-developer — python-type-hints, python-modern-2026, python-async, django-imports, django-testing, django-coding-standards, python-testing-pytest, django-quality (see agent-integration.md per dir).
