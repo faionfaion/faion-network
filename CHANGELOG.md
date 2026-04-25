@@ -3,7 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Research: BRIEF.md — explicit rule "never use absolute paths for writes; always relative to worktree" (prevents file-leak bug).
 - Research: batch of 8 methodologies in pro/dev/software-developer — csharp-dotnet-patterns, cqrs-pattern, java-junit-testing, event-sourcing, ruby-rspec-testing, api-monitoring, java-spring-async, php-laravel-patterns (see agent-integration.md per dir).
+- Research: batch of 8 methodologies in mixed group pro/dev/software-developer + pro/dev/backend-systems — java-spring-boot, ruby-rails, microservices-design, continuous-delivery, clean-architecture, go-standard-layout, rust-testing, sql-optimization (see agent-integration.md per dir).
+- Research: batch of 8 methodologies in mixed group pro/dev/backend-enterprise + pro/comms/hr-recruiter — csharp-xunit-testing, csharp-entity-framework, java-spring-boot, ruby-rails, employee-value-proposition, employer-branding, star-interview-examples, onboarding-30-day (see agent-integration.md per dir).
 - Research: recovery of 34 agent-integration.md files that leaked from worktree absolute-path writes into main working tree (backend-enterprise, backend-systems, software-developer, hr-recruiter).
 - Research: batch of 8 methodologies in pro/dev/backend-enterprise — php-eloquent, decomposition-laravel, csharp-aspnet-core, ruby-activerecord, decomposition-rails, csharp-dotnet-patterns, java-junit-testing, ruby-rspec-testing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/dev/backend-enterprise — java-spring-async, php-laravel-patterns, php-laravel-queues, php-laravel, csharp-dotnet, java-jpa-hibernate, ruby-sidekiq-jobs, php-phpunit-testing (see agent-integration.md per dir).

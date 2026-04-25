@@ -134,3 +134,4 @@ No other output, no per-file recap.
 - Never edit files outside target methodology dirs and CHANGELOG.md.
 - One commit for the whole batch (not per-file).
 - If mid-batch a target is already enriched (agent-integration.md exists), skip it and note in commit body.
+- **NEVER write files via absolute paths** like `/home/nero/workspace/projects/faion-net/faion-network/skills/...`. Those resolve to the **main repo's working tree**, not your worktree, and leak files outside isolation. Always `cd` into your worktree first and use paths relative to it (or `$(pwd)/...`). The absolute TARGETS list is only for identifying *which* methodologies to enrich; convert to the matching relative path inside your worktree before any Write/Edit call.
