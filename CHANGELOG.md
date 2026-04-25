@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/dev/software-developer — react-component-architecture, openapi-specification, rate-limiting, message-queues, xp-extreme-programming, rust-http-handlers, nextjs-app-router, accessibility (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-developer — api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization, tailwind-patterns, python-async-patterns, nodejs-service-layer (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/dev/software-architect + solo/dev/software-developer — quality-attributes, monolith-architecture, architecture-decision-records, c4-model, structural-patterns, go-standard-layout, api-error-handling, logging-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-developer — api-rate-limiting, contract-first-development, browser-automation, nosql-patterns, api-openapi-spec, frontend-design, performance-testing, caching-strategy (see agent-integration.md per dir).
