@@ -5,3 +5,4 @@
 [2026-04-25 23:05] cycle=0 research-done — 10/10 research subagents finished. ~147 candidates across so/mm/tu/pl/lp/mem/cli/eval/cost/mcp. Project-mining returned 22 production tricks. Phase transitioning to seed-from-research. Ready to launch /loop 5m.
 [2026-04-25 23:10] cycle=1 promoted 3 — semantic-field-naming (so-), field-descriptions-as-prompts (so-), tool-description-as-prompt (tu-). 6/50 accepted.
 [2026-04-25 23:15] cycle=2 promoted 3 — prompt-cache-prefix-order (cost-), subagent-as-context-firewall (mem-), stream-json-orchestration (cli-). 9/50 accepted. Filled 3 empty categories.
+[2026-04-25 23:30] cycle=3 promoted 3 — plan-execute-vs-react (lp-), trajectory-eval-otel (eval-), mcp-resource-vs-tool-vs-prompt (mcp-). 12/50 accepted. All 10 categories now seeded with at least 1 methodology.
