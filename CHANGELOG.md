@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group geek/marketing/seo-manager + geek/infra/server-craft + geek/sdd + geek/pm — technical-seo-for-ai, google-ai-overviews-optimization, claude-code-hooks, ai-assisted-specification-writing (sdd), ai-assisted-specification-writing (sdd-planning), ai-powered-pm-tools (project-manager), ai-in-project-management, ai-powered-pm-tools (pm-agile) (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/ai/multimodal-ai + geek/product + geek/ba — vision-basics, agentic-ai-product-development (product-ops), ai-native-product-development (product-ops), agentic-ai-product-development (pm), agents (pm), ai-native-product-development (pm), ai-enabled-business-analysis (ba), ai-enabled-business-analysis (ba-core) (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/multimodal-ai — video-gen-basics, video-gen-tools, img-gen-basics, img-gen-tools, tts-basics, tts-implementation, speech-to-text-advanced, voice-implementation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/dev + geek/marketing — claude-md-creation (code-quality), llm-friendly-architecture (code-quality), ai-assisted-dev, claude-md-creation (software-developer), llm-friendly-architecture (software-developer), ai-content-strategy, ai-marketing-tools-stack-2026, agentic-commerce-future-trends (see agent-integration.md per dir).
