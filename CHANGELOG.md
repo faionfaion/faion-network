@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/infra/server-craft — server-init-bootstrap, monitoring-logging, tmux-power-user, backup-recovery, bash-aliases, secrets-management, dotfiles-management, shell-productivity (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/infra/server-craft — docker-compose-patterns, nginx-reverse-proxy, firewall-management, wireguard-vpn, unattended-upgrades, ssl-tls-management, direnv-mise-versions, health-checks-autoheal (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/marketing/seo-manager + solo/infra/devops-engineer + solo/infra/server-craft — zero-click-search-adaptation, docker-compose, git-server-workflow, deploy-scripts, kernel-tuning, swap-memory-management, agent-dev-tuning, systemd-user-services (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/dev/javascript-developer + solo/comms/communicator — nodejs-service-layer-implementation, react-component-architecture, nodejs-service-layer-architecture, nextjs-app-router, storytelling, conflict-resolution, stakeholder-communication, difficult-conversations (see agent-integration.md per dir).
