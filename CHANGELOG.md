@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in free/dev/software-developer — mob-programming, nodejs-express-fastify, django-imports, go-http-handlers, css-in-js, methodologies, best-practices-2026, django-testing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/software-developer — python, django-api, go-error-handling, python-type-hints, code-coverage, unit-testing, error-handling, react-hooks (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/software-developer — e2e-testing, rust-testing, test-fixtures, shadcn-ui, code-review, tailwind, bun-runtime, typescript-strict-mode (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/software-developer — python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling, rust-ownership, django-base-model, django-pytest (see agent-integration.md per dir).
