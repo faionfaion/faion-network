@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in geek/ai/ai-agents — agent-patterns, multi-agent-patterns, multi-agent-basics, eu-ai-act-compliance, multi-agent-design-patterns, langchain-memory, reasoning-first-architectures, langchain-agents-architectures (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/research + geek/ai/ai-agents — ai-research-tools (researcher), market-sizing-with-ai, ai-research-tool-categories, perplexity-ai-research, ai-research-tools (market-researcher), agent-architectures, ai-agent-patterns, langchain-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/ux/ux-ui-designer — aesthetic-minimalist, prototyping, content-audit, ab-testing, user-interviews, design-critique, user-control-freedom, flexibility-efficiency (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/ai-agents — llamaindex-basics, langchain-basics, llamaindex-patterns, langchain-workflows, langchain-chains, llamaindex-agents-eval, langchain-agents-multi-agent, model-context-protocol (see agent-integration.md per dir).
