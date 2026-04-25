@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/ux/ux-ui-designer — error-handling-in-vui, vui-testing-best-practices, spatial-ux-fundamentals, focus-groups, vui-market-context, tree-testing, regulatory-compliance-2026, spatial-interaction-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/pm/pm-agile + pro/pm/pm-traditional — pm-certification-changes-2026, hybrid-delivery, scrum-ceremonies, predictive-analytics-pm, gitlab-boards, pm-tools-overview, value-stream-management, jira-workflow-management (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/pm-agile — raci-matrix, tool-migration-basics, kanban-scaled-agile-ceremonies, azure-devops-boards, tool-migration-process, seven-performance-domains, agile-hybrid-approaches, pm-framework-focus-areas (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/pm/pm-agile + pro/ux/ux-ui-designer — team-development, six-core-principles, performance-domains-overview, pm-tools-comparison, reporting-basics, personas, enterprise-xr-applications, spatial-computing-overview (see agent-integration.md per dir).
