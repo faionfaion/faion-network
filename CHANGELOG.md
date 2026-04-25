@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/dev/software-developer — api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization, tailwind-patterns, python-async-patterns, nodejs-service-layer (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/dev/software-architect + solo/dev/software-developer — quality-attributes, monolith-architecture, architecture-decision-records, c4-model, structural-patterns, go-standard-layout, api-error-handling, logging-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-architect — serverless-architecture, trade-off-analysis, api-gateway-design, creational-patterns, database-selection, modular-monolith, data-modeling, patterns-overview (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-architect — system-design-process, workflows, caching-architecture, performance-architecture, behavioral-patterns, security-architecture, decision-trees, architectural-patterns (see agent-integration.md per dir).
