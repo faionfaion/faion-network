@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group pro/ux/accessibility-specialist + pro/ux/ui-designer — a11y-testing, ada-title-ii-compliance-2026, cognitive-inclusion-design, spatial-accessibility, vui-accessibility-inclusivity, accessibility-first-design, enterprise-xr-applications, spatial-computing-overview (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/ux/ux-ui-designer + pro/ux/user-researcher — accessibility-evaluation, design-system-success-factors, semantic-tokens-and-modes, spatial-ui-patterns, opportunity-solution-trees, user-research-at-scale, persona-building, audience-segmentation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ux-ui-designer — w3c-design-tokens-standard, token-organization, core-vui-design-principles, surveys, vui-privacy-security, spatial-accessibility, vui-accessibility-inclusivity, accessibility-first-design (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ux-ui-designer — vui-iot-integration, cross-platform-token-distribution, wcag-22-compliance, ar-design-patterns, voice-ui, cognitive-walkthrough, ada-title-ii-compliance-2026, cognitive-inclusion-design (see agent-integration.md per dir).
