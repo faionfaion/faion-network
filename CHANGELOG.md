@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group solo/sdd/sdd + solo/sdd/sdd-planning — architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines, api-first-development, spec-example-ecommerce-cart, workflows, design-doc-structure, impl-plan-components (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/sdd/sdd-planning — task-creation-template-guide, workflow-design-phase, workflow-spec-phase, design-doc-examples, writing-specifications, template-design, template-task, impl-plan-examples (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/infra/server-craft + solo/infra/infrastructure-engineer + solo/infra/cicd-engineer + solo/sdd/sdd — multi-project-hosting, cron-automation, ssh-hardening, fail2ban-setup, docker-compose (infra), docker-compose (cicd), api-first-development, design-docs-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/infra/server-craft — server-init-bootstrap, monitoring-logging, tmux-power-user, backup-recovery, bash-aliases, secrets-management, dotfiles-management, shell-productivity (see agent-integration.md per dir).
