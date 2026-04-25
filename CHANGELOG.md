@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/marketing/ppc-manager — google-ads-optimization, ads-meta-campaign-setup, ads-conversion-tracking, ads-google-creative, ads-twitter-ads, ads-google-keywords, ads-meta-reporting, ads-meta-creative (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/ppc-manager — ads-linkedin-ads, google-pmax, ads-google-reporting, ads-analytics-setup, google-shopping-ads, instagram-ads, meta-audience-targeting, ads-budget-optimization (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/conversion-optimizer — plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide, funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/ppc-manager — google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads, ads-attribution-models, google-ads-reporting, ads-google-campaign-setup (see agent-integration.md per dir).
