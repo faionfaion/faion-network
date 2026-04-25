@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/ux/ux-ui-designer — aesthetic-minimalist, prototyping, content-audit, ab-testing, user-interviews, design-critique, user-control-freedom, flexibility-efficiency (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/ux/ux-ui-designer — journey-mapping, error-recovery, tailwind-design-tokens, match-real-world, mobile-ux, visibility-of-system-status, competitive-analysis, heuristic-evaluation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/pm/pm-agile + solo/ux/ux-ui-designer — linear-issue-tracking, usability-testing, recognition-over-recall, consistency-standards, card-sorting, error-prevention, information-architecture, wireframing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/sdd/sdd + solo/sdd/sdd-planning — architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines, api-first-development, spec-example-ecommerce-cart, workflows, design-doc-structure, impl-plan-components (see agent-integration.md per dir).
