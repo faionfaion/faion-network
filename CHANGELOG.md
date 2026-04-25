@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group (pro/comms/hr-recruiter + pro/marketing/smm-manager + pro/marketing/conversion-optimizer) — 30-60-90-day-plan, onboarding-60-90-day, threads-basics, instagram-basics, plg-metrics, growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization (see agent-integration.md per dir).
 - Research: BRIEF.md — explicit rule "never use absolute paths for writes; always relative to worktree" (prevents file-leak bug).
 - Research: batch of 8 methodologies in pro/dev/software-developer — csharp-dotnet-patterns, cqrs-pattern, java-junit-testing, event-sourcing, ruby-rspec-testing, api-monitoring, java-spring-async, php-laravel-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/dev/software-developer + pro/dev/backend-systems — java-spring-boot, ruby-rails, microservices-design, continuous-delivery, clean-architecture, go-standard-layout, rust-testing, sql-optimization (see agent-integration.md per dir).
