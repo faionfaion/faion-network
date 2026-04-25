@@ -4,6 +4,7 @@
 
 ### Added
 - Research: batch of 8 methodologies in mixed group solo/product/product-operations + solo/product/product-planning — feature-prioritization-rice, feedback-management, feature-prioritization-moscow, mvp-scoping, roadmap-design, user-story-mapping, spec-writing, continuous-discovery (see agent-integration.md per dir).
+- Research: batch of 8 methodologies in mixed group solo/product/product-planning + solo/product/product-manager — outcome-based-roadmaps, mvp-scoping, roadmap-design, user-story-mapping, backlog-management, spec-writing, continuous-discovery, product-discovery (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group free/dev/testing-developer + free/dev/javascript-developer — mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript, testing-patterns, integration-testing, typescript-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group free/dev/javascript-developer + solo/research/researcher — nodejs-patterns, typescript-react-2026, nodejs-express, pain-point-research, idea-generation, pricing-research, problem-validation, jobs-to-be-done (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/javascript-developer — react-patterns, typescript-strict-mode, javascript-modern, bun-runtime-simple, react-hooks, decomposition-react, javascript-testing, nodejs-fastify (see agent-integration.md per dir).
