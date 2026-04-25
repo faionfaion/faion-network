@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group geek/ai/multimodal-ai + geek/product + geek/ba — vision-basics, agentic-ai-product-development (product-ops), ai-native-product-development (product-ops), agentic-ai-product-development (pm), agents (pm), ai-native-product-development (pm), ai-enabled-business-analysis (ba), ai-enabled-business-analysis (ba-core) (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/multimodal-ai — video-gen-basics, video-gen-tools, img-gen-basics, img-gen-tools, tts-basics, tts-implementation, speech-to-text-advanced, voice-implementation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/rag-engineer — chunking-basics, chunking-advanced, reranking-basics, graph-rag-advanced-retrieval, rag-architecture, embedding-generation, db-chroma, embedding-models (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/ai/llm-integration + geek/ai/rag-engineer — cot-basics, claude-best-practices, function-calling-patterns, rag, hybrid-search-basics, agentic-rag, db-weaviate, db-comparison (see agent-integration.md per dir).
