@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/marketing/conversion-optimizer — plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide, funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/ppc-manager — google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads, ads-attribution-models, google-ads-reporting, ads-google-campaign-setup (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/comms/hr-recruiter — interview-methods, star-interview-method, recruitment-funnel-optimization, onboarding, recruiting-process, structured-interview-design, star-interview-framework, retention-compliance (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group (pro/comms/hr-recruiter + pro/marketing/smm-manager + pro/marketing/conversion-optimizer) — 30-60-90-day-plan, onboarding-60-90-day, threads-basics, instagram-basics, plg-metrics, growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization (see agent-integration.md per dir).
