@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/dev/software-developer — security-testing, graphql-api-design, rust-tokio-async, ab-testing, database-design, api-authentication, internationalization, rust-backend (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-developer — shadcn-ui-architecture, ui-component-library, rust-project-structure, go-concurrency-patterns, technical-debt, monorepo-turborepo, api-graphql, websocket-design (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-developer — react-component-architecture, openapi-specification, rate-limiting, message-queues, xp-extreme-programming, rust-http-handlers, nextjs-app-router, accessibility (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-developer — api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization, tailwind-patterns, python-async-patterns, nodejs-service-layer (see agent-integration.md per dir).
