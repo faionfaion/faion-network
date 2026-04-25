@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/pm/project-manager — pm-tool-selection, quality-management, resource-management, value-stream-management, jira-workflow-management, scope-management, earned-value-management, benefits-realization (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/project-manager — communications-management, hybrid-delivery, cross-tool-migration, pm-certification-alignment-2026, predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/infra/cicd-engineer — gitlab-cicd, azure-compute, jenkins-basics, secrets-management, argocd-gitops, github-actions-workflows, docker-optimization, github-actions-basics (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/infra/infrastructure-engineer + pro/infra/cicd-engineer — aws-architecture-foundations, aiops, gitops, load-balancing-implementation, load-balancing-concepts, elk-stack-logging, ssl-tls-setup, security-as-code (see agent-integration.md per dir).
