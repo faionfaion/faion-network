@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in solo/dev/software-architect — serverless-architecture, trade-off-analysis, api-gateway-design, creational-patterns, database-selection, modular-monolith, data-modeling, patterns-overview (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/software-architect — system-design-process, workflows, caching-architecture, performance-architecture, behavioral-patterns, security-architecture, decision-trees, architectural-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/automation-tooling — puppeteer-automation, dev-methodologies-testing, dev-methodologies-practices, trunk-based-dev-patterns, trunk-based-dev-principles, monorepo-turborepo, ab-testing-basics, best-practices-2026 (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/automation-tooling — dev-methodologies-architecture, internationalization, cd-pipelines, ab-testing-implementation, browser-automation-overview, perf-test-basics, cd-basics, continuous-delivery (see agent-integration.md per dir).
