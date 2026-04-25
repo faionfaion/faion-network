@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group pro/ux/ux-researcher + free/dev/code-quality — diary-study-execution, cog-walk-basics, cog-walk-process, code-review, code-review-process, refactoring-patterns, pair-programming, code-quality-trends (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ux-researcher — content-audit-basics, vui-testing-best-practices, focus-groups, vui-market-context, tree-testing, diary-study-basics, mobile-ux-basics, surveys (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/ux/ui-designer + pro/ux/ux-researcher — core-vui-design-principles, vui-privacy-security, design-system-success-factors, semantic-tokens-and-modes, spatial-ui-patterns, personas, contextual-inquiry, vui-conversation-design (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ui-designer — spatial-design-tools, error-handling-in-vui, spatial-interaction-patterns, vui-iot-integration, cross-platform-token-distribution, voice-ui-patterns, w3c-design-tokens-standard, token-organization (see agent-integration.md per dir).
