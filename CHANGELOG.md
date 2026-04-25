@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in geek/ai/llm-integration — claude-api-basics, openai-embeddings, cot-techniques, local-llm-ollama, structured-output-patterns, guardrails-implementation, gemini-multimodal, claude-tool-use (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/ml-engineer — multi-agent-systems, structured-output, openai-api, cost-optimization, model-context-protocol, llm-observability, embedding-generation, local-llm-ollama (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in geek/ai/ml-engineer — vector-databases, decision-framework, rag, claude-api, agentic-rag, chunking-strategies, chain-of-thought, hybrid-search (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/ai/ai-agents + geek/ai/ml-engineer — autonomous-agents, llamaindex-indexes-queries, ai-governance-compliance, image-analysis-vision, graph-rag, ai-agent-patterns, langchain, image-generation (see agent-integration.md per dir).
