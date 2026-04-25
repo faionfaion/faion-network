@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/ux/ux-ui-designer — vui-iot-integration, cross-platform-token-distribution, wcag-22-compliance, ar-design-patterns, voice-ui, cognitive-walkthrough, ada-title-ii-compliance-2026, cognitive-inclusion-design (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ux-ui-designer — contextual-inquiry, immersive-design-principles, vui-conversation-design, vr-design-patterns, spatial-design-tools, design-tokens-fundamentals, testing-with-assistive-technology, diary-studies (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/ux/ux-ui-designer — error-handling-in-vui, vui-testing-best-practices, spatial-ux-fundamentals, focus-groups, vui-market-context, tree-testing, regulatory-compliance-2026, spatial-interaction-patterns (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/pm/pm-agile + pro/pm/pm-traditional — pm-certification-changes-2026, hybrid-delivery, scrum-ceremonies, predictive-analytics-pm, gitlab-boards, pm-tools-overview, value-stream-management, jira-workflow-management (see agent-integration.md per dir).
