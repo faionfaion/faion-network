@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### Added
+- agent-methodologies: bootstrap infrastructure under .aidocs/agent-methodologies/ (state.json, methodologies.jsonl, candidates.md, sources.md, progress.md, loop-prompt.md, research/, brainstorm/, project-mining/, articles-published/) for the 50-methodology agent-builder brainstorm cycle.
+- agent-methodologies: 10 research subagent outputs (~147 candidates) covering OpenAI/Claude/Gemini/OSS/LangChain/structured-output/multi-model/file-refs/MCP/CLI+evals.
+- agent-methodologies: 22 production tricks mined from neromedia/pashtelka/longlife/ender/faion-cli/nero-agent pipelines.
+- geek/ai/ai-agents/schema-field-order — methodology: place dependent fields after dependencies in structured-output schemas (full 5-file shape).
+- geek/ai/ai-agents/weak-model-preselection — methodology: cheap-model filter returns refs/IDs, strong-model reasons over filtered set (full 5-file shape).
+- geek/ai/ai-agents/file-reference-passing — methodology: pipeline stages pass refs not content; downstream loads on demand (full 5-file shape).
 - Research: batch of 8 methodologies in mixed group geek/ux/user-researcher + geek/ux/accessibility-specialist + geek/ux/ui-designer — ai-assisted-persona-building, ai-persona-building, ai-assisted-accessibility, ai-accessibility-automation-2026, ai-spatial-computing, multimodal-vui-design, ai-enhanced-design-systems, llm-powered-conversational-ai (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/pm/pm-agile + geek/ux/ux-ui-designer — ai-in-project-management, multimodal-vui-design, ai-assisted-accessibility, ai-enhanced-design-systems, CLAUDE-methodologies, llm-powered-conversational-ai, adobe-firefly-integration, ai-accessibility-automation-2026 (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group geek/marketing/seo-manager + geek/infra/server-craft + geek/sdd + geek/pm — technical-seo-for-ai, google-ai-overviews-optimization, claude-code-hooks, ai-assisted-specification-writing (sdd), ai-assisted-specification-writing (sdd-planning), ai-powered-pm-tools (project-manager), ai-in-project-management, ai-powered-pm-tools (pm-agile) (see agent-integration.md per dir).
