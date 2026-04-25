@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group pro/pm/pm-agile + pro/ux/ux-ui-designer — team-development, six-core-principles, performance-domains-overview, pm-tools-comparison, reporting-basics, personas, enterprise-xr-applications, spatial-computing-overview (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/pm-traditional — risk-management, change-control, wbs-creation, stakeholder-engagement-advanced, project-closure, work-breakdown-structure, risk-register, schedule-development (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/pm-traditional — stakeholder-engagement, project-integration, quality-management, resource-management, scope-management, earned-value-management, benefits-realization, stakeholder-register (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/pm/project-manager + pro/pm/pm-traditional — schedule-development, performance-domains-overview, pm-certification-changes-2026, cost-estimation, procurement-management, lessons-learned, communications-management, pm-certification-alignment-2026 (see agent-integration.md per dir).
