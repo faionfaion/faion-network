@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group pro/pm/project-manager + pro/pm/pm-traditional — schedule-development, performance-domains-overview, pm-certification-changes-2026, cost-estimation, procurement-management, lessons-learned, communications-management, pm-certification-alignment-2026 (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/project-manager — seven-performance-domains, work-breakdown-structure, agile-hybrid-approaches, ref-pmbok, risk-register, pm-framework-focus-areas, team-development, six-core-principles (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/project-manager — raci-matrix, stakeholder-register, risk-management, change-control, wbs-creation, stakeholder-engagement-advanced, azure-devops-boards, project-closure (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/pm/project-manager — pm-tool-selection, quality-management, resource-management, value-stream-management, jira-workflow-management, scope-management, earned-value-management, benefits-realization (see agent-integration.md per dir).
