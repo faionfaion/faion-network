@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group solo/dev/javascript-developer + solo/comms/communicator — nodejs-service-layer-implementation, react-component-architecture, nodejs-service-layer-architecture, nextjs-app-router, storytelling, conflict-resolution, stakeholder-communication, difficult-conversations (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group solo/dev/api-developer + solo/dev/testing-developer — api-graphql, api-monitoring, websocket-design, graphql-api-design, api-authentication, api-versioning, api-testing, security-testing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/frontend-developer — ui-lib-patterns, css-in-js-advanced, pwa-advanced, storybook-setup, mobile-responsive, css-in-js-basics, seo-for-spas, design-tokens-basics (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in solo/dev/frontend-developer — pwa-core, shadcn-ui, tailwind-patterns, tailwind, frontend-design, ui-lib-basics, accessibility, shadcn-ui-architecture (see agent-integration.md per dir).
