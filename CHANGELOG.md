@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/infra/cicd-engineer — gitlab-cicd, azure-compute, jenkins-basics, secrets-management, argocd-gitops, github-actions-workflows, docker-optimization, github-actions-basics (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/infra/infrastructure-engineer + pro/infra/cicd-engineer — aws-architecture-foundations, aiops, gitops, load-balancing-implementation, load-balancing-concepts, elk-stack-logging, ssl-tls-setup, security-as-code (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/infra/cicd-engineer + pro/pm/project-manager — jenkins-pipeline-patterns, finops-cloud-cost-optimization, backup-implementation, backup-basics, cost-estimation, agile-ceremonies-setup, procurement-management, lessons-learned (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/infra/cicd-engineer — grafana-basics, platform-engineering, azure-networking, finops, nginx-configuration, dora-metrics, grafana-setup, prometheus-monitoring (see agent-integration.md per dir).
