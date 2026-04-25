@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in pro/marketing/growth-marketer — ops-churn-prevention, viral-optimization, privacy-compliance, cohort-basics, growth-viral-loops, retention-basics, ops-churn-basics, cohort-implementation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/growth-marketer — growth-referral-programs, viral-loops, statistics-application, activation-framework, google-analytics, ab-testing-basics, retention-metrics, ab-testing-setup (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/marketing/ppc-manager + pro/marketing/gtm-strategist — ads-meta-targeting, ads-retargeting, ads-ab-testing-ads, growth-press-coverage, growth-gtm-strategy, ops-legal-compliance, ops-tax-basics, ops-annual-planning-process (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/marketing/gtm-strategist + pro/marketing/growth-marketer — growth-influencer-marketing, ops-partnership-strategy, ops-tax-compliance, ops-customer-success-metrics, ops-upselling-cross-selling, growth-affiliate-marketing, conversion-tracking, retention-strategies (see agent-integration.md per dir).
