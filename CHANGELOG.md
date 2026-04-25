@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in free/dev/javascript-developer — react-patterns, typescript-strict-mode, javascript-modern, bun-runtime-simple, react-hooks, decomposition-react, javascript-testing, nodejs-fastify (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/python-developer — python-type-hints, python-modern-2026, python-async, django-imports, django-testing, django-coding-standards, python-testing-pytest, django-quality (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group free/dev/software-developer + free/dev/python-developer — api-testing, python-web-frameworks, django-models, python-overview, python-fastapi, django-api, python-basics, python-typing (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in free/dev/software-developer — mob-programming, nodejs-express-fastify, django-imports, go-http-handlers, css-in-js, methodologies, best-practices-2026, django-testing (see agent-integration.md per dir).
