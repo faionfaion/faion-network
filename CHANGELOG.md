@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Research: batch of 8 methodologies in mixed group pro/infra/infrastructure-engineer + pro/infra/cicd-engineer — aws-architecture-foundations, aiops, gitops, load-balancing-implementation, load-balancing-concepts, elk-stack-logging, ssl-tls-setup, security-as-code (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in mixed group pro/infra/cicd-engineer + pro/pm/project-manager — jenkins-pipeline-patterns, finops-cloud-cost-optimization, backup-implementation, backup-basics, cost-estimation, agile-ceremonies-setup, procurement-management, lessons-learned (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/growth-marketer — ops-churn-prevention, viral-optimization, privacy-compliance, cohort-basics, growth-viral-loops, retention-basics, ops-churn-basics, cohort-implementation (see agent-integration.md per dir).
 - Research: batch of 8 methodologies in pro/marketing/growth-marketer — growth-referral-programs, viral-loops, statistics-application, activation-framework, google-analytics, ab-testing-basics, retention-metrics, ab-testing-setup (see agent-integration.md per dir).
