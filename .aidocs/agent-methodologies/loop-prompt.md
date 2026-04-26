@@ -1,88 +1,100 @@
-# Loop Prompt — Agent Methodologies Brainstorm Cycle
+# Loop Prompt — Agent Methodologies (Orchestrator)
 
 **Working directory:** `/home/nero/workspace/projects/faion-net/faion-network`
-**State:** `.aidocs/agent-methodologies/`
+**State home:** `.aidocs/agent-methodologies/`
+**Output home:** `skills/faion/knowledge/geek/ai/ai-agents/<slug>/`
+**Target:** 50 methodologies in NEW shape (`docs/skill-authoring.md`)
+**Cadence:** cron `*/5 * * * *` (cloud schedule)
 
-## Each tick (5 min cadence) — do this:
+You are the ORCHESTRATOR. You do NOT write methodology files yourself — that is the subagent's job. Your job is to read state, decide what to promote, delegate to ONE Task subagent, verify the result.
+
+## Each tick — do this:
 
 ### 1. Read state
 
 ```
 Read: .aidocs/agent-methodologies/state.json
-Read: .aidocs/agent-methodologies/candidates.md  (last 200 lines)
-Read: .aidocs/agent-methodologies/methodologies.jsonl  (last 50 lines)
+Read: .aidocs/agent-methodologies/methodologies.jsonl  (for duplicate check)
+Read: .aidocs/agent-methodologies/progress.md  (last 30 lines)
 ```
 
-If `state.json.accepted >= 50` → STOP. Output `loop done — 50/50 reached. Stop the loop.` and do nothing else.
+If `state.json.accepted >= 50` AND `state.json.phase == "publish"`: see § "Stop conditions" below.
 
-### 2. Decide phase
+### 2. Decide phase + scope
 
-| accepted | phase | action |
-|----------|-------|--------|
-| 0 | bootstrap | If research subagents not yet dispatched, dispatch them (Task #3). If dispatched but pending, do project-mining (Task #4). |
-| 0–10 | seed-from-research | Read `research/AGENT-*.md`, extract candidates into `candidates.md`, accept the strongest 3-5 into `methodologies.jsonl` + write README+checklist+templates+examples+llm-prompts in `geek/ai/ai-agents/<slug>/` |
-| 10–30 | expand | Brainstorm 5 new candidates in `brainstorm/CYCLE-NN.md` (avoid duplicating accepted), promote 2-3 into accepted, write methodology files |
-| 30–50 | fill-gaps | Look at `state.json.categories` — find under-target categories, brainstorm specifically for those |
-| 50 | publish | Generate site articles for any accepted methodology not yet in `articles-published/MAP.md` |
+| accepted | phase | what to promote |
+|----------|-------|-----------------|
+| 0–14 | seed-from-research | 3-5 strongest candidates across categories from `research/AGENT-*.md` |
+| 15–35 | expand | 3-4 candidates filling under-target categories (read `state.json.categories`) |
+| 36–49 | fill-gaps | 1-3 candidates ONLY for categories where `accepted < target` |
+| 50 | publish | switch loop to article-generation phase (separate brief) |
 
-### 3. Each tick MUST commit progress
+NOTE: There are 15 already-shipped methodologies in the OLD 5-file format. They count toward `accepted` but are NOT migrated. Every new methodology you promote MUST use the NEW shape from `docs/skill-authoring.md`.
 
-- Update `state.json` (accepted count, cycle++)
-- Append to `progress.md` what was done
-- `git add .` then `git commit -m "agents: cycle N — added M methodologies"` (50-char title rule)
+### 3. Pick N candidate slugs
 
-### 4. Quality gates before accepting a candidate
+Use `Glob` + `Grep` to scan `research/AGENT-*.md` and any `candidates.md` entries. Avoid:
+- Slugs already in `methodologies.jsonl`
+- Slugs in `progress.md` REJECTED log
 
-- [ ] Concrete, testable rule (not vague)
-- [ ] Cited source (URL) OR cited project path
-- [ ] When-to-use AND when-NOT-to-use both stated
-- [ ] Not a near-duplicate of an accepted one (search `methodologies.jsonl`)
-- [ ] Mapped to one of the 10 categories (state.json.categories keys)
+For each picked slug, record:
+- `source` — relative research file path
+- `category` — prefix (`so-/mm-/tu-/pl-/lp-/mem-/cli-/eval-/cost-/mcp-`)
 
-### 5. Methodology file shape
+### 4. Delegate to ONE Task subagent
 
-Each accepted methodology lives at:
-`skills/faion-knowledge/knowledge/geek/ai/ai-agents/<slug>/`
+Use the `Agent` tool (subagent_type=`general-purpose` or specialized SDD executor if available). Pass it the FULL contents of `.aidocs/agent-methodologies/subagent-brief.md` PLUS this tick's variables:
 
-5 files (existing convention):
-- `README.md` (the rule, when-to-use, examples, references)
-- `checklist.md` (apply-step-by-step)
-- `templates.md` (code/prompt/schema templates)
-- `examples.md` (real examples — at least one from our projects when possible)
-- `llm-prompts.md` (prompts that exemplify the rule)
-
-### 6. Site article shape (only at phase=publish)
-
-Each accepted methodology → MDX article at:
-`/home/nero/workspace/projects/faion-net/faion-net-fe/content/knowledge/agents/AGT-A-NNN.mdx`
-
-Use existing CNT-A-001.mdx frontmatter shape:
-```yaml
----
-id: "AGT-A-NNN"
-title: "<methodology title>"
-subtitle: "<one-line hook>"
-tier: "advanced"
-domain: "agents"
-description: "<2 sentences>"
-keywords: [...]
-author: "faion.net"
-created: "2026-04-25"
-updated: "2026-04-25"
-readingTime: "X min"
----
+```
+slugs: [<slug-1>, <slug-2>, ...]
+sources: {<slug-1>: <path>, ...}
+categories: {<slug-1>: <prefix>, ...}
+cycle: <state.json.current_cycle + 1>
 ```
 
-Then update `articles-published/MAP.md`: `<methodology-slug> → AGT-A-NNN`.
+Subagent reads research, writes folders, updates state, appends progress, commits. Returns count + commit SHA.
 
-### 7. End-of-tick output
+### 5. Verify subagent output
 
-One short paragraph back to the harness telling the user what changed this cycle. No long summaries.
+```bash
+git log -1 --pretty=%H
+git diff HEAD~1 HEAD --stat
+```
 
-### 8. Self-pacing
+Expected:
+- New folders under `skills/faion/knowledge/geek/ai/ai-agents/<slug>/`
+- Each new folder has `CLAUDE.md`, `AGENTS.md`, `texts/`, `templates/`
+- `state.json.accepted` increased by N
+- `methodologies.jsonl` has N new rows
+- One commit with title `agents: cycle N +M (X/50)`
 
-Use ScheduleWakeup with `delaySeconds: 270` (4m30s — under 5m to stay in cache window) when:
-- A research subagent is still running and you're waiting on its output
-- Otherwise use 1200s (20 min) for idle ticks
+If verification fails: log to `progress.md` with `[FAIL]` prefix, do NOT delete subagent's work, let next tick re-attempt or escalate.
 
-If 50 reached → DO NOT call ScheduleWakeup. Loop ends.
+### 6. End the tick
+
+You do NOT schedule the next tick — cron does that. Just print:
+
+```
+TICK <cycle>: +<N> (<accepted>/50) — <slug-1>, <slug-2>, ...
+```
+
+## Stop conditions
+
+When `accepted >= 50`:
+1. Switch `state.json.phase = "publish"`
+2. The loop continues, but each tick now generates MDX articles in `faion-net-fe/content/knowledge/agents/AGT-A-NNN.mdx` for any methodology not yet in `articles-published/MAP.md`
+3. When `articles-published/MAP.md` row count == accepted: orchestrator runs `CronDelete <id>` and marks feature task done
+
+The article-generation tick is documented separately (see § "Publish phase" in design.md).
+
+## What you (orchestrator) MUST NOT do
+
+- Write methodology content directly
+- Touch `skills/faion/knowledge/...` files
+- Skip the duplicate check
+- Promote slugs that lack a research source
+- Use the OLD 5-file shape (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) — RETIRED
+
+## Resume on interruption
+
+State is on disk (`state.json`, `methodologies.jsonl`, `progress.md`). If a tick was killed mid-write: next tick reads state and resumes. Worst case: one duplicate cycle if previous didn't commit. Subagent's duplicate check prevents content collision.

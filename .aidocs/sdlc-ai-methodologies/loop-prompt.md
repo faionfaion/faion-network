@@ -1,68 +1,98 @@
-# Loop Prompt — SDLC+AI Methodologies Cycle
+# Loop Prompt — SDLC+AI Methodologies (Orchestrator)
 
 **Working directory:** `/home/nero/workspace/projects/faion-net/faion-network`
-**State:** `.aidocs/sdlc-ai-methodologies/`
+**State home:** `.aidocs/sdlc-ai-methodologies/`
+**Output home:** `skills/faion/knowledge/geek/sdlc-ai/<slug>/`
+**Target:** 52 methodologies in NEW shape (`docs/skill-authoring.md`)
+**Cadence:** cron `2-57/5 * * * *` (cloud schedule, offset 2 to avoid agent-methodologies collision)
 
-## Each tick (5 min cadence) — do this:
+You are the ORCHESTRATOR. You do NOT write methodology files yourself — the subagent does. Your job: read state, decide what to promote, delegate to ONE Task subagent, verify.
+
+## Each tick — do this:
 
 ### 1. Read state
 
 ```
 Read: .aidocs/sdlc-ai-methodologies/state.json
-Read: .aidocs/sdlc-ai-methodologies/candidates.md  (last 200 lines)
-Read: .aidocs/sdlc-ai-methodologies/methodologies.jsonl  (last 50 lines)
+Read: .aidocs/sdlc-ai-methodologies/methodologies.jsonl  (for duplicate check)
+Read: .aidocs/sdlc-ai-methodologies/progress.md  (last 30 lines)
 ```
 
-If `state.json.accepted >= 52` → STOP. Output `loop done — 52/52 reached. Stop the loop.` and do nothing else.
+If `state.json.phase == "bootstrap"` AND `research_subagents_done < research_subagents_total`:
+- Wait this tick (do nothing). Subagents are still gathering candidates. Print `WAIT: research <done>/<total>` and end.
 
-### 2. Decide phase
+If `state.json.accepted >= 52` AND `state.json.phase == "publish"`: see § "Stop conditions".
 
-| accepted | phase | action |
-|----------|-------|--------|
-| 0 | bootstrap | If research subagents not yet done, wait (do nothing this tick). Otherwise transition to seed-from-research. |
-| 0–10 | seed-from-research | Read `research/AGENT-*.md`, extract candidates into `candidates.md`, accept the strongest 3-5 into `methodologies.jsonl` + write README+checklist+templates+examples+llm-prompts in `geek/sdlc-ai/<slug>/` |
-| 10–35 | expand | Brainstorm 5 new candidates in `brainstorm/CYCLE-NN.md` (avoid duplicating accepted), promote 2-3, write methodology files |
-| 35–52 | fill-gaps | Look at `state.json.categories` — find under-target categories, brainstorm specifically for those |
-| 52+ | publish | Generate site articles for any accepted methodology not yet in `articles-published/MAP.md`, then STOP the loop |
+### 2. Decide phase + scope
 
-### 3. Each tick MUST commit progress
+| accepted | phase | what to promote |
+|----------|-------|-----------------|
+| 0 (research not done) | bootstrap | wait |
+| 0–10 | seed-from-research | 3-5 strongest candidates across categories from `research/AGENT-*.md` + `project-mining/RESULTS.md` |
+| 10–35 | expand | 3-4 candidates filling under-target categories |
+| 35–51 | fill-gaps | 1-3 candidates ONLY for under-target categories |
+| 52 | publish | switch loop to article-generation phase |
 
-- Update `state.json` (accepted count, cycle++)
-- Append to `progress.md` what was done
-- `git add .` then `git commit -m "sdlc-ai: cycle N — added M methodologies"` (50-char title)
-- Update `CHANGELOG.md` under `## [Unreleased]` (faion-network has a pre-commit hook requiring this)
+### 3. Pick N candidate slugs
 
-### 4. Quality gates before accepting a candidate
+`Glob` + `Grep` over `research/AGENT-*.md`. Avoid:
+- Slugs already in `methodologies.jsonl`
+- Slugs in REJECTED log
 
-- [ ] Concrete, testable rule (not vague)
-- [ ] Cited source (URL) OR cited project path
-- [ ] When-to-use AND when-NOT-to-use both stated
-- [ ] Not a near-duplicate of an accepted one
-- [ ] Mapped to one of the 10 categories
+For each picked slug, record:
+- `source` — relative research file path
+- `category` — one of `lang- lint- test- tracker- kb- task- mr- inc- sec- gov-`
 
-### 5. Methodology file shape
+### 4. Delegate to ONE Task subagent
 
-`skills/faion-knowledge/knowledge/geek/sdlc-ai/<slug>/`
+Use `Agent` tool. Pass the FULL contents of `.aidocs/sdlc-ai-methodologies/subagent-brief.md` PLUS:
 
-- `README.md` (rule, when-to/when-NOT, examples, references)
-- `checklist.md` (apply-step-by-step)
-- `templates.md` (code/config templates)
-- `examples.md` (real cases)
-- `llm-prompts.md` (prompts that exemplify the rule)
+```
+slugs: [<slug-1>, ...]
+sources: {<slug-1>: <path>, ...}
+categories: {<slug-1>: <prefix>, ...}
+cycle: <state.json.current_cycle + 1>
+```
 
-### 6. Site article shape (only at phase=publish)
+### 5. Verify subagent output
 
-Each accepted methodology → MDX article at:
-`/home/nero/workspace/projects/faion-net/faion-net-fe/content/knowledge/sdlc/SDL-A-NNN.mdx`
+```bash
+git log -1 --pretty=%H
+git diff HEAD~1 HEAD --stat
+```
 
-Use existing CNT-A-001.mdx frontmatter shape. `domain: "sdlc"`, `tier: "advanced"`.
+Expected:
+- New folders under `skills/faion/knowledge/geek/sdlc-ai/<slug>/`
+- Each has `CLAUDE.md`, `AGENTS.md`, `texts/`, `templates/`
+- `state.json.accepted` increased by N
+- `methodologies.jsonl` has N new rows
+- Commit title: `sdlc-ai: cycle N +M (X/52)`
 
-Update `articles-published/MAP.md`: `<methodology-slug> → SDL-A-NNN`.
+If verification fails: log `[FAIL]` to `progress.md`; do NOT delete subagent's work.
 
-### 7. End-of-tick output
+### 6. End the tick
 
-One short paragraph back. No long summaries.
+```
+TICK <cycle>: +<N> (<accepted>/52) — <slug-1>, <slug-2>, ...
+```
 
-### 8. Stop condition
+Cron schedules the next tick.
 
-When `state.json.accepted >= 52` AND every methodology has a published article: stop the cron with `CronDelete` (don't re-fire).
+## Stop conditions
+
+When `accepted >= 52`:
+1. Switch `state.json.phase = "publish"`
+2. Each subsequent tick generates MDX in `faion-net-fe/content/knowledge/sdlc/SDL-A-NNN.mdx` for unpublished methodologies
+3. When `articles-published/MAP.md` row count == accepted: orchestrator `CronDelete <id>` and marks feature task done
+
+## What you (orchestrator) MUST NOT do
+
+- Write methodology content directly
+- Touch `skills/faion/knowledge/...` files
+- Skip duplicate check
+- Promote slugs without a research source
+- Use the OLD 5-file shape — RETIRED
+
+## Resume on interruption
+
+State is on disk. Worst case: one duplicate cycle. Subagent's duplicate check prevents collision.
