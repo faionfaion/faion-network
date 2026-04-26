@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-advanced" title="Prompt Caching and Batch API">
+  <summary>Prompt Caching cuts costs for repetitive pipelines (1024-token minimum, byte-identical prefix); Batch API provides 50% cost reduction for offline enrichment jobs with up to 24-hour processing time.</summary>
+
+  <section title="Prompt Caching">
+    <rule>
+      <statement>Enable Prompt Caching on any system prompt over 1024 tokens that stays constant across calls — the cached prefix must be byte-identical; a single extra space invalidates the cache.</statement>
+      <rationale>Prompt Caching charges cached tokens at ~10% of normal input cost; for pipelines calling the same assistant hundreds of times per session, this is the single largest cost reduction available.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system=[{
+        "type": "text",
+        "text": "You are a document analyzer...",  # must be >1024 tokens
+        "cache_control": {"type": "ephemeral"}
+    }],
+    messages=[{"role": "user", "content": query}]
+)
+# Check cache hit in usage
+print(response.usage.cache_read_input_tokens)   # > 0 on cache hit
+print(response.usage.cache_creation_input_tokens)  # > 0 on cache creation
+]]></code>
+    </example>
+  </section>
+
+  <section title="Batch API">
+    <rule>
+      <statement>Use the Batch API only for offline enrichment tasks — it has up to 24-hour processing time and is not suitable for real-time workflows.</statement>
+      <rationale>Batch API provides 50% cost reduction by processing requests when compute is available; latency is unbounded and unsuitable for user-facing responses.</rationale>
+    </rule>
+    <reference path="templates/batch-api.py">create_batch() and poll_batch() helpers</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def create_batch(requests: list[dict]) -> str:
+    batch = client.beta.messages.batches.create(requests=[
+        {"custom_id": r["id"], "params": {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": r.get("max_tokens", 1024),
+            "messages": r["messages"]
+        }} for r in requests
+    ])
+    return batch.id
+
+def poll_batch(batch_id: str, interval=30) -> list[dict]:
+    import time
+    while True:
+        batch = client.beta.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            return [
+                {"id": r.custom_id, "text": r.result.message.content[0].text}
+                for r in client.beta.messages.batches.results(batch_id)
+                if r.result.type == "succeeded"
+            ]
+        time.sleep(interval)
+]]></code>
+    </example>
+  </section>
+</text>

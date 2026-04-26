@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-loop" title="Canonical Agentic Loop">
+  <summary>The agentic loop sends messages with tools, detects stop_reason, executes all tool calls, appends the full response.content as the assistant turn, and repeats until end_turn or max iterations.</summary>
+
+  <section title="Loop structure">
+    <rule>
+      <statement>Set a max-iterations guard (10–20 turns); tool loops without a limit run indefinitely when a tool returns a consistently unhelpful result.</statement>
+      <rationale>Infinite loops burn quota and can be triggered by a single broken tool implementation that always returns the same response.</rationale>
+    </rule>
+    <rule>
+      <statement>Append response.content (the full list including tool_use blocks) as the assistant message, not just the text. Omitting tool_use blocks breaks conversation history and causes API errors on the next turn.</statement>
+      <rationale>The API requires complete message history including tool_use and tool_result blocks to reconstruct the conversation state.</rationale>
+    </rule>
+    <reference path="templates/agent-loop.py">Complete agentic loop with parallel tool execution</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+MAX_TURNS = 15
+messages = [{"role": "user", "content": user_input}]
+
+for _ in range(MAX_TURNS):
+    response = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        tools=tools,
+        messages=messages
+    )
+    messages.append({"role": "assistant", "content": response.content})
+
+    if response.stop_reason != "tool_use":
+        break
+
+    results = [
+        {"type": "tool_result", "tool_use_id": b.id,
+         "content": execute_tool(b.name, b.input)}
+        for b in response.content if b.type == "tool_use"
+    ]
+    messages.append({"role": "user", "content": results})
+
+final_text = response.content[0].text
+]]></code>
+    </example>
+  </section>
+
+  <section title="Parallel tool execution">
+    <rule>
+      <statement>Execute all tool_use blocks from a single response concurrently — do not serialize what Claude dispatched in parallel; return all results in one user message.</statement>
+      <rationale>Claude requests parallel tools to reduce round-trips; serializing them defeats the optimization and increases latency.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from concurrent.futures import ThreadPoolExecutor
+
+tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+with ThreadPoolExecutor() as executor:
+    futures = {b.id: executor.submit(execute_tool, b.name, b.input) for b in tool_uses}
+
+results = [
+    {"type": "tool_result", "tool_use_id": bid, "content": f.result()}
+    for bid, f in futures.items()
+]
+messages.append({"role": "user", "content": results})
+]]></code>
+    </example>
+  </section>
+
+  <section title="Tool error handling">
+    <rule>
+      <statement>Return tool errors as content (not is_error=True) unless the error should terminate the loop — Claude can often recover from tool errors when they're returned as data.</statement>
+      <rationale>is_error=True signals an unrecoverable error; most tool failures (timeouts, not-found) are recoverable if Claude sees the error message as data.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json
+
+def execute_tool(name: str, input_data: dict) -> str:
+    try:
+        if name == "get_weather":
+            return json.dumps({"temperature": 15, "condition": "cloudy"})
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    except Exception as e:
+        return json.dumps({"error": str(e), "tool": name})
+]]></code>
+    </example>
+  </section>
+</text>

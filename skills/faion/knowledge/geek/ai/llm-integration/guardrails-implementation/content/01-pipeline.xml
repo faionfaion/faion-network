@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline" title="GuardrailsPipeline Architecture">
+  <summary>Complete guardrails pipeline: GuardrailConfig/GuardrailResult dataclasses, input processing (PII, injection, moderation), output processing (moderation, hallucination, custom validators), and an async variant.</summary>
+
+  <section title="Config and Result dataclasses">
+    <rule>
+      <statement>Define GuardrailConfig at application startup; never hardcode thresholds inside validator functions.</statement>
+      <rationale>Centralizing config enables tuning without code changes and makes the security posture auditable.</rationale>
+    </rule>
+    <reference path="templates/guardrails-pipeline.py">GuardrailConfig, GuardrailResult, and GuardrailsPipeline production class</reference>
+  </section>
+
+  <section title="Input processing">
+    <rule>
+      <statement>Run rule-based injection checks first (microseconds), then API-based content moderation (~100ms), then LLM-based checks only if required by config.</statement>
+      <rationale>Layering by cost prevents slow checks from running on traffic that fast checks would block.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def process_input(self, user_input: str) -> tuple[str, list[dict]]:
+    violations = []
+    sanitized = user_input
+    if self.config.enable_pii_detection:
+        result = self.input_guardrails.validate(sanitized)
+        if not result.is_valid:
+            violations.extend([{"type": "input_validation", "detail": v}
+                                for v in result.violations])
+        sanitized = result.sanitized_input
+    if self.config.enable_prompt_injection_detection:
+        is_injection, detections = self.injection_detector.detect(sanitized)
+        if is_injection:
+            violations.append({"type": "prompt_injection", "detections": detections})
+            return None, violations  # block immediately
+    if self.config.enable_content_moderation:
+        moderation = self.content_moderator.moderate(sanitized)
+        if moderation["is_flagged"]:
+            violations.append({"type": "content_moderation",
+                                "categories": moderation["flagged_categories"]})
+            return None, violations
+    return sanitized, violations
+]]></code>
+      <note>Returns None for sanitized_input when the request must be blocked, not just logged.</note>
+    </example>
+  </section>
+
+  <section title="Output processing">
+    <rule>
+      <statement>Run output moderation before hallucination detection; hallucination detection is optional and expensive — enable only when context is available and stakes are high.</statement>
+      <rationale>Without a context document, hallucination detection is guesswork. Moderation is always relevant.</rationale>
+    </rule>
+    <rule>
+      <statement>Never catch exceptions silently inside validators — a failed guardrail check must fail loudly, not pass through.</statement>
+      <rationale>Silent swallowing of guardrail errors turns safety failures into invisible pass-throughs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async variant">
+    <rule>
+      <statement>For high-throughput applications, run input checks in parallel using ThreadPoolExecutor; collect all results before deciding to pass or block.</statement>
+      <rationale>Sequential checks add latency proportional to the number of checks; parallel reduces it to the slowest single check.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def process_input_async(self, user_input: str):
+    with ThreadPoolExecutor() as executor:
+        loop = asyncio.get_event_loop()
+        pii_check = loop.run_in_executor(executor, self.input_guardrails.validate, user_input)
+        injection_check = loop.run_in_executor(executor, self.injection_detector.detect, user_input)
+        moderation_check = loop.run_in_executor(executor, self.content_moderator.moderate, user_input)
+        results = await asyncio.gather(pii_check, injection_check, moderation_check)
+    return self._process_results(results)
+]]></code>
+    </example>
+  </section>
+</text>

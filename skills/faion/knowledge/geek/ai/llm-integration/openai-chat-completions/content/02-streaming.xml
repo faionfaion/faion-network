@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-streaming" title="Streaming and Async Parallel Requests">
+  <summary>Streaming with stream=True for real-time output; AsyncOpenAI with asyncio.gather for parallel pipeline calls.</summary>
+
+  <section title="Basic streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+stream = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Write a poem"}],
+    stream=True
+)
+
+for chunk in stream:
+    delta = chunk.choices[0].delta
+    if delta.content:
+        print(delta.content, end="", flush=True)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Async parallel completions">
+    <rule>
+      <statement>Use AsyncOpenAI for any pipeline that spawns more than 2 parallel LLM calls; parallel async calls count toward the same TPM budget — throttle with a semaphore for large batches.</statement>
+      <rationale>Sequential calls at Tier 1 (500 RPM) can saturate the rate limit; async gather distributes the same calls within the time window, not beyond it.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+from openai import AsyncOpenAI
+
+async_client = AsyncOpenAI()
+
+async def parallel_completions(prompts: list[str]) -> list[str]:
+    async def get_completion(prompt: str) -> str:
+        response = await async_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.choices[0].message.content
+
+    return await asyncio.gather(*[get_completion(p) for p in prompts])
+
+results = asyncio.run(parallel_completions(["Hello", "World", "!"]))
+]]></code>
+    </example>
+  </section>
+</text>

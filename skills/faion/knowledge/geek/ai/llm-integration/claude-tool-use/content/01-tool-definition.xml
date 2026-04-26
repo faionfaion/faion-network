@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-tool-definition" title="Tool Definition and tool_choice">
+  <summary>Claude tools require a name, description, and JSON Schema input_schema; tool_choice controls whether Claude must call a tool and which one.</summary>
+
+  <section title="Tool schema structure">
+    <rule>
+      <statement>Write tool descriptions as if explaining to a colleague who has never seen your codebase — specificity prevents wrong tool selection; vague descriptions lead to wrong tool calls with no error.</statement>
+      <rationale>Tool descriptions are the primary signal for tool selection. The model has no other context for choosing between tools.</rationale>
+    </rule>
+    <reference path="templates/tool-definition.json">Example tool definition with input_schema</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+tools = [
+    {
+        "name": "get_weather",
+        "description": "Get current weather for a location. Call this when the user asks about weather conditions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City name, e.g., 'Kyiv, Ukraine'"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["celsius", "fahrenheit"],
+                    "description": "Temperature unit"
+                }
+            },
+            "required": ["location"]
+        }
+    }
+]
+]]></code>
+    </example>
+    <antipattern>
+      <description>Tool schemas with more than 3 levels of nesting.</description>
+      <reason>Deep nesting increases tool-call errors. Keep input schemas flat (2 levels max) for highest reliability.</reason>
+    </antipattern>
+  </section>
+
+  <section title="tool_choice options">
+    <list>
+      <item>auto (default): model decides whether to use a tool and which one</item>
+      <item>any: model must call at least one tool, picks which</item>
+      <item>tool + name: model must call the specified tool — use for forced structured output</item>
+    </list>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Force a specific tool for structured output extraction
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # typed dict matching the schema
+]]></code>
+    </example>
+  </section>
+
+  <section title="Request and stop_reason detection">
+    <rule>
+      <statement>Check stop_reason == "tool_use" explicitly on every response; missing this check causes the agent loop to exit early on tool requests.</statement>
+      <rationale>tool_use is a stop, not an error. The API returns stop_reason="tool_use" whenever Claude wants to call a tool; the caller must handle it.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+if response.stop_reason == "tool_use":
+    for block in response.content:
+        if block.type == "tool_use":
+            print(f"Tool: {block.name}, ID: {block.id}, Input: {block.input}")
+]]></code>
+    </example>
+  </section>
+</text>

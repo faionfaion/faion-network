@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-json-modes" title="JSON Mode vs Structured Outputs">
+  <summary>Comparison of available methods for getting JSON from LLMs; JSON Mode guarantees valid JSON but not schema compliance; Structured Outputs guarantee both but only for gpt-4o family.</summary>
+
+  <section title="Method comparison">
+    <list>
+      <item>JSON Mode (OpenAI, Anthropic): guarantees valid JSON — NOT schema compliance. External validation required.</item>
+      <item>Structured Outputs (OpenAI beta.parse, gpt-4o only): guarantees valid JSON AND schema compliance</item>
+      <item>Prompt engineering (all providers): most flexible, least reliable — always add retry logic</item>
+      <item>Function-forcing pattern (all providers): reliable across all OpenAI models; works on Claude too</item>
+    </list>
+    <rule>
+      <statement>Even with Structured Outputs, validate the parsed result before passing to the next pipeline step — Structured Outputs enforce structure but not semantic correctness; a required string field may contain nonsense.</statement>
+      <rationale>Structural validity (correct JSON shape) does not imply semantic validity (correct values). Downstream steps must validate business rules independently of the schema.</rationale>
+    </rule>
+  </section>
+
+  <section title="OpenAI JSON Mode">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": 'Extract entities. Return JSON: {"entities": [{"name": str, "type": str}]}'},
+        {"role": "user", "content": "Apple CEO Tim Cook announced a new iPhone at Cupertino."}
+    ],
+    response_format={"type": "json_object"}
+)
+result = json.loads(response.choices[0].message.content)
+# Always validate: result may have valid JSON but wrong shape
+assert "entities" in result, "Missing entities key"
+]]></code>
+    </example>
+    <antipattern>
+      <description>Passing JSON Mode output to downstream code without schema validation.</description>
+      <reason>JSON Mode guarantees parseable JSON, not that required keys exist or values are the right type. Missing keys cause KeyError in the consumer.</reason>
+    </antipattern>
+  </section>
+</text>

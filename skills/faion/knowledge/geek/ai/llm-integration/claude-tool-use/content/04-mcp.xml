@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-mcp" title="Model Context Protocol (MCP)">
+  <summary>MCP is a protocol for connecting Claude Desktop to external tools, resources, and prompt templates; for programmatic API use, standard tool use patterns are preferred over MCP.</summary>
+
+  <section title="MCP overview">
+    <rule>
+      <statement>MCP is primarily designed for Claude Desktop (stdio transport); programmatic API usage should use standard tool use, not MCP.</statement>
+      <rationale>MCP servers communicate via stdio by default and require subprocess lifecycle management; standard tool use is stateless and easier to operationalize in servers.</rationale>
+    </rule>
+    <p>MCP uses three primitives: Tools (actions), Resources (read-only data), Prompts (reusable templates).</p>
+  </section>
+
+  <section title="Claude Desktop config">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {"GITHUB_TOKEN": "..."}
+    }
+  }
+}
+]]></code>
+      <note>Available official servers: filesystem, github, postgres, sqlite, puppeteer, google-drive, slack, brave-search.</note>
+    </example>
+  </section>
+
+  <section title="Custom MCP server">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from mcp.server import Server
+import asyncio
+
+server = Server("my-mcp-server")
+
+@server.tool()
+async def search_docs(query: str) -> str:
+    """Search documentation for query"""
+    return f"Results for: {query}"
+
+@server.resource("docs://readme")
+async def get_readme() -> str:
+    """Project README"""
+    with open("README.md") as f:
+        return f.read()
+
+@server.prompt("analyze-code")
+def analyze_code_prompt(language: str = "python") -> str:
+    """Code analysis prompt template"""
+    return f"Analyze the {language} code for bugs, security issues, and performance."
+
+if __name__ == "__main__":
+    asyncio.run(server.run())
+]]></code>
+    </example>
+  </section>
+</text>

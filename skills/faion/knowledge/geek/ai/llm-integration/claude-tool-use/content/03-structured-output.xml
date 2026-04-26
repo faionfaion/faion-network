@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-structured-output" title="Structured Output via Tool Forcing">
+  <summary>Forcing a specific tool call with tool_choice is the most reliable way to get typed JSON output from Claude, bypassing the need for prompt engineering + json.loads + retry.</summary>
+
+  <section title="Forced tool call pattern">
+    <rule>
+      <statement>To get guaranteed typed output, define a single extraction tool and force it with tool_choice={"type": "tool", "name": "..."}; access the result from tool_use.input.</statement>
+      <rationale>Prompt engineering ("return only JSON") fails occasionally even with temperature=0. The forced tool call routes through the tool use pathway which is more reliable for structured data.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+json_tool = {
+    "name": "output_json",
+    "description": "Output the result as structured JSON",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer"},
+            "email": {"type": "string", "format": "email"}
+        },
+        "required": ["name", "age"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=[json_tool],
+    tool_choice={"type": "tool", "name": "output_json"},
+    messages=[{"role": "user", "content": "Extract: John Doe, 30, john@example.com"}]
+)
+
+tool_use = next(b for b in message.content if b.type == "tool_use")
+data = tool_use.input  # {"name": "John Doe", "age": 30, "email": "john@example.com"}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Array extraction schema">
+    <example type="good">
+      <code lang="python"><![CDATA[
+extraction_tool = {
+    "name": "extract_users",
+    "description": "Extract user records from text",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "users": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "role": {"type": "string"},
+                        "skills": {"type": "array", "items": {"type": "string"}}
+                    },
+                    "required": ["name", "role"]
+                }
+            }
+        },
+        "required": ["users"]
+    }
+}
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514", max_tokens=2048,
+    tools=[extraction_tool],
+    tool_choice={"type": "tool", "name": "extract_users"},
+    messages=[{"role": "user", "content": "Parse: John - Developer (Python, JS)\nSara - Designer (Figma)"}]
+)
+users = next(b for b in message.content if b.type == "tool_use").input["users"]
+]]></code>
+    </example>
+  </section>
+</text>

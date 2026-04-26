@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-vision" title="Vision: Images and PDFs">
+  <summary>Image input from base64 and URL, multiple images in one message, PDF document type; supported formats and size limits.</summary>
+
+  <section title="Image from base64">
+    <rule>
+      <statement>Place image content before text content in multimodal messages — model processes images better when they come first in the content array.</statement>
+      <rationale>Empirically, image comprehension quality improves when the image precedes the question about it; this is consistent across Claude model versions.</rationale>
+    </rule>
+    <reference path="templates/vision.py">analyze_screenshot() helper using base64</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64
+
+def encode_image(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")
+
+image_data = encode_image("screenshot.png")
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {
+            "type": "base64", "media_type": "image/png", "data": image_data
+        }},
+        {"type": "text", "text": "Describe this screenshot"}
+    ]}]
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Image from URL">
+    <rule>
+      <statement>Image URLs are fetched at inference time — if the URL returns a 403 at that moment, the call fails silently with a content error block rather than an API error.</statement>
+      <rationale>URL-based images depend on the URL being accessible at inference time; pre-fetch and base64-encode for reliability in production pipelines.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": [
+        {"type": "image", "source": {"type": "url", "url": "https://example.com/image.jpg"}},
+        {"type": "text", "text": "What's in this image?"}
+    ]}]
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="PDF documents">
+    <rule>
+      <statement>Validate PDF page count before sending — PDFs exceeding 100 pages produce an API error, not a truncation; validate before sending to prevent pipeline failures.</statement>
+      <rationale>The error surfaces at inference time after the full PDF has been base64-encoded and transmitted; validating first avoids wasting the encoding and transmission.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+pdf_data = encode_image("document.pdf")  # same base64 encoding
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    messages=[{"role": "user", "content": [
+        {"type": "document", "source": {
+            "type": "base64", "media_type": "application/pdf", "data": pdf_data
+        }},
+        {"type": "text", "text": "Summarize this document"}
+    ]}]
+)
+]]></code>
+    </example>
+    <list>
+      <item>JPEG / PNG / GIF / WebP: max 20MB each</item>
+      <item>PDF: max 32MB / 100 pages</item>
+    </list>
+  </section>
+</text>

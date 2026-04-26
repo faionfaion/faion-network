@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-error-handling" title="Error Handling, Rate Limits, and Cost Tracking">
+  <summary>Common error types and HTTP codes, exponential backoff with tenacity, rate limit headers for proactive throttling, and token cost tracking with tiktoken.</summary>
+
+  <section title="Common errors">
+    <list>
+      <item>invalid_api_key (401): bad OPENAI_API_KEY — check env var</item>
+      <item>rate_limit_exceeded (429): too many requests or quota — implement backoff</item>
+      <item>insufficient_quota (429): billing limit reached — add credits or wait for reset</item>
+      <item>model_not_found (404): invalid model name — check available models</item>
+      <item>context_length_exceeded (400): input too long — chunk or use larger context model</item>
+      <item>server_error (500): OpenAI issue — retry with backoff</item>
+    </list>
+  </section>
+
+  <section title="Retry with tenacity">
+    <reference path="templates/retry-client.py">OpenAI client wrapper with tenacity retry</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import RateLimitError, APIError
+
+@retry(
+    retry=retry_if_exception_type((RateLimitError, APIError)),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(5)
+)
+def make_request(messages: list, model="gpt-4o-mini", temperature=0.2):
+    response = client.chat.completions.create(
+        model=model, messages=messages, temperature=temperature
+    )
+    return response.choices[0].message.content, response.usage
+]]></code>
+    </example>
+  </section>
+
+  <section title="Rate limit headers">
+    <rule>
+      <statement>Check x-ratelimit-remaining-requests before dispatching large batches; rate limits are per-model, not global — hitting gpt-4o limits does not affect gpt-4o-mini.</statement>
+      <rationale>A Tier 1 account has 500 RPM for gpt-4o but higher limits for gpt-4o-mini; checking the header prevents rejected requests on the first call of a large batch.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+response = client.chat.completions.with_raw_response.create(
+    model="gpt-4o", messages=[{"role": "user", "content": "Hi"}]
+)
+remaining = response.headers.get("x-ratelimit-remaining-requests")
+reset_in = response.headers.get("x-ratelimit-reset-requests")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Cost tracking">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import tiktoken
+
+def count_tokens(text: str, model: str = "gpt-4o") -> int:
+    encoding = tiktoken.encoding_for_model(model)
+    return len(encoding.encode(text))
+
+usage = response.usage
+input_cost = usage.prompt_tokens * 2.50 / 1_000_000   # gpt-4o pricing
+output_cost = usage.completion_tokens * 10.00 / 1_000_000
+print(f"Cost: ${input_cost + output_cost:.6f}")
+]]></code>
+      <note>tiktoken counts are approximate for multimodal messages — images add 85–1105 tokens depending on detail level, not counted by tiktoken.</note>
+    </example>
+  </section>
+</text>

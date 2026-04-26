@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-prompt-template" title="PromptTemplate: Zero-shot and Few-shot Patterns">
+  <summary>PromptTemplate dataclass encapsulates system prompt, user template with variables, and optional few-shot examples; render() produces the messages array ready for any OpenAI-compatible API.</summary>
+
+  <section title="PromptTemplate class">
+    <rule>
+      <statement>Store prompt templates as code constants, not runtime strings — this enables git diff on prompt changes and catches silent regressions when model versions update.</statement>
+      <rationale>Prompts stored in databases or constructed at runtime are not version-controlled; changes are invisible in code review and regressions are discovered only in production.</rationale>
+    </rule>
+    <reference path="templates/prompt-template.py">PromptTemplate dataclass with few-shot support</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import List, Dict
+
+@dataclass
+class PromptTemplate:
+    system: str
+    user_template: str
+    examples: List[Dict] = field(default_factory=list)
+
+    def render(self, **kwargs) -> List[Dict]:
+        msgs = [{"role": "system", "content": self.system}]
+        for ex in self.examples:
+            msgs += [
+                {"role": "user", "content": ex["input"]},
+                {"role": "assistant", "content": ex["output"]}
+            ]
+        msgs.append({"role": "user", "content": self.user_template.format(**kwargs)})
+        return msgs
+]]></code>
+    </example>
+  </section>
+
+  <section title="Zero-shot pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+CLASSIFICATION_PROMPT = PromptTemplate(
+    system="You are a sentiment classifier. Respond with only: positive, negative, or neutral.",
+    user_template="Classify: {text}"
+)
+
+messages = CLASSIFICATION_PROMPT.render(text="This exceeded my expectations!")
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+messages = [{"role": "user", "content": "Write something about AI"}]
+]]></code>
+      <note>No system prompt, no output format instruction — model guesses both the topic and the format.</note>
+    </example>
+  </section>
+
+  <section title="Few-shot pattern">
+    <rule>
+      <statement>Limit few-shot examples to 3–5 high-quality pairs; more examples do not reliably improve accuracy and inflate token cost. Place the most representative example last — it has the highest influence.</statement>
+      <rationale>Model attention decays for examples far from the current task; quality and recency outweigh quantity.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+FEW_SHOT_CLASSIFICATION = PromptTemplate(
+    system="You are a sentiment classifier. Respond with only: positive, negative, or neutral.",
+    user_template="Classify: {text}",
+    examples=[
+        {"input": "Classify: I love this product!", "output": "positive"},
+        {"input": "Classify: This is terrible.", "output": "negative"},
+        {"input": "Classify: The product arrived on time.", "output": "neutral"}
+    ]
+)
+]]></code>
+    </example>
+  </section>
+</text>

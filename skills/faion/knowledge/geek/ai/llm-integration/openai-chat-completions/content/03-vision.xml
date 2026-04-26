@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-vision" title="Vision API">
+  <summary>Image understanding via URL or base64 encoding; detail level controls token cost (85–1105 tokens per image); max 20MB, formats PNG/JPEG/GIF/WebP.</summary>
+
+  <section title="Image from URL">
+    <example type="good">
+      <code lang="python"><![CDATA[
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {"type": "image_url", "image_url": {
+                "url": "https://example.com/image.jpg",
+                "detail": "high"  # "low" | "high" | "auto"
+            }}
+        ]
+    }]
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Image from base64">
+    <reference path="templates/encode-image.py">encode_image() base64 helper</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64
+
+def encode_image(image_path: str) -> str:
+    with open(image_path, "rb") as f:
+        return base64.standard_b64encode(f.read()).decode("utf-8")
+
+image_data = encode_image("screenshot.png")
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this screenshot"},
+            {"type": "image_url", "image_url": {
+                "url": f"data:image/png;base64,{image_data}"
+            }}
+        ]
+    }]
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Detail levels and limitations">
+    <list>
+      <item>low: 85 tokens — quick overview, thumbnails, no fine details</item>
+      <item>high: 85-1105+ tokens — OCR, detailed analysis, full resolution</item>
+      <item>auto: model decides based on image content</item>
+    </list>
+    <rule>
+      <statement>Profile image token cost before shipping multimodal pipelines; high-detail images add up to 1105 tokens each, multiplying costs on batches.</statement>
+      <rationale>Vision token cost is proportional to image size and detail level; untracked, it dominates pipeline cost for image-heavy workloads.</rationale>
+    </rule>
+    <list>
+      <item>Vision limitations: struggles with rotated text, small text, spatial reasoning, animated GIFs</item>
+      <item>Max 20 images per message; no video (extract frames manually)</item>
+      <item>Supported formats: PNG, JPEG, GIF, WebP</item>
+    </list>
+  </section>
+</text>

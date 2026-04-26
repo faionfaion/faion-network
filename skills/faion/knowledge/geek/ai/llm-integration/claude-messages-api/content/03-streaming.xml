@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-streaming" title="Streaming: text_stream, Events, Async">
+  <summary>Three streaming patterns: text_stream for simple output, event-based for tools and fine-grained control, async streaming for concurrent pipelines; SSE event format reference.</summary>
+
+  <section title="text_stream pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Write a poem about AI"}]
+) as stream:
+    for text in stream.text_stream:
+        print(text, end="", flush=True)
+    # Get usage stats after streaming completes
+    final = stream.get_final_message()
+    print(f"\nTokens: {final.usage.input_tokens} in, {final.usage.output_tokens} out")
+]]></code>
+      <note>Use stream.get_final_message() when usage stats are needed — they are not available from individual chunks.</note>
+    </example>
+  </section>
+
+  <section title="Event-based streaming">
+    <rule>
+      <statement>For streaming + tool use, accumulate input_json_delta events and parse after content_block_stop — never parse partial JSON inline.</statement>
+      <rationale>input_json_delta events carry fragments of JSON that are not individually parseable; parsing before the block stops raises JSONDecodeError.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+with client.messages.stream(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello"}]
+) as stream:
+    for event in stream:
+        if event.type == "content_block_start":
+            print(f"Block: {event.content_block.type}")
+        elif event.type == "content_block_delta":
+            if event.delta.type == "text_delta":
+                print(event.delta.text, end="", flush=True)
+        elif event.type == "message_stop":
+            print("\n[Complete]")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Async streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+import anthropic
+
+async_client = anthropic.AsyncAnthropic()
+
+async def stream_response():
+    async with async_client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": "Hello"}]
+    ) as stream:
+        async for text in stream.text_stream:
+            print(text, end="", flush=True)
+
+asyncio.run(stream_response())
+]]></code>
+    </example>
+  </section>
+
+  <section title="SSE event format">
+    <p>Raw SSE format for custom transport implementations:</p>
+    <list>
+      <item>message_start: message metadata (id, model, usage placeholder)</item>
+      <item>content_block_start: new content block begins (type: text or tool_use)</item>
+      <item>content_block_delta: text_delta or input_json_delta</item>
+      <item>content_block_stop: block complete</item>
+      <item>message_delta: final usage stats</item>
+      <item>message_stop: message complete</item>
+    </list>
+    <rule>
+      <statement>Claude SSE format differs from OpenAI SSE — they are not interchangeable without an adapter layer (e.g., LiteLLM).</statement>
+      <rationale>OpenAI uses data: [DONE] to end a stream; Claude uses message_stop event. The delta object structure also differs; treating them as equivalent causes silent parse failures.</rationale>
+    </rule>
+  </section>
+</text>

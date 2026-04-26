@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-openai-structured" title="OpenAI Structured Outputs with Pydantic">
+  <summary>beta.parse with Pydantic BaseModel gives schema-guaranteed output for gpt-4o; accessing .parsed returns a typed Python object, not a string.</summary>
+
+  <section title="Pydantic schema definition">
+    <rule>
+      <statement>Add Field(description=...) to every Pydantic field — descriptions become part of the JSON Schema sent to the model and measurably improve accuracy on ambiguous fields.</statement>
+      <rationale>The model uses field descriptions to understand semantics. Without descriptions, it infers meaning from the field name alone, which fails for abbreviated or domain-specific names.</rationale>
+    </rule>
+    <reference path="templates/extraction-schema.py">Pydantic models for entity extraction and invoice parsing</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+from typing import List
+
+class Entity(BaseModel):
+    name: str = Field(description="Entity name as it appears in the text")
+    type: str = Field(description="Entity type: person, company, location, or product")
+    confidence: float = Field(ge=0, le=1, description="Confidence score 0.0-1.0")
+
+class ExtractionResult(BaseModel):
+    entities: List[Entity]
+    summary: str = Field(description="One sentence summary of the text")
+    language: str = Field(description="ISO 639-1 language code, e.g., 'en'")
+]]></code>
+    </example>
+  </section>
+
+  <section title="beta.parse call">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "Extract entities and provide a summary."},
+        {"role": "user", "content": "Elon Musk visited Berlin to open a new Tesla factory."}
+    ],
+    response_format=ExtractionResult
+)
+
+result: ExtractionResult = response.choices[0].message.parsed
+# result is None if model refuses (content policy) — always check
+if result is None:
+    raise ValueError("Model refused to generate structured output")
+
+print(result.entities[0].name)  # "Elon Musk"
+print(result.summary)
+]]></code>
+      <note>beta.parse is gpt-4o family only. Not available for o1/o3 reasoning models.</note>
+    </example>
+    <rule>
+      <statement>Check response.choices[0].message.parsed for None before accessing — it is None when the model refuses due to content policy.</statement>
+      <rationale>Accessing .name on None raises AttributeError; this error surfaces in the consumer far from the LLM call, making it hard to diagnose.</rationale>
+    </rule>
+  </section>
+</text>

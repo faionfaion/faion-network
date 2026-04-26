@@ -5,6 +5,7 @@
 ### Changed
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: llamaindex, llm-decision-framework, voice-agents, rag-pipeline-design, reasoning-first-architectures, fine-tuning-lora, text-to-speech, finetuning)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: eu-ai-act-compliance, multi-agent-design-patterns, model-evaluation, rag-evaluation, tool-use-function-calling, llm-observability-stack, gemini-api, speech-to-text)
+- refactor: 8/8 methodologies migrated to new shape (batch: guardrails-implementation, gemini-multimodal, claude-tool-use, openai-chat-completions, prompt-basics, structured-output-basics, claude-api-integration, claude-messages-api)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: agentic-rag, chunking-strategies, chain-of-thought, hybrid-search, multi-agent-systems, structured-output, openai-api, cost-optimization)
 - refactor: 8/8 infrastructure-engineer methodologies migrated to new shape (batch: aws-architecture-services, terraform-basics, terraform-state, gcp-arch-patterns, aws-lambda, terraform, aws-networking, aws-s3-storage)
 - refactor: 8/8 methodologies migrated to new shape (batch: llm-friendly-architecture x2, ai-assisted-dev, claude-md-creation, ai-content-strategy, ai-marketing-tools-stack-2026, agentic-commerce-future-trends, technical-seo-for-ai)

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-video-async" title="Video Upload State Machine">
+  <summary>Video processing requires an async polling loop with a max-iteration guard; the PROCESSING state can last 30 seconds to 5 minutes depending on video length.</summary>
+
+  <section title="State machine">
+    <rule>
+      <statement>Always add a max-iteration guard to the video processing polling loop — a stuck PROCESSING state loops forever without it.</statement>
+      <rationale>Gemini video processing can hang in PROCESSING indefinitely for corrupted or unsupported files; the guard prevents infinite loops.</rationale>
+    </rule>
+    <rule>
+      <statement>Handle FAILED state explicitly and raise an error — do not treat it as a retry condition.</statement>
+      <rationale>A FAILED state means the file cannot be processed; retrying wastes time and quota.</rationale>
+    </rule>
+    <reference path="templates/analyze-video.py">analyze_video() with max-iteration guard and ACTIVE/FAILED handling</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time
+import google.generativeai as genai
+
+def analyze_video(path: str, query: str, model_name="gemini-1.5-pro") -> str:
+    file = genai.upload_file(path)
+    for _ in range(60):  # 5-minute max wait (60 * 5s)
+        file = genai.get_file(file.name)
+        if file.state.name == "ACTIVE":
+            break
+        if file.state.name == "FAILED":
+            raise RuntimeError(f"Video processing failed: {file.name}")
+        time.sleep(5)
+    else:
+        raise TimeoutError("Video processing timed out after 5 minutes")
+    model = genai.GenerativeModel(model_name)
+    return model.generate_content([query, file]).text
+]]></code>
+    </example>
+  </section>
+
+  <section title="Timestamp queries">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Extract structured info with timestamps
+response = model.generate_content([
+    """Analyze this video and extract:
+    {"topics": [...], "key_timestamps": [{"time": "MM:SS", "event": "..."}],
+     "action_items": [...]}
+    Return only valid JSON.""",
+    video_file
+])
+]]></code>
+      <note>Gemini resolves timestamp references ("what happens at 2:30") natively; no frame extraction needed.</note>
+    </example>
+  </section>
+
+  <section title="GCS URI pattern">
+    <rule>
+      <statement>Use GCS URIs (`gs://bucket/file.mp4`) instead of SDK uploads for large or frequently-accessed files — faster, no re-upload if the file already exists in GCS.</statement>
+      <rationale>SDK uploads copy the file on every pipeline run; GCS URIs reference existing cloud storage without transfer cost.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from vertexai.generative_models import GenerativeModel, Part
+
+video_part = Part.from_uri(uri="gs://your-bucket/video.mp4", mime_type="video/mp4")
+model = GenerativeModel("gemini-1.5-pro")
+response = model.generate_content(["Summarize this video", video_part])
+]]></code>
+    </example>
+  </section>
+</text>

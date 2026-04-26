@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-modalities" title="Gemini Multimodal: Images, Audio, PDFs, Combined">
+  <summary>Image, audio, and PDF upload patterns for the Gemini API; supported formats, size limits, and combined modality examples.</summary>
+
+  <section title="Supported modalities">
+    <list>
+      <item>Images: JPG, PNG, WEBP, HEIC, HEIF — max 20MB — vision, OCR, analysis</item>
+      <item>Video: MP4, MPEG, MOV, AVI, FLV, MPG, WEBM, WMV, 3GPP — max 2GB — requires async polling</item>
+      <item>Audio: MP3, WAV, AIFF, AAC, OGG, FLAC — max 100MB — transcription, speaker ID, sentiment</item>
+      <item>PDFs: max 100MB — document Q&amp;A, table/multi-column extraction</item>
+      <item>Code execution: Python sandbox only, no internet, ~30s execution limit</item>
+    </list>
+  </section>
+
+  <section title="Image analysis">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import PIL.Image
+import google.generativeai as genai
+
+genai.configure(api_key="YOUR_API_KEY")
+model = genai.GenerativeModel("gemini-2.0-flash")
+
+# From PIL
+image = PIL.Image.open("photo.jpg")
+response = model.generate_content(["Describe this image in detail", image])
+
+# Multiple images for comparison
+img1 = PIL.Image.open("before.jpg")
+img2 = PIL.Image.open("after.jpg")
+response = model.generate_content(["Compare these images and describe differences", img1, img2])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Audio processing">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time
+audio_file = genai.upload_file("podcast.mp3")
+while audio_file.state.name == "PROCESSING":
+    time.sleep(5)
+    audio_file = genai.get_file(audio_file.name)
+
+model = genai.GenerativeModel("gemini-1.5-pro")
+response = model.generate_content(["Transcribe this audio recording", audio_file])
+# Also useful: speaker identification, sentiment, topic extraction
+]]></code>
+    </example>
+  </section>
+
+  <section title="PDF processing">
+    <example type="good">
+      <code lang="python"><![CDATA[
+pdf_file = genai.upload_file("document.pdf")
+model = genai.GenerativeModel("gemini-1.5-pro")
+
+# Structured extraction
+response = model.generate_content([
+    """Extract the following in JSON:
+    {"party_names": [...], "contract_value": ..., "key_dates": [...], "payment_terms": "..."}""",
+    pdf_file
+])
+]]></code>
+      <note>Gemini handles tables, images, and multi-column layouts natively — no custom PDF parser needed.</note>
+    </example>
+  </section>
+
+  <section title="Combined modalities">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Video + PDF cross-reference
+video_file = genai.upload_file("presentation.mp4")
+pdf_file = genai.upload_file("slides.pdf")
+response = model.generate_content([
+    "Compare the video presentation with the PDF slides. Note any discrepancies.",
+    video_file, pdf_file
+])
+]]></code>
+    </example>
+    <rule>
+      <statement>Store uploaded file names with timestamps; re-upload if older than 48 hours — Gemini files expire after 48 hours.</statement>
+      <rationale>File upload is not idempotent; uploading the same file twice creates two separate file objects, doubling storage cost.</rationale>
+    </rule>
+  </section>
+</text>

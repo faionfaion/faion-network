@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-client-setup" title="Client Setup, Models, and Basic Completions">
+  <summary>Anthropic client initialization, model hierarchy, sync/async completions, and streaming responses.</summary>
+
+  <section title="Client initialization">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from anthropic import Anthropic
+import os
+
+client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are a senior software architect specializing in Python.",
+    messages=[{"role": "user", "content": "Review this code for security issues."}]
+)
+print(message.content[0].text)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Model selection">
+    <list>
+      <item>claude-sonnet-4-20250514: best balance of speed/quality — default choice for most tasks</item>
+      <item>claude-opus-*: most capable, complex reasoning and architecture decisions — significantly lower rate limits</item>
+      <item>claude-haiku-*: fastest, most cost-effective — use for triage, classification, high-volume inner loops</item>
+    </list>
+    <rule>
+      <statement>Use Haiku for triage/routing steps, Sonnet for main tasks, Opus only for complex reasoning or architecture — rate limits for Opus are significantly lower than Sonnet.</statement>
+      <rationale>A pipeline that works with Sonnet may 429 immediately with Opus; Opus rate limits are much tighter, making it unsuitable for high-throughput inner loops.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async completions">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+from anthropic import AsyncAnthropic
+
+async_client = AsyncAnthropic()
+
+async def async_claude(prompt: str) -> str:
+    message = await async_client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return message.content[0].text
+
+async def batch_process(prompts: list[str]) -> list[str]:
+    return await asyncio.gather(*[async_claude(p) for p in prompts])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Streaming">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def stream_claude(prompt: str, system: str = "") -> str:
+    full_response = ""
+    with client.messages.stream(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system,
+        messages=[{"role": "user", "content": prompt}]
+    ) as stream:
+        for text in stream.text_stream:
+            print(text, end="", flush=True)
+            full_response += text
+    return full_response
+]]></code>
+    </example>
+  </section>
+</text>

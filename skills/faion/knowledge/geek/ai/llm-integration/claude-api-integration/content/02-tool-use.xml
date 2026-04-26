@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tool-use" title="Tool Use, Vision, and Extended Thinking">
+  <summary>Single-turn tool dispatch with result routing, vision analysis (URL and base64), and Extended Thinking for complex reasoning problems.</summary>
+
+  <section title="Tool use pattern">
+    <example type="good">
+      <code lang="python"><![CDATA[
+tools = [{
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string", "description": "City and country, e.g., 'London, UK'"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+}]
+
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    tools=tools,
+    messages=[{"role": "user", "content": "What's the weather in Kyiv?"}]
+)
+
+for block in response.content:
+    if block.type == "tool_use":
+        result = execute_tool(block.name, block.input)
+        follow_up = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            tools=tools,
+            messages=[
+                {"role": "user", "content": "What's the weather in Kyiv?"},
+                {"role": "assistant", "content": response.content},
+                {"role": "user", "content": [{"type": "tool_result",
+                    "tool_use_id": block.id, "content": result}]}
+            ]
+        )
+]]></code>
+    </example>
+  </section>
+
+  <section title="Vision">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import base64
+
+def analyze_local_image(image_path: str, question: str) -> str:
+    with open(image_path, "rb") as f:
+        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+    media_type = "image/png" if image_path.endswith(".png") else "image/jpeg"
+
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": media_type, "data": image_data
+            }},
+            {"type": "text", "text": question}
+        ]}]
+    )
+    return message.content[0].text
+]]></code>
+    </example>
+  </section>
+
+  <section title="Extended Thinking">
+    <rule>
+      <statement>Extended Thinking is incompatible with temperature — setting both raises an API error; disable temperature when enabling thinking.</statement>
+      <rationale>Extended Thinking has its own sampling parameters; temperature is redundant and causes a validation error.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def complex_reasoning(problem: str) -> dict:
+    response = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=16000,
+        thinking={"type": "enabled", "budget_tokens": 8000},
+        messages=[{"role": "user", "content": problem}]
+        # Note: no temperature parameter when thinking is enabled
+    )
+    return {
+        "thinking": next((b.thinking for b in response.content if b.type == "thinking"), ""),
+        "answer": next((b.text for b in response.content if b.type == "text"), "")
+    }
+]]></code>
+    </example>
+  </section>
+</text>

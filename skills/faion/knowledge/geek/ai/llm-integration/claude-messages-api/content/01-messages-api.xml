@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-messages-api" title="Messages API Request, Parameters, and Response Structure">
+  <summary>Basic request structure, parameters table, response object fields, content block types, and multi-turn conversation pattern.</summary>
+
+  <section title="Basic request">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import anthropic
+
+client = anthropic.Anthropic()
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    system="You are an expert on Specification-Driven Development. Be concise.",
+    messages=[{"role": "user", "content": "What are the key phases of SDD?"}]
+)
+print(message.content[0].text)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Parameters">
+    <list>
+      <item>model: required — model ID string</item>
+      <item>max_tokens: required — max response tokens; cannot be omitted; truncates if too low</item>
+      <item>messages: required — alternating user/assistant turns; consecutive same-role messages → 400 error</item>
+      <item>system: optional — set behavior; kept stable across calls for Prompt Caching benefit</item>
+      <item>temperature: optional — 0–1 (not 0–2 like OpenAI); 0=deterministic, 1=creative</item>
+      <item>stop_sequences: optional — matches on next token boundary; mid-sentence stop is cut silently</item>
+      <item>metadata: optional — add user_id for abuse detection and cost attribution</item>
+    </list>
+    <rule>
+      <statement>Always set max_tokens high enough for expected output — silent truncation (stop_reason="max_tokens") is the most common cause of corrupted downstream data.</statement>
+      <rationale>max_tokens is required and easy to set too low; truncation produces parseable but incomplete output that passes format checks and fails semantic ones.</rationale>
+    </rule>
+  </section>
+
+  <section title="Response structure and stop_reason">
+    <rule>
+      <statement>Check stop_reason before accessing content[0].text — if stop_reason is "tool_use", content[0] may be a tool_use block, not text.</statement>
+      <rationale>Content blocks are polymorphic; indexing blindly into content[0].text raises AttributeError when the first block is a tool_use or thinking block.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+message = client.messages.create(...)
+
+print(message.stop_reason)  # "end_turn" | "max_tokens" | "stop_sequence" | "tool_use"
+print(message.usage.input_tokens, message.usage.output_tokens)
+
+for block in message.content:
+    if block.type == "text":
+        print(block.text)
+    elif block.type == "tool_use":
+        print(f"Tool: {block.name}, Input: {block.input}")
+    elif block.type == "thinking":
+        print(f"Thinking: {block.thinking}")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Multi-turn pattern">
+    <rule>
+      <statement>Append the full resp.content list (not just text) as the assistant turn in multi-turn history — tool_use blocks must be preserved or the next turn gets a 400 error.</statement>
+      <rationale>The API reconstructs conversation state from message history; missing tool_use blocks make the history inconsistent and cause an API error.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+messages = [
+    {"role": "user", "content": "What is SDD?"},
+    {"role": "assistant", "content": "SDD (Specification-Driven Development) is..."},
+    {"role": "user", "content": "How does it compare to TDD?"}
+]
+response = client.messages.create(model="claude-sonnet-4-20250514",
+    max_tokens=1024, messages=messages)
+# Append full content list, not just text
+messages.append({"role": "assistant", "content": response.content})
+]]></code>
+    </example>
+  </section>
+</text>

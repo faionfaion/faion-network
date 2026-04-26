@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-complex-schemas" title="Complex Schemas: Tasks, Invoices, Enums">
+  <summary>Pydantic models for nested structured extraction: task with subtasks, invoice with line items, enums for fixed-vocabulary fields.</summary>
+
+  <section title="Schema design rules">
+    <rule>
+      <statement>Keep schemas flat (2 levels of nesting max) for highest reliability; deeply nested schemas degrade model accuracy even with Structured Outputs.</statement>
+      <rationale>Model accuracy on deeply nested JSON drops as nesting depth increases; this is empirical, not a hard API constraint.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Literal types or enums for fixed-vocabulary fields instead of free strings — this removes ambiguity and makes downstream handling exhaustive.</statement>
+      <rationale>A string field "priority" can return "High", "high", "HIGH", or "urgent"; an enum returns only the declared values.</rationale>
+    </rule>
+    <reference path="templates/extraction-schema.py">Task and invoice extraction Pydantic models</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from enum import Enum
+
+class Priority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+class Subtask(BaseModel):
+    title: str
+    completed: bool = False
+
+class Task(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    priority: Priority = Priority.MEDIUM
+    tags: List[str] = []
+    subtasks: List[Subtask] = []
+    estimated_hours: Optional[float] = Field(None, ge=0)
+
+class ProjectExtraction(BaseModel):
+    project_name: str
+    tasks: List[Task]
+    team_members: List[str]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invoice extraction">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class InvoiceItem(BaseModel):
+    description: str
+    quantity: float
+    unit_price: float
+    total: float
+
+class Invoice(BaseModel):
+    invoice_number: str
+    date: str
+    vendor_name: str
+    customer_name: str
+    items: List[InvoiceItem]
+    subtotal: float
+    tax: Optional[float] = None
+    total: float
+    currency: str = "USD"
+]]></code>
+      <note>Use Optional for fields that may be absent in real documents; avoids validation failures on partial extractions.</note>
+    </example>
+  </section>
+</text>
