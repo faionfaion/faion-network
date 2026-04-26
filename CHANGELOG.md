@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 sdd methodologies migrated to new shape (batch: task-creation-parallelization, design-docs-big-tech, writing-specifications, code-review-cycle, pattern-memory, quality-gates-confidence, writing-design-documents, key-trends-summary)
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)
 - refactor: 8/8 sdd-planning methodologies migrated to new shape (batch: templates, spec-examples-basic, spec-structure, impl-plan-task-format, impl-plan-100k-rule, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans)
 - refactor: 8/8 sdd-planning methodologies migrated to new shape (batch: api-first-development, spec-example-ecommerce-cart, workflows, design-doc-structure, impl-plan-components, task-creation-template-guide, workflow-design-phase, workflow-spec-phase)

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-principles" title="Task Decomposition Principles">
+  <summary>Core rules for breaking design.md into LLM-executable tasks: the 100k token rule, INVEST criteria, wave-based execution, and context budget allocation.</summary>
+
+  <section title="100k Token Rule">
+    <rule>
+      <statement>Each task must fit within a single 100k-token context window.</statement>
+      <rationale>LLMs with fixed context limits forget requirements, produce inconsistent patterns, and leave implementations incomplete when context overflows. Sizing tasks to fit one window prevents all three failure modes.</rationale>
+    </rule>
+    <p>Complexity sizing guide:</p>
+    <list>
+      <item>Simple (&lt;30k): single file, clear pattern, 0 architecture decisions</item>
+      <item>Normal (30-60k): 2-4 files, 1-2 decisions, implement a defined plan</item>
+      <item>Complex (60-100k): 4+ files, 3+ decisions, architecture choices required</item>
+    </list>
+    <rule>
+      <statement>Add 20k tokens to any estimate for a task touching more than 3 existing files.</statement>
+      <rationale>Agents underestimate token usage for tasks requiring reading existing code; the buffer prevents context overflow mid-task.</rationale>
+    </rule>
+  </section>
+
+  <section title="INVEST Criteria">
+    <rule>
+      <statement>Every task must satisfy all six INVEST criteria before it enters the todo/ queue.</statement>
+      <rationale>A task failing any criterion is either too large (split), ambiguous (rewrite AC), or improperly sequenced (adjust dependencies).</rationale>
+    </rule>
+    <list>
+      <item>Independent: no circular dependencies; can start without incomplete sibling tasks</item>
+      <item>Negotiable: implementation details can be refined without changing acceptance criteria</item>
+      <item>Valuable: links to at least one FR-X requirement from spec.md</item>
+      <item>Estimable: token budget can be assigned (simple/normal/complex)</item>
+      <item>Small: fits in a single context window (&lt;100k tokens)</item>
+      <item>Testable: has at least one Given-When-Then acceptance criterion</item>
+    </list>
+  </section>
+
+  <section title="Wave-Based Execution">
+    <rule>
+      <statement>Assign every task to a wave; tasks in the same wave must be file-independent.</statement>
+      <rationale>Two tasks in the same wave that modify the same file create merge conflicts in parallel git worktrees. Task boundaries must be defined at the file level, not the feature level.</rationale>
+    </rule>
+    <rule>
+      <statement>Never combine research ("figure out how") and implementation ("build it") in one task.</statement>
+      <rationale>LLMs fail when asked to plan and code simultaneously. Planning tasks produce only a documented plan; implementation tasks only execute that plan.</rationale>
+    </rule>
+    <p>Wave construction rule: Wave N contains all tasks whose dependencies are entirely in waves 1..N-1. Wave 1 tasks have no dependencies at all.</p>
+  </section>
+
+  <section title="Context Budget Allocation">
+    <p>Recommended token allocation within a 100k task:</p>
+    <list>
+      <item>SDD docs (constitution, spec, design): 15%</item>
+      <item>Dependency tree (completed task summaries): 10%</item>
+      <item>Research (existing code patterns): 25%</item>
+      <item>Implementation (actual coding): 40%</item>
+      <item>Testing (verification): 10%</item>
+    </list>
+    <rule>
+      <statement>Include dependency task summaries, not full content, in the dependency tree section.</statement>
+      <rationale>Full task content wastes context budget. Summaries (key patterns, files created, critical snippets) provide the signal without the noise.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pattern Propagation">
+    <rule>
+      <statement>Every Wave 2+ task must include an explicit "Task Dependency Tree" section listing key patterns from completed dependencies.</statement>
+      <rationale>Without explicit dependency summaries, each downstream agent starts fresh and produces divergent naming conventions, error handling approaches, and duplicated utilities. This is the leading cause of inconsistency in wave-based development.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/task-file.md">Full TASK-XXX template with all required sections</reference>
+</text>

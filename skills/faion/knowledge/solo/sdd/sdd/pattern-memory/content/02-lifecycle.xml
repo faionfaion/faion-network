@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-lifecycle" title="Pattern Lifecycle and CLAUDE.md Sync">
+  <summary>Confidence scoring formula, lifecycle stages, score triggers, CLAUDE.md sync rules, and maintenance procedures.</summary>
+
+  <section title="Confidence Score Formula">
+    <rule>
+      <statement>Calculate confidence using the weighted formula: base_score × usage_factor × success_factor × recency_factor.</statement>
+      <rationale>Objective scoring prevents subjective inflation. The recency factor ensures patterns that go unused naturally decay rather than cluttering the active pattern store.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+confidence = base_score * usage_factor * success_factor * recency_factor
+
+Where:
+  base_score:      0.5 (initial)
+  usage_factor:    min(usage_count / 10, 1.5)
+  success_factor:  success_rate ^ 0.5
+  recency_factor:  1.0 - (days_since_last_use / 365) * 0.3
+      ]]></code>
+    </example>
+    <list>
+      <item>First successful use: set to 0.5</item>
+      <item>Successful reuse: +0.05 to +0.10</item>
+      <item>Failed application: -0.10 to -0.20</item>
+      <item>No use for 90 days: -0.05</item>
+      <item>Peer validation: +0.10</item>
+    </list>
+  </section>
+
+  <section title="CLAUDE.md Sync Rules">
+    <rule>
+      <statement>Sync patterns with confidence 0.8+ and 5+ uses to CLAUDE.md; never include low-confidence or verbose patterns.</statement>
+      <rationale>CLAUDE.md is loaded in every session. Bloating it with unvalidated or verbose patterns wastes context budget and trains agents to ignore the patterns section.</rationale>
+    </rule>
+    <list>
+      <item>Include in CLAUDE.md: high-confidence patterns (0.8+), frequently used (5+ uses), project-specific conventions, critical anti-patterns from mistakes.md</item>
+      <item>Exclude from CLAUDE.md: low-confidence patterns (still validating), obvious patterns (well-known best practices), verbose code examples (link to patterns.md instead)</item>
+    </list>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+## Learned Patterns
+
+### PAT-001: Async Error Boundary
+**Confidence:** 0.92 | **Uses:** 15 | **Success:** 93%
+- Wrap async operations with try-catch-finally
+- Manage loading/error/data states explicitly
+- Display appropriate UI for each state
+See: .aidocs/memory/patterns.md#PAT-001
+      ]]></code>
+      <note>Concise summary with link to full pattern. Metrics visible at a glance. No inline code in CLAUDE.md.</note>
+    </example>
+  </section>
+
+  <section title="Maintenance">
+    <rule>
+      <statement>Archive patterns unused for 90+ days to patterns-archive.md rather than deleting them.</statement>
+      <rationale>Seasonal or infrequent tasks may need patterns that appear dormant. Archiving preserves them while keeping the active store clean.</rationale>
+    </rule>
+    <list>
+      <item>Review patterns.md after every 5 completed tasks for duplicates and outdated entries</item>
+      <item>Merge patterns that solve the same problem in the same context</item>
+      <item>Add version/context reference to patterns validated against a specific library version</item>
+      <item>Apply confidence decay formula to patterns unused 90+ days</item>
+    </list>
+  </section>
+
+  <reference path="templates/pattern-entry.md">Full PAT-XXX entry template</reference>
+  <reference path="templates/sync-patterns.sh">Shell script syncing high-confidence patterns to CLAUDE.md</reference>
+  <reference path="templates/prompt-extract.txt">Prompts for post-task extraction and periodic review</reference>
+</text>

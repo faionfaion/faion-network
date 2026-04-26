@@ -1,0 +1,99 @@
+# quality-gates.yml — Gate configuration for a feature
+# Place in: .aidocs/{status}/{feature}/quality-gates.yml
+# Used by: run-gates.sh and CI/CD pipeline
+
+feature: "{feature-NNN-name}"
+version: "1.0"
+
+gates:
+  L1:
+    name: "Syntax & Format"
+    description: "Code parses, imports resolve, format is correct"
+    automation: 100%
+    threshold: 100
+    checks:
+      - type: linter
+        command: "ruff check . --select E,F"
+        required: true
+      - type: formatter
+        command: "ruff format --check ."
+        required: true
+      - type: typecheck
+        command: "mypy {module_path} --strict"
+        required: false  # set true for typed modules
+
+  L2:
+    name: "Unit Tests"
+    description: "All unit tests pass, coverage meets threshold"
+    automation: 100%
+    threshold: 90
+    checks:
+      - type: test
+        command: "pytest tests/unit/ -x --tb=short"
+        required: true
+      - type: coverage
+        command: "pytest --cov={module} --cov-fail-under=80"
+        required: true
+
+  L3:
+    name: "Integration Tests"
+    description: "Component interfaces work correctly together"
+    automation: 80%
+    threshold: 95
+    checks:
+      - type: test
+        command: "pytest tests/integration/ -x --tb=short"
+        required: true
+      - type: contract
+        command: "pytest tests/contract/ -x"
+        required: false  # set true if API contracts exist
+
+  L4:
+    name: "Spec Compliance"
+    description: "Implementation satisfies every AC in the spec"
+    automation: 60%
+    threshold: 100
+    checks:
+      - type: ac-test
+        command: "pytest tests/acceptance/ -x"
+        required: true
+      - type: spec-check
+        command: "bash skills/faion/knowledge/solo/sdd/sdd/writing-specifications/templates/check-spec.sh .aidocs/{status}/{feature}/spec.md"
+        required: false
+
+  L5:
+    name: "Non-Functional"
+    description: "Performance, security, and reliability targets met"
+    automation: 50%
+    threshold: 90
+    checks:
+      - type: security
+        command: "bandit -r {module_path} -l"
+        required: true
+      - type: performance
+        command: "pytest tests/perf/ --benchmark-compare"
+        required: false
+
+  L6:
+    name: "Human Review"
+    description: "Code review, architecture sign-off"
+    automation: 0%
+    threshold: 100
+    checks:
+      - type: manual
+        description: "Code review by human reviewer"
+        required: true
+      - type: manual
+        description: "Architecture review (required for AD-X changes)"
+        required: false
+
+confidence:
+  proceed_threshold: 90
+  formula: "weighted average of passed checks per gate"
+  weights:
+    L1: 0.15
+    L2: 0.25
+    L3: 0.20
+    L4: 0.20
+    L5: 0.10
+    L6: 0.10

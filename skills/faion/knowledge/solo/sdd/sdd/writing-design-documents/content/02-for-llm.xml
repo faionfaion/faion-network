@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-for-llm" title="Design Documents for LLM Code Generation">
+  <summary>Four patterns for structuring design docs to enable reliable LLM code generation: explicit file patterns, type definitions, API contracts, and reference tables. Comparison of RFC/TDD/ADR/mini doc types.</summary>
+
+  <section title="Four LLM Code Generation Patterns">
+    <rule>
+      <statement>Include explicit type definitions, concrete API contracts with error codes, and reference tables pointing to existing code patterns — do not rely on prose descriptions alone.</statement>
+      <rationale>LLMs generate more accurate code from explicit types than from prose. API contracts without concrete error examples lead to incompatible implementations. File references allow agents to read existing patterns instead of inventing new ones.</rationale>
+    </rule>
+
+    <section title="Pattern 1: Explicit File Patterns">
+      <example type="good">
+        <code lang="markdown"><![CDATA[
+## File Patterns
+
+Follow existing pattern from `src/auth/handlers/login.ts`:
+- Export single async handler function
+- Use Zod for validation
+- Return standardized response envelope
+- Log with context object (not console.log)
+        ]]></code>
+        <note>References the actual file. Agent reads it, then applies the same pattern. No prose ambiguity.</note>
+      </example>
+    </section>
+
+    <section title="Pattern 2: Type Definitions">
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+// Include directly in design.md
+interface CreateUserRequest {
+  email: string;      // RFC 5322 format
+  password: string;   // Min 8 chars, 1 uppercase, 1 number
+}
+
+interface CreateUserResponse {
+  user: {
+    id: string;       // UUID v4
+    email: string;
+    createdAt: Date;
+  };
+}
+        ]]></code>
+        <note>Explicit types eliminate the ambiguity that produces incorrect field types and missing fields in generated code.</note>
+      </example>
+    </section>
+
+    <section title="Pattern 3: API Contracts">
+      <example type="good">
+        <code lang="markdown"><![CDATA[
+### POST /api/users
+
+**Request:**
+{"email": "user@example.com", "password": "SecurePass1"}
+
+**Response (201):**
+{"user": {"id": "uuid-v4", "email": "user@example.com", "createdAt": "ISO8601"}}
+
+**Errors:**
+- 400: validation failure {"error": {"code": "VALIDATION_ERROR", "details": [...]}}
+- 409: email exists {"error": {"code": "DUPLICATE_EMAIL"}}
+- 500: server error {"error": {"code": "INTERNAL_ERROR", "request_id": "..."}}
+        ]]></code>
+        <note>All error codes explicit. Parallel agents implementing frontend and backend from the same contract produce compatible code without coordination.</note>
+      </example>
+    </section>
+
+    <section title="Pattern 4: Implementation Reference Table">
+      <example type="good">
+        <code lang="markdown"><![CDATA[
+| Component | Pattern Source | What to Copy |
+|-----------|----------------|--------------|
+| Handler | `src/auth/handlers/login.ts` | Error handling, response format |
+| Service | `src/auth/services/user.ts` | Dependency injection pattern |
+| Tests | `tests/auth/login.test.ts` | Setup, mocking strategy |
+        ]]></code>
+      </example>
+    </section>
+  </section>
+
+  <section title="Document Types Comparison">
+    <list>
+      <item>RFC (Request for Comments): proposing changes needing team consensus; sections: summary, motivation, proposal, drawbacks, alternatives, implementation; used by Stripe, HashiCorp, Uber</item>
+      <item>TDD (Technical Design Document): detailed technical specification for complex systems; 10+ sections including architecture, data model, API, security, reliability, monitoring</item>
+      <item>ADR (Architecture Decision Record): recording a single architectural decision; sections: context, decision, consequences; lightweight, append-only</item>
+      <item>SDD Design Doc: LLM-optimized full feature design with AD-X traceability matrix; the primary format for SDD workflow</item>
+      <item>Lightweight/Mini: 1-2 page doc for small changes; overview, decision, files changed</item>
+    </list>
+  </section>
+
+  <section title="LLM Authoring Gotchas">
+    <antipattern>
+      <description>LLM generates balanced alternatives tables that favor the first option introduced.</description>
+      <reason>Human validation required to confirm the winning option is genuinely better, not just listed first. Write the alternatives table before writing the decision to avoid anchoring bias.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Design doc authored entirely by LLM without human review of trade-off tables.</description>
+      <reason>LLMs produce biased decisions when generating both the options and the conclusion. The alternatives table must be validated by a human or a second-pass review agent.</reason>
+    </antipattern>
+    <antipattern>
+      <description>File structure section listing non-existent files.</description>
+      <reason>Executor agents create orphaned files or skip critical ones when the file list is aspirational rather than validated. Verify every listed file against the actual codebase.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/design-sdd.md">Full SDD design.md template</reference>
+  <reference path="templates/prompt-design.txt">Prompts for drafting and reviewing design docs</reference>
+  <reference path="templates/validate-design.sh">Shell script checking AD-X blocks for required fields</reference>
+</text>
