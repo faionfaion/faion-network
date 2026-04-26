@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-workflow" title="Agentic Interface Analysis Workflow">
+  <summary>Three-pass loop for interface discovery, spec authoring, and live-capture drift detection. Prompt patterns for the research and reviewer agents.</summary>
+
+  <section title="Three-Pass Loop">
+    <rule>
+      <statement>Pass 1 (Research agent): crawls upstream system docs (OpenAPI URL, vendor PDF, sample responses) and emits the raw interface catalog as JSON with one entry per endpoint/event/file format. Error codes must come from the source; never from the agent's priors.</statement>
+      <rationale>LLMs hallucinate plausible-looking error codes (422 where the API returns 400). Constraining the research agent to document-cited codes with source URLs prevents this class of spec error.</rationale>
+    </rule>
+    <rule>
+      <statement>Pass 2 (BA/spec agent): fills the IF-XXX spec template from the raw catalog, links each field to a requirement ID, and produces contract-test scaffolding (curl examples, schema fragments). Anchors the perspective consistently: "our system" is always the subject — never flip to the other side's perspective mid-spec.</statement>
+      <rationale>Direction labels flip easily ("we provide" vs "we consume"). Anchoring the perspective prevents the most common interface spec bug: a field listed as inbound that is actually outbound.</rationale>
+    </rule>
+    <rule>
+      <statement>Pass 3 (Reviewer agent): diffs the committed spec against actual HTTP captures (curl/httpie/mitmproxy export) or live OpenAPI URL. Reports drift as a unified diff. If breaking changes are detected, opens an SDD task under todo/ automatically.</statement>
+      <rationale>Drift between spec and live system is the primary failure mode of interface analysis. Automated drift detection converts continuous spec maintenance from a manual discipline to a CI gate.</rationale>
+    </rule>
+    <reference path="templates/interface-drift-check.sh">CI script implementing Pass 3: lints both specs, runs oasdiff breaking-change detection, exits non-zero on breaking changes.</reference>
+    <reference path="templates/prompt-interface-analyst.txt">LLM prompt for the research agent: fills the IF-XXX spec from OpenAPI or vendor docs with error-code verification requirement.</reference>
+  </section>
+
+  <section title="Human Checkpoints">
+    <rule>
+      <statement>Three mandatory human checkpoints: (1) sign-off of every new IF-XXX before client code starts, (2) review of any breaking-change diff from oasdiff before deploy, (3) manual confirmation of auth and secret rotation steps.</statement>
+      <rationale>Auth fields (OAuth scopes, API key locations) are routinely wrong in agent-generated specs. Manual confirmation of auth before coding starts prevents an entire class of authentication bugs from reaching production.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async Interface Rule">
+    <rule>
+      <statement>Event-driven interfaces (Kafka, NATS, webhooks) must use AsyncAPI 3.0 as the spec format, not the REST interface template. Run a separate AsyncAPI pass for each async interface — never reuse the REST template.</statement>
+      <rationale>Async interfaces have different semantics: direction is fan-out, retries are consumer-side, ordering is a topic property, not a message property. The REST template cannot represent these constraints correctly.</rationale>
+    </rule>
+  </section>
+</text>

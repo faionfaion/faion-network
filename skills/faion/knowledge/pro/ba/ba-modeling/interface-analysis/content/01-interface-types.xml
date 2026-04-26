@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-interface-types" title="Interface Types and Attribute Rules">
+  <summary>Four interface types (user/system/hardware/communication), the required attribute set per interface, and data-element specification rules including error-code verification.</summary>
+
+  <section title="Interface Types">
+    <rule>
+      <statement>Classify every interface as one of: user (human interaction — screens, forms, reports), system (system-to-system — APIs, file transfers, databases), hardware (physical device — scanners, printers, sensors), or communication (protocol layer — HTTP, SFTP, message queues). Assign a stable ID: IF-XXX.</statement>
+      <rationale>Type determines the applicable attribute set, the relevant testing approach, and the contract format (OpenAPI for REST, AsyncAPI for event streams, data dictionary for file transfers). Misclassification produces the wrong contract.</rationale>
+    </rule>
+    <rule>
+      <statement>Reference every IF-XXX ID from requirements.md, design.md, and test-plan.md. Assign IDs before writing any spec text. Traceability collapses without stable IDs.</statement>
+      <rationale>Unnamed interfaces accumulate informally and become undocumented implicit contracts. IF-IDs make every interface reviewable, testable, and auditable across its full lifecycle.</rationale>
+    </rule>
+  </section>
+
+  <section title="Required Attributes per Interface">
+    <rule>
+      <statement>Every interface spec must capture: name, type, direction (inbound/outbound/bidirectional), source/target systems, data exchanged, format, protocol, frequency, volume estimate (mark "tbd" until load test data exists), security (auth type, encryption), and error-handling (condition, response, retry Y/N, notification).</statement>
+      <rationale>Volume and SLA fields are guessed pre-launch. Mark them "tbd" — not with confident fictions. Agents will otherwise emit confident numbers that produce wrong capacity planning.</rationale>
+    </rule>
+    <rule>
+      <statement>For every error code documented, specify what the consumer must do (retry with backoff, surface to user, alert on-call). Error codes without consumer behaviour are decoration.</statement>
+      <rationale>Developers reading a spec without consumer behaviour must guess the expected reaction. Wrong reactions (retry on 404, suppress a 503) create production failure patterns that are hard to trace back to the spec.</rationale>
+    </rule>
+    <rule>
+      <statement>Define idempotency keys and dedup window for any non-GET / non-query interface. Specify whether retries are safe. For async interfaces, document ordering guarantees (per-key, none, total) and consumer-group semantics.</statement>
+      <rationale>Mismatched retry budgets between caller and callee are a top-3 production failure pattern. Ordering assumptions without documentation become silent bugs when queue consumers are added.</rationale>
+    </rule>
+  </section>
+
+  <section title="Source-of-Truth Rule">
+    <rule>
+      <statement>OpenAPI / AsyncAPI / Protobuf is the source of truth. The IF-XXX Markdown spec is generated from or synced to the machine-readable spec — never hand-typed as the primary artifact. Breaking changes detected via oasdiff in CI.</statement>
+      <rationale>Hand-typed Markdown specs drift from the implementation the moment code ships. Machine-readable specs (OpenAPI/AsyncAPI) are executable by mocking tools, contract-test frameworks, and SDK generators, providing continuous verification.</rationale>
+    </rule>
+    <rule>
+      <statement>Version the interface, not the system. /v1/customers survives independently of the service's semver. Consumer expectations are pinned to the interface version, not the deployment version.</statement>
+      <rationale>Coupling interface versioning to service versioning creates unnecessary consumer migrations for changes that do not affect the interface contract.</rationale>
+    </rule>
+    <reference path="templates/interface-spec.md">Per-interface specification template: IF-XXX, type, direction, data fields, tech spec, ops spec, error handling, security.</reference>
+    <reference path="templates/interface-catalog.md">Summary table of all interfaces with IF-IDs, types, directions, and external systems.</reference>
+    <reference path="templates/interface-drift-check.sh">CI script that diffs committed OpenAPI spec against live API URL; exits non-zero on breaking changes.</reference>
+  </section>
+</text>

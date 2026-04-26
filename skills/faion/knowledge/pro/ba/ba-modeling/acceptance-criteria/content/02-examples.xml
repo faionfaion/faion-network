@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Acceptance Criteria Examples">
+  <summary>Worked examples for login, shopping cart, and bug-fix stories, plus antipatterns for common AC mistakes.</summary>
+
+  <section title="Login Feature (GWT)">
+    <example type="good">
+      <code lang="gherkin"><![CDATA[
+# AC-LOGIN-01 — Happy path
+Given I am on the login page
+And I have a valid account
+When I enter my email and correct password and click Login
+Then I am redirected to the dashboard
+And I see a welcome message containing my name
+
+# AC-LOGIN-02 — Invalid credentials
+Given I am on the login page
+When I enter an incorrect email or password and click Login
+Then I see the error "Invalid email or password"
+And I remain on the login page
+And the password field is cleared
+
+# AC-LOGIN-03 — Account lockout
+Given I have failed login 5 consecutive times
+When I attempt to login again
+Then I see "Account locked. Please try again in 30 minutes"
+And login is disabled for my account for 30 minutes
+
+# AC-LOGIN-04 — Non-functional (performance)
+# verifiable via: k6 load test, threshold p95 < 2000ms
+Given I submit valid credentials
+Then the login response must complete within 2 seconds at p95
+]]></code>
+      <note>GWT format, stable IDs, four coverage categories: happy, error, boundary (lockout), performance. No implementation terms.</note>
+    </example>
+  </section>
+
+  <section title="Shopping Cart (Rule-Based)">
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# AC-CART-01  System must allow adding a product from the product page
+# AC-CART-02  System must allow adding a product from search results
+# AC-CART-03  Cart icon must display the current item count
+# AC-CART-04  Adding the same product must increase quantity, not create a duplicate line
+# AC-CART-05  Maximum quantity per product line is 99; attempting 100 must show an error
+# AC-CART-06  User must see a confirmation message when an item is added
+# AC-CART-07  Cart must persist for 30 days for authenticated users
+# AC-CART-08  Cart must persist for session duration for guest users
+]]></code>
+      <note>Rule-based, 8 criteria across happy/boundary/error/persistence. Each is independently testable.</note>
+    </example>
+  </section>
+
+  <section title="Bug Fix AC Pattern">
+    <example type="good">
+      <code lang="gherkin"><![CDATA[
+# AC-FIX-01 — Reproduce the bug (regression test)
+Given a user with subscription status "expired"
+When they attempt to access a premium feature
+Then they are redirected to the upgrade page
+And they are NOT shown the feature content
+
+# AC-FIX-02 — Verify the fix does not regress the happy path
+Given a user with subscription status "active"
+When they access the same premium feature
+Then they see the feature content without redirection
+]]></code>
+      <note>Bug fix AC always includes: one criterion that reproduces the bug (regression gate) and one that verifies the happy path is not broken by the fix.</note>
+    </example>
+  </section>
+
+  <antipattern>
+    <description>AC written as: "User can log in." No preconditions, no failure paths, no observable outcome.</description>
+    <reason>Untestable. Every QA engineer will have a different understanding of what this means. GWT forces specificity at every axis.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>AC containing: "Then the row is inserted into the users table with status='active'."</description>
+    <reason>Couples the AC to the schema. When the table is renamed or split, the AC breaks even though the behaviour is unchanged. Test at API/UI level: "Then the user can log in successfully."</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>50 criteria for one story.</description>
+    <reason>Story is too large. When AC count exceeds 7, use the criteria as the slicing signal: split the story at natural boundaries (happy path → story A, error handling → story B).</reason>
+  </antipattern>
+</text>

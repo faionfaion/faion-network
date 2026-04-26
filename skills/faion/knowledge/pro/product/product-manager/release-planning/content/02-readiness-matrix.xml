@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-readiness-matrix" title="Release Readiness Matrix and Agentic Workflow">
+  <summary>Per-function readiness gate with evidence-link enforcement, four agentic loops for automating the release pipeline, and PM-specific anti-fluff rules for release notes.</summary>
+
+  <section title="Readiness Matrix Rules">
+    <rule>
+      <statement>For every customer_visible=Y manifest item, build a readiness row per function (eng, docs, support, marketing, legal, sales-enablement, infra) with columns: artifact (specific deliverable), owner (named person), status (green/yellow/red/n/a), and evidence_link (URL required for green).</statement>
+      <rationale>Vague status columns ("done", "in progress") hide the actual blocking condition. Named owners with specific deliverables make accountability legible across functions.</rationale>
+    </rule>
+    <rule>
+      <statement>Refuse to mark a cell green without an evidence_link URL pointing to the deliverable. Yellow and red cells must include a blocker description and expected-resolution date.</statement>
+      <rationale>A green cell without evidence is a vote, not verification. The evidence URL is the only thing that distinguishes "someone said it's done" from "it is done".</rationale>
+    </rule>
+    <reference path="templates/release_readiness_lint.py">Validation script: green rows missing evidence URLs or yellow/red rows missing owners fail with exit code 1.</reference>
+    <reference path="templates/prompt-readiness-matrix.txt">LLM prompt for generating the readiness matrix from the manifest and team roster.</reference>
+  </section>
+
+  <section title="Four Agentic Loops">
+    <p>The PM-flavored release pipeline runs as four sequential loops, each gated by human signoff before the next starts.</p>
+    <rule>
+      <statement>Loop 1 (Contents-freeze): agent reads tracker for status=ready-for-release AND fixVersion=vX.Y.Z, cross-checks CI green, merged PRs, DoD checklist, and migration rollback scripts. Outputs manifest.md with BLOCKED flags for failing items. PM reviews; manifest is frozen.</statement>
+      <rationale>Automated DoD lint prevents the common failure of items marked "ready" without all criteria met. BLOCKED items stay in the manifest for PM to decide on, not silently removed.</rationale>
+    </rule>
+    <rule>
+      <statement>Loop 2 (Readiness-matrix): agent builds the per-function readiness matrix from the frozen manifest. Yellow/red cells block until reviewed by PM.</statement>
+      <rationale>Blocking on yellow/red before deploy prevents the readiness matrix from becoming a documentation exercise rather than a gate.</rationale>
+    </rule>
+    <rule>
+      <statement>Loop 3 (Notes-and-comms): at T-1, agent generates three artifacts: customer-facing release notes, internal eng release summary, sales/support enablement brief. PM edits; never auto-publishes.</statement>
+      <rationale>Three distinct audiences require three distinct registers. Auto-publishing release notes is the highest-trust-cost mistake a PM can make.</rationale>
+    </rule>
+    <rule>
+      <statement>Loop 4 (Post-release retro): T+24h to T+7d, agent pulls deployment metrics, error-rate deltas, support-ticket spikes, and drafts a retro doc. PM holds a 30-min retro; outputs feed the next cycle's risk register.</statement>
+      <rationale>Closing the feedback loop from deploy to next-release risk register converts incidents into institutional memory rather than forgotten post-mortems.</rationale>
+    </rule>
+    <reference path="templates/prompt-manifest-generation.txt">LLM prompt for the contents-freeze loop with DoD lint and BLOCKED flag requirements.</reference>
+  </section>
+
+  <section title="Release Notes Anti-Fluff Rules">
+    <rule>
+      <statement>Ban the following tokens from all customer-facing release notes: "excited", "delighted", "thrilled", "powerful", "seamless", "next-gen", "revolutionary". Lint output and regenerate on any hit.</statement>
+      <rationale>Marketing tone erodes changelog trust. Customers who read changelogs want accuracy including known issues; over-polished notes signal hiding.</rationale>
+    </rule>
+    <rule>
+      <statement>Treat Known Issues as a required section, not an optional admission. Absence of known issues for two releases in a row is a smell, not a victory.</statement>
+      <rationale>Changelogs that admit limits build more trust than ones that don't. Customers who find issues not listed in the changelog report them as bugs, not limitations.</rationale>
+    </rule>
+    <antipattern>
+      <description>Generate release notes from a manifest captured at T-3 days and ship without regenerating at T-1.</description>
+      <reason>Late-landing PRs and last-minute cuts make T-3 manifests stale. Always regenerate from the source of truth (merged-PR labels) at deploy time.</reason>
+    </antipattern>
+  </section>
+</text>
