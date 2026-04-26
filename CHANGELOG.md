@@ -3,19 +3,9 @@
 ## [Unreleased]
 
 ### Changed
-- refactor: 8/8 methodologies migrated to new shape (batch: seo-for-spas, design-tokens-basics, tailwind-architecture, api-error-handling, api-rest-design, api-documentation, api-contract-first, api-rate-limiting)
-- refactor: 8/8 software-architect methodologies migrated to new shape (batch: modular-monolith, data-modeling, patterns-overview, quality-attributes, monolith-architecture, architecture-decision-records, c4-model, structural-patterns)
-- refactor: 8/8 methodologies migrated to new shape (agent-aac1288d12b6abb30: perf-test-basics, cd-basics, continuous-delivery, system-design-process, workflows, caching-architecture, performance-architecture, behavioral-patterns)
-- refactor: 8/8 methodologies migrated to new shape (batch: api-authentication, internationalization, rust-backend, django-services, rest-api-design, pwa-development, trunk-based-development, go-project-structure)
-- refactor: 8/8 frontend-developer methodologies migrated to new shape (batch: ui-lib-basics, shadcn-ui-architecture, ui-lib-patterns, css-in-js-advanced, pwa-advanced, storybook-setup, mobile-responsive, css-in-js-basics)
-- refactor: 8/8 methodologies migrated to new shape (batch: design-tokens, django-celery, api-versioning, seo-for-spas, go-error-handling-patterns, graphql-api, tailwind-architecture, decomposition-django)
-- refactor: 8/8 api-developer methodologies migrated to new shape (batch: api-openapi-spec, api-gateway-patterns, api-graphql, api-monitoring, websocket-design, graphql-api-design, api-authentication, api-versioning)
+- refactor: 8/8 methodologies migrated to new shape (batch: django-services, django-celery, design-tokens-implementation, pwa-core, shadcn-ui, tailwind-patterns, tailwind, frontend-design)
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-powered-pm-tools, ai-in-project-management, tech-debt-management, framework-decomposition-patterns, xp-extreme-programming, perf-test-tools, pnpm-package-management, playwright-automation)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: go-standard-layout, api-error-handling, logging-patterns, api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization)
-- refactor: 8/8 methodologies migrated to new shape (batch: rust-http-handlers, nextjs-app-router, accessibility, shadcn-ui-architecture, ui-component-library, rust-project-structure, go-concurrency-patterns, technical-debt)
-- refactor: 8/8 methodologies migrated to new shape (batch: frontend-design, performance-testing, caching-strategy, react-component-architecture, openapi-specification, rate-limiting, message-queues, xp-extreme-programming)
-- refactor: 8/8 software-developer methodologies migrated to new shape (batch: tailwind-patterns, python-async-patterns, nodejs-service-layer, api-rate-limiting, contract-first-development, browser-automation, nosql-patterns, api-openapi-spec)
-- refactor: 8/8 methodologies migrated to new shape (batch: monorepo-turborepo, api-graphql, websocket-design, security-testing, graphql-api-design, rust-tokio-async, ab-testing, database-design)
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: task-creation-parallelization, design-docs-big-tech, writing-specifications, code-review-cycle, pattern-memory, quality-gates-confidence, writing-design-documents, key-trends-summary)
 - refactor: 8/8 automation-tooling methodologies migrated to new shape (batch: monorepo-turborepo, ab-testing-basics, best-practices-2026, dev-methodologies-architecture, internationalization, cd-pipelines, ab-testing-implementation, browser-automation-overview)
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)

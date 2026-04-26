@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patterns" title="Django Celery: Task Patterns">
+  <summary>Canonical task skeletons for retry, idempotency, progress tracking, and workflow composition.</summary>
+
+  <section title="Basic Retry Task">
+    <reference path="templates/task.py">Canonical task skeleton with all reliability options wired.</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from celery import shared_task
+from celery.utils.log import get_task_logger
+
+log = get_task_logger(__name__)
+
+
+@shared_task(
+    name="orders.process_order",
+    bind=True,
+    max_retries=3,
+    autoretry_for=(ConnectionError, TimeoutError),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    soft_time_limit=300,
+    time_limit=360,
+    acks_late=True,
+)
+def process_order(self, order_id: int) -> dict:
+    from apps.orders.models import Order
+
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None:
+        log.warning("order %s not found; skipping", order_id)
+        return {"status": "skipped", "reason": "not_found"}
+
+    # business logic
+    log.info("processed order %s", order_id)
+    return {"status": "success", "order_id": order_id}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Progress Tracking">
+    <rule>
+      <statement>For long-running tasks, call self.update_state(state="PROGRESS", meta={current, total, percent}) every N items so Flower and polling clients can track progress.</statement>
+      <rationale>Without updates, Celery reports STARTED until completion; operators cannot tell if a task is running or stuck.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@shared_task(bind=True, soft_time_limit=1800)
+def sync_customers(self, full_sync: bool = False) -> dict:
+    customers = get_all_customers() if full_sync else get_recent_customers()
+    total = len(customers)
+    for idx, c in enumerate(customers):
+        process_customer(c)
+        if idx % 100 == 0:
+            self.update_state(
+                state="PROGRESS",
+                meta={"current": idx, "total": total,
+                      "percent": int(idx / total * 100)},
+            )
+    return {"status": "completed", "total": total}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Chain and Chord Workflows">
+    <rule>
+      <statement>Use chain() for sequential steps where each step receives the previous result. Use chord(group, callback) when parallel tasks must aggregate into one result. Do not call .get() on a chord header inside a worker — it deadlocks prefork pools.</statement>
+      <rationale>chain and chord are serialisable workflow descriptions; .get() blocks the worker thread.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from celery import chain, chord, group
+
+# Sequential workflow
+workflow = chain(
+    validate_order.s(order_id),
+    reserve_inventory.s(),
+    charge_payment.s(),
+    send_confirmation.s(),
+)
+result = workflow.apply_async()
+
+# Parallel + aggregation
+report_workflow = chord(
+    (calculate_user_metrics.s(uid) for uid in user_ids),
+    aggregate_metrics.s()
+)
+report_workflow.apply_async()
+]]></code>
+    </example>
+  </section>
+</text>

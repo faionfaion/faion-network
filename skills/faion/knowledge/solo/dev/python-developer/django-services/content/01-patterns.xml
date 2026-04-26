@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-patterns" title="Django Services: Core Rules and Patterns">
+  <summary>Naming convention, keyword-only signatures, transaction boundaries, and exception hierarchy for the HackSoft-style service layer.</summary>
+
+  <section title="Naming">
+    <rule>
+      <statement>Name service functions entity_action (e.g. order_create, user_deactivate). Choose one convention project-wide and document it in the project AGENTS.md.</statement>
+      <rationale>entity_action groups all operations on a domain object together, making grep -r "order_" reliable for impact analysis.</rationale>
+    </rule>
+  </section>
+
+  <section title="Signature">
+    <rule>
+      <statement>All service function arguments must be keyword-only (leading * separator). Include full type hints on all parameters and the return type. Use TYPE_CHECKING imports for model types.</statement>
+      <rationale>Keyword-only prevents positional mistakes when signatures grow. TYPE_CHECKING avoids circular imports at runtime while keeping type checkers happy.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.orders.models import Order
+    from apps.users.models import User
+
+
+def order_create(
+    *,
+    user: User,
+    items: list[dict],
+    notes: str | None = None,
+) -> Order:
+    ...
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def order_create(user, items, notes=None):  # positional, no types
+    ...
+]]></code>
+      <note>Positional args cause silent mistakes; missing types block pyright from catching signature drift.</note>
+    </example>
+  </section>
+
+  <section title="Transactions">
+    <rule>
+      <statement>Apply @transaction.atomic only when the service performs two or more writes that must succeed together. Do not wrap read-only services or single-write operations.</statement>
+      <rationale>Unnecessary atomic blocks hold DB locks longer and nest savepoints with surprising rollback semantics.</rationale>
+    </rule>
+    <rule>
+      <statement>For any side effect that must not run on rollback (Celery tasks, webhook fires, email), use transaction.on_commit() or task.delay_on_commit().</statement>
+      <rationale>task.delay() inside an atomic block can execute before the commit completes, causing the task to query a row that does not yet exist.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db import transaction
+from apps.orders.tasks import send_order_confirmation_email
+
+
+@transaction.atomic
+def order_create(*, user: User, items: list[dict]) -> Order:
+    order = Order.objects.create(user=user, status="pending")
+    for item in items:
+        OrderItem.objects.create(order=order, **item)
+    # Fires ONLY after commit
+    send_order_confirmation_email.delay_on_commit(order_id=order.id)
+    return order
+]]></code>
+    </example>
+  </section>
+
+  <section title="Input Validation">
+    <rule>
+      <statement>Validate business rules at the service entry point. Raise a custom ValidationError with a descriptive message. Never let views validate business rules.</statement>
+      <rationale>Centralised validation means admin, API, and CLI entry points all enforce the same rules.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def user_create(*, email: str, password: str) -> User:
+    if User.objects.filter(email=email).exists():
+        raise ValidationError(f"Email {email} is already registered")
+    return User.objects.create_user(email=email, password=password)
+]]></code>
+    </example>
+  </section>
+
+  <section title="File Organisation">
+    <rule>
+      <statement>For apps with fewer than 10 services use a single services.py. For larger apps, create a services/ package with one module per bounded entity (user_services.py, order_services.py) and re-export the public API in services/__init__.py.</statement>
+      <rationale>Re-exporting from __init__.py keeps call-sites stable when modules are split later.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error Handling">
+    <rule>
+      <statement>Define a service exception hierarchy rooted at ServiceError. Use domain-specific subclasses (InsufficientStockError, PaymentFailedError). Let exceptions propagate; do not swallow them inside services.</statement>
+      <rationale>Caller (view, task) maps exceptions to HTTP status codes or retry decisions. Swallowing silences bugs.</rationale>
+    </rule>
+    <reference path="templates/exceptions.py">Service exception hierarchy template.</reference>
+  </section>
+
+  <see-also>
+    <link path="content/02-selectors.xml"/>
+    <link path="content/03-examples.xml"/>
+  </see-also>
+</text>

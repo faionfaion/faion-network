@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="Django Services: Good/Bad Comparisons and Agent Gotchas">
+  <summary>Concrete before/after examples for the most common migration patterns, plus agent-specific pitfalls.</summary>
+
+  <section title="Business Logic Scattered in View">
+    <antipattern>
+      <description>Inventory validation, ORM writes, Stripe call, and email send all live inside APIView.post(). The view is 50+ lines and untestable without a full HTTP context.</description>
+      <reason>No transaction safety, no reuse (admin needs the same flow), N+1 on products, side effects coupled to HTTP.</reason>
+    </antipattern>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# services/order_services.py
+@transaction.atomic
+def order_create(*, user: User, items: list[dict], payment_gateway) -> Order:
+    products = _validate_inventory(items=items)
+    order = Order.objects.create(user=user, status="pending")
+    total = _create_order_items(order=order, items=items, products=products)
+    _deduct_inventory(items=items, products=products)
+    order.total = total
+    order.save(update_fields=["total", "updated_at"])
+    _process_payment(order=order, payment_gateway=payment_gateway)
+    send_order_confirmation_email.delay_on_commit(order_id=order.id)
+    return order
+
+# views.py  (thin — HTTP only)
+class OrderCreateView(APIView):
+    def post(self, request):
+        serializer = OrderCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            order = order_create(
+                user=request.user,
+                items=serializer.validated_data["items"],
+                payment_gateway=get_payment_gateway(),
+            )
+            return Response(OrderSerializer(order).data, status=201)
+        except InsufficientStockError as e:
+            return Response({"error": str(e)}, status=400)
+        except PaymentFailedError as e:
+            return Response({"error": str(e)}, status=402)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Dependency Injection for Testability">
+    <rule>
+      <statement>Inject external services (payment gateways, email senders) as Protocol parameters. Never import SDK clients at module level inside a service.</statement>
+      <rationale>Protocol parameters let tests pass Mock() objects without patching module globals, which is fragile.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Protocol
+
+
+class PaymentGateway(Protocol):
+    def charge(self, amount: int, customer_id: str) -> str: ...
+    def refund(self, transaction_id: str) -> bool: ...
+
+
+def order_process_payment(
+    *,
+    order: Order,
+    payment_gateway: PaymentGateway,
+) -> Order:
+    transaction_id = payment_gateway.charge(
+        amount=int(order.total * 100),
+        customer_id=order.user.payment_customer_id,
+    )
+    order.payment_transaction_id = transaction_id
+    order.status = "paid"
+    order.save(update_fields=["payment_transaction_id", "status", "updated_at"])
+    return order
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>LLMs default to positional arguments and skip the leading * separator.</description>
+      <reason>Enforce keyword-only via ruff RET rule or a pyright reportMissingTypeArgument check in CI.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents call services from inside DRF ModelSerializer.create() because tutorials show it.</description>
+      <reason>Correct pattern: view calls service, serialiser handles I/O only. Serialiser business logic is untestable without HTTP.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents stack @transaction.atomic on both the outer service and inner helper services, creating savepoints with non-obvious rollback semantics.</description>
+      <reason>Only the outermost service in a flow should be atomic. Document the rule in the project AGENTS.md.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents mock ORM methods (Order.objects.create) to avoid a real DB in tests.</description>
+      <reason>Use real DB + factory_boy. Mocking ORM makes tests pass while hiding query issues.</reason>
+    </antipattern>
+  </section>
+</text>

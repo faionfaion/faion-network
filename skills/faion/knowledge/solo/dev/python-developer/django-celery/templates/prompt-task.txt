@@ -1,0 +1,54 @@
+Generate a complete Celery task with tests following the project's task standards.
+
+CONTEXT:
+- Celery version: {celery_version}  (5.4+)
+- Django version: {django_version}
+- Queue: {queue_name}  (default | heavy | …)
+- Task name (dot notation): {task_module}.{task_name}
+- Description: {description}
+- Trigger: {trigger}  (e.g. "called from order_create service after commit")
+
+REQUIRED OUTPUT:
+1. Task function in apps/{app}/tasks.py
+2. Unit test in apps/{app}/tests/test_tasks.py using celery_eager fixture
+3. Integration test stub with @pytest.mark.integration marker
+
+MANDATORY RULES — follow exactly, no exceptions:
+- Arguments: primitive types only (int, str, bool) — never model instances
+- Use @shared_task with explicit name= (dot notation)
+- Set bind=True only if self.retry or self.request.id is used
+- Set acks_late=True, soft_time_limit, time_limit
+- Use autoretry_for=(SpecificException,) + retry_backoff=True
+- First 5 lines of function body: idempotency guard (fetch object, check state flag)
+- Return dict with {"status": "processed|skipped|..."}
+- Logger: logging.getLogger(__name__)
+
+CELERY 5.4+ SPECIFIC:
+- Use task.delay_on_commit() in service layer (NOT transaction.on_commit(lambda: task.delay()))
+- DatabaseScheduler for Beat (not file-based)
+
+FORBIDDEN:
+- Passing model instances as arguments
+- task.delay() inside @transaction.atomic without delay_on_commit
+- CELERY_TASK_ALWAYS_EAGER=True in production settings
+- Flower without authentication
+
+TEMPLATE:
+```python
+@shared_task(
+    name="{task_module}.{task_name}",
+    bind=True,
+    autoretry_for=({exception_types}),
+    retry_backoff=True,
+    max_retries={max_retries},
+    acks_late=True,
+    soft_time_limit={soft_limit},
+    time_limit={hard_limit},
+)
+def {task_name}(self, {entity}_id: int) -> dict:
+    # idempotency guard
+    # business logic
+    # return {"status": "..."}
+```
+
+OUTPUT FORMAT: unified diff or full files. No explanation prose.

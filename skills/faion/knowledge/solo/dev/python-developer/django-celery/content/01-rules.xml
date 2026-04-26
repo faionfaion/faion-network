@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rules" title="Django Celery: Core Rules">
+  <summary>Mandatory rules for writing reliable, idempotent Celery tasks in Django 5.x with Celery 5.4+.</summary>
+
+  <section title="Argument Types">
+    <rule>
+      <statement>Pass only JSON-serialisable primitives (IDs, strings, ints, dicts) as task arguments. Never pass ORM model instances.</statement>
+      <rationale>Model instances pickle, but on retry the instance may be stale or deleted. Fetch inside the task using the ID.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+send_order_confirmation.delay(order_id=order.id)
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+send_order_confirmation.delay(order=order)  # stale on retry
+]]></code>
+      <note>Pickle succeeds but retry fetches a potentially different state.</note>
+    </example>
+  </section>
+
+  <section title="Idempotency">
+    <rule>
+      <statement>Every task must be idempotent. Use a DB timestamp flag (sent_at, processed_at) or a UUID idempotency key. Check the flag at task entry and return early if already done.</statement>
+      <rationale>acks_late=True + worker crash causes re-delivery. Without idempotency, the task runs twice.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@shared_task(bind=True, acks_late=True)
+def send_order_confirmation(self, order_id: int) -> None:
+    order = Order.objects.filter(pk=order_id).first()
+    if order is None:
+        log.warning("order %s missing; skipping", order_id)
+        return
+    if order.confirmation_sent_at is not None:
+        return  # already sent
+    send_email(to=order.email, template="order_confirmation")
+    with transaction.atomic():
+        Order.objects.filter(pk=order.pk, confirmation_sent_at__isnull=True).update(
+            confirmation_sent_at=timezone.now()
+        )
+]]></code>
+    </example>
+  </section>
+
+  <section title="Transaction Safety">
+    <rule>
+      <statement>Inside any @transaction.atomic block, call task.delay_on_commit() instead of task.delay(). Never call delay() directly inside an atomic block.</statement>
+      <rationale>delay() inside atomic can dispatch the task before the DB commit completes; the task then queries a row that does not yet exist.</rationale>
+    </rule>
+  </section>
+
+  <section title="Time Limits">
+    <rule>
+      <statement>Every task must declare both soft_time_limit (catchable SoftTimeLimitExceeded) and time_limit (hard kill). Catch SoftTimeLimitExceeded for graceful cleanup.</statement>
+      <rationale>Without limits, a stuck task holds a worker indefinitely. Soft gives cleanup time; hard ensures the worker is freed.</rationale>
+    </rule>
+  </section>
+
+  <section title="Retry Policy">
+    <rule>
+      <statement>Declare retry exceptions explicitly via autoretry_for. Always use retry_backoff=True and retry_jitter=True. Set max_retries. Never use a bare except to swallow and not raise.</statement>
+      <rationale>Explicit retry exceptions prevent accidentally retrying unrecoverable errors (404, validation failure). Backoff + jitter prevents thundering-herd on broker recovery.</rationale>
+    </rule>
+  </section>
+
+  <section title="Queue Separation">
+    <rule>
+      <statement>Define at least two queues: one for fast/critical tasks (orders, payments) and one for slow/background tasks (reports, emails). Pin worker concurrency per queue.</statement>
+      <rationale>A slow report task should not block payment processing sharing the same worker pool.</rationale>
+    </rule>
+  </section>
+</text>

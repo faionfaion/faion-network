@@ -1,0 +1,63 @@
+name: Sync Design Tokens
+
+on:
+  push:
+    paths:
+      - "tokens/**"
+  workflow_dispatch:
+
+jobs:
+  build-tokens:
+    name: Build and publish tokens
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate token JSON schema
+        run: npm run tokens:validate
+        # Catches broken alias references and schema violations before SD runs
+
+      - name: Build tokens (Style Dictionary)
+        run: npm run tokens:build
+        # Outputs to dist/ — gitignored in source repos, published as npm package
+
+      - name: Check for drift
+        id: diff
+        run: |
+          git diff --name-only dist/ > /tmp/changed.txt
+          if [ -s /tmp/changed.txt ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR if tokens changed
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: chore/token-sync-${{ github.run_number }}
+          title: "chore: sync design tokens from source"
+          body: |
+            Automated token sync triggered by changes in `tokens/`.
+
+            Changed files:
+            ```
+            ${{ steps.diff.outputs.files }}
+            ```
+
+            Review the CSS diff in `dist/css/variables.css` before merging.
+          commit-message: "chore: rebuild design tokens"
+          labels: tokens, automated

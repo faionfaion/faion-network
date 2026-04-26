@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="Frontend Design: Agent Workflow">
+  <summary>Phase-by-phase agent workflow: requirements capture, brainstorm dispatch, selection and refinement, Storybook and component finalization.</summary>
+
+  <section title="Phase 1: Requirements Capture">
+    <rule>
+      <statement>Before dispatching any subagent, collect: surface type (landing | dashboard | form | component set), style direction (minimalist | bold | corporate | playful), tech stack, and brand constraints. Do not brainstorm without these four inputs.</statement>
+      <rationale>Brainstorming without a style direction produces the average SaaS aesthetic. Explicit inputs become the diversity constraints that force genuinely distinct variants.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Canonical requirements capture
+requirements = AskUserQuestion([
+    {"question": "Surface type?", "options": ["landing", "dashboard", "form", "component-set"]},
+    {"question": "Style direction?", "options": ["minimalist", "bold", "corporate", "playful", "editorial"]},
+    {"question": "Tech stack?", "options": ["React+TS", "Next.js", "Vue", "HTML/CSS"]},
+    {"question": "Brand constraints?", "placeholder": "colors, fonts, logo, or 'none'"},
+])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 2: Brainstorm Dispatch">
+    <rule>
+      <statement>Dispatch `faion-frontend-brainstormer-agent` with explicit diversity constraints derived from requirements. Each variant goes into `designs/variant-N-slug/`. The prompt must forbid shared typeface, palette family, or density across variants.</statement>
+      <rationale>Without explicit constraints, LLMs generate one canonical design repeated 3–5 times with minor color shifts. The constraint prohibitions force meaningful divergence.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+Task(
+    subagent_type="faion-frontend-brainstormer-agent",
+    prompt=f"""Create exactly 3-5 DISTINCT design variants for: {requirements.surface_type}
+Tech: {requirements.tech}. Style anchor: {requirements.style}.
+
+DIVERSITY CONSTRAINTS (enforce all):
+- Each variant must use a different typeface pairing
+- No two variants may share the same color palette family
+- Density must vary: at least one tight, one airy
+- Motion: vary from zero to expressive
+
+Each variant must deliver:
+1. Working code under designs/variant-{{N}}-{{slug}}/
+2. tokens.css with variant-local tokens (do NOT update globals)
+3. README.md with: audience fit, aesthetic levers, trade-offs
+4. Runnable as static HTML or Storybook story
+5. axe-core pass before submission
+
+Comparison table at the end contrasting all variants on: typeface, palette, density, motion."""
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 3: Selection and Refinement">
+    <rule>
+      <statement>Present variants to the user with the comparison table. After selection, dispatch a refinement subagent with only the chosen variant's files — never the full brainstorm context. Re-quote the original spec at every refinement iteration.</statement>
+      <rationale>Passing full brainstorm context into refinement exhausts token budget and causes the agent to regress toward rejected variants. Context isolation keeps refinement focused.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# After user selects variant N
+chosen_dir = f"designs/variant-{N}-{slug}"
+Task(
+    subagent_type="faion-frontend-brainstormer-agent",
+    prompt=f"""Refine {chosen_dir} based on feedback: {user_feedback}
+
+Original spec: {requirements}
+Constraint: only edit files inside {chosen_dir}.
+Do NOT modify globals.css or tailwind.config yet.
+Deliver updated runnable preview + diff vs previous iteration."""
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Phase 4: Token Promotion and Storybook">
+    <rule>
+      <statement>After final approval, promote the chosen variant's tokens.css to globals.css or tailwind.config in a dedicated commit. Then dispatch `faion-storybook-agent` for stories and `faion-frontend-component-agent` for typed components. Never merge these into one commit.</statement>
+      <rationale>Token promotion is a design decision that deserves its own reviewable commit. Storybook and component generation depend on the promoted tokens; sequencing prevents them from using un-promoted values.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Step 1: promote tokens (human reviews this commit)
+promote_tokens(f"designs/variant-{N}-{slug}/tokens.css", "src/styles/globals.css")
+
+# Step 2: Storybook
+Task(
+    subagent_type="faion-storybook-agent",
+    prompt=f"Scaffold Storybook for {project}. Design source: designs/variant-{N}-{slug}/. "
+           f"Create stories for every component variant. Wire Chromatic for visual regression."
+)
+
+# Step 3: typed components
+Task(
+    subagent_type="faion-frontend-component-agent",
+    prompt=f"Convert designs/variant-{N}-{slug}/ HTML mocks to typed React components "
+           f"with cva() variants, cn() merging, and Storybook story files."
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Agent generates 5 variants that share the same Inter font and blue-gray palette.</description>
+      <reason>Enforce the diversity constraints explicitly in the prompt. Include a post-generation check: if two variants use the same typeface, regenerate the duplicate before presenting to the user.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent skips a11y audit and delivers variants with contrast failures.</description>
+      <reason>Run axe-core per variant during brainstorm, not after selection. Surfacing a variant with WCAG failures wastes selection effort if it must be redesigned.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Refinement agent receives the full brainstorm context and regresses to rejected variants.</description>
+      <reason>Pass only the chosen variant's directory and the user feedback. Never include sibling variant files in refinement context.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Variants accumulate in designs/ after PR merge and bloat the repo.</description>
+      <reason>Add a designs/ cleanup step in the post-merge PR workflow. Archive or delete rejected variant directories after the chosen direction is merged to main.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/new-variant.sh">Scaffold a designs/variant-N-slug/ directory with README template.</reference>
+  <reference path="templates/prompt-brainstorm.txt">Full LLM prompt template for generating 3–5 contrastive design variants.</reference>
+</text>
