@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-runbook-loader" title="Alert-to-Runbook Resolution Rule">
+  <summary>The agent loads runbooks by deterministic path lookup and refuses to act on unmatched alerts.</summary>
+
+  <section title="Alert name resolves to one runbook path">
+    <p>The alert's `runbook_url` annotation (Prometheus / PagerDuty / Datadog) MUST point to a file inside `runbooks/`. The agent fetches the file at incident creation, validates the spine, and refuses to execute any remediation when the file is missing, untagged, or fails the schema check.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST resolve the runbook path from the alert's `runbook_url` annotation, MUST verify the file contains all four canonical sections, and MUST refuse all remediation (returning `runbook_missing` to the orchestrator) when the lookup fails. The agent MUST NOT invent or "search" for a runbook.</statement>
+      <rationale>Lookup-by-search lets the agent pick a wrong-but-plausible runbook from a similarly named service, which is how cross-service blast radius incidents start. A failed lookup is a feature: it pages the human to author the missing runbook.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# Prometheus alert
+- alert: HighDBLatency
+  annotations:
+    runbook_url: "github://faionfaion/ops/runbooks/HighDBLatency.md"
+    summary: "p99 DB latency > 500ms for 5m"
+      ]]></code>
+      <note>Path is explicit, repo-versioned, code-reviewed. Agent validates spine before parsing steps.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Anti: agent searches for "closest" runbook by alert name
+runbook = vector_search(alert.name, top_k=1)
+agent.execute(runbook.remediate_steps)
+      ]]></code>
+      <note>Vector match silently picks a wrong runbook for a similarly named service; remediation hits the wrong cluster.</note>
+    </example>
+
+    <antipattern>
+      <description>Falling back to a "default runbook" when the lookup misses.</description>
+      <reason>A default runbook for arbitrary alerts cannot encode service-specific safety; "restart the service" applied to a stateful primary is a data-loss event.</reason>
+    </antipattern>
+
+    <reference path="templates/parse_runbook.py">Reference parser used by the agent loader.</reference>
+    <reference href="https://github.com/kjkuan/Runbook.md">Runbook.md project — Markdown-as-runbook tooling.</reference>
+    <reference href="https://www.pagerduty.com/platform/aiops/">PagerDuty AIOps — runbook source convention.</reference>
+  </section>
+</text>

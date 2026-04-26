@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-three-tier-rule" title="Three-Tier Tool Classification Enforced at Execution">
+  <summary>Every tool the agent can call carries one of three tier labels enforced by the executor, not the prompt.</summary>
+
+  <section title="Closed tier vocabulary, default to T2">
+    <p>The tool registry assigns each tool to T0 (read-only), T1 (safe mutation, audit-required), or T2 (destructive, human approval required). The executor reads the label at call time. Tools missing from the registry resolve to T2 — unknown tools are dangerous tools.</p>
+
+    <rule testable="true">
+      <statement>The tool executor MUST classify every callable into T0/T1/T2; MUST allow T0 unconditionally with audit; MUST allow T1 unconditionally with audit; MUST refuse T2 unless a signed approval token is supplied; MUST treat any tool absent from the registry as T2; and MUST NOT honor tier overrides from the agent prompt or tool arguments.</statement>
+      <rationale>Centralizing the gate at the executor makes safety a property of the system rather than the prompt. Prompt-level "ask before deleting" instructions are routinely bypassed by jailbreaks, confusion, or follow-up tool-use loops; a registry lookup is mechanical.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+TIERS = {
+    "kubectl_get":      Tier.T0,   # read
+    "kubectl_logs":     Tier.T0,
+    "kubectl_restart":  Tier.T1,   # safe-ish mutation
+    "scale_replica":    Tier.T1,
+    "kubectl_delete":   Tier.T2,   # destructive
+    "db_drop_table":    Tier.T2,
+}
+def call(name, args, approval=None):
+    tier = TIERS.get(name, Tier.T2)              # unknown -> T2
+    if tier is Tier.T2 and not verify(approval, name, args):
+        raise PermissionError(f"{name} requires human approval")
+    audit.append(name, args, tier, approval)
+    return _dispatch(name, args)
+      ]]></code>
+      <note>Single chokepoint; missing tool defaults to most-restrictive; audit is mandatory.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Anti: tier comes from the LLM-supplied argument
+def call(name, args):
+    if args.get("tier") == "destructive" and not args.get("approved"):
+        raise PermissionError(...)
+    return _dispatch(name, args)
+      ]]></code>
+      <note>The agent controls its own gate. A confused or jailbroken LLM passes `approved=true` and the call goes through.</note>
+    </example>
+
+    <antipattern>
+      <description>Granting "auto" status to a T2 tool because "the team trusts the agent now".</description>
+      <reason>Trust is not a property of the tool — it is a property of the action's blast radius. Failover and delete remain T2 forever; only the speed of approval improves.</reason>
+    </antipattern>
+
+    <reference path="templates/tool_registry.py">Reference registry implementation.</reference>
+    <reference href="https://maniak.io/articles/2026-03-11-human-in-the-loop-kagent/">Maniak — human-in-the-loop tier patterns for kagent.</reference>
+    <reference href="https://particula.tech/blog/ai-agent-production-safety-kiro-incident">Kiro production-deletion incident retro.</reference>
+  </section>
+</text>

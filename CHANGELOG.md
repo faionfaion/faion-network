@@ -20,6 +20,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
+- sdlc-ai-methodologies: pool-batch +4 inc- (20/52) — inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, inc-read-only-investigation-default, inc-postmortem-auto-draft-no-publish (NEW shape: AGENTS.md + content/*.xml + templates/). inc- category complete (4/4).
 - sdlc-ai-methodologies: pool-batch +1 mr- (16/52) — mr-error-tracker-draft-pr (NEW shape: AGENTS.md + 3 content/*.xml + templates/). First mr- entry; codifies Sentry Seer / Bugsink / Rollbar threshold + draft-PR + bidirectional-link + bot-identity gate.
 - sdlc-ai-methodologies: pool-batch +1 task- (15/52) — task-agent-drafts-spec-before-coding (NEW shape: AGENTS.md + 2 content/*.xml + templates/spec-comment.md + templates/approval-gate.yaml).
 - sdlc-ai-methodologies: pool-batch +2 test- (14/52) — test-tdd-red-green-split-agents, test-self-healing-locators-audited (NEW shape: AGENTS.md + content/*.xml + templates/). Initial picks test-property-based-hypothesis and test-mutation-score-agent-feedback rejected as near-duplicates of upstream test-property-based-llm-invariants and test-mutation-feedback-loop.

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-default-readonly-rbac" title="Default RBAC Is Read-Only">
+  <summary>The agent's persistent identity holds only read verbs; mutation verbs live in a separate role that is not bound by default.</summary>
+
+  <section title="Two roles, one identity, one binding by default">
+    <p>The agent has one ServiceAccount (or cloud-role principal). Two ClusterRoles exist: `sre-agent-readonly` (verbs `get/list/watch`) and `sre-agent-remediate` (verbs `patch/delete` on a narrowly scoped resource set). Only the readonly role is bound at boot. The remediate role is bound on escalation and unbound on revoke.</p>
+
+    <rule testable="true">
+      <statement>The SRE agent's persistent ServiceAccount MUST have only the `*-readonly` role bound at boot. Mutation verbs (`patch`, `delete`, `create`, `update`) MUST live in a separate role that is unbound by default. The agent MUST NOT receive write credentials via static kubeconfig, long-lived secrets, or environment variables.</statement>
+      <rationale>If write credentials exist on the agent's host, prompt safety is irrelevant — any process compromise grants full privilege. A second binding controlled by a separate workflow is the only durable enforcement.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# bound at boot
+kind: ClusterRoleBinding
+metadata: { name: sre-agent-default }
+roleRef: { kind: ClusterRole, name: sre-agent-readonly }
+subjects: [{ kind: ServiceAccount, name: sre-agent, namespace: ops }]
+---
+# NOT bound by default; bound only on escalation
+kind: ClusterRole
+metadata: { name: sre-agent-remediate }
+rules:
+- verbs: ["patch", "delete"]
+  resources: ["pods"]            # restart only — never PVC, never namespace
+      ]]></code>
+      <note>Two roles, one binding at rest. Escalation binds the second role for a bounded window.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Anti: cluster-admin "for convenience"
+roleRef: { kind: ClusterRole, name: cluster-admin }
+      ]]></code>
+      <note>The agent now has every verb on every resource forever. Any compromise is a full-cluster compromise.</note>
+    </example>
+
+    <antipattern>
+      <description>Granting `patch` on `*` because it "feels safe enough".</description>
+      <reason>Resource scope matters as much as verb scope. `patch deployments/*` includes editing image references — full code-execution path under a benign-sounding verb.</reason>
+    </antipattern>
+
+    <reference path="templates/sre-agent-rbac.yaml">Two-role RBAC manifest with default binding.</reference>
+    <reference href="https://techcommunity.microsoft.com/blog/appsonazureblog/autonomous-aks-incident-response-with-azure-sre-agent-from-alert-to-verified-rec/4511343">Azure SRE Agent — read-only default architecture.</reference>
+    <reference href="https://www.causely.ai/blog/why-your-ai-sre-agent-is-stuck-on-read-only">Causely — why read-only is the right floor for SRE agents.</reference>
+  </section>
+</text>
