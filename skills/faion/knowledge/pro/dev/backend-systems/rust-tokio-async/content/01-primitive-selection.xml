@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-primitive-selection" title="Tokio primitive selection: four workload classes">
+  <summary>Maps four async workload classes to the correct Tokio primitive, preventing the most common selection mistakes.</summary>
+
+  <section title="Selection guide">
+    <rule>
+      <statement>Before implementing any concurrent async code, classify the workload into one of four classes and pick the corresponding primitive. Do not use a heavier primitive when a lighter one fits.</statement>
+      <rationale>Choosing buffer_unordered for two parallel futures is over-engineering; choosing try_join! for 10,000 items is an OOM risk. The right primitive matches the workload size and semantics.</rationale>
+    </rule>
+    <list>
+      <item>Two or more parallel futures, all required, fail-fast: tokio::try_join! / tokio::join!</item>
+      <item>Dynamic number of independent IO items, bounded: futures::stream::buffer_unordered + Semaphore</item>
+      <item>CPU-heavy blocking work (hashing, compression, image): tokio::task::spawn_blocking</item>
+      <item>Dynamic group of independent long-running tasks, manageable: tokio::task::JoinSet</item>
+    </list>
+  </section>
+
+  <section title="try_join! for parallel IO">
+    <rule>
+      <statement>Use tokio::try_join! to run a fixed, small number of futures in parallel and collect all results, short-circuiting on the first error. Do not use it for collections with unknown or large N.</statement>
+      <rationale>try_join! resolves all futures simultaneously. For N &gt; ~20 simultaneous futures it may overload connection pools. For N known at compile time it is the cleanest syntax.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+// Fetch user list and total count in parallel.
+let (users, total) = tokio::try_join!(
+    db.fetch_users(per_page, offset),
+    db.count_users()
+)?;
+]]></code>
+    </example>
+  </section>
+
+  <section title="spawn_blocking for CPU work">
+    <rule>
+      <statement>Wrap any CPU-heavy operation (Argon2, bcrypt, regex compilation, image processing, zip compression) in tokio::task::spawn_blocking. Await the result with .await?? to propagate both the join error (panic) and the inner Result.</statement>
+      <rationale>CPU-heavy futures block the async executor thread, starving all other tasks on that thread. spawn_blocking runs the closure on a dedicated blocking thread pool, keeping the async threads free.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let password_hash = tokio::task::spawn_blocking({
+    let password = password.to_string();
+    move || {
+        let salt = SaltString::generate(&mut OsRng);
+        Argon2::default()
+            .hash_password(password.as_bytes(), &salt)
+            .map(|h| h.to_string())
+    }
+})
+.await??; // first ? = JoinError (panic), second ? = hash error
+]]></code>
+    </example>
+  </section>
+</text>

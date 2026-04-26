@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-app-error" title="Axum AppError enum: thiserror, IntoResponse, public message scrubbing">
+  <summary>AppError enum using thiserror for display, implementing IntoResponse to map variants to HTTP status codes and safe JSON bodies, with internal errors scrubbed before reaching the client.</summary>
+
+  <section title="AppError enum">
+    <rule>
+      <statement>Define AppError as a thiserror enum with one variant per error class. Use #[from] derives for sqlx::Error, validator::ValidationErrors, reqwest::Error, and anyhow::Error so ? works everywhere. Implement IntoResponse to map variants to (StatusCode, Json) tuples.</statement>
+      <rationale>thiserror generates Display automatically from the #[error("...")] attribute, eliminating manual fmt::Display implementations. #[from] derives let ? propagate library errors into AppError without explicit map_err calls.</rationale>
+    </rule>
+    <reference path="templates/app_error.rs">Full AppError enum with IntoResponse implementation.</reference>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+#[derive(Debug, Error)]
+pub enum AppError {
+    #[error("not found")]
+    NotFound,
+    #[error("unauthorized")]
+    Unauthorized,
+    #[error("validation: {0}")]
+    Validation(#[from] validator::ValidationErrors),
+    #[error("conflict: {0}")]
+    Conflict(String),
+    #[error("database: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("internal: {0}")]
+    Internal(#[from] anyhow::Error),
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Public message scrubbing in IntoResponse">
+    <rule>
+      <statement>In IntoResponse, map Database, Upstream, and Internal variants to "internal error" in the public message, regardless of the internal error text. Only NotFound, Unauthorized, Conflict, and Validation messages are client-safe.</statement>
+      <rationale>Database error text contains table names, column names, constraint names, and sometimes query fragments — all sensitive. The internal error is already captured by tracing::error! for server-side correlation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, code) = match &self {
+            AppError::NotFound       => (StatusCode::NOT_FOUND, "NOT_FOUND"),
+            AppError::Unauthorized   => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED"),
+            AppError::Validation(_)  => (StatusCode::UNPROCESSABLE_ENTITY, "VALIDATION_ERROR"),
+            AppError::Conflict(_)    => (StatusCode::CONFLICT, "CONFLICT"),
+            AppError::Database(_)
+            | AppError::Internal(_)  => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR"),
+        };
+        let msg = match &self {
+            AppError::Database(_) | AppError::Internal(_) => "internal error".to_string(),
+            other => other.to_string(),
+        };
+        tracing::error!(error = %self, "request failed");
+        (status, Json(json!({ "error": { "code": code, "message": msg } }))).into_response()
+    }
+}
+]]></code>
+    </example>
+  </section>
+</text>

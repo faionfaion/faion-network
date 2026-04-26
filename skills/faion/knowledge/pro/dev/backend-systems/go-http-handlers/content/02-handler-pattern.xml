@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-handler-pattern" title="Go handler struct pattern: DI, request DTOs, RFC 7807 error mapping">
+  <summary>Handlers as methods on a dependency-injecting struct, with request DTOs using binding/validate tags, typed response structs, and RFC 7807 error mapping instead of raw err.Error() in JSON.</summary>
+
+  <section title="Handler struct">
+    <rule>
+      <statement>Define handlers as methods on a struct that holds service dependencies (logger, services). Never use package-level globals (var DB *sql.DB) inside handlers. Inject dependencies at construction time.</statement>
+      <rationale>Package-level globals prevent parallel test execution (shared state between test cases) and make dependency substitution impossible without init() hacks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+type UserHandler struct {
+    service UserService
+    logger  *slog.Logger
+}
+
+func NewUserHandler(svc UserService, logger *slog.Logger) *UserHandler {
+    return &UserHandler{service: svc, logger: logger}
+}
+
+func (h *UserHandler) ListUsers(c *gin.Context) {
+    users, err := h.service.List(c.Request.Context())
+    if err != nil {
+        _ = c.Error(err)
+        return
+    }
+    c.JSON(http.StatusOK, users)
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Request binding">
+    <rule>
+      <statement>Use c.ShouldBindJSON (not c.Bind) on Gin. ShouldBind returns an error without writing a response; c.Bind writes a 400 directly and the handler continues — producing a double-write bug.</statement>
+      <rationale>c.Bind's auto-response behavior is a Gin anti-pattern; handlers that check err after c.Bind may still execute, producing conflicting response writes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name"  binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        _ = c.Error(apperror.AsValidation(err.Error()))
+        return
+    }
+    // ...
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Context propagation">
+    <rule>
+      <statement>Pass r.Context() (or c.Request.Context() in Gin) as the first argument into every service call. Never use context.Background() inside a handler.</statement>
+      <rationale>context.Background() ignores client disconnection. Long-running service calls (DB, HTTP) continue consuming resources after the client has gone away.</rationale>
+    </rule>
+  </section>
+</text>

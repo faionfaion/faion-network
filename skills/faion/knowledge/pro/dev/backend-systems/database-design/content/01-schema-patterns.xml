@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-schema-patterns" title="PostgreSQL schema patterns: entities, indexing, soft deletes, audit, partitioning">
+  <summary>Core schema design patterns for PostgreSQL: normalized entity relationships with constraints, access-pattern-driven indexes, partial indexes for soft deletes, audit triggers, and range partitioning.</summary>
+
+  <section title="Entity relationships with constraints">
+    <rule>
+      <statement>Every table must have: UUID or UUIDv7 primary key, NOT NULL on all required columns, UNIQUE constraints for natural keys, FK with explicit ON DELETE semantics, CHECK constraints for bounded domains (enums, ranges, non-negative quantities).</statement>
+      <rationale>Constraints at the database level cannot be bypassed by application bugs or direct SQL access. Missing FK enforcement allows orphaned rows that cause silent data corruption.</rationale>
+    </rule>
+    <reference path="templates/ecommerce_schema.sql">E-commerce DDL: users, products, orders, order_items with all constraints and indexes.</reference>
+  </section>
+
+  <section title="Indexing strategy">
+    <rule>
+      <statement>Create indexes derived from stated query patterns only. For skewed data (status IN ('pending', 'processing') where 90% is 'delivered'), use partial indexes. For text search, use GIN with pg_trgm. For time-ordered inserts, prefer UUIDv7 over UUIDv4 to preserve B-tree locality.</statement>
+      <rationale>Over-indexing degrades INSERT/UPDATE/DELETE performance proportionally to the number of indexes. Index for the queries you have, not the queries you might have.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+-- Covers the common "orders by user, sorted by date" query.
+CREATE INDEX idx_orders_user_created ON orders(user_id, created_at DESC);
+
+-- Partial index: only pending orders (a fraction of the table).
+CREATE INDEX idx_orders_pending ON orders(created_at)
+    WHERE status = 'pending';
+
+-- GIN for trigram text search on product names.
+CREATE INDEX idx_products_name_trgm ON products
+    USING gin(name gin_trgm_ops);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Soft deletes">
+    <rule>
+      <statement>Add a nullable deleted_at TIMESTAMPTZ column. Create a partial index on the unique key filtered WHERE deleted_at IS NULL. Create a view (active_X) for queries that never need deleted records. Every query on soft-deleted tables must include the WHERE filter.</statement>
+      <rationale>Without the partial index on the unique key, soft-deleted records block re-insertion of the same natural key (e.g., a user re-registering with the same email).</rationale>
+    </rule>
+  </section>
+
+  <section title="Partitioning">
+    <rule>
+      <statement>Use range partitioning by time column for append-heavy tables (events, logs, orders) where old partitions can be detached and archived. Create indexes on each partition, not just the parent. Document the partition creation and archival schedule in a runbook.</statement>
+      <rationale>Range partitioning allows pg_partman to auto-create future partitions and detach old ones. Without documented partition management, partitions grow unbounded and performance degrades.</rationale>
+    </rule>
+  </section>
+</text>

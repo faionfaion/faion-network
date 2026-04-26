@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patterns" title="Tokio bounded-concurrent collection processing and JoinSet">
+  <summary>buffer_unordered + Semaphore for bounded-concurrent collections, and JoinSet for dynamic task groups with drop-time cancellation.</summary>
+
+  <section title="buffer_unordered + Semaphore">
+    <rule>
+      <statement>Process large collections with futures::stream::buffer_unordered(N) combined with tokio::sync::Semaphore for precise concurrency control. Use Semaphore::acquire_owned() so the permit lives as long as the task, not as long as a borrow.</statement>
+      <rationale>buffer_unordered(N) limits in-flight futures to N, but the Semaphore adds an explicit capacity token that can be inspected, logged, and adjusted without changing the stream topology.</rationale>
+    </rule>
+    <reference path="templates/map_concurrent.rs">Generic map_concurrent helper using buffer_unordered + Semaphore + TryStreamExt.</reference>
+  </section>
+
+  <section title="JoinSet for managed task groups">
+    <rule>
+      <statement>Use tokio::task::JoinSet instead of Vec&lt;JoinHandle&lt;T&gt;&gt; for groups of spawned tasks. JoinSet cancels all remaining tasks on drop, preventing leaks when the parent scope exits early.</statement>
+      <rationale>A Vec&lt;JoinHandle&gt; requires explicit abort() loops on early exit; forgetting them leaves tasks running indefinitely. JoinSet cancellation is automatic and unconditional on drop.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let mut set = tokio::task::JoinSet::new();
+for item in items {
+    set.spawn(async move { process(item).await });
+}
+while let Some(result) = set.join_next().await {
+    result??; // propagates panic + inner error
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Timeouts">
+    <rule>
+      <statement>Wrap every external IO call in tokio::time::timeout. There is no safe default for a missing timeout — every external call must have an explicit one.</statement>
+      <rationale>A hung external service with no timeout holds a Tokio task thread indefinitely. Under load this exhausts the worker thread pool and stalls the entire runtime.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-router-setup" title="Go HTTP router setup: Gin, Echo, and stdlib 1.22 muxer">
+  <summary>Router configuration patterns for Gin and Echo, including correct middleware order and subrouter/group patterns. Covers the stdlib 1.22 enhanced muxer as a zero-dependency alternative.</summary>
+
+  <section title="Middleware order">
+    <rule>
+      <statement>Register middleware in this order: Recovery (outermost), RequestID, Logger, Auth (on protected groups). Recovery must be outermost so panics are caught before the logger middleware runs. Logger must be after RequestID so the request ID is available in logs.</statement>
+      <rationale>Recovery placed inside Logger means a panicking handler crashes the Logger middleware before it can write the log line. The recovery response is then written by a dead middleware, producing a garbled or empty body.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// Gin — correct middleware order
+r := gin.New()
+r.Use(middleware.Recovery())   // outermost
+r.Use(middleware.RequestID())
+r.Use(middleware.Logger())
+
+// Protected routes with auth
+v1 := r.Group("/api/v1")
+v1.Use(middleware.Auth())
+v1.GET("/users", h.ListUsers)
+]]></code>
+    </example>
+  </section>
+
+  <section title="stdlib 1.22 muxer">
+    <rule>
+      <statement>For new services without a team-wide framework standard, prefer the stdlib 1.22 muxer (http.NewServeMux with METHOD /path patterns) over adding a framework dependency. Add a framework only when its features (validator, response helpers) justify the dependency.</statement>
+      <rationale>The 1.22 muxer supports method-specific routing (GET /users/{id}) and path parameters (r.PathValue) natively, eliminating the primary reason to reach for Gin/Echo in simple CRUD APIs.</rationale>
+    </rule>
+    <reference path="templates/stdlib_handler.go">stdlib 1.22 App struct with routes(), writeJSON, writeProblem.</reference>
+  </section>
+</text>

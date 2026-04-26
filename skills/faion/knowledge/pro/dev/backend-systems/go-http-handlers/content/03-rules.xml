@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules" title="Go HTTP handler rules: framework-mixing, testing, agent gotchas">
+  <summary>Rules preventing the most common Go HTTP handler mistakes: mixed framework signatures, raw err.Error() in responses, missing server timeouts, and test generation gaps.</summary>
+
+  <section title="Framework consistency">
+    <rule>
+      <statement>Lock the router choice (Gin, Echo, Chi, stdlib) in the system prompt for any LLM session. Reject any file where Gin and Echo imports coexist. Add a CI lint check for the unwanted import.</statement>
+      <rationale>LLMs mix handler signatures when context windows overflow. func(c *gin.Context) and func(c echo.Context) error are incompatible; mixed files produce confusing compile errors.</rationale>
+    </rule>
+    <antipattern>
+      <description>c.JSON(status, gin.H{"error": err.Error()}) for error responses.</description>
+      <reason>Exposes database DSNs, constraint names, and internal hostnames. Use the RFC 7807 error mapping from error-handling/ and return via c.Error(appErr).</reason>
+    </antipattern>
+  </section>
+
+  <section title="Server timeouts">
+    <rule>
+      <statement>Set ReadHeaderTimeout, WriteTimeout, and IdleTimeout on http.Server. Frameworks do not set these; a server without timeouts is vulnerable to slowloris attacks and resource exhaustion.</statement>
+      <rationale>A client that never finishes sending headers holds a goroutine and file descriptor indefinitely. ReadHeaderTimeout terminates such connections.</rationale>
+    </rule>
+  </section>
+
+  <section title="Testing">
+    <rule>
+      <statement>Test handlers with httptest.NewRecorder + router.ServeHTTP. Cover both happy-path and unhappy-path (missing required field, invalid type, oversized body). Do not spin a real server for unit tests.</statement>
+      <rationale>httptest tests run in parallel, start instantly, and exercise the full middleware chain. Agents generating only happy-path tests miss the most common field-validation regressions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent gotchas">
+    <antipattern>
+      <description>Forgetting defer r.Body.Close() in stdlib handlers.</description>
+      <reason>Without Close(), the underlying TCP connection is not returned to the pool, leaking file descriptors under sustained load.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Creating validator.New() per request instead of once at package level.</description>
+      <reason>validator.New() is expensive (reflection over all struct tags). A per-request instance adds measurable latency under load. Cache at package or handler-struct level.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using path param accessor from the wrong router: c.Param("id") in Chi or r.PathValue("id") in Gin.</description>
+      <reason>Each router has its own path-param API. Wrong accessor returns an empty string, silently breaking 404 logic and tests.</reason>
+    </antipattern>
+  </section>
+</text>
