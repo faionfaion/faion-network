@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts-and-providers" title="Function Calling: Concepts and Provider Formats">
+  <summary>Function calling flow, tool choice modes, provider format differences (OpenAI/Claude/Gemini), and the agentic loop. The LLM never executes functions — it produces a call specification; your code executes it.</summary>
+
+  <section title="Function Calling Flow">
+    <list>
+      <item>Context Assembly: system message + tool definitions + user message → LLM input</item>
+      <item>Intent Analysis: LLM decides if a tool call is needed</item>
+      <item>Tool Selection: LLM picks tool(s) and extracts parameters as JSON</item>
+      <item>Execution: your code runs the actual function with validated arguments</item>
+      <item>Result Processing: function result appended to context → LLM generates final response</item>
+    </list>
+    <rule>
+      <statement>Never pass raw LLM-generated arguments directly to functions without validation.</statement>
+      <rationale>LLMs hallucinate parameter values (e.g., wrong IDs, invented enums). Structured error returns with field-level messages let the model self-correct on retry.</rationale>
+    </rule>
+  </section>
+
+  <section title="Tool Choice Modes">
+    <list>
+      <item>auto — LLM decides whether to call tools; use for general conversations</item>
+      <item>required (OpenAI) / any (Claude) — LLM must call at least one tool; use for extraction tasks</item>
+      <item>none — tools disabled for this call; use for follow-up questions</item>
+      <item>specific tool name — force a named tool; use for deterministic workflows</item>
+    </list>
+    <rule>
+      <statement>Keep the tool catalogue to ≤20 per call. Use RAG-over-tools to select the relevant subset for larger catalogues.</statement>
+      <rationale>Each tool definition consumes input tokens on every call. Beyond ~20 tools, selection accuracy degrades. Dynamic selection scales to 100+ tools without accuracy loss.</rationale>
+    </rule>
+  </section>
+
+  <section title="Provider Format Differences">
+    <rule>
+      <statement>OpenAI uses tools/tool_calls; Claude uses tools/tool_use content blocks; Gemini uses function_declarations/function_call.</statement>
+      <rationale>Providers share the concept but differ in field names and message structure. Use an abstraction layer or provider-specific branches when targeting multiple providers.</rationale>
+    </rule>
+    <example type="good">
+      <note>OpenAI tool definition and response handling</note>
+      <code lang="python"><![CDATA[
+# OpenAI: define tool
+tool = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City and country"},
+                "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+            },
+            "required": ["location"],
+            "additionalProperties": False
+        },
+        "strict": True
+    }
+}
+
+# OpenAI: handle response
+for tool_call in response.choices[0].message.tool_calls:
+    name = tool_call.function.name
+    args = json.loads(tool_call.function.arguments)
+    result = dispatch(name, args)
+    messages.append({
+        "role": "tool",
+        "tool_call_id": tool_call.id,
+        "content": json.dumps(result)
+    })
+]]></code>
+    </example>
+    <example type="good">
+      <note>Claude tool definition and response handling</note>
+      <code lang="python"><![CDATA[
+# Claude: define tool
+tool = {
+    "name": "get_weather",
+    "description": "Get current weather for a location",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "location": {"type": "string"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+        },
+        "required": ["location"]
+    }
+}
+
+# Claude: handle response (tool_use content blocks)
+for block in response.content:
+    if block.type == "tool_use":
+        result = dispatch(block.name, block.input)
+        tool_results.append({
+            "type": "tool_result",
+            "tool_use_id": block.id,
+            "content": json.dumps(result)
+        })
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agentic Loop">
+    <rule>
+      <statement>Always set a max_iterations guard (10–20) on every agentic loop to prevent infinite execution.</statement>
+      <rationale>Without an iteration cap, a malformed tool result or persistent LLM confusion causes unbounded token spend and external API calls.</rationale>
+    </rule>
+    <list>
+      <item>Single tool call: User → LLM → one tool → execute → response</item>
+      <item>Parallel calls: LLM returns multiple tool_calls simultaneously → execute all → aggregate results → response</item>
+      <item>Sequential (agentic): LLM → tool A → result → LLM → tool B → result → … → response</item>
+      <item>Tool router: router LLM selects tool subset → specialist LLM executes → response; best for >20 tools</item>
+    </list>
+  </section>
+
+  <section title="Provider Feature Matrix">
+    <list>
+      <item>Parallel tool calls: OpenAI Yes, Claude Yes, Gemini Yes, Local (Ollama) model-dependent</item>
+      <item>Streaming tool calls: OpenAI Yes, Claude Yes, Gemini Yes, Local limited</item>
+      <item>Max tools per call: OpenAI 128, Claude 64, Gemini 128, Local model-dependent</item>
+      <item>Interleaved thinking: Claude only (extended thinking mode)</item>
+      <item>Structured output: OpenAI JSON mode + tools, Claude tools only, Gemini JSON mode + tools</item>
+    </list>
+  </section>
+
+  <reference path="templates/tool-dispatch.py">Validated tool dispatcher with registry decorator and structured error return</reference>
+  <reference path="templates/tool-definitions.json">Example tool definitions in OpenAI and Claude format</reference>
+</text>

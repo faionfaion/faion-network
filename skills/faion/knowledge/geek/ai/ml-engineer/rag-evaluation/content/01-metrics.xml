@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-metrics" title="RAG Evaluation Metrics">
+  <summary>Retrieval metrics (Precision@K, Recall@K, MRR, NDCG, Hit Rate) and generation metrics (Faithfulness, Answer Relevance) with production targets.</summary>
+
+  <section title="Retrieval Metrics">
+    <rule>
+      <statement>Require stable document IDs before computing retrieval metrics; if your vector DB returns raw chunks, compute IDs as hash(content).</statement>
+      <rationale>Precision@K and Recall@K require matching retrieved doc IDs against relevance labels. Without IDs the calculation is impossible.</rationale>
+    </rule>
+    <list>
+      <item>Precision@K: relevant_in_top_k / k — target &gt; 0.7</item>
+      <item>Recall@K: relevant_retrieved / total_relevant — target &gt; 0.8</item>
+      <item>MRR (Mean Reciprocal Rank): 1 / rank_of_first_relevant — target &gt; 0.6</item>
+      <item>NDCG@K: graded relevance with position weighting — target &gt; 0.8</item>
+      <item>Hit Rate: 1 if any relevant doc in top-K else 0 — target &gt; 0.9</item>
+    </list>
+    <p>Position matters: relevant docs at position 10+ are often ignored by the LLM due to context window positional bias.</p>
+  </section>
+
+  <section title="Generation Metrics">
+    <rule>
+      <statement>Do not conflate RAGAS Faithfulness (grounded in retrieved context) with factual accuracy (correct against world knowledge) — a faithful answer can still be factually wrong if the retrieved context is wrong.</statement>
+      <rationale>These measure different failure modes that require different fixes: bad retrieval vs hallucinating generation.</rationale>
+    </rule>
+    <list>
+      <item>Faithfulness: claims supported by context / total claims — target &gt; 0.85</item>
+      <item>Answer Relevance: does the answer address the question? — target &gt; 0.9</item>
+      <item>Context Relevance: is retrieved context relevant to the question? — target &gt; 0.7</item>
+      <item>Hallucination Rate: unsupported or fabricated claims — target &lt; 0.1</item>
+      <item>Citation Coverage: claims backed by source references — target &gt; 0.8</item>
+    </list>
+  </section>
+
+  <section title="Composite Metrics (RAGAS)">
+    <list>
+      <item>RAGAS Score: Faithfulness + Answer Relevance + Context Relevance combined</item>
+      <item>Answer Correctness: semantic similarity + factual overlap against ground truth</item>
+      <item>Context Precision: relevant chunks / total retrieved chunks — proxy for retrieval efficiency</item>
+    </list>
+  </section>
+
+  <section title="Metric Selection by Situation">
+    <list>
+      <item>Have relevance labels: use Precision@K, Recall@K, NDCG, MRR</item>
+      <item>No ground truth: use Faithfulness, Answer Relevance (RAGAS LLM-based)</item>
+      <item>Production monitoring: Latency + Faithfulness + Hit Rate (lightweight)</item>
+      <item>Full model comparison: complete RAGAS suite + retrieval metrics</item>
+    </list>
+  </section>
+
+  <reference path="templates/retrieval-metrics.py">Hit rate, MRR, Precision@K calculator</reference>
+  <reference path="templates/faithfulness-judge-prompt.txt">LLM faithfulness judge prompt</reference>
+</text>

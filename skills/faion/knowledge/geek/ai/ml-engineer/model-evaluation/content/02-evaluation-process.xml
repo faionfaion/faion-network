@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-evaluation-process" title="Evaluation Process — Offline, A/B, and Production">
+  <summary>Step-by-step evaluation workflow: offline dataset setup, A/B testing, production monitoring thresholds, and quality gates.</summary>
+
+  <section title="Offline Evaluation Setup">
+    <rule>
+      <statement>Build your evaluation dataset from real production queries, not synthetic ones; minimum 200 samples; version it alongside model/prompt versions.</statement>
+      <rationale>Synthetic datasets miss the long tail of real user behavior. Mismatched dataset versions make cross-evaluation comparisons meaningless.</rationale>
+    </rule>
+    <list>
+      <item>Define evaluation goals: model selection, prompt optimization, or monitoring baseline</item>
+      <item>Prepare test dataset: min 100 samples for significance (200+ recommended), balanced across categories, no overlap with training data</item>
+      <item>Set temperature=0 for reproducibility across runs</item>
+      <item>Use same prompts across all models being compared</item>
+      <item>Log all inputs, outputs, token counts, and latency per sample</item>
+    </list>
+  </section>
+
+  <section title="A/B Testing">
+    <rule>
+      <statement>Define success metrics and calculate required sample size before traffic splitting; run until p &lt; 0.05 and check for novelty effects.</statement>
+      <rationale>Underpowered A/B tests produce false positives that lead to wrong model selection decisions.</rationale>
+    </rule>
+    <list>
+      <item>Define hypothesis and primary success metric before starting</item>
+      <item>Calculate sample size for desired statistical power</item>
+      <item>Set up 50/50 or staged rollout traffic split with full tracking</item>
+      <item>Monitor guardrail metrics: errors, latency, safety scores</item>
+      <item>Analyze with statistical significance (p &lt; 0.05) and segment by user type</item>
+    </list>
+  </section>
+
+  <section title="Production Monitoring">
+    <rule>
+      <statement>Sample 1–10% of production traffic for quality evaluation; run LLM-as-judge on 0.1–1%; set cost alerts at 2x baseline and page at 5x.</statement>
+      <rationale>Full evaluation on 100% of production traffic is cost-prohibitive; sampling provides sufficient signal. Cost alerts catch runaway agent loops before they drain budget.</rationale>
+    </rule>
+    <list>
+      <item>Daily: check error rates and p95 latency</item>
+      <item>Weekly: review sampled outputs for quality regression</item>
+      <item>Monthly: run comprehensive evaluation against baseline</item>
+      <item>Quarterly: refresh test datasets to match current query distribution</item>
+    </list>
+  </section>
+
+  <section title="Alert Thresholds">
+    <list>
+      <item>Error rate: warning &gt; 1%, critical &gt; 5%</item>
+      <item>p95 latency: warning &gt; 3s, critical &gt; 10s</item>
+      <item>Empty responses: warning &gt; 0.5%, critical &gt; 2%</item>
+      <item>Quality score: warning &lt; 4.0/5.0, critical &lt; 3.5/5.0</item>
+    </list>
+  </section>
+
+  <section title="Quality Gates">
+    <rule>
+      <statement>Block deployment if quality drops &gt;5% on core metrics versus the production baseline.</statement>
+      <rationale>Catching quality regressions in CI prevents silent degradation in production.</rationale>
+    </rule>
+    <list>
+      <item>Before staging: all automated tests pass, quality meets threshold, latency within SLA, no safety issues</item>
+      <item>Before production: staging evaluation complete, A/B positive, rollback plan documented, dashboards ready</item>
+    </list>
+  </section>
+
+  <section title="Agent-Specific Rules">
+    <rule>
+      <statement>Evaluation agents must rate-limit concurrent LLM calls and must not cache LLM-as-judge results across prompt versions.</statement>
+      <rationale>Parallel evaluation of 1000 samples at 50 concurrent calls hits API rate limits. Stale evaluations from a prior prompt version corrupt cross-version comparisons.</rationale>
+    </rule>
+  </section>
+</text>

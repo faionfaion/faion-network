@@ -1,0 +1,131 @@
+# docker-compose.yml — Self-hosted LLM observability stack
+# Services: Langfuse + PostgreSQL + Prometheus + Grafana + Alertmanager + OTEL Collector
+# Requires: .env with NEXTAUTH_SECRET, SALT, GRAFANA_PASSWORD, LANGFUSE_PUBLIC_KEY
+
+version: '3.8'
+
+services:
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/langfuse
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: http://localhost:3000
+      SALT: ${SALT}
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./alert-rules.yaml:/etc/prometheus/alert_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus metrics export
+    volumes:
+      - ./otel-collector.yml:/etc/otelcol-contrib/config.yaml
+    restart: unless-stopped
+
+volumes:
+  langfuse_data:
+  prometheus_data:
+  grafana_data:
+
+---
+# prometheus.yml
+# global:
+#   scrape_interval: 15s
+#   evaluation_interval: 15s
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: [alertmanager:9093]
+# rule_files:
+#   - /etc/prometheus/alert_rules.yml
+# scrape_configs:
+#   - job_name: llm-app
+#     static_configs:
+#       - targets: [app:8000]
+#   - job_name: otel-collector
+#     static_configs:
+#       - targets: [otel-collector:8889]
+
+---
+# otel-collector.yml
+# receivers:
+#   otlp:
+#     protocols:
+#       grpc:
+#         endpoint: 0.0.0.0:4317
+#       http:
+#         endpoint: 0.0.0.0:4318
+# processors:
+#   batch:
+#     timeout: 1s
+#     send_batch_size: 1024
+# exporters:
+#   prometheus:
+#     endpoint: "0.0.0.0:8889"
+#     namespace: llm
+#   otlp/langfuse:
+#     endpoint: "https://cloud.langfuse.com/api/public/otel"
+#     headers:
+#       Authorization: "Bearer ${LANGFUSE_PUBLIC_KEY}"
+# service:
+#   pipelines:
+#     traces:
+#       receivers: [otlp]
+#       processors: [batch]
+#       exporters: [otlp/langfuse]
+#     metrics:
+#       receivers: [otlp]
+#       processors: [batch]
+#       exporters: [prometheus]

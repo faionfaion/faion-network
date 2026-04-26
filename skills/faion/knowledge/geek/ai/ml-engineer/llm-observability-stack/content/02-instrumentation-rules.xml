@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-instrumentation-rules" title="LLM Instrumentation Rules, Alerts, and Cost Tracking">
+  <summary>Instrumentation rules, production alert thresholds, cost tracking patterns, agent tracing gotchas, and antipatterns.</summary>
+
+  <section title="Instrumentation Rules">
+    <rule>
+      <statement>Attach user_id, session_id, and feature_flag to every LLM span at call time — not post-hoc.</statement>
+      <rationale>Post-hoc enrichment requires a join on a secondary store. Inline attribution enables per-user cost breakdown, session replay, and A/B comparison directly in the tracing UI.</rationale>
+    </rule>
+    <rule>
+      <statement>Log both input and output token counts per call; never derive cost from character count alone.</statement>
+      <rationale>Character count diverges from token count for non-ASCII content, code, and structured JSON. Token counts are available directly from provider responses and are the only reliable cost signal.</rationale>
+    </rule>
+    <list>
+      <item>Wrap every external LLM call in a span; include model name, provider, temperature, max_tokens</item>
+      <item>For streaming responses, record TTFT (time to first token) as a separate metric</item>
+      <item>Record cache hit/miss on every call to track prompt caching effectiveness</item>
+      <item>For agents: create parent span per agent run, child spans per tool call; include iteration count</item>
+    </list>
+  </section>
+
+  <section title="Production Alert Thresholds">
+    <rule>
+      <statement>Alert on these baselines: error rate &gt;5%, P99 latency &gt;10s, TTFT P95 &gt;2s, hallucination rate &gt;10%, daily spend &gt;80% of budget.</statement>
+      <rationale>These thresholds represent practical production baselines. Lower thresholds create alert fatigue; higher thresholds miss meaningful degradation. Tune to your SLA after establishing a 2-week baseline.</rationale>
+    </rule>
+    <list>
+      <item>Cost spike: hourly spend &gt;150% of 7-day rolling average → warning</item>
+      <item>Quality drop: average quality score &lt;3.5/5 sustained for 15 minutes → warning</item>
+      <item>Cache hit rate &lt;20% for 30 minutes → info (investigate prompt variation)</item>
+      <item>All critical alerts → PagerDuty; warnings → Slack #llm-alerts channel</item>
+    </list>
+  </section>
+
+  <section title="Cost Tracking Patterns">
+    <list>
+      <item>Use pricing.yaml to centralize model costs — never hardcode rates in application code</item>
+      <item>Track cost by team, environment, and feature via span attributes; bill back to owners</item>
+      <item>Budget allocation: production 70%, staging 20%, development 10% of monthly budget</item>
+      <item>Self-hosted break-even: ~30,000 minutes/month (500 GPU-hours); below that use APIs</item>
+    </list>
+  </section>
+
+  <section title="Agent Tracing Patterns">
+    <rule>
+      <statement>Create a parent trace per agent invocation and nest all tool calls as child spans — never emit flat independent spans.</statement>
+      <rationale>Flat spans make it impossible to reconstruct reasoning chains or correlate tool results with the LLM decision that triggered them. Hierarchical spans enable full session replay.</rationale>
+    </rule>
+    <list>
+      <item>Record tool_name, input_args, output_size, and success/error for every tool call span</item>
+      <item>Log intermediate reasoning steps (thought content) as span events, not separate spans</item>
+      <item>Detect loops: flag when the same tool is called with identical args &gt;2 times in one session</item>
+      <item>Store full conversation history in trace metadata for debugging hallucination root causes</item>
+    </list>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Sampling all traces at &lt;100% in development.</description>
+      <reason>Development traffic is low enough to sample at 100%. Sampling misses the exact anomalous call you need to debug. Reserve sampling strategies (e.g., 10%) for high-volume production only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Prometheus counters for LLM cost without per-model labels.</description>
+      <reason>A single llm_cost_usd counter masks model mix. If GPT-4o spikes while GPT-4o-mini stays flat, an unlabeled counter hides the root cause. Always include model and provider labels.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Only alerting on error rate, ignoring quality score drift.</description>
+      <reason>Quality regressions (relevance drop, hallucination increase) do not surface as HTTP errors. They show up as user churn. Quality alerts require LLM-as-judge sampling running continuously in production.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/alert-rules.yaml">Prometheus alert rules implementing all thresholds above</reference>
+  <reference path="templates/pricing.yaml">Model pricing config for cost calculation</reference>
+</text>

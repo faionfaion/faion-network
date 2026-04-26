@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-evaluation-workflow" title="RAG Evaluation Workflow and Agent Integration">
+  <summary>Four-step evaluation agent workflow, RAGAS usage notes, production monitoring setup, and common pitfalls.</summary>
+
+  <section title="Agent Workflow (4 Steps)">
+    <rule>
+      <statement>Separate retrieval evaluation from generation evaluation in every run; a combined score masks root cause and misdirects fixes.</statement>
+      <rationale>Retrieval and generation have independent failure modes. A high faithfulness score with low hit rate means the model hallucinates consistently from bad retrieval — not a generation problem.</rationale>
+    </rule>
+    <list>
+      <item>Step 1: Load evaluation dataset (query, expected_answer, source_doc_ids)</item>
+      <item>Step 2: Run RAG pipeline — get retrieved_chunk_ids and generated_answer</item>
+      <item>Step 3: Compute retrieval metrics (Precision@K, Hit Rate, MRR) + generation metrics via LLM-as-judge</item>
+      <item>Step 4: Write structured report with per-metric scores, failure examples, and recommendations</item>
+    </list>
+  </section>
+
+  <section title="Production Monitoring">
+    <rule>
+      <statement>Target these baselines before production: Faithfulness &gt; 0.85, Answer Relevance &gt; 0.90, Hit Rate &gt; 0.90.</statement>
+      <rationale>These thresholds represent consistent observed quality in production RAG systems across diverse domains.</rationale>
+    </rule>
+    <list>
+      <item>Development: evaluate on every change, full metric suite</item>
+      <item>Staging: daily, core metrics only</item>
+      <item>Production: continuous lightweight sampling (faithfulness + hit rate); full suite monthly</item>
+      <item>Run evaluation in CI; block merge if faithfulness drops &gt;5% vs main</item>
+    </list>
+  </section>
+
+  <section title="Ground Truth Creation">
+    <rule>
+      <statement>Generate synthetic ground truth (question-answer pairs) with a different model than the one being evaluated.</statement>
+      <rationale>Using the same model to generate and evaluate creates self-fulfilling evaluations — the evaluated model scores artificially high on its own synthetic questions.</rationale>
+    </rule>
+    <list>
+      <item>Manually verify 100 annotated query-document pairs minimum</item>
+      <item>Include diverse question types: factual, comparative, multi-hop reasoning</item>
+      <item>Cover edge cases and out-of-domain queries</item>
+      <item>Target inter-annotator agreement Cohen's Kappa &gt; 0.7</item>
+    </list>
+  </section>
+
+  <section title="Common Pitfalls">
+    <antipattern>
+      <description>RAGAS context_recall used without ground truth answers.</description>
+      <reason>context_recall requires ground_truth to compute; without it the metric is unavailable. Check dataset completeness before running.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running RAGAS evaluation of 100 samples without rate limiting.</description>
+      <reason>RAGAS faithfulness makes multiple LLM calls per sample (claim extraction + support checking); 100 samples costs $5–20 and hits rate limits if parallelized without a semaphore.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Reporting only a single-run RAGAS score without confidence intervals.</description>
+      <reason>LLM-as-judge scores vary ±3–5% between runs. Single-point estimates mislead stakeholders about actual quality.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/ragas-runner.py">RAGAS evaluation pipeline setup</reference>
+</text>

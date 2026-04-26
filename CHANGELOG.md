@@ -3,14 +3,10 @@
 ## [Unreleased]
 
 ### Changed
-- refactor: 8/8 methodologies migrated to new shape (batch: guardrails-basics, tool-use-basics, openai-function-calling, claude-api-basics, openai-embeddings, cot-techniques, local-llm-ollama, structured-output-patterns)
-- refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: agentic-rag, chunking-strategies, chain-of-thought, hybrid-search, multi-agent-systems, structured-output, openai-api, cost-optimization)
+- refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: eu-ai-act-compliance, multi-agent-design-patterns, model-evaluation, rag-evaluation, tool-use-function-calling, llm-observability-stack, gemini-api, speech-to-text)
 - refactor: 8/8 infrastructure-engineer methodologies migrated to new shape (batch: aws-architecture-services, terraform-basics, terraform-state, gcp-arch-patterns, aws-lambda, terraform, aws-networking, aws-s3-storage)
 - refactor: 8/8 methodologies migrated to new shape (batch: llm-friendly-architecture x2, ai-assisted-dev, claude-md-creation, ai-content-strategy, ai-marketing-tools-stack-2026, agentic-commerce-future-trends, technical-seo-for-ai)
 - refactor: 8/8 methodologies migrated to new shape (batch: google-ai-overviews-optimization, pain-point-research, idea-generation, pricing-research, problem-validation, jobs-to-be-done, feature-discovery, problem-validation-2026)
-- refactor: 8/8 devops-engineer methodologies migrated to new shape (batch: terraform, helm-charts, finops, jenkins-pipelines, nginx-configuration, dora-metrics, prometheus-monitoring, grafana-dashboards)
-- refactor: 8/8 cicd-engineer methodologies migrated to new shape (batch: dora-metrics, grafana-setup, prometheus-monitoring, gitlab-cicd, azure-compute, jenkins-basics, secrets-management, argocd-gitops)
-- refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: graph-rag, ai-agent-patterns, langchain, image-generation, vector-databases, decision-framework, rag, claude-api)
 - refactor: 8/8 marketing methodologies migrated to new shape (batch: growth-affiliate-marketing, conversion-tracking, retention-strategies, aarrr-pirate-metrics, ops-metrics-basics, activation-metrics, north-star-metric, growth-loops)
 - refactor: 8/8 devops-engineer methodologies migrated to new shape (batch: gitlab-cicd, github-actions-cicd, backup-strategies, azure-architecture, secrets-management, argocd-gitops, kubernetes, gcp)
 - refactor: 8/8 methodologies migrated to new shape (batch: ads-google-keywords, ads-meta-reporting, ads-meta-creative, ads-meta-targeting, ads-retargeting, ads-ab-testing-ads, growth-press-coverage, growth-gtm-strategy)

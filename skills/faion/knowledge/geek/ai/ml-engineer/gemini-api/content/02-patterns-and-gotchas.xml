@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patterns-and-gotchas" title="Gemini API Integration Patterns and Gotchas">
+  <summary>Integration patterns for chat, multimodal, function calling, RAG, and streaming. Gemini 3 prompting rules, security checklist, and antipatterns.</summary>
+
+  <section title="Chat and Streaming Patterns">
+    <rule>
+      <statement>Always use start_chat() for multi-turn conversations — never manually append history to generate_content().</statement>
+      <rationale>start_chat() manages history state automatically including thought signatures (Gemini 3 requirement). Manual history management misses thought tokens and breaks multi-turn coherence.</rationale>
+    </rule>
+    <list>
+      <item>Streaming: use stream=True in send_message(); yields chunk.text as tokens arrive; improves perceived latency</item>
+      <item>Session management: store chat objects per session_id; use Redis in production (not in-memory dict)</item>
+      <item>Reset: call model.start_chat() to create a fresh session; no in-place reset method</item>
+    </list>
+  </section>
+
+  <section title="Function Calling Pattern">
+    <rule>
+      <statement>Pass Python functions directly as tools — Gemini SDK auto-generates the schema from type hints and docstrings.</statement>
+      <rationale>Auto-schema generation eliminates manual JSON Schema maintenance. Docstring Args: sections become parameter descriptions. This is Gemini's native pattern and is more reliable than manual FunctionDeclaration objects.</rationale>
+    </rule>
+    <list>
+      <item>Use enable_automatic_function_calling=True for simple agents; handle manually for human-in-the-loop flows</item>
+      <item>Tool choice: configure tool_config with mode=ANY to force tool use, NONE to disable</item>
+      <item>Parallel calls: Gemini returns multiple function_call parts; execute all before sending results back</item>
+    </list>
+  </section>
+
+  <section title="RAG with Gemini Embeddings">
+    <list>
+      <item>Embedding model: models/text-embedding-004; 768 dimensions; superior to ada-002 on MTEB</item>
+      <item>Task types: RETRIEVAL_DOCUMENT for indexing, RETRIEVAL_QUERY for queries — always specify</item>
+      <item>Batch embed: pass a list to genai.embed_content() for efficiency; do not embed one-by-one in loops</item>
+      <item>For long-context RAG: pass all chunks directly at 1.5 Pro 2M context; skip vector DB for &lt;500 docs</item>
+    </list>
+  </section>
+
+  <section title="Security Rules">
+    <list>
+      <item>Never expose GOOGLE_API_KEY in client-side code; use server-side proxy for browser apps</item>
+      <item>Check response.prompt_feedback.block_reason before accessing response.text; blocked responses raise AttributeError</item>
+      <item>Validate safety_ratings on every response; HARM_BLOCK_THRESHOLD configurable per category</item>
+      <item>For enterprise compliance, use Vertex AI (not Google AI Studio API); data stays in your GCP project</item>
+    </list>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Accessing response.text when the response was safety-blocked.</description>
+      <reason>A blocked response has no .text attribute; accessing it raises AttributeError. Always check response.prompt_feedback.block_reason is None before using response.text.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Gemini 3 with low temperature (e.g., 0.1) for structured extraction.</description>
+      <reason>Gemini 3's dynamic thinking works best at default temperature 1.0. Low temperature suppresses reasoning. For structured output use response_mime_type="application/json" with response_schema instead of lowering temperature.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Uploading the same large file on every request instead of caching.</description>
+      <reason>File upload adds latency and does not benefit from context caching. Upload once, store the genai.File reference, reuse across sessions. Files are retained for 48 hours by default.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Gemini for tool-heavy agents without fallback to OpenAI.</description>
+      <reason>Gemini function calling accuracy lags OpenAI GPT-4o on dense tool catalogues. For production agents with &gt;10 tools, benchmark both providers before committing to Gemini.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/gemini-client.py">Production client with safety check and retry</reference>
+</text>

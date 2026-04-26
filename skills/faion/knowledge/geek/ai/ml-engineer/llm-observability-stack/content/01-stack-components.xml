@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-stack-components" title="LLM Observability Stack Components and Platform Comparison">
+  <summary>Platform comparison (Langfuse, Phoenix, LangSmith, Helicone, Portkey), OpenTelemetry integration, metrics taxonomy, and stack selection decision tree for 2026.</summary>
+
+  <section title="Why LLM Observability Differs from Traditional APM">
+    <list>
+      <item>Traditional: CPU/memory/uptime → LLM: token usage, cost per conversation</item>
+      <item>Traditional: error rates → LLM: hallucination rate, quality scores</item>
+      <item>Traditional: single-request latency → LLM: TTFT, streaming throughput, P50/P95/P99</item>
+      <item>Traditional: deterministic output → LLM: non-deterministic, needs LLM-as-judge evaluation</item>
+      <item>Traditional: single-request scope → LLM: multi-turn conversation tracking with context</item>
+    </list>
+  </section>
+
+  <section title="Platform Comparison (2026)">
+    <list>
+      <item>Langfuse — open source (MIT), self-host, tracing + prompts + evals; best for privacy/compliance</item>
+      <item>LangSmith — SaaS by LangChain, agent debugging, ideal for LangChain/LangGraph users</item>
+      <item>Arize Phoenix — open source, evaluation + embeddings, good for ML teams</item>
+      <item>Helicone — proxy-based, cost analytics + caching, free 10K calls then $79/mo</item>
+      <item>Portkey — AI gateway, multi-provider routing + fallback, usage-based</item>
+      <item>OpenLLMetry — open source (Apache 2.0), 23+ backends, OTEL-native; 6.6k+ stars</item>
+      <item>Datadog LLM Obs — enterprise, full-stack APM, no self-host</item>
+      <item>Braintrust — SaaS, multi-agent tracing, enterprise pricing</item>
+    </list>
+    <rule>
+      <statement>Choose Langfuse for self-hosted production; Helicone for cost-first optimization; LangSmith only if already on LangChain.</statement>
+      <rationale>Langfuse is MIT-licensed, actively maintained, and covers tracing + evals in one tool. Helicone adds a proxy layer that tracks costs without code changes. LangSmith's value is its deep LangGraph integration; outside that stack it adds a vendor dependency for little gain.</rationale>
+    </rule>
+  </section>
+
+  <section title="Metrics Taxonomy">
+    <list>
+      <item>Cost: token usage (input/output), $/conversation, cache hit rate, cost by user/team/feature</item>
+      <item>Quality: relevance scores, hallucination rate, user feedback (thumbs), safety scores</item>
+      <item>Performance: latency P50/P95/P99, TTFT (time to first token), throughput, queue depth</item>
+      <item>Reliability: error rate, retry rate, fallback trigger rate, timeout rate</item>
+      <item>Agent-specific: tool call success rate, reasoning step count, iteration count, loop detection</item>
+    </list>
+  </section>
+
+  <section title="OpenTelemetry Integration">
+    <rule>
+      <statement>Instrument via OpenTelemetry and route to any backend — never use vendor SDKs as the primary tracing layer.</statement>
+      <rationale>OTEL gives vendor portability. Switching from Langfuse to Datadog requires only a config change when using OTEL exporters; it requires a full re-instrument when using vendor-specific SDKs.</rationale>
+    </rule>
+    <list>
+      <item>OTEL Collector receives spans on port 4317 (gRPC) or 4318 (HTTP)</item>
+      <item>Route to Langfuse via otlp/langfuse exporter with Authorization header</item>
+      <item>Route to Prometheus via prometheus exporter on port 8889 for metrics</item>
+      <item>OpenLLMetry auto-instruments OpenAI, Anthropic, LangChain calls with zero code changes</item>
+    </list>
+  </section>
+
+  <section title="Stack Selection Decision Tree">
+    <list>
+      <item>Need self-hosting (privacy/compliance)? → Langfuse (MIT) or Arize Phoenix</item>
+      <item>Using LangChain/LangGraph? → LangSmith</item>
+      <item>Primary goal is cost optimization? → Helicone</item>
+      <item>Multi-provider routing + fallback? → Portkey</item>
+      <item>Existing APM (Datadog, Grafana)? → OpenLLMetry OTEL bridge</item>
+      <item>General purpose, no constraints? → Langfuse Cloud</item>
+    </list>
+  </section>
+
+  <reference path="templates/langfuse-stack.yaml">Docker Compose for Langfuse + Prometheus + Grafana + OTEL</reference>
+</text>
