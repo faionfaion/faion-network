@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-analytics-pipeline" title="Predictive Analytics in PM — Pipeline Architecture and Calibration Rules">
+  <summary>A four-agent pipeline for PM predictive analytics: data-extractor, feature-builder, classical-ML forecast-runner, and LLM analyst-agent for plain-language briefs. Calibration requirement, drift monitoring cadence, and mandatory human-in-loop checkpoints.</summary>
+
+  <section title="Pipeline Architecture">
+    <rule>
+      <statement>Use a classical ML model (gradient boosting, Cox hazard, Prophet) for point forecasts and confidence intervals; use an LLM only for the plain-language analyst brief that accompanies the model output. Never use an LLM as the forecasting engine.</statement>
+      <rationale>LLMs asked "predict when this will finish" hallucinate confident dates without uncertainty quantification. Deterministic estimators produce calibrated probabilities that can be monitored for drift; LLM forecasts cannot be calibrated or monitored.</rationale>
+    </rule>
+    <list>
+      <item>data-extractor (haiku): paginated REST/GraphQL pulls from Jira/Linear/GitHub/GitLab, schema validation, snapshot to parquet with data-freshness timestamp.</item>
+      <item>feature-builder (haiku): deterministic transforms — lead time, cycle time, age, churn, comment count, blocker age, skill match. No inference.</item>
+      <item>forecast-runner (sonnet, calls model API): invokes trained model, attaches confidence intervals, emits SHAP feature attribution.</item>
+      <item>analyst-agent (sonnet): translates model output into stakeholder brief (headline forecast, top 3 drivers, recommended decisions). Never asserts causation; says "associated with".</item>
+    </list>
+  </section>
+
+  <section title="Calibration Requirement">
+    <rule>
+      <statement>Deploy only a model that beats naive baselines (last-3-sprint velocity, mean cycle time) on a holdout set with statistical significance. Measure calibration with Brier score; reject any model with Brier score above 0.20.</statement>
+      <rationale>An uncalibrated model emitting "70% likely to slip" with no empirical basis is worse than intuition — it provides false confidence and cannot be improved without calibration data.</rationale>
+    </rule>
+    <rule>
+      <statement>Retrain on a fixed monthly cadence AND on drift triggers (team composition change, process change, scope change). Track both; log every forecast with input snapshot for post-hoc audit.</statement>
+      <rationale>Concept drift makes yesterday's model stale within months of the first organizational change. Silent drift produces confident wrong forecasts that PM teams stop trusting — then stop using.</rationale>
+    </rule>
+    <reference path="templates/calibration.py">Calibration check script: Brier score and calibration curve from a parquet holdout.</reference>
+  </section>
+
+  <section title="Human-in-Loop Checkpoints">
+    <rule>
+      <statement>Require human approval for any action triggered by a forecast: resource reallocation, scope pull, escalation, or replanning. Agents emit recommendations only — never autonomous actions on forecast output.</statement>
+      <rationale>Auto-actioning a forecast creates feedback loops in the training data (the intervention changes the outcome, invalidating future calibration) and bypasses judgment calls that require organizational context.</rationale>
+    </rule>
+    <rule>
+      <statement>Aggregate all analytics at team or program level; refuse to generate per-person productivity metrics from issue data.</statement>
+      <rationale>Per-person metrics from issue trackers are an HR and legal risk (GDPR, labor law, union agreements in some regions). They also incentivize gaming the data at the individual level, destroying the signal entirely.</rationale>
+    </rule>
+  </section>
+</text>
