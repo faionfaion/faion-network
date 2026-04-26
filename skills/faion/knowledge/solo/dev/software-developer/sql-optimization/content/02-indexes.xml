@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-indexes" title="Index Optimization">
+  <summary>Composite index column ordering, covering indexes, partial indexes, and expression indexes.</summary>
+
+  <section title="Composite Index Column Order">
+    <rule>
+      <statement>In composite indexes, place equality-filter columns first, range-filter columns last.</statement>
+      <rationale>The B-tree can use prefix columns for equality and then traverse a range on the last column. Placing range columns first makes the index unusable for the equality filter.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+-- Query: WHERE user_id = ? AND created_at > ?
+-- Equality first, range last:
+CREATE INDEX idx_orders_user_created ON orders(user_id, created_at);
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="sql"><![CDATA[
+-- Range first -- index used only for created_at range, not user_id equality:
+CREATE INDEX idx_orders_created_user ON orders(created_at, user_id);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Covering Indexes">
+    <rule>
+      <statement>Use INCLUDE columns to add non-filtered columns to an index to avoid heap lookups for read-heavy queries.</statement>
+      <rationale>A covering index satisfies the query entirely from index pages, eliminating the heap fetch (table lookup) for each matched row.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+CREATE INDEX idx_orders_covering ON orders(user_id, status)
+    INCLUDE (total_amount, created_at);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Partial Indexes">
+    <rule>
+      <statement>Use partial indexes with a WHERE clause for queries that always filter on a specific value.</statement>
+      <rationale>Partial indexes are smaller (fewer rows indexed) and faster to scan than full indexes. Useful for status columns where only one value (e.g. 'pending') is queried frequently.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+CREATE INDEX idx_orders_pending ON orders(created_at)
+    WHERE status = 'pending';
+]]></code>
+    </example>
+  </section>
+
+  <section title="Expression Indexes">
+    <rule>
+      <statement>Create an expression index when queries apply a function to an indexed column; do not apply functions to indexed columns in WHERE clauses.</statement>
+      <rationale>WHERE LOWER(email) = ? bypasses the regular index on email. An expression index on LOWER(email) makes the query use the index.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+CREATE INDEX idx_users_email_lower ON users(LOWER(email));
+-- Query: WHERE LOWER(email) = 'test@example.com'  -- uses the index
+]]></code>
+    </example>
+  </section>
+</text>

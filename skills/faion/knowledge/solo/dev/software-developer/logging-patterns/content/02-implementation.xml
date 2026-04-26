@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="Structured Logging Implementation">
+  <summary>structlog configuration, request middleware pattern, and business event logging.</summary>
+
+  <section title="structlog Setup">
+    <rule>
+      <statement>Configure structlog once at application startup with: contextvars merge, log level, ISO timestamp, sensitive data processor, and JSON renderer.</statement>
+      <rationale>Processor order matters — merge context before masking sensitive data, render JSON last.</rationale>
+    </rule>
+    <reference path="templates/structlog-config.py">Production structlog setup with context vars and sensitive data processor</reference>
+  </section>
+
+  <section title="Request Middleware">
+    <rule>
+      <statement>Set request_id and user_id context variables in middleware at request entry; never pass them as function arguments.</statement>
+      <rationale>Middleware runs before any handler; setting context vars here means all downstream log calls automatically include them.</rationale>
+    </rule>
+    <reference path="templates/request-middleware.py">FastAPI request logging middleware</reference>
+  </section>
+
+  <section title="Business Events">
+    <rule>
+      <statement>Log every significant business state change (order paid, user registered, payment failed) as a structured event with entity_type, entity_id, and relevant domain fields.</statement>
+      <rationale>Business event logs serve as an audit trail and analytics source. They must be queryable by entity ID and event type.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+logger.info(
+    "order.paid",
+    entity_type="order",
+    entity_id=order.id,
+    customer_id=order.customer_id,
+    total=float(order.total),
+    items_count=len(order.items),
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Performance Logging">
+    <rule>
+      <statement>Use a context manager or decorator to log operation duration; emit a WARNING when duration exceeds a configured threshold.</statement>
+      <rationale>Threshold-based warnings surface slow operations automatically without requiring manual timing instrumentation everywhere.</rationale>
+    </rule>
+  </section>
+</text>

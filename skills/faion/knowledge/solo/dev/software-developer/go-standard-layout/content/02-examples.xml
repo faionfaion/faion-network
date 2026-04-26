@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Go Layout Examples and Antipatterns">
+  <summary>Worked example of a handler with injected service interface, plus antipatterns to avoid.</summary>
+
+  <section title="Good: Interface at Consumer Side">
+    <example type="good">
+      <code lang="go"><![CDATA[
+// internal/handler/user.go
+package handler
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+    "project/internal/service"
+)
+
+// UserService is defined here (consumer side), not in service package.
+type UserService interface {
+    GetByID(ctx context.Context, id string) (*model.User, error)
+}
+
+type UserHandler struct {
+    userService UserService
+}
+
+func NewUserHandler(us UserService) *UserHandler {
+    return &UserHandler{userService: us}
+}
+
+func (h *UserHandler) GetUser(c *gin.Context) {
+    id := c.Param("id")
+    user, err := h.userService.GetByID(c.Request.Context(), id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(http.StatusOK, user)
+}
+]]></code>
+      <note>Handler depends on an interface it defines. The real service.UserService satisfies it implicitly.</note>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>All code in a single package at the repo root (flat structure).</description>
+      <reason>No package boundaries means any file can call any function. Adding internal/ later requires touching every import.</reason>
+    </antipattern>
+    <antipattern>
+      <description>A single "utils" or "common" package that grows into a God package imported by everyone.</description>
+      <reason>God packages create circular dependency risks and make the codebase harder to understand and test in isolation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Importing a parent layer from a child (e.g. repository importing service).</description>
+      <reason>Reverse dependencies create circular import errors or force awkward interface gymnastics to break the cycle.</reason>
+    </antipattern>
+  </section>
+</text>

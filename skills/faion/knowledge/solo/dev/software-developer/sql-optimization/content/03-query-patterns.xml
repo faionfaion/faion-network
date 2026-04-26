@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-query-patterns" title="Query Optimization Patterns">
+  <summary>Keyset pagination, N+1 elimination, batch operations, and materialized views.</summary>
+
+  <section title="Pagination">
+    <rule>
+      <statement>Use keyset (cursor) pagination instead of OFFSET for any collection larger than ~1000 rows.</statement>
+      <rationale>OFFSET N scans and discards N rows on every page. At page 500 with 20 items per page, the database scans 10,000 rows to return 20. Keyset pagination uses an index seek regardless of page depth.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="sql"><![CDATA[
+SELECT * FROM products ORDER BY created_at DESC LIMIT 20 OFFSET 10000;
+-- Scans 10,020 rows to return 20
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+SELECT * FROM products
+WHERE (created_at, id) < ('2024-01-15 10:30:00', 'last-seen-uuid')
+ORDER BY created_at DESC, id DESC
+LIMIT 20;
+]]></code>
+    </example>
+  </section>
+
+  <section title="N+1 Elimination">
+    <rule>
+      <statement>Replace subqueries in SELECT lists with a single JOIN plus aggregation to eliminate N+1 query patterns.</statement>
+      <rationale>A subquery in the SELECT list executes once per row in the outer result. 1000 rows = 1001 queries. A JOIN executes once regardless of result set size.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+SELECT o.id, COUNT(oi.id) AS item_count
+FROM orders o
+LEFT JOIN order_items oi ON oi.order_id = o.id
+GROUP BY o.id;
+]]></code>
+    </example>
+  </section>
+
+  <section title="Batch Operations">
+    <rule>
+      <statement>Use multi-row INSERT for bulk inserts; use CTE with LIMIT for large batch updates to avoid long-running transactions.</statement>
+      <rationale>Individual INSERT per row in a loop causes N round trips and N transaction commits. A batched UPDATE without LIMIT locks all matching rows for the full duration.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+-- Batch insert
+INSERT INTO logs (message, created_at) VALUES
+    ('log1', NOW()), ('log2', NOW()), ('log3', NOW());
+
+-- Chunked update to avoid long lock
+WITH to_update AS (
+    SELECT id FROM orders
+    WHERE status = 'pending' AND created_at < NOW() - INTERVAL '30 days'
+    LIMIT 1000
+)
+UPDATE orders SET status = 'expired'
+WHERE id IN (SELECT id FROM to_update);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Materialized Views">
+    <rule>
+      <statement>Use materialized views for expensive aggregations queried frequently; refresh CONCURRENTLY to avoid blocking reads.</statement>
+      <rationale>Re-computing GROUP BY over millions of rows on every dashboard load is wasteful. A materialized view precomputes it; CONCURRENTLY refresh avoids a read lock on the view.</rationale>
+    </rule>
+  </section>
+</text>

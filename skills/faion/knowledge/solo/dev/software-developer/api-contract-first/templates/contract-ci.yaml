@@ -1,0 +1,38 @@
+name: API Contract CI
+
+on:
+  pull_request:
+    paths:
+      - 'openapi.yaml'
+      - 'server/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint OpenAPI spec
+        run: npx --yes @stoplight/spectral-cli lint openapi.yaml
+
+      - name: Generate server stubs
+        run: |
+          docker run --rm -v "${PWD}:/local" openapitools/openapi-generator-cli generate \
+            -i /local/openapi.yaml \
+            -g python-fastapi \
+            -o /local/generated \
+            --additional-properties=packageName=api
+
+      - name: Compare generated models with implementation
+        run: diff -r ./generated/models ./server/models
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Run contract tests
+        run: pytest tests/contract/ -v

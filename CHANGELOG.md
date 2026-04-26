@@ -4,6 +4,7 @@
 
 ### Changed
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-powered-pm-tools, ai-in-project-management, tech-debt-management, framework-decomposition-patterns, xp-extreme-programming, perf-test-tools, pnpm-package-management, playwright-automation)
+- refactor: 8/8 software-developer methodologies migrated to new shape (batch: go-standard-layout, api-error-handling, logging-patterns, api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization)
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: task-creation-parallelization, design-docs-big-tech, writing-specifications, code-review-cycle, pattern-memory, quality-gates-confidence, writing-design-documents, key-trends-summary)
 - refactor: 8/8 automation-tooling methodologies migrated to new shape (batch: monorepo-turborepo, ab-testing-basics, best-practices-2026, dev-methodologies-architecture, internationalization, cd-pipelines, ab-testing-implementation, browser-automation-overview)
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)

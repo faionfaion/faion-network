@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-analysis" title="SQL Query Analysis">
+  <summary>How to read EXPLAIN ANALYZE output and identify the plan nodes that cause slow queries.</summary>
+
+  <section title="Profiling Rule">
+    <rule>
+      <statement>Always run EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) before adding any index or rewriting any query.</statement>
+      <rationale>The planner's chosen plan often differs from developer expectations. Optimization without measurement produces indexes that are never used and rewrites that change nothing.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+SELECT o.id, o.total_amount, u.email
+FROM orders o
+JOIN users u ON u.id = o.user_id
+WHERE o.status = 'pending'
+  AND o.created_at > NOW() - INTERVAL '7 days'
+ORDER BY o.created_at DESC
+LIMIT 100;
+]]></code>
+    </example>
+  </section>
+
+  <section title="Reading Plan Nodes">
+    <list>
+      <item>Seq Scan — full table scan; acceptable on small tables (&lt;10k rows), problematic on large ones.</item>
+      <item>Index Scan — uses a B-tree index; good for selective queries returning a small fraction of rows.</item>
+      <item>Bitmap Index Scan — combines multiple indexes; used when selectivity is medium.</item>
+      <item>Nested Loop — for each outer row, probes inner; fast when outer set is small; catastrophic when outer is large.</item>
+      <item>Hash Join — builds hash table from smaller relation, probes with larger; efficient for larger datasets.</item>
+      <item>Sort — watch for disk sorts (Sort Method: external); add index or increase work_mem.</item>
+    </list>
+    <rule>
+      <statement>Investigate when actual rows differ from estimated rows by more than 10x — this signals stale statistics.</statement>
+      <rationale>The planner chooses join order and index use based on row estimates. Large discrepancies cause poor plan choices that cannot be fixed by indexes alone; run ANALYZE first.</rationale>
+    </rule>
+  </section>
+</text>
