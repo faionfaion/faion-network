@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Two-pass: free reasoning then strict extraction">
+  <summary>Run hard reasoning in free text on the strong model, then extract into the strict schema with a cheap model.</summary>
+
+  <section title="The rule">
+    <p>For tasks where reasoning quality matters more than output format, never lock the reasoning step into strict structured output. Split the work into two passes: pass 1 produces free-form reasoning on the strong model, pass 2 extracts the structured answer with a cheap model.</p>
+
+    <rule testable="true">
+      <statement>When a task requires deep reasoning AND a strict schema, run the strong model in free-text or extended-thinking mode for the reasoning step, then run a cheap extractor model with strict structured output to fill the schema from the strong model's transcript.</statement>
+      <rationale>The grammar mask of strict JSON costs probability mass on schema-conforming tokens that are not the optimal reasoning tokens. The SLOT paper and the BuildMVPFast 2026 guide both report 10–15 percent accuracy loss on math and complex analysis when reasoning is forced through strict SO versus free text. Two-pass restores accuracy because the reasoning step has no schema constraint, and the extraction step is easy enough that a small model meets the spec at fraction of the cost.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Pass 1: Opus thinks freely.
+raw = anthropic.messages.create(
+    model="claude-opus-4-7",
+    thinking={"type": "enabled", "budget_tokens": 16000},
+    messages=[{"role": "user", "content": question}],
+).content[-1].text
+
+# Pass 2: Haiku extracts into strict schema.
+verdict = haiku.responses.parse(
+    model="claude-haiku-4-7",
+    input=[{"role": "user", "content": f"Extract verdict from analysis:\n{raw}"}],
+    text_format=Verdict,  # strict Pydantic model
+)
+      ]]></code>
+      <note>Reasoning is unconstrained and benefits from extended thinking. Extraction is mechanical, so a Haiku-class model meets the schema reliably and cheaply.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Single pass: Opus forced into strict JSON during reasoning.
+verdict = anthropic.messages.create(
+    model="claude-opus-4-7",
+    tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+    tool_choice={"type": "tool", "name": "submit_verdict"},
+    messages=[{"role": "user", "content": question}],
+)
+      ]]></code>
+      <note>Strict mode masks tokens during the reasoning trace itself. Accuracy drops 10–15 percent on hard tasks because the model cannot fully reason inside the grammar.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding a long reasoning field to a strict schema as a substitute for two-pass on math or research tasks.</description>
+      <reason>The embedded scratchpad pattern works for medium-difficulty reasoning, but on truly hard tasks the grammar mask still degrades the reasoning trace. When task difficulty saturates the scratchpad, switch to two-pass.</reason>
+    </antipattern>
+
+    <reference path="templates/two_pass.py">Reusable two-pass function with Opus reasoning and Haiku extraction.</reference>
+    <reference href="https://arxiv.org/html/2505.04016v1">SLOT — Structuring the Output of Large Language Models (arXiv 2505.04016).</reference>
+    <reference href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast — Structured output 2026 guide (10–15% accuracy gap).</reference>
+    <reference href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">Anthropic — Extended thinking documentation.</reference>
+  </section>
+
+  <see-also>
+    <link path="../02-cost-model.xml">When two-pass actually saves money vs single-pass strict SO.</link>
+  </see-also>
+</text>

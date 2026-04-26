@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-edge-cases" title="Edge cases: semi-open sets, mini models, language labels">
+  <summary>How to handle semi-open vocabularies and JSON-mode-only fallbacks without losing the enum guarantee.</summary>
+
+  <section title="Semi-open vocabularies">
+    <p>Some answer sets are mostly closed but allow rare novel values. Forcing a strict enum would silently clip those answers; allowing a free string loses the guarantee for the common case. The pattern is a tagged union with one closed branch and one fallback.</p>
+
+    <rule testable="true">
+      <statement>For semi-open sets, model the field as a discriminated union: a Literal[...] branch for known values plus a typed "other" branch carrying the free-text candidate.</statement>
+      <rationale>The discriminator forces the decoder to commit to "known" or "other" first, then constrains the rest of the structure. Downstream code can route on the discriminator without parsing free strings.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Literal, Annotated
+from pydantic import BaseModel, Field
+
+class KnownLabel(BaseModel):
+    kind: Literal["known"] = "known"
+    value: Literal["billing", "tech_support", "refund"]
+
+class NovelLabel(BaseModel):
+    kind: Literal["novel"] = "novel"
+    proposed: str = Field(description="Free-text label; will be queued for taxonomy review.")
+
+class Ticket(BaseModel):
+    category: Annotated[KnownLabel | NovelLabel, Field(discriminator="kind")]
+      ]]></code>
+      <note>Common path stays strict. Novel labels go through a controlled escape hatch with a known shape.</note>
+    </example>
+  </section>
+
+  <section title="Mini/nano models on JSON-mode fallback">
+    <p>If strict mode is unavailable (legacy provider, OSS model without grammar support), the enum is advisory only. The model will mostly comply but is free to emit synonyms.</p>
+
+    <rule testable="true">
+      <statement>When strict mode is not available, validate the parsed object against the Pydantic Literal AFTER the call and either retry-with-feedback or downgrade the offending field to its closest enum value via a deterministic mapping table.</statement>
+      <rationale>Without sampling-time masking, accuracy depends on prompt and luck. A retry loop with explicit "you returned X; valid values are A/B/C" feedback recovers most failures within one extra call; a mapping table absorbs the rest.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Trusting JSON-mode output to respect an enum without post-validation.</description>
+      <reason>Mini/nano models hallucinate enum values under JSON-mode-only fallback. Reported on OpenAI Community threads — the schema is shown to the model but never enforced by the decoder. Production systems must either upgrade to strict mode or validate-and-retry.</reason>
+    </antipattern>
+
+    <reference href="https://community.openai.com/t/schema-additionalproperties-must-be-false-when-strict-is-true/929996">OpenAI community — strict mode requirements.</reference>
+    <reference href="https://github.com/dottxt-ai/outlines">Outlines — constrained generation for OSS models when provider strict mode is missing.</reference>
+  </section>
+</text>

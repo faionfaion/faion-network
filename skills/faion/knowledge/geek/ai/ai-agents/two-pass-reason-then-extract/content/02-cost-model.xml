@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-cost-model" title="When two-pass actually saves money">
+  <summary>Cost trade-offs: when two-pass beats single-pass and how to size the extraction prompt.</summary>
+
+  <section title="Cost intuition">
+    <p>Two-pass adds a second model call but the extractor is small (Haiku class) and its prompt is short. The strong-model output stays roughly the same length whether wrapped in strict JSON or not, so the marginal cost of pass 2 is the extractor's input/output tokens — a small fraction of the strong-model bill.</p>
+
+    <rule testable="true">
+      <statement>Use two-pass when (a) the task is reasoning-heavy AND (b) extraction-only accuracy on the cheap model exceeds 95 percent on a held-out sample. If extraction quality is below that threshold, either thicken the schema descriptions or fall back to single-pass on the strong model with an embedded scratchpad.</statement>
+      <rationale>Reasoning improvement on the strong model dominates the bill. The extractor is cheap enough that its only constraint is correctness; if a Haiku-class model meets 95+ percent on extraction-only inputs, the savings from preserving the strong model's accuracy justify the second call.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Pass 2 prompt: short, schema-anchored, cache-friendly.
+EXTRACTOR_SYSTEM = (
+    "You extract structured verdicts from analysis text. "
+    "Read only what the analysis explicitly states. "
+    "If a field is not stated, set it to null."
+)
+
+# Pin the system prompt to the cache prefix so repeated extractions hit cache.
+extractor_call(
+    system=EXTRACTOR_SYSTEM,         # cached
+    user=f"Analysis:\n{raw}",        # volatile
+    text_format=Verdict,
+)
+      ]]></code>
+      <note>Stable system prompt, volatile analysis. Cache prefix amortizes across calls; extractor cost stays a small constant.</note>
+    </example>
+
+    <antipattern>
+      <description>Sending the original question plus the full reasoning trace to the extractor.</description>
+      <reason>Doubles the extractor's input bill without improving extraction quality — the trace already contains everything the extractor needs. Send only the trace (or the trace plus a one-line task hint).</reason>
+    </antipattern>
+  </section>
+
+  <section title="When to skip two-pass">
+    <list>
+      <item>Latency budget under one second total — two calls cannot fit.</item>
+      <item>Schema is so simple (single enum, single number) that the strong model's accuracy gap with strict mode is negligible.</item>
+      <item>Extractor accuracy on extraction-only is below 95 percent — fix that first or stay single-pass.</item>
+      <item>Task volume is so high that the extra call cost dominates — measure end-to-end before optimising.</item>
+    </list>
+
+    <reference href="https://arxiv.org/abs/2305.05176">FrugalGPT — cascade and confidence routing pattern (related cost-saving technique).</reference>
+  </section>
+</text>

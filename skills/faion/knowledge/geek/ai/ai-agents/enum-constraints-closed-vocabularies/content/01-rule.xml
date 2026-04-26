@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Enum constraints for closed vocabularies">
+  <summary>Use typed enums for finite answer sets so the decoder cannot emit invalid labels.</summary>
+
+  <section title="The rule">
+    <p>If a field's valid values are known and finite, encode them as a typed enum, not a free string. Pair the enum with strict structured-output mode so the constraint is enforced at sampling time, not by post-hoc validation.</p>
+
+    <rule testable="true">
+      <statement>Every classification or routing field with a finite value set must be declared as Literal[...] (Python) or enum (JSON Schema) AND served under strict mode or a constrained decoder (XGrammar, Outlines, vLLM guided generation).</statement>
+      <rationale>Strict-mode constrained decoders mask all non-enum tokens to probability zero, eliminating hallucinated labels. Free-string fields keep the full vocabulary live, so smaller models occasionally emit synonyms or novel labels that break downstream switch/case code.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Literal
+from pydantic import BaseModel
+
+class Ticket(BaseModel):
+    category: Literal["billing", "tech_support", "refund", "spam", "other"]
+    priority: Literal["P0", "P1", "P2", "P3"]
+    sentiment: Literal["angry", "frustrated", "neutral", "happy"]
+      ]]></code>
+      <note>Each Literal compiles to a JSON Schema enum. Under OpenAI strict mode the decoder cannot produce any other token sequence in those slots.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class Ticket(BaseModel):
+    category: str  # "please pick from billing/tech_support/refund/spam/other"
+    priority: str  # "one of P0/P1/P2/P3"
+      ]]></code>
+      <note>The valid set lives only in a docstring or description. The decoder is free to emit "support", "high priority", "Spam!", and downstream code crashes.</note>
+    </example>
+
+    <antipattern>
+      <description>Listing the valid values inside the prompt body (or Field description) but keeping the field type as str.</description>
+      <reason>Soft constraints. The model usually obeys but drifts under long context, low temperature variation, or small models — and a single wrong label silently breaks the next pipeline stage. Enums move the constraint into the decoder mask, where it cannot drift.</reason>
+    </antipattern>
+
+    <reference path="templates/enum_schema.py">Working Pydantic model with Literal enum fields and strict-mode config.</reference>
+    <reference href="https://ohmeow.com/posts/2024-07-06-llms-and-enums.html">ohmeow — Structuring Enums for Flawless LLM results with Instructor.</reference>
+    <reference href="https://docs.vllm.ai/en/latest/features/structured_outputs/">vLLM Structured Outputs documentation.</reference>
+  </section>
+
+  <see-also>
+    <link path="../02-edge-cases.xml">Semi-open vocabularies and mini-model failure modes.</link>
+  </see-also>
+</text>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patterns-catalog" title="Reference patterns for common decimal and identifier shapes">
+  <summary>Battle-tested regex patterns for currency, semver, ISO-8601, phones, and bank-style IDs.</summary>
+
+  <section title="Patterns">
+    <list>
+      <item>USD/EUR currency, two decimals: ^\d+\.\d{2}$</item>
+      <item>Currency with optional negative: ^-?\d+\.\d{2}$</item>
+      <item>BTC, eight decimals: ^\d+\.\d{8}$</item>
+      <item>Semver: ^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$</item>
+      <item>ISO-8601 date: ^\d{4}-\d{2}-\d{2}$</item>
+      <item>ISO-8601 datetime UTC: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$</item>
+      <item>E.164 phone: ^\+\d{8,15}$</item>
+      <item>IBAN (loose): ^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$</item>
+      <item>Big integer up to 32 digits: ^\d{1,32}$</item>
+    </list>
+
+    <rule testable="true">
+      <statement>Pick the strictest pattern that the legitimate input distribution can satisfy; pair it with a Field description that names the format and gives one canonical example.</statement>
+      <rationale>Patterns are enforced at decode time on strict mode or constrained backends, but the model still needs the description as a prompt anchor on JSON-mode-only fallbacks. The pattern catches drift; the description teaches the format on the first try.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel, Field
+
+class Payment(BaseModel):
+    amount_eur: str = Field(
+        pattern=r"^-?\d+\.\d{2}$",
+        description="Amount in EUR, two decimals, negative for refunds. Example: '-12.50'.",
+    )
+    iban: str = Field(
+        pattern=r"^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$",
+        description="IBAN, uppercase, no spaces. Example: 'DE89370400440532013000'.",
+    )
+    issued_at: str = Field(
+        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$",
+        description="UTC ISO-8601, second precision. Example: '2026-04-26T08:30:00Z'.",
+    )
+      ]]></code>
+      <note>Each pattern is the minimum strictness that excludes the typical drift modes (extra decimals, lowercase IBAN, missing Z).</note>
+    </example>
+
+    <antipattern>
+      <description>Reusing one wide pattern (^\S+$) for every string field "just in case".</description>
+      <reason>Any string passes — the pattern adds zero decode-time constraint and earns false confidence. If the format is genuinely unknown, omit the pattern; otherwise pin the exact shape.</reason>
+    </antipattern>
+
+    <reference href="https://json-schema.org/understanding-json-schema/reference/regular_expressions">JSON Schema — pattern keyword and regex flavor reference.</reference>
+  </section>
+</text>
