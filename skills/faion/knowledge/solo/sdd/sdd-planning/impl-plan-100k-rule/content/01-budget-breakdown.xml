@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-budget-breakdown" title="Token Budget Breakdown">
+  <summary>The fixed and variable components of the 100k token budget per task, three worked estimation examples, and complexity level thresholds.</summary>
+
+  <section title="Budget Components">
+    <rule>
+      <statement>Every token budget estimate must itemize all components: agent prompt (~8k), project context (~12k), task file (~3k), design docs (relevant AD-X sections), codebase reading (list every file with size estimate), buffer (~15k). Sum must be under 100k.</statement>
+      <rationale>Unitemized estimates are consistently optimistic by 30-50%. Each component class has different variability. Itemization makes the overrun source diagnosable.</rationale>
+    </rule>
+    <p>Fixed overhead per task: agent prompt 8k + project context 12k + task file 3k + buffer 15k = 38k tokens minimum.</p>
+    <p>Variable cost: codebase reading = sum of tokens in all files the agent will read. One token ≈ 4 bytes (use wc -c as proxy when ttok unavailable).</p>
+    <rule>
+      <statement>Include generated files (ORM clients, GraphQL schemas, migration snapshots) explicitly in the variable cost. They are 5-10x larger than hand-written equivalents.</statement>
+      <rationale>Agents consistently omit generated file sizes from estimates. A Prisma client or full OpenAPI schema can consume 20-40k tokens alone.</rationale>
+    </rule>
+  </section>
+
+  <section title="Complexity Thresholds">
+    <list>
+      <item>Simple: total context under 30k. Single file change, clear pattern, minimal dependencies. Example: database migration, utility function.</item>
+      <item>Normal: 30-60k tokens. Multiple files, some integration, standard patterns. Example: API endpoint, service class.</item>
+      <item>Complex: 60-100k tokens. Many files, deep integration, edge cases. Example: E2E test suite, complex business logic.</item>
+    </list>
+    <rule>
+      <statement>Flag tasks with complex tasks that require debugging existing code with a 30k exploration buffer on top of the standard formula. Debugging reads are non-deterministic.</statement>
+      <rationale>Standard formula assumes known files to read. Debugging passes read many files iteratively and unpredictably; the standard 15k buffer is insufficient.</rationale>
+    </rule>
+  </section>
+
+  <section title="Worked Examples">
+    <example type="good">
+      <note>Single file change estimate (~15k)</note>
+      <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 5k
+- Project context: 8k
+- Task file: 2k
+- File to modify (500 lines): ~4k
+- Buffer: 15k
+Total: ~34k tokens (simple complexity)
+]]></code>
+    </example>
+    <example type="good">
+      <note>Multi-file change (3-5 files) estimate (~45k)</note>
+      <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 5k
+- Project context: 10k
+- Task file: 3k
+- Files to modify: 15k (5 files × 3k avg)
+- Dependencies: 12k (4 files × 3k avg)
+- Buffer: 15k
+Total: ~60k tokens (normal complexity)
+]]></code>
+    </example>
+    <example type="good">
+      <note>Complex refactoring (10+ files) estimate (~85k)</note>
+      <code lang="markdown"><![CDATA[
+Breakdown:
+- Agent prompt: 8k
+- Project context: 15k
+- Task file: 5k
+- Files to modify: 35k (10 files × 3.5k avg)
+- Dependencies: 20k (6 files × 3.3k avg)
+- Buffer: 15k
+Total: ~98k tokens (complex complexity - borderline, consider splitting)
+]]></code>
+    </example>
+  </section>
+</text>
