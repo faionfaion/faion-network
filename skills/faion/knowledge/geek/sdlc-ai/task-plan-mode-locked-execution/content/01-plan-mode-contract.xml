@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-plan-mode-contract" title="Plan Mode is read-only and produces a four-section plan">
+  <summary>While in Plan Mode the agent has only read tools; the plan it emits has steps, verification commands, an out-of-scope list, and a rollback note before any human approval can land.</summary>
+
+  <section title="Read-only planning surface">
+    <p>Plan Mode is enforced by the harness, not by the prompt. The agent's tool list is filtered: Edit, Write, MultiEdit, and any Bash command that mutates state are stripped. Read, Glob, Grep, and reference-fetching tools remain. The agent cannot accidentally start work because the verbs it would need are absent.</p>
+
+    <rule testable="true">
+      <statement>For any change scoped to more than three files OR an estimated runtime over ~5 minutes, the agent MUST enter Plan Mode first. The emitted plan MUST contain four sections in this order: numbered Steps, Verification commands (the exact shell invocations that prove success), Out-of-Scope (explicit exclusions), and Rollback (one-line revert command or "no rollback path" with reason). Approval is recorded as a human comment "approve" or harness-equivalent; the agent MUST NOT exit Plan Mode without it.</statement>
+      <rationale>Forcing four sections eliminates the two most common plan failures: missing verification (humans approve plans they cannot test) and missing rollback (humans approve plans they cannot reverse). Read-only enforcement removes the temptation to "start with one quick fix" before approval lands.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# Plan: extract auth into its own service
+
+## Steps
+1. Create `services/auth/` package; move `apps/web/auth/*` into it.
+2. Update import paths in `apps/web/`, `apps/api/`, `tests/`.
+3. Add `services/auth/pyproject.toml`, register in workspace.
+4. Add CI matrix entry for `services/auth/`.
+
+## Verification
+- `pytest services/auth/ apps/web/ apps/api/ -x`
+- `ruff check services/ apps/`
+- `mypy services/auth/`
+
+## Out of scope
+- Do not change session DB schema.
+- Do not touch frontend.
+- Do not refactor existing tests.
+
+## Rollback
+- `git revert <merge-sha>` — package is additive, callers fall back to the old import path until then.
+      ]]></code>
+      <note>Four explicit sections; reviewer can grant or deny on evidence.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+# Plan
+I'll move auth into its own service and update the imports. Should be quick.
+      ]]></code>
+      <note>No steps, no verification, no out-of-scope, no rollback — un-approvable.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent runs `Bash("ls -R apps/")` "to gather context for planning" and the harness allows it because the command is read-only — but the agent then treats the read as a license to begin executing.</description>
+      <reason>Plan Mode is a phase, not a tool subset; the constraint is "no plan-derived action until approval", not "Read tools imply consent".</reason>
+    </antipattern>
+
+    <reference path="templates/plan.md">Plan skeleton with the four required sections.</reference>
+    <reference href="https://www.agentic-patterns.com/patterns/plan-then-execute-pattern/">Plan-then-execute pattern reference.</reference>
+    <reference href="https://www.mindstudio.ai/blog/claude-code-agentic-workflow-patterns">Claude Code agentic workflow patterns (Plan Mode coverage).</reference>
+  </section>
+</text>

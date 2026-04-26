@@ -1,0 +1,36 @@
+# .github/workflows/agent-pickup.yml
+# Dispatch a coding agent only when a human (or read-only triage bot)
+# applies the `agent-fixable` label to an issue.
+name: agent-pickup
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  dispatch:
+    if: github.event.label.name == 'agent-fixable'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Reject self-labelling by bots
+        if: endsWith(github.actor, '-bot') || startsWith(github.actor, 'agent-')
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --remove-label agent-fixable
+          echo "Rejected: agents may not self-label." && exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Route to agent
+        run: |
+          # Router decides vendor based on path / size / availability.
+          gh agent run "$AGENT" --issue ${{ github.event.issue.number }}
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "agent:$AGENT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AGENT: devin

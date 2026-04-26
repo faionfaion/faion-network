@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-three-artifact-order" title="Spec → Plan → Tasks: the only legal order">
+  <summary>The agent must produce spec.md before plan.md, plan.md before tasks.md, and may write code only when driven by tasks.md.</summary>
+
+  <section title="Fixed artifact order">
+    <p>Spec-kit defines a sequenced pipeline. Each artifact has a different audience, a different gate, and a different update rule. Skipping a stage collapses the contract: the agent loses the WHAT/WHY, the human loses the HOW review, and the merged code has no traceability anchor.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST run `/speckit.specify` before `/speckit.plan`, and `/speckit.plan` before `/speckit.tasks`. The agent MUST NOT edit any source file until `tasks.md` exists, lists the file in scope, and is checked into the feature branch. Any unresolved `[NEEDS CLARIFICATION]` marker in `spec.md` blocks plan generation.</statement>
+      <rationale>The spec is the only artifact that survives model swaps and conversation truncation; the plan is the only artifact that records architectural rationale for review; tasks.md is the only artifact that decomposes the work into parallelizable, AC-anchored units the coding agent can attempt independently. Reordering or skipping breaks the audit chain.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# feature branch: feat/oauth-google
+$ /speckit.specify "Add OAuth Google login for end-users"
+# → spec.md generated with 4 [NEEDS CLARIFICATION] markers
+# Resolve markers via PM input → re-run specify → 0 markers
+$ /speckit.plan
+# → plan.md picks Authlib, sets redirect rules, records constitution gates
+$ /speckit.tasks
+# → tasks.md emits 11 work items, T-003 and T-007 marked [P]
+# Only NOW does the coding agent open editor on auth/views.py.
+      ]]></code>
+      <note>Each command produces a versioned artifact; coding starts only after tasks.md.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Skip the chain — go straight to code
+$ claude "implement Google OAuth login"
+# Agent guesses Authlib vs python-social-auth, picks redirect URI rule
+# without product review, ships code. Two weeks later PM says
+# "we wanted PKCE-only, no client secret in env."
+# Rework cost: 100% of the original work.
+      ]]></code>
+      <note>No spec, no plan, no tasks → no rollback anchor and no traceable AC.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent autopopulates `[NEEDS CLARIFICATION]` markers with plausible defaults to "make progress" instead of blocking on PM resolution.</description>
+      <reason>Defaults stuffed into the spec become invisible assumptions in the merged code; the constitution's "test-first" gate cannot fail what it cannot see.</reason>
+    </antipattern>
+
+    <reference path="templates/spec-skeleton.md">spec.md skeleton with required sections.</reference>
+    <reference path="templates/tasks-skeleton.md">tasks.md skeleton with [P] convention.</reference>
+    <reference href="https://github.com/github/spec-kit">GitHub spec-kit repository (canonical implementation).</reference>
+    <reference href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/">GitHub blog: Spec-driven development with AI (Sept 2025).</reference>
+  </section>
+</text>

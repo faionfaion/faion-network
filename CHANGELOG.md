@@ -20,6 +20,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
+- sdlc-ai-methodologies: pool-batch +4 task- (24/52) — task-spec-kit-three-step, task-plan-mode-locked-execution, task-worktree-runtime-isolation, task-agent-fixable-triage-gate (NEW shape: AGENTS.md + content/*.xml + templates/). task- category complete (5/5).
 - sdlc-ai-methodologies: pool-batch +4 inc- (20/52) — inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, inc-read-only-investigation-default, inc-postmortem-auto-draft-no-publish (NEW shape: AGENTS.md + content/*.xml + templates/). inc- category complete (4/4).
 - sdlc-ai-methodologies: pool-batch +1 mr- (16/52) — mr-error-tracker-draft-pr (NEW shape: AGENTS.md + 3 content/*.xml + templates/). First mr- entry; codifies Sentry Seer / Bugsink / Rollbar threshold + draft-PR + bidirectional-link + bot-identity gate.
 - sdlc-ai-methodologies: pool-batch +1 task- (15/52) — task-agent-drafts-spec-before-coding (NEW shape: AGENTS.md + 2 content/*.xml + templates/spec-comment.md + templates/approval-gate.yaml).
