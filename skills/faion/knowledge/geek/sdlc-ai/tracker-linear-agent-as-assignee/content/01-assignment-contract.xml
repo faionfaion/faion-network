@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-assignment-contract" title="Linear Assignment-to-PR Contract">
+  <summary>The agent treats Linear assignment as the entry event and emits checkpoint comments plus a final PR link, never silent side-effects, so the issue activity log is the single audit surface.</summary>
+
+  <section title="Assignment as the entry event">
+    <p>Linear emits an `IssueAssigned` webhook whenever an issue is assigned. The agent runtime must subscribe to that event and refuse to act on issues it learned about via any other channel — direct Slack DM, scraped backlog, manual operator nudge. This makes the issue's `history` table the only canonical record of agent activity.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST NOT begin work on a Linear issue unless it received the matching `IssueAssigned` webhook with `assignee.id` equal to its own Linear user id within the last poll window. The agent MUST post one checkpoint comment within two minutes of acceptance, additional checkpoints at every state transition (started, blocked, ready-for-review), and exactly one final comment containing the PR URL when it opens the PR. Background work without a corresponding comment fails the audit and the run aborts.</statement>
+      <rationale>Linear's product contract treats the assignee as the primary owner; the comment cadence makes the agent's work visible at the same surface humans use, so reviewers do not have to leave Linear to track progress and the activity log captures every state transition under the agent's own identity.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+[claude-engineer-bot · started · 0m]
+- read issue + linked spec
+- ran Code Intelligence search on `OrderRequestSchema`
+- identified files: `api/orders/views.py`, `schemas/orders.py`
+
+[claude-engineer-bot · in-progress · 7m]
+- ✅ added NonEmptyList constraint
+- ✅ test `test_order_empty_items_rejected` red
+- ⏳ wiring 422 ValidationError handler
+
+[claude-engineer-bot · ready-for-review · 12m]
+PR opened: https://github.com/org/repo/pull/4421
+Awaiting CODEOWNER thumbs-up before requesting merge.
+      ]]></code>
+      <note>Each transition is one comment; elapsed time is in the header so the reviewer can scan progress without expanding details.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+PR opened: https://github.com/org/repo/pull/4421
+      ]]></code>
+      <note>No checkpoint trail — reviewer cannot tell what the agent investigated, how long it spent, or what was blocking; postmortem reconstruction is impossible.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent posts checkpoints into Slack instead of the Linear issue.</description>
+      <reason>Slack messages are not in the issue history, so audit and SLA tooling miss the activity; reviewers have to context-switch between two surfaces to track one piece of work.</reason>
+    </antipattern>
+
+    <reference path="templates/checkpoint-comment.md">Markdown skeleton for each checkpoint comment.</reference>
+    <reference href="https://linear.app/now/how-we-use-linear-agent-at-linear">Linear engineering: the assignment-to-PR loop with checkpoint comments.</reference>
+    <reference href="https://linear.app/docs/agents-in-linear">Linear docs: agents as first-class assignees.</reference>
+    <reference href="https://linear.app/changelog/2026-04-23-linear-agent-mcp-support">Linear changelog: MCP support for agents (GA April 2026).</reference>
+  </section>
+</text>

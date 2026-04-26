@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- sdlc-ai-methodologies: pool-batch +1 tracker- (36/52) — tracker-linear-agent-as-assignee (NEW shape: AGENTS.md + content/*.xml + templates/). First tracker- entry; opens category 1/5.
 - refactor: 8/8 business-analyst methodologies migrated to new shape (batch: ba-trends-summary, user-story-mapping, business-process-analysis, requirements-validation, ba-planning, decision-analysis, interface-analysis, stakeholder-analysis)
 - refactor: 8/8 methodologies migrated to new shape (batch: use-case-modeling, knowledge-areas-overview, elicitation-techniques, knowledge-areas-detail, requirements-traceability, modern-ba-framework, data-analysis, methodologies-detail)
 - refactor: 8/8 BA methodologies migrated to new shape (batch: use-case-modeling, data-analysis, requirements-lifecycle, acceptance-criteria, data-driven-requirements, agile-ba-frameworks, process-mining-automation, solution-assessment)
