@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Jira Workflow Management — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-driven Jira workflow configuration and operation.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>workflow-author (sonnet) — generates workflow JSON from process description; statuses, transitions, validators, post-functions.</item>
+      <item>automation-author (sonnet) — writes Jira Automation rules in YAML from natural-language intent.</item>
+      <item>jql-builder (haiku) — translates user questions into JQL with validateQuery=strict validation.</item>
+      <item>migration-mapper (sonnet) — maps source-tool fields and states to Jira target schema.</item>
+      <item>scheme-doctor (sonnet) — audits issue type, workflow, screen, and permission schemes for drift.</item>
+      <item>bulk-transition-runner (haiku) — drives bulk JQL-plus-transition with rate-limit safety at max 5 req/s.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are workflow-author. Given process {dod_yaml} for issue type {type},
+emit Jira Cloud workflow JSON with statuses, transitions, validators
+(required fields per transition), and post-functions. Constraints:
+- Maximum 7 statuses
+- Every transition must have a screen
+- No global transitions to "Done"
+Return JSON only.]]></code>
+    </example>
+    <example type="good">
+      <code lang="text"><![CDATA[You are jql-builder. Translate "{question}" into JQL using fields {schema}.
+Validate via Jira REST /search?validateQuery=strict. If invalid, propose fix.
+Return { "jql": "...", "explanation": "...", "sample_count": N }.
+Never invent field names not in {schema}.]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Agents writing field names from training knowledge rather than the live Jira field schema.</description>
+      <reason>Jira custom field IDs differ per instance. Cache /rest/api/3/field and provide the schema in the system prompt; reject any output containing field names not in the schema.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bulk transitions without rate-limit handling on Jira Cloud.</description>
+      <reason>Jira Cloud enforces approximately 50 req/s per site. Unthrottled bulk transitions hit 429s immediately; exponential backoff with Retry-After header is required.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Applying workflows designed for Jira Cloud to a Data Center or Server instance.</description>
+      <reason>Cloud and DC/Server have different automation engines, API surfaces, and permission models. Code working on one frequently fails on the other.</reason>
+    </antipattern>
+    <rule>
+      <statement>Human-in-the-loop checkpoints are mandatory at: workflow promotion to production, automation rule promotion, schema changes, and bulk transitions affecting more than 100 issues.</statement>
+      <rationale>These operations affect all team members simultaneously and are expensive or impossible to reverse.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/bulk-transition.py">Bulk transition with rate-limit safety and Retry-After handling</reference>
+  <reference path="templates/workflow-states.yaml">Standard workflow states and transitions</reference>
+</text>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Cross-Tool Migration — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-assisted PM tool migrations.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>migration-auditor (sonnet) — runs pre-migration audit, returns YAML with counts, custom fields, integrations.</item>
+      <item>field-mapper (sonnet) — proposes source-to-target field mappings and lookup tables; flags ambiguities for human decision.</item>
+      <item>dry-run-extractor (haiku) — calls source API read-only, validates auth, counts records, exports to JSONL.</item>
+      <item>mapping-validator (haiku) — checks mapping coverage: 100% of source fields either mapped or explicitly dropped.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are field-mapper. Inputs: source_schema.json, target_schema.json,
+org_policy.md. Output a Markdown table with columns:
+source_field, target_field, transformation, ambiguity_flag.
+Where mapping is lossy or ambiguous, set ambiguity_flag=YES and propose
+two alternatives. Do not invent target fields not in source_schema.json.]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Agents running migration without a resumable checkpoint file per issue ID.</description>
+      <reason>Rate limits and network failures crash mid-batch migrations. Without a checkpoint file (last successfully migrated ID), the entire run must restart from the beginning.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents migrating @mentions without user ID resolution.</description>
+      <reason>Source and target user IDs differ. Unresolved @mentions silently become plain text or broken links. Resolve user ID mapping in advance; log and drop unresolvable mentions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Accepting an LLM-estimated migration cost without a 2x multiplier.</description>
+      <reason>LLM migration estimates are systematically low; they omit training, parallel-run period, and integration rebuild cost. Multiply by 2x minimum and add a parallel-run period.</reason>
+    </antipattern>
+    <rule>
+      <statement>Human-in-the-loop checkpoints are mandatory at: mapping approval, cutover go/no-go decision, and rollback decisions.</statement>
+      <rationale>Each is an irreversible or high-impact decision. Agent errors at these gates compound into expensive remediation.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/count-check.py">Post-migration source vs target count validation</reference>
+  <reference path="templates/field-mapping.md">Field mapping table with ambiguity flags</reference>
+</text>

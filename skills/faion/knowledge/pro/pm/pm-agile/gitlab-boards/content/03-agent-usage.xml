@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="GitLab Boards — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-driven GitLab board operations.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>board-author (sonnet) — synthesize board lists and scoped labels from a process YAML description.</item>
+      <item>triage-agent (sonnet) — classify and route incoming issues by type, priority, and component; never auto-close.</item>
+      <item>mr-issue-linker (haiku) — enforce "Closes #N" discipline and matching scoped labels before merge.</item>
+      <item>cycle-time-watcher (haiku, scheduled) — pull lead/cycle time from issue events, alert on drift.</item>
+      <item>webhook-router (haiku) — receive GitLab events and route to the appropriate downstream agent.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are board-author. Inputs: process.yaml (stages with WIP limits,
+filters, label scheme). Emit (a) scoped labels to create with "::" syntax,
+(b) an array of board lists with order + WIP limit, (c) a smoke-test plan
+that creates a test issue and walks it through every transition. Return
+STRICT JSON. Refuse if any stage lacks an exit criterion.]]></code>
+    </example>
+    <example type="good">
+      <code lang="text"><![CDATA[You are triage-agent. Given an incoming issue (title, body, project
+context, existing labels), output:
+{ "type": "bug|feature|tech-debt|docs|question",
+  "priority": "critical|high|medium|low",
+  "component": "<from project list>",
+  "workflow": "ready|backlog",
+  "reasons": [...] }
+Cite spans from the body that support each tag.
+Do not invent components not in the project's list.]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Using Personal Access Tokens with wide scopes for bot operations.</description>
+      <reason>Prefer Group or Project Access Tokens scoped to "api" + "write_repository" only. Wide-scope PATs create blast radius on compromise.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bot-created issues notifying all project subscribers.</description>
+      <reason>Bot users create issues as bot-owned; downstream notifications fan out to thousands. Use a dedicated bot user with notifications muted.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Assuming free-tier feature parity for iteration cadences.</description>
+      <reason>Iteration cadence creation requires Premium. Agents written against Premium features break on free-tier customer projects.</reason>
+    </antipattern>
+    <rule>
+      <statement>Apply human-in-the-loop checkpoints for: board structure changes, label-scheme changes, auto-close rules, and group-level moves.</statement>
+      <rationale>These operations affect all team members simultaneously and are difficult to reverse cleanly.</rationale>
+    </rule>
+  </section>
+
+  <reference path="scripts/seed_labels.py">Seed standard scoped labels on a project via REST API</reference>
+  <reference path="templates/issue-template-bug.md">Bug report issue template with quick-action footer</reference>
+  <reference path="templates/issue-template-feature.md">Feature request issue template with AC checklist</reference>
+</text>

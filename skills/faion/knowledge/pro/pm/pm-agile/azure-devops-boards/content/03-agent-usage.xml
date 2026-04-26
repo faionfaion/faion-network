@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Azure DevOps Boards — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-driven Azure DevOps Boards operations.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>ado-work-item-creator (sonnet) — converts spec.md or design.md into hierarchical work items with parent-child links via REST API.</item>
+      <item>ado-query-runner (haiku) — executes WIQL queries, returns results as Markdown table for human review.</item>
+      <item>ado-board-auditor (sonnet) — checks WIP limit breaches, missing definition-of-done items, orphan tasks, and stale active work items.</item>
+      <item>ado-pipeline-bridge (haiku) — links commits and PRs to work items via AB# convention; validates traceability on pre-merge check.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are ado-work-item-creator. Inputs: spec.md (markdown),
+area_path (string), iteration_path (string), parent_epic_id (int|null).
+Output: JSON array of work-item objects with:
+{ type, title, description (HTML — not Markdown), acceptance_criteria,
+  story_points, parent_id }
+Use process Agile (Story, not PBI).
+Do not invent fields outside the Agile process schema.
+Iteration path separates levels with backslash: "Project\\Sprint 1"]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Writing Markdown in ADO description or comment fields from an agent.</description>
+      <reason>ADO description accepts HTML, not Markdown. Agent-written Markdown displays as literal syntax or empty content. Convert to HTML using pandoc or a sanitizer before writing.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bulk-creating more than 50 work items per batch in parallel.</description>
+      <reason>ADO throttles bulk creation; unthrottled parallel batches trigger 429s. Chunk in batches of 50 with exponential backoff and check for the Retry-After header.</reason>
+    </antipattern>
+    <antipattern>
+      <description>WIQL queries with dropped trailing brackets or misquoted field names.</description>
+      <reason>WIQL is whitespace-sensitive and returns empty results (200 OK, zero items) for malformed queries. Always validate WIQL syntax against a known-good schema before executing.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using display names instead of identity SIDs in @mention comments.</description>
+      <reason>ADO @mentions require the user identity SID, not the display name. Display names are non-unique and produce invalid mentions. Resolve via the Identities API first.</reason>
+    </antipattern>
+    <rule>
+      <statement>Human-in-the-loop checkpoints are mandatory at: work-item hierarchy approval before creation, bulk-transition approval, schema changes, and any pipeline configuration change.</statement>
+      <rationale>These operations affect all team members or the CI/CD pipeline simultaneously and are expensive to reverse.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/create-story.sh">Bash script for User Story creation via REST API</reference>
+  <reference path="templates/user-story.md">User Story template with Gherkin acceptance criteria</reference>
+</text>

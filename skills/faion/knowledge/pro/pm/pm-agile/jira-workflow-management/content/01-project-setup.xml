@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-setup" title="Jira Project Setup, Issue Types, and Workflow Design">
+  <summary>Rules for project type selection, issue-type hierarchy, workflow state machine design, and board configuration in Jira.</summary>
+
+  <section title="Project Type Selection">
+    <list>
+      <item>Scrum: sprints, backlogs, velocity charts — for teams with predictable feature work in timeboxes.</item>
+      <item>Kanban: continuous flow, WIP limits, cumulative flow diagram — for support, ops, or platform teams.</item>
+      <item>Bug Tracking: simplified workflow — for pure defect-tracking projects.</item>
+      <item>Jira Service Management: ITIL-flavored request portal — for customer-facing support queues.</item>
+    </list>
+  </section>
+
+  <section title="Workflow Design">
+    <rule>
+      <statement>Limit workflows to 5-7 statuses maximum; use one shared workflow per issue type across projects rather than bespoke per-project workflows.</statement>
+      <rationale>Per-project workflow proliferation creates scheme sprawl, breaks cross-project JQL queries, and slows the entire Jira instance through scheme-lookup overhead.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[statuses:
+  - name: "To Do"
+    category: "To Do"
+  - name: "In Progress"
+    category: "In Progress"
+  - name: "Code Review"
+    category: "In Progress"
+  - name: "QA Testing"
+    category: "In Progress"
+  - name: "Done"
+    category: "Done"
+
+transitions:
+  - from: "To Do"
+    to: "In Progress"
+    trigger: "Start Work"
+  - from: "In Progress"
+    to: "Code Review"
+    trigger: "Submit for Review"
+    condition: "Branch linked"
+  - from: "Code Review"
+    to: "QA Testing"
+    trigger: "Approve"
+  - from: "QA Testing"
+    to: "Done"
+    trigger: "Pass QA"]]></code>
+    </example>
+    <rule>
+      <statement>Place required field validators on transitions, not on issue creation; this reduces friction for bulk imports and agent-driven flows without sacrificing data quality at the stage where it matters.</statement>
+      <rationale>Creation-time required fields block bulk migrations and bot-driven flows unless service accounts are explicitly exempted.</rationale>
+    </rule>
+    <antipattern>
+      <description>Adding global transitions to "Done" from any state.</description>
+      <reason>Global-to-Done transitions let issues skip QA and review stages, producing false "Done" counts and audit trail gaps.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Issue Type Hierarchy">
+    <list>
+      <item>Epic: large feature grouping with Start/End Date for roadmap visibility.</item>
+      <item>Story: user-facing functionality with Story Points and Acceptance Criteria.</item>
+      <item>Task: technical work items with Estimate and Component fields.</item>
+      <item>Bug: defects with Severity and Steps to Reproduce; can exist at any hierarchy level.</item>
+      <item>Sub-task: breakdown of parent issue, linked to parent.</item>
+    </list>
+    <rule>
+      <statement>Resist creating new issue types for every workflow nuance; add a custom field or label instead.</statement>
+      <rationale>New issue types require scheme updates, affect all projects using the shared scheme, and multiply configuration complexity without proportional value.</rationale>
+    </rule>
+  </section>
+
+  <section title="Custom Fields">
+    <rule>
+      <statement>Limit custom fields aggressively; share them via Global context rather than project-scoped context; Jira has a 200-field issue-view cap and performance degrades well before it.</statement>
+      <rationale>Custom field sprawl is the most common cause of Jira performance degradation in large instances. Each field adds a database column that is loaded even when not displayed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[custom_fields:
+  - name: "Story Points"
+    type: number
+    screen: "Edit Issue"
+    context: "Global"
+  - name: "Acceptance Criteria"
+    type: text_area
+    screen: "Create/Edit Issue"
+    context: "Global"
+  - name: "Code Reviewer"
+    type: user_picker
+    screen: "Edit Issue"
+    context: "Global"]]></code>
+    </example>
+  </section>
+</text>

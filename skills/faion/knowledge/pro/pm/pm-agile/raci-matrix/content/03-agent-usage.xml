@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="RACI Matrix — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-assisted RACI creation and validation.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>raci-drafter (sonnet) — reads charter or spec, lists tasks times roles, fills R/A/C/I per cell, returns Markdown table.</item>
+      <item>raci-validator (haiku) — enforces rules: exactly one A, at least one R, no all-I rows, max 3 C per row; returns violations list as JSON.</item>
+      <item>raci-diff (haiku) — compares two RACI matrices (Markdown or YAML), outputs added/removed/changed cells for change review.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are raci-drafter. Inputs: <project charter>. Tasks: <list>. Roles: <list>.
+Output a Markdown RACI matrix. Rules:
+- Exactly one A per row
+- At least one R per row
+- Minimize C (maximum 3 per row)
+- Be generous with I
+- Do not invent tasks or roles not in the input lists
+- You may never assign A to yourself or any AI agent
+Return only the table.]]></code>
+    </example>
+    <example type="good">
+      <code lang="text"><![CDATA[You are raci-validator. Input: a Markdown RACI table.
+Output a JSON list of violations with {row, rule, suggestion}.
+Rules to check: A_unique (exactly one per row), R_present (at least one),
+C_max_3 (no more than 3 C per row), no_empty_row (every role has at least I).]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Agents assigning themselves or "AI" as Accountable in the drafted matrix.</description>
+      <reason>LLMs default to including themselves as stakeholders when generating role assignments. Explicitly forbid this in the system prompt and validate with raci-validator.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents hallucinating stakeholder names not on the provided roles list.</description>
+      <reason>LLMs invent plausible names when the list is incomplete. Pass the roles list as explicit input and instruct the agent to reject any role not on it.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Storing the authoritative RACI as a Markdown table when an agent mutates it iteratively.</description>
+      <reason>Markdown table parsing is brittle for programmatic mutation. Store as YAML for agent operations; render as Markdown only for human review.</reason>
+    </antipattern>
+    <rule>
+      <statement>Run raci-lint.py in CI against any Markdown RACI file before merge to enforce validation rules automatically.</statement>
+      <rationale>Manual review of RACI tables misses constraint violations. Automated CI enforcement catches violations before they reach the team.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/raci-lint.py">Markdown RACI validator; enforces exactly one A and one+ R per row</reference>
+  <reference path="templates/raci-template.md">Blank RACI matrix for manual or agent-assisted completion</reference>
+</text>

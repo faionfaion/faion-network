@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="VSM — Agentic Workflows and Gotchas">
+  <summary>Recommended subagents, prompt patterns, and failure modes for agent-driven Value Stream Management analysis.</summary>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>value-stream-mapper (sonnet) — synthesize stream definition from interviews and tool data; emits stages with owners, entry/exit criteria, data sources.</item>
+      <item>metrics-pipeline (haiku, scheduled) — daily ETL: events to Flow and DORA tables; runs at fixed grain (hour/day aggregation).</item>
+      <item>bottleneck-detector (sonnet) — TOC-style analysis: identifies primary bottleneck with citations to data spans.</item>
+      <item>paradox-watcher (sonnet) — correlates AI-tooling rollout dates with lead-time distribution shifts using statistical testing.</item>
+      <item>narrative-writer (sonnet) — translates metrics into stakeholder briefs with explicit caveats on data quality and confidence.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <code lang="text"><![CDATA[You are bottleneck-detector. Inputs: stage_metrics.csv (stage, count,
+mean_wait, mean_process, p95_wait, p95_process, %C/A). Identify the stage
+contributing the largest share of total lead time AND has %C/A < 90 OR
+queue/process > 4. Return STRICT JSON:
+{ "primary_bottleneck": "<stage>", "share_of_lead_time": 0.NN,
+  "rationale": "...", "supporting_metrics": {...},
+  "recommended_focus": ["..."], "non_recommendations": ["..."] }
+Rules: do not propose multiple "primary" bottlenecks. Cite numbers, not vibes.]]></code>
+    </example>
+    <example type="good">
+      <code lang="text"><![CDATA[You are paradox-watcher. Inputs: deployment_frequency.csv, lead_time.csv,
+ai_tooling_events.csv (rollout dates). Test if lead-time distribution
+shifted statistically after each rollout (Mann-Whitney).
+Output: { "tool": "...", "rollout_date": "...", "p_value": ...,
+"effect_size": ..., "direction": "improved|degraded|no_change",
+"caveats": [...] }. Do not infer causation; report associations.]]></code>
+    </example>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Agents inventing VSM stage names or metric definitions not in the provided glossary.</description>
+      <reason>LLMs invent plausible stage names like "Strategic Lead Time" that have no agreed definition. Pin a glossary file and require lookups.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Aggregating flow metrics across heterogeneous teams without segmentation.</description>
+      <reason>Mixed-team aggregation hides outliers and makes team-specific bottlenecks invisible. Require segmentation by team or product stream.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents auto-actioning a bottleneck finding (re-org, hire, deprioritize) without human approval.</description>
+      <reason>Bottleneck findings are recommendations, not orders. Auto-actioning organizational changes without sponsor sign-off causes harm and destroys trust.</reason>
+    </antipattern>
+    <rule>
+      <statement>Human-in-the-loop checkpoints are mandatory at: stream definition, metric definitions, threshold setting, and any action approval.</statement>
+      <rationale>Each checkpoint gates decisions whose errors compound: wrong stream definition produces all downstream metrics in wrong frames.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/flow-metrics.py">Lead Time, Cycle Time, Throughput computation from transitions CSV</reference>
+</text>
