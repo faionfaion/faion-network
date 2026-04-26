@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules-and-antipatterns" title="AT Testing Rules, Antipatterns, and Agentic Workflow">
+  <summary>Agentic workflow for AT testing, known antipatterns from LLM-assisted accessibility work, and CI gate script reference.</summary>
+
+  <section title="Agentic Workflow">
+    <p>Agents can: run automated scans in CI (axe-core, pa11y, Lighthouse), cross-check ARIA against accessibility-tree snapshots, generate keyboard-traversal scripts, triage findings into severity buckets. Agents cannot reliably evaluate screen-reader audio — capture it via human reviewer or video recording. Reserve human time for: SR audio QA, switch-control testing, lived-experience sessions.</p>
+
+    <p>Recommended subagents: faion-usability-agent (runs automated suites, cross-references findings, drafts remediation tickets), faion-ux-researcher-agent (recruits and runs sessions with AT users), faion-sdd-executor-agent (fixes flagged issues with ARIA/semantic-HTML patches, re-runs gates).</p>
+
+    <reference path="templates/a11y-gate.sh">CI gate: fail PR if axe finds serious/critical WCAG 2.2 AA violations</reference>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Agent declares "WCAG AA conformant" based on axe-core results alone.</description>
+      <reason>Automated tools catch 30–50% of real issues. Claiming conformance requires documented testing against all applicable success criteria, including manual SR checks. Always reject this conclusion in prompt rules.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>LLM inventing ARIA patterns without citation to ARIA Authoring Practices Guide.</description>
+      <reason>Invented ARIA patterns produce non-standard keyboard behavior and incorrect SR announcements. Every ARIA pattern must cite a specific APG example URL; refuse output without citation.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Color-contrast checks performed via static analysis on overlapping translucent layers.</description>
+      <reason>LLM static analysis cannot compute effective contrast of translucent overlapping elements. Must run in browser against the rendered DOM.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Testing only initial render state for dynamic content (aria-live, SPA route changes).</description>
+      <reason>Dynamic content is the primary false-pass area. Focus must be tested post-state: after dialog opens, after route change, after async content loads.</reason>
+    </antipattern>
+  </section>
+
+  <section title="SR Announcement Reliability">
+    <rule>
+      <statement>Capture screen reader audio (OBS, screen recorder) when filing AT bugs. Never rely on text descriptions alone.</statement>
+      <rationale>SR announcement strings vary across NVDA/JAWS/VoiceOver versions. Agents quote outdated phrasings. Video recordings are the only evidence that resolves SR behavior disputes with developers.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Build a regression catalog: components with known AT bugs get re-tested on every release, not only when the component changes.</statement>
+      <rationale>Adjacent changes in CSS or JavaScript frequently reintroduce fixed AT bugs. A regression catalog with test scripts catches this without manual re-discovery each cycle.</rationale>
+    </rule>
+  </section>
+</text>

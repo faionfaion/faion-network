@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-workflow" title="VUI Testing Agentic Workflow and Antipatterns">
+  <summary>Batch runner workflow, adversarial utterance generation, agent gotchas, and human-in-loop gates for VUI testing.</summary>
+
+  <section title="Agentic Workflow">
+    <p>Use Claude to scaffold a four-layer test plan per intent, then generate adversarial utterance batches with nlpaug (synonym substitution, back-translation, noise injection) and run them through the platform CLI. A second agent ingests the resulting transcripts and computes per-intent accuracy, error-rate, and time-to-complete tables. Human-in-loop reviews escalation paths and recordings flagged as "user frustration" by sentiment scoring.</p>
+
+    <p>Utterance generation schema: 50 utterances per intent — 10 clean, 20 noisy (background noise annotation), 10 accented (accent label), 10 adversarial (off-topic, code-switch, partial). Include expected intent and expected slots. Output as JSONL for batch CLI runner.</p>
+
+    <reference path="templates/vui-batch-runner.py">Batch intent-accuracy runner against ask-cli simulate; outputs per-intent accuracy table</reference>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Reporting "100% intent accuracy on test set" as launch-ready without real-world participant testing.</description>
+      <reason>Synthetic test utterances correlate poorly with real-world speech distributions. Internal-team test sets over-represent the model's own training distribution. Require at least one device-loop test with external participants before launch.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using auto-graded scoring as the sole success criterion without a human review pass.</description>
+      <reason>Auto-graded scoring underweights tone, empathy, and dialog naturalness. Use a separate sentiment pass before declaring "pass", and hand 20 random failures to a designer for root-cause categorization.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>PII redaction happening after transcripts are passed to the agent.</description>
+      <reason>Voice IP/PII redaction must happen BEFORE transcripts reach any LLM. Bake redaction into the runner as a mandatory pre-step, not a post-step. Audio files often contain names, phone numbers, and account details.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Simulator success declared as device success without device-loop validation.</description>
+      <reason>Endpointing differences between simulator and physical device mean simulator success does not guarantee device success. Require at least one full device-loop test per major release.</reason>
+    </antipattern>
+  </section>
+
+  <section title="LLM Agent Gotchas">
+    <rule>
+      <statement>Lock LLM voice agent seeds during regression runs. Non-deterministic agents cannot be regression-tested; a "passing run" one day may fail the next with identical inputs.</statement>
+      <rationale>LLM voice agents drift across runs due to temperature and sampling variance. Fixed seeds produce comparable runs; even then, transcripts (not audio) are the correct regression artifact.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Track "completion at attempt N" separately from "eventual completion rate". Report both metrics. Treat N=4+ as a failure even if the user ultimately succeeded.</statement>
+      <rationale>Users who succeed on the fourth attempt do not return. Attempt-count distribution is the signal that identifies systemic re-prompt failures invisible in flat completion rate.</rationale>
+    </rule>
+  </section>
+</text>

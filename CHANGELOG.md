@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 ux-ui-designer methodologies migrated to new shape (batch: spatial-design-tools, design-tokens-fundamentals, testing-with-assistive-technology, diary-studies, error-handling-in-vui, vui-testing-best-practices, spatial-ux-fundamentals, focus-groups)
 - refactor: 8/8 methodologies migrated to new shape (batch: risk-register, pm-framework-focus-areas, team-development, six-core-principles, schedule-development, performance-domains-overview, pm-certification-changes-2026, cost-estimation)
 - refactor: 8/8 pm-traditional methodologies migrated to new shape (batch: procurement-management, lessons-learned, communications-management, pm-certification-alignment-2026, stakeholder-engagement, project-integration, quality-management, resource-management)
 - refactor: 8/8 methodologies migrated to new shape (batch: pm-traditional/project-closure, work-breakdown-structure, risk-register, schedule-development, pm-certification-changes-2026, pm-agile/hybrid-delivery, scrum-ceremonies, predictive-analytics-pm)
