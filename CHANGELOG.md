@@ -10,6 +10,7 @@
 - refactor: 8/8 methodologies migrated to new shape (pm-agile batch: tool-migration-process, seven-performance-domains, agile-hybrid-approaches, pm-framework-focus-areas, team-development, six-core-principles, performance-domains-overview, pm-tools-comparison)
 - refactor: 8/8 methodologies in pm-agile migrated to new shape (batch: gitlab-boards, pm-tools-overview, value-stream-management, jira-workflow-management, raci-matrix, tool-migration-basics, kanban-scaled-agile-ceremonies, azure-devops-boards)
 - refactor: 8/8 methodologies migrated to new shape (batch: scope-management, earned-value-management, benefits-realization, stakeholder-register, risk-management, change-control, wbs-creation, stakeholder-engagement-advanced)
+- refactor: 8/8 methodologies migrated to new shape (batch: cost-estimation, agile-ceremonies-setup, procurement-management, lessons-learned, communications-management, hybrid-delivery, cross-tool-migration, pm-certification-alignment-2026)
 
 ### Added
 - agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).
@@ -24,6 +25,7 @@
 
 ### Changed
 - **`.aidocs/{agent,sdlc-ai}-methodologies/loop-prompt.md`:** added MANDATORY pre-flight Read of `docs/skill-authoring.md` + `tag-glossary.xml`; verify checklist updated to require `content/*.xml` (not `texts/`) and forbid `README.md` in subfolders.
+
 
 ### Added
 - **Methodology refactor pool (`skills/faion/.refactor/`):** infrastructure for a `faion-poll-agents` background pool that converts the OLD 5-file methodologies (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) to the canonical NEW shape (`CLAUDE.md` → `AGENTS.md` → `content/*.xml` semantic XML + optional `templates/` + `scripts/`). Pool=10 sonnet, batch=8, tick `/loop 5m`. State files: `BRIEF.md` + `TICK.md` (tracked), `QUEUE.txt` + `DONE.txt` (gitignored). Initial QUEUE = 1245 paths (excludes `geek/ai/ai-agents/*` per migration carve-out for the 15 agent-builder methodologies that stay in the OLD shape).

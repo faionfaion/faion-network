@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-field-mapping" title="Field Mapping Design and Anti-Patterns">
+  <summary>Field mapping design process, low-confidence flagging, attachment ordering constraint, and common migration failure modes.</summary>
+
+  <section title="Field Mapping Design">
+    <rule>
+      <statement>Design field mapping from a sample of 100 source issues (random) plus 20 outliers (oldest, largest attachment, deepest subtask tree, most comments). Flag all mappings where two source values collapse to one target value as "lossy: true" requiring human sign-off.</statement>
+      <rationale>The long-tail of custom fields and unusual values is invisible in a clean-data sample; outliers surface the edge cases that break during full migration.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Any field the mapping engine cannot match with confidence above a defined threshold must appear in a low_confidence list requiring human review before the load runs. Never silently drop or merge fields.</statement>
+      <rationale>Silent field collapse is the most common cause of data integrity failures; "In QA" and "In Review" merged to "Review" looks correct but loses status granularity that teams depend on.</rationale>
+    </rule>
+    <rule>
+      <statement>Never let an LLM rewrite ticket descriptions during migration. Translate formatting (Jira ADF to Markdown) deterministically using a dedicated converter. Preserve exact wording; humans depend on it for diagnosis.</statement>
+      <rationale>LLM "cleanup" of descriptions changes meaning, removes code blocks, and introduces hallucinated details into issue history — all unrecoverable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Attachment Ordering">
+    <rule>
+      <statement>Upload attachments in a separate pass before descriptions and comments. Rewrite inline image URLs in descriptions only after the attachment pass is complete and the new URLs are stable.</statement>
+      <rationale>Descriptions with inline images require the attachment target URL to exist; loading descriptions first produces broken image references that must be manually fixed.</rationale>
+    </rule>
+  </section>
+
+  <section title="Anti-Patterns">
+    <antipattern>
+      <description>Agent-fabricated field maps for unknown custom fields.</description>
+      <reason>Agents produce plausible-sounding mappings (legacy_id → external_id) that are wrong; unmapped or pattern-matched fields must be reviewed by a human before any load.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running full API load at maximum rate without backoff.</description>
+      <reason>Vendor APIs throttle at sustained high rate (429 responses); agents misinterpret these as transient and burn token budget retrying. Implement exponential backoff in the engine, not in prompts.</reason>
+    </antipattern>
+    <antipattern>
+      <description>PII and credentials in migration exports not scrubbed before pushing to target.</description>
+      <reason>Issues frequently contain pasted credentials, customer PII, and internal URLs; bulk migration amplifies one ticket's exposure across the entire corpus. Run a scrubber pass before any load.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Feeding the entire issue export into a single LLM prompt for mapping.</description>
+      <reason>Long-context drift causes the model to lose accuracy on issues processed later in the window; page by 50-200 issues and let the engine hold full state, not the model.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/migration-project-plan.md">Full migration plan with risk register</reference>
+</text>
