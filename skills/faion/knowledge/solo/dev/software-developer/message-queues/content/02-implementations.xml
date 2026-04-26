@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementations" title="Message Queue Implementations">
+  <summary>RabbitMQ, Redis Streams, Celery, and SQS implementations with DLQ wiring, retry policies, and idempotency requirements.</summary>
+
+  <section title="RabbitMQ">
+    <rule>
+      <statement>Set delivery_mode=2 (persistent) for all durable queue messages. Set basic_qos(prefetch_count=10) to prevent one worker hogging all messages. Use manual ack (auto_ack=False) with ack after successful processing.</statement>
+      <rationale>Non-persistent messages survive only in memory; a broker restart loses them. High prefetch without manual ack means one slow consumer starves others. Auto-ack before processing causes message loss on consumer crash mid-handler.</rationale>
+    </rule>
+    <reference path="templates/rabbitmq-client.py">RabbitMQ producer + consumer with DLQ and persistent delivery</reference>
+  </section>
+
+  <section title="Celery">
+    <rule>
+      <statement>Set task_acks_late=True and task_reject_on_worker_lost=True in Celery config. Set worker_prefetch_multiplier=1 for slow handlers. Without task_acks_late, a message is acked when the worker receives it, not when processing completes; a crash loses the task.</statement>
+      <rationale>Default Celery acks on receipt. A worker that crashes mid-task has already acked; the task is lost. task_acks_late defers ack to completion, enabling safe replay on crash.</rationale>
+    </rule>
+    <rule>
+      <statement>Use transaction.on_commit() (Django) or an outbox pattern when calling apply_async() from inside a DB transaction. A commit that follows apply_async() but before the DB commit means consumers race the writer.</statement>
+      <rationale>If apply_async() is called inside a transaction that later rolls back, the task still runs and processes data that was never committed. Outbox pattern publishes the task as part of the DB commit.</rationale>
+    </rule>
+    <example type="good">
+      <note>Celery task with retry backoff and failure handler</note>
+      <code lang="python"><![CDATA[
+from celery import Celery, Task
+
+app = Celery('tasks', broker='redis://localhost:6379/0',
+             backend='redis://localhost:6379/1')
+
+app.conf.update(
+    task_serializer='json',
+    accept_content=['json'],
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    worker_prefetch_multiplier=1,
+)
+
+class BaseTask(Task):
+    autoretry_for = (Exception,)
+    retry_backoff = True
+    retry_backoff_max = 600
+    retry_jitter = True
+    max_retries = 5
+
+@app.task(base=BaseTask, bind=True)
+def process_order(self, order_id: str):
+    order = get_order(order_id)
+    charge_payment(order)
+    send_confirmation(order)
+    return {"status": "completed", "order_id": order_id}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Idempotency Requirement">
+    <rule>
+      <statement>Every message consumer must implement idempotency: check a processed-messages table for the idempotency key before processing. Use INSERT ... ON CONFLICT DO NOTHING to claim the key atomically. Design for at-least-once delivery and rely on the idempotency check, not broker guarantees, for exactly-once semantics.</statement>
+      <rationale>"Exactly once" is a marketing claim. Every broker delivers at-least-once under failure conditions. Idempotent consumers produce correct results regardless of delivery count.</rationale>
+    </rule>
+    <reference path="scripts/idempotent-handler.py">DB-backed idempotency key claim with ON CONFLICT DO NOTHING</reference>
+  </section>
+</text>

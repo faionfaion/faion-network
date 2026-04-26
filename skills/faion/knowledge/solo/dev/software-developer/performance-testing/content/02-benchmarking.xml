@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-benchmarking" title="Python Micro-Benchmarking and Profiling">
+  <summary>pytest-benchmark for function-level comparisons, py-spy for low-overhead sampling profiling, and SQLAlchemy event hooks for slow-query detection.</summary>
+
+  <section title="pytest-benchmark">
+    <rule>
+      <statement>Use pytest-benchmark for comparing two implementations (e.g., orjson vs json, sync vs async ORM). Require at least 3 rounds and report mean ± stdev. Never accept a single-run result as evidence.</statement>
+      <rationale>Single runs include JIT warmup, OS scheduling noise, and cache effects. Statistical rounds filter transient outliers.</rationale>
+    </rule>
+    <example type="good">
+      <note>Comparing serialization libraries</note>
+      <code lang="python"><![CDATA[
+import json
+import orjson
+import pytest
+
+def test_json_serialization(benchmark):
+    data = {"users": [{"id": i, "name": f"User {i}"} for i in range(1000)]}
+    result = benchmark.pedantic(lambda: orjson.dumps(data), iterations=100, rounds=10)
+    assert result  # non-empty bytes
+
+def test_json_stdlib(benchmark):
+    data = {"users": [{"id": i, "name": f"User {i}"} for i in range(1000)]}
+    result = benchmark.pedantic(lambda: json.dumps(data), iterations=100, rounds=10)
+    assert result
+
+# Run: pytest --benchmark-compare --benchmark-only
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Profiling with py-spy">
+    <rule>
+      <statement>Use py-spy record (sampling profiler, no instrumentation) for profiling live services. Never run cProfile (deterministic, 10-30% overhead) simultaneously with a load test.</statement>
+      <rationale>Deterministic profilers change the timing they measure. py-spy attaches to a running PID with negligible overhead and produces flame graphs from real load.</rationale>
+    </rule>
+    <example type="good">
+      <note>py-spy commands</note>
+      <code lang="bash"><![CDATA[
+# Record flame graph for running process
+py-spy record -o profile.svg --pid <PID> --duration 60
+
+# Live top-like view
+py-spy top --pid <PID>
+
+# View SVG in browser (or use speedscope)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Database Query Profiling">
+    <rule>
+      <statement>Log every SQL query that exceeds 100 ms. Detect N+1 patterns by counting queries per request in tests and asserting the count is below a threshold (e.g., &lt; 5 queries for a list of 10 items).</statement>
+      <rationale>N+1 queries are the most common source of latency spikes and invisible to request-level metrics unless explicitly counted.</rationale>
+    </rule>
+    <example type="good">
+      <note>SQLAlchemy slow-query event hook</note>
+      <code lang="python"><![CDATA[
+import time
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_execute(conn, cursor, statement, parameters, context, executemany):
+    conn.info.setdefault("query_start_time", []).append(time.perf_counter())
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_execute(conn, cursor, statement, parameters, context, executemany):
+    total = time.perf_counter() - conn.info["query_start_time"].pop()
+    if total > 0.1:
+        import logging
+        logging.warning("SLOW QUERY (%.3fs): %s", total, statement[:120])
+      ]]></code>
+    </example>
+  </section>
+</text>

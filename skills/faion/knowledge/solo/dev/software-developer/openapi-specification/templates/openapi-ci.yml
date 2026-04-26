@@ -1,0 +1,32 @@
+name: openapi
+
+on: [pull_request]
+
+jobs:
+  lint-and-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install tools
+        run: npm i -g @redocly/cli @stoplight/spectral-cli
+
+      - name: Redocly lint
+        run: redocly lint openapi.yaml
+
+      - name: Spectral lint
+        run: spectral lint openapi.yaml --fail-severity=warn
+
+      - name: Breaking-change diff
+        run: |
+          git show origin/main:openapi.yaml > /tmp/base.yaml
+          docker run --rm \
+            -v "$PWD:/specs" \
+            -v /tmp:/tmp \
+            tufin/oasdiff breaking /tmp/base.yaml /specs/openapi.yaml --fail-on ERR

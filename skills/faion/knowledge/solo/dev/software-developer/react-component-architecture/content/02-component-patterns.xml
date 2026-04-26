@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-component-patterns" title="React Component Patterns">
+  <summary>Functional component with forwardRef, compound component, container/presenter, render props, and polymorphic as patterns.</summary>
+
+  <section title="Functional Component with forwardRef (React 18)">
+    <rule>
+      <statement>Use forwardRef on every UI primitive that may need a ref (Button, Input, Combobox triggers, Radix primitives). On React 19, drop forwardRef — refs are props on function components. Pin the React version in agent prompts.</statement>
+      <rationale>forwardRef is required for React 18 ref forwarding. Mixing React 18 forwardRef and React 19 ref-as-prop syntax in the same codebase produces runtime errors. Pin the version to prevent agents from mixing the two.</rationale>
+    </rule>
+    <rule>
+      <statement>Use cva (class-variance-authority) for variant management only when a component has two or more variants. Single-variant cva calls are noise.</statement>
+      <rationale>cva adds a runtime dependency and boilerplate. It pays off only when multiple variants need to be composed safely. Single-variant components are better served by a simple className string.</rationale>
+    </rule>
+    <reference path="templates/button.tsx">Button primitive with cva, forwardRef (React 18), full TypeScript props</reference>
+  </section>
+
+  <section title="Compound Component">
+    <rule>
+      <statement>Export compound subcomponents as named exports (export function CardHeader) AND assign as properties (Card.Header = CardHeader). The property assignment is ergonomic sugar; the named export is required for tree-shaking.</statement>
+      <rationale>If only Card.Header exists (no named export), bundlers cannot tree-shake the subcomponent when it is not used. Named export preserves the optimization while keeping the ergonomic namespace API.</rationale>
+    </rule>
+    <example type="good">
+      <note>Compound Card component with named exports</note>
+      <code lang="tsx"><![CDATA[
+import { createContext, useContext, type ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+
+interface CardContextValue { variant: 'default' | 'outlined' }
+const CardContext = createContext<CardContextValue | null>(null);
+
+function useCardContext() {
+  const ctx = useContext(CardContext);
+  if (!ctx) throw new Error('Card components must be used within Card');
+  return ctx;
+}
+
+export function Card({ variant = 'default', className, children }: {
+  variant?: 'default' | 'outlined'; className?: string; children: ReactNode;
+}) {
+  return (
+    <CardContext.Provider value={{ variant }}>
+      <div className={cn('rounded-lg bg-card', variant === 'outlined' && 'border', className)}>
+        {children}
+      </div>
+    </CardContext.Provider>
+  );
+}
+
+export function CardHeader({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn('flex flex-col space-y-1.5 p-6', className)}>{children}</div>;
+}
+
+export function CardContent({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn('p-6 pt-0', className)}>{children}</div>;
+}
+
+// Ergonomic namespace alias (tree-shaking still works via named exports above)
+Card.Header = CardHeader;
+Card.Content = CardContent;
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Container/Presenter Pattern">
+    <rule>
+      <statement>Put all data fetching in feature hooks (or RSC), never inside leaf components. The presenter component receives only plain data props and renders them.</statement>
+      <rationale>Data fetching in leaf components makes testing slow (requires mocking fetch), disables RSC optimization, and couples rendering to network state. Extracting to hooks makes presenters testable with plain data.</rationale>
+    </rule>
+  </section>
+
+  <section title="Polymorphic Component">
+    <rule>
+      <statement>When implementing polymorphic as props, include a TypeScript usage test that verifies href is typed on &lt;Box as="a"&gt;. Agents frequently produce generics that compile but do not type the element-specific attributes.</statement>
+      <rationale>The common mistake is Box&lt;T&gt; that compiles but strips element-specific props. A compile-time test catches this before it reaches a PR review.</rationale>
+    </rule>
+  </section>
+</text>

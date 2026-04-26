@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-test-types" title="Performance Test Types">
+  <summary>Five test types (load, stress, spike, endurance, scalability) with purpose, duration, and load characteristics.</summary>
+
+  <section title="Test Type Definitions">
+    <rule>
+      <statement>Always define an SLO (p50, p95, p99 latency, RPS, error rate ceiling) before running any test. Get human approval on the SLO numbers — they are product/business decisions.</statement>
+      <rationale>Measuring without a target produces data with no pass/fail verdict. SLO numbers encode business risk tolerance and must not be set unilaterally by an agent.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Establish a baseline on a stable build and commit it to .perf/baseline.json before any optimization work begins.</statement>
+      <rationale>Without a baseline, regressions and improvements are undetectable. Baseline must include git SHA, environment, and dataset size as metadata.</rationale>
+    </rule>
+
+    <section title="Load Test">
+      <p>Purpose: verify system under expected steady-state load. Duration: extended (hours). Users: normal to peak expected concurrency. Pass criterion: all SLO thresholds met throughout.</p>
+    </section>
+
+    <section title="Stress Test">
+      <p>Purpose: find the breaking point. Duration: until failure. Users: beyond maximum capacity. Pass criterion: system degrades gracefully (errors, not data corruption).</p>
+    </section>
+
+    <section title="Spike Test">
+      <p>Purpose: test sudden load increases. Duration: short bursts. Users: sudden jump from low to high. Pass criterion: system recovers to baseline latency within N seconds after spike.</p>
+    </section>
+
+    <section title="Endurance Test (Soak)">
+      <p>Purpose: surface memory leaks and resource exhaustion. Duration: 8-72 hours. Users: normal load sustained. Pass criterion: RSS, heap, and FD counts stable throughout.</p>
+    </section>
+
+    <section title="Scalability Test">
+      <p>Purpose: verify horizontal/vertical scaling headroom. Duration: varied. Users: incrementally increasing. Pass criterion: linear throughput scaling with added replicas.</p>
+    </section>
+  </section>
+
+  <section title="Tooling Rules">
+    <rule>
+      <statement>Use coordinated-omission-corrected tools (k6, wrk2, vegeta) for load tests. Never use tools that issue the next request only after the previous response (Apache Bench, naive scripts) — they underreport tail latency.</statement>
+      <rationale>Non-corrected tools synchronize request rate to server speed, hiding queuing delay. Real clients do not wait politely.</rationale>
+    </rule>
+    <rule>
+      <statement>Run load tests on a staging environment with production-equivalent data volume. Never draw conclusions from local-machine runs or empty-database tests.</statement>
+      <rationale>Empty DBs produce optimistic query plans. Local machines have different CPU governor, network, and I/O than production servers.</rationale>
+    </rule>
+    <rule>
+      <statement>Warm the cache and JIT for at least 60 seconds before recording results. Discard the ramp-up window from metrics.</statement>
+      <rationale>First-run results include import cost, JIT compilation, and cold cache fills. They are not representative of steady-state performance.</rationale>
+    </rule>
+    <reference path="templates/k6-scenario.js">k6 script with steady + spike scenarios and SLO thresholds</reference>
+    <reference path="scripts/perf-gate.py">Compare current metrics vs baseline JSON; exit 1 on regression</reference>
+  </section>
+</text>
