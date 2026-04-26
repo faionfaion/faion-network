@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-queries-and-automation" title="WIQL, Automation, REST API, and Agent Gotchas">
+  <summary>WIQL query patterns, board automation rules, Pipeline integration, and critical pitfalls for agents operating the ADO REST API.</summary>
+
+  <section title="WIQL Queries">
+    <example type="good">
+      <note>My active items ordered by priority.</note>
+      <code lang="sql"><![CDATA[
+SELECT [System.Id], [System.Title], [System.State]
+FROM WorkItems
+WHERE [System.AssignedTo] = @Me
+  AND [System.State] IN ('New', 'Active')
+ORDER BY [Microsoft.VSTS.Common.Priority]
+]]></code>
+    </example>
+    <example type="good">
+      <note>Current sprint burndown items.</note>
+      <code lang="sql"><![CDATA[
+SELECT [System.Id], [System.Title], [System.State],
+       [Microsoft.VSTS.Scheduling.RemainingWork]
+FROM WorkItems
+WHERE [System.IterationPath] = @CurrentIteration
+  AND [System.WorkItemType] IN ('User Story', 'Bug', 'Task')
+]]></code>
+    </example>
+    <rule>
+      <statement>Save WIQL as Shared Queries with stable URLs; agents should reference the URL, not the query body, so query updates do not break consumers.</statement>
+      <rationale>Query body references in agent code create drift — when the query changes, every consumer breaks silently.</rationale>
+    </rule>
+    <rule>
+      <statement>Note that @CurrentIteration is team-scoped; an agent querying across teams sees stale or wrong iteration data unless the team is explicitly specified.</statement>
+      <rationale>Multi-team ADO organisations have one iteration tree shared differently across team contexts. Unqualified @CurrentIteration returns the default team's iteration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Automation Rules">
+    <rule>
+      <statement>Use Boards Automation Rules for simple state transitions; use Azure Pipelines or Power Automate for cross-system workflows that exceed the Boards rule engine's capabilities.</statement>
+      <rationale>Boards automation rules are limited (no joins, no cross-project triggers); forcing complex logic into them produces fragile, invisible workflows.</rationale>
+    </rule>
+  </section>
+
+  <section title="REST API">
+    <rule>
+      <statement>Scope PAT tokens to the minimum required permissions per agent role; rotate every 90 days. Never store PAT in description fields — they are not encrypted beyond ADO defaults.</statement>
+      <rationale>PAT scope sprawl means a compromised token has organisation-wide write access. Description field storage creates a credential leak in work item history.</rationale>
+    </rule>
+    <rule>
+      <statement>JSON Patch operations are order-sensitive in the ADO API; set required fields before setting State, or the operation returns 200 with a ValidationError in the body.</statement>
+      <rationale>Silent ValidationErrors in 200 responses are the most common ADO API integration bug — the caller assumes success but the item was not updated.</rationale>
+    </rule>
+    <rule>
+      <statement>System.Tags is a semicolon-separated string, not an array; an agent setting it naively overwrites all existing tags.</statement>
+      <rationale>Tag overwrites are silent and not recoverable from standard history; read-then-merge is required for safe tag updates.</rationale>
+    </rule>
+    <reference path="templates/ado-create-story.py">Create User Story and link to Feature parent via REST</reference>
+  </section>
+
+  <antipattern>
+    <description>Agents marking work items "Closed" without verifying acceptance evidence is attached.</description>
+    <reason>Closing without evidence creates an audit gap. For regulated projects (CMMI), closure without an attached acceptance artefact fails SOX/SOC2 review.</reason>
+  </antipattern>
+  <antipattern>
+    <description>Linking by bare work item ID instead of full URL in relation payloads.</description>
+    <reason>ADO silently drops bare-ID relations. The relation must reference the full work-item URL to be persisted.</reason>
+  </antipattern>
+</text>
