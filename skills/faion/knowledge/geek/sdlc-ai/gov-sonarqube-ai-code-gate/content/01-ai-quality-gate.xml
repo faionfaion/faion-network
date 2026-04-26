@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ai-quality-gate" title="AI-Tuned Quality Gate via SonarQube + MCP">
+  <summary>Bind the project to a `Qualified for AI Code Assurance` quality gate and let the agent loop on Sonar findings via the MCP server until green.</summary>
+
+  <section title="Pick the AI-tuned gate, not the default Sonar way">
+    <p>SonarQube ships a default "Sonar way" gate built for human-authored code. The 2026 "Sonar way for AI Code" gate raises thresholds on the metrics where AI code regresses (cognitive complexity, duplication, hotspot density) and adds an AI trust score. Pick the AI gate at project creation, or clone it into a custom one.</p>
+
+    <rule testable="true">
+      <statement>The Sonar project MUST be bound to a quality gate flagged `Qualified for AI Code Assurance`. The gate MUST set: new-code coverage at least 80%, new-code duplications at most 3%, zero new bugs / vulnerabilities / security hotspots, and AI-trust-score at least the team's published floor. The PR check MUST be a required status check in branch protection. The agent MUST read findings through the SonarQube MCP server and rewrite until clean; merging a failing gate is forbidden.</statement>
+      <rationale>An AI-tuned gate plus an MCP read loop turns a one-shot review into an iterative constraint the agent can satisfy itself; without the AI tuning the gate accepts shallow tests and lookalike duplication that Sonar's 2026 telemetry flags as the dominant AI defect classes.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="properties"><![CDATA[
+# sonar-project.properties (committed)
+sonar.projectKey=acme_billing
+sonar.qualitygate=AI Code Assurance - Strict
+sonar.qualitygate.wait=true
+sonar.python.coverage.reportPaths=coverage.xml
+sonar.coverage.exclusions=**/migrations/**
+      ]]></code>
+      <note>`qualitygate.wait=true` makes the PR check block; `AI Code Assurance - Strict` is a custom gate cloned from `Sonar way for AI Code`.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="properties"><![CDATA[
+sonar.projectKey=acme_billing
+sonar.qualitygate=Sonar way
+# no qualitygate.wait, no AI gate
+      ]]></code>
+      <note>Default gate accepts AI lookalike-bug density and shallow-test thresholds that the AI gate would reject.</note>
+    </example>
+
+    <antipattern>
+      <description>Granting a per-PR "exception" via the SonarCloud UI to merge a failing gate so the agent can move on.</description>
+      <reason>The exception removes the audit signal — leadership sees green dashboards while the AI defect class compounds; subsequent agents learn the gate is optional.</reason>
+    </antipattern>
+
+    <reference path="templates/sonar-project.properties">Project config bound to the AI-tuned gate.</reference>
+    <reference path="templates/sonar-quality-gate.json">Custom AI quality-gate definition.</reference>
+    <reference href="https://docs.sonarsource.com/sonarqube-cloud/standards/ai-code-assurance/quality-gates-for-ai-code">Quality gates for AI code.</reference>
+    <reference href="https://docs.sonarsource.com/sonarqube-cloud/ai-capabilities/ai-code-assurance">SonarQube AI Code Assurance overview.</reference>
+    <reference href="https://securityboulevard.com/2026/03/how-to-optimize-sonarqube-for-reviewing-ai-generated-code/">Optimizing SonarQube for AI-generated code.</reference>
+  </section>
+</text>

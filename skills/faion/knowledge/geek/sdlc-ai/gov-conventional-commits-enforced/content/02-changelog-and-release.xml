@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-changelog-and-release" title="Changelog and Release Pipeline Driven by the Commit Log">
+  <summary>Use release-please / semantic-release to derive CHANGELOG entries and semver tags directly from the conformant commit log; never hand-edit.</summary>
+
+  <section title="Commit log is the source of truth">
+    <p>Once the grammar is locked, a release tool reads the merged commit subjects, infers the next semver, and rewrites `CHANGELOG.md`. Hand-editing the changelog or the version field defeats the determinism.</p>
+
+    <rule testable="true">
+      <statement>Repos MUST drive releases via one of `release-please`, `semantic-release`, or `changesets`, configured to read Conventional Commits. The mapping MUST be `feat` → minor, `fix` / `perf` → patch, `BREAKING CHANGE:` → major; chore/docs/test/style/build/ci do NOT bump version. `CHANGELOG.md` MUST be a generated artifact under `## [Unreleased]` until the release tool promotes the section. Agents MUST NOT hand-write version numbers in `package.json` / `pyproject.toml` / `Cargo.toml` and MUST NOT hand-edit released sections of `CHANGELOG.md`. The Unreleased section is the only place agents touch.</statement>
+      <rationale>Hand-edits compound: one missing fix in the changelog teaches the agent that the file is editable; six months later the release notes diverge from the log and consumers cannot trust the version.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/release-please.yml
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          release-type: python
+          package-name: my-pkg
+      ]]></code>
+      <note>release-please opens a `release-pr` summarizing the changelog; merging it tags and publishes.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+# Agent hand-edits CHANGELOG.md and version manually:
+git commit -m "chore: bump to 1.4.0"
+      ]]></code>
+      <note>The release tool now sees `chore:` (no bump) but the version moved; future runs report the wrong "since" range.</note>
+    </example>
+
+    <antipattern>
+      <description>Manually adding a "## 1.4.0" section to CHANGELOG.md to ship a hotfix faster, instead of merging a `fix:` PR.</description>
+      <reason>The next release-please run will collide with the manual section and either skip the entry or reopen it; the audit trail breaks.</reason>
+    </antipattern>
+
+    <reference href="https://github.com/googleapis/release-please">release-please.</reference>
+    <reference href="https://semantic-release.gitbook.io/semantic-release/">semantic-release docs.</reference>
+    <reference href="https://github.com/changesets/changesets">changesets (monorepo-friendly alternative).</reference>
+  </section>
+</text>

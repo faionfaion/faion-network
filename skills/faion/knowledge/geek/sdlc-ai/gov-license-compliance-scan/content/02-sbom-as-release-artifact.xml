@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-sbom-as-release-artifact" title="SBOM as a Signed, Versioned Release Artifact">
+  <summary>Emit an SPDX or CycloneDX SBOM with every release, sign it, and treat it as a first-class artifact attached to the tag.</summary>
+
+  <section title="SBOM is not a one-time PDF">
+    <p>EU CRA mandatory reporting (Sep 2026) and US EO 14028 require a machine-readable SBOM per release in SPDX or CycloneDX. The SBOM is a build artifact, not a PDF: regenerated from the locked dependency graph, signed with cosign, attached to the release.</p>
+
+    <rule testable="true">
+      <statement>Every tagged release MUST produce a CycloneDX 1.6 OR SPDX 2.3 SBOM regenerated from the lockfile (`pnpm-lock.yaml`, `uv.lock`, `Cargo.lock`, `go.sum`, `pom.xml`, etc.). The SBOM MUST be signed with `cosign attest` (keyless OIDC or KMS) and attached to the GitHub Release / artifact registry. The SBOM MUST be regenerated — NEVER hand-edited. The CI MUST fail the release if the SBOM is missing or its signature does not verify. Older SBOMs MUST be retained for the regulatory window (EU CRA: 10 years from end-of-support).</statement>
+      <rationale>A signed SBOM is the only evidence an auditor can trust; a hand-edited or unsigned SBOM is unfalsifiable and provides no compliance value when a CVE is reported against a transitive dep.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/release.yml (excerpt)
+- name: Generate SBOM
+  run: |
+    cyclonedx-py --format json --output sbom.cdx.json
+- name: Sign SBOM
+  run: |
+    cosign attest --predicate sbom.cdx.json \
+      --type cyclonedx ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+- name: Attach to release
+  uses: softprops/action-gh-release@v2
+  with:
+    files: sbom.cdx.json
+      ]]></code>
+      <note>Generated, signed with keyless OIDC, attached to the release tag.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+docs/sbom-2024-q4.pdf   # last updated 14 months ago, no signature
+      ]]></code>
+      <note>Static PDF, manually maintained, drifts immediately after the next dep bump.</note>
+    </example>
+
+    <antipattern>
+      <description>Generating the SBOM only on quarterly compliance review instead of every release.</description>
+      <reason>Between reviews the dep graph shifts; the SBOM no longer matches the deployed artifact, and CVE reachability claims cannot be defended.</reason>
+    </antipattern>
+
+    <reference href="https://cyclonedx.org/specification/overview/">CycloneDX 1.6 specification.</reference>
+    <reference href="https://spdx.dev/use/specifications/">SPDX 2.3 specification.</reference>
+    <reference href="https://docs.sigstore.dev/cosign/signing/attestation/">cosign attestations / keyless signing.</reference>
+    <reference href="https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act">EU Cyber Resilience Act overview.</reference>
+  </section>
+</text>

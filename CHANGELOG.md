@@ -23,6 +23,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
+- sdlc-ai-methodologies: pool-batch +4 gov- (31/52) — gov-sonarqube-ai-code-gate, gov-conventional-commits-enforced, gov-license-compliance-scan, gov-approval-token-signed-jwt (NEW shape: AGENTS.md + 2 content/*.xml + templates/). gov- category complete (4/4). IDs S-028..S-031 after rebase on concurrent inc-/task-/sec- batches.
 - sdlc-ai-methodologies: pool-batch +3 sec- (27/52) — sec-codeql-autofix-on-pr, sec-secrets-defense-in-depth, sec-trivy-pinned-supply-chain-scan (NEW shape: AGENTS.md + 2-3 content/*.xml + templates/). sec- category complete (3/3). IDs S-025..S-027 after rebase on concurrent mr-/inc-/task- batches.
 - sdlc-ai-methodologies: pool-batch +4 task- (24/52) — task-spec-kit-three-step, task-plan-mode-locked-execution, task-worktree-runtime-isolation, task-agent-fixable-triage-gate (NEW shape: AGENTS.md + content/*.xml + templates/). task- category complete (5/5).
 - sdlc-ai-methodologies: pool-batch +4 inc- (20/52) — inc-runbook-as-markdown-tagged-steps, inc-tool-tier-approval-gate, inc-read-only-investigation-default, inc-postmortem-auto-draft-no-publish (NEW shape: AGENTS.md + content/*.xml + templates/). inc- category complete (4/4).

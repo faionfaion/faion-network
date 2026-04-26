@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-allowlist-and-block" title="License Allowlist with Hard Block on Copyleft for Proprietary Builds">
+  <summary>Pin a per-product license allowlist, block copyleft contamination, and force the agent to escalate any non-allowlist license to a human.</summary>
+
+  <section title="Allow / flag / deny per dependency">
+    <p>License risk depends on distribution. SaaS-only products tolerate Apache/MIT/BSD/MPL but cannot tolerate AGPL. On-prem distributed binaries also forbid GPL except where the build can comply. The policy is encoded as data, not as judgement, so an agent can apply it without ambiguity.</p>
+
+    <rule testable="true">
+      <statement>Every repo MUST commit a `license-policy.yml` (or equivalent FOSSA / Black Duck policy) listing `allow`, `flag`, and `deny` SPDX identifiers per build target. The CI MUST fail when any dependency resolves to a `deny` license OR introduces a license not in `allow` / `flag`. For proprietary SaaS the deny list MUST include at minimum `GPL-2.0-only`, `GPL-3.0-only`, `AGPL-3.0-only`, `SSPL-1.0`. The agent MUST refuse to add a dependency whose declared license is not on the allowlist; if uncertain, escalate to a human, never silently accept. On every dependency change the agent MUST regenerate `NOTICE` / `THIRD_PARTY.md` from the lockfile, not by hand.</statement>
+      <rationale>Encoding the policy as machine-readable data turns license review from a once-a-quarter human task into a per-PR build gate; the agent gets a deterministic boundary instead of having to "decide" what is acceptable.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# license-policy.yml
+target: saas
+allow:  [MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, MPL-2.0]
+flag:   [LGPL-2.1-only, LGPL-3.0-only, EPL-2.0]   # need legal review
+deny:   [GPL-2.0-only, GPL-3.0-only, AGPL-3.0-only, SSPL-1.0, BUSL-1.1]
+unknown: deny
+      ]]></code>
+      <note>`unknown: deny` forces the agent to escalate when license metadata is missing.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Effective policy: "anything goes if tests pass"
+license-check: false
+      ]]></code>
+      <note>No policy means the agent accepts AGPL into a SaaS, triggering source-disclosure obligation across the stack.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding a dep with an unknown license and writing a comment "license to be reviewed later" so the build can move.</description>
+      <reason>The "later" review never happens; the obligation propagates with every release until a customer audit surfaces it.</reason>
+    </antipattern>
+
+    <reference path="templates/license-policy.yml">Allow / flag / deny SPDX policy.</reference>
+    <reference path="templates/license-check.yml">CI workflow running licensee + SBOM on every PR.</reference>
+    <reference href="https://github.com/licensee/licensee">licensee — GitHub's license detection tool.</reference>
+    <reference href="https://fossa.com/">FOSSA continuous license + SBOM platform.</reference>
+    <reference href="https://fossa.com/blog/best-practices-generating-high-quality-sboms/">FOSSA SBOM best practices.</reference>
+  </section>
+</text>

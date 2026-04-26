@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-token-shape" title="Required Claims and Lifetime of an Approval Token">
+  <summary>An approval token is a short-lived, scope-bound, single-use signed JWT — not a Slack reaction.</summary>
+
+  <section title="Closed claim set, short expiry">
+    <p>The token must encode exactly enough information for the agent's tool layer to verify the human authorized this specific call, on this specific target, within this specific incident, and not at any other time.</p>
+
+    <rule testable="true">
+      <statement>An approval token MUST be a JWT (RS256 / EdDSA) with at minimum these claims: `iss` (approval service), `sub` (human approver identity from SSO/IdP), `aud` (agent identity), `iat`, `exp` (≤300 seconds from `iat`), `jti` (unique, recorded for replay protection), `scope` (object: `tool`, `target`, `args_hash`), `correlation_id` (incident or task ID). The agent's tool layer MUST verify signature, `aud` match, `exp` not passed, `jti` not seen before, `scope.tool` matches the call, `scope.target` matches the call, and `scope.args_hash` matches `sha256(canonical(args))`. Failing any check, the call MUST be refused and an audit record emitted.</statement>
+      <rationale>Short expiry plus single-use plus args-hash binding means a token leaked or socially harvested cannot be replayed against a different call — the cryptographic envelope is the audit evidence.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "iss": "approve.faion.net",
+  "sub": "ruslan@faion.net",
+  "aud": "agent-deploy",
+  "iat": 1714125600,
+  "exp": 1714125900,
+  "jti": "01HW8N3K5R9F4Q1Z6T0",
+  "scope": {
+    "tool":   "kubectl_apply",
+    "target": "namespace/billing-prod",
+    "args_hash": "sha256:b8c3e9..."
+  },
+  "correlation_id": "INC-2026-0418-007"
+}
+      ]]></code>
+      <note>5-minute window, scoped to the exact target, replay-blocked by jti, bound to the incident.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+slack-message: "+1" reaction by @bob on message
+      ]]></code>
+      <note>Not signed, not scoped, replayable forever, edits invisible — no audit value.</note>
+    </example>
+
+    <antipattern>
+      <description>Issuing a long-lived (24h+) token with `scope: "*"` to "make the on-call workflow easier".</description>
+      <reason>The first leaked or socially harvested token grants the agent unlimited writes for a day; the entire identity boundary collapses to one bearer string.</reason>
+    </antipattern>
+
+    <reference path="templates/approval-token.json">Decoded payload showing the required claims.</reference>
+    <reference href="https://datatracker.ietf.org/doc/html/rfc7519">RFC 7519 — JSON Web Token.</reference>
+    <reference href="https://techcommunity.microsoft.com/blog/linuxandopensourceblog/agent-governance-toolkit-architecture-deep-dive-policy-engines-trust-and-sre-for/4510105">Microsoft Agent Governance Toolkit (April 2026).</reference>
+  </section>
+</text>
