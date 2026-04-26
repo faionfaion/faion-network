@@ -1,0 +1,38 @@
+# Drop-in GitHub Actions snippet for self-healing locator audit gate.
+name: e2e-with-healer
+
+on: pull_request
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm playwright install --with-deps
+      - name: Run E2E with healer
+        run: pnpm playwright test --reporter=list
+        # healer writes healed-selectors.diff and exits 1 on heal
+      - name: Check for unapproved heals
+        if: failure()
+        run: |
+          if [ -s healed-selectors.diff ]; then
+            echo "::error::Healer produced selector changes; review healed-selectors.diff"
+            cat healed-selectors.diff
+            exit 1
+          fi
+
+  healer-apply:
+    needs: e2e
+    if: contains(github.event.head_commit.message, 'healer:approved')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git apply healed-selectors.diff
+      - run: rm healed-selectors.diff
+      - name: Open follow-up PR
+        run: gh pr create --title "chore(e2e): apply approved healer diff" --body "Automated."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
