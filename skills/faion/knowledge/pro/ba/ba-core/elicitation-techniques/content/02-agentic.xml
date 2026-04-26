@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic" title="Elicitation Techniques — Agentic Workflow and Gotchas">
+  <summary>Two-step agent pattern: classify the situation, then select techniques. Key gotchas around single-technique fixation, default-to-interview bias, and missing techniques.</summary>
+
+  <section title="Two-Step Agent Pattern">
+    <rule>
+      <statement>Drive elicitation as a two-step decision: (1) classify the situation with concrete inputs, (2) select a ranked technique mix with rationale. Never combine steps — a single agent that both classifies and generates guide templates conflates selection bias with execution.</statement>
+      <rationale>Separating selection from execution allows the selection output to be reviewed and approved by a human BA before scheduling sessions.</rationale>
+    </rule>
+    <example type="good">
+      <note>Technique-selector prompt — strict JSON output, all inputs required.</note>
+      <code lang="text"><![CDATA[
+You are technique-selector-agent. Inputs (all required):
+  stakeholder_count, locales, time_budget_days,
+  sensitivity in {low,med,high},
+  prior_artifacts[],
+  regulated in {true,false},
+  goal in {discover_current_state, build_consensus, validate_design,
+            generate_ideas, quantify_demand, derive_integrations}
+
+Choose 1-3 techniques from BABOK v3 full list:
+[interview, workshop, focus_group, observation, survey, document_analysis,
+ prototyping, brainstorming, interface_analysis, collaborative_game]
+
+Rank by expected info-yield-per-hour for THIS situation. Output:
+{
+  picks: [{technique, rationale_cites_inputs[], est_sessions, prerequisite}],
+  rejected: [{technique, why_not}],
+  triangulation_pair_recommended: boolean
+}
+Refuse to output if stakeholder_count or goal is null.
+]]></code>
+    </example>
+    <example type="good">
+      <note>Interview-guide agent prompt — max 6 questions, no leading phrasing.</note>
+      <code lang="text"><![CDATA[
+You are interview-guide-agent.
+Inputs: {topic, interviewee_role, objectives[], prior_artifacts[]}
+Constraints:
+  6 main questions max
+  >=2 open + >=2 probing + 1 closing
+  No leading phrasing (ban: "don't you", "wouldn't", "isn't it true")
+  Each question must reference an objective by index
+Output: strict JSON matching the interview-guide template sections.
+]]></code>
+    </example>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>technique-selector-agent (sonnet) — pure selector; reads stakeholder-analysis output; emits ranked technique mix</item>
+      <item>interview-guide-agent (haiku) — fills interview-guide template from topic + role + prior artifacts</item>
+      <item>workshop-agenda-agent (sonnet) — drafts agenda, enforces ≥40% hands-on time, picks collaborative-game variants by goal</item>
+      <item>interface-analysis-agent (sonnet) — lists inbound/outbound system interfaces; derives integration requirements</item>
+      <item>faion-brainstorm — use as the converge step after BABOK brainstorming elicitation</item>
+    </list>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Single-row table fixation: agent reads the selection table and returns one technique, never a mix.</description>
+      <reason>Force the prompt to return a mix with an explicit triangulation pair; reject any output with only one technique.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Default-to-interview bias when inputs are sparse.</description>
+      <reason>Require explicit stakeholder_count and goal fields; return an error if either is null rather than defaulting to interview.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent proposes "ask the user how they do X" instead of "watch the user do X" when goal is discover_current_state.</description>
+      <reason>When goal == discover_current_state, force at least one observation slot in the output.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Brainstorming convergence skipped — agent returns 30 ideas without ranking.</description>
+      <reason>Mandate a converge prompt (faion-brainstorm review pass) before the brainstorming output is accepted.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Survey question type imbalance — agent over-uses Likert scale.</description>
+      <reason>Mix multiple-choice + ranking + 1 open question per section; validate against a known-good template.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Human-in-the-Loop Checkpoints">
+    <list>
+      <item>Technique selection signed off by a human BA before scheduling any sessions</item>
+      <item>Interviews and workshops run by humans — agents prepare, do not converse with stakeholders</item>
+      <item>Synthesis pass into requirement stubs reviewed by humans before feeding requirements-lifecycle</item>
+    </list>
+  </section>
+
+  <reference path="templates/interview-guide.md">Interview guide template with objective-linked question sections</reference>
+  <reference path="templates/workshop-agenda.md">Workshop agenda template with time blocks and deliverables</reference>
+</text>

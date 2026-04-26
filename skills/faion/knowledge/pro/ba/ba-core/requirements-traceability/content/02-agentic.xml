@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic" title="Requirements Traceability — Agentic Workflow and Gotchas">
+  <summary>Four bounded subagent jobs, two-shot prompt patterns for link proposal and impact walk, and LLM failure modes specific to traceability.</summary>
+
+  <section title="Four Bounded Agent Jobs">
+    <rule>
+      <statement>Limit each subagent to one of four jobs; agents must never touch the matrix file directly — only source artifact frontmatter: (1) propose typed links with quoted evidence and confidence, (2) detect orphans (no parent or no child), (3) detect cycles and horizontal conflicts, (4) impact analysis on a change request.</statement>
+      <rationale>Mixing jobs produces runaway agents that bulk-modify the matrix; separating them enables human review of each pass's diff before regeneration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Link-proposal prompt — five roles stated every call, requires quoted evidence from both artifacts.</note>
+      <code lang="text"><![CDATA[
+You are a requirements trace linker. Five allowed link roles:
+- satisfies: child req fulfils parent need (vertical down)
+- derives:   peer req is logically derived from another (horizontal)
+- implements: design/code realises a req (vertical down)
+- verifies:  test proves a req is satisfied (vertical up from test)
+- conflicts: two reqs cannot both hold (horizontal, requires resolution)
+
+SOURCE artifact (id, type, frontmatter + body):
+---
+{source_artifact}
+---
+CANDIDATES (id, type, abstract): {candidates}
+
+Output strict JSON:
+{ "source": "{id}", "links": [
+  { "target": "<id>", "role": "<one of five>",
+    "confidence": <0..1>,
+    "evidence_source": "<verbatim quote>",
+    "evidence_target": "<verbatim quote>",
+    "rationale": "<=1 sentence" } ] }
+
+Reject any link where evidence cannot be quoted from BOTH artifacts.
+Auto-reject confidence < 0.9.
+]]></code>
+    </example>
+    <example type="good">
+      <note>Impact-analysis prompt — graph-only; no inference of artifacts outside supplied graph.</note>
+      <code lang="text"><![CDATA[
+Given the link graph (JSON) and change request CR-{n}:
+List every artifact within 2 hops of the changed REQ.
+Group by type. Mark each Update / Review / No-op.
+Use ONLY the supplied graph; do not infer artifacts not present as nodes.
+Output: impact table (artifact_id, type, action, rationale) +
+        one-line effort estimate.
+]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Hallucinated links — agent proposes a link but cannot quote evidence from both artifacts.</description>
+      <reason>Require verbatim quote from source AND target; auto-reject confidence below 0.9; never accept a link the model proposes but cannot quote.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Role conflation — agent confuses satisfies with verifies or derives.</description>
+      <reason>Restate the full five-role vocabulary in the system prompt every turn; do not rely on the model retaining it across turns.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Forward bias — agent readily generates BR → FR links and misses TC → REQ (backward) and FR ↔ FR (horizontal).</description>
+      <reason>Run three separate passes, one per direction; combine results before human review.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bulk operation runaway — agent edits 500 links in one call with no diff review.</description>
+      <reason>Cap any agent run at 20 link edits; require human review of the diff before the generator regenerates the matrix.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Stale corpus during long agent runs — links point to artifacts that changed after run start.</description>
+      <reason>Lock the source set with a git SHA at run start; reject the run if the SHA moves before merge.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Mandatory Human Checkpoints">
+    <list>
+      <item>Link confidence below 0.9 — human reviews before merge</item>
+      <item>Any conflicts edge proposed — human resolves before accepting</item>
+      <item>Coverage drop greater than 1 percentage point from last baseline</item>
+      <item>Deletion of an auditor-signed-off link</item>
+    </list>
+  </section>
+</text>

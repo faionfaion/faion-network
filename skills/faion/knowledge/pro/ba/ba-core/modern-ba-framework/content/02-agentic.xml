@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic" title="Modern BA Framework — Agentic Workflow and Gotchas">
+  <summary>Selector and conformance-audit prompt patterns, recommended subagents, and LLM failure modes specific to framework selection.</summary>
+
+  <section title="Selector Prompt Pattern">
+    <example type="good">
+      <note>Framework-selector prompt — requires explicit scoring, no default to BABOK.</note>
+      <code lang="text"><![CDATA[
+Inputs: industry, regulation_set[], team_size, delivery_model,
+        contract_clauses[], existing_standards[],
+        stakeholder_count, audit_required (bool).
+Candidates: BABOK_v3, BA_Standard_2025, IREB_CPRE, PMI_PBA,
+            BCS_Diploma, SAFe_BA, Agile_Extension_BABOK_v2, SWEBOK_v4_Reqs.
+Score each on: regulatory_fit, team_maturity_fit, vocab_overlap_with_existing,
+               tooling_support, certification_availability, agile_friendliness.
+Pick ONE primary + up to 2 extensions.
+Produce vocabulary glossary (BA term -> chosen-framework term -> methodology slug).
+Emit ba-framework-decision.md. Halt for human sign-off.
+]]></code>
+    </example>
+    <example type="good">
+      <note>Post-delivery audit prompt — checks framework conformance against produced artifacts.</note>
+      <code lang="text"><![CDATA[
+Inputs: ba-framework-decision.md, list of produced artifacts in .aidocs/<feature>/.
+For each mandatory deliverable in chosen framework, check presence + quality.
+Emit framework-conformance.md with PASS/FAIL per artifact and remediation.
+]]></code>
+    </example>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>faion-brainstorm — divergence pass across all 8 candidate frameworks before converging; forces the agent off its default-BABOK prior</item>
+      <item>faion-feature-executor — after selection, executes routing planner using chosen framework vocabulary as context on every step</item>
+      <item>faion-sdd-executor-agent — wraps BA artifacts inside SDD spec.md / design.md / test-plan.md so the framework choice survives into delivery</item>
+      <item>faion-improver — periodic audit comparing produced artifacts vs chosen framework required deliverables; flags drift</item>
+      <item>General Task subagent — one per candidate framework, summarizes mandatory artifacts and audit hooks for the selector converge step</item>
+    </list>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>LLM defaults to BABOK because it dominates training data.</description>
+      <reason>Force structured candidate scoring on all 8 frameworks; without it, IREB, PMI-PBA, and BCS are never selected regardless of context fit.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent confabulates clause numbers, KA boundaries, and IIBA version dates.</description>
+      <reason>Pin a local fact-source (cached BABOK ToC + IREB CPRE syllabi) and require citations to it; reject any structural claim not present in the cached files.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent auto-proceeds from selection to routing without a human checkpoint.</description>
+      <reason>The human-in-the-loop checkpoint between selection and routing is the only place a real BA can correct the framework bias introduced by training data; auto-execution removes this control.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Certification recommendations are IIBA-only, creating vendor bias.</description>
+      <reason>Cross-reference IREB, PMI-PBA, BCS, and Scrum.org product-owner tracks before presenting to the user; single-vendor cert lists mislead procurement.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent edits the framework README tables to "modernize" them on each run.</description>
+      <reason>Confine edits to agent-integration.md and .aidocs/&lt;feature&gt;/; churning git history on the README tables destroys stable reference content.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Mandatory Human Checkpoints">
+    <list>
+      <item>Between selection and routing — human BA or PO corrects framework bias before any artifact is produced</item>
+      <item>At vocabulary glossary sign-off — confirms terms align with org language before downstream artifacts use them</item>
+      <item>Re-run trigger: regulation set change, contract change, primary delivery model change, or M&amp;A integration</item>
+    </list>
+  </section>
+</text>

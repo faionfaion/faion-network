@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic" title="Requirements Documentation — Agentic Workflow and Gotchas">
+  <summary>Four-role pipeline (scaffolder, populator, conformance-checker, renderer), EARS-formatter and scaffolder prompt patterns, and LLM failure modes in formal requirements documents.</summary>
+
+  <section title="Four-Role Pipeline">
+    <list>
+      <item>ba-doc-scaffolder (haiku) — emits empty document outline given {doc_type, standard, scale}; includes cover, version table, approval block (stub only), glossary reference</item>
+      <item>ba-doc-populator (sonnet) — fills sections from elicitation transcripts and shared glossary.md; applies SMART attributes and EARS patterns per requirement</item>
+      <item>ba-doc-conformance (sonnet) — validates against YAML schema: mandatory sections present, all FRs have ID + source + priority + AC, no forbidden words, no non-shall modals</item>
+      <item>ba-doc-renderer — pandoc from Markdown source to DOCX/PDF with deterministic cover page; binary artifact stored in Git LFS; never edited directly</item>
+    </list>
+    <rule>
+      <statement>faion-feature-executor must not move a feature out of todo/ until the conformance checker passes. The SDD spec.md becomes the FRD section; a separate BRD.md is rendered for sponsors.</statement>
+      <rationale>This enforces the conformance gate without requiring a separate CI pipeline step for every team.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Scaffolder prompt — emits empty outline only; no example content.</note>
+      <code lang="xml"><![CDATA[
+<role>BA standards scaffolder. Emit empty document outline only.</role>
+<inputs>
+  <doc_type>BRD|URS|SRS|FRD|Glossary</doc_type>
+  <standard>IEEE-830-1998|ISO-29148-2018|IREB-CPRE</standard>
+  <scale>minimal|standard|regulated</scale>
+</inputs>
+<rules>
+  Emit Markdown headings only; no example content.
+  Include cover page, version history table, approval block (stub), glossary reference.
+  For SRS/FRD: include Functional, Non-Functional (Performance, Security, Usability,
+    Reliability, Compatibility, Maintainability, Portability), Interfaces, Constraints,
+    Assumptions, Traceability Matrix (Appendix A).
+  Mark optional sections as: <!-- optional: scale=minimal -->
+</rules>
+]]></code>
+    </example>
+    <example type="good">
+      <note>EARS formatter — one requirement per call; outputs JSON with pattern classification.</note>
+      <code lang="xml"><![CDATA[
+<task>Rewrite requirement {req_id} into the correct EARS pattern.</task>
+<patterns>
+  Ubiquitous:   "The {system} shall {response}."
+  Event-driven: "When {trigger}, the {system} shall {response}."
+  State-driven: "While {state}, the {system} shall {response}."
+  Optional:     "Where {feature included}, the {system} shall {response}."
+  Unwanted:     "If {trigger}, then the {system} shall {response}."
+  Complex:      Combine above; one pattern per sentence.
+</patterns>
+<output>JSON: {req_id, original, ears_pattern, rewritten, rationale,
+               fallback_if_unchanged}</output>
+]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Standard hallucination — agent produces "IEEE 830-2025" sections that do not exist.</description>
+      <reason>Pin the standard in the prompt and reject any structural claim not present in the schema file; use the srs-conformance.yaml as ground truth.</reason>
+    </antipattern>
+    <antipattern>
+      <description>EARS pattern collapse — agent defaults all FRs to Ubiquitous.</description>
+      <reason>Force a per-requirement EARS classification call before phrasing; require the agent to name the pattern before writing the sentence.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Approval block fabricated — agent populates approval table with names and dates.</description>
+      <reason>Approval table must be a stub the human fills; an agent-populated approval block is a forged audit record.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Section-completeness theatre — agent fills every section with "N/A".</description>
+      <reason>Force "drop or fill" — emit nothing if no content applies; track section coverage as a metric, not section presence.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Glossary forks — agent redefines a term inline rather than reading the shared glossary.md.</description>
+      <reason>Provide glossary.md in context for every populate call; forbid in-doc definitions that conflict with the glossary.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Mandatory Human Checkpoints">
+    <list>
+      <item>Approval block — names, roles, dates are human-only; agent produces the stub</item>
+      <item>Status transition from Draft to InReview to Approved — requires human action in the source file</item>
+      <item>Any v2.0 re-baseline requiring sponsor re-sign-off</item>
+    </list>
+  </section>
+
+  <reference path="templates/user-story-template.md">Agile user story with Gherkin AC for sprint-card view</reference>
+</text>

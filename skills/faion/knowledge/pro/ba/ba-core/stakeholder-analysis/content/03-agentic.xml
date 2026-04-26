@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agentic" title="Stakeholder Analysis — Agentic Workflow and Gotchas">
+  <summary>How to drive stakeholder analysis with subagents: definition-freezing protocol, classifier prompt patterns, and LLM failure modes to guard against.</summary>
+
+  <section title="Definition-Freezing Protocol">
+    <rule>
+      <statement>Before classifying any stakeholder, persist a glossary.md and model-choice.md in the program BA folder declaring: stakeholder definition (verbatim from BABOK 3 §3.2 or ISO 21502 §4.4), responsibility model chosen, salience model chosen, and rationale for rejecting alternatives.</statement>
+      <rationale>LLMs treat "stakeholder" as a synonym for "user" or "persona" by default; injecting the frozen definition verbatim into the system prompt is the only reliable mitigation.</rationale>
+    </rule>
+    <rule>
+      <statement>Sponsor signs the register baseline; subsequent diffs require sponsor acknowledgment only for attitude or accountability changes, not for contact info updates.</statement>
+      <rationale>Keeps sign-off lightweight while protecting the high-stakes fields that affect engagement strategy.</rationale>
+    </rule>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>definitions-linter-agent (sonnet) — validates the register against the chosen model; RACI: exactly one A per row; RASCI: at most one A, multiple S allowed; flags violations as PR comments</item>
+      <item>salience-classifier-agent (sonnet) — applies Mitchell-Agle-Wood to each stakeholder; emits one of 8 types with citations per axis</item>
+      <item>babok-mapper-agent (sonnet) — maps the register to BABOK 3 §3.2 deliverables for audit traceability</item>
+      <item>password-scrubber-agent — sweeps stakeholder docs for leaked credentials or PII before commit</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Two-stage prompt: freeze definitions first, then classify against them.</note>
+      <code lang="text"><![CDATA[
+STAGE 1 — Definitions agent:
+Given the program charter, choose:
+- responsibility_model: one of [RACI, RASCI, DACI, RAPID]
+- salience_model: one of [Mendelow, Mitchell-Agle-Wood, both]
+- stakeholder_definition: verbatim from BABOK 3 §3.2 OR ISO 21502 §4.4
+
+Emit STRICT JSON:
+{ "responsibility_model": "...", "salience_model": "...",
+  "stakeholder_definition": "...", "rationale": "<=3 sentences",
+  "rejected_alternatives": ["..."] }
+Rule: cite the source clause; no invention.
+
+STAGE 2 — Salience classifier:
+For each stakeholder in the register, apply Mitchell-Agle-Wood:
+- power: ability to impose will (H/M/L + evidence)
+- legitimacy: socially accepted claim (H/M/L + evidence)
+- urgency: time-criticality of claim (H/M/L + evidence, cite deadline/SLA)
+Emit type: dormant|discretionary|demanding|dominant|dangerous|dependent|definitive|non-stakeholder.
+Rule: any axis without evidence => "unknown"; do not infer urgency from tone.
+]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent silently merges "stakeholder" with "user" or "persona".</description>
+      <reason>Default LLM training conflates these; fix by forcing the chosen stakeholder_definition into the system prompt verbatim every call.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent over-assigns R and C in RACI — every role gets something.</description>
+      <reason>Constrain output: max 1 A, max 3 R, require one-line rationale per C; validate with the lint script.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent infers urgency from message tone rather than from a cited deadline or SLA.</description>
+      <reason>Tone-based urgency is statistically biased; require "urgency_source: deadline/SLA/contractual" and reject entries without it.</reason>
+    </antipattern>
+    <antipattern>
+      <description>BABOK section citations hallucinate plausible-sounding clause numbers.</description>
+      <reason>Maintain a curated babok-toc.md and constrain the agent to cite only from it.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent auto-publishes the register.</description>
+      <reason>Names, attitudes, and salience scores are confidential; one accidental share ends stakeholder trust.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Mandatory Human-in-the-Loop Checkpoints">
+    <list>
+      <item>Freezing definitions and choosing the responsibility model</item>
+      <item>Choosing the salience model</item>
+      <item>Baselining the register</item>
+      <item>Any change to Accountable (A) assignments</item>
+    </list>
+  </section>
+</text>
