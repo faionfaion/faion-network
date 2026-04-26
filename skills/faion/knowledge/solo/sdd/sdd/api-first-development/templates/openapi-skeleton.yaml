@@ -1,0 +1,397 @@
+openapi: 3.1.0
+info:
+  title: "[API Name]"
+  version: 1.0.0
+  description: |
+    [Brief API description]
+
+    ## Authentication
+    All endpoints require Bearer token authentication unless marked otherwise.
+    Obtain tokens via the `/auth/login` endpoint.
+
+    ## Error Handling
+    Errors follow RFC 7807 Problem Details format.
+  contact:
+    name: API Support
+    email: api-support@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://api-dev.example.com/v1
+    description: Staging
+  - url: http://localhost:4010/v1
+    description: Prism mock
+
+tags:
+  - name: Resources
+    description: Core resource operations
+
+security:
+  - bearerAuth: []
+
+paths:
+  /resources:
+    get:
+      operationId: listResources
+      summary: List all resources
+      tags:
+        - Resources
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated list of resources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    post:
+      operationId: createResource
+      summary: Create a new resource
+      tags:
+        - Resources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateResourceRequest'
+      responses:
+        '201':
+          description: Resource created
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /resources/{resourceId}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceIdParam'
+
+    get:
+      operationId: getResource
+      summary: Get a resource by ID
+      tags:
+        - Resources
+      responses:
+        '200':
+          description: Resource details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    patch:
+      operationId: patchResource
+      summary: Partially update a resource
+      tags:
+        - Resources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchResourceRequest'
+      responses:
+        '200':
+          description: Resource updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      operationId: deleteResource
+      summary: Delete a resource
+      tags:
+        - Resources
+      responses:
+        '204':
+          description: Resource deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from /auth/login. Include as "Authorization: Bearer <token>"
+
+  schemas:
+    Resource:
+      type: object
+      required: [id, name, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "My Resource"
+        description:
+          type: ['string', 'null']
+          maxLength: 5000
+          example: "A detailed description"
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2026-01-15T12:00:00Z"
+        updatedAt:
+          type: ['string', 'null']
+          format: date-time
+          readOnly: true
+          example: "2026-01-20T09:30:00Z"
+
+    ResourceStatus:
+      type: string
+      enum: [active, inactive, archived]
+      default: active
+      example: "active"
+
+    CreateResourceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "My Resource"
+        description:
+          type: string
+          maxLength: 5000
+          example: "A detailed description"
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+
+    PatchResourceRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Updated Name"
+        description:
+          type: ['string', 'null']
+          maxLength: 5000
+          example: "Updated description"
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+
+    ResourceList:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Resource'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    Pagination:
+      type: object
+      required: [page, limit, total, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        total:
+          type: integer
+          minimum: 0
+          example: 42
+        totalPages:
+          type: integer
+          minimum: 0
+          example: 3
+
+    Error:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: "https://api.example.com/errors/validation"
+        title:
+          type: string
+          example: "Validation Error"
+        status:
+          type: integer
+          example: 400
+        detail:
+          type: string
+          example: "Request validation failed"
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationError'
+
+    ValidationError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          example: "body.name"
+        message:
+          type: string
+          example: "Name is required"
+        code:
+          type: string
+          example: "required"
+
+  parameters:
+    ResourceIdParam:
+      name: resourceId
+      in: path
+      required: true
+      description: Unique resource identifier
+      schema:
+        type: string
+        format: uuid
+        example: "123e4567-e89b-12d3-a456-426614174000"
+
+    PageParam:
+      name: page
+      in: query
+      description: Page number (1-indexed)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+        example: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+        example: 20
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: "https://api.example.com/errors/validation"
+            title: "Validation Error"
+            status: 400
+            detail: "Request validation failed"
+            errors:
+              - field: "body.name"
+                message: "Name is required"
+                code: "required"
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: "https://api.example.com/errors/unauthorized"
+            title: "Unauthorized"
+            status: 401
+            detail: "Authentication token is missing or invalid"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: "https://api.example.com/errors/not-found"
+            title: "Not Found"
+            status: 404
+            detail: "The requested resource was not found"
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: "https://api.example.com/errors/conflict"
+            title: "Conflict"
+            status: 409
+            detail: "A resource with this identifier already exists"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: "https://api.example.com/errors/internal"
+            title: "Internal Server Error"
+            status: 500
+            detail: "An unexpected error occurred"

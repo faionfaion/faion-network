@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-server-hardening" title="sshd Server Hardening Settings">
+  <summary>Critical sshd settings for Ubuntu/Debian VPS: key-only auth, access control, modern crypto — applied via drop-in file in sshd_config.d/ to survive package upgrades.</summary>
+
+  <section title="Drop-in Configuration Model">
+    <rule>
+      <statement>Always write custom SSH settings to /etc/ssh/sshd_config.d/99-hardening.conf rather than editing /etc/ssh/sshd_config directly. Drop-in files survive OpenSSH package upgrades.</statement>
+      <rationale>Editing sshd_config directly risks losing changes on package upgrade. Drop-in files in sshd_config.d/ are merged alphabetically (later files win) and survive upgrades cleanly.</rationale>
+    </rule>
+    <reference path="templates/99-hardening.conf">Complete drop-in sshd config file</reference>
+  </section>
+
+  <section title="Key-Only Authentication">
+    <rule>
+      <statement>Set PasswordAuthentication no, ChallengeResponseAuthentication no, KbdInteractiveAuthentication no, and PubkeyAuthentication yes. Keep UsePAM yes for session management.</statement>
+      <rationale>Key-only auth eliminates brute-force password attacks entirely. ChallengeResponseAuthentication and KbdInteractiveAuthentication are alternative names for the same mechanism — both must be disabled to fully block keyboard-interactive login.</rationale>
+    </rule>
+  </section>
+
+  <section title="Access Control Settings">
+    <list>
+      <item>PermitRootLogin no — never allow direct root SSH</item>
+      <item>AllowUsers nero — whitelist specific users (space-separated for multiple)</item>
+      <item>MaxAuthTries 3 — lock out after 3 failed attempts</item>
+      <item>LoginGraceTime 30 — 30 seconds to authenticate</item>
+      <item>MaxSessions 10 — enough for AI agent parallel SSH (increase to 20 for heavy agent use)</item>
+    </list>
+    <antipattern>
+      <description>Setting AllowUsers in multiple drop-in files. The last file alphabetically wins, silently excluding users set in earlier files.</description>
+      <reason>Consolidate AllowUsers into a single drop-in file to avoid invisible user lockout.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cryptographic Hardening">
+    <rule>
+      <statement>Restrict KexAlgorithms to curve25519 and sntrup761 hybrid. Restrict Ciphers to AEAD-only (chacha20-poly1305, aes256-gcm, aes128-gcm). Remove weak host keys (RSA, ECDSA) and keep only ssh_host_ed25519_key.</statement>
+      <rationale>Default OpenSSH includes legacy algorithms for compatibility. Restricting to modern algorithms prevents downgrade attacks. AEAD ciphers provide both encryption and authentication without separate MAC negotiation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+HostKey /etc/ssh/ssh_host_ed25519_key
+]]></code>
+    </example>
+  </section>
+
+  <section title="Verification">
+    <rule>
+      <statement>Always run sudo sshd -t to validate config syntax before restarting sshd. Follow with sudo sshd -T to show the effective merged configuration including all drop-in files.</statement>
+      <rationale>sshd -t validates syntax but not runtime issues (missing host key file). Always follow with systemctl status ssh after restart to confirm the daemon is running.</rationale>
+    </rule>
+  </section>
+</text>

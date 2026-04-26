@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-volumes-security" title="Volumes and Security">
+  <summary>Named volumes for persistent data, read-only filesystems with tmpfs for writable temp dirs, non-root users, dropped capabilities, and secrets via env_file rather than hardcoded in compose.yaml.</summary>
+
+  <section title="Named Volumes">
+    <rule>
+      <statement>Use named volumes (postgres-data:) for all persistent data. Never use anonymous volumes (just /app/data) — they are hard to identify, back up, and clean up. Use bind mounts (./src:/app) only in development, not production.</statement>
+      <rationale>Named volumes appear in docker volume ls with meaningful names. Anonymous volumes are identified only by UUID. Bind mounts in production create host-path coupling and UID/GID permission mismatches between the container user and host user.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  db:
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
+    driver: local
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Hardening">
+    <rule>
+      <statement>For production services: set user: "1000:1000" to run as non-root, read_only: true with tmpfs for /tmp and /var/run, cap_drop: [ALL], and security_opt: [no-new-privileges:true].</statement>
+      <rationale>Root containers can modify host files via volume mounts. Read-only filesystems prevent tampering with application binaries. Dropping all capabilities removes privileged operations that most app containers never need.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  app:
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+      - /var/run:size=10M
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+]]></code>
+    </example>
+  </section>
+
+  <section title="Secrets and Environment">
+    <rule>
+      <statement>Use env_file: .env to load secrets. Never hardcode credentials in compose.yaml. The compose.yaml file should be safe to commit to version control; .env must be in .gitignore with a .env.example provided.</statement>
+      <rationale>Hardcoded credentials in compose.yaml are committed to version history and visible to anyone with repo access. env_file keeps secrets out of the repo entirely.</rationale>
+    </rule>
+  </section>
+
+  <section title="Logging">
+    <rule>
+      <statement>Configure log rotation on every service with the json-file driver: max-size: "10m", max-file: "5". Without rotation, container log files grow without bound and fill the host disk.</statement>
+      <rationale>Docker stores container logs as JSON files on the host. A verbose service with no log rotation can fill /var/lib/docker with gigabytes of log data.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  app:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+]]></code>
+    </example>
+  </section>
+</text>

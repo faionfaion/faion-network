@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-schedule-reference" title="Cron Schedule Reference">
+  <summary>Cron syntax, common schedule expressions, crontab management commands, and when to use systemd timers instead of cron.</summary>
+
+  <section title="Cron Expression Syntax">
+    <p>Format: minute (0-59) | hour (0-23) | day-of-month (1-31) | month (1-12) | day-of-week (0-7, both 0 and 7 = Sunday)</p>
+    <list>
+      <item>*/5 * * * *  — every 5 minutes</item>
+      <item>0 * * * *   — every hour at :00</item>
+      <item>0 3 * * *   — daily at 3 AM</item>
+      <item>0 7 * * 1   — every Monday at 7 AM</item>
+      <item>15 7 1 * *  — first of month at 7:15</item>
+      <item>@reboot     — once at server boot</item>
+      <item>@daily      — equivalent to 0 0 * * *</item>
+    </list>
+    <rule>
+      <statement>Stagger jobs by 5-10 minutes from each other. Never schedule multiple heavy jobs at exactly :00 — this creates simultaneous resource spikes.</statement>
+      <rationale>Most admins default to :00 for hourly and :00/:30 for half-hourly. Staggering distributes load and avoids disk/CPU contention between jobs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Crontab Management">
+    <list>
+      <item>crontab -e   — edit crontab for current user</item>
+      <item>crontab -l   — list current crontab</item>
+      <item>crontab crontab.txt   — install from file (version-controlled)</item>
+      <item>crontab -l &gt; ~/workspace/configs/crontab.txt   — backup crontab</item>
+    </list>
+    <rule>
+      <statement>Store the crontab as a file in the project repo (crontab.txt) and manage it with `crontab crontab.txt`. This provides version control and reproducible server setup.</statement>
+      <rationale>Crontab edited in-place has no history. A stored file can be restored after accidental deletion, diffed across servers, and committed with the infrastructure code.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cron vs systemd Timers">
+    <rule>
+      <statement>Use systemd timers instead of cron when the job needs: journald logging (Persistent=true for missed runs), resource limits (MemoryMax=, CPUQuota=), or dependency ordering (After=, Wants=).</statement>
+      <rationale>Cron has no built-in missed-run recovery, no resource limits, and no dependency system. systemd timers provide all three at the cost of two unit files instead of one crontab line.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# When to use cron (simple, familiar, portable):
+0 3 * * * /home/nero/workspace/scripts/backup.sh >> /var/log/backup.log 2>&1
+
+# When to use systemd timer (needs missed-run recovery):
+# backup.timer + backup.service with Persistent=true
+]]></code>
+    </example>
+  </section>
+</text>

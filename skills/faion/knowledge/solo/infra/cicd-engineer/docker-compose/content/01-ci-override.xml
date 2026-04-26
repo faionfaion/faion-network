@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ci-override" title="CI Compose Override Pattern">
+  <summary>compose.ci.yaml override file that adapts a production compose.yaml for CI: removes port bindings (expose: only), increases start_period for slow runners, injects secrets from env vars instead of .env files.</summary>
+
+  <section title="CI Override File Purpose">
+    <rule>
+      <statement>Create a compose.ci.yaml override file that only changes CI-specific settings. Base the CI stack on the production compose.yaml plus the override: docker compose -f compose.yaml -f compose.ci.yaml up -d --wait</statement>
+      <rationale>Keeping a separate CI override avoids duplicating the full service definition. The override only sets what is different in CI: no port bindings, generous timeouts, CI-injected secrets.</rationale>
+    </rule>
+    <reference path="templates/compose.ci.yaml">CI override file</reference>
+  </section>
+
+  <section title="No Port Bindings in CI">
+    <rule>
+      <statement>Replace ports: mappings with expose: in the CI override for all internal services. Use the service DNS name for inter-container communication inside CI. Port bindings cause failures when multiple CI jobs run concurrently on the same runner.</statement>
+      <rationale>ports: maps a host port to a container port. On a shared CI runner with concurrent jobs, two jobs trying to bind the same host port (e.g., 5432 for PostgreSQL) will fail. expose: makes the port available only within the Docker network.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# compose.ci.yaml
+services:
+  db:
+    # Remove: ports: ["5432:5432"]  from compose.override.yaml (dev only)
+    expose: ["5432"]  # Internal only — no host port binding
+
+  app:
+    expose: ["8000"]
+    environment:
+      - DATABASE_URL=postgres://db:5432/app  # Use service name, not localhost
+]]></code>
+    </example>
+  </section>
+
+  <section title="Generous start_period for CI Runners">
+    <rule>
+      <statement>Set start_period to at least 120s for database services in the CI override. Shared CI runners have variable CPU allocation — a database that starts in 5s locally may take 60s+ on a shared runner.</statement>
+      <rationale>Health check start_period is the grace period before failure counts start. If start_period is too short on a slow runner, the health check fails before the database is ready, causing depends_on: service_healthy to never become true.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI Secrets from Environment Variables">
+    <rule>
+      <statement>In the CI override, inject secrets via environment variables from CI secrets (GitHub Secrets, GitLab CI variables) rather than copying the .env file pattern. Never check .env into CI or copy it to runners.</statement>
+      <rationale>The .env file exists on developer machines and should not be replicated to CI. CI systems have their own secret management (GitHub Secrets, GitLab Variables) that injects values as environment variables at run time.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,84 @@
+# .spectral.yaml — org-standard Spectral ruleset for OpenAPI 3.1 specs
+#
+# Usage:
+#   spectral lint openapi.yaml --ruleset .spectral.yaml
+#
+# Install: npm install -g @stoplight/spectral-cli
+
+extends:
+  - spectral:oas
+
+rules:
+  # --- ERRORS: block CI ---
+
+  # Every operation must have an operationId (required for code generation)
+  operation-operationId: error
+
+  # Every operation must have at least one tag (required for SDK grouping)
+  operation-tags: error
+
+  # Schema must be valid OpenAPI 3.x
+  oas3-schema: error
+
+  # Path parameters must be declared in the parameters section
+  path-params: error
+
+  # operationId must be URL-safe camelCase (required for function name generation)
+  operation-operationId-valid-in-url:
+    description: operationId must match ^[a-zA-Z][a-zA-Z0-9]*$ (camelCase, URL-safe)
+    given: "$.paths[*][*].operationId"
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-zA-Z][a-zA-Z0-9]*$"
+
+  # No trailing slashes in paths
+  path-no-trailing-slash:
+    description: Paths must not end with /
+    given: "$.paths[*]~"
+    severity: error
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "/$"
+
+  # 4xx/5xx responses must use the shared Error schema
+  response-error-schema:
+    description: Error responses (4xx/5xx) must reference a schema containing "Error"
+    given: "$.paths[*][*].responses[?(@property >= '400')].content['application/json'].schema"
+    severity: error
+    then:
+      field: "$ref"
+      function: pattern
+      functionOptions:
+        match: "Error"
+
+  # --- WARNINGS: fail CI in strict mode, allowed in development ---
+
+  # API info should have contact details
+  info-contact: warn
+
+  # Top-level API description is expected
+  info-description: warn
+
+  # Every operation should have a description
+  operation-description: warn
+
+  # Every operation should have a summary
+  operation-summary: warn
+
+  # Every tag should have a description
+  tag-description: warn
+
+  # --- HINTS: informational only ---
+
+  # Components should be referenced at least once (orphaned schemas waste context)
+  no-unused-components:
+    description: All components should be referenced at least once
+    given: "$.components.schemas"
+    severity: hint
+    then:
+      function: unreferencedReusableObject
+      functionOptions:
+        reusableObjectsLocation: "#/components/schemas"

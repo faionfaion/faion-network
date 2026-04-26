@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-pipeline-integration" title="CI Pipeline Integration">
+  <summary>GitHub Actions step sequence for compose-based integration tests: validate config, bring up with --wait, run tests, always tear down with volume cleanup. Layer cache setup for faster builds.</summary>
+
+  <section title="Step Sequence">
+    <rule>
+      <statement>In CI pipelines using Compose for integration tests, always follow this order: (1) docker compose config --quiet to validate, (2) docker compose up -d --wait to start and wait for healthy, (3) run tests, (4) docker compose down -v --remove-orphans in an if: always() step.</statement>
+      <rationale>Validation catches YAML errors before spinning up containers. --wait blocks until all health checks pass, eliminating sleep hacks. if: always() on teardown ensures volumes are cleaned up even when tests fail.</rationale>
+    </rule>
+    <reference path="templates/github-actions-step.yaml">GitHub Actions integration test job</reference>
+  </section>
+
+  <section title="docker compose up --wait">
+    <rule>
+      <statement>Use docker compose up -d --wait (Compose v2.1+) instead of manual sleep or polling loops in CI. --wait blocks until all services report healthy status before returning control to the pipeline.</statement>
+      <rationale>Manual sleep is fragile: too short causes test failures on slow runners, too long wastes CI minutes. --wait adapts to actual readiness, blocking exactly as long as needed.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using sleep 30 after docker compose up -d in CI to "wait for services to start".</description>
+      <reason>Sleep values that work in test become flaky on slower runners and waste time on faster ones. Use --wait with proper health checks instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Teardown in if: always()">
+    <rule>
+      <statement>Always run docker compose down -v --remove-orphans in a step with if: always() in GitHub Actions (or equivalent always() in GitLab CI). This ensures cleanup runs whether tests pass or fail.</statement>
+      <rationale>If tests fail, the pipeline step is skipped by default. Without if: always() on teardown, volumes accumulate across failed runs and fill the runner disk. --remove-orphans removes containers from previous runs that share the project name.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+- name: Tear down stack
+  if: always()
+  run: docker compose -f compose.yaml -f compose.ci.yaml down -v --remove-orphans
+]]></code>
+    </example>
+  </section>
+
+  <section title="Docker Layer Cache">
+    <rule>
+      <statement>Configure Docker layer cache in GitHub Actions using buildx with --cache-from and --cache-to type=registry. Without explicit cache configuration, every CI run rebuilds all layers from scratch.</statement>
+      <rationale>Docker build cache is not shared between CI runner jobs by default. Registry-mode cache stores layers in the container registry and is accessible across all runners, dramatically reducing build time for subsequent runs.</rationale>
+    </rule>
+  </section>
+</text>

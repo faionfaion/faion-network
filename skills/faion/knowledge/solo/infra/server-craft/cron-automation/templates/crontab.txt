@@ -1,0 +1,39 @@
+# Crontab Template
+# Edit: crontab -e | List: crontab -l | Install: crontab crontab.txt
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/nero/.local/bin
+MAILTO=""
+
+# === Config Sync ===
+*/15 * * * * /home/nero/workspace/scripts/sync-config.sh >/dev/null 2>&1
+
+# === FLOW Monitoring ===
+# Hourly health check (silent on success)
+0 * * * * /home/nero/workspace/scripts/flow-hourly.sh >> /var/log/nero-flow.log 2>&1
+
+# Checkpoint summaries (5min after hourly to avoid race)
+5 6,9,12,15,18,21 * * * /home/nero/workspace/scripts/flow-summarize.sh >> /var/log/nero-flow.log 2>&1
+
+# Daily report (22:00)
+0 22 * * * /home/nero/workspace/scripts/flow-send-daily.sh >> /var/log/nero-flow.log 2>&1
+
+# Weekly report (Monday 7:00)
+0 7 * * 1 /home/nero/workspace/scripts/flow-send-weekly.sh >> /var/log/nero-flow.log 2>&1
+
+# Monthly report (1st of month 7:15)
+15 7 1 * * /home/nero/workspace/scripts/flow-send-monthly.sh >> /var/log/nero-flow.log 2>&1
+
+# === Backup ===
+# Daily database backup (3:00)
+0 3 * * * /home/nero/workspace/scripts/backup.sh >> /var/log/nero-backup.log 2>&1
+
+# Weekly integrity check (Sunday 5:00)
+0 5 * * 0 /home/nero/workspace/scripts/backup-check.sh >> /var/log/nero-backup.log 2>&1
+
+# === Maintenance ===
+# Weekly Docker cleanup (Sunday 4:00)
+0 4 * * 0 docker system prune -f >> /var/log/nero-maintenance.log 2>&1
+
+# === Startup ===
+@reboot sleep 30 && /home/nero/workspace/scripts/startup-heartbeat.sh >> /var/log/nero-startup.log 2>&1

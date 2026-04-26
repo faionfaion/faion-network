@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-writing-rules" title="Design Doc Writing Rules">
+  <summary>Required sections, the non-goals rule, alternatives quality bar, ADR extraction, and agent-specific gotchas for LLM-assisted design doc writing.</summary>
+
+  <section title="Required Sections">
+    <rule>
+      <statement>Every design doc must contain: overview (1-2 paragraphs), context/background, goals (specific and measurable), non-goals (explicit), proposed solution/design, alternatives considered (minimum 2 genuine alternatives), cross-cutting concerns, and open questions. Missing any of these signals an incomplete doc.</statement>
+      <rationale>Each required section serves a distinct purpose: overview provides entry-point clarity, non-goals prevent scope creep, alternatives document the reasoning behind the chosen approach, and open questions track unresolved risks. Omitting any of them means future readers must reconstruct reasoning from context, and reviewers cannot give informed sign-off.</rationale>
+    </rule>
+    <list>
+      <item>Overview: 1-2 paragraphs; readable by someone unfamiliar with the project</item>
+      <item>Context and background: current system state, constraints, what led to this</item>
+      <item>Goals: specific and measurable success criteria</item>
+      <item>Non-goals: explicit list of what is out of scope</item>
+      <item>Proposed design: architecture, data model, API contracts, key decisions</item>
+      <item>Alternatives considered: at least 2 with pros, cons, rejection rationale</item>
+      <item>Cross-cutting concerns: security, privacy, scalability, reliability, observability</item>
+      <item>Open questions: unresolved items with owners</item>
+    </list>
+  </section>
+
+  <section title="Non-Goals Rule">
+    <rule>
+      <statement>Include a non-goals section in every design doc. List at least two explicit non-goals. Non-goals must be real scope boundaries — not obvious statements that nobody would expect. When reviewers raise "have you considered X?", the answer is either in the design or in the non-goals.</statement>
+      <rationale>Non-goals prevent scope creep discussions during review and implementation. When a non-goal is not written down, every reviewer asks the same question independently. Explicitly stating non-goals sets boundaries that allow the team to focus the review on the actual proposed scope.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+## Non-Goals
+
+- Real-time collaboration (multiple editors on the same doc simultaneously) — planned for v2
+- Mobile-native UI — web-responsive layout is sufficient for initial release
+- Offline-first caching — requires service worker infrastructure not yet in place
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+## Non-Goals
+
+- We are not building the entire product at once
+- We will not rewrite everything in a new language
+]]></code>
+      <note>These are obvious and add no value. Non-goals must be specific scope boundaries that readers might actually assume are in scope.</note>
+    </example>
+  </section>
+
+  <section title="Alternatives Quality Bar">
+    <rule>
+      <statement>Include at least two genuine alternatives — not strawmen. Each alternative must have: a brief description, honest pros, honest cons, and a clear "why not chosen" rationale. Always include "do nothing" as an alternative when applicable.</statement>
+      <rationale>Strawman alternatives (alternatives that are obviously worse) signal that the author avoided the hard thinking. Genuine alternatives show that tradeoffs were seriously considered. The "why not chosen" rationale is the most important part: it documents the reasoning that future engineers can use to revisit the decision if constraints change.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+## Alternatives Considered
+
+### Alternative 1: Event-driven with message queue
+
+Use Kafka to decouple the write pipeline from downstream consumers.
+
+- Pros: consumers can scale independently; producer is not blocked by slow consumers
+- Cons: adds operational complexity (Kafka cluster); introduces at-least-once delivery
+- Why not chosen: our current scale (100 RPS) does not justify the Kafka overhead; revisit if we exceed 10k RPS
+
+### Alternative 2: Synchronous polling by consumers
+
+Consumers poll an API endpoint for new records every 30 seconds.
+
+- Pros: no new infrastructure; simple to implement and debug
+- Cons: up to 30s latency; polling adds unnecessary load at low event rates
+- Why not chosen: 30s latency violates NFR-2 (sub-5s delivery requirement)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Review Process">
+    <rule>
+      <statement>Set a review deadline when circulating a design doc. Cap required reviewers at 5-7. For async review, specify comment format expectations in the distribution message. For synchronous review, start with 10-20 minutes of silent reading before discussion.</statement>
+      <rationale>Design docs without a deadline stay in "in review" indefinitely. Too many required reviewers causes diffusion of responsibility — everyone assumes someone else will catch the issue. Silent reading at the start of a review meeting eliminates the presentation overhead and ensures all reviewers have actually read the doc before discussion.</rationale>
+    </rule>
+  </section>
+
+  <section title="ADR Extraction">
+    <rule>
+      <statement>After a design doc is approved, extract each significant architectural decision into a separate Architecture Decision Record (ADR) committed to the repository. Link the ADR from the design doc. ADRs are immutable once accepted; the design doc can evolve but the ADR records the decision as made.</statement>
+      <rationale>Design docs evolve and may be archived or updated over time. ADRs are permanent records that explain why the codebase is structured the way it is. Without ADRs, engineers inherit code with no context for the decisions behind it, leading to repeated debates about settled questions.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+## Architecture Decisions
+
+The following decisions from this design doc have been extracted as ADRs:
+- [ADR-042: Database choice — PostgreSQL over MongoDB](../decisions/adr-042-database.md)
+- [ADR-043: API versioning — URL path over header](../decisions/adr-043-api-versioning.md)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <rule>
+      <statement>When generating a design doc with an LLM, always require: (1) a human review pass before marking APPROVED; (2) at least two genuine alternatives, not placeholder text; (3) cross-cutting concerns filled with project-specific content, not generic boilerplate. Reject docs where these sections contain only template placeholders.</statement>
+      <rationale>LLMs pattern-match to design doc templates and generate authoritative-sounding but generic content. The most dangerous failure mode is a doc that looks complete but contains no actual domain-specific constraints. The three checks above catch the most common LLM failure patterns: missing review, strawman alternatives, and uncustomized boilerplate.</rationale>
+    </rule>
+    <antipattern>
+      <description>Sending a design doc to stakeholders without a human reviewing the LLM-generated content for accuracy. LLMs produce confident text that may contain incorrect assumptions about system constraints, organizational context, or technical feasibility.</description>
+      <reason>LLM-generated docs sound authoritative while potentially missing the domain knowledge that makes a design doc valuable. A human review pass is the only way to catch incorrect assumptions before they are baked into the implementation.</reason>
+    </antipattern>
+  </section>
+</text>

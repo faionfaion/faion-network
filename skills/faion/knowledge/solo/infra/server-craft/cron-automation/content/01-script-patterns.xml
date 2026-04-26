@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-script-patterns" title="Cron Script Patterns">
+  <summary>Standard cron script structure with set -euo pipefail, flock locking, log function, trap cleanup, and environment loading — the minimum required for production cron jobs.</summary>
+
+  <section title="Required Script Structure">
+    <rule>
+      <statement>Every cron script must include: shebang, set -euo pipefail, logging function writing to a log file, flock-based lock preventing overlapping runs, trap cleanup EXIT for failure alerting, and source of the project .env file.</statement>
+      <rationale>Cron runs with minimal PATH and no user environment. Without these patterns a script that works manually will fail silently in cron, run twice simultaneously, and leave no trace of failure.</rationale>
+    </rule>
+    <reference path="templates/cron-script.sh">Full cron script template with all required patterns</reference>
+  </section>
+
+  <section title="Environment Handling">
+    <rule>
+      <statement>Set SHELL=/bin/bash, a full PATH, and MAILTO="" at the top of every crontab. Source the project .env file inside each script using: if [ -f "$HOME/workspace/.env" ]; then set -a; source "$HOME/workspace/.env"; set +a; fi</statement>
+      <rationale>Cron's default PATH is /usr/bin:/bin. Any script calling project binaries, Python venvs, or reading secrets will fail silently unless PATH and secrets are explicitly loaded.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Crontab with no header — wrong PATH, mail output piles up
+0 3 * * * /home/nero/workspace/scripts/backup.sh
+]]></code>
+      <note>No SHELL, no PATH, no MAILTO="". Script may fail on missing binary; output goes to local mail.</note>
+    </example>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Crontab header
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/nero/.local/bin
+MAILTO=""
+
+0 3 * * * /home/nero/workspace/scripts/backup.sh >> /var/log/nero-backup.log 2>&1
+]]></code>
+      <note>Explicit SHELL, full PATH, no mail. Output redirected to log file.</note>
+    </example>
+  </section>
+
+  <section title="Locking with flock">
+    <rule>
+      <statement>Use flock -n 9 with a lock file to prevent overlapping runs. Open the lock file descriptor before the main logic and bind it for the duration of the script.</statement>
+      <rationale>Long-running jobs scheduled at an interval shorter than their runtime will spawn multiple concurrent instances without locking, corrupting shared state (databases, log files, backups).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+LOCK_FILE="/tmp/${SCRIPT_NAME}.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    log "ERROR: Another instance is already running, exiting"
+    exit 1
+fi
+]]></code>
+      <note>Non-blocking (-n): fail immediately if already locked. The file descriptor 9 stays open until the script exits.</note>
+    </example>
+  </section>
+
+  <section title="Stale Lock Gotcha">
+    <antipattern>
+      <description>Diagnosing "job not running" without checking for stale lock files. If a script is killed mid-execution, the lock file remains and every subsequent run silently skips.</description>
+      <reason>flock holds the lock via an open file descriptor. When the process dies, the OS releases the lock. But agents checking the lock file's existence (not the flock state) will falsely conclude it is still locked.</reason>
+    </antipattern>
+    <rule>
+      <statement>To check if a lock is genuinely held (not stale), run: lsof /tmp/scriptname.lock. If no process holds it, delete the lock file and retry.</statement>
+      <rationale>File existence does not equal active lock. The lock is only active while a process has the file descriptor open.</rationale>
+    </rule>
+  </section>
+
+  <section title="Testing Cron Scripts">
+    <rule>
+      <statement>Before adding a script to crontab, test it with cron's minimal environment: env -i HOME=$HOME PATH=/usr/bin:/bin SHELL=/bin/bash bash /path/to/script.sh</statement>
+      <rationale>A script that works in the user's full shell environment but fails in cron's minimal environment is the most common cron failure mode.</rationale>
+    </rule>
+  </section>
+</text>
