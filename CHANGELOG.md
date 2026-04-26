@@ -9,6 +9,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: api-authentication, internationalization, rust-backend, django-services, rest-api-design, pwa-development, trunk-based-development, go-project-structure)
 - refactor: 8/8 frontend-developer methodologies migrated to new shape (batch: ui-lib-basics, shadcn-ui-architecture, ui-lib-patterns, css-in-js-advanced, pwa-advanced, storybook-setup, mobile-responsive, css-in-js-basics)
 - refactor: 8/8 methodologies migrated to new shape (batch: design-tokens, django-celery, api-versioning, seo-for-spas, go-error-handling-patterns, graphql-api, tailwind-architecture, decomposition-django)
+- refactor: 8/8 api-developer methodologies migrated to new shape (batch: api-openapi-spec, api-gateway-patterns, api-graphql, api-monitoring, websocket-design, graphql-api-design, api-authentication, api-versioning)
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-powered-pm-tools, ai-in-project-management, tech-debt-management, framework-decomposition-patterns, xp-extreme-programming, perf-test-tools, pnpm-package-management, playwright-automation)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: go-standard-layout, api-error-handling, logging-patterns, api-rest-design, api-documentation, feature-flags, api-contract-first, sql-optimization)
 - refactor: 8/8 methodologies migrated to new shape (batch: rust-http-handlers, nextjs-app-router, accessibility, shadcn-ui-architecture, ui-component-library, rust-project-structure, go-concurrency-patterns, technical-debt)

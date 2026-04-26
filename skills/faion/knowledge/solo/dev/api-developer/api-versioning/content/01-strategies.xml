@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strategies" title="API Versioning Strategies">
+  <summary>Strategy comparison, URL path versioning implementation, header versioning, and the additive-first rule.</summary>
+
+  <section title="Additive-first rule">
+    <rule>
+      <statement>New nullable fields, new optional inputs, and new endpoints are never breaking changes and never require a new version. Only create a new version for breaking semantic changes.</statement>
+      <rationale>90% of API changes are additive. Version ceremony for additive changes wastes cycles and confuses consumers. Reserve versions for genuinely breaking changes: removed fields, changed types, new required inputs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Strategy comparison">
+    <list>
+      <item>URL path (/api/v1/...) — cacheable, debuggable, explicit. Recommended default.</item>
+      <item>Header (Accept-Version: v1) — clean URLs, less visible, breaks CDN cache key-on-URL.</item>
+      <item>Query param (?version=1) — easy to add, poisons CDN cache keys.</item>
+      <item>Content-Type negotiation — standards-based but complex client-side handling.</item>
+    </list>
+    <rule>
+      <statement>Default to URL path versioning. Never use query-param versioning for cacheable endpoints.</statement>
+      <rationale>URL path versioning is the boring, CDN-friendly, browser-debuggable choice. Every major public API (Stripe, Twilio, GitHub) uses it.</rationale>
+    </rule>
+  </section>
+
+  <section title="URL path versioning">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from fastapi import APIRouter
+
+v1_router = APIRouter(prefix="/api/v1")
+v2_router = APIRouter(prefix="/api/v2")
+
+@v1_router.get("/users")
+async def get_users_v1():
+    # v1 response shape — frozen, never changed
+    return {"format": "v1", "users": []}
+
+@v2_router.get("/users")
+async def get_users_v2():
+    # v2 response shape — new structure
+    return {"data": {"users": []}, "meta": {}}
+      ]]></code>
+      <note>v1 routes are frozen. v2 lives in a separate module the agent cannot edit when working on v1.</note>
+    </example>
+  </section>
+
+  <section title="Header versioning">
+    <example type="good">
+      <code lang="http"><![CDATA[
+GET /users HTTP/1.1
+Host: api.example.com
+Accept-Version: v2
+      ]]></code>
+      <note>Header versioning keeps URLs clean but requires CDN configuration to vary cache on the header.</note>
+    </example>
+  </section>
+</text>

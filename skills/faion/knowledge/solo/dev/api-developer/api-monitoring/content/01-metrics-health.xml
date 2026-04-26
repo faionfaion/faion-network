@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-metrics-health" title="Prometheus Metrics and Health Probes">
+  <summary>RED method metrics, Prometheus middleware, SLO-aligned Histogram buckets, and liveness/readiness probe design.</summary>
+
+  <section title="RED method">
+    <rule>
+      <statement>Instrument every HTTP service with the RED method: Rate (requests/sec), Errors (4xx/5xx rate), Duration (latency Histogram). Define Histogram buckets that straddle your SLO thresholds.</statement>
+      <rationale>RED gives a complete picture of service health from the user's perspective. Buckets that don't straddle SLO thresholds cannot produce accurate quantile estimates at the SLO boundary.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prometheus middleware">
+    <rule>
+      <statement>Add metric labels only for bounded dimensions: method, endpoint (normalized path), status code. Never add request_id, user_id, or session as labels.</statement>
+      <rationale>High-cardinality labels cause Prometheus OOM. request_id belongs in logs, not metrics.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from prometheus_client import Counter, Histogram, generate_latest
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"]
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency",
+    ["method", "endpoint"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
+        REQUEST_LATENCY.labels(request.method, request.url.path).observe(time.time() - start)
+        return response
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Health probe design">
+    <rule>
+      <statement>Liveness probe returns 200 if the process is alive (no DB checks). Readiness probe returns 200 only if all critical dependencies (DB, cache, critical external APIs) are healthy.</statement>
+      <rationale>A liveness probe that calls the DB triggers cascading restarts when the DB is slow, removing all instances. Keep liveness shallow; put dependency checks in readiness.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Wrong: liveness probe calls the database
+@app.get("/health")
+async def health():
+    await db.execute("SELECT 1")   # If DB is slow: all pods restart
+    return {"status": "ok"}
+      ]]></code>
+      <note>Use this path only for readiness; liveness should return immediately without any I/O.</note>
+    </example>
+  </section>
+
+  <reference path="templates/metrics_middleware.py">FastAPI metrics middleware (Counter + Histogram)</reference>
+  <reference path="templates/health_endpoints.py">FastAPI liveness + readiness probes</reference>
+</text>

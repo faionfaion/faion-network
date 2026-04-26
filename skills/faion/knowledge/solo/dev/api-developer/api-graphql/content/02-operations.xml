@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-operations" title="GraphQL Operations: DataLoader, Errors, and Security">
+  <summary>DataLoader N+1 prevention, error envelope format, depth/complexity limits, and production security rules.</summary>
+
+  <section title="DataLoader — mandatory for relation fields">
+    <rule>
+      <statement>Every resolver that loads a related entity must use DataLoader. DataLoader instances are scoped per-request in GraphQL context; never module-global.</statement>
+      <rationale>A module-global DataLoader leaks data across requests. Without DataLoader, a list of 100 orders fires 100 separate user queries — silent quadratic behavior in prod.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import DataLoader from 'dataloader';
+
+// Instantiate per-request in context factory
+const userLoader = new DataLoader(async (userIds: readonly string[]) => {
+  const users = await db.users.findMany({ where: { id: { in: [...userIds] } } });
+  return userIds.map(id => users.find(u => u.id === id) ?? null);
+});
+
+// In resolver
+const resolve = (order: Order) => userLoader.load(order.userId);
+      ]]></code>
+    </example>
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+// Module-global DataLoader — cross-request cache leak
+const globalUserLoader = new DataLoader(async (ids) => {
+  return db.users.findMany({ where: { id: { in: [...ids] } } });
+});
+      ]]></code>
+      <note>Module-global loader caches data from one request and serves it to another user's request.</note>
+    </example>
+  </section>
+
+  <section title="Error handling">
+    <rule>
+      <statement>Return errors in the GraphQL errors array with extensions.code as a stable enum string. Clients must never parse the message field for logic.</statement>
+      <rationale>message strings change with every release; a stable code enum allows clients to handle specific errors without coupling to prose.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "data": null,
+  "errors": [
+    {
+      "message": "User not found",
+      "path": ["user"],
+      "extensions": {
+        "code": "NOT_FOUND",
+        "id": "123"
+      }
+    }
+  ]
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Security rules">
+    <rule>
+      <statement>Apply depth limiting (max 8–10) and query complexity limits (max 100–500) on every public GraphQL endpoint.</statement>
+      <rationale>Without limits, a single deeply nested or complex query can DoS the server or drain the database connection pool.</rationale>
+    </rule>
+    <rule>
+      <statement>Use persisted queries in production: clients send a hash, server resolves to vetted operations. Disable introspection for non-public schemas or gate behind auth.</statement>
+      <rationale>Persisted queries close injection and DoS surface in one move. Introspection leaks the full schema to unauthenticated attackers.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/dataloader.ts">TypeScript DataLoader batch function with key ordering</reference>
+</text>

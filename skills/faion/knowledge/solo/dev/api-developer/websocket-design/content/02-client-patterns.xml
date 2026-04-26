@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-client-patterns" title="WebSocket Client: Reconnect and Message Queue">
+  <summary>TypeScript client with exponential backoff + full jitter, bounded offline message queue, and subscription lifecycle management.</summary>
+
+  <section title="Reconnect with full jitter">
+    <rule>
+      <statement>Implement reconnect with exponential backoff and full jitter: delay = random(0, min(cap, base * 2^n)). Cap retries to a maximum attempt count.</statement>
+      <rationale>Reconnect without jitter causes thundering herds: all clients reconnect simultaneously after a server restart, creating a DoS on the auth endpoint. Full jitter spreads reconnect attempts uniformly.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+private handleReconnect() {
+  if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
+  const cap = 30000;
+  const base = 1000;
+  const delay = Math.random() * Math.min(cap, base * Math.pow(2, this.reconnectAttempts));
+  this.reconnectAttempts++;
+  setTimeout(() => this.connect().catch(console.error), delay);
+}
+      ]]></code>
+    </example>
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+// No jitter — all clients reconnect at the same time after a deploy
+setTimeout(() => this.connect(), 1000 * this.reconnectAttempts);
+      ]]></code>
+      <note>Self-DDoS in prod: 10k clients all hit /ws-ticket simultaneously.</note>
+    </example>
+  </section>
+
+  <section title="Bounded offline message queue">
+    <rule>
+      <statement>Buffer outbound messages when disconnected. Cap the queue at a fixed size (e.g., 100 messages) and drop the oldest when full.</statement>
+      <rationale>An unbounded queue accumulates indefinitely during outages; when the connection restores, the client floods the server with stale messages.</rationale>
+    </rule>
+  </section>
+
+  <section title="Subscription lifecycle">
+    <rule>
+      <statement>The subscribe() method must return an unsubscribe function that removes the local handler and sends an unsubscribe message to the server. Clean up on component unmount.</statement>
+      <rationale>Leaked subscriptions accumulate channel listeners, preventing GC and delivering stale data to unmounted components.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Storing session tokens or JWTs in query string parameters of the WebSocket URL.</description>
+      <reason>Query strings appear in server access logs and proxy logs; credentials leak immediately.</reason>
+    </antipattern>
+    <antipattern>
+      <description>No rate limit per connection — one bad client consumes an entire CPU core.</description>
+      <reason>WebSocket message handlers run in the same event loop; a client flooding messages starves all other connections.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/ws_client.ts">TypeScript WebSocketClient with reconnect, queue, subscribe</reference>
+</text>

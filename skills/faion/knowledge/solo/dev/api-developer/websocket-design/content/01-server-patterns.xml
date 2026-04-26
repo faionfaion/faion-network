@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-server-patterns" title="WebSocket Server Patterns">
+  <summary>ConnectionManager with channel subscriptions, per-connection heartbeat, and Redis Pub/Sub scale-out.</summary>
+
+  <section title="Message envelope">
+    <rule>
+      <statement>Define a versioned message envelope: {v, type, channel, seq, ts, payload}. Bump v for breaking protocol changes. Clients deduplicate by seq across reconnects.</statement>
+      <rationale>Without a versioned envelope, protocol changes cannot be rolled out gradually. Without seq, clients cannot detect duplicate delivery after reconnect.</rationale>
+    </rule>
+  </section>
+
+  <section title="Heartbeat">
+    <rule>
+      <statement>Implement server-side ping/pong: server disconnects a client after 2 missed pong responses. Client sends ping every 25–30 seconds.</statement>
+      <rationale>Without heartbeats, stale connections accumulate silently. NAT gateways and load balancers close idle TCP connections without RST, leaving the server with zombie sockets.</rationale>
+    </rule>
+  </section>
+
+  <section title="Authentication">
+    <rule>
+      <statement>Authenticate WebSocket connections at the HTTP upgrade stage using a short-lived ticket obtained from a REST endpoint, or via a signed cookie. Never put JWT tokens in query strings.</statement>
+      <rationale>Query strings appear in server access logs; JWT tokens in logs are a credential leak. Cookies with HttpOnly/Secure are not accessible to JavaScript XSS.</rationale>
+    </rule>
+  </section>
+
+  <section title="Redis Pub/Sub scale-out">
+    <rule>
+      <statement>For horizontal scaling, broadcast messages via Redis Pub/Sub instead of local fan-out. Each server node subscribes to channels and delivers to its locally connected clients.</statement>
+      <rationale>Connections are pinned to one process. Without a shared pubsub bus, a message published to node A never reaches clients connected to node B.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import redis.asyncio as redis
+import asyncio, json
+
+class DistributedConnectionManager:
+    def __init__(self, redis_url: str = "redis://localhost:6379"):
+        self.active_connections: dict = {}
+        self.channel_subscriptions: dict = {}
+        self.redis_url = redis_url
+
+    async def start(self):
+        self.redis = await redis.from_url(self.redis_url)
+        self.pubsub = self.redis.pubsub()
+        asyncio.create_task(self._listen())
+
+    async def _listen(self):
+        await self.pubsub.psubscribe("ws:channel:*")
+        async for message in self.pubsub.listen():
+            if message["type"] != "pmessage":
+                continue
+            channel = message["channel"].decode().removeprefix("ws:channel:")
+            data = json.loads(message["data"])
+            await self._local_broadcast(channel, data)
+
+    async def broadcast(self, channel: str, message: dict):
+        await self.redis.publish(f"ws:channel:{channel}", json.dumps(message))
+      ]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/connection_manager.py">FastAPI ConnectionManager with subscribe/broadcast</reference>
+</text>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-checklist" title="API Gateway Authoring Rules">
+  <summary>Concrete rules for gateway configuration: declarative GitOps, stateless operation, timeout discipline, and observability.</summary>
+
+  <section title="Configuration discipline">
+    <rule>
+      <statement>All gateway config must be declarative and version-controlled in the repo. No UI-driven edits. Apply via decK sync, terraform apply, or serverless deploy.</statement>
+      <rationale>Manual UI edits diverge from git state; the next deploy overwrites them silently, causing incidents.</rationale>
+    </rule>
+    <rule>
+      <statement>Never store secrets inline in gateway YAML. Reference vault paths (Kong vault refs, AWS Secrets Manager ARNs, or environment variable refs).</statement>
+      <rationale>Inline secrets committed to git are irrevocable; even after removal, git history retains them.</rationale>
+    </rule>
+  </section>
+
+  <section title="Policy rules">
+    <rule>
+      <statement>Every public route must carry: auth plugin (jwt/oauth), rate-limiting (Redis-backed), CORS, X-Request-ID injection, and observability (Prometheus/access log).</statement>
+      <rationale>Missing rate-limiting on one public route is the DoS entry point attackers find first.</rationale>
+    </rule>
+    <rule>
+      <statement>Gateway validates JWT signature and expiry only. Fine-grained authorization (scope, role, resource ownership) stays in the service.</statement>
+      <rationale>Duplicating fine-grained auth in the gateway creates divergent logic that disagreements cause security gaps.</rationale>
+    </rule>
+    <rule>
+      <statement>Set explicit connect_timeout, read_timeout, and write_timeout for every upstream route. Gateway timeout must be greater than expected service p99 + jitter.</statement>
+      <rationale>Missing timeouts lead to hung connections and gateway thread starvation under slow upstreams.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Rate-limiting plugin configured with in-memory policy in a multi-replica gateway deployment.</description>
+      <reason>Each replica tracks its own counter; effective limit = N × configured limit. Always use Redis policy for shared state.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Logging the full request body at the gateway.</description>
+      <reason>Leaks PII, passwords, and tokens into log storage. Allowlist specific non-sensitive fields instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>BFF composition handlers that call upstreams serially with await.</description>
+      <reason>3 serial 500ms calls = 1500ms. Use asyncio.gather for concurrent fan-out.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/kong-policy-guard.sh">CI script: fail if public routes missing required plugins</reference>
+</text>

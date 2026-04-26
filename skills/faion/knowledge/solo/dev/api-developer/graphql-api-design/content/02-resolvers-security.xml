@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-resolvers-security" title="Resolvers, DataLoader, and Security">
+  <summary>DataLoader setup, permission classes, depth/complexity limits, and persisted queries for production-safe GraphQL APIs.</summary>
+
+  <section title="DataLoader — mandatory">
+    <rule>
+      <statement>Every resolver that accesses a related entity must use a DataLoader. Instantiate DataLoaders per-request in the GraphQL context, never at module scope.</statement>
+      <rationale>Module-global DataLoaders cache data across requests, leaking one user's data to another. Without DataLoader, N+1 queries pass all unit tests while destroying prod performance.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from strawberry.dataloader import DataLoader
+from typing import List
+from uuid import UUID
+
+class OrganizationLoader(DataLoader[UUID, "Organization"]):
+    async def batch_load_fn(self, keys: List[UUID]) -> List["Organization"]:
+        orgs = await self.repository.find_by_ids(keys)
+        org_map = {org.id: org for org in orgs}
+        return [org_map.get(key) for key in keys]  # preserve key order
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Permission classes">
+    <rule>
+      <statement>Every Query and Mutation field touching auth-scoped data must declare permission_classes (Strawberry) or an equivalent directive. Never put auth checks in business logic.</statement>
+      <rationale>Auth checks scattered in business logic are forgotten on new fields. A quality gate enforcing permission_classes on every resolver catches missing auth before merge.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from strawberry.permission import BasePermission
+from strawberry.types import Info
+
+class IsAuthenticated(BasePermission):
+    message = "User is not authenticated"
+
+    def has_permission(self, source, info: Info, **kwargs) -> bool:
+        return info.context.current_user_id is not None
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation(permission_classes=[IsAuthenticated])
+    async def create_order(self, info: Info, input: CreateOrderInput) -> Order:
+        ...
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Depth and complexity limits">
+    <rule>
+      <statement>Apply QueryDepthLimiter (max 8–10) and QueryComplexityExtension (max 100–500) on every public schema. Tune thresholds from real traffic histograms after launch.</statement>
+      <rationale>A single deeply nested query or query with high complexity can drain the DB connection pool. Depth 10 covers all realistic client operations; higher depths are attack vectors.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from strawberry.extensions import QueryDepthLimiter
+from strawberry.extensions.query_complexity import QueryComplexityExtension
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[
+        QueryDepthLimiter(max_depth=10),
+        QueryComplexityExtension(max_complexity=200),
+    ],
+)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Agent adds a new Query/Mutation field without permission_classes.</description>
+      <reason>Silently exposes data or performs mutations without auth. SDD quality gate must enforce this with a CI check.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Offset pagination on list fields.</description>
+      <reason>Under concurrent writes, offset pagination produces duplicates (inserted rows) and gaps (deleted rows). Cursor pagination is stable.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/dataloader.py">Strawberry DataLoader with batch_load_fn and key ordering</reference>
+  <reference path="templates/schema.graphql">SDL skeleton demonstrating all patterns</reference>
+</text>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-spec-structure" title="OpenAPI 3.1 Structure and Sharding">
+  <summary>How to structure an OpenAPI 3.1 spec: component sharding, $ref discipline, required fields per operation.</summary>
+
+  <section title="Core structure rules">
+    <rule>
+      <statement>Set openapi: 3.1.0 and define info.title, info.version, servers (prod + staging), and a global security scheme.</statement>
+      <rationale>3.1 aligns with JSON Schema 2020-12, making schema validation and tooling consistent.</rationale>
+    </rule>
+    <rule>
+      <statement>Every operation must have operationId, summary, tags, at least one request/response example, and refs to common error responses.</statement>
+      <rationale>operationId drives SDK method names; missing it produces ugly generated names. Examples are the client's first learning surface.</rationale>
+    </rule>
+    <rule>
+      <statement>All reusable shapes go in components/schemas, components/responses, or components/parameters and are referenced via $ref. No inline schemas in operations.</statement>
+      <rationale>Inline schemas duplicate on every refactor; a single $ref is the single source of truth.</rationale>
+    </rule>
+  </section>
+
+  <section title="Component sharding">
+    <p>For any spec over ~200 lines, shard sources into a directory structure and bundle with redocly.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+openapi/
+├── _root.yaml              # openapi, info, servers, security, tags
+├── paths/
+│   ├── users.yaml          # /users GET+POST
+│   └── users-{id}.yaml     # /users/{userId} GET+PATCH+DELETE
+└── components/
+    ├── schemas/
+    │   ├── User.yaml
+    │   ├── CreateUserRequest.yaml
+    │   └── Error.yaml
+    ├── responses/
+    │   ├── BadRequest.yaml
+    │   ├── Unauthorized.yaml
+    │   └── NotFound.yaml
+    └── parameters/
+        ├── UserId.yaml
+        ├── PageLimit.yaml
+        └── PageOffset.yaml
+      ]]></code>
+      <note>Bundle with: redocly bundle openapi/_root.yaml -o openapi.yaml</note>
+    </example>
+    <example type="bad">
+      <code lang="text"><![CDATA[
+# Single 3000-line openapi.yaml with all schemas inline
+paths:
+  /users:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  ...  # duplicated everywhere
+      ]]></code>
+      <note>Inline schemas drift on each edit; $ref discipline prevents this.</note>
+    </example>
+  </section>
+
+  <section title="Security schemes">
+    <rule>
+      <statement>Define security schemes once in components/securitySchemes and apply at root level or per-operation. Remove declared schemes that are never applied.</statement>
+      <rationale>Multiple declared but unused schemes confuse doc readers and SDK generators.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/openapi-skeleton.yaml"/>
+    <link path="templates/openapi-bundle-check.sh"/>
+  </see-also>
+</text>

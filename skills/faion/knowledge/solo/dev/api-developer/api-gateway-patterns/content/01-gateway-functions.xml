@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-gateway-functions" title="API Gateway Core Functions and Patterns">
+  <summary>What a gateway does, which product fits which context, and how to implement BFF composition.</summary>
+
+  <section title="Core functions">
+    <list>
+      <item>Routing — direct requests to the correct upstream service</item>
+      <item>Load balancing — distribute traffic across service instances with weights</item>
+      <item>Authentication — validate JWT signatures, expiry, audience before proxying</item>
+      <item>Rate limiting — protect services from overload; use Redis-backed counters in multi-replica deployments</item>
+      <item>CORS — centralized preflight handling so services don't duplicate it</item>
+      <item>Request transformation — inject X-Request-ID, strip downstream Authorization if needed</item>
+      <item>SSL/TLS termination — handle HTTPS at the edge; re-encrypt to backends for sensitive routes</item>
+      <item>Observability — emit Prometheus metrics + structured access logs with traceparent propagation</item>
+    </list>
+  </section>
+
+  <section title="BFF composition pattern">
+    <rule>
+      <statement>In BFF (Backend for Frontend) handlers that fan out to multiple upstream services, use asyncio.gather with per-call timeouts and circuit breakers. Never run upstream calls serially.</statement>
+      <rationale>Serial calls multiply latency: 3 × 500ms = 1500ms. asyncio.gather runs them concurrently; per-call timeout bounds the worst case.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+import httpx
+
+@app.get("/api/dashboard")
+async def get_dashboard(user_id: str):
+    async with httpx.AsyncClient(timeout=1.5) as client:
+        user_task = client.get(f"http://user-svc/users/{user_id}")
+        orders_task = client.get(f"http://order-svc/users/{user_id}/orders?limit=5")
+        notif_task = client.get(f"http://notif-svc/users/{user_id}/unread")
+
+        user, orders, notif = await asyncio.gather(
+            user_task, orders_task, notif_task,
+            return_exceptions=True
+        )
+
+    def safe(r):
+        if isinstance(r, Exception):
+            return {"error": "partial", "detail": str(r)}
+        return r.json()
+
+    return {"user": safe(user), "orders": safe(orders), "notifications": safe(notif)}
+      ]]></code>
+      <note>return_exceptions=True gives partial success; never block the response on a single slow upstream.</note>
+    </example>
+  </section>
+
+  <section title="Product selection">
+    <rule>
+      <statement>Choose Kong + decK for self-hosted multi-service production workloads. Use Nginx as a simpler gateway for 1–2 services. Use AWS API Gateway only when already in the AWS ecosystem and Lambda/VPC integration is needed.</statement>
+      <rationale>Kong has a plugin ecosystem and declarative GitOps via decK. Nginx suffices for simple reverse-proxy use cases without plugin overhead.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/kong.yml">Kong declarative config with plugins</reference>
+  <reference path="templates/nginx-gateway.conf">Nginx gateway config</reference>
+</text>
