@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-staged-scope-rule" title="Staged-Only Scope as the Pre-Commit Rule">
+  <summary>Pre-commit hooks receive the staged file list — never the repository root — so the hook stays sub-second on every commit.</summary>
+
+  <section title="The staged-files contract">
+    <p>Each pre-commit framework has a built-in mechanism to pass the staged file set to the underlying tool. Use it. The whole-tree variants belong in CI, not in a hook.</p>
+
+    <rule testable="true">
+      <statement>Every linter or formatter invoked by a `pre-commit`, `lefthook`, or `husky+lint-staged` hook MUST receive ONLY the staged file paths. With `pre-commit` this means leaving `pass_filenames: true` (default) and never wrapping the command in a way that drops `$@`. With `lefthook`, every `run:` MUST reference `{staged_files}` (or `{push_files}` for pre-push). With husky, every command MUST go through `lint-staged` matching the relevant glob. Calling the lint or format tool with `.` or no argument from a pre-commit hook is forbidden.</statement>
+      <rationale>The PkgPulse 2026 husky-vs-lefthook benchmark, the lint-staged maintainers' own README, and pre-commit.com's `pass_filenames` docs all converge: whole-tree linting in a hook is the leading cause of `--no-verify` adoption. A 1500-file monorepo with `eslint .` per commit yields 8-12 second hooks; the same hook on three staged files runs in 200ms. Whole-tree formatters also rewrite unstaged work, polluting the next commit and breaking `git blame`.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// lint-staged.config.js
+export default {
+  "*.{js,ts,jsx,tsx,json,css}": "biome check --write --no-errors-on-unmatched",
+  "*.py": ["ruff check --fix", "ruff format"],
+};
+      ]]></code>
+      <note>Each tool sees only the staged files of its glob. Husky calls `npx lint-staged` and is done in 200ms.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# .husky/pre-commit
+npm run lint        # which runs `eslint .`
+npm run format      # which runs `prettier --write .`
+      ]]></code>
+      <note>Whole-tree on every commit. Each commit waits ~10 seconds and rewrites unstaged files.</note>
+    </example>
+
+    <antipattern>
+      <description>Wrapping a hook command in `bash -c "ruff check --fix ."` to "make it work the same in CI and locally."</description>
+      <reason>The hook now ignores the staged file list because the wrapper drops `$@`. The CI/local parity is achieved instead by having a CI step that runs `ruff check .` on the whole tree separately — never by inflating the hook.</reason>
+    </antipattern>
+
+    <reference path="templates/lint-staged.config.js">lint-staged config with per-glob commands.</reference>
+    <reference path="templates/lefthook-staged.yml">lefthook config using `{staged_files}` per language.</reference>
+    <reference href="https://pre-commit.com/#filtering-files-with-types-and-files">pre-commit framework: filtering files by type / regex.</reference>
+    <reference href="https://github.com/lint-staged/lint-staged">lint-staged: run linters on staged files.</reference>
+    <reference href="https://github.com/evilmartians/lefthook">lefthook: `{staged_files}` / `{push_files}` template.</reference>
+    <reference href="https://www.pkgpulse.com/blog/husky-vs-lefthook-vs-lint-staged-git-hooks-nodejs-2026">PkgPulse 2026 — husky vs lefthook vs lint-staged benchmark.</reference>
+  </section>
+
+  <section title="CI runs the whole-tree gate">
+    <p>The whole-tree run still happens — but exactly once per PR, in CI, where its 12-second cost is amortized across reviewers.</p>
+
+    <rule testable="true">
+      <statement>The CI pipeline MUST include a separate job that runs each linter/formatter whole-tree (`eslint .`, `ruff check .`, `biome check .`, `mypy .`) against the merged-tree state of the PR. This job is the final pre-merge gate; it MUST be required in branch protection. The hook and the CI job share the same config but have opposite scopes by design.</statement>
+      <rationale>Hooks catch what the developer just touched; CI catches drift introduced by partial-stage workflows or by cross-file refactors that the hook's per-file scope cannot see. Both are needed; conflating them into one whole-tree hook breaks the local feedback loop.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/ci.yml fragment
+- run: ruff check .
+- run: ruff format --check .
+- run: biome check .
+      ]]></code>
+      <note>Whole-tree commands live in CI, not in the local hook.</note>
+    </example>
+
+    <reference href="https://docs.astral.sh/ruff/configuration/#using-ruff-in-pre-commit">Astral: ruff in pre-commit (staged-list semantics).</reference>
+  </section>
+</text>

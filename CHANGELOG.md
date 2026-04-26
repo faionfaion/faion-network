@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- sdlc-ai-methodologies: pool-batch +2 lint- (52/52) — lint-shellcheck-hadolint-iac-floor, lint-staged-only-not-whole-tree (NEW shape: AGENTS.md + content/*.xml + templates/). lint- category complete (6/6). OVERALL TARGET MET (52/52). Original picks lint-precommit-floor and lint-ruff-and-biome-as-default rejected as duplicates of upstream S-039/S-040; replaced via AGENT-99 pool-extension discovery. IDs S-051..S-052.
 - sdlc-ai-methodologies: pool-batch +4 kb- (50/52) — kb-agents-md-context-pyramid, kb-symbol-index-fresh-tags, kb-codebase-rag-symbol-chunked, kb-versioned-agent-memory-files (NEW shape: AGENTS.md + content/*.xml + templates/ + scripts/). kb- category complete (4/4). Renumbered IDs S-047..S-050 after rebase on concurrent tracker-/test-/lint- batches.
 - refactor: 8/8 backend-systems methodologies migrated to new shape (batch: go-error-handling, rust-http-handlers, error-handling, rust-project-structure, go-concurrency-patterns, go-http-handlers, rust-tokio-async, database-design)
 - refactor: 8/8 methodologies migrated to new shape (batch: rust-backend, go-project-structure, rust-error-handling, rust-ownership, go-error-handling-patterns, java-spring-boot-patterns, laravel-patterns, ruby-rails-patterns)

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-fix-not-disable" title="Agents Fix the Source, Not the Linter">
+  <summary>When an IaC linter flags a finding, the agent rewrites the underlying script or manifest; rule-level disable comments are last-resort and require a tracking issue.</summary>
+
+  <section title="Fix-source default; disable is a last resort">
+    <p>IaC findings carry concrete remediation hints — `SC2086` says "double-quote to prevent globbing", `DL3008` says "pin apt versions". Agents apply the fix instead of muting the rule.</p>
+
+    <rule testable="true">
+      <statement>An AI agent that triggers a `shellcheck`, `hadolint`, `yamllint`, `actionlint`, or `tflint` finding MUST modify the offending file to satisfy the rule. The agent MUST NOT add `# shellcheck disable=...`, `# hadolint ignore=...`, `# yamllint disable-line`, `# actionlint shellcheck`-disable, or `tflint:disable` UNLESS: (a) the suppression cites the specific rule code, (b) a one-line justification is included in the same diff, and (c) a tracking issue (URL or ticket ID) is named in the comment for sunset. Blanket file-level disables are forbidden.</statement>
+      <rationale>Disable comments accumulate forever and turn the linter advisory. The Anthropic Claude Code "constitution-driven" pattern and faion-net's own `feedback_granular_commits.md` memory both treat suppression with sunset tracking as the contract — an issue anchors the future cleanup. Without that anchor, the comment is technical debt with no cost owner.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Before: shellcheck SC2086 "Double-quote to prevent globbing"
+files=$(ls *.txt)
+for f in $files; do cat $f; done
+
+# After: the fix.
+for f in *.txt; do cat "$f"; done
+      ]]></code>
+      <note>Glob loop instead of `ls` parsing; quoted variable; the underlying class of bug (whitespace-in-filenames) is gone.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# shellcheck disable=SC2086,SC2046
+files=$(ls *.txt)
+for f in $files; do cat $f; done
+      ]]></code>
+      <note>Two rules silenced with no justification, no issue link, no sunset. The bug class is now invisible to the linter forever.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding `--no-fail` or `|| true` to the linter invocation in CI to "stop blocking us during the migration."</description>
+      <reason>That converts the gate to advisory across the entire repo, not just the offending file. The right move is a per-file allowlist with a tracking issue and a date.</reason>
+    </antipattern>
+
+    <reference href="https://github.com/koalaman/shellcheck/wiki">shellcheck rule catalog with concrete fixes per code.</reference>
+    <reference href="https://github.com/hadolint/hadolint/wiki">hadolint rule catalog (DL3000+).</reference>
+  </section>
+</text>

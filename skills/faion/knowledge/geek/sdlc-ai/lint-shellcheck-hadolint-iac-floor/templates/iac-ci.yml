@@ -1,0 +1,37 @@
+# GitHub Actions whole-tree IaC lint job. Add to `.github/workflows/ci.yml`.
+# Pin every action by SHA in production; tags shown for readability only.
+
+name: iac-lint
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  iac-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          severity: style
+
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          recursive: true
+
+      - name: yamllint
+        run: pipx run yamllint -c .yamllint.yml .
+
+      - name: actionlint
+        uses: raven-actions/actionlint@v2
+
+      - name: tflint
+        uses: terraform-linters/setup-tflint@v4
+      - run: tflint --recursive
+
+      - name: terraform validate
+        uses: hashicorp/setup-terraform@v3
+      - run: terraform fmt -check -recursive && terraform validate

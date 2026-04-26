@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-iac-tool-baseline" title="Mandatory IaC Linter Set">
+  <summary>One linter per file format — shellcheck, hadolint, yamllint, actionlint, tflint — wired by file glob, blocking at the same severity as code linters.</summary>
+
+  <section title="One linter per format">
+    <p>Each infrastructure file format has a single canonical static analyzer. Map them by glob and run them at the same hook tier as ruff and biome.</p>
+
+    <rule testable="true">
+      <statement>The pre-commit config of every repo containing the matching files MUST include: `shellcheck` on every `*.sh` and bash-shebanged file (`-S style` minimum), `hadolint` on every `Dockerfile*` (default ruleset), `yamllint` on every `.yaml`/`.yml` (with at minimum the `relaxed` profile), `actionlint` on every `.github/workflows/*.yml`, and `tflint --recursive` plus `terraform validate` on every Terraform module. CI MUST run the whole-tree variant of each tool on PR open. Findings of severity `error` or higher MUST block both the local commit and the merge check.</statement>
+      <rationale>This mapping is the intersection of the OpenSSF Scorecard "infrastructure-as-code" metric, GitHub's own actionlint deployment guide, and the Docker best-practices catalog hadolint encodes. Skipping a tier (e.g., "we'll add shellcheck later") leaves a known class of bug — Shellshock-style quoting, rootful Docker images, action-injection workflows — uncaught at the cheapest gate.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml fragment
+- repo: https://github.com/koalaman/shellcheck-precommit
+  rev: v0.10.0
+  hooks: [{id: shellcheck}]
+- repo: https://github.com/hadolint/hadolint
+  rev: v2.13.0-beta
+  hooks: [{id: hadolint-docker}]
+- repo: https://github.com/adrienverge/yamllint
+  rev: v1.35.1
+  hooks: [{id: yamllint, args: [-c=.yamllint.yml]}]
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.7.4
+  hooks: [{id: actionlint}]
+      ]]></code>
+      <note>Each hook is bound to its format's glob via the upstream hook definition; agents see all five run on the staged set.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Just rely on docker build to fail later
+on: [pull_request]
+jobs:
+  build:
+    steps:
+      - run: docker build .
+      ]]></code>
+      <note>By the time `docker build` rejects the file, the agent has already pushed three follow-up commits; pre-merge hadolint catches the issue 60 seconds after the diff is written.</note>
+    </example>
+
+    <antipattern>
+      <description>Running only `terraform validate` and skipping `tflint` because validate "already runs in CI."</description>
+      <reason>`terraform validate` only checks syntax and provider schema. tflint adds rules like `aws_instance_invalid_type`, deprecated-syntax flags, and per-provider best-practice checks that validate cannot see. Both are needed.</reason>
+    </antipattern>
+
+    <reference path="templates/iac-precommit.yaml">Pre-commit hook snippet for the full IaC linter set.</reference>
+    <reference path="templates/iac-ci.yml">GitHub Actions matrix job for the whole-tree CI gate.</reference>
+    <reference href="https://github.com/koalaman/shellcheck">shellcheck — the canonical shell static analyzer.</reference>
+    <reference href="https://github.com/hadolint/hadolint">hadolint — Dockerfile linter encoding Docker best-practices.</reference>
+    <reference href="https://github.com/rhysd/actionlint">actionlint — GitHub Actions workflow linter (also runs shellcheck on `run:`).</reference>
+    <reference href="https://github.com/terraform-linters/tflint">tflint — provider-aware Terraform linter.</reference>
+    <reference href="https://github.com/adrienverge/yamllint">yamllint — YAML format and style checker.</reference>
+  </section>
+</text>
