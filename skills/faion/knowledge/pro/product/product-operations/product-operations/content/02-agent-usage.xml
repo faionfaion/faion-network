@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-usage" title="Agentic Workflow for Product Ops">
+  <summary>Three-layer agent architecture for Product Ops, prompt patterns for the most common use cases, and critical gotchas.</summary>
+
+  <section title="Three-Layer Architecture">
+    <rule>
+      <statement>Treat Product Ops as three layers: (1) scheduled scrapers pulling state from PM/issue/analytics tools into a normalised store; (2) on-demand subagents for specific asks; (3) a narrow set of write-back automations. Agents propose; humans merge.</statement>
+      <rationale>Mixing layers — agents that both ingest and write in the same flow — removes the human review gate that catches agent errors before they reach systems of record.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Weekly portfolio rollup (scheduled):</note>
+      <code lang="text"><![CDATA[
+Pull from Linear: all teams, last 7 days. From Productboard: feature status
+changes. From PostHog: top-20 metrics deltas.
+Produce ops-rollup-<YYYY-MM-DD>.md: 1) shipped this week, 2) at-risk (slip
+>2 days), 3) blocked >3 days, 4) metric movers >10%.
+Source-link every line. Skip empty sections. Output to Notion DB id=<xxx>.
+      ]]></code>
+    </example>
+
+    <example type="good">
+      <note>Template enforcement on a new feature:</note>
+      <code lang="text"><![CDATA[
+A new entry was created in roadmap. Verify it has: outcome statement,
+target metric, dependency list, owner, AC. Missing fields -> comment on
+the entry with a checklist; do not auto-fill.
+      ]]></code>
+    </example>
+
+    <example type="good">
+      <note>On-demand stakeholder status pack:</note>
+      <code lang="text"><![CDATA[
+Generate a stakeholder pack for <audience: board | exec | engineering>.
+board -> 1-page TL;DR + 3 risks + 3 wins + ask.
+exec -> 1-pager + portfolio heatmap.
+engineering -> release calendar + dependency graph.
+Use only data from /ops-store/ updated within 48h. If older, write
+"stale, refresh" and stop.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Agent metric definitions that re-derive "DAU" from prose instead of reading pinned SQL.</description>
+      <reason>LLMs hallucinate metric definitions. Always pin metric SQL in metric_kpi.definition_sql; never let the agent re-derive a definition from narrative context.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Status-update theatre: AI-generated status updates that no one reads.</description>
+      <reason>Tie every automated post to a named consumer, or do not generate it. Signal-to-noise collapse kills trust in the entire ops function.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Roadmap merge conflicts when nightly agent sync overwrites a concurrent PM edit.</description>
+      <reason>Use updated_at watermarks and conflict logs, not last-write-wins. Cross-system ID collisions (same feature in Productboard, Jira, and Linear) require an explicit mapping table.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Scheduled rollups using AskUserQuestion in a headless cron context.</description>
+      <reason>Cron jobs have no human; design every automation as headless-first with Slack-based async confirmations for write actions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Unbounded historical pulls without a since/limit/max_pages guard.</description>
+      <reason>"Show me all incidents this quarter" silently fetches tens of thousands of tickets and blows the context window. Always pass explicit bounds.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/ops-rollup.sh">Weekly Product Ops rollup runner from Linear + PostHog</reference>
+  <reference path="templates/ops-schema.sql">Canonical ops-store schema seed for dbt modelling</reference>
+</text>

@@ -1,0 +1,28 @@
+name: spec-opp-link
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify opp_id in SDD spec
+        run: |
+          set -euo pipefail
+          spec=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+                 | grep -E '\.aidocs/.*spec\.md$' | head -1 || true)
+          if [[ -z "$spec" ]]; then
+            echo "No spec changed; skipping opp_id check"
+            exit 0
+          fi
+          if ! grep -qE '^opp_id:\s*opp_[a-z0-9_]+' "$spec"; then
+            echo "FAIL: $spec must declare opp_id in front-matter."
+            echo "Example:  opp_id: opp_2026q2_search_friction"
+            exit 1
+          fi
+          echo "OK: $spec references $(grep -E '^opp_id:' "$spec")"

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-kb-structure" title="Product KB Structure and Drift Risks">
+  <summary>The product-kb.json canonical structure, explainability components for humans and AI, and the dominant failure mode of KB drift.</summary>
+
+  <section title="Canonical KB Fields">
+    <rule>
+      <statement>product-kb.json is the single source of truth. llms.txt, schema.org JSON-LD, FAQ page, MCP tool descriptions, and marketing one-liners are all generated from it. No hand-edits downstream.</statement>
+      <rationale>When multiple surfaces are edited independently, contradictions emerge within weeks. AI assistants crawl whichever source they find first, attributing the contradictions to the brand as hallucinations.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Limits are first-class. Every capability ships with at least one limits[] entry. A KB with no limits is a KB nobody trusts.</statement>
+      <rationale>Product teams write aspirational capability statements; "honest scope" gets edited out by marketing review. AI then over-promises on the brand's behalf, creating support tickets and trust damage.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Version every capability with status (ga | beta | deprecated) and since_version. Deprecated capabilities must not be recommended to users.</statement>
+      <rationale>Capability statements without version data cause AI to keep recommending sunset features. A deprecated status flag is the only reliable signal to retrieval systems.</rationale>
+    </rule>
+  </section>
+
+  <section title="KB Extraction Rules">
+    <rule>
+      <statement>Write purpose in customer language, not marketing language. Strip adjectives ("powerful", "intuitive", "next-gen"). State who, what, in one sentence.</statement>
+      <rationale>LLMs and humans both ignore marketing adjectives. A purpose statement with no content-bearing nouns gets retrieved but provides no signal to downstream reasoning.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Publish an "is not" section. A docs page titled "What this product is not" cuts AI miscategorization more than any positive statement.</statement>
+      <rationale>Negative space is harder to hallucinate around than positive claims. Three to five concrete "not" statements reduce the surface area for AI misclassification.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Co-locate product-kb.json with code. Release pipeline rebuilds renders. This is the only way to prevent capability-version skew.</statement>
+      <rationale>A KB in the marketing repo drifts from the product repo within one sprint. The release pipeline is the forcing function that keeps them synchronized.</rationale>
+    </rule>
+  </section>
+
+  <section title="Drift Failure Modes">
+    <antipattern>
+      <description>KB drift as default: marketing site, docs, pricing page, schema feed, and llms.txt diverge within weeks.</description>
+      <reason>Each surface is edited by a different team on a different cadence. Without a single-source pipeline, contradiction is the natural state, not the exception.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Schema theater: teams add Product JSON-LD but description, audience, and feature fields repeat the marketing tagline.</description>
+      <reason>Retrieval systems get no new signal from paraphrased copy. The schema markup must carry information not already in the page text.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Capability-version skew: capability statements with no validFrom/validUntil dates.</description>
+      <reason>Deprecated features keep getting recommended by AI assistants because there is no signal in the KB that they no longer exist. Date-bounded capability status is the fix.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Monitoring">
+    <rule>
+      <statement>Probe weekly across at least 3 frontier models (Claude, GPT, Gemini, Perplexity). Single-model probing is biased. Score diffs against product-kb.json on factual correctness, capability in scope, and limit acknowledged.</statement>
+      <rationale>Each model has different training data and retrieval behavior. A product that scores well on one model may be systematically misrepresented by another.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Track AI representation accuracy as a real metric with a target (e.g. &gt;=85%). Put it on a dashboard. Regress on it after each release.</statement>
+      <rationale>Without measurement, KB quality is unmanaged. Treating it as a metric with a target creates the same accountability as any product quality metric.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/product-kb-validate.sh">Validates product-kb.json against JSON Schema; wire into pre-commit</reference>
+</text>

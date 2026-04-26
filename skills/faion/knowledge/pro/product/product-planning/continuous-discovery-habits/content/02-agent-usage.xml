@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-usage" title="Continuous Discovery Agent Pipeline">
+  <summary>Planning-lens pipeline bridging research collection to delivery, subagent table, prompt pattern, and critical gotchas for LLM-driven OST management.</summary>
+
+  <section title="Pipeline Position">
+    <p>This methodology is the product-planning lens — downstream of research collection (pro/research/researcher/continuous-discovery/) and upstream of delivery (SDD). Raw signals reach the OST curator; the curator feeds the opportunity-scorer; scored opportunities feed the trio-deliberation agent which produces specs with opp_id references consumed by faion-sdd-executor-agent.</p>
+  </section>
+
+  <section title="Subagent Roles and Models">
+    <p>intake-classifier (haiku, real-time): classifies requests as opportunity | solution | bug. ost-curator (sonnet, weekly): updates OST, dedupes. opportunity-scorer (sonnet, weekly): scores on reach x frequency x severity x addressability. assumption-designer (sonnet, per opportunity): designs falsifiable test plan. trio-deliberation-agent (opus, bi-weekly): build | test | park | kill with rationale. roadmap-synth (opus, monthly): kill list + doubled-down list. outcome-tracker (haiku, daily): outcome trend + flag if Outcome unchanged &gt; 4 weeks. spec-linker (haiku, on PR open): verify opp_id in spec front-matter.</p>
+
+    <rule>
+      <statement>Route via intake-classifier (haiku) before escalating to opus. Only trio deliberation warrants opus; classification is deterministic and cheap.</statement>
+      <rationale>Running opus on every intake item is 10x the cost with no quality improvement for classification. The model tier should match the reasoning complexity of the task.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Pattern">
+    <example type="good">
+      <code lang="xml"><![CDATA[
+<role>You are the {agent}. Continuous Discovery (Torres) -- product-planning lens.</role>
+<inputs>
+  <ost>{path to opportunity-solution-tree.md}</ost>
+  <intake>{path to intake-queue.md}</intake>
+  <outcomes>{path to outcomes-register.md}</outcomes>
+  <delivered>{path to recent merged PRs with opp_id refs}</delivered>
+  <segment_filter>{optional: limit to a user segment}</segment_filter>
+</inputs>
+<rules>
+  - Classify every node as: outcome | opportunity | solution | assumption_test.
+  - Reject inputs phrased as features; re-prompt for the underlying need.
+  - Never declare "validated"; use "tested" with explicit pass/fail criteria.
+  - Score opportunities with (reach * frequency * severity * addressability), 1-5 each.
+  - Cap visible opportunities per Outcome at 7; archive overflow to parked/.
+  - Output JSON matching {schema_path}; emit a markdown digest &lt;= 60 lines.
+</rules>
+<task>{cadence-specific instruction}</task>
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Intake-classifier passing "add filter X" through without explicit few-shot rejection examples.</description>
+      <reason>Provide at least 10 few-shot rejections of solution-phrased requests in the classifier prompt. Without examples, the classifier will accept solution framing at the same rate as humans do without training.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>OST-curator aggressively deduping and merging opportunities that cross different Outcomes.</description>
+      <reason>Require human review on any merge that crosses Outcome boundaries. Cross-Outcome merges lose the linkage between an opportunity and its parent Outcome metric.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Opportunity-scorer hallucinating reach numbers when analytics fetch fails.</description>
+      <reason>Require a fetched_at timestamp and source URL in every score row. Reject scores without provenance rather than proceeding with fabricated numbers.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Trio-deliberation agent rubber-stamping the highest-scoring opportunity every run.</description>
+      <reason>Force the agent to nominate a devil's-advocate alternative on every run. Without this, the deliberation reduces to a score-sorter rather than a reasoning process.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Outcome-tracker declaring improvement on noisy daily metrics after a single positive day.</description>
+      <reason>Require a 2-week rolling window minimum before any Outcome status change. Single-day signals are noise at standard metric variance levels.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/ost-schema.json">OST node schema with evidence, score, status, and linked_specs fields</reference>
+  <reference path="templates/spec-opp-link.yml">GitHub Actions workflow enforcing opp_id in SDD specs</reference>
+</text>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-platform" title="Experimentation Platform and Best Practices">
+  <summary>Maturity model, modern stack components, statistical rigor requirements, and scale benchmarks for enterprise-grade A/B testing.</summary>
+
+  <section title="Maturity Model">
+    <p>Level 1 (Ad-hoc): individual experiments, no standardization. Level 2 (Structured): defined process, shared tools. Level 3 (Scaled): 100+ experiments/year, statistical rigor. Level 4 (Culture): every decision backed by an experiment. Scale benchmarks: Microsoft ~100k/yr, GoDaddy 1,700+, enterprise average 500-1,000/yr.</p>
+  </section>
+
+  <section title="Pre-Registration Requirements">
+    <rule>
+      <statement>Pre-register the primary metric, MDE, and decision rule before traffic flips. Agents must reject any experiment doc missing these fields.</statement>
+      <rationale>Post-hoc metric selection is the primary driver of false positives. Pre-registration reduces the false-positive rate from 30%+ (peeking) to the intended 5%.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Never declare a winner without: lift, two-sided CI, p-value (or posterior), pre-registered primary metric, and a passed SRM check.</statement>
+      <rationale>Each missing element introduces a separate failure mode. An LLM that paraphrases vendor statistics rather than copying them verbatim will misread CIs as posterior probabilities.</rationale>
+    </rule>
+  </section>
+
+  <section title="Statistical Requirements">
+    <rule>
+      <statement>Implement SRM (Sample Ratio Mismatch) as a hard gate on every experiment. Chi-square check (p &lt; 0.001) on assignment counts must pass before any readout.</statement>
+      <rationale>~6% of experiments have SRM silently. An experiment with SRM produces bogus winner declarations that persist in institutional memory even after the bug is found.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Apply multiple-comparison correction (Bonferroni or Benjamini-Hochberg) whenever more than one primary metric is analyzed. Document the correction in the decision record.</statement>
+      <rationale>10 metrics at alpha=0.05 produces ~1 false win by chance per experiment. At scale (500/yr), this compounds to hundreds of false ships per year without correction.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use CUPED for variance reduction on high-variance metrics. This cuts required sample size 30–50%. Confirm your platform supports it before planning runtime.</statement>
+      <rationale>Without variance reduction, experiments take longer, fewer run per quarter, and the learning rate is throttled. GrowthBook, Statsig, and Eppo all support CUPED natively.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Set a minimum runtime of 14 days for engagement metrics and at least one full business cycle for revenue metrics. Block winner calls before the minimum.</statement>
+      <rationale>Novelty and primacy effects inflate early positive signals. 7-day reads systematically over-estimate long-run impact on habit-forming features.</rationale>
+    </rule>
+  </section>
+
+  <section title="Guardrail Requirements">
+    <rule>
+      <statement>Always include latency, error rate, and a revenue or retention metric in guardrails. Engineering wins that tank infra are common silent failures.</statement>
+      <rationale>A variant that improves conversion by 2% while increasing p95 latency by 40% is not a ship. Without guardrails the team ships the conversion win and opens a follow-up incident.</rationale>
+    </rule>
+  </section>
+
+  <section title="Learning Extraction">
+    <rule>
+      <statement>After ship, leave a holdout (1–5%) running for 4–8 weeks to catch novelty decay. Document the result in the experiment registry.</statement>
+      <rationale>Novelty effects decay. A holdout is the only way to distinguish a real sustained lift from a spike that reverts to baseline after the novelty period.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Experimentation graveyards: large experiment counts with no learning-extraction step.</description>
+      <reason>100k tests per year without a weekly learning-extraction pass produces a write-only registry. The organizational value of experimentation is in the applied learnings, not the count.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/experiment-doc.yaml">Per-experiment spec with all required fields for pre-registration</reference>
+  <reference path="templates/sample_size.py">Two-proportion z-test sample size and runtime calculator</reference>
+  <reference path="templates/srm_check.py">SRM chi-square check: pass if p &gt; 0.001</reference>
+</text>

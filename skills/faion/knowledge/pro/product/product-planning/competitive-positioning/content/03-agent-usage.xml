@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Agentic Positioning Workflow">
+  <summary>Orchestrator pattern, value-laddering fan-out, devil's-advocate pass, and critical gotchas for LLM-driven competitive positioning.</summary>
+
+  <section title="Orchestrator Pattern">
+    <rule>
+      <statement>Run Dunford's six steps serially because each step constrains the next. Fan out only the value-translation step (one parallel task per attribute) since attributes are independent.</statement>
+      <rationale>Steps 1-4 have hard dependencies: alternatives must exist before attributes, attributes before value, value before best-fit customer. Parallelizing constrained steps produces incoherent outputs.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Run positioning AFTER competitor-analysis AND user-personas exist. Both are inputs; canvas without them is fiction.</statement>
+      <rationale>Hallucinated competitor positioning (agent invents taglines from training data rather than current homepages) is the dominant quality failure. Real competitor pages must be fetched and passed as input.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always run a devil's-advocate pass with a different model (sonnet → opus) that role-plays each top-3 competitor's CMO trying to dismiss your positioning. Iterate once based on the critique.</statement>
+      <rationale>Self-serving positioning is invisible to the agent that produced it. An adversarial pass from the competitor's perspective surfaces weaknesses that peer review misses.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Orchestrator entry prompt:</note>
+      <code lang="text"><![CDATA[
+Build positioning canvas for {product}. Inputs:
+- .aidocs/product_docs/competitive-analysis.md (alternatives + matrix)
+- .aidocs/product_docs/user-personas.md (best-fit-customer source)
+Use Dunford's 6-step framework.
+Hard rules:
+- No comparatives ("better/faster/easier") without dimension + number.
+- Every unique attribute must have a time-to-copy estimate in quarters.
+- Reject any best-fit segment that includes >30% of alternatives' user bases.
+Output: positioning-canvas.md + positioning-statement.md (one page).
+Then spawn devil's-advocate Task from each top-3 competitor's CMO POV; iterate once.
+      ]]></code>
+    </example>
+
+    <example type="good">
+      <note>Per-attribute value-laddering fan-out:</note>
+      <code lang="text"><![CDATA[
+So-what ladder for attribute: '{attribute}'.
+Three levels: feature benefit -> business benefit -> emotional/strategic outcome.
+Bind the outcome to a measurable: hours saved, revenue, retention, risk reduction.
+No vague verbs ("improve", "enhance"). Each level must use a different noun class.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Comparative language by default: LLMs produce "better/faster/easier" even when prompted for differentiation.</description>
+      <reason>Explicit prompt rule plus positioning-lint.sh pre-commit hook catches it. Comparative without dimension+number is the single most common positioning quality failure from LLM agents.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Hallucinated competitor positioning from training data instead of current homepages.</description>
+      <reason>Pass live homepage HTML/text into the prompt. Never let the agent rely on memory for competitor claims — they are updated constantly and the agent's training is stale.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Ladder collapse: so-what laddering produces three levels that paraphrase the same idea.</description>
+      <reason>Force each level to use a different noun class (feature benefit → business outcome → emotional/strategic outcome) and a measurable at the terminal level.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Category-creation inflation: every product becomes "the first AI-native X."</description>
+      <reason>Require a citation that the proposed category does not yet exist — G2 search returning zero results, or no Wikipedia entry for the category name. Fiction categories harm credibility.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Proof points filled with "trusted by leaders" marketing copy.</description>
+      <reason>Every proof point must be a citable URL, customer quote, or measurable outcome. Marketing copy is not evidence and fails the agent's own lint rules.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Human-in-the-Loop Checkpoints">
+    <list>
+      <item>Approve the unique-attributes shortlist (no more than 3) before value-laddering begins</item>
+      <item>Sign off on best-fit-customer narrowing before the statement is drafted</item>
+      <item>Approve the final positioning statement before it enters marketing, landing-page, or pricing copy — this is a strategic decision agents must not own</item>
+    </list>
+  </section>
+
+  <reference path="templates/positioning-lint.sh">Lint comparative language and verify six-clause structure</reference>
+  <reference path="templates/positioning-canvas.md">Canvas template with all required sections</reference>
+</text>

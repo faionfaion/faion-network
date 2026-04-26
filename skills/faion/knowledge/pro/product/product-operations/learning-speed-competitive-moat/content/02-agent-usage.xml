@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-usage" title="Belief-Update Agent Pipeline">
+  <summary>Daily/weekly agent pipeline for maintaining versioned beliefs.yaml, prompt patterns with XML structure, and critical gotchas.</summary>
+
+  <section title="Pipeline Architecture">
+    <p>signal-collector (haiku, daily) → events.ndjson. signal-classifier (haiku/sonnet, daily) → tags evidence-for | evidence-against | new-hypothesis | noise. belief-updater (sonnet, weekly) → versioned beliefs.yaml diff. weekly-synthesizer (sonnet, Monday) → digest with cited event_ids. strategy-reviewer (opus, Friday) → keep|kill|reframe decisions with owner and check-back date. decision-logger (haiku, continuous) → prediction + check-back date per decision.</p>
+
+    <rule>
+      <statement>Separate mechanical work (haiku: signal collection, classification, decision logging) from judgment work (opus: strategy review, roadmap pass). Mixing costs 10x and introduces bias.</statement>
+      <rationale>Opus applied to classification tasks burns budget without improving quality. Haiku applied to strategy synthesis produces confident-sounding but shallow reasoning. Each model tier has a specific function.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Belief-updater (XML structured output):</note>
+      <code lang="xml"><![CDATA[
+<role>belief-updater</role>
+<current_beliefs>{{ beliefs_yaml }}</current_beliefs>
+<new_events>{{ events_jsonl }}</new_events>
+<rules>
+  Only mutate a belief if (a) >=3 independent event_ids agree, OR
+  (b) 1 high-severity event directly contradicts current claim with cited URL/transcript.
+  Never invent beliefs. Cite event_id for every change.
+</rules>
+<output_schema>
+  {changed:[{belief_id, before, after, evidence:[event_id], confidence_delta}],
+   unchanged_with_pressure:[{belief_id, opposing_evidence:[event_id]}]}
+</output_schema>
+      ]]></code>
+    </example>
+
+    <example type="good">
+      <note>Strategy-reviewer (opus, neutral framing):</note>
+      <code lang="xml"><![CDATA[
+<role>strategy-reviewer</role>
+<beliefs>{{ beliefs_yaml }}</beliefs>
+<roadmap>{{ roadmap_md }}</roadmap>
+<experiments>{{ experiments_yaml }}</experiments>
+<deliverable>For each roadmap item: keep|kill|reframe, cited evidence,
+decision_owner, check_back_date.</deliverable>
+<constraint>Default to "kill" if evidence_for_keeping &lt; 3 cited events
+in last 30 days. Never reuse last week's recommendation without re-citing.</constraint>
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Memory rot: belief-updater pulled into context-window compaction loses last week's reasoning.</description>
+      <reason>Persist beliefs.yaml and beliefs.history.ndjson outside the LLM and re-inject on every run. Never rely on LLM memory for belief continuity across sessions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Evidence laundering: sonnet rewrites the same event into 3 different "independent" supports for a belief.</description>
+      <reason>Dedupe by event_id hash before counting independent signals. Three occurrences of the same event do not count as three independent signals.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Hallucinated event_ids: model invents event_42 that does not exist in events.ndjson.</description>
+      <reason>Run a fact-checker pass that looks up every cited id in events.ndjson before publishing. Uncited event_ids are fabrications.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Token blow-up from dumping 10k events directly into Opus weekly.</description>
+      <reason>Pre-cluster with haiku, hand 50–100 archetypal events to opus. Full event streams at opus cost is wasteful and counterproductively degrades reasoning quality.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Action-less insight loop: agent surfaces 200 insights per week, no decision_owner, nobody acts.</description>
+      <reason>Force schema field decision_owner on every event that reaches the belief-updater. Drop events without an owner rather than surfacing them without action.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/belief_update.py">Weekly belief-update loop: loads events.ndjson, calls Claude, writes beliefs.yaml</reference>
+</text>

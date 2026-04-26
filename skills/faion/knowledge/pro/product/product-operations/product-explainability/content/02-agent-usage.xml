@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-usage" title="Four-Stage Explainability Agent Pipeline">
+  <summary>Extractor → generator → probe → drift agent pipeline, prompt patterns for KB extraction and AI-answer probing, and critical gotchas.</summary>
+
+  <section title="Four-Stage Pipeline">
+    <p>Stage 1 (extractor): reads live product (homepage, docs, OpenAPI spec, changelog, in-app strings), emits structured product-kb.json. Stage 2 (generator): renders KB into public surfaces — llms.txt, schema.org JSON-LD, sitemap, docs "is not" section. Stage 3 (probe): queries ChatGPT, Claude, Perplexity, Gemini with canonical questions and diffs answers against KB. Stage 4 (drift): cron job comparing live site, docs, and KB — opens tickets when fields disagree.</p>
+
+    <rule>
+      <statement>Wire stages 1–2 into CI so a release cannot ship without an updated KB. Run stages 3–4 on weekly cron. Persist KB at .aidocs/product_docs/product-kb.json as shared truth for all faion-net agents.</statement>
+      <rationale>Explainability debt accumulates silently after each release. CI enforcement is the only mechanism that makes KB updates a required part of shipping, not an afterthought.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>KB extraction pass:</note>
+      <code lang="text"><![CDATA[
+You extract a structured product KB. Inputs: <homepage url>, <docs root>,
+<openapi spec>, <changelog>. Output JSON with fields: purpose (1 sentence,
+no marketing adjectives), capabilities[] (each: name, description, example,
+status: ga|beta|deprecated, since_version), limits[] (each: scope, rationale,
+workaround_or_null), use_cases[] (each: persona, job, success_signal),
+audience (industry, role, company_size), prerequisites[].
+Refuse to invent fields. If a source is missing, write "unknown" -- never fabricate.
+      ]]></code>
+    </example>
+
+    <example type="good">
+      <note>AI-answer probe pass:</note>
+      <code lang="text"><![CDATA[
+For each question in <question_set>, query <model> with no system prompt,
+plain user role. Capture the full answer. Score against <product-kb.json>
+on three axes: factually_correct (0|1), capability_in_scope (0|1),
+limit_acknowledged (0|1). Output a markdown table sorted by total score asc.
+Flag any answer that recommends a capability with status=deprecated.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Generator agents producing adjective-heavy copy ("best-in-class", "leading", "revolutionary").</description>
+      <reason>Force a "no adjectives, no superlatives" constraint in the system prompt and lint generated output. These tokens provide no retrieval signal and reduce trust.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Extractor agent fabricating capabilities to fill empty fields.</description>
+      <reason>Refuse-on-unknown must be enforced via prompt and post-hoc validator that cross-checks capability names against the feature flag registry or source code. Invented capabilities create support and legal liability.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Limit array lost across multi-step pipeline summarization passes.</description>
+      <reason>Preserve the limits[] array verbatim across every pipeline stage. Never re-summarize limits — they carry legal and trust-critical precision that compression loses.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Probe agents producing the same response across runs due to same prompt and cached model state.</description>
+      <reason>Vary question phrasing, user role, and timing across probe runs. Stable scores are an artifact of caching, not real representation quality.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Agent autonomously flipping a capability status to deprecated without human review.</description>
+      <reason>Deprecated status removes a capability from AI-mediated discovery and directly impacts revenue. Always require product-owner sign-off; agents propose, humans approve the status change.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Confidential information (unreleased features, internal vendor names, beta-only flags) in published KB.</description>
+      <reason>Capability docs frequently leak internal details. Run a scrubber agent before any external publish — especially before pushing llms.txt or schema.org markup.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/product-kb-validate.sh">JSON Schema validator for product-kb.json; wire into pre-commit</reference>
+</text>
