@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tracking-rules" title="Tracking Plan Rules and Agent Gotchas">
+  <summary>Defines the closed set of tracking rules for event naming, cohort comparison, dashboard lifecycle, and LLM-specific failure modes in analytics workflows.</summary>
+
+  <section title="Event Naming and Taxonomy">
+    <rule>
+      <statement>Use object_action format in snake_case for all event names (e.g., account_created, feature_used, upgrade_started); reject any event name that does not follow this pattern.</statement>
+      <rationale>Without a strict naming convention, teams end up with signup_done, account_created, and user_registered all meaning the same thing; the funnel fragments silently across three tables.</rationale>
+    </rule>
+    <rule>
+      <statement>Freeze the event taxonomy in git (tracking-plan.md); runtime catalogs drift toward it via PR, never the other way. Run a weekly cron drift-linter comparing the live event catalog against tracking-plan.md.</statement>
+      <rationale>Engineers ship new events without updating the tracking plan; the cron linter is the only sustainable fix — agents that are not constrained to the taxonomy in their system prompt invent event names that fragment the funnel.</rationale>
+    </rule>
+    <rule>
+      <statement>Every event row must state which decision it informs; reject any event without a stated decision at tracking plan review time.</statement>
+      <rationale>"Track everything" sprawl is the primary driver of analysis paralysis and dashboard graveyards; decision-first requirements eliminate events nobody will ever query.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cohort Comparison Rules">
+    <rule>
+      <statement>Compare D7-of-cohort-A to D7-of-cohort-B (fixed window); never compare D30 vs D7 across cohorts.</statement>
+      <rationale>Comparing D30 retention of a 6-week-old cohort to D7 of a 1-week-old cohort makes the older cohort look worse by design; readers misread it as a retention regression.</rationale>
+    </rule>
+    <rule>
+      <statement>Exclude cohorts that have not yet aged to the measurement window from retention calculations; survivorship bias systematically over-states retention for fast-growing products.</statement>
+      <rationale>An agent computing D30 retention for all users including those who signed up less than 30 days ago will produce a number that looks like retention but is actually just "users who have had time to churn."</rationale>
+    </rule>
+  </section>
+
+  <section title="Dashboard Lifecycle">
+    <rule>
+      <statement>Apply a kill-criterion to every dashboard: archive if no opens in 30 days; enforce via an agent-driven cron check.</statement>
+      <rationale>Agents create dashboards easily and never archive them; without a kill-criterion the dashboard inventory grows monotonically until no PM can find the one they actually need.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Agent inventing event names (e.g., user_signed_up) when the codebase uses signup_completed.</description>
+      <reason>Always pass the canonical event taxonomy in the agent system prompt and reject novel event names; hallucinated event names create schema gaps that are invisible until a dashboard shows zero data.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent SQL joining events to users to sessions without DISTINCT, producing triple-counted metrics.</description>
+      <reason>Naive joins fanout rows; require count(distinct user_id) and gate queries via sqlfluff rules, or use a metrics layer (dbt-metrics, Cube) so agents cannot write raw fanout SQL.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent providing a single confident cause when asked "why did retention drop?"</description>
+      <reason>Funnels and cohorts answer "what" and "where," never "why"; force the agent to list 3+ candidate causes and the disambiguating query, never a single explanation without a cited experiment.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent including raw event payloads (with emails, IPs, free-text) in LLM prompts.</description>
+      <reason>Product events leak PII; always aggregate or hash before any LLM call; run a password-scrubber-agent pass on any data before it enters a prompt context.</reason>
+    </antipattern>
+    <reference path="templates/tracking-plan-lint.sh">Enforce snake_case naming and required fields on the tracking plan markdown</reference>
+  </section>
+</text>

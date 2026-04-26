@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pm-ops-boundary" title="PM-ProductOps Boundary: RACI and Hand-off Rules">
+  <summary>Defines the hard boundary between PM-side (read + narrative) and Product Ops-side (canonical store + system-of-record writes), the RACI table, and the hand-off queue pattern.</summary>
+
+  <section title="Core Boundary Rule">
+    <rule>
+      <statement>PM-side agents are pure readers of the canonical store and authors of narrative artifacts (specs, discovery memos, decision logs); Product Ops agents own system-of-record writes.</statement>
+      <rationale>PMs who run parallel rollups in their own subagents produce numbers that diverge from org-published figures; when two decks contradict in the same meeting, trust in both collapses.</rationale>
+    </rule>
+    <rule>
+      <statement>Issue PM-side agents read-only tokens for Linear/Jira/Productboard; enforce the boundary at the auth layer, not by prompt instructions.</statement>
+      <rationale>Prompt instructions saying "do not write to Jira" are overridden by agents with write tokens; token-scoped access is the only reliable contract.</rationale>
+    </rule>
+    <rule>
+      <statement>PM-side brainstorms produce proposals; the publish step lives in Product Ops. Hand off, do not write directly.</statement>
+      <rationale>Template fragmentation — 3 squads with 3 spec templates — happens when PMs publish unilaterally; the hand-off queue is what makes templates converge org-wide.</rationale>
+    </rule>
+  </section>
+
+  <section title="RACI Table">
+    <p>PM owns (R, A): author spec/discovery memo/decision log, define a KPI, decide continue/pivot/kill. Product Ops owns (R, A): run weekly portfolio rollup, set roadmap entry status in Productboard, ship a new template org-wide, schedule a release, distribute stakeholder packs. PM is C on Product Ops activities; Product Ops is C on PM-authored content.</p>
+  </section>
+
+  <section title="Canonical Store Protocol">
+    <rule>
+      <statement>PM memos cite the canonical store by URL (e.g., /ops-store/rollup-2026-04-21.md), not by "I queried Linear and found..." — makes hand-offs auditable and kills shadow rollups at the document layer.</statement>
+      <rationale>URL-cited sources can be verified; paraphrased queries cannot. Shadow rollups are invisible when they look like primary analysis; URL-citation makes the source explicit.</rationale>
+    </rule>
+    <rule>
+      <statement>If a Product Ops rollup is older than 48 hours, stop and request a refresh — do not substitute a fresh scrape from Linear/Jira.</statement>
+      <rationale>Stale rollups used in exec decks create a presentation with out-of-date numbers; presenting stale data as current is worse than presenting no data at all.</rationale>
+    </rule>
+    <reference path="templates/pm-ops-contract-check.sh">Block PM-side write attempts to system-of-record owned by Product Ops</reference>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>PM agent getting write token "for convenience" and starting to edit Linear tickets directly.</description>
+      <reason>Once an agent has write access and uses it without triggering an error, the habit is established; audit token scopes per agent in CI and refuse new writer tokens without a Product Ops co-sign.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent saying "Product Ops recommends killing feature F-123" — recommendation laundering.</description>
+      <reason>Product Ops provides signal, not recommendations; recommendations without decision authority confuse accountability. Strip "Product Ops recommends" language at the prompt level; only the PM recommends.</reason>
+    </antipattern>
+    <antipattern>
+      <description>PM posts a "draft" directly into Notion canonical pages because the hand-off queue felt like ceremony.</description>
+      <reason>The queue is the contract, not ceremony; lock the canonical pages at the API level so "drafts" cannot bypass the queue even when the PM considers them harmless.</reason>
+    </antipattern>
+  </section>
+</text>
