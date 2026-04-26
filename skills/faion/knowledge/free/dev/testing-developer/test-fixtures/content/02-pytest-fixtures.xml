@@ -1,0 +1,77 @@
+<text id="pytest-fixture-design" title="pytest Fixture Design">
+
+  <summary>
+    Fixture scopes and when to use each, yield cleanup, vertical and horizontal composition, conftest layering, and autouse.
+  </summary>
+
+  <section title="Scope Selection">
+    <rule>function scope (default): isolated per test. Use for stateful fixtures (DB records, file handles).</rule>
+    <rule>class scope: shared across methods in a test class. Use for read-only class-level setup.</rule>
+    <rule>module scope: shared across all tests in a file. Use for expensive read-only setup (parsed config, loaded schema).</rule>
+    <rule>session scope: shared for entire test run. Use ONLY for truly immutable resources (opened TCP connections, loaded models).</rule>
+    <rule>A wide-scope fixture cannot depend on a narrower-scope fixture — pytest raises an error.</rule>
+  </section>
+
+  <section title="Yield Fixtures">
+    <rule>Use yield instead of request.addfinalizer — cleanup is co-located and runs even if setup fails after yield.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture(scope="module")
+def smtp_connection():
+    import smtplib
+    conn = smtplib.SMTP("smtp.example.com", 587)
+    conn.starttls()
+    yield conn
+    conn.quit()  # guaranteed cleanup
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Vertical Composition (fixture chains)">
+    <rule>Build higher-level fixtures from lower-level ones by declaring them as parameters.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def db_user(db):
+    return UserFactory()
+
+@pytest.fixture
+def authenticated_client(client, db_user):
+    client.force_login(db_user)
+    return client
+
+def test_profile_page(authenticated_client):
+    response = authenticated_client.get("/profile/")
+    assert response.status_code == 200
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Horizontal Composition (multiple fixtures)">
+    <rule>Request multiple independent fixtures in a test when they provide different concerns.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_checkout(authenticated_client, make_product, mailoutbox):
+    product = make_product(price=50.0)
+    authenticated_client.post("/checkout/", {"product_id": product.id})
+    assert len(mailoutbox) == 1
+    assert "Order confirmed" in mailoutbox[0].subject
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Autouse Fixtures">
+    <rule>Use autouse=True only for cross-cutting side effects: clearing caches, resetting singletons, patching env vars.</rule>
+    <rule>Always document autouse fixtures so developers know they run implicitly.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture(autouse=True)
+def isolate_from_external_services(mocker):
+    """Prevent any real HTTP calls during tests."""
+    mocker.patch("requests.get", side_effect=RuntimeError("Real HTTP blocked in tests"))
+    mocker.patch("requests.post", side_effect=RuntimeError("Real HTTP blocked in tests"))
+      ]]></code>
+    </example>
+  </section>
+
+</text>

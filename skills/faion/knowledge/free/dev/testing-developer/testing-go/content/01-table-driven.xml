@@ -1,0 +1,90 @@
+<text id="go-table-driven" title="Table-Driven Tests and Subtests">
+
+  <summary>
+    Table-driven test pattern, t.Run subtests, t.Parallel(), loop-variable capture fix, t.Helper(), and test naming.
+  </summary>
+
+  <section title="Table-Driven Pattern">
+    <rule>Use table-driven tests for any function with multiple input/output pairs — avoids copy-paste and makes cases explicit.</rule>
+    <rule>Define test cases as a slice of structs with named fields — never positional anonymous structs.</rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func TestCalculateDiscount(t *testing.T) {
+    tests := []struct {
+        name     string
+        price    float64
+        role     string
+        wantDisc float64
+    }{
+        {name: "premium_20pct", price: 100, role: "premium", wantDisc: 20},
+        {name: "standard_no_disc", price: 100, role: "user", wantDisc: 0},
+        {name: "zero_price", price: 0, role: "premium", wantDisc: 0},
+    }
+
+    for _, tc := range tests {
+        t.Run(tc.name, func(t *testing.T) {
+            got := CalculateDiscount(tc.price, tc.role)
+            if got != tc.wantDisc {
+                t.Errorf("CalculateDiscount(%v, %q) = %v, want %v",
+                    tc.price, tc.role, got, tc.wantDisc)
+            }
+        })
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="t.Parallel()">
+    <rule>Call t.Parallel() at the start of each subtest to run them concurrently.</rule>
+    <rule>When using t.Parallel() inside a range loop (Go < 1.22), capture the loop variable explicitly to avoid data races.</rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+for _, tc := range tests {
+    tc := tc // capture loop variable — required in Go < 1.22
+    t.Run(tc.name, func(t *testing.T) {
+        t.Parallel()
+        // ... test body using tc
+    })
+}
+      ]]></code>
+    </example>
+    <note>Go 1.22+ fixes loop variable semantics — the tc := tc capture is no longer needed but harmless.</note>
+  </section>
+
+  <section title="assert vs require">
+    <rule>Use require (testify) when a failure should stop the test immediately — nil pointer dereferences, must-have preconditions.</rule>
+    <rule>Use assert (testify) for non-fatal checks where you want to see all failures.</rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+import (
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
+func TestGetUser(t *testing.T) {
+    user, err := GetUser(ctx, 1)
+    require.NoError(t, err)          // stop if error
+    require.NotNil(t, user)          // stop if nil (prevents nil deref below)
+    assert.Equal(t, "alice", user.Name)
+    assert.Equal(t, "admin", user.Role)
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="t.Helper()">
+    <rule>Call t.Helper() in test helper functions so failure lines point to the caller, not the helper.</rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func assertUserEqual(t *testing.T, want, got *User) {
+    t.Helper()
+    if want.ID != got.ID || want.Name != got.Name {
+        t.Errorf("user mismatch: want %+v, got %+v", want, got)
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+</text>

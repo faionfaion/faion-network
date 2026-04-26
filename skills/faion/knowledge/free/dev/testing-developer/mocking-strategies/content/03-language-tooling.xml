@@ -1,0 +1,94 @@
+<text id="mock-language-tooling" title="Language-Specific Mocking Tools">
+
+  <summary>
+    Python unittest.mock/pytest-mock, JavaScript vi.mock/Jest, Go interface mocks. Common mistakes and how to avoid them.
+  </summary>
+
+  <section title="Python: unittest.mock and pytest-mock">
+    <rule>Use mocker.patch() (pytest-mock) inside tests instead of @patch decorator — cleaner scope management.</rule>
+    <rule>Always use spec= or autospec=True to catch typos and attribute mismatches at call time.</rule>
+    <antipattern>
+      <description>MagicMock without spec swallows typos silently</description>
+      <code lang="python"><![CDATA[
+# Bad: mock.notexistingmethod() returns a Mock instead of raising AttributeError
+mock = MagicMock()
+result = mock.notexistingmethod()  # no error — silent false positive
+
+# Good: autospec raises AttributeError for methods not on the real class
+mock = create_autospec(PaymentGateway)
+result = mock.notexistingmethod()  # AttributeError caught immediately
+      ]]></code>
+      <reason>autospec validates call signatures against the real class at mock-creation time.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Patching at the wrong location</description>
+      <code lang="python"><![CDATA[
+# Bad: patches the original module, not where it's used
+mocker.patch("stripe.Charge.create")
+
+# Good: patch where the name is looked up (the importing module)
+mocker.patch("myapp.services.payment.stripe.Charge.create")
+      ]]></code>
+      <reason>Python looks up names at call time in the namespace of the importing module.</reason>
+    </antipattern>
+  </section>
+
+  <section title="JavaScript: Vitest and Jest">
+    <rule>Use vi.mock() / jest.mock() at the module level — hoisted above imports by the bundler.</rule>
+    <rule>Use vi.spyOn() for partial mocking of a single method on a real object.</rule>
+    <rule>Always call vi.clearAllMocks() or jest.clearAllMocks() in afterEach to prevent state leakage.</rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { vi, describe, it, expect, afterEach } from 'vitest';
+import { sendEmail } from '../services/email';
+import { registerUser } from '../services/user';
+
+vi.mock('../services/email');
+
+afterEach(() => vi.clearAllMocks());
+
+it('sends welcome email on registration', async () => {
+  await registerUser({ email: 'new@example.com' });
+  expect(sendEmail).toHaveBeenCalledOnce();
+  expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+    to: 'new@example.com',
+  }));
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Go: Interface-Based Mocking">
+    <rule>Go mocking is interface substitution — define a minimal interface, implement it in tests.</rule>
+    <rule>Use mockery for auto-generating mocks from interfaces; use manual mocks for simple cases.</rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// Define the interface in production code
+type Mailer interface {
+    Send(to, subject, body string) error
+}
+
+// Manual test mock
+type mockMailer struct {
+    calls []string
+    err   error
+}
+
+func (m *mockMailer) Send(to, subject, body string) error {
+    m.calls = append(m.calls, to)
+    return m.err
+}
+
+func TestUserService_Register(t *testing.T) {
+    mailer := &mockMailer{}
+    svc := NewUserService(mailer)
+    svc.Register("user@example.com")
+    if len(mailer.calls) != 1 || mailer.calls[0] != "user@example.com" {
+        t.Errorf("expected one email to user@example.com, got %v", mailer.calls)
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+</text>
