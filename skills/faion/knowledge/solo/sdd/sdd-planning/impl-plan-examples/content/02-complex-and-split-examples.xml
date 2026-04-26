@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-complex-and-split-examples" title="Complex (12 Tasks) and Task-Split Examples, Quality Checklist">
+  <summary>Critical path chain for a 12-task complex feature, before/after task split for an oversized refactoring task, quality checklist for implementation plans, and rules for adapting examples.</summary>
+
+  <section title="Complex Feature: Critical Path">
+    <example type="good">
+      <note>Critical path as explicit chain — table format, not ASCII diagram</note>
+      <code lang="markdown"><![CDATA[
+## Critical Path
+
+TASK-001 → TASK-003 → TASK-005 → TASK-008 → TASK-011 → TASK-012
+
+Token estimates on critical path:
+TASK-001 (~40k) → TASK-003 (~50k) → TASK-005 (~40k) → TASK-008 (~30k) → TASK-011 (~40k) → TASK-012 (~20k)
+
+## Wave Analysis (complex 5-wave example)
+
+| Wave | Tasks                          | Parallel | Dependencies     |
+|------|--------------------------------|----------|------------------|
+| 1    | TASK-001, TASK-002             | Yes      | None             |
+| 2    | TASK-003, TASK-004             | Yes      | Wave 1           |
+| 3    | TASK-005, TASK-006, TASK-007   | Yes      | Wave 2           |
+| 4    | TASK-008, TASK-009, TASK-010   | Yes      | Wave 3           |
+| 5    | TASK-011, TASK-012             | No (seq) | Wave 4           |
+]]></code>
+    </example>
+    <rule>
+      <statement>Write wave analysis as a table (Wave, Tasks, Parallel, Dependencies) rather than as a diagram. Text tables are machine-parseable and comply with the no-ASCII-art rule.</statement>
+      <rationale>Agents reproduce ASCII box-and-arrow diagrams from examples. Table format produces the same information without prohibited formatting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Task Split for Oversized Tasks">
+    <p>When a task estimate exceeds 100k tokens, split at natural code boundaries: interface → implementation → API layer. The refactoring example shows this pattern.</p>
+    <example type="bad">
+      <note>Before split — single task exceeds 100k budget</note>
+      <code lang="markdown"><![CDATA[
+### TASK-001: Refactor user service to use repository pattern
+**Context Estimate:** ~160k tokens
+
+Files to modify:
+- src/services/UserService.ts (800 lines)
+- src/api/users/*.ts (12 endpoints)
+- tests/services/UserService.test.ts (300 lines)
+- tests/api/users/*.test.ts (10 files)
+
+Problem: exceeds 100k context budget
+]]></code>
+    </example>
+    <example type="good">
+      <note>After split into 3 tasks at natural boundaries</note>
+      <code lang="markdown"><![CDATA[
+### TASK-001: Create user repository interface (~50k tokens)
+Files:
+- CREATE src/repositories/UserRepository.ts
+- CREATE src/repositories/interfaces/IUserRepository.ts
+- CREATE tests/repositories/UserRepository.test.ts
+Depends on: None
+
+### TASK-002: Migrate user service to repository (~55k tokens)
+Files:
+- MODIFY src/services/UserService.ts
+- CREATE tests/services/UserService.integration.test.ts
+Depends on: TASK-001
+
+### TASK-003: Update user API endpoints (~60k tokens)
+Files:
+- MODIFY src/api/users/*.ts (12 files)
+- MODIFY tests/api/users/*.test.ts (10 files)
+Depends on: TASK-002
+]]></code>
+    </example>
+  </section>
+
+  <section title="Implementation Plan Quality Checklist">
+    <section title="Completeness">
+      <list>
+        <item>All AD-X from design have corresponding tasks</item>
+        <item>All file changes from design are assigned to tasks</item>
+        <item>Prerequisites fully documented (with version numbers for external deps)</item>
+        <item>Testing plan covers all phases</item>
+      </list>
+    </section>
+    <section title="Structure">
+      <list>
+        <item>Tasks follow INVEST criteria</item>
+        <item>Dependencies clearly documented (FS — Finish-to-Start notation)</item>
+        <item>Token estimates provided per task (no time estimates)</item>
+        <item>Context budget &lt;100k per task</item>
+      </list>
+    </section>
+    <section title="Parallelization">
+      <list>
+        <item>Dependency graph documented as table</item>
+        <item>Waves identified</item>
+        <item>Critical path calculated as explicit task chain</item>
+        <item>Test tasks placed in waves AFTER the implementation they test</item>
+      </list>
+    </section>
+    <section title="Traceability">
+      <list>
+        <item>Each task traces to at least one AD-X</item>
+        <item>Each task traces to at least one FR-X</item>
+      </list>
+    </section>
+  </section>
+
+  <reference path="templates/dep-graph-validator.py">Topological sort to detect cycles in task dependency graph</reference>
+</text>
