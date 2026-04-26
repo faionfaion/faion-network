@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-migrations-and-challenges" title="Migrations and CD Blockers">
+  <summary>Expand-contract migration pattern for safe schema changes, and concrete solutions to the three most common CD blockers: large batches, slow tests, and non-backward-compatible database changes.</summary>
+
+  <section title="Expand-Contract Migrations">
+    <rule>
+      <statement>Use the expand-contract pattern for schema changes: Deploy 1 adds nullable column (backward compatible). Deploy 2 backfills data. Deploy 3 makes column required. Never combine expand and contract in one deployment.</statement>
+      <rationale>Combining schema and application changes in one deploy creates a window where the old application version is incompatible with the new schema, requiring a coordinated cutover that defeats CD.</rationale>
+    </rule>
+    <rule>
+      <statement>Require two separate PRs for expand and contract phases; agents that merge them into one PR must be blocked by review policy.</statement>
+      <rationale>The single-PR "shortcut" is the most common way CD-adopting teams reintroduce risky coordinated deployments.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Deploy 1: Add nullable column (backward compatible — old code works)
+def upgrade():
+    op.add_column('users', sa.Column('email', sa.String(255), nullable=True))
+
+def downgrade():
+    op.drop_column('users', 'email')
+
+# Deploy 2 (separate PR): Backfill data in a data migration
+# Deploy 3 (separate PR): Make column required after all rows have values
+def upgrade():
+    op.alter_column('users', 'email', nullable=False)
+]]></code>
+      <note>Each deploy can be rolled back independently. Old application versions continue working during the transition.</note>
+    </example>
+  </section>
+
+  <section title="CD Blockers and Solutions">
+    <rule>
+      <statement>Target &lt;200 LOC per PR; large PRs are the #1 CD blocker. Implement PR size linting in CI (fail on &gt;500 LOC changes outside generated files).</statement>
+      <rationale>Large PRs take longer to review, accumulate more conflicts, and carry more deployment risk than small ones. The discipline must be enforced, not just recommended.</rationale>
+    </rule>
+    <rule>
+      <statement>Parallelize tests; run E2E only on staging, not on every branch. Use contract testing instead of full E2E for service boundaries.</statement>
+      <rationale>Serial test execution and full E2E on every commit are the two most common reasons pipelines exceed the 15-minute budget and teams start batching.</rationale>
+    </rule>
+    <rule>
+      <statement>Fix or quarantine flaky tests immediately; a flaky test in the critical path destroys confidence in CD and encourages manual overrides.</statement>
+      <rationale>Once engineers learn to ignore a red pipeline step, they stop treating it as a gate — the entire CD discipline erodes.</rationale>
+    </rule>
+  </section>
+
+  <antipattern>
+    <description>Agents copy "Phase X: Y weeks" timelines from planning documents into roadmaps.</description>
+    <reason>Project policy prohibits time estimates in SDD documents. Replace with complexity tiers (Low/Medium/High) and token estimates.</reason>
+  </antipattern>
+  <antipattern>
+    <description>Using the in-process feature flag cache from the README in production (in-process dict cache).</description>
+    <reason>An in-process cache hides flag changes for hours or until the process restarts. Use an SSE/WebSocket-based flag SDK or a very short TTL (under 60 seconds) in production.</reason>
+  </antipattern>
+</text>

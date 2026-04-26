@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-iterator-visitor-selection" title="Iterator, Visitor, Pattern Relationships, and Selection Matrix">
+  <summary>Iterator and Visitor patterns, cross-pattern relationships, selection matrix keyed to common design situations, and anti-patterns for over-applying behavioral patterns.</summary>
+
+  <section title="Iterator Pattern">
+    <list>
+      <item>Use when: need uniform traversal of collections without exposing internal structure, multiple traversal algorithms (forward, reverse, filtered) needed, lazy evaluation for large or infinite sequences.</item>
+      <item>Modern Python: __iter__/__next__ protocol is built-in; generators (yield) are idiomatic iterators with lazy evaluation. filter(), map(), itertools provide composable iterator transformations.</item>
+      <item>Modern TypeScript: Symbol.iterator protocol is built-in; generators and async generators (for await...of) handle both sync and async streams. The explicit Iterator interface is rarely needed.</item>
+      <item>Go: range over custom types requires implementing the Seq or iter.Seq interface introduced in Go 1.23; for older Go, manual iteration methods are idiomatic.</item>
+    </list>
+    <note>In modern languages (Python 3, TypeScript, Go 1.23+, Rust, Java streams), the Iterator pattern is built into the language protocol. You rarely need to implement it from scratch — extend or wrap the built-in iteration protocol instead.</note>
+  </section>
+
+  <section title="Visitor Pattern">
+    <rule>
+      <statement>Apply Visitor when you need to add multiple operations to a stable class hierarchy without modifying those classes. If the hierarchy changes frequently, Visitor is the wrong choice — every new class requires updating all visitors.</statement>
+      <rationale>Visitor trades hierarchy extensibility for operation extensibility. It is the inverse of the Open-Closed trade-off: Visitor makes adding operations easy, but adding new element types hard.</rationale>
+    </rule>
+    <list>
+      <item>Use when: adding operations to a class hierarchy without modifying it (AST traversal, serialization, reporting), operations on heterogeneous collections of objects.</item>
+      <item>Avoid when: the class hierarchy changes frequently, operations are simple or few, pattern matching (Rust, Kotlin, Scala) or structural pattern matching (Python 3.10+) achieves the same goal with less boilerplate.</item>
+      <item>Double dispatch: Visitor relies on double dispatch — the visitor.visit(element) call resolves to the correct visit_element_X method based on the runtime type of both the visitor and the element.</item>
+      <item>Modern alternatives: Python 3.10+ match/case, Rust match on enum variants, Kotlin sealed classes — all provide exhaustive pattern matching that replaces Visitor for many AST-style use cases.</item>
+    </list>
+  </section>
+
+  <section title="Pattern Relationships">
+    <list>
+      <item>Strategy vs State: both change behavior at runtime. Strategy is set externally by the client and remains stable; State transitions automatically based on internal events.</item>
+      <item>Observer vs Mediator: Observer is distributed (subject notifies subscribers directly, 1-to-N); Mediator is centralized (all communication routes through one object, N-to-1-to-N). Observer decouples more; Mediator controls more.</item>
+      <item>Command vs Memento: Command stores operations (what to do + undo); Memento stores state snapshots (what the object looked like). Use Command for undo/redo in systems with explicit actions; Memento for snapshot/restore in stateful objects.</item>
+      <item>Chain of Responsibility vs Composite: often used together — a Composite tree can trigger a chain that traverses it. Chain handles request routing; Composite handles tree structure.</item>
+      <item>Visitor vs Iterator: Iterator provides access to collection elements; Visitor processes each element with a type-specific operation. They compose naturally — use Iterator to traverse, Visitor to process.</item>
+    </list>
+  </section>
+
+  <section title="Pattern Selection Matrix">
+    <list>
+      <item>"Multiple algorithms, choose at runtime" → Strategy. Alternative: Command (when each algorithm needs undo).</item>
+      <item>"Notify many objects of state changes" → Observer. Alternative: Mediator (when you need central control over notification order).</item>
+      <item>"Undo/redo support needed" → Command. Alternative: Memento (for snapshot-based undo, not operation-based).</item>
+      <item>"Object behaves differently per internal state" → State. Alternative: Strategy (when state is set externally, not managed internally).</item>
+      <item>"Pipeline of handlers, each may process or pass" → Chain of Responsibility. Alternative: Decorator (when every handler always processes).</item>
+      <item>"Same algorithm structure, steps vary by subclass" → Template Method. Alternative: Strategy (when algorithm structure itself should vary).</item>
+      <item>"Reduce many-to-many component dependencies" → Mediator. Alternative: Observer (when you want purely decoupled notification).</item>
+      <item>"Traverse collection uniformly" → Iterator (or built-in language protocol). Alternative: Visitor (when you also need type-specific processing per element).</item>
+      <item>"Add operations without modifying class hierarchy" → Visitor. Alternative: Strategy (when the class hierarchy changes frequently).</item>
+    </list>
+  </section>
+
+  <section title="Anti-Patterns">
+    <antipattern>
+      <description>Applying a behavioral pattern when a simple function or data structure suffices.</description>
+      <reason>A Strategy with one implementation, an Observer with one subscriber, or a Chain with one handler adds abstraction cost with no extensibility gain. Apply patterns off measured code smells (cyclomatic complexity, duplication, change frequency), not aesthetics.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using class-based GoF patterns in languages with first-class functions.</description>
+      <reason>In Python, TypeScript, and Rust, many behavioral patterns reduce to higher-order functions or type system features. A Strategy pattern implemented as a callable function is idiomatic and requires no class hierarchy.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Over-engineering Observer chains without error handling or backpressure.</description>
+      <reason>Unbounded Observer chains where a slow subscriber blocks notification or an exception propagates silently cause hard-to-debug cascading failures. Use reactive streams (RxJS, RxPy) when backpressure and error propagation matter.</reason>
+    </antipattern>
+  </section>
+</text>

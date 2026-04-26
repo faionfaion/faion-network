@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-scalability" title="Scalability Patterns and Async Processing">
+  <summary>Horizontal vs vertical scaling trade-offs, data partitioning strategies, Kubernetes HPA, connection pool sizing, and async processing patterns for offloading heavy work from the request path.</summary>
+
+  <section title="Horizontal vs Vertical Scaling">
+    <list>
+      <item>Horizontal (scale out): add instances. Limit: near-infinite. Downtime: zero. Complexity: higher (stateless design, service discovery required). Cost: linear. Best for: web APIs, stateless services.</item>
+      <item>Vertical (scale up): increase CPU/RAM per instance. Limit: hardware ceiling. Downtime: usually required. Complexity: lower. Cost: exponential at high tiers. Best for: databases, legacy apps, stateful services.</item>
+    </list>
+    <rule>
+      <statement>Horizontal scaling requires stateless application design: sessions externalized to Redis, no in-process shared mutable state, no local file writes for shared data.</statement>
+      <rationale>Horizontal scaling breaks sticky assumptions — any instance can receive any request. In-process state becomes a consistency bug, not just a performance issue.</rationale>
+    </rule>
+  </section>
+
+  <section title="Data Partitioning">
+    <list>
+      <item>Horizontal sharding: route by key range or hash. Example: users A-M → shard 1, users N-Z → shard 2. Pro: write throughput scales linearly. Con: cross-shard queries are expensive.</item>
+      <item>Vertical partitioning: split by domain. Example: user profiles → Users DB, orders → Orders DB, analytics → ClickHouse. Pro: each store optimized for its access pattern. Con: cross-domain joins require application-layer merging.</item>
+    </list>
+  </section>
+
+  <section title="Kubernetes HPA (2025)">
+    <list>
+      <item>HPA scales pods based on CPU, memory, or custom metrics (via KEDA for queue depth, RPS, etc.).</item>
+      <item>K8s 1.33+: configurable tolerance for scale-up and scale-down decisions — prevents oscillation on noisy metrics.</item>
+      <item>Combine HPA with Cluster Autoscaler for infrastructure scaling; HPA handles pod count, Cluster Autoscaler handles node count.</item>
+      <item>Cost savings: 50-70% with well-tuned autoscaling vs always-on over-provisioned cluster.</item>
+      <item>Cold-start latency is the key risk: if pod startup takes 30s, a spike can exhaust capacity before scale-out completes. Pre-scale before known traffic events.</item>
+    </list>
+  </section>
+
+  <section title="Connection Pool Sizing">
+    <rule>
+      <statement>Never set connection pool size equal to the number of concurrent request handlers (threads or async tasks). The pool interacts with the DB thread count, not the app concurrency.</statement>
+      <rationale>An oversized pool exhausts DB connection slots; an undersized pool queues requests behind pool acquisition. Use the empirical formula: (core_count × 2) + spindles.</rationale>
+    </rule>
+    <list>
+      <item>Formula: pool_size = (core_count × 2) + effective_spindle_count.</item>
+      <item>For SSDs (spindles ≈ 1): pool_size = core_count × 2. Typical result: 10–50 connections per app instance.</item>
+      <item>PgBouncer (PostgreSQL): transaction-mode pooling; one DB connection serves N app clients in round-robin. Use when app connection count exceeds DB max_connections.</item>
+      <item>ProxySQL (MySQL): connection multiplexing with query routing rules for read/write splitting.</item>
+      <item>SQLAlchemy (Python): pool_size (persistent) + max_overflow (burst headroom). Set pool_timeout to fail fast rather than queue indefinitely.</item>
+    </list>
+  </section>
+
+  <section title="Async Processing Patterns">
+    <rule>
+      <statement>Move any operation taking &gt; 200ms off the synchronous request path. Return 202 Accepted immediately, enqueue the work, notify via webhook or polling endpoint.</statement>
+      <rationale>Long-synchronous paths block server threads, inflate p99 latency, and cause cascading timeouts at the caller. Async decoupling is the fix, not increasing thread pool size.</rationale>
+    </rule>
+    <list>
+      <item>Background jobs pattern: HTTP → API → 202 Accepted → Queue → Worker → heavy processing → notify. Use Celery (Python), BullMQ (Node), Sidekiq (Ruby).</item>
+      <item>Batch writes: replace N individual DB inserts in a loop with bulk_insert / COPY for N rows. 10-100x throughput improvement for large datasets.</item>
+      <item>Message queue selection: Kafka for event replay + ordered streams; RabbitMQ for complex routing + RPC; Redis Streams for simple queues + low latency (&lt;1ms); SQS/Service Bus for serverless cloud-native.</item>
+      <item>Streaming processing (Flink, Spark Streaming): for real-time aggregations over high-volume event streams. Use only when the processing graph exceeds what a simple consumer can handle.</item>
+    </list>
+    <example>
+      <code lang="python"><![CDATA[
+# Bad: N database calls in a loop
+for item in items:
+    db.insert(item)   # 1000 items = 1000 round-trips
+
+# Good: single batch call
+db.bulk_insert(items)  # 1000 items = 1 round-trip
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-slos-and-layers" title="SLOs, Performance Layers, and Capacity Planning">
+  <summary>SLO tier table (startup to enterprise), five performance layers with target budgets, error budget calculation, and capacity planning formulas for pre-launch sizing.</summary>
+
+  <section title="SLO Tier Table">
+    <rule>
+      <statement>Define SLOs from user-impact analysis, not from industry tables. "p95 &lt; 200ms" is a textbook number; the real target comes from measuring at what latency users abandon the page or the transaction.</statement>
+      <rationale>LLM-suggested SLOs consistently default to textbook values; teams then optimize to the wrong target. Tie SLOs to user-journey data and competitive benchmarks.</rationale>
+    </rule>
+    <list>
+      <item>Startup/MVP: p50 &lt; 200ms, p95 &lt; 500ms, p99 &lt; 2s, throughput &gt; 1k RPS, error rate &lt; 1%, availability 99.9% (43.8 min/month downtime).</item>
+      <item>Growth: p50 &lt; 100ms, p95 &lt; 300ms, p99 &lt; 1s, throughput &gt; 10k RPS, error rate &lt; 0.1%, availability 99.95% (21.9 min/month).</item>
+      <item>Enterprise: p50 &lt; 50ms, p95 &lt; 150ms, p99 &lt; 500ms, throughput &gt; 100k RPS, error rate &lt; 0.01%, availability 99.99% (4.4 min/month).</item>
+    </list>
+    <note>p99 is where users churn, not mean latency. Always report p95 and p99 together; mean latency is a vanity metric for performance work.</note>
+  </section>
+
+  <section title="Five Performance Layers">
+    <rule>
+      <statement>Attribute the bottleneck to exactly one layer before proposing a fix. "The system is slow" is not actionable; "DB query p95 is 180ms, consuming 60% of the request budget" is.</statement>
+      <rationale>Layer-agnostic optimizations waste effort — agents rewrite cold code paths because they look messy, not because they are hot. APM traces give layer attribution; flame graphs give code attribution within a layer.</rationale>
+    </rule>
+    <list>
+      <item>Layer 1 — CLIENT: browser rendering, JS bundle execution, network RTT. Target: First Contentful Paint &lt; 1.5s, Time to Interactive &lt; 3s. Tools: Lighthouse, WebVitals, bundle analyzer.</item>
+      <item>Layer 2 — EDGE/CDN: static assets, edge caching, compression, edge functions. Target: cache hit ratio &gt; 95%, edge latency &lt; 50ms globally. Tools: Cloudflare Analytics, CloudFront metrics.</item>
+      <item>Layer 3 — LOAD BALANCER: request distribution, health checks, SSL termination. Target: connection overhead &lt; 5ms. Tools: nginx/HAProxy metrics, connection pool saturation alerts.</item>
+      <item>Layer 4 — APPLICATION: code efficiency, concurrency model, async processing, algorithm complexity. Target: request processing &lt; 100ms (excluding I/O wait). Tools: py-spy, async-profiler, distributed traces.</item>
+      <item>Layer 5 — DATA: query optimization, indexing, connection pooling, cache hit ratio. Target: DB query p95 &lt; 50ms, cache hit ratio &gt; 85%. Tools: pg_stat_statements, EXPLAIN ANALYZE, pgBadger, RedisInsight.</item>
+    </list>
+  </section>
+
+  <section title="Error Budget Calculation">
+    <list>
+      <item>99.9% availability = 43.8 minutes downtime per month, 8.7 hours per year.</item>
+      <item>99.95% availability = 21.9 minutes per month, 4.4 hours per year.</item>
+      <item>99.99% availability = 4.4 minutes per month, 52.6 minutes per year.</item>
+      <item>Error budget = (1 - SLO) × period_duration. Burn through budget faster than the period → freeze feature releases, prioritize reliability work.</item>
+    </list>
+    <rule>
+      <statement>Alert on error budget burn rate, not raw availability. A 6x burn rate with 72h remaining in the month demands immediate response; a 1x burn rate is within expectations.</statement>
+      <rationale>Raw availability percentages update too slowly; burn rate gives early warning before the budget is exhausted.</rationale>
+    </rule>
+  </section>
+
+  <section title="Capacity Planning Formulas">
+    <list>
+      <item>Peak RPS = (peak_concurrent_users × requests_per_user_per_minute) / 60.</item>
+      <item>Design target = peak_RPS × 2 (headroom) × 1.5 (growth buffer) = 3× peak.</item>
+      <item>Instance count = design_target_RPS / single_instance_capacity_RPS, rounded up + 1 for N+1 redundancy.</item>
+      <item>Connection pool size = (core_count × 2) + effective_spindle_count. For SSDs: core_count × 2, typically 10–50 connections per app instance.</item>
+    </list>
+    <example>
+      <code lang="text"><![CDATA[
+Peak concurrent users: 100,000
+Requests per user per minute: 10
+Peak RPS = 100,000 * 10 / 60 = 16,667
+
+Design target (3x): 50,000 RPS
+Single instance capacity: 500 RPS
+Required instances: 50,000 / 500 = 100
+With N+1 redundancy: 101
+With 50% headroom: 150 instances
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-review-and-llm" title="Architecture Review, LLM Patterns, and CI Integration">
+  <summary>Architecture review type selection (roadmap vs design), effective LLM usage patterns per workflow phase, decision tree for workflow selection, CI/CD quality gates, and key failure modes when agents drive architecture workflows.</summary>
+
+  <section title="Architecture Review Types">
+    <list>
+      <item>Roadmap Review: answers "should we build this?" — validates business drivers, cost/benefit, and strategic fit. Timing: early planning, before any design work. Audience: stakeholders + architect.</item>
+      <item>Design Review: answers "is this design sound?" — validates requirements coverage, NFR targets, trade-offs, and implementation risk. Timing: before implementation begins. Audience: tech leads + implementers.</item>
+      <item>Risk-Storming: structured brainstorm of failure points. Each participant independently identifies risks, then consolidates. Focus: SPOFs, cascading failures, data-loss scenarios.</item>
+      <item>Security Review: threat-modeling pass (STRIDE or attack trees). Separate from design review to ensure the security lens is not diluted.</item>
+      <item>Post-Incident Review: architectural lessons from production incidents. Feed findings back into ADRs and utility trees.</item>
+    </list>
+    <rule>
+      <statement>Never combine Roadmap Review and Design Review in the same session. They serve different stakeholder audiences and different questions.</statement>
+      <rationale>Mixed sessions produce shallow coverage of both: stakeholders disengage during design details; implementers tune out during strategic framing.</rationale>
+    </rule>
+  </section>
+
+  <section title="Workflow Selection Decision Tree">
+    <list>
+      <item>New system from scratch → System Design Workflow. If complex with multiple teams → include ATAM step. If simple, single team → lightweight design only.</item>
+      <item>Evaluating an existing system → Architecture Review Workflow. If quality-attribute focus → add ATAM. If cost/benefit focus → add CBAM.</item>
+      <item>Making a significant technology decision → Technology Evaluation Workflow + ADR.</item>
+      <item>Documenting any non-obvious architectural decision → ADR Workflow (standalone).</item>
+      <item>Legacy system modernization → Migration Planning Workflow (Strangler Fig).</item>
+      <item>Sprint feature with architecture impact → Design Document Review Workflow.</item>
+    </list>
+  </section>
+
+  <section title="LLM Usage Patterns">
+    <rule>
+      <statement>Always run the Validate phase as a separate adversarial agent call, never as a closing paragraph appended to the Design call. Different prompt, different system context, explicit failure-finding instructions.</statement>
+      <rationale>The same persona that designed the system cannot adversarially attack it; the critic role requires a context switch enforced by prompt separation.</rationale>
+    </rule>
+    <list>
+      <item>Requirements analysis: LLM extracts and categorizes stakeholder input into functional/non-functional lists. Human validates numeric NFR targets before proceeding.</item>
+      <item>Scale estimation: LLM calculates capacity needs from business metrics (DAU, request_per_user, data_per_event). Verify formulas, not just numbers.</item>
+      <item>Design generation: LLM produces three architecture options with explicit NFR scores. Reject single-option output.</item>
+      <item>ADR writing: LLM drafts from meeting notes or decision log. Human ensures the "context" sentence is a problem statement, not a solution description.</item>
+      <item>Technology research: LLM summarizes vendor comparisons. Require citations; mark uncited claims as unverified.</item>
+      <item>Risk identification: LLM brainstorms failure modes and edge cases. Require the critic persona to produce a table: risk, likelihood, impact, mitigation, owner.</item>
+      <item>Diagram creation: LLM generates C4 Mermaid from a pasted tree -L 2 repo structure. Never generate diagrams without a repo structure reference — invented components mislead.</item>
+    </list>
+    <example>
+      <code lang="text"><![CDATA[
+ROLE: design-critic
+INPUT: docs/architecture/specs/spec.md and diagrams/*.mmd
+TASK: Risk-storm the design. Produce a table:
+| risk | likelihood | impact | mitigation | owner |
+Reject mitigations that are "add monitoring" without a concrete metric+threshold.
+      ]]></code>
+    </example>
+    <example>
+      <code lang="text"><![CDATA[
+ROLE: tech-evaluator
+GOAL: Choose between <A>, <B>, <C> for <use case> with NFRs <...>.
+Output: weighted-score matrix with criteria, weights, scores, citations,
+and a recommendation that survives steel-manning the runner-up.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="CI/CD Quality Gates for Architecture">
+    <list>
+      <item>Pre-commit: naming conventions, file organization, import restrictions (ArchUnit / Packwerk / dependency-cruiser).</item>
+      <item>PR gate: if architecture-impacting paths change (infra/, deploy/, services/*/api/, docs/architecture/) without an ADR update → fail. See arch-review-check.sh in agent-integration.md.</item>
+      <item>Build: SonarQube (code smells, architectural anti-patterns), dependency analysis, API contract validation (OpenAPI diff).</item>
+      <item>Canary: automated smoke and load tests before full rollout. SLO parity required before advancing to next traffic percentage.</item>
+    </list>
+  </section>
+
+  <section title="Agent Decomposition Pattern">
+    <rule>
+      <statement>Treat each workflow as a pipeline of role-specialized subagents: clarifier, designer, critic, documenter. Materialize state to disk between steps (spec.md, options.md, adr-NNN.md) so agents reload from files, not transcript memory.</statement>
+      <rationale>Transcript memory is lost on context reset; disk state survives and allows parallel or sequential agent handoffs without information loss.</rationale>
+    </rule>
+    <list>
+      <item>faion-brainstorm: diverge step in system-design and tech-evaluation workflows — generates multiple options with explicit trade-offs.</item>
+      <item>faion-sdd-execution: produces spec/design/test-plan triples and tracks lifecycle states against quality gates.</item>
+      <item>faion-feature-executor: drives migration plan execution task-by-task with checkpoint gates.</item>
+      <item>faion-improver: runs the after-action review 30 days post-decision against ADR consequences — checks if predictions held.</item>
+    </list>
+  </section>
+
+  <section title="Common Failure Modes">
+    <list>
+      <item>Review workflows degrade to rubber-stamping unless the critic agent has a separate persona and adversarial prompt with explicit failure-finding instructions.</item>
+      <item>Agents emit one giant "do everything" plan; force decomposition into the canonical phases and gate each step.</item>
+      <item>ATAM utility trees from LLMs are uniformly ranked; require explicit distribution (no more than 20% at highest tier).</item>
+      <item>Migration plans skip backfill, dual-write, and feature-flag cutover; inject those as required headings in the template.</item>
+      <item>ATAM/CBAM are heavyweight; teams under ~20 people rarely sustain them. Use lightweight risk-storming for small teams.</item>
+      <item>Human-in-loop gates are non-negotiable: ADR acceptance, evaluation outcome sign-off, migration go/no-go. Wire as approvals, not comments.</item>
+    </list>
+  </section>
+</text>
