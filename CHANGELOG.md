@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: use-case-modeling, knowledge-areas-overview, elicitation-techniques, knowledge-areas-detail, requirements-traceability, modern-ba-framework, data-analysis, methodologies-detail)
 - refactor: 8/8 BA methodologies migrated to new shape (batch: use-case-modeling, data-analysis, requirements-lifecycle, acceptance-criteria, data-driven-requirements, agile-ba-frameworks, process-mining-automation, solution-assessment)
 - refactor: 8/8 product-manager methodologies migrated to new shape (batch: technical-debt-management, product-lifecycle, experimentation-at-scale, feedback-management, methodologies-summary, learning-speed-competitive-moat, mlp-planning, minimum-product-frameworks)
 - refactor: 8/8 methodologies migrated to new shape (batch: survey-design, risk-assessment, business-model-planning, market-research-tam-sam-som, competitive-intelligence, trend-analysis, business-model-research, market-analysis)
