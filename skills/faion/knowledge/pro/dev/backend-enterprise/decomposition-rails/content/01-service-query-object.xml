@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-service-query-object" title="Service Object and Query Object Patterns">
+  <summary>Service Object with single #call method returning a domain entity, and Query Object with fluent builder accepting and returning a relation.</summary>
+
+  <rule>
+    <statement>Service #call must return a domain entity or a Result monad — never nil, never void. Agents that return void prevent downstream composition from queue jobs and console commands.</statement>
+    <rationale>Void services require callers to re-fetch the entity after calling, creating implicit coupling. A returned entity enables callers to chain directly.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Wrap multi-write services in ActiveRecord::Base.transaction; never assume Eloquent-style auto-transaction.</statement>
+    <rationale>Creating a user then assigning roles in two separate AR calls is not atomic. A role assignment failure after a successful create leaves orphaned state without an explicit transaction.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="ruby"><![CDATA[
+# app/services/users/create_service.rb (~50 lines)
+module Users
+  class CreateService
+    def initialize(params:, current_user: nil)
+      @params = params
+      @current_user = current_user
+    end
+
+    def call
+      validate!
+      create_user
+      send_welcome_email
+      @user
+    end
+
+    private
+
+    attr_reader :params, :current_user
+
+    def validate!
+      raise ValidationError, "Email required" if params[:email].blank?
+      raise ValidationError, "Email taken" if User.exists?(email: params[:email])
+    end
+
+    def create_user
+      @user = User.create!(
+        email: params[:email],
+        name: params[:name],
+        password: params[:password]
+      )
+    end
+
+    def send_welcome_email
+      Users::WelcomeEmailJob.perform_later(@user.id)
+    end
+  end
+end
+]]></code>
+  </example>
+
+  <example type="good">
+    <code lang="ruby"><![CDATA[
+# app/queries/users/search_query.rb (~40 lines)
+module Users
+  class SearchQuery
+    def initialize(relation = User.all)
+      @relation = relation
+    end
+
+    def call(params)
+      @relation = filter_by_status(params[:status])
+      @relation = filter_by_query(params[:query])
+      @relation = order_by(params[:sort])
+      @relation
+    end
+
+    private
+
+    def filter_by_status(status)
+      return @relation if status.blank?
+      @relation.where(status: status)
+    end
+
+    def filter_by_query(query)
+      return @relation if query.blank?
+      @relation.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
+    end
+
+    def order_by(sort)
+      case sort
+      when "name"   then @relation.order(:name)
+      when "recent" then @relation.order(created_at: :desc)
+      else               @relation.order(:id)
+      end
+    end
+  end
+end
+]]></code>
+    <note>Query objects accept and return relations, not arrays. Final .results (or .call) defers SQL execution.</note>
+  </example>
+</text>

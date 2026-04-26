@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-repository-pattern" title="Eloquent Repository Pattern">
+  <summary>Optional repository layer that encapsulates eager loading, pagination, and write operations; adopt only when a swap-out case exists.</summary>
+
+  <rule>
+    <statement>Eager-load in repository methods by default; never let controllers or resources trigger lazy associations.</statement>
+    <rationale>N+1 bugs caused by lazy loading in controllers are invisible in code review. Forcing eager loading at the repository boundary makes query cost explicit and reviewable.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Wrap multi-write paths in DB::transaction(); Eloquent does not auto-run transactions for create + relation->attach combinations.</statement>
+    <rationale>Without an explicit transaction, a failed attach after a successful create leaves an orphaned record with no rollback.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="php"><![CDATA[
+namespace App\Repositories;
+
+use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+class UserRepository
+{
+    public function __construct(private readonly User $model) {}
+
+    public function paginate(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->model->with(['roles'])->latest()->paginate($perPage);
+    }
+
+    public function findOrFail(int $id): User
+    {
+        return $this->model->with(['roles', 'orders'])->findOrFail($id);
+    }
+
+    public function create(array $data): User
+    {
+        return $this->model->create($data);
+    }
+
+    public function update(int $id, array $data): User
+    {
+        $user = $this->model->findOrFail($id);
+        $user->update($data);
+        return $user->fresh();
+    }
+
+    public function delete(int $id): bool
+    {
+        return $this->model->findOrFail($id)->delete();
+    }
+
+    public function findByEmail(string $email): ?User
+    {
+        return $this->model->where('email', $email)->first();
+    }
+}
+]]></code>
+  </example>
+
+  <antipattern>
+    <description>Repository added for all aggregates "for consistency" but bypassed 50% of the time via Model::query() directly.</description>
+    <reason>Partial adoption is the worst outcome: the team gets ceremony without the swap-out benefit, and two patterns coexist. Either commit fully (no Model::query() outside the repo) or skip the repository entirely.</reason>
+  </antipattern>
+</text>

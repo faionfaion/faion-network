@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules-and-gotchas" title="Mandatory Rules and AI-Agent Gotchas">
+  <summary>Concrete rules for ASP.NET Core async hygiene, security, and common LLM mistakes in this layered pattern.</summary>
+
+  <section title="Mandatory rules">
+    <list>
+      <item>AsNoTracking() on all read queries — doubles read throughput on Postgres/SQL Server.</item>
+      <item>Use ProblemDetails (RFC 7807) for error responses; configure AddProblemDetails() in Program.cs.</item>
+      <item>Source-generated JSON serialization ([JsonSerializable]) for hot endpoints.</item>
+      <item>Feature folders, not technical folders: Features/Users/{Controller,Service,Dtos,Mappings}.</item>
+      <item>Health checks for every external dependency: AddHealthChecks().AddNpgSql(...).AddRedis(...).</item>
+      <item>Use Required keyword on DTOs (.NET 7+) instead of [Required] — surfaces missing fields at compile time.</item>
+    </list>
+  </section>
+
+  <section title="AI-agent gotchas">
+    <antipattern>
+      <description>async void used for "fire-and-forget" notification callbacks.</description>
+      <reason>One unhandled exception inside async void crashes the host. Use Task-returning methods and background services instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>.Result / .Wait() called on async methods.</description>
+      <reason>In .NET Core 6+ this rarely deadlocks but causes thread-pool starvation. Force agents to await all the way through.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Repository methods return IQueryable&lt;T&gt; for caller composition.</description>
+      <reason>By the time the caller materializes the query, the DbContext is disposed. Always ToListAsync / ToArrayAsync inside the repo.</reason>
+    </antipattern>
+    <antipattern>
+      <description>PagedResult&lt;T&gt; re-invented per project (TotalCount vs Total, PageIndex vs Page).</description>
+      <reason>Agents ship incompatible pagination shapes. Centralize in Common/Models and reference from every handler.</reason>
+    </antipattern>
+    <antipattern>
+      <description>HttpClient instantiated per request (new HttpClient()).</description>
+      <reason>Socket exhaustion. Always inject IHttpClientFactory; Roslynator rule detects the pattern.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Connection strings or JWT secrets committed in appsettings.json.</description>
+      <reason>Use dotnet user-secrets in dev and env vars + Key Vault in prod. Add a pre-commit secret scanner.</reason>
+    </antipattern>
+  </section>
+</text>

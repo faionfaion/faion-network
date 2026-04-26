@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-controller-service" title="Spring Boot Controller and Service Layer">
+  <summary>@RestController with ResponseEntity semantics and @Service with @Transactional defaults for Spring Boot 3.x CRUD.</summary>
+
+  <section title="Controller">
+    <rule>
+      <statement>Controllers must return DTO types (never entity types); use @Valid on request bodies and ResponseEntity for explicit status codes.</statement>
+      <rationale>Returning entities leaks Hibernate proxies and internal fields to clients. @Valid triggers Bean Validation before the service is called.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="java"><![CDATA[
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    public ResponseEntity<Page<UserResponse>> listUsers(Pageable pageable) {
+        return ResponseEntity.ok(userService.findAll(pageable));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<UserResponse> createUser(
+            @Valid @RequestBody CreateUserRequest request) {
+        UserResponse user = userService.create(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserResponse> updateUser(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateUserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Service">
+    <rule>
+      <statement>Annotate @Service at class level with @Transactional(readOnly = true); override with @Transactional on write methods.</statement>
+      <rationale>Read-only mode enables JDBC-level optimizations and prevents accidental writes. Per-method @Transactional on writes makes transaction boundaries explicit and avoids partial-failure on multi-step operations.</rationale>
+    </rule>
+    <rule>
+      <statement>Use @RequiredArgsConstructor for constructor injection; never use field injection (@Autowired on fields).</statement>
+      <rationale>Constructor injection makes dependencies explicit and testable without Spring context; field injection hides dependencies and breaks pure unit testing.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class UserService {
+
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
+
+    public Page<UserResponse> findAll(Pageable pageable) {
+        return userRepository.findAll(pageable).map(userMapper::toResponse);
+    }
+
+    public UserResponse findById(Long id) {
+        return userMapper.toResponse(
+            userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User", id))
+        );
+    }
+
+    @Transactional
+    public UserResponse create(CreateUserRequest request) {
+        User user = userMapper.toEntity(request);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public UserResponse update(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("User", id));
+        userMapper.updateEntity(user, request);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!userRepository.existsById(id))
+            throw new ResourceNotFoundException("User", id);
+        userRepository.deleteById(id);
+    }
+}
+]]></code>
+    </example>
+  </section>
+</text>

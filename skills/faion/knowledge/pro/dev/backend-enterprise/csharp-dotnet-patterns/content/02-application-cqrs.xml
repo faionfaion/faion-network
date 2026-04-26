@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-application-cqrs" title="Application Layer: CQRS with MediatR Commands and Queries">
+  <summary>MediatR Command + FluentValidation Validator + Handler, and read Query with AsNoTracking projection via AutoMapper ProjectTo.</summary>
+
+  <rule>
+    <statement>One Command/Query per folder (Application/Users/Commands/CreateUser/{Command,Validator,Handler}). Agents read one folder per task without scrolling.</statement>
+    <rationale>Placing all Commands in one file forces agents to scan hundreds of lines to find the relevant handler. One folder per Command/Query keeps context bounded and enables parallel agent work without conflicts.</rationale>
+  </rule>
+
+  <rule>
+    <statement>CancellationToken on every async Handle signature; plumb from controller through handler to DbContext. Enforce via Roslynator rule MA0042.</statement>
+    <rationale>Without CancellationToken, client disconnects leave orphaned DB transactions and threads. Roslynator catches missing CT parameters in code review.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="csharp"><![CDATA[
+// Application/Users/Commands/CreateUser/CreateUserCommand.cs
+public record CreateUserCommand(string Name, string Email, string Password, Guid OrganizationId)
+    : IRequest<Guid>;
+
+public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
+{
+    public CreateUserCommandValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MinimumLength(2).MaximumLength(100);
+        RuleFor(x => x.Email).NotEmpty().EmailAddress();
+        RuleFor(x => x.Password).NotEmpty().MinimumLength(8);
+    }
+}
+
+public class CreateUserCommandHandler : IRequestHandler<CreateUserCommand, Guid>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IPasswordHasher _hasher;
+
+    public CreateUserCommandHandler(IApplicationDbContext context, IPasswordHasher hasher)
+    {
+        _context = context;
+        _hasher = hasher;
+    }
+
+    public async Task<Guid> Handle(CreateUserCommand request, CancellationToken ct)
+    {
+        var email = Email.Create(request.Email);
+        if (await _context.Users.AnyAsync(u => u.Email == email, ct))
+            throw new ConflictException("Email already exists");
+
+        var user = User.Create(request.Name, email, _hasher.Hash(request.Password));
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync(ct);
+        return user.Id;
+    }
+}
+]]></code>
+  </example>
+
+  <example type="good">
+    <code lang="csharp"><![CDATA[
+// Application/Users/Queries/GetUsers/GetUsersQuery.cs
+public record GetUsersQuery(Guid OrgId, string? Search, int Page = 1, int PageSize = 20)
+    : IRequest<PaginatedList<UserDto>>;
+
+public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly IMapper _mapper;
+
+    public GetUsersQueryHandler(IApplicationDbContext context, IMapper mapper)
+    { _context = context; _mapper = mapper; }
+
+    public async Task<PaginatedList<UserDto>> Handle(GetUsersQuery request, CancellationToken ct)
+    {
+        var query = _context.Users
+            .AsNoTracking()
+            .Where(u => u.OrganizationId == request.OrgId && u.IsActive);
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var s = request.Search.ToLower();
+            query = query.Where(u => u.Name.ToLower().Contains(s) ||
+                                     u.Email.Value.ToLower().Contains(s));
+        }
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .ProjectTo<UserDto>(_mapper.ConfigurationProvider)
+            .PaginatedListAsync(request.Page, request.PageSize, ct);
+    }
+}
+]]></code>
+  </example>
+</text>

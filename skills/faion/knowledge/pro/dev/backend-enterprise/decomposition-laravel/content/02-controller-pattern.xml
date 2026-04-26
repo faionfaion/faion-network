@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-controller-pattern" title="Thin Controller Pattern">
+  <summary>Controller delegating to Action classes via DI, with authorize() at the controller boundary and Resource wrapping for responses.</summary>
+
+  <rule>
+    <statement>Controllers must stay under 80 lines and handle only HTTP routing, authorization, and Resource wrapping; all domain logic lives in Actions.</statement>
+    <rationale>Thin controllers prevent merge collisions when multiple agents work in parallel on the same domain. Reducing the controller to HTTP plumbing makes it stable and rarely-changed.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Authorize at the controller boundary; never inside an Action. Actions assume authorization already passed.</statement>
+    <rationale>Placing authorization in Actions duplicates it in every caller (HTTP, console, queue). Policy checks belong at the HTTP boundary where the actor is known.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="php"><![CDATA[
+// app/Http/Controllers/Api/UserController.php (~70 lines)
+namespace App\Http\Controllers\Api;
+
+use App\Actions\User\CreateUserAction;
+use App\Actions\User\UpdateUserAction;
+use App\DTOs\User\CreateUserDTO;
+use App\DTOs\User\UpdateUserDTO;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserResource;
+use App\Models\User;
+
+class UserController extends Controller
+{
+    public function index()
+    {
+        $users = User::query()
+            ->when(request('search'), fn ($q, $search) =>
+                $q->where('name', 'like', "%{$search}%"))
+            ->paginate();
+        return UserResource::collection($users);
+    }
+
+    public function store(CreateUserRequest $request, CreateUserAction $action)
+    {
+        $user = $action->execute(CreateUserDTO::fromRequest($request));
+        return new UserResource($user);
+    }
+
+    public function show(User $user)
+    {
+        $this->authorize('view', $user);
+        return new UserResource($user);
+    }
+
+    public function update(UpdateUserRequest $request, User $user, UpdateUserAction $action)
+    {
+        $this->authorize('update', $user);
+        $user = $action->execute($user, UpdateUserDTO::fromRequest($request));
+        return new UserResource($user);
+    }
+}
+]]></code>
+  </example>
+</text>

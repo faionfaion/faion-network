@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-controller-service" title="ASP.NET Core Controller and Service Layer">
+  <summary>[ApiController] with ResponseEntity semantics and IXService interface + implementation with AutoMapper and CancellationToken threading.</summary>
+
+  <section title="Controller">
+    <rule>
+      <statement>Pass CancellationToken as the last parameter on every async controller action and thread it through to the service and repository layers.</statement>
+      <rationale>Without CancellationToken plumbing, client disconnects and request timeouts do not cancel in-flight DB queries, causing thread-pool starvation under load.</rationale>
+    </rule>
+    <rule>
+      <statement>Use [Authorize] and [ProducesResponseType] on every action; configure RequireAuthenticatedUser() globally in Program.cs and opt out per route.</statement>
+      <rationale>Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy prevents accidental exposure.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+        => Ok(await _userService.GetAllAsync(page, pageSize, ct));
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> GetUser(int id, CancellationToken ct = default)
+    {
+        var user = await _userService.GetByIdAsync(id, ct);
+        return user == null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Service interface and implementation">
+    <rule>
+      <statement>Add MapperConfiguration.AssertConfigurationIsValid() to a unit test; AutoMapper mapping errors surface only at request time otherwise.</statement>
+      <rationale>Agents add properties to DTOs without updating AutoMapper profiles; tests pass at compile time but prod 500s on first request.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public interface IUserService
+{
+    Task<PagedResult<UserDto>> GetAllAsync(int page, int pageSize, CancellationToken ct = default);
+    Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default);
+    Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct = default);
+    Task<bool> DeleteAsync(int id, CancellationToken ct = default);
+}
+
+public class UserService : IUserService
+{
+    private readonly IUserRepository _repository;
+    private readonly IMapper _mapper;
+    private readonly IPasswordHasher<User> _passwordHasher;
+
+    public UserService(IUserRepository repository, IMapper mapper,
+        IPasswordHasher<User> passwordHasher)
+    {
+        _repository = repository;
+        _mapper = mapper;
+        _passwordHasher = passwordHasher;
+    }
+
+    public async Task<PagedResult<UserDto>> GetAllAsync(int page, int pageSize, CancellationToken ct = default)
+    {
+        var users = await _repository.GetPagedAsync(page, pageSize, ct);
+        return _mapper.Map<PagedResult<UserDto>>(users);
+    }
+
+    public async Task<UserDto?> GetByIdAsync(int id, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct);
+        return user == null ? null : _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = _mapper.Map<User>(dto);
+        user.PasswordHash = _passwordHasher.HashPassword(user, dto.Password);
+        await _repository.AddAsync(user, ct);
+        await _repository.SaveChangesAsync(ct);
+        return _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
+    {
+        var user = await _repository.GetByIdAsync(id, ct);
+        if (user == null) return false;
+        _repository.Remove(user);
+        await _repository.SaveChangesAsync(ct);
+        return true;
+    }
+}
+]]></code>
+    </example>
+  </section>
+</text>

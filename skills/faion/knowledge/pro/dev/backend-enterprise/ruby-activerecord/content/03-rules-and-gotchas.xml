@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules-and-gotchas" title="Mandatory Rules and AI-Agent Gotchas">
+  <summary>Concrete rules for ActiveRecord safety and common AI-agent mistakes that cause N+1, data leaks, or silent bugs.</summary>
+
+  <section title="Mandatory rules">
+    <list>
+      <item>Indexes for every where and order_by column; verify with lol_dba:missing_indexes after every migration.</item>
+      <item>counter_cache: true + touch: true on belongs_to; otherwise parent caches go stale.</item>
+      <item>Keep callbacks idempotent — after_create_commit may fire twice in edge cases.</item>
+      <item>pluck(:id) instead of map(&amp;:id) — 100x faster at scale; lint via Rubocop Rails/Pluck.</item>
+      <item>Test scopes in isolation: RSpec.describe '.active' block; never only via the controller.</item>
+      <item>Force Postgres in CI from day 1; test DB != prod DB (JSON, full-text, case sensitivity).</item>
+    </list>
+  </section>
+
+  <section title="AI-agent gotchas">
+    <antipattern>
+      <description>Hidden default_scope causes missing rows; agent writes User.where(...) and gets fewer results than expected.</description>
+      <reason>Force agents to grep for default_scope before any query change. Agents debugging "missing data" rarely reach for withoutGlobalScopes.</reason>
+    </antipattern>
+    <antipattern>
+      <description>save vs save! — agent uses save and does not check return; record silently fails validation.</description>
+      <reason>Standardize on save! + rescue at the boundary, or always check .persisted? after save.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Memoization on a relation: @users ||= User.where(...) returns a relation that re-queries on each .each.</description>
+      <reason>Memoize .to_a not the relation; otherwise memoization has no effect.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Strong migrations bypass: add_index :users, :email blocks writes for minutes on large tables.</description>
+      <reason>Use algorithm: :concurrently and disable_ddl_transaction! — strong_migrations gem enforces this in development.</reason>
+    </antipattern>
+    <antipattern>
+      <description>first without order is non-deterministic in Postgres under concurrent inserts.</description>
+      <reason>Always specify an explicit order: User.order(:created_at).first — or use find(id) when you have the ID.</reason>
+    </antipattern>
+  </section>
+</text>

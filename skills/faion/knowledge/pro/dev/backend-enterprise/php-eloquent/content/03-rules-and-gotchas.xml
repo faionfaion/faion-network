@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules-and-gotchas" title="Mandatory Rules and AI-Agent Gotchas">
+  <summary>Concrete rules and common LLM mistakes for Eloquent ORM usage in Laravel.</summary>
+
+  <section title="Mandatory rules">
+    <list>
+      <item>Disable lazy loading in non-production: Model::preventLazyLoading(!$this-&gt;app-&gt;isProduction()) — makes N+1 throw instead of silently slow.</item>
+      <item>Always pair a model change with migration + factory + resource; agents that touch only the model cause drift visible in CI hours later.</item>
+      <item>Use firstOrCreate / updateOrCreate over manual where-save patterns to avoid race conditions with concurrent writers.</item>
+      <item>Resource classes are the API contract; never return raw models from controllers — leaked password_hash, remember_token, soft-delete columns.</item>
+      <item>Index every where/orderBy column in migrations; Eloquent makes it cheap to query unindexed columns but the bill arrives in production.</item>
+    </list>
+  </section>
+
+  <section title="AI-agent gotchas">
+    <antipattern>
+      <description>$user-&gt;postss returns null without raising — magic relation typos pass static analysis.</description>
+      <reason>Run php artisan ide-helper:models -W after every model change to generate _ide_helper_models.php; Larastan needs it to catch property typos.</reason>
+    </antipattern>
+    <antipattern>
+      <description>->with(['posts.comments.author', 'roles.permissions']) added "to be safe".</description>
+      <reason>Nested eager loading can load the entire object graph. Cap nesting depth at 2 in code review.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Column added to migration without updating $fillable; User::create($validated) silently drops the field.</description>
+      <reason>Mass assignment guard ($fillable) must be updated alongside every new column; agents frequently forget the $fillable update.</reason>
+    </antipattern>
+    <antipattern>
+      <description>unique('email') added on a soft-deleted model without a partial index.</description>
+      <reason>Re-creating a previously soft-deleted user fails. Use unique('email')-&gt;whereNull('deleted_at') (Postgres) or restore-on-conflict logic.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Tests run on sqlite but app ships to MySQL/Postgres.</description>
+      <reason>JSON_EXTRACT, full-text, and case-sensitivity differ. Force the test suite onto the production DB engine in CI.</reason>
+    </antipattern>
+  </section>
+</text>

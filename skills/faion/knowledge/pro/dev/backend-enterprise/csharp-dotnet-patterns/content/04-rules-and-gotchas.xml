@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-rules-and-gotchas" title="Architecture Rules and AI-Agent Gotchas">
+  <summary>Mandatory rules for Clean Architecture + CQRS and common LLM mistakes that break layering or introduce license issues.</summary>
+
+  <section title="Mandatory rules">
+    <list>
+      <item>Architecture tests run in dotnet test — same gate as unit tests; do not relegate to a separate optional stage.</item>
+      <item>MediatR pipeline behaviors for cross-cutting concerns (validation, logging, transaction, caching) — never repeat per-handler.</item>
+      <item>required keyword + init on DTOs (.NET 7+); surfaces missing fields at compile time rather than runtime AutoMapper errors.</item>
+      <item>Migrations checked into Infrastructure project only — API project never references EF Core.</item>
+      <item>MediatR v12+ and AutoMapper v13+ are commercial products; verify SPDX license in CI before adding via dotnet add package.</item>
+    </list>
+  </section>
+
+  <section title="AI-agent gotchas">
+    <antipattern>
+      <description>Agent adds behavior to Application handler instead of Domain entity method.</description>
+      <reason>Business logic in handlers breaks the DDD invariant; entities become property bags and the architecture's value evaporates. Prompt agents to read Domain/Entities/ first.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent imports Microsoft.EntityFrameworkCore into the Application project.</description>
+      <reason>NetArchTest catches this; without it, agents drift within weeks and the layering benefit is lost.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Domain events raised at SaveChanges inside the same transaction as handlers that also write to DB.</description>
+      <reason>Handler exceptions roll back the outer transaction unexpectedly. Use the outbox pattern (MassTransit) for cross-aggregate events.</reason>
+    </antipattern>
+    <antipattern>
+      <description>MediatR overused: GET /health, simple lookups wrapped in Commands/Queries.</description>
+      <reason>Every MediatR dispatch pays handler resolution + pipeline behavior overhead. Reserve for use cases with cross-cutting needs (validation, auth, transactions).</reason>
+    </antipattern>
+    <antipattern>
+      <description>Entity collection mutated outside aggregate: handler does user.Posts.Add(post) directly.</description>
+      <reason>Encapsulate collection mutation in aggregate methods (user.AddPost(post)); outside mutation bypasses invariants and domain events.</reason>
+    </antipattern>
+    <antipattern>
+      <description>IgnoreQueryFilters() used outside explicit admin tools.</description>
+      <reason>Multi-tenant global query filter bypassed silently; data from other tenants leaks. Lint to forbid this call outside designated admin repositories.</reason>
+    </antipattern>
+  </section>
+  <reference path="templates/arch-tests.cs">NetArchTest xUnit layer-violation assertions</reference>
+</text>

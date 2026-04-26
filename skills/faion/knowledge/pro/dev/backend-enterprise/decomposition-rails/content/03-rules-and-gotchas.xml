@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules-and-gotchas" title="File Size Guidelines and AI-Agent Gotchas">
+  <summary>Enforced size budgets and common LLM mistakes that collapse the Rails decomposition convention.</summary>
+
+  <section title="File size budgets">
+    <list>
+      <item>Model: target 50-80 lines, max 150</item>
+      <item>Service: target 40-60 lines, max 100</item>
+      <item>Query: target 30-50 lines, max 80</item>
+      <item>Controller: target 60-80 lines, max 150</item>
+      <item>Serializer: target 30-50 lines, max 100</item>
+      <item>Policy: target 30-40 lines, max 80</item>
+      <item>Test: target 100-150 lines, max 300</item>
+    </list>
+    <reference path="templates/decomp-rails-lint.sh">Structural lint script enforcing these budgets in CI</reference>
+  </section>
+
+  <section title="AI-agent gotchas">
+    <antipattern>
+      <description>Pattern collapse: agent puts logic in the controller when asked to "add an endpoint quickly".</description>
+      <reason>Lock the convention in CONTRIBUTING.md and load it as system-prompt context for every agent run. Without enforcement, agents regress to fat controllers within one sprint.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Service returns void: def call; @user.save!; end.</description>
+      <reason>Downstream queue jobs cannot compose. Always return the canonical entity or a Result monad.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents invent new layers: "Manager", "Coordinator", "Workflow" classes.</description>
+      <reason>Whitelist allowed namespaces (services/, queries/, forms/, policies/, serializers/) and block PRs introducing new ones without an ADR.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Service calling another service in the same request chain.</description>
+      <reason>Acceptable if explicit and documented; not acceptable if a deep chain spans transactions. Force agents to declare orchestration in the service docblock.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Policy bypass via User.find(id) instead of policy_scope(User).find(id).</description>
+      <reason>Multi-tenant data leaks via timing attack on find. Use policy_scope at the controller boundary.</reason>
+    </antipattern>
+  </section>
+</text>

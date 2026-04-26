@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-model-scopes-callbacks" title="Model Scopes, Callbacks, and Eager Loading">
+  <summary>Named scopes for simple primitives, callback rules, and the eager-load-by-default principle.</summary>
+
+  <rule>
+    <statement>Eager-load at the controller boundary, never in views. A view triggering a query is invisible in code review.</statement>
+    <rationale>View-triggered queries are rendered as template output, not as SQL log entries in the request cycle that code reviewers check. Eager loading in controllers makes query cost reviewable.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Avoid default_scope; use named scopes (scope :active) and force callers to opt in.</statement>
+    <rationale>A default_scope { where(deleted_at: nil) } is invisible at every call site. Agents debugging "missing data" rarely think to call withoutGlobalScopes — it costs an hour per incident.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Use find_each / in_batches for any loop over 1k+ records; never User.all.each.</statement>
+    <rationale>User.all.each loads the entire result set into memory. find_each streams in batches of 1000, keeping memory constant.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="ruby"><![CDATA[
+class User < ApplicationRecord
+  has_one  :profile, dependent: :destroy
+  has_many :orders, dependent: :nullify
+  has_many :roles, through: :user_roles
+
+  validates :email, presence: true, uniqueness: { case_sensitive: false }
+  validates :name,  presence: true, length: { minimum: 2, maximum: 100 }
+
+  # Named scopes — callers opt in
+  scope :active,  -> { where(active: true) }
+  scope :admins,  -> { joins(:roles).where(roles: { name: 'admin' }) }
+  scope :recent,  -> { where('created_at > ?', 30.days.ago) }
+
+  before_validation :normalize_email
+  after_create_commit :send_welcome_email
+
+  private
+
+  def normalize_email
+    self.email = email&.downcase&.strip
+  end
+
+  def send_welcome_email
+    UserMailer.welcome(self).deliver_later
+  end
+end
+]]></code>
+  </example>
+
+  <antipattern>
+    <description>update_all used on audited or paper-trailed models.</description>
+    <reason>update_all bypasses callbacks silently — counter_cache, paper_trail, and audit logs break without any error. Use update! per record or explicitly disable callbacks with a comment explaining why.</reason>
+  </antipattern>
+</text>

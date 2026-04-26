@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-query-object" title="ActiveRecord Query Object Pattern">
+  <summary>Fluent Query Object that wraps an AR relation, chains filter/sort/paginate methods, and returns the relation via results.</summary>
+
+  <rule>
+    <statement>Query Objects must accept a relation in the constructor (default Model.all), chain methods that return self, and expose a terminal results method returning the relation — never an array.</statement>
+    <rationale>Returning self allows callers to compose filters. Returning the relation instead of to_a defers SQL execution and allows further scoping at the controller level.</rationale>
+  </rule>
+
+  <rule>
+    <statement>Cap Query Objects at approximately 10 chainable methods; if more are needed, split by use case into multiple query objects.</statement>
+    <rationale>A 30-method query object that covers every one-off filter becomes a god class — harder to read than inline where chains and impossible to test in isolation.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="ruby"><![CDATA[
+# app/queries/users_query.rb
+class UsersQuery
+  def initialize(relation = User.all)
+    @relation = relation
+  end
+
+  def active
+    @relation = @relation.where(active: true)
+    self
+  end
+
+  def with_role(role)
+    @relation = @relation.where(role: role)
+    self
+  end
+
+  def search(term)
+    return self if term.blank?
+    @relation = @relation.where(
+      'name ILIKE :term OR email ILIKE :term', term: "%#{term}%"
+    )
+    self
+  end
+
+  def ordered
+    @relation = @relation.order(created_at: :desc)
+    self
+  end
+
+  def with_associations
+    @relation = @relation.includes(:profile, :roles)
+    self
+  end
+
+  def paginate(page:, per_page: 20)
+    @relation = @relation.page(page).per(per_page)
+    self
+  end
+
+  def results
+    @relation
+  end
+end
+
+# Controller usage
+users = UsersQuery.new
+  .active
+  .with_role('admin')
+  .search(params[:q])
+  .with_associations
+  .ordered
+  .paginate(page: params[:page])
+  .results
+]]></code>
+  </example>
+
+  <antipattern>
+    <description>includes vs eager_load confusion: User.includes(:posts).where('posts.flagged = true') without references(:posts).</description>
+    <reason>includes heuristically picks strategy; adding a where on the joined table silently switches to eager_load (one big LEFT OUTER JOIN). Use references(:posts) or split the query explicitly to make the join type visible.</reason>
+  </antipattern>
+</text>

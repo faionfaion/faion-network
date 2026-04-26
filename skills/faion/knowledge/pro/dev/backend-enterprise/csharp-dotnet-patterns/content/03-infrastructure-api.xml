@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-infrastructure-api" title="Infrastructure Layer and API Controller">
+  <summary>EF Core DbContext dispatching domain events at SaveChanges, IEntityTypeConfiguration for value objects, and MediatR-backed API controller.</summary>
+
+  <rule>
+    <statement>API project is the composition root only; it must not reference EntityFrameworkCore or Infrastructure types directly (composition root wiring in AddInfrastructure() extension only).</statement>
+    <rationale>Agents add EFCore imports to the API project for "convenience"; this couples the presentation layer to persistence and defeats the layering purpose.</rationale>
+  </rule>
+
+  <example type="good">
+    <code lang="csharp"><![CDATA[
+// Infrastructure/Persistence/ApplicationDbContext.cs
+public class ApplicationDbContext : DbContext, IApplicationDbContext
+{
+    private readonly IMediator _mediator;
+
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMediator mediator)
+        : base(options) { _mediator = mediator; }
+
+    public DbSet<User> Users => Set<User>();
+
+    protected override void OnModelCreating(ModelBuilder mb)
+    {
+        mb.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        base.OnModelCreating(mb);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        var entities = ChangeTracker.Entries<BaseEntity>()
+            .Where(e => e.Entity.DomainEvents.Any()).Select(e => e.Entity).ToList();
+        var events = entities.SelectMany(e => e.DomainEvents).ToList();
+        entities.ForEach(e => e.ClearDomainEvents());
+        foreach (var ev in events)
+            await _mediator.Publish(ev, ct);
+        return await base.SaveChangesAsync(ct);
+    }
+}
+
+// Infrastructure/Persistence/Configurations/UserConfiguration.cs
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> b)
+    {
+        b.ToTable("Users");
+        b.Property(u => u.Name).HasMaxLength(100).IsRequired();
+        b.OwnsOne(u => u.Email, e =>
+        {
+            e.Property(x => x.Value).HasColumnName("Email").HasMaxLength(256).IsRequired();
+            e.HasIndex(x => x.Value).IsUnique();
+        });
+        b.Property(u => u.Role).HasConversion<string>().HasMaxLength(50);
+    }
+}
+
+// Api/Controllers/UsersController.cs
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly ISender _mediator;
+    public UsersController(ISender mediator) => _mediator = mediator;
+
+    [HttpPost]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateUser(
+        [FromBody] CreateUserRequest request, CancellationToken ct = default)
+    {
+        var command = new CreateUserCommand(request.Name, request.Email, request.Password,
+                                            User.GetOrganizationId());
+        var id = await _mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetUser), new { id }, id);
+    }
+}
+]]></code>
+  </example>
+</text>
