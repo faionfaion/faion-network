@@ -19,7 +19,7 @@ Claude Code loads `.claude/` from TWO locations:
 │   ├── settings.json                   # Global settings
 │   │
 │   ├── skills/                         # ALL skills (global + project)
-│   │   ├── faion-knowledge/            # Global: umbrella knowledge (52 domain knowledge bases, tier-partitioned)
+│   │   ├── faion/            # Global: umbrella knowledge (52 domain knowledge bases, tier-partitioned)
 │   │   │   └── knowledge/              #   ├── free/ (8), solo/ (13), pro/ (24), geek/ (7)
 │   │   │                               #   each tier → groups (dev/, ai/, infra/, product/, pm/, ba/, ux/, marketing/, research/, comms/, sdd/)
 │   │   ├── faion-brainstorm/           # Global: multi-agent brainstorm

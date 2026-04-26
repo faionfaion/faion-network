@@ -6,7 +6,7 @@
 
 ## Entry Point
 
-Invoked directly as `/faion-sdd-execution`, or referenced from SDD knowledge at [faion-knowledge/knowledge/solo/sdd/sdd/](../faion-knowledge/knowledge/solo/sdd/sdd/).
+Invoked directly as `/faion-sdd-execution`, or referenced from SDD knowledge at [faion/knowledge/solo/sdd/sdd/](../faion/knowledge/solo/sdd/sdd/).
 
 ---
 

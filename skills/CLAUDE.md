@@ -8,7 +8,7 @@ Claude Code skills for the faion-network framework.
 
 | Skill | Description |
 |-------|-------------|
-| `faion-knowledge` | 52 domain knowledge bases, 1300+ methodologies. Tier-partitioned. Load content from `faion-knowledge/knowledge/<tier>/<group>/<name>/` on demand with Read. |
+| `faion` | 52 domain knowledge bases, 1300+ methodologies. Tier-partitioned. Load content from `faion/knowledge/<tier>/<group>/<name>/` on demand with Read. |
 
 ### Applied tools
 
@@ -30,10 +30,10 @@ Claude Code skills for the faion-network framework.
 
 ## Knowledge Structure
 
-All domain knowledge consolidated inside `faion-knowledge/knowledge/`, partitioned by pricing tier:
+All domain knowledge consolidated inside `faion/knowledge/`, partitioned by pricing tier:
 
 ```
-faion-knowledge/
+faion/
 ├── SKILL.md
 ├── CLAUDE.md
 └── knowledge/
@@ -69,11 +69,11 @@ Each skill folder: `SKILL.md` + methodology subfolders. Each methodology: 5-file
 | Metric | Count |
 |--------|-------|
 | User-invocable skills | 9 |
-| Knowledge skills (inside faion-knowledge) | 52 |
+| Knowledge skills (inside faion) | 52 |
 | Methodologies | 1300+ |
 | Tiers | 4 (free / solo / pro / geek) |
 
 ## Related
 
-- Umbrella skill: [faion-knowledge/SKILL.md](faion-knowledge/SKILL.md)
+- Umbrella skill: [faion/SKILL.md](faion/SKILL.md)
 - Tier manifest: [tier-manifest.json](tier-manifest.json)

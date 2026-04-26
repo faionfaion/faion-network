@@ -70,7 +70,7 @@ Group findings by priority:
 
 Group findings by scope:
 - **System** — server configs, kernel tuning, firewall, packages → apply directly (Phase 4)
-- **Project** — code changes, API improvements, new features, refactoring → create SDD tasks using `faion-knowledge/knowledge/solo/sdd/sdd-planning/` (Phase 4b)
+- **Project** — code changes, API improvements, new features, refactoring → create SDD tasks using `faion/knowledge/solo/sdd/sdd-planning/` (Phase 4b)
 
 This distinction is important: system improvements are applied in the current session, project improvements go through SDD workflow with proper specs, design, and implementation plans.
 
@@ -135,7 +135,7 @@ For findings that require code changes, new features, or architectural work — 
 
 1. Classify as feature or improvement
 2. Create `.aidocs/improvements/AI-NNN-*.md` or `.aidocs/backlog/feature-NNN-*/`
-3. If user approves full planning → read `faion-knowledge/knowledge/solo/sdd/sdd-planning/` for spec + design + implementation plan guidance
+3. If user approves full planning → read `faion/knowledge/solo/sdd/sdd-planning/` for spec + design + implementation plan guidance
 4. If user wants quick tracking → create task files in `.aidocs/todo/`
 
 Examples of project-scope findings:
@@ -184,7 +184,7 @@ If the session produced enough domain knowledge:
 2. Write SKILL.md with frontmatter, decision tree, methodology list
 3. Write CLAUDE.md with overview
 4. Create methodology folders with 5-file structure
-5. Register in faion-knowledge routing
+5. Register in faion routing
 6. Commit to faion-network repo
 
 ---
@@ -223,9 +223,9 @@ If the session produced enough domain knowledge:
 ## Integration Points
 
 - **faion-brainstorm**: Multi-agent brainstorming for improvement ideas
-- **faion-knowledge/knowledge/solo/infra/server-craft/**: Server-specific configurations and tuning
-- **faion-knowledge/knowledge/pro/infra/devops-engineer/**: Infrastructure and CI/CD improvements
-- **faion-knowledge/knowledge/solo/sdd/sdd/**: SDD workflow improvements
+- **faion/knowledge/solo/infra/server-craft/**: Server-specific configurations and tuning
+- **faion/knowledge/pro/infra/devops-engineer/**: Infrastructure and CI/CD improvements
+- **faion/knowledge/solo/sdd/sdd/**: SDD workflow improvements
 - **.aidocs/memory/**: Project-specific pattern/mistake/decision capture
 
 ---

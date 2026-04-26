@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- **`/faion` skill v2:** thin wrapper that spawns a read-only Agent SDK subagent (Sonnet) via `python3 skills/faion/scripts/retrieve.py "$CLAUDE_SESSION_ID"`. Subagent reads the session transcript (user+assistant text only), searches `knowledge/`, returns either `<faion_knowledge>` (XML bundle within 5000-word budget) or `<faion_clarification>` (XML instruction telling main agent to ask the user via `AskUserQuestion`, then re-invoke `/faion`). Budget enforcement via custom MCP `submit_selection` tool that returns `is_error` on overflow → subagent retries in same turn. All prompts (system, user) and outputs are XML rendered through Jinja2 templates under `skills/faion/scripts/templates/`.
+- **Skill `faion-knowledge` renamed to `faion`** (slash command becomes `/faion`). All path references updated repo-wide.
 - agent-methodologies: bootstrap infrastructure under .aidocs/agent-methodologies/ (state.json, methodologies.jsonl, candidates.md, sources.md, progress.md, loop-prompt.md, research/, brainstorm/, project-mining/, articles-published/) for the 50-methodology agent-builder brainstorm cycle.
 - agent-methodologies: 10 research subagent outputs (~147 candidates) covering OpenAI/Claude/Gemini/OSS/LangChain/structured-output/multi-model/file-refs/MCP/CLI+evals.
 - agent-methodologies: 22 production tricks mined from neromedia/pashtelka/longlife/ender/faion-cli/nero-agent pipelines.
@@ -209,7 +211,7 @@
 - Research: use-case-modeling (ba-modeling) — agent-integration.md (182 lines).
 - Research: requirements-lifecycle (business-analyst) — agent-integration.md (176 lines).
 - Research: business-process-analysis (business-analyst) — agent-integration.md (196 lines).
-- **Methodology research subsystem (`skills/faion-knowledge/.research/`):**
+- **Methodology research subsystem (`skills/faion/.research/`):**
   per-methodology `agent-integration.md` enrichment loop. Subagent researches
   each methodology for agentic workflow, CLI tools, services, when-to-use /
   when-NOT-to-use, failure modes. Always-5-active dispatch policy (cron as
@@ -285,10 +287,10 @@
   AI-adjacent topics (`claude-md-creation`, `llm-friendly-architecture`,
   `ai-*-pm-tools`, `ai-interview-analysis`, `ai-research-tool*`,
   `ai-assisted-specification-writing`, etc.) moved to `geek/`. Applied via
-  `skills/faion-knowledge/.reclass/` (rules + scripts + audit log).
+  `skills/faion/.reclass/` (rules + scripts + audit log).
   Remaining 1009 ambiguous methodologies queued for content-review ticks.
 - **Knowledge partitioned by tier: 52 domains now live under
-  `faion-knowledge/knowledge/<tier>/<group>/<name>/`** (tiers: `free`, `solo`,
+  `faion/knowledge/<tier>/<group>/<name>/`** (tiers: `free`, `solo`,
   `pro`, `geek`) matching the pricing manifest. Free tier gets 8 domains,
   solo adds 13, pro adds 24, geek adds 7. Tier gating becomes a directory
   boundary — a free-tier session reads only `knowledge/free/`, solo reads
@@ -300,10 +302,10 @@
   `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`
   updated to tier-prefixed paths (e.g. `knowledge/solo/sdd/sdd/`,
   `knowledge/pro/infra/devops-engineer/`).
-- **Knowledge consolidation: 52 domain skills merged into `faion-knowledge` umbrella.**
-  Renamed orchestrator skill `faion-net` → `faion-knowledge`. All knowledge
+- **Knowledge consolidation: 52 domain skills merged into `faion` umbrella.**
+  Renamed orchestrator skill `faion-net` → `faion`. All knowledge
   skills (dev, AI, infra, product, PM, BA, UX, marketing, research, comms, SDD)
-  moved from `skills/faion-<name>/` to `skills/faion-knowledge/knowledge/<group>/<name>/`.
+  moved from `skills/faion-<name>/` to `skills/faion/knowledge/<group>/<name>/`.
   Discovery break intentional — only umbrella + applied tools
   (brainstorm, feature-executor, sdd-execution, improver, media-ops) remain
   individually invocable. Knowledge loaded on-demand via `Read`, not `Skill()`.
@@ -312,9 +314,9 @@
   Moved docs out of skill: `content-plan/`, `content-requirements/`,
   `product-research-2026/`, `decision-trees/` → `docs/*.md`.
 - `tier-manifest.json` schema v2: split into `applied_skills` (invocable)
-  and `knowledge_paths` (on-demand paths under `faion-knowledge/knowledge/`).
-- Top-level indices (`skills/CLAUDE.md`, `faion-knowledge/SKILL.md`,
-  `faion-knowledge/CLAUDE.md`, `README.md`, `GEMINI.md`,
+  and `knowledge_paths` (on-demand paths under `faion/knowledge/`).
+- Top-level indices (`skills/CLAUDE.md`, `faion/SKILL.md`,
+  `faion/CLAUDE.md`, `README.md`, `GEMINI.md`,
   `docs/directory-structure.md`) rewritten to reflect umbrella structure.
 - Entry-point references in knowledge-skill CLAUDE.md/SKILL.md/README.md
   updated from `/faion-net` routing claim to umbrella membership note.

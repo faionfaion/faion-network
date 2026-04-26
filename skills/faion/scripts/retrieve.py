@@ -1,0 +1,500 @@
+#!/usr/bin/env python3
+"""Faion knowledge retrieval orchestrator.
+
+Spawns a read-only Claude Agent SDK subagent that picks methodology files
+relevant to the current Claude Code session. Uses a custom in-process MCP
+tool `submit_selection` to force schema-validated structured output.
+
+The tool itself enforces the word budget: if the proposed selection exceeds
+the budget, it returns `is_error=True` with per-file breakdown and the agent
+retries in the same conversation. No fragile JSON parsing.
+
+Usage:
+    retrieve.py [<session-id>]
+
+If session-id is empty or not found, falls back to the most recently
+modified session JSONL across all projects.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+try:
+    from claude_agent_sdk import (
+        AssistantMessage,
+        ClaudeAgentOptions,
+        ToolUseBlock,
+        create_sdk_mcp_server,
+        query,
+        tool,
+    )
+except ImportError:
+    print("# faion: claude-agent-sdk not installed. Run: pip install claude-agent-sdk")
+    sys.exit(0)
+
+try:
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+except ImportError:
+    print("# faion: jinja2 not installed. Run: pip install jinja2")
+    sys.exit(0)
+
+
+logger = logging.getLogger("faion.retrieve")
+
+
+def _patch_sdk_parser() -> None:
+    """Make SDK skip unknown message types (e.g. rate_limit_event) instead of crashing."""
+    try:
+        from claude_code_sdk._internal import client, message_parser  # pyright: ignore[reportPrivateImportUsage, reportMissingImports]
+        _original = message_parser.parse_message  # pyright: ignore[reportPrivateImportUsage]
+
+        def _safe_parse(data):
+            try:
+                return _original(data)
+            except Exception:
+                return None
+
+        message_parser.parse_message = _safe_parse
+        client.parse_message = _safe_parse
+    except Exception:
+        pass
+
+
+_patch_sdk_parser()
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = SCRIPT_DIR / "templates"
+SKILL_ROOT = SCRIPT_DIR.parent
+KNOWLEDGE_ROOT = SKILL_ROOT / "knowledge"
+
+WORD_BUDGET = int(os.environ.get("FAION_WORD_BUDGET", "5000"))
+MAX_TRANSCRIPT_PAIRS = int(os.environ.get("FAION_TRANSCRIPT_PAIRS", "40"))
+MAX_AGENT_TURNS = int(os.environ.get("FAION_MAX_TURNS", "20"))
+MODEL = os.environ.get("FAION_MODEL", "claude-sonnet-4-6")
+
+_jinja = Environment(
+    loader=FileSystemLoader(str(TEMPLATES_DIR)),
+    autoescape=select_autoescape(default_for_string=False),
+    trim_blocks=False,
+    lstrip_blocks=False,
+    keep_trailing_newline=True,
+)
+
+
+def render(template_name: str, **ctx: Any) -> str:
+    return _jinja.get_template(template_name).render(**ctx)
+
+
+# ---- Session transcript ----
+
+def find_session_file(session_id: str) -> Path | None:
+    base = Path.home() / ".claude" / "projects"
+    if not base.exists():
+        return None
+
+    if session_id:
+        for candidate in base.glob(f"**/{session_id}.jsonl"):
+            return candidate
+
+    candidates = [p for p in base.glob("**/*.jsonl") if p.is_file()]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda f: f.stat().st_mtime)
+
+
+def extract_transcript(session_file: Path, last_n: int = MAX_TRANSCRIPT_PAIRS) -> list[dict[str, str]]:
+    """Return a list of {role, text} dicts — last N user+assistant text messages, no tools/system."""
+    messages: list[dict[str, str]] = []
+    for raw in session_file.read_text(errors="replace").splitlines():
+        try:
+            msg = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+
+        message_obj = msg.get("message") if isinstance(msg.get("message"), dict) else msg
+        actor = message_obj.get("role") or msg.get("type")
+        if actor not in ("user", "assistant"):
+            continue
+
+        content = message_obj.get("content")
+        text_parts: list[str] = []
+        if isinstance(content, str):
+            text_parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text_parts.append(block.get("text", ""))
+
+        text = "\n".join(p for p in text_parts if p).strip()
+        if not text:
+            continue
+        if text.startswith("<system-reminder>") or text.startswith("<command-"):
+            continue
+        if len(text) > 3000:
+            text = text[:3000] + "\n…[truncated]"
+        messages.append({"role": actor, "text": text})
+
+    return messages[-last_n:]
+
+
+# ---- Word budget validation ----
+
+def count_words(rel_paths: list[str]) -> tuple[int, dict[str, int]]:
+    """Count words across selected files. Negative count => path invalid/outside knowledge root."""
+    total = 0
+    breakdown: dict[str, int] = {}
+    for rel in rel_paths:
+        full = (KNOWLEDGE_ROOT / rel).resolve()
+        try:
+            full.relative_to(KNOWLEDGE_ROOT)
+        except ValueError:
+            breakdown[rel] = -1
+            continue
+        if not full.exists() or not full.is_file():
+            breakdown[rel] = 0
+            continue
+        words = len(full.read_text(errors="replace").split())
+        breakdown[rel] = words
+        total += words
+    return total, breakdown
+
+
+# ---- MCP submit_selection tool ----
+
+# Single-call module state — captures the validated selection or clarification request.
+_capture: dict[str, Any] = {"selection": None, "clarification": None}
+
+
+@tool(
+    name="submit_selection",
+    description=(
+        "Submit the final list of methodology files relevant to the user's task. "
+        "The orchestrator validates total word count against the budget. "
+        "If over budget, this tool returns an error and you must retry with a trimmed list."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "selected_files": {
+                "type": "array",
+                "description": "Files to include in the bundle. Paths are relative to the knowledge/ root.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "path": {
+                            "type": "string",
+                            "description": "Relative path under knowledge/, e.g. 'geek/ai/ai-agents/schema-field-order/AGENTS.md'",
+                        },
+                        "reason": {
+                            "type": "string",
+                            "description": "One short line on why this file fits the user's task.",
+                        },
+                    },
+                    "required": ["path"],
+                },
+            },
+        },
+        "required": ["selected_files"],
+    },
+)
+async def submit_selection(args: dict[str, Any]) -> dict[str, Any]:
+    files = args.get("selected_files") or []
+    if not isinstance(files, list):
+        return {
+            "content": [{"type": "text", "text": "REJECTED: selected_files must be a list."}],
+            "is_error": True,
+        }
+
+    paths = [f.get("path", "") for f in files if isinstance(f, dict) and f.get("path")]
+    if not paths:
+        return {
+            "content": [{"type": "text", "text": "REJECTED: no valid paths in selection."}],
+            "is_error": True,
+        }
+
+    total, breakdown = count_words(paths)
+    invalid = [p for p, w in breakdown.items() if w == -1]
+    missing = [p for p, w in breakdown.items() if w == 0]
+
+    if invalid:
+        return {
+            "content": [{
+                "type": "text",
+                "text": (
+                    f"REJECTED: paths outside knowledge/: {invalid}. "
+                    "All paths must be relative to your cwd (the knowledge/ root)."
+                ),
+            }],
+            "is_error": True,
+        }
+
+    if missing:
+        return {
+            "content": [{
+                "type": "text",
+                "text": (
+                    f"REJECTED: paths do not exist: {missing}. "
+                    "Verify each path with Glob/Read before submitting."
+                ),
+            }],
+            "is_error": True,
+        }
+
+    if total > WORD_BUDGET:
+        breakdown_lines = "\n".join(f"  - {p}: {w} words" for p, w in breakdown.items())
+        return {
+            "content": [{
+                "type": "text",
+                "text": (
+                    f"REJECTED — over word budget. Total {total} words, budget {WORD_BUDGET}.\n"
+                    f"Per-file:\n{breakdown_lines}\n\n"
+                    f"Drop the LEAST relevant files until total ≤ {WORD_BUDGET}. "
+                    "Keep core routing files (AGENTS.md / SKILL.md) over deep texts when possible. "
+                    "Then call submit_selection again with the trimmed list."
+                ),
+            }],
+            "is_error": True,
+        }
+
+    _capture["selection"] = files
+    return {
+        "content": [{
+            "type": "text",
+            "text": f"Accepted: {len(files)} files, {total} words. You are done — end your turn.",
+        }],
+    }
+
+
+@tool(
+    name="request_clarification",
+    description=(
+        "Use INSTEAD OF submit_selection when the user's task is genuinely ambiguous. "
+        "Submit 1-3 clarifying questions; the orchestrator will ask the user via AskUserQuestion "
+        "and re-invoke faion with the answers in the transcript."
+    ),
+    input_schema={
+        "type": "object",
+        "properties": {
+            "context": {
+                "type": "string",
+                "description": "One short paragraph: what's ambiguous and why questions are needed.",
+            },
+            "questions": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "header": {
+                            "type": "string",
+                            "description": "Short header (≤12 chars) for AskUserQuestion UI.",
+                        },
+                        "question": {
+                            "type": "string",
+                            "description": "The question itself, in the user's language.",
+                        },
+                        "multi_select": {
+                            "type": "boolean",
+                            "description": "True for 'pick all that apply'. Default false.",
+                        },
+                        "options": {
+                            "type": "array",
+                            "minItems": 2,
+                            "maxItems": 5,
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "label": {"type": "string"},
+                                    "description": {"type": "string"},
+                                },
+                                "required": ["label"],
+                            },
+                        },
+                    },
+                    "required": ["header", "question", "options"],
+                },
+            },
+        },
+        "required": ["context", "questions"],
+    },
+)
+async def request_clarification(args: dict[str, Any]) -> dict[str, Any]:
+    questions = args.get("questions") or []
+    context = (args.get("context") or "").strip()
+
+    if not isinstance(questions, list) or not questions:
+        return {
+            "content": [{"type": "text", "text": "REJECTED: questions must be a non-empty list."}],
+            "is_error": True,
+        }
+
+    normalized: list[dict[str, Any]] = []
+    for q in questions:
+        if not isinstance(q, dict):
+            continue
+        opts = q.get("options") or []
+        if not isinstance(opts, list) or len(opts) < 2:
+            return {
+                "content": [{
+                    "type": "text",
+                    "text": "REJECTED: each question must have at least 2 options.",
+                }],
+                "is_error": True,
+            }
+        normalized.append({
+            "header": (q.get("header") or "")[:12],
+            "question": q.get("question") or "",
+            "multi_select": bool(q.get("multi_select", False)),
+            "options": [
+                {"label": o.get("label", ""), "description": o.get("description", "")}
+                for o in opts if isinstance(o, dict) and o.get("label")
+            ],
+        })
+
+    if not normalized:
+        return {
+            "content": [{"type": "text", "text": "REJECTED: no valid questions."}],
+            "is_error": True,
+        }
+
+    _capture["clarification"] = {"context": context, "questions": normalized}
+    return {
+        "content": [{
+            "type": "text",
+            "text": f"Clarification request accepted ({len(normalized)} question(s)). End your turn.",
+        }],
+    }
+
+
+# ---- Bundle rendering (XML) ----
+
+def render_bundle(files: list[dict]) -> str:
+    documents: list[dict[str, Any]] = []
+    total = 0
+    for entry in files:
+        rel = entry.get("path", "")
+        full = (KNOWLEDGE_ROOT / rel).resolve()
+        if not full.exists():
+            continue
+        content = full.read_text(errors="replace")
+        words = len(content.split())
+        total += words
+        documents.append({
+            "path": rel,
+            "reason": (entry.get("reason") or "").strip(),
+            "words": words,
+            "content": content,
+        })
+    return render(
+        "bundle.xml.j2",
+        files=files,
+        total_words=total,
+        word_budget=WORD_BUDGET,
+        documents=documents,
+    )
+
+
+def render_clarification(payload: dict[str, Any]) -> str:
+    return render(
+        "clarification.xml.j2",
+        context=payload.get("context", ""),
+        questions=payload.get("questions", []),
+    )
+
+
+# ---- Subagent run ----
+
+async def run_retrieval(messages: list[dict[str, str]]) -> tuple[str, Any]:
+    """Returns (kind, data). kind is one of: 'selection', 'clarification', 'none'."""
+    _capture["selection"] = None
+    _capture["clarification"] = None
+
+    server = create_sdk_mcp_server(
+        name="faion",
+        version="1.0.0",
+        tools=[submit_selection, request_clarification],
+    )
+
+    system_prompt = render(
+        "system_prompt.xml.j2",
+        knowledge_root=str(KNOWLEDGE_ROOT),
+        word_budget=WORD_BUDGET,
+    )
+    user_prompt = render("user_prompt.xml.j2", messages=messages)
+
+    options = ClaudeAgentOptions(
+        cwd=str(KNOWLEDGE_ROOT),
+        mcp_servers={"faion": server},
+        allowed_tools=[
+            "Read",
+            "Grep",
+            "Glob",
+            "mcp__faion__submit_selection",
+            "mcp__faion__request_clarification",
+        ],
+        disallowed_tools=[
+            "Write", "Edit", "Bash", "NotebookEdit", "Task", "WebFetch", "WebSearch",
+        ],
+        permission_mode="bypassPermissions",
+        model=MODEL,
+        system_prompt=system_prompt,
+        max_turns=MAX_AGENT_TURNS,
+    )
+
+    async for msg in query(prompt=user_prompt, options=options):
+        if isinstance(msg, AssistantMessage):
+            for block in msg.content:
+                if isinstance(block, ToolUseBlock):
+                    if block.name.endswith("submit_selection"):
+                        logger.debug(
+                            "submit_selection: %d files",
+                            len(block.input.get("selected_files", [])),
+                        )
+                    elif block.name.endswith("request_clarification"):
+                        logger.debug(
+                            "request_clarification: %d questions",
+                            len(block.input.get("questions", [])),
+                        )
+
+    if _capture["clarification"]:
+        return "clarification", _capture["clarification"]
+    if _capture["selection"]:
+        return "selection", _capture["selection"]
+    return "none", None
+
+
+# ---- Entry point ----
+
+def main() -> None:
+    session_arg = sys.argv[1] if len(sys.argv) > 1 else ""
+    session_file = find_session_file(session_arg)
+    if not session_file:
+        print("<faion_knowledge error=\"no_session_file\"/>")
+        return
+
+    messages = extract_transcript(session_file)
+    if not messages:
+        print("<faion_knowledge error=\"empty_transcript\"/>")
+        return
+
+    kind, data = asyncio.run(run_retrieval(messages))
+    if kind == "clarification":
+        print(render_clarification(data))
+        return
+    if kind == "selection" and data:
+        print(render_bundle(data))
+        return
+    print("<faion_knowledge error=\"no_selection\"/>")
+
+
+if __name__ == "__main__":
+    main()

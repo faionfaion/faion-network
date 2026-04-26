@@ -45,4 +45,4 @@ Phase 1-7: (optional, when requested)
 
 - `faion-brainstorm` (multi-agent brainstorming)
 - `faion-sdd-execution` (quality gates, reflexion learning)
-- `faion-knowledge/knowledge/solo/infra/server-craft/` (server config/tuning)
+- `faion/knowledge/solo/infra/server-craft/` (server config/tuning)

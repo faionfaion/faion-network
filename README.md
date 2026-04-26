@@ -14,7 +14,7 @@ Stop reading endless guides. Stop watching tutorials. Start building.
 
 | Component | Count | Purpose |
 |-----------|-------|---------|
-| **Umbrella skill** | 1 | `faion-knowledge` — 52 domain knowledge bases routed by topic |
+| **Umbrella skill** | 1 | `faion` — 52 domain knowledge bases routed by topic |
 | **Applied skills** | 5 | Brainstorm, SDD execution, feature executor, improver, media ops |
 | **Methodologies** | 1,300+ | Battle-tested frameworks across dev, AI, infra, product, PM, BA, UX, marketing, research |
 
@@ -36,7 +36,7 @@ git clone https://github.com/faionfaion/faion-network.git ~/.claude
 claude
 
 # 3. Invoke the knowledge umbrella:
-/faion-knowledge
+/faion
 ```
 
 ---
@@ -55,8 +55,8 @@ claude
 git clone https://github.com/faionfaion/faion-network.git ~/.claude
 
 # Verify
-ls ~/.claude/skills       # faion-knowledge, faion-brainstorm, faion-feature-executor, ...
-ls ~/.claude/skills/faion-knowledge/knowledge/   # free/ solo/ pro/ geek/
+ls ~/.claude/skills       # faion, faion-brainstorm, faion-feature-executor, ...
+ls ~/.claude/skills/faion/knowledge/   # free/ solo/ pro/ geek/
 ```
 
 ### Merge into Existing Setup
@@ -104,17 +104,17 @@ export CF_API_KEY="..."
 
 ```bash
 claude
-# Invoke: /faion-knowledge
+# Invoke: /faion
 ```
 
-All domain knowledge lives under `faion-knowledge/knowledge/<tier>/<group>/<name>/`, partitioned by pricing tier. Read on demand:
+All domain knowledge lives under `faion/knowledge/<tier>/<group>/<name>/`, partitioned by pricing tier. Read on demand:
 
 - **Free (8):** `knowledge/free/dev/python-developer/`, `knowledge/free/dev/javascript-developer/`, `knowledge/free/marketing/marketing-manager/`, ...
 - **Solo (13):** `knowledge/solo/dev/frontend-developer/`, `knowledge/solo/sdd/sdd/`, `knowledge/solo/infra/server-craft/`, ...
 - **Pro (24):** `knowledge/pro/infra/devops-engineer/`, `knowledge/pro/ba/business-analyst/`, `knowledge/pro/marketing/growth-marketer/`, ...
 - **Geek (7):** `knowledge/geek/ai/ai-agents/`, `knowledge/geek/ai/rag-engineer/`, `knowledge/geek/ai/claude-code/`, ...
 
-Full tier map: [faion-knowledge/SKILL.md](skills/faion-knowledge/SKILL.md). Authoritative path list: [tier-manifest.json](skills/tier-manifest.json).
+Full tier map: [faion/SKILL.md](skills/faion/SKILL.md). Authoritative path list: [tier-manifest.json](skills/tier-manifest.json).
 
 ### SDD Workflow
 
@@ -148,7 +148,7 @@ Capture patterns, mistakes, and decisions from the current session into `.aidocs
 
 ```
 skills/
-├── faion-knowledge/                   # Umbrella — all domain knowledge
+├── faion/                   # Umbrella — all domain knowledge
 │   ├── SKILL.md
 │   ├── CLAUDE.md
 │   └── knowledge/
@@ -175,15 +175,15 @@ Each methodology = 5-file pattern: `README.md`, `checklist.md`, `templates.md`, 
 Error: Skill 'faion-*' not found
 ```
 
-Only top-level skills are invocable: `faion-knowledge`, `faion-brainstorm`, `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`, `faion-media-ops`.
+Only top-level skills are invocable: `faion`, `faion-brainstorm`, `faion-feature-executor`, `faion-improver`, `faion-sdd-execution`, `faion-media-ops`.
 
 Domain knowledge is NOT invocable as sub-skills — load via Read. Knowledge paths are tier-prefixed:
 
 ```
-Read: ~/.claude/skills/faion-knowledge/knowledge/free/dev/python-developer/SKILL.md
-Read: ~/.claude/skills/faion-knowledge/knowledge/solo/sdd/sdd/SKILL.md
-Read: ~/.claude/skills/faion-knowledge/knowledge/pro/infra/devops-engineer/SKILL.md
-Read: ~/.claude/skills/faion-knowledge/knowledge/geek/ai/ai-agents/SKILL.md
+Read: ~/.claude/skills/faion/knowledge/free/dev/python-developer/SKILL.md
+Read: ~/.claude/skills/faion/knowledge/solo/sdd/sdd/SKILL.md
+Read: ~/.claude/skills/faion/knowledge/pro/infra/devops-engineer/SKILL.md
+Read: ~/.claude/skills/faion/knowledge/geek/ai/ai-agents/SKILL.md
 ```
 
 ### Permission Denied

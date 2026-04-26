@@ -80,10 +80,10 @@ SPEC -> DESIGN -> IMPL-PLAN -> TASKS -> [FEATURE-EXECUTOR] -> DONE
 
 | Skill/Knowledge | Relationship |
 |-----------------|--------------|
-| [faion-knowledge](../faion-knowledge/CLAUDE.md) | Umbrella knowledge layer (domains, methodologies) |
-| [faion-knowledge/knowledge/solo/sdd/sdd/](../faion-knowledge/knowledge/solo/sdd/sdd/) | Provides task specs and workflow |
-| [faion-knowledge/knowledge/free/dev/software-developer/](../faion-knowledge/knowledge/free/dev/software-developer/) | Code task patterns |
-| [faion-knowledge/knowledge/pro/infra/devops-engineer/](../faion-knowledge/knowledge/pro/infra/devops-engineer/) | Infrastructure task patterns |
+| [faion](../faion/CLAUDE.md) | Umbrella knowledge layer (domains, methodologies) |
+| [faion/knowledge/solo/sdd/sdd/](../faion/knowledge/solo/sdd/sdd/) | Provides task specs and workflow |
+| [faion/knowledge/free/dev/software-developer/](../faion/knowledge/free/dev/software-developer/) | Code task patterns |
+| [faion/knowledge/pro/infra/devops-engineer/](../faion/knowledge/pro/infra/devops-engineer/) | Infrastructure task patterns |
 
 ---
 
