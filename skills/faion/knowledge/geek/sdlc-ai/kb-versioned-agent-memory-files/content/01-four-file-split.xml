@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-four-file-split" title="Four-File Memory Split, Append-Only, Cited">
+  <summary>Memory lives in four committed Markdown files; entries are append-only and each carries a citation back to its origin.</summary>
+
+  <section title="The four roles and the append-only contract">
+    <p>Memory is institutional knowledge the agent re-loads on every session start. Splitting it by role lets the agent fetch only the relevant slice and lets reviewers focus on one shape of change at a time.</p>
+
+    <rule testable="true">
+      <statement>Every project using agent-memory MUST keep exactly four files at `.aidocs/memory/` (or `.product/memory/` per per-project convention): `decisions.md`, `patterns.md`, `mistakes.md`, `session.md`. Each entry MUST be a Markdown section starting with a date in `YYYY-MM-DD` form, a one-line title, and at least one citation — a commit SHA, ticket URL, PR URL, or transcript hash. LLM agents MUST append; they MUST NOT edit or delete prior entries. A pre-commit hook MUST reject any diff to `.aidocs/memory/*.md` (except `session.md`) that removes lines, and MUST require at least one citation token (`commit:`, `ticket:`, `pr:`, or `transcript:`) per added entry.</statement>
+      <rationale>Append-only turns memory into an audit log: any future agent or reviewer can trace why a belief exists. Citations forbid hallucinated lore — every claim points to a verifiable source. The split prevents one of the four roles from cannibalising the others (the typical failure mode where `mistakes.md` becomes a dumping ground for every observation).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+## 2026-04-26 — pin uv 0.4 floor
+**Decision.** Repo standardises on `uv >= 0.4`; CI installs from the lockfile only.
+**Why.** uv 0.3 lockfile format is incompatible; mixed envs caused 3 build breaks.
+**Citation.** commit:9f3ac1a · ticket:NERO-412
+      ]]></code>
+      <note>Dated, titled, cited, single role (decision). Future agents trust it because it points back to the originating commit and ticket.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+## Notes
+- Probably should use uv now.
+- Don't forget the staging-DB password.
+- That auth bug we fixed once — try not to break it again.
+      ]]></code>
+      <note>No dates, no citations, mixed roles. Two months later no one can tell what is current, what was disproven, or what file would even own it.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting an LLM "consolidate" or "summarise" the memory files automatically.</description>
+      <reason>The summary discards citations and rewrites prior entries with the model's current biases; the audit trail evaporates and reviewers cannot tell what was added vs invented.</reason>
+    </antipattern>
+
+    <reference path="templates/decisions.md">Skeleton with the required header schema.</reference>
+    <reference path="templates/mistakes.md">Skeleton for error-and-fix entries.</reference>
+    <reference href="https://docs.anthropic.com/en/docs/claude-code/memory">Claude Code memory — `@`-import semantics for `.aidocs/memory/`.</reference>
+    <reference href="https://github.blog/engineering/the-ai-memory-fallacy">GitHub Engineering — opaque agent memory as a review-coverage gap.</reference>
+  </section>
+</text>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-three-tier-rule" title="Three-Tier Pyramid Is Mandatory">
+  <summary>Every directory with agent-relevant logic carries CLAUDE.md (hook), AGENTS.md (brief), and optional .agents/INDEX.md (catalogue) in that order of load cost.</summary>
+
+  <section title="The hook + brief + catalogue contract">
+    <p>The pyramid separates auto-load (cheap, always paid) from on-demand (expensive, paid only when needed). CLAUDE.md is a one-line hook. AGENTS.md is the brief. .agents/INDEX.md is the catalogue of deep docs an agent loads only after deciding the dir is relevant.</p>
+
+    <rule testable="true">
+      <statement>For every directory containing source code or agent-relevant configuration, the repo MUST contain `CLAUDE.md` whose entire body is `@AGENTS.md` (one line, no other text), `AGENTS.md` between 20 and 80 lines (hard cap 120) covering what-this-dir-IS plus build/test/deploy commands plus active gotchas, and — when reference depth warrants — `.agents/INDEX.md` listing every deep-reference doc as a single Markdown table. CI MUST fail when any source directory is missing the `CLAUDE.md` + `AGENTS.md` pair or when `AGENTS.md` exceeds 120 lines.</statement>
+      <rationale>Claude Code reads only `CLAUDE.md`; non-Claude-Code agents read only `AGENTS.md`. The `@AGENTS.md` hook routes one to the other so a single brief serves both. The 80-line target keeps auto-load context under ~5k tokens, the empirical break-even where the routing brief stops helping and starts crowding the working set.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# CLAUDE.md (1 line)
+@AGENTS.md
+
+# AGENTS.md (40 lines)
+# auth/
+
+OAuth2 authorization-code flow with PKCE.
+Runtime: Django 5, port 8000 (api), 8001 (api-dev).
+
+## Commands
+- Test: `uv run pytest auth/`
+- Lint: `ruff check auth/`
+
+## Gotchas
+- `state` cookie is HttpOnly+SameSite=Lax; do NOT change.
+- See `.agents/INDEX.md` for token-rotation deep dive.
+      ]]></code>
+      <note>Brief routes both Claude Code (via hook) and standalone agents (direct read) to the same authoritative context.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+# CLAUDE.md (200 lines)
+# Auth module — full architecture
+... (architecture diagram)
+... (token rotation logic)
+... (every gotcha ever)
+      ]]></code>
+      <note>Standalone agents never read this file. The auto-loaded context is now 200 lines of mostly-irrelevant material.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding extra prose, links, or directives to `CLAUDE.md` beyond the single `@AGENTS.md` line.</description>
+      <reason>Drift between `CLAUDE.md` and `AGENTS.md` immediately desyncs Claude Code from every other agent; the hook stops being a hook and becomes a second source of truth that nobody updates.</reason>
+    </antipattern>
+
+    <reference path="templates/CLAUDE.md">The verbatim hook file.</reference>
+    <reference path="templates/AGENTS.md">Skeleton brief with the six required sections.</reference>
+    <reference href="https://agents.md/">agents.md — the cross-vendor AGENTS.md spec adopted by OpenAI Codex, Cursor, aider.</reference>
+    <reference href="https://docs.anthropic.com/en/docs/claude-code/memory">Claude Code memory docs — `CLAUDE.md` auto-load behaviour and `@`-import semantics.</reference>
+  </section>
+</text>

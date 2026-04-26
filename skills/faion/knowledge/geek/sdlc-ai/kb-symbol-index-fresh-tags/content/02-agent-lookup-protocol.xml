@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-lookup-protocol" title="Agent Lookup Protocol — Index First, Grep Last">
+  <summary>The project AGENTS.md declares the index path and forces agents to consult it before any text grep, with grep allowed only for non-symbol literals.</summary>
+
+  <section title="Required lookup order">
+    <p>Coding agents default to grep because it is universal. The cost is enormous on big repos — every grep hit returns surrounding lines, all loaded into context. The symbol index returns one structured span per symbol, which is what the agent actually wants.</p>
+
+    <rule testable="true">
+      <statement>The project `AGENTS.md` MUST declare the symbol index path and required lookup order: agents query the index for any "where is `&lt;Symbol&gt;` defined", "find references to `&lt;Symbol&gt;`", or "what calls `&lt;Symbol&gt;`" question; agents fall back to grep ONLY for non-symbol literals (strings, regex patterns, comments). Coding-agent system prompts (Claude Code skill, Cursor rule, Codex `AGENTS.md`) MUST embed this protocol verbatim. PR templates MUST include a checkbox: "Symbol-index queries used where applicable".</statement>
+      <rationale>Forcing the index to be the first lookup cuts agent context cost on real refactors by 5-20x (Cognition Devin and Cursor team published numbers in 2025-2026). The grep fallback for non-symbol literals stops the rule from being absolute and unworkable. Embedding the protocol in `AGENTS.md` and the PR template gates both runtime behaviour and review behaviour with the same source of truth.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+# AGENTS.md
+## Code Lookup
+Symbol index lives at `tags` (universal-ctags, drift-checked).
+
+Agents MUST:
+1. For symbol queries (definition, references, callers) — query `tags` via `readtags` or Serena MCP.
+2. For non-symbol literals (strings, comments, regex) — `Grep` with a tight glob.
+3. NEVER bulk-grep the repo for a symbol when the index is available.
+      ]]></code>
+      <note>The agent has a deterministic decision: index for symbols, grep for literals.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+# AGENTS.md
+"Use whatever search tool feels natural."
+      ]]></code>
+      <note>The agent picks grep every time; context blows up; refactors miss references that the index would catch instantly.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting each agent pick its own search tool ad-hoc per task.</description>
+      <reason>Behaviour becomes non-reproducible across agent kinds (Claude Code vs Cursor vs Codex), and context cost explodes on the largest repos exactly when it matters most.</reason>
+    </antipattern>
+
+    <reference path="templates/precommit-tags.yaml">Pre-commit hook that keeps the index fresh.</reference>
+    <reference href="https://docs.ctags.io/en/latest/man/readtags.1.html">`readtags(1)` — fast O(log n) lookup CLI agents can shell out to.</reference>
+    <reference href="https://github.com/oraios/serena">Serena MCP server — exposes symbol queries directly to MCP-aware agents.</reference>
+    <reference href="https://www.cognition.ai/blog/devin-context">Cognition Devin context post — symbol-index miss as the dominant context-bloat source.</reference>
+  </section>
+</text>

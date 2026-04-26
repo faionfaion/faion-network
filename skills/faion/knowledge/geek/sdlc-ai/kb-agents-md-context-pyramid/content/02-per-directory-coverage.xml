@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-per-directory-coverage" title="Per-Directory Coverage Rule">
+  <summary>The pair is per-source-directory, not per-repo: every meaningful folder gets calibrated context so deep-cwd agents do not rebuild the world.</summary>
+
+  <section title="When a directory MUST have its own pair">
+    <p>An agent that opens a session with cwd in `src/auth/` should not need to climb the tree to find context. The pyramid is therefore replicated per directory with non-trivial logic; only empty or near-empty folders inherit from the parent.</p>
+
+    <rule testable="true">
+      <statement>A directory MUST carry its own `CLAUDE.md` + `AGENTS.md` when ANY of these hold: it contains 3+ source files, it is a package boundary (own `pyproject.toml`/`package.json`/`go.mod`), it has commands or gotchas distinct from its parent, or it is referenced by another `AGENTS.md` as a navigation target. A directory MAY skip the pair only when it is an `__init__.py`-only folder, a generated/build output dir, a vendored dependency, or a leaf with under three files and zero distinct commands.</statement>
+      <rationale>Per-directory coverage means an agent always reads exactly the brief that matches its working directory; without it, agents either auto-load the whole repo's context or guess. The skip rules prevent the convention from becoming busywork on trivial folders that would only repeat the parent.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="text"><![CDATA[
+nero-core/
+├── CLAUDE.md           # @AGENTS.md
+├── AGENTS.md           # repo-wide brief
+├── src/
+│   ├── auth/
+│   │   ├── CLAUDE.md   # @AGENTS.md
+│   │   └── AGENTS.md   # auth-specific commands + gotchas
+│   └── billing/
+│       ├── CLAUDE.md
+│       └── AGENTS.md
+└── build/              # generated, no pair (skip rule)
+      ]]></code>
+      <note>Each package boundary has its own brief; the build folder is exempt as generated output.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+nero-core/
+├── CLAUDE.md           # 600 lines covering every package
+└── src/
+    ├── auth/           # no pair, agents must climb
+    └── billing/        # no pair, agents must climb
+      ]]></code>
+      <note>Single mega-brief at the root; agents working in `src/billing/` load 600 lines of mostly-auth context.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding `CLAUDE.md` + `AGENTS.md` to every leaf folder regardless of content (including empty `__init__.py`-only dirs).</description>
+      <reason>Doubles maintenance cost without information gain; each pair must be touched on every refactor. The skip rules exist to keep the convention adoptable, not to be ignored.</reason>
+    </antipattern>
+
+    <reference path="templates/INDEX.md">Catalogue format for `.agents/INDEX.md`.</reference>
+    <reference href="https://github.com/openai/codex">OpenAI Codex — reads `AGENTS.md` per directory at session start.</reference>
+    <reference href="https://docs.cursor.com/context/rules">Cursor Rules — also follow per-directory `AGENTS.md` discovery.</reference>
+  </section>
+</text>

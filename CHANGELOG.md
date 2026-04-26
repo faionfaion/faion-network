@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- sdlc-ai-methodologies: pool-batch +4 kb- (50/52) — kb-agents-md-context-pyramid, kb-symbol-index-fresh-tags, kb-codebase-rag-symbol-chunked, kb-versioned-agent-memory-files (NEW shape: AGENTS.md + content/*.xml + templates/ + scripts/). kb- category complete (4/4). Renumbered IDs S-047..S-050 after rebase on concurrent tracker-/test-/lint- batches.
 - refactor: 8/8 backend-systems methodologies migrated to new shape (batch: go-error-handling, rust-http-handlers, error-handling, rust-project-structure, go-concurrency-patterns, go-http-handlers, rust-tokio-async, database-design)
 - sdlc-ai-methodologies: pool-batch +4 tracker- (46/52) — tracker-jira-rovo-mcp-agents, tracker-github-copilot-workspace, tracker-ai-triage-classify-route, tracker-gitlab-duo-developer-flow (NEW shape: AGENTS.md + content/*.xml + templates/). tracker- category complete (5/5). IDs S-043..S-046 after rebase on concurrent test-/lint- batches.
 - sdlc-ai-methodologies: pool-batch +4 lint- (42/52) — lint-precommit-floor, lint-ruff-and-biome-as-default, lint-megalinter-polyglot, lint-autofix-vs-flag-decision-rule (NEW shape: AGENTS.md + content/*.xml + templates/). IDs S-039..S-042 after rebase on concurrent tracker-/test- batches.
