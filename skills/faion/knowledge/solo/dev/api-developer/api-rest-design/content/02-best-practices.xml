@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-best-practices" title="REST Best Practices and HATEOAS">
+  <summary>Naming conventions, filtering/sorting patterns, Location headers, response body conventions, and optional HATEOAS links.</summary>
+
+  <section title="Naming Conventions">
+    <rule>
+      <statement>Use lowercase kebab-case for multi-word resource names. Use plural nouns. Never use camelCase or PascalCase in URL paths.</statement>
+      <rationale>URLs are case-insensitive in the path by RFC, but inconsistent casing causes broken bookmarks and confuses consumers. Kebab-case is the web convention; underscores are acceptable but kebab is preferred.</rationale>
+    </rule>
+    <list>
+      <item>Good: /user-profiles, /order-items, /payment-methods</item>
+      <item>Bad: /UserProfiles, /orderItems, /payment_methods, /user</item>
+    </list>
+  </section>
+
+  <section title="Filtering, Sorting, Pagination">
+    <rule>
+      <statement>Use query parameters for filtering (?status=active), sorting (?sort=-created_at for descending), and pagination (?page=2&amp;limit=20 or cursor-based ?after=token). Never encode filter state in the path.</statement>
+      <rationale>Query parameters are composable and bookmarkable. Path-encoded filters create URL explosions and make caching by path impractical.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+GET /users?status=active&sort=-created_at&limit=20&page=2
+GET /orders?from=2026-01-01&to=2026-03-31&status=completed
+GET /posts?after=eyJpZCI6MTIzfQ&limit=10  # cursor pagination
+]]></code>
+    </example>
+  </section>
+
+  <section title="Response Conventions">
+    <rule>
+      <statement>Return the created or updated resource in the response body for 201 and 200 responses. Include a Location header on 201 pointing to the new resource URL.</statement>
+      <rationale>Returning the full resource in the creation response allows clients to update local state without an additional GET. The Location header is required by RFC 7231 for 201.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="http"><![CDATA[
+HTTP/1.1 201 Created
+Location: /users/456
+Content-Type: application/json
+
+{
+  "id": "456",
+  "name": "Jane Smith",
+  "email": "jane@example.com",
+  "createdAt": "2026-04-26T12:00:00Z"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="HATEOAS Links">
+    <rule testable="false">
+      <statement>For APIs that support client discovery, include a _links object with self, related resources, and state-transition actions. This is optional for most APIs but required for Richardson Maturity Level 3.</statement>
+      <rationale>HATEOAS enables hypermedia-driven clients that do not hard-code URLs. The value is highest in long-lived APIs with frequent state machine transitions (orders, payments).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "123",
+  "name": "John Doe",
+  "_links": {
+    "self": { "href": "/users/123" },
+    "orders": { "href": "/users/123/orders" },
+    "update": { "href": "/users/123", "method": "PATCH" }
+  }
+}
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="FastAPI Error Handler Implementation">
+  <summary>ProblemDetail Pydantic model, FastAPI exception handler wiring for validation and generic errors, and logging requirements.</summary>
+
+  <section title="ProblemDetail Model">
+    <rule>
+      <statement>Define a single ProblemDetail Pydantic model shared across all exception handlers. Never construct error dicts inline in handlers.</statement>
+      <rationale>A shared model enforces schema consistency across all error paths and enables OpenAPI schema generation for the error response type.</rationale>
+    </rule>
+    <reference path="templates/problem_detail.py">ProblemDetail model and FastAPI handler wiring</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel
+
+class ProblemDetail(BaseModel):
+    type: str
+    title: str
+    status: int
+    detail: str | None = None
+    instance: str | None = None
+    trace_id: str | None = None
+    errors: list[dict] | None = None
+]]></code>
+    </example>
+  </section>
+
+  <section title="Exception Handlers">
+    <rule>
+      <statement>Register at minimum two exception handlers: one for Pydantic ValidationError that maps field errors to the errors array, and one catch-all for Exception that logs the full traceback and returns a generic 500 without internal details.</statement>
+      <rationale>The two-handler pattern ensures validation errors produce actionable field-level messages while unexpected errors are logged server-side but sanitised for the client.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import uuid
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+
+app = FastAPI()
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    return JSONResponse(
+        status_code=400,
+        content=ProblemDetail(
+            type="https://api.example.com/errors/validation-error",
+            title="Validation Error",
+            status=400,
+            detail="Request validation failed",
+            instance=str(request.url.path),
+            trace_id=str(uuid.uuid4()),
+            errors=[
+                {"field": e["loc"][-1], "code": e["type"], "message": e["msg"]}
+                for e in exc.errors()
+            ]
+        ).model_dump()
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content=ProblemDetail(
+            type="https://api.example.com/errors/internal-error",
+            title="Internal Server Error",
+            status=500,
+            detail="An unexpected error occurred",
+            instance=str(request.url.path),
+            trace_id=str(uuid.uuid4())
+        ).model_dump()
+    )
+]]></code>
+    </example>
+    <antipattern>
+      <description>Returning exc.args[0] or str(exc) in the 500 detail field.</description>
+      <reason>Leaks internal implementation details (file paths, SQL queries, variable names) to untrusted clients.</reason>
+    </antipattern>
+  </section>
+</text>

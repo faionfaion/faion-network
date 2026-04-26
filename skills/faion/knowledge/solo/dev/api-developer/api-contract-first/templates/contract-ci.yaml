@@ -1,0 +1,43 @@
+name: API Contract CI
+
+on:
+  pull_request:
+    paths:
+      - 'openapi.yaml'
+      - 'server/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Lint OpenAPI spec
+        run: npx @stoplight/spectral-cli lint openapi.yaml
+
+      - name: Generate server stubs
+        run: |
+          npx @openapitools/openapi-generator-cli generate \
+            -i openapi.yaml \
+            -g python-fastapi \
+            -o ./generated \
+            --additional-properties=packageName=api
+
+      - name: Diff generated models vs implementation
+        run: diff -r ./generated/models ./server/models || (echo "Models out of sync with spec" && exit 1)
+
+      - name: Install Python deps
+        run: pip install -r requirements-test.txt
+
+      - name: Run contract tests
+        run: pytest tests/contract/ -v

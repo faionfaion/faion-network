@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tooling" title="Contract-First Tooling: Generate, Lint, Validate, CI">
+  <summary>openapi-generator commands for stubs and clients, Spectral linting rules, openapi-core runtime validation, and GitHub Actions CI integration.</summary>
+
+  <section title="Code Generation">
+    <rule>
+      <statement>Use openapi-generator to produce server stubs, typed client SDKs, and test scaffolding from the spec. Regenerate clients on every spec change; never hand-edit generated files.</statement>
+      <rationale>Hand-editing generated files creates divergence between spec and implementation. Regeneration on spec change keeps clients in sync automatically and catches breaking changes immediately.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Python FastAPI server stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python-fastapi \
+  -o ./server \
+  --additional-properties=packageName=payment_api
+
+# TypeScript axios client
+openapi-generator generate \
+  -i openapi.yaml \
+  -g typescript-axios \
+  -o ./client
+
+# Test stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python \
+  -o ./tests \
+  --global-property=apiTests=true
+]]></code>
+    </example>
+  </section>
+
+  <section title="Spec Linting">
+    <rule>
+      <statement>Lint the OpenAPI spec with Spectral on every commit and PR. Require operationId on all operations (for stable SDK method names) and description on all operations and info contact.</statement>
+      <rationale>Spectral catches spec quality issues before generation. Missing operationId produces auto-generated method names that break when paths change.</rationale>
+    </rule>
+    <reference path="templates/spectral-rules.yaml">Spectral ruleset extending oas with required operationId/description rules</reference>
+  </section>
+
+  <section title="Contract Validation">
+    <rule>
+      <statement>Use openapi-core in test suite to validate every response against the spec at runtime. Run contract tests as a separate test suite in CI.</statement>
+      <rationale>Static generation only ensures stubs match the spec shape; runtime validation ensures the actual running implementation returns responses that conform to the spec, catching mismatches in serialisation and optional fields.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openapi_core import OpenAPI
+from openapi_core.testing.mock import MockRequest, MockResponse
+
+spec = OpenAPI.from_file_path("openapi.yaml")
+
+def test_create_payment_matches_spec():
+    response = client.post("/payments", json={
+        "amount": 1000, "currency": "USD",
+        "customer_id": "550e8400-e29b-41d4-a716-446655440000"
+    })
+    mock_request = MockRequest("http://localhost", "POST", "/payments")
+    mock_response = MockResponse(
+        data=response.content, status_code=response.status_code
+    )
+    result = spec.validate_response(mock_request, mock_response)
+    assert not result.errors
+]]></code>
+    </example>
+  </section>
+
+  <section title="CI Integration">
+    <reference path="templates/contract-ci.yaml">GitHub Actions workflow: lint spec, generate stubs, diff models, run contract tests</reference>
+    <rule>
+      <statement>Run spec lint, stub generation, model diff, and contract tests in CI on every PR that touches openapi.yaml or server/ code. Fail the build on any divergence.</statement>
+      <rationale>Contract drift that is not caught in CI reaches production and breaks deployed clients. CI is the safety net that makes contract-first sustainable at scale.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-problem-detail" title="RFC 7807 Problem Detail Schema and Error Codes">
+  <summary>The RFC 7807 error envelope, required/optional fields, error code catalogue, and message quality rules.</summary>
+
+  <section title="Problem Detail Fields">
+    <rule>
+      <statement>Every error response must include type (URI), title (short summary), and status (HTTP code). Include detail (human explanation), instance (request path), traceId (for log correlation), and errors array (for field-level validation).</statement>
+      <rationale>The type URI is machine-readable and can link to documentation. The traceId enables client-to-server log correlation without exposing internal details. The errors array gives field-level feedback for form-backing endpoints.</rationale>
+    </rule>
+    <example type="good">
+      <note>RFC 7807 validation error response with field-level errors array.</note>
+      <code lang="json"><![CDATA[
+{
+  "type": "https://api.example.com/errors/validation-error",
+  "title": "Validation Error",
+  "status": 400,
+  "detail": "The request body contains invalid fields",
+  "instance": "/users/create",
+  "traceId": "abc-123-xyz",
+  "errors": [
+    { "field": "email", "code": "invalid_format", "message": "Must be a valid email address" },
+    { "field": "age", "code": "out_of_range", "message": "Must be between 18 and 120" }
+  ]
+}
+]]></code>
+    </example>
+    <antipattern>
+      <description>Returning raw exception messages or stack traces in error responses.</description>
+      <reason>Exposes internal implementation details; violates information security; confuses API consumers expecting a stable error contract.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Error Code Catalogue">
+    <rule>
+      <statement>Use machine-readable snake_case error codes in the code field (not HTTP status descriptions). Define all error codes as constants in a single module.</statement>
+      <rationale>Error codes enable clients to programmatically branch logic; human-readable messages can change without breaking client code that branches on code.</rationale>
+    </rule>
+    <list>
+      <item>Client (4xx): validation_error, invalid_format, missing_field, unauthorized, forbidden, not_found, conflict, rate_limited</item>
+      <item>Server (5xx): internal_error, service_unavailable, timeout</item>
+    </list>
+    <reference path="templates/error_codes.py">ErrorCode constants module</reference>
+  </section>
+
+  <section title="Message Quality Rules">
+    <rule>
+      <statement>Error messages must identify the specific resource and problem, not generic phrases. Include actionable guidance where possible.</statement>
+      <rationale>Generic messages ("Error occurred", "Invalid input") force consumers to inspect the status code and guess; specific messages reduce support burden.</rationale>
+    </rule>
+    <list>
+      <item>Bad: "Error occurred" → Good: "User not found with ID 'abc123'"</item>
+      <item>Bad: "NullPointerException" → Good: "Required field 'email' is missing"</item>
+      <item>Bad: "Invalid input" → Good: "Email must be in format user@domain.com"</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-implementation.xml"/>
+  </see-also>
+</text>

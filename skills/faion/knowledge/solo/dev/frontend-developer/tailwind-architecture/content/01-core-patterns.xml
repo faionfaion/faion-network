@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-patterns" title="Tailwind Core Patterns: cn(), Variants, Responsive">
+  <summary>The cn() merge helper, variant object pattern, mobile-first responsive classes, and concentric CSS class ordering.</summary>
+
+  <section title="cn() Helper">
+    <rule>
+      <statement>Use cn() (clsx + tailwind-merge) for all conditional and merged class compositions. Never use string concatenation or template literals to build Tailwind class lists.</statement>
+      <rationale>tailwind-merge resolves Tailwind class conflicts (e.g. p-4 vs p-6) by keeping only the last applicable class. String concatenation produces duplicate conflicting classes that behave unpredictably depending on CSS specificity.</rationale>
+    </rule>
+    <reference path="templates/utils.ts">cn() helper implementation using clsx and tailwind-merge</reference>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+import { cn } from '@/lib/utils';
+
+<div className={cn(
+  "base-styles rounded-lg p-4",
+  isActive && "ring-2 ring-blue-500",
+  isDisabled && "opacity-50 pointer-events-none",
+  className  // allow override from parent
+)} />
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="tsx"><![CDATA[
+<div className={`base-styles rounded-lg p-4 ${isActive ? "p-6" : ""}`} />
+]]></code>
+      <note>p-4 and p-6 both appear in the class string; the winner depends on CSS source order, not intent.</note>
+    </example>
+  </section>
+
+  <section title="Variant Pattern">
+    <rule>
+      <statement>Define component variants as a plain object mapping variant name to class string, then select via cn(). Do not branch on variant with if/else chains in JSX.</statement>
+      <rationale>Object variants are type-safe when combined with TypeScript keyof, readable at a glance, and easy to extend without touching render logic.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+const variants = {
+  primary:   "bg-blue-600 text-white hover:bg-blue-700",
+  secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300",
+  ghost:     "bg-transparent hover:bg-gray-100",
+} as const;
+
+type Variant = keyof typeof variants;
+
+function Button({ variant = 'primary', className, ...props }: {
+  variant?: Variant; className?: string;
+}) {
+  return (
+    <button
+      className={cn("px-4 py-2 rounded font-medium", variants[variant], className)}
+      {...props}
+    />
+  );
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Class Ordering (Concentric CSS)">
+    <rule>
+      <statement>Order Tailwind classes from outermost to innermost concern: layout/position → box model → borders → background → typography → effects. Use prettier-plugin-tailwindcss to enforce this automatically.</statement>
+      <rationale>Consistent ordering makes class strings scannable and diffable. Auto-sorting eliminates merge conflicts caused by developers adding classes in different positions.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+<div className="
+  relative flex flex-col
+  w-full max-w-md p-6 m-4
+  border border-gray-200 rounded-lg
+  bg-white shadow-lg
+  text-gray-900 text-sm font-medium
+  transition-all duration-200 hover:shadow-xl
+" />
+]]></code>
+    </example>
+  </section>
+
+  <section title="Responsive Design">
+    <rule>
+      <statement>Always design mobile-first. Apply base classes for the smallest viewport and override with md:, lg:, xl: prefixes for larger screens. Never design desktop-first and try to shrink with sm: overrides.</statement>
+      <rationale>Mobile-first generates less CSS (default = mobile, overrides only for larger) and aligns with how Tailwind's breakpoints are defined (min-width, not max-width).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+<div className="
+  flex flex-col gap-4
+  md:flex-row md:gap-8
+  lg:justify-between
+" />
+]]></code>
+    </example>
+  </section>
+</text>

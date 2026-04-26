@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: seo-for-spas, design-tokens-basics, tailwind-architecture, api-error-handling, api-rest-design, api-documentation, api-contract-first, api-rate-limiting)
 - refactor: 8/8 software-architect methodologies migrated to new shape (batch: modular-monolith, data-modeling, patterns-overview, quality-attributes, monolith-architecture, architecture-decision-records, c4-model, structural-patterns)
 - refactor: 8/8 methodologies migrated to new shape (agent-aac1288d12b6abb30: perf-test-basics, cd-basics, continuous-delivery, system-design-process, workflows, caching-architecture, performance-architecture, behavioral-patterns)
 - refactor: 8/8 methodologies migrated to new shape (batch: api-authentication, internationalization, rust-backend, django-services, rest-api-design, pwa-development, trunk-based-development, go-project-structure)

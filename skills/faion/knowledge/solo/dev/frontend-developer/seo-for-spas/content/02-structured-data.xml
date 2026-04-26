@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-structured-data" title="JSON-LD Structured Data Patterns">
+  <summary>Schema.org JSON-LD patterns for Product, Article, and Breadcrumb types, injected via a shared StructuredData component.</summary>
+
+  <section title="Structured Data Injection">
+    <rule>
+      <statement>Inject JSON-LD structured data via a script tag with type="application/ld+json" inside the document head on every page that benefits from rich results.</statement>
+      <rationale>JSON-LD is Google's recommended format — it is decoupled from the DOM, easy to validate with Google's Rich Results Test, and does not require modifying HTML markup.</rationale>
+    </rule>
+    <reference path="templates/structured-data.tsx">StructuredData component + Product, Article, Breadcrumb schema factories</reference>
+  </section>
+
+  <section title="Product Schema">
+    <rule>
+      <statement>Product pages must include name, description, image, sku, brand, offers (with priceCurrency, price, availability URL, seller), and aggregateRating when reviews exist.</statement>
+      <rationale>Complete Product schema enables Google Shopping rich results and product carousels in SERPs, increasing click-through rate for e-commerce pages.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const productSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description,
+  image: product.images,
+  sku: product.sku,
+  brand: { '@type': 'Brand', name: product.brand },
+  offers: {
+    '@type': 'Offer',
+    url: `https://example.com/products/${product.slug}`,
+    priceCurrency: 'USD',
+    price: product.price,
+    availability: product.inStock
+      ? 'https://schema.org/InStock'
+      : 'https://schema.org/OutOfStock',
+    seller: { '@type': 'Organization', name: 'Example Store' }
+  },
+  aggregateRating: product.rating ? {
+    '@type': 'AggregateRating',
+    ratingValue: product.rating.average,
+    reviewCount: product.rating.count
+  } : undefined
+};
+]]></code>
+    </example>
+  </section>
+
+  <section title="Article and Breadcrumb Schemas">
+    <rule>
+      <statement>Article pages must include headline, description, image, datePublished, dateModified, author (Person), publisher (Organization with logo), and mainEntityOfPage. Breadcrumb structured data must mirror the visible breadcrumb component.</statement>
+      <rationale>Article schema enables AMP and Top Stories rich results. BreadcrumbList schema provides path context in SERPs and must match the visible navigation to pass Google validation.</rationale>
+    </rule>
+    <example type="good">
+      <note>BreadcrumbList schema — must match the rendered nav breadcrumb exactly.</note>
+      <code lang="typescript"><![CDATA[
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.name,
+    item: item.url
+  }))
+};
+]]></code>
+    </example>
+    <antipattern>
+      <description>Breadcrumb schema that diverges from the visible breadcrumb navigation.</description>
+      <reason>Google validates schema against rendered content; mismatches can result in a manual action or rich result loss.</reason>
+    </antipattern>
+  </section>
+</text>

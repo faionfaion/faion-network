@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="SEO Core Rules for SPAs">
+  <summary>Concrete rules for SSR, meta tags, canonical URLs, and crawlable link structure in Single Page Applications.</summary>
+
+  <section title="Server-Side Rendering">
+    <rule>
+      <statement>Render critical page content in the initial HTML response — never rely on client-side JS for content that must be indexed.</statement>
+      <rationale>Search engine crawlers may not execute JavaScript, or may index the page before hydration completes. Content absent from the initial HTML is at risk of not being indexed.</rationale>
+    </rule>
+    <rule>
+      <statement>Use SSR or SSG for all public-facing pages; defer CSR-only rendering to authenticated or non-indexed routes.</statement>
+      <rationale>Next.js getStaticProps/getStaticPaths and ISR (revalidate) provide SSG with on-demand regeneration — the best performance/freshness trade-off for most content sites.</rationale>
+    </rule>
+    <example type="good">
+      <note>Next.js page with ISR — content in initial HTML, revalidated every hour.</note>
+      <code lang="typescript"><![CDATA[
+export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
+  const product = await fetchProduct(params?.slug as string);
+  if (!product) return { notFound: true };
+  return { props: { product }, revalidate: 3600 };
+};
+]]></code>
+    </example>
+    <antipattern>
+      <description>Fetching product data in useEffect and rendering into DOM after hydration.</description>
+      <reason>The initial HTML contains no product content — crawlers may index an empty shell.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Meta Tags">
+    <rule>
+      <statement>Every public page must have a unique title (under 60 chars), meta description (under 160 chars), canonical URL, Open Graph tags, and Twitter Card tags.</statement>
+      <rationale>Missing or duplicate meta tags cause indexing conflicts; Open Graph tags control how the page appears when shared on social platforms.</rationale>
+    </rule>
+    <rule>
+      <statement>Set the canonical URL to the definitive version of the page URL to prevent duplicate content penalties.</statement>
+      <rationale>Query parameters (e.g. ?ref=email, ?page=1) can create duplicate URL variants; canonical signals the preferred version to crawlers.</rationale>
+    </rule>
+    <example type="good">
+      <note>Next.js Head with full meta tag set for a product page.</note>
+      <code lang="typescript"><![CDATA[
+<Head>
+  <title>{product.name} | Example Store</title>
+  <meta name="description" content={product.description.slice(0, 160)} />
+  <link rel="canonical" href={`https://example.com/products/${product.id}`} />
+  <meta property="og:type" content="product" />
+  <meta property="og:title" content={product.name} />
+  <meta property="og:description" content={product.description} />
+  <meta property="og:image" content={product.image} />
+  <meta property="og:url" content={`https://example.com/products/${product.id}`} />
+  <meta name="twitter:card" content="summary_large_image" />
+</Head>
+]]></code>
+    </example>
+    <antipattern>
+      <description>A single static title and description shared across all pages of a SPA.</description>
+      <reason>Every page gets the same snippet in search results; click-through rate drops and duplicate content is flagged.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Crawlable Links">
+    <rule>
+      <statement>All navigable links must use anchor tags with a valid href attribute — never onClick-only divs or buttons for navigation.</statement>
+      <rationale>Crawlers follow href links; onClick handlers that call router.push() are invisible to bots and create orphaned pages that receive no link equity.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+import Link from 'next/link';
+// Next.js 13+
+<Link href={`/products/${product.slug}`}>{product.name}</Link>
+// External links
+<a href="https://external.com" rel="noopener noreferrer" target="_blank">
+  External
+</a>
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="tsx"><![CDATA[
+<div onClick={() => router.push('/products')}>Products</div>
+]]></code>
+      <note>No href — invisible to search engine crawlers.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/02-structured-data.xml"/>
+    <link path="content/03-performance.xml"/>
+  </see-also>
+</text>

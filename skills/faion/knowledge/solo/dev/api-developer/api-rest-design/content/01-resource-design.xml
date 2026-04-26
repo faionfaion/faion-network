@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-resource-design" title="REST Resource Design and HTTP Semantics">
+  <summary>URL structure rules, HTTP verb semantics, idempotency guarantees, and canonical status code mapping.</summary>
+
+  <section title="URL Structure">
+    <rule>
+      <statement>Use plural nouns for collections (/users), nested paths for relationships (/users/{id}/orders), query parameters for filtering and sorting — never verbs in the path.</statement>
+      <rationale>Noun-based paths map to resources, not actions. Verbs in URLs (/getUsers, /createOrder) conflate the HTTP method with the path, creating redundancy and breaking the uniform interface constraint of REST.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+GET    /users                        # list
+GET    /users?status=active&limit=10 # filtered list
+GET    /users/{id}                   # single resource
+POST   /users                        # create
+PUT    /users/{id}                   # replace
+PATCH  /users/{id}                   # partial update
+DELETE /users/{id}                   # delete
+GET    /users/{id}/orders            # sub-collection
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="text"><![CDATA[
+GET /getUsers
+POST /createUser
+POST /deleteUser
+GET /user_orders?userId=123
+]]></code>
+      <note>Verbs in paths, inconsistent pluralisation, action-based naming.</note>
+    </example>
+  </section>
+
+  <section title="HTTP Verb Semantics">
+    <rule>
+      <statement>GET and DELETE must be idempotent. PUT must be idempotent. POST is not idempotent and creates a new resource. PATCH is not idempotent by default but may be made so with conditional requests.</statement>
+      <rationale>Idempotency enables safe retries on network failure. Clients and proxies rely on GET safety for caching. Using POST for read operations defeats caching layers.</rationale>
+    </rule>
+    <list>
+      <item>GET — read, idempotent, safe (no side effects)</item>
+      <item>POST — create, not idempotent, not safe</item>
+      <item>PUT — replace entire resource, idempotent, not safe</item>
+      <item>PATCH — partial update, not idempotent, not safe</item>
+      <item>DELETE — remove, idempotent, not safe</item>
+    </list>
+  </section>
+
+  <section title="Status Code Mapping">
+    <rule>
+      <statement>Return the most specific applicable status code. Do not use 200 for all responses, and do not use 400 for all client errors.</statement>
+      <rationale>Status codes communicate semantics to clients, proxies, and monitoring tools. 422 Unprocessable Entity distinguishes semantic validation errors from malformed requests (400); 409 Conflict distinguishes duplicate-key errors from other failures.</rationale>
+    </rule>
+    <list>
+      <item>200 — GET/PUT/PATCH success with body</item>
+      <item>201 — POST success; include Location header pointing to new resource</item>
+      <item>204 — DELETE success; no body</item>
+      <item>400 — malformed request (bad JSON, missing required param)</item>
+      <item>401 — authentication missing or invalid</item>
+      <item>403 — authenticated but insufficient permissions</item>
+      <item>404 — resource does not exist</item>
+      <item>409 — state conflict (duplicate, version mismatch)</item>
+      <item>422 — syntactically valid but semantically invalid</item>
+      <item>429 — rate limit exceeded</item>
+      <item>500 — unexpected server error</item>
+      <item>503 — planned downtime or overload</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/02-best-practices.xml"/>
+  </see-also>
+</text>

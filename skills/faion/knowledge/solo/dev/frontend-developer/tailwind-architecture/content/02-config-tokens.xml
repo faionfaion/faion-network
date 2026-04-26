@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-config-tokens" title="Tailwind Config, Design Tokens, @apply, and CSS Layers">
+  <summary>Mapping design tokens to Tailwind via CSS variables, disciplined @apply usage, CSS layer management, and dark mode setup.</summary>
+
+  <section title="Design Tokens via CSS Variables">
+    <rule>
+      <statement>Map semantic design tokens to Tailwind by using CSS custom properties (variables) in tailwind.config.js. Define the variables in @layer base. Never hardcode hex/hsl values directly in the config.</statement>
+      <rationale>CSS variables allow runtime theme switching (dark mode, white-label) without rebuilding the CSS. Hardcoded values require a rebuild for any theme change.</rationale>
+    </rule>
+    <reference path="templates/tailwind.config.js">Production tailwind config with CSS variable token mapping</reference>
+    <example type="good">
+      <code lang="js"><![CDATA[
+// tailwind.config.js
+theme: {
+  extend: {
+    colors: {
+      background: "hsl(var(--background))",
+      foreground: "hsl(var(--foreground))",
+      primary: {
+        DEFAULT: "hsl(var(--primary))",
+        foreground: "hsl(var(--primary-foreground))",
+      },
+    },
+    borderRadius: {
+      card: "var(--radius-card)",
+      button: "var(--radius-button)",
+    },
+  },
+}
+// globals.css
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --radius-card: 0.75rem;
+    --radius-button: 0.5rem;
+  }
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="@apply Rules">
+    <rule>
+      <statement>Use @apply only inside @layer components for base styles that genuinely cannot be extracted to a component (e.g. .btn-base applied across multiple frameworks). Never create utility aliases with @apply.</statement>
+      <rationale>Overusing @apply defeats the utility-first model: it recreates the specificity and cascade problems that Tailwind was designed to avoid, and it increases bundle size compared to component extraction.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="css"><![CDATA[
+@layer components {
+  .btn-base {
+    @apply inline-flex items-center justify-center rounded-md
+           font-medium transition-colors focus-visible:outline-none
+           focus-visible:ring-2 disabled:pointer-events-none
+           disabled:opacity-50;
+  }
+}
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="css"><![CDATA[
+.text-big { @apply text-2xl; }
+.mt-section { @apply mt-16; }
+]]></code>
+      <note>Utility aliases add indirection with no benefit — use the Tailwind class directly.</note>
+    </example>
+  </section>
+
+  <section title="CSS Layers">
+    <rule>
+      <statement>Declare @tailwind directives in order: base, components, utilities. Add custom styles only in the matching layer. Never place custom styles outside a layer — they will have unpredictable specificity.</statement>
+      <rationale>CSS layers provide explicit specificity management: utilities always override components which always override base, regardless of source order. Custom styles outside layers fall outside this guarantee.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="css"><![CDATA[
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base { /* Reset, typography defaults, CSS variable definitions */ }
+@layer components { /* .btn-base, .card, shared compound classes */ }
+@layer utilities { /* .text-gradient, .scrollbar-hide, custom utilities */ }
+]]></code>
+    </example>
+  </section>
+
+  <section title="Performance">
+    <rule>
+      <statement>Keep content paths in tailwind.config.js limited to source files only. Avoid arbitrary values like w-[347px] — define a design token instead. Limit @apply to reduce CSS bundle size.</statement>
+      <rationale>Broad content globs (e.g. **.html) scan too many files and slow builds. Arbitrary values bypass the design token system and produce one-off CSS rules that cannot be reused.</rationale>
+    </rule>
+  </section>
+</text>

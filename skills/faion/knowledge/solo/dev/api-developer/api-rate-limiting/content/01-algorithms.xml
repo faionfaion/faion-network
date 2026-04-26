@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-algorithms" title="Rate Limiting Algorithms">
+  <summary>Fixed window, sliding window (Redis sorted set), and token bucket algorithms with code, trade-offs, and when to choose each.</summary>
+
+  <section title="Fixed Window">
+    <rule>
+      <statement>Use fixed window only when simplicity is more important than fairness. It allows a burst of 2x the limit at window boundaries (last request of window N + first request of window N+1).</statement>
+      <rationale>Fixed window is O(1) memory per key and requires no external store. The boundary burst is acceptable for non-critical endpoints where occasional spikes are tolerable.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class FixedWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int):
+        self.limit = limit
+        self.window = window_seconds
+        self.counters: dict[str, int] = {}
+
+    def is_allowed(self, key: str) -> bool:
+        import time
+        now = int(time.time())
+        window_start = now - (now % self.window)
+        counter_key = f"{key}:{window_start}"
+        count = self.counters.get(counter_key, 0)
+        if count >= self.limit:
+            return False
+        self.counters[counter_key] = count + 1
+        return True
+]]></code>
+    </example>
+    <antipattern>
+      <description>Using fixed window for search, payment, or AI inference endpoints where boundary bursts can cause downstream overload.</description>
+      <reason>A 2x burst at the boundary can overwhelm slow downstream services even when the average rate is within limits.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Sliding Window (Redis)">
+    <rule>
+      <statement>Use sliding window for production APIs where fairness across time is required. Implement with a Redis sorted set: each request is a member with score = timestamp; remove expired members before counting.</statement>
+      <rationale>Sliding window has no boundary burst problem. Redis sorted set pipeline makes the check-and-increment atomic, which is required for correctness in distributed deployments.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class SlidingWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int, redis_client):
+        self.limit = limit
+        self.window = window_seconds
+        self.redis = redis_client
+
+    async def is_allowed(self, key: str) -> bool:
+        import time
+        now = time.time()
+        pipe = self.redis.pipeline()
+        pipe.zremrangebyscore(key, 0, now - self.window)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, self.window)
+        _, _, count, _ = await pipe.execute()
+        return count <= self.limit
+]]></code>
+    </example>
+  </section>
+
+  <section title="Token Bucket">
+    <rule>
+      <statement>Use token bucket when clients need burst capacity above the steady-state rate. Configure bucket_size for the maximum burst and refill_rate for the steady-state requests/second.</statement>
+      <rationale>Token bucket allows a burst of bucket_size requests immediately (e.g. application startup) then throttles to refill_rate. This matches real usage patterns better than fixed quotas for clients that batch work.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TokenBucketRateLimiter:
+    def __init__(self, bucket_size: int, refill_rate: float):
+        self.bucket_size = bucket_size
+        self.refill_rate = refill_rate  # tokens per second
+        self.buckets: dict = {}
+
+    def is_allowed(self, key: str, tokens: int = 1) -> bool:
+        import time
+        now = time.time()
+        bucket = self.buckets.get(key, {
+            "tokens": self.bucket_size, "last_refill": now
+        })
+        elapsed = now - bucket["last_refill"]
+        bucket["tokens"] = min(
+            self.bucket_size,
+            bucket["tokens"] + elapsed * self.refill_rate
+        )
+        bucket["last_refill"] = now
+        if bucket["tokens"] >= tokens:
+            bucket["tokens"] -= tokens
+            self.buckets[key] = bucket
+            return True
+        return False
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/rate_limiter.py">SlidingWindowRateLimiter and TokenBucketRateLimiter with Redis backend</reference>
+
+  <see-also>
+    <link path="content/02-implementation.xml"/>
+  </see-also>
+</text>
