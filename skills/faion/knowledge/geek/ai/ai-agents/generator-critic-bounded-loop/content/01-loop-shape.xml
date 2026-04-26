@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-loop-shape" title="Bounded generator-critic loop with three exit conditions">
+  <summary>Cap reflection at 3 iterations; exit on critic veto, score plateau, or cap; use a cheaper critic for rubric tasks.</summary>
+
+  <section title="Three exit conditions, in priority order">
+    <p>An unbounded reflection loop is the single most common reason production agents overspend. Bounding by iteration count alone is too rigid — the critic should be allowed to short-circuit when satisfied, and a plateau detector kills runs that stop improving.</p>
+
+    <rule testable="true">
+      <statement>Generator-Critic loops must exit on the first true condition: (1) critic returns should_continue=False, (2) score delta vs the prior iteration is below epsilon for 2 consecutive iterations, (3) iteration count reaches the hard cap (default 3, never above 5).</statement>
+      <rationale>Empirical reflection studies (LangChain Reflection Agents) show iteration 2 captures most of the lift, iteration 3 adds the long tail, and iterations 4+ contribute below the noise floor. Three independent stop conditions cover correctness (critic veto), efficiency (plateau), and safety (cap).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+output = generate(prompt)
+prev_score = -1
+for i in range(MAX_ITERS := 3):
+    critique = critic(output, prompt)               # structured: score + should_continue
+    if not critique.should_continue:
+        break
+    if i > 0 and abs(critique.score - prev_score) < EPSILON:
+        break
+    output = generate(prompt, feedback=critique.feedback)
+    prev_score = critique.score
+return output
+      ]]></code>
+      <note>Cap, veto, and plateau all checked. Loop exits early when any one fires.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+while not critic(output).is_perfect():
+    output = generate(prompt, feedback=critic(output).feedback)
+      ]]></code>
+      <note>No cap, no plateau detection — perfect-is-enemy-of-good drives unbounded spend.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting the generator and critic share the same model and temperature.</description>
+      <reason>Shared prior — generator and critic make the same mistakes, critic rubber-stamps bad output. Either swap models, swap temperatures, or use a rubric prompt that forces a different reasoning path.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Critic returns only a numeric score; loop decides should_continue from a fixed threshold.</description>
+      <reason>The critic has more context than the threshold rule. Force the critic to emit should_continue explicitly so domain logic stays in the prompt, not in caller code.</reason>
+    </antipattern>
+
+    <reference path="templates/critic_schema.py">Pydantic schema for the critic's structured output (score, should_continue, feedback).</reference>
+    <reference path="templates/loop.py">Reference loop implementing all three exit conditions.</reference>
+    <reference href="https://blog.langchain.com/reflection-agents/">LangChain — Reflection Agents (empirical anchor for the 3-iteration cap).</reference>
+    <reference href="https://learnopencv.com/langgraph-self-correcting-agent-code-generation/">Self-correcting RAG agent in LangGraph — bounded loop in production.</reference>
+  </section>
+
+  <section title="Critic-model sizing">
+    <list>
+      <item>Rubric criticism (style, format, completeness, presence of required sections) — use a cheap model (Haiku 4.5, gpt-4.1-mini, Llama-3.3-70B). Constrained classification, no reasoning needed.</item>
+      <item>Correctness criticism (math, code, citation accuracy) — use the same tier as the generator. Catching wrong answers requires the same capacity that produces them.</item>
+      <item>Mixed criticism — split into two critics: cheap-rubric runs first, strong-correctness only when rubric passes. Cuts critic cost ~60%.</item>
+    </list>
+  </section>
+</text>

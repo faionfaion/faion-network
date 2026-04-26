@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-fanout-shape" title="Bounded fan-out, annotated reducer, idempotent branches">
+  <summary>Map per-item work over runtime-variable N with Send, cap concurrency at 20, require idempotency because super-steps fail atomically.</summary>
+
+  <section title="Bounded fan-out rule">
+    <p>Dynamic fan-out turns serial agent calls into parallel ones, but only if branches are independent and retryable. The shape is: a router node emits N Send commands, each carrying a per-item payload; an aggregator node reads the reduced list.</p>
+
+    <rule testable="true">
+      <statement>Use map-reduce fan-out (Send / ParallelAgent / asyncio.gather) only when (a) per-item work is independent, (b) every branch is idempotent and retryable, (c) the target state field has a reducer annotation, and (d) concurrency is capped at ≤20.</statement>
+      <rationale>LangGraph super-steps fail atomically — one branch crashing reverts the whole step's writes. Without idempotency, retry double-applies side effects. Without a reducer, parallel writes to the same key clobber each other. Above 20 concurrent calls, most providers' rate limits kick in and tail latency dominates the parallelism win.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Annotated
+import operator
+from langgraph.types import Send
+
+class State(TypedDict):
+    items: list[str]
+    scored: Annotated[list[dict], operator.add]   # reducer required
+
+def router(state: State):
+    # Emit one Send per item; LangGraph parallelizes them.
+    return [Send("score_one", {"item": x}) for x in state["items"][:20]]
+
+def score_one(payload):
+    # Idempotent: same input → same output, no external mutation.
+    return {"scored": [{"item": payload["item"], "score": llm_score(payload["item"])}]}
+      ]]></code>
+      <note>Reducer annotation, cap of 20, pure scoring branch. Reads safely on retry.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def router(state: State):
+    return [Send("write_row", {"id": x}) for x in state["items"]]   # 200 sends
+
+def write_row(payload):
+    db.update(payload["id"], status="processed")                    # side effect
+    return {"done": [payload["id"]]}
+      ]]></code>
+      <note>200 concurrent Sends saturate the rate limit; non-idempotent DB write double-applies on super-step retry.</note>
+    </example>
+
+    <antipattern>
+      <description>Forgetting the reducer annotation on the aggregation field.</description>
+      <reason>Parallel branches each overwrite the field, last write wins, all but one branch's result is lost. The `Annotated[list, operator.add]` (or a custom merge) is mandatory.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using Send for branches that mutate shared external state (S3 manifest, DB row, append-only file).</description>
+      <reason>Super-step atomic failure means partial side effects survive a retry. Use a queue + workers (SQS, Inngest, Temporal) for write fan-out, never Send.</reason>
+    </antipattern>
+
+    <reference path="templates/send_fanout.py">LangGraph reference: per-item Send, operator.add reducer, ≤20 cap.</reference>
+    <reference href="https://docs.langchain.com/oss/python/langgraph/use-graph-api">LangGraph — Use the Graph API (Send semantics).</reference>
+    <reference href="https://medium.com/ai-engineering-bootcamp/map-reduce-with-the-send-api-in-langgraph-29b92078b47d">Map-Reduce with Send() in LangGraph — concrete walkthrough.</reference>
+    <reference href="https://aipractitioner.substack.com/p/scaling-langgraph-agents-parallelization">Scaling LangGraph Agents — parallelization, subgraphs, map-reduce.</reference>
+  </section>
+
+  <section title="Concurrency cap and rate-limit cliffs">
+    <list>
+      <item>Default cap: 20 concurrent branches per super-step. Above that, most provider rate limits dominate latency.</item>
+      <item>Anthropic Batch API / OpenAI Batch — use for N &gt; 100 with no real-time deadline; 50% cheaper, no rate-limit risk.</item>
+      <item>For N in 20-100 with deadline: chunk into batches of 20, run sequentially, accumulate.</item>
+      <item>Mix model tiers per branch: cheap model for the map, strong for the reduce — extra parallel tax stays in the cheap budget.</item>
+    </list>
+  </section>
+</text>
