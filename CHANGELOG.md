@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- **Methodology refactor pool (`skills/faion/.refactor/`):** infrastructure for a `faion-poll-agents` background pool that converts the OLD 5-file methodologies (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) to the canonical NEW shape (`CLAUDE.md` → `AGENTS.md` → `content/*.xml` semantic XML + optional `templates/` + `scripts/`). Pool=10 sonnet, batch=8, tick `/loop 5m`. State files: `BRIEF.md` + `TICK.md` (tracked), `QUEUE.txt` + `DONE.txt` (gitignored). Initial QUEUE = 1245 paths (excludes `geek/ai/ai-agents/*` per migration carve-out for the 15 agent-builder methodologies that stay in the OLD shape).
+
 ### Changed
 - **`rules/skill-authoring.md` slimmed to a thin pointer.** Full spec lives in `docs/skill-authoring.md` (single source of truth — the rule was previously duplicating sections of the spec, which drifted). The rule now mandates `Read docs/skill-authoring.md` AND the tag glossary BEFORE any methodology edit/creation.
 - **`subagent-brief.md` (agent + sdlc) aligned to the canonical shape:** `content/` (semantic XML using the closed tag vocabulary from `semantic-xml-content/templates/tag-glossary.xml`), no `README.md` in subfolders (everything indexed in the methodology `AGENTS.md`), explicit MANDATORY pre-flight `Read` of the spec + tag glossary before any write.
