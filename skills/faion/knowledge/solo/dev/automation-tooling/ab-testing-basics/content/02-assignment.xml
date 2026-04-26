@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-assignment" title="Deterministic Assignment — Hash Bucketing and Override Hooks">
+  <summary>Stable hash-based bucketing with md5, QA override hooks, and exposure event contract.</summary>
+
+  <section title="Hash Assignment">
+    <rule>
+      <statement>Bucket users using hashlib.md5(f"{experiment_id}:{user_id}".encode()).hexdigest() and bucket = (hash_value % 10000) / 10000.0 — never use random.random() or Python's built-in hash().</statement>
+      <rationale>Python's hash() is process-salted (changes per restart). random.random() produces different variants for the same user across requests. Both break session continuity and make analysis impossible.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+bucket = random.random()  # different result every request
+bucket = hash(user_id) % 10000  # salted per-process, unstable
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import hashlib
+hash_key = f"{experiment_id}:{user_id}"
+hash_value = int(hashlib.md5(hash_key.encode()).hexdigest(), 16)
+bucket = (hash_value % 10000) / 10000.0
+      ]]></code>
+      <note>Do NOT change to sha256 post-launch — that reshuffles all users.</note>
+    </example>
+  </section>
+
+  <section title="Override Hook">
+    <rule>
+      <statement>Gate the variant override path behind is_staff or an env check — never expose it as an unauthenticated query parameter in production.</statement>
+      <rationale>An unauthenticated override lets any user force themselves into a variant, biasing the sample and creating a security bypass.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+override = request.query_params.get("variant_override")
+# No auth check — any user can force a variant
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+override = None
+if user.is_staff and request.query_params.get("variant_override"):
+    override = request.query_params["variant_override"]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Exposure Event">
+    <rule>
+      <statement>Emit an exposure event on the first variant evaluation in a session; record separately from conversion — analyses run on exposures, not raw assignments.</statement>
+      <rationale>Assignment is "what would they get"; exposure is "did they actually see it". Diluting analysis with unexposed users underestimates lift.</rationale>
+    </rule>
+    <reference path="templates/exposure-event.json">Canonical exposure event schema with required fields.</reference>
+  </section>
+</text>

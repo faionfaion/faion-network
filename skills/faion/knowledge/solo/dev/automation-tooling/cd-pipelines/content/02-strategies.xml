@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-strategies" title="Deployment Strategies — Rolling, Blue/Green, Canary">
+  <summary>K8s rolling update with readiness probes, blue/green label swap, Istio canary with weight limits, and when to use each.</summary>
+
+  <section title="Rolling Update">
+    <rule>
+      <statement>Set maxSurge and maxUnavailable in rollingUpdate strategy; always configure a readinessProbe with initialDelaySeconds calibrated to actual app boot time.</statement>
+      <rationale>Without readinessProbe, Kubernetes sends traffic to pods before they are ready, causing 502s. Without maxUnavailable, zero pods may be available during update if replicas are limited.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 2
+    maxUnavailable: 1
+template:
+  spec:
+    containers:
+      - name: app
+        readinessProbe:
+          httpGet: { path: /health/ready, port: 8080 }
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Blue/Green">
+    <rule>
+      <statement>Blue/green via label swap is appropriate for stateless services only; stateful services with sticky sessions or DB schema changes require extra coordination before traffic switch.</statement>
+      <rationale>A label swap is instant but DB migrations or session stores bound to the old version will break if traffic switches before the data plane is migrated.</rationale>
+    </rule>
+  </section>
+
+  <section title="Canary">
+    <rule>
+      <statement>Start canary at 5% traffic for a minimum observation window (15 min); promote only if SLO burn rate stays below threshold — not just HTTP 200 status.</statement>
+      <rationale>A 50% initial canary with HTTP-200-only gate misses latency regressions, increased error rates on specific endpoints, and downstream service degradation.</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent sets canary weight to 50% on first deploy.</description>
+      <reason>At 50%, a bad deploy impacts half the user base immediately. Start at 5%, observe, then graduate in steps (5% → 25% → 100%).</reason>
+    </antipattern>
+  </section>
+
+  <section title="Schema Migration Coordination">
+    <rule>
+      <statement>Run schema migrations in a dedicated job before the deploy job with its own rollback plan; never inline migrations inside the app container startup.</statement>
+      <rationale>App container migrations run in parallel across replicas, causing race conditions. A dedicated job with a lock ensures exactly-once execution with a clear rollback point.</rationale>
+    </rule>
+  </section>
+</text>

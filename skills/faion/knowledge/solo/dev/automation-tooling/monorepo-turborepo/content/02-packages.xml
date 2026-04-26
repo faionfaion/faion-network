@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-packages" title="Package Configuration — Apps, Libraries, and Shared Config">
+  <summary>Per-package package.json and tsconfig patterns for apps and libraries, shared ESLint preset, and tsup build for UI packages.</summary>
+
+  <section title="App Package">
+    <rule>
+      <statement>App packages depend on workspace:* packages via devDependencies for config and dependencies for shared runtime code; never import from apps/ — only from packages/.</statement>
+      <rationale>Importing from another app creates an implicit coupling that Turborepo cannot model as a task dependency, causing stale builds.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "name": "@monorepo/web",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@monorepo/ui": "workspace:*",
+    "@monorepo/utils": "workspace:*",
+    "next": "^15.0.0"
+  },
+  "devDependencies": {
+    "@monorepo/config": "workspace:*",
+    "typescript": "^5.3.0"
+  }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Library Package with tsup">
+    <rule>
+      <statement>Build library packages with tsup (esm + cjs + dts); declare all export conditions in the exports field — types, import, require.</statement>
+      <rationale>Consumers need correct module resolution for bundler, Node CJS, and TypeScript type-checking. Missing conditions cause silent any-type fallback.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "name": "@monorepo/ui",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+  }
+}
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Applying tsup build to Next.js app packages instead of libraries.</description>
+      <reason>Next.js manages its own bundling; using tsup on an app package breaks the Next.js build pipeline.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Shared tsconfig">
+    <rule>
+      <statement>Extend a single packages/config/tsconfig/base.json in every package; never diverge per-package tsconfig settings without extending the base.</statement>
+      <rationale>Per-package divergence leads to type desync: the same symbol compiles differently in different packages, causing subtle runtime bugs.</rationale>
+    </rule>
+    <reference path="templates/tsconfig-base.json">Strict shared base tsconfig with noUncheckedIndexedAccess and verbatimModuleSyntax.</reference>
+  </section>
+
+  <section title="Shared ESLint Config">
+    <rule>
+      <statement>Publish an eslint-preset.js from packages/config with main and exports pointing to the file; reference it via @monorepo/config/eslint-preset in each package.</statement>
+      <rationale>Without exports, eslint cannot resolve the preset path across workspace symlinks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// packages/config/eslint-preset.js
+module.exports = {
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
+  parser: '@typescript-eslint/parser',
+  rules: {
+    '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
+  },
+  ignorePatterns: ['dist', 'node_modules', '.turbo'],
+};
+      ]]></code>
+    </example>
+  </section>
+</text>

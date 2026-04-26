@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-ci-gotchas" title="CI Launch Flags, Timeouts, and Agent Gotchas">
+  <summary>Required Linux CI launch flags, timeout discipline, memory/cleanup rules, managed browser service routing, and agent-specific failure patterns.</summary>
+
+  <section title="CI Launch Flags">
+    <rule>
+      <statement>In Linux CI containers, always launch Chrome with --disable-dev-shm-usage --disable-gpu --no-sandbox; never use these flags on a developer workstation without a trusted container boundary.</statement>
+      <rationale>--no-sandbox disables the browser sandbox which is a security boundary; safe inside a dedicated CI container but dangerous on a shared machine. --disable-dev-shm-usage prevents /dev/shm exhaustion in Docker's 64MB default.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+const browser = await puppeteer.launch({
+  headless: true,
+  args: ['--disable-dev-shm-usage', '--disable-gpu', '--no-sandbox'],
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Timeout Discipline">
+    <rule>
+      <statement>Set page.setDefaultTimeout(15000) at launch; never use waitForTimeout(N) as a substitute for waitForSelector or waitForLoadState.</statement>
+      <rationale>waitForTimeout is a fixed sleep; it fails on slow networks and wastes time on fast ones. waitForSelector blocks until the element appears, adapting to actual page state.</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent adds await page.waitForTimeout(2000) after every interaction to "let the page settle".</description>
+      <reason>Fixed sleeps are fragile and slow; they fail when pages take longer than 2s and waste time when pages settle in 50ms. Use event-driven waits instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Memory and Cleanup">
+    <rule>
+      <statement>Always close the browser in a try/finally block; capture trace and screenshot on failure and discard on success to prevent disk accumulation.</statement>
+      <rationale>Agents that forget browser.close() in error paths leave zombie Chrome processes that exhaust memory. Keeping all traces accumulates gigabytes per CI run.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+let browser;
+try {
+  browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  // ... automation
+} catch (e) {
+  await page.screenshot({ path: 'failure.png' });
+  throw e;
+} finally {
+  await browser?.close();
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Managed Browser Services">
+    <rule>
+      <statement>Route to a managed browser service (Browserless, Browserbase, Bright Data) when running more than 20 parallel sessions; local Chrome instances at that scale cause OOM and CPU contention.</statement>
+      <rationale>Each Chromium instance uses 100-300MB RAM; 20 parallel instances = 2-6GB RAM, exceeding standard CI runner limits and causing cascading failures.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-structure" title="CD Pipeline Structure — Five Stages and Safety Gates">
+  <summary>Five-stage GitHub Actions pipeline shape, concurrency group, OIDC auth, and human approval gate for production.</summary>
+
+  <section title="Five-Stage Shape">
+    <rule>
+      <statement>Structure every CD pipeline as five independent jobs: build (unit tests + image), integration (service deps), staging deploy, E2E on staging, production deploy (manual approval).</statement>
+      <rationale>Each job is independently retry-able; failures are localized to a stage. Merged stages (e.g., build + staging deploy) make failure attribution ambiguous and rollback harder.</rationale>
+    </rule>
+  </section>
+
+  <section title="Concurrency and Image Tags">
+    <rule>
+      <statement>Set concurrency.group to deploy-${{ github.ref }} with cancel-in-progress: false so two concurrent pushes don't interleave deployments.</statement>
+      <rationale>cancel-in-progress: true would cancel an in-flight production deploy when a new push arrives, leaving the cluster in a partial state.</rationale>
+    </rule>
+    <rule>
+      <statement>Tag Docker images with the commit SHA — never latest; rollback must be deterministic by SHA.</statement>
+      <rationale>latest is mutable; if the image is rebuilt between deploy and rollback commands, kubectl rollout undo deploys a different image than expected.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="OIDC Authentication">
+    <rule>
+      <statement>Use OIDC federation (GitHub Actions → AWS/GCP/Azure) instead of long-lived secrets stored in repository variables.</statement>
+      <rationale>Long-lived secrets have indefinite validity; OIDC tokens are short-lived, scoped to the specific job, and automatically rotated. Leaked OIDC tokens expire in minutes.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin every third-party action to its commit SHA, not a tag; treat supply-chain hygiene as a pipeline requirement.</statement>
+      <rationale>Tags can be force-pushed to point at malicious commits; SHA pinning guarantees the exact code that was reviewed is executed.</rationale>
+    </rule>
+  </section>
+
+  <section title="Production Approval Gate">
+    <rule>
+      <statement>Gate the production job behind a GitHub environment with required reviewers; never wire the production deploy to run automatically without human sign-off.</statement>
+      <rationale>Autonomous production deploys remove the human checkpoint that catches last-minute context the pipeline cannot verify (security announcements, customer commitments, rollback readiness).</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent removes the manual approval from the production job to "make CI green".</description>
+      <reason>Approval gates exist to protect production; removing them silently ships untested changes to end users. Block this pattern in code review.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-setup" title="Turborepo Setup — Directory Layout and Configuration">
+  <summary>Canonical monorepo structure with apps/, packages/, pnpm workspaces, and turbo.json v2 task graph.</summary>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Place applications under apps/ and shared packages under packages/; never mix app and library code in the same directory.</statement>
+      <rationale>Turborepo's filter syntax and task graph require a predictable location to distinguish deployable apps from reusable packages.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+monorepo/
+├── turbo.json
+├── package.json
+├── pnpm-workspace.yaml
+├── apps/
+│   ├── web/          (Next.js frontend)
+│   └── api/          (backend service)
+└── packages/
+    ├── ui/           (shared React components)
+    ├── config/       (eslint-preset, tsconfig/)
+    ├── types/        (shared TypeScript types)
+    └── utils/        (shared utilities)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="pnpm Workspace Config">
+    <rule>
+      <statement>Declare workspace globs in pnpm-workspace.yaml and use workspace:* for all internal dependencies — never floating semver ranges.</statement>
+      <rationale>workspace:* resolves to local symlinks; floating ranges can accidentally resolve to a published npm version.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# pnpm-workspace.yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="turbo.json v2 Task Graph">
+    <rule>
+      <statement>Use the tasks field (not pipeline) in turbo.json v2; always declare outputs for every task — even [] for side-effect-only tasks.</statement>
+      <rationale>Turborepo 2.x renamed pipeline to tasks. Missing outputs means the task is never cached; Turborepo runs it on every invocation.</rationale>
+    </rule>
+    <reference path="templates/turbo-v2.json">Minimal turbo.json using tasks field with build/lint/typecheck/test/dev.</reference>
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "pipeline": { "typecheck": {} }
+}
+      ]]></code>
+      <note>v1 pipeline field and missing outputs; both are silent failures in v2.</note>
+    </example>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "typecheck": { "dependsOn": ["^build"], "cache": true, "outputs": [] }
+  }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Root package.json">
+    <rule>
+      <statement>Pin packageManager to a specific pnpm version in root package.json and set engines.node to enforce the runtime version.</statement>
+      <rationale>Mismatched pnpm versions produce lockfile churn; mismatched Node versions cause silent behavior differences.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "name": "monorepo",
+  "private": true,
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": { "turbo": "^2.0.0", "prettier": "^3.2.0" },
+  "packageManager": "pnpm@9.0.0",
+  "engines": { "node": ">=20.0.0" }
+}
+      ]]></code>
+    </example>
+  </section>
+</text>

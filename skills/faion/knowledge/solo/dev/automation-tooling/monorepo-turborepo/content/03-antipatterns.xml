@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Turborepo Anti-patterns and Agent Gotchas">
+  <summary>Circular dependencies, missing outputs, v1/v2 config confusion, remote cache misconfig, and AI-agent-specific failure modes.</summary>
+
+  <section title="Structural Anti-patterns">
+    <antipattern>
+      <description>Circular workspace dependencies: packages/a depends on packages/b which depends on packages/a.</description>
+      <reason>Turborepo cannot build a task graph with a cycle; the build hangs or fails with a cryptic error. Extract shared code into a third packages/shared with no deps.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Missing dependsOn on typecheck or lint tasks.</description>
+      <reason>Without dependsOn: ["^build"], Turborepo may run typecheck before the upstream build emits declaration files, producing false type errors.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Adding dev server to the cache with outputs: [].</description>
+      <reason>Dev servers are non-deterministic; caching them causes Turborepo to serve a stale server on next run. Set cache: false, persistent: true.</reason>
+    </antipattern>
+  </section>
+
+  <section title="v1 vs v2 Config Confusion">
+    <rule>
+      <statement>Always use the tasks field in new turbo.json; treat any pipeline field as a migration signal to update.</statement>
+      <rationale>Most training data for agents predates Turborepo 2.x. Agents will generate pipeline-based config that silently produces wrong behavior on v2.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{ "pipeline": { "build": { "dependsOn": ["^build"] } } }
+      ]]></code>
+      <note>v1 syntax; silently accepted but may misbehave on turbo v2.</note>
+    </example>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{ "tasks": { "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] } } }
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Remote Cache Gotchas">
+    <rule>
+      <statement>Store TURBO_TOKEN in GitHub Secrets, never in vars; set signature: true in turbo.json remoteCache only when secretKey is also configured.</statement>
+      <rationale>Token in vars is readable by any workflow run; signature: true without a secretKey is a no-op that provides false security assurance.</rationale>
+    </rule>
+    <reference path="templates/ci-cache.yml">GitHub Actions cache step for node_modules, .turbo, and .next/cache.</reference>
+  </section>
+
+  <section title="Agent-Specific Gotchas">
+    <antipattern>
+      <description>Agent edits pnpm-lock.yaml by hand to resolve a merge conflict.</description>
+      <reason>Manual edits corrupt integrity hashes; always re-run pnpm install to regenerate the lockfile.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent uses --filter=@monorepo/web... (three dots) thinking it selects the package and its dependencies.</description>
+      <reason>Three trailing dots means "package and its dependents" (reverse deps), not dependencies. Use ^... for dependencies, ... for dependents.</reason>
+    </antipattern>
+  </section>
+</text>

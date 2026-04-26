@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-database" title="Database Patterns — Migrations, Query Optimization, ORM, and HA">
+  <summary>Expand-then-contract migration pattern, EXPLAIN ANALYZE workflow, ORM N+1 fix, and HA topology sketch.</summary>
+
+  <section title="Migration Pattern">
+    <rule>
+      <statement>Use expand-then-contract for every schema change in a CD pipeline: first add the new column/table (expand), migrate data, then remove the old column (contract) in a separate deploy.</statement>
+      <rationale>Combining add + drop in one migration causes zero-downtime deployment to fail: the app version that reads the new column deploys while old pods still query the old schema.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="sql"><![CDATA[
+-- Bad: drop and add in one migration
+ALTER TABLE users DROP COLUMN name;
+ALTER TABLE users ADD COLUMN full_name VARCHAR(255);
+      ]]></code>
+      <note>Old pods crash when they SELECT name after the column is dropped.</note>
+    </example>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+-- Deploy 1: expand
+ALTER TABLE users ADD COLUMN full_name VARCHAR(255);
+-- (backfill full_name from name)
+-- Deploy 2: update app to read full_name
+-- Deploy 3: contract
+ALTER TABLE users DROP COLUMN name;
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Query Optimization">
+    <rule>
+      <statement>Run EXPLAIN (ANALYZE, BUFFERS) on every suspected slow query on representative data volume; add an index only after confirming the plan switches from Seq Scan to Index Scan.</statement>
+      <rationale>Indexes on write-heavy columns raise write cost; adding indexes before profiling may not change the query plan if statistics are stale or row counts are small.</rationale>
+    </rule>
+  </section>
+
+  <section title="ORM N+1 Fix">
+    <rule>
+      <statement>Prefetch related objects in ORM queries that iterate over a collection; write a query-count assertion in tests to catch N+1 regressions.</statement>
+      <rationale>An N+1 that works fine in dev with 10 rows produces thousands of queries in production. Query-count assertions catch regressions far cheaper than profiling later.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+users = User.objects.all()
+for user in users:
+    print(user.orders.count())  # 1 query per user
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+users = User.objects.prefetch_related('orders').all()
+for user in users:
+    print(len(user.orders.all()))  # uses prefetched data
+      ]]></code>
+      <note>SQLAlchemy uses selectinload/joinedload; Prisma uses include; primitives differ but the principle is identical.</note>
+    </example>
+  </section>
+
+  <section title="HA Topology">
+    <rule>
+      <statement>Never let an agent promote a replica autonomously; require human approval for any failover or topology change.</statement>
+      <rationale>Automatic promotion without quorum check risks split-brain: both primary and promoted replica accept writes, leading to diverged data that is difficult to reconcile.</rationale>
+    </rule>
+  </section>
+</text>

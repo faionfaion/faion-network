@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-analysis" title="Statistical Analysis — Z-Test, Wilson CI, Power, SRM Guard">
+  <summary>ExperimentAnalyzer: z-test for proportions, Wilson confidence intervals, power calculation, sample-size solver, and SRM prerequisite guard.</summary>
+
+  <section title="Analysis Prerequisites">
+    <rule>
+      <statement>Refuse to run analysis unless: minimum runtime has elapsed, pre-registered sample size has been reached, and SRM check passes (chi-square p &gt; 0.001).</statement>
+      <rationale>Running analysis before sample size is reached inflates false positives. SRM (sample-ratio mismatch) indicates a bucketing or logging bug; analysis on SRM data produces biased lift estimates.</rationale>
+    </rule>
+    <reference path="templates/srm-check.py">Chi-square SRM guard that exits non-zero on traffic split deviation.</reference>
+  </section>
+
+  <section title="Z-Test for Proportions">
+    <rule>
+      <statement>Use a two-sided z-test for binary conversion metrics; compute pooled standard error from combined conversion rate; report Wilson confidence intervals (not Wald intervals) for robustness at small n.</statement>
+      <rationale>Wald intervals can include values outside [0,1] for very high or very low rates; Wilson intervals are bounded and more accurate for proportions near 0 or 1.</rationale>
+    </rule>
+  </section>
+
+  <section title="Metric Type Registry">
+    <rule>
+      <statement>Maintain a typed metric registry: binary (z-test for proportions), continuous (Welch's t-test), ratio (delta method) — never apply the binary z-test to continuous or ratio metrics.</statement>
+      <rationale>Applying a binomial z-test to continuous metrics (e.g., revenue per user) produces wrong variance estimates and unreliable p-values.</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent reuses the binary conversion analyzer for revenue per user or latency p95.</description>
+      <reason>Revenue per user is a ratio metric (sum of revenue / count of users); latency p95 is a quantile metric. Both require different test statistics than the two-proportion z-test.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Output Contract">
+    <rule>
+      <statement>Analysis output must be structured JSON: control stats, treatment stats, lift, p_value, confidence_interval, power, srm_p, duration_days, decision_ready boolean — never a narrative sentence like "the variant is winning".</statement>
+      <rationale>A narrative sentence encodes a decision; the structured output presents evidence. Humans decide ship/no-ship; the analyzer presents the evidence without editorializing.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-tracking" title="Experiment Event Tracking — Schema and Exposure Deduplication">
+  <summary>ExperimentEvent typed schema, ExperimentTracker with in-process exposure deduplication, and exposure vs conversion call sites.</summary>
+
+  <section title="Event Schema">
+    <rule>
+      <statement>Model every experiment event as a typed dataclass with experiment_id, variant, user_id, event_type (exposure | conversion | metric), metric_name, metric_value, timestamp, and properties.</statement>
+      <rationale>An untyped dict passed to the analytics client drifts over time; a dataclass is a code-reviewable schema that fails fast when fields are missing.</rationale>
+    </rule>
+  </section>
+
+  <section title="Exposure Deduplication">
+    <rule>
+      <statement>Deduplicate exposures by (experiment_id, user_id) within a request/session; never fire multiple exposure events for the same user in the same experiment during one page load.</statement>
+      <rationale>Duplicate exposures inflate the exposure count, causing sample-ratio mismatch and underestimating conversion rate.</rationale>
+    </rule>
+    <rule>
+      <statement>In-process deduplication (_exposures set) is for development only; in production, persist the deduplication state to a durable store (Redis or a warehouse exposure table).</statement>
+      <rationale>In-process sets are lost on pod restart; in a multi-replica deployment each pod builds its own set, allowing duplicates across replicas.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@app.get("/checkout")
+async def checkout(user_id: str):
+    variant = assigner.get_variant("checkout-v2", user_id)
+    tracker.track_exposure("checkout-v2", user_id)  # deduplicated
+    if variant == "treatment":
+        return render_new_checkout()
+    return render_old_checkout()
+
+@app.post("/checkout/complete")
+async def complete_checkout(user_id: str, order: Order):
+    tracker.track_conversion(
+        "checkout-v2", user_id, "checkout_conversion",
+        value=1.0, properties={"order_value": float(order.total)},
+    )
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Separation of Exposure and Conversion">
+    <rule>
+      <statement>Track exposure when the variant is rendered, not when assignment happens; track conversion on the specific downstream event — never at the same call site as exposure.</statement>
+      <rationale>Logging exposure and conversion at the same site conflates assignment with outcome. Analysis must join exposure → subsequent conversion; co-located calls destroy the temporal relationship.</rationale>
+    </rule>
+  </section>
+</text>

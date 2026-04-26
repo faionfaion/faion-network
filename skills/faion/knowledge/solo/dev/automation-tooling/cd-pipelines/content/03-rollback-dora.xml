@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rollback-dora" title="Rollback, Smoke Tests, and DORA Metric Instrumentation">
+  <summary>Auto-rollback on smoke failure, health check endpoint pattern, DORA event emission, and agent gotchas.</summary>
+
+  <section title="Auto-Rollback Pattern">
+    <rule>
+      <statement>Implement rollback as: set image → rollout status (timeout) → smoke test → rollback to previous SHA on any failure; always re-run rollout status after rollback to confirm recovery.</statement>
+      <rationale>A rollback that does not confirm recovery may leave the cluster in a broken intermediate state; the confirmation step closes the feedback loop.</rationale>
+    </rule>
+    <reference path="templates/deploy-with-rollback.sh">Bash script implementing set-image, rollout-status, smoke, rollback on failure.</reference>
+  </section>
+
+  <section title="Health Check Endpoint">
+    <rule>
+      <statement>Implement /health (liveness) and /health/ready (readiness) as separate endpoints; readiness checks all dependencies (DB, cache, external APIs) and returns 503 if any fail.</statement>
+      <rationale>A liveness probe that checks dependencies kills the pod when a downstream service is slow, causing cascade restarts. Readiness only removes the pod from the load balancer rotation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@router.get("/health/ready")
+async def readiness():
+    checks = {
+        "database": await check_database(),
+        "redis": await check_redis(),
+    }
+    all_healthy = all(checks.values())
+    return Response(
+        content=json.dumps({"checks": checks, "ready": all_healthy}),
+        status_code=200 if all_healthy else 503,
+        media_type="application/json",
+    )
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="DORA Metric Emission">
+    <rule>
+      <statement>Emit deploy_started, deploy_succeeded, deploy_failed events with version, sha, and duration_seconds to a single metrics sink; instrument once at the pipeline gate, not per retry.</statement>
+      <rationale>Per-retry instrumentation double-counts retries as deploys, inflating deployment frequency and change failure rate. The gate fires once per intentional deploy.</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent uses continue-on-error: true on smoke or rollout steps to make the pipeline "pass".</description>
+      <reason>continue-on-error hides a real failure; the pipeline reports success while the deployment is broken. DORA change failure rate becomes meaningless.</reason>
+    </antipattern>
+  </section>
+</text>
