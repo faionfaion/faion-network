@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-layout" title="Rust Backend Project Layout and Router Setup">
+  <summary>Directory structure, module wiring, Axum router setup, and AppState shape for Rust HTTP services.</summary>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Organise source into routes/, handlers/, services/, models/, db/, middleware/, error.rs, config.rs. Each layer depends only on the layer below it.</statement>
+      <rationale>Vertical consistency across services lets any engineer find files without reading a README. The compiler enforces the dependency direction.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+src/
+├── main.rs          # tokio::main, server startup
+├── lib.rs           # re-exports AppState, AppError
+├── config.rs        # Config::from_env()
+├── error.rs         # AppError enum + IntoResponse
+├── routes/
+│   ├── mod.rs       # api_routes() → Router<AppState>
+│   └── users.rs
+├── handlers/
+│   ├── mod.rs
+│   └── users.rs
+├── services/
+│   ├── mod.rs
+│   └── users.rs
+├── models/
+│   ├── mod.rs
+│   └── user.rs
+├── db/
+│   ├── mod.rs
+│   └── users.rs
+└── middleware/
+    ├── mod.rs
+    └── auth.rs
+migrations/
+tests/
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="AppState">
+    <rule>
+      <statement>Wrap all heavy fields in Arc. Pass State(state): State&lt;AppState&gt; to handlers — never individual sub-fields. Keep AppState Clone-cheap.</statement>
+      <rationale>Axum clones AppState per request. Wrapping Database, Config, etc. in Arc makes the clone O(1) and avoids accidental copies of connection pools.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+#[derive(Clone)]
+pub struct AppState {
+    pub db: Database,
+    pub config: Arc<Config>,
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+    let config = Config::from_env()?;
+    let db = Database::connect(&config.database_url).await?;
+    let state = AppState { db, config: Arc::new(config) };
+    let app = Router::new()
+        .nest("/api/v1", routes::api_routes())
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Passing individual sub-fields (db: Database) as separate State extractors.</description>
+      <reason>Signature churn: every handler must be updated when a new field is added to state. Prefer one State&lt;AppState&gt; extractor.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Axum Version Warning">
+    <rule testable="false">
+      <statement>Read Cargo.toml to confirm Axum version (0.6 vs 0.7) before generating any handler code. Router::with_state and extractor signatures changed between versions.</statement>
+      <rationale>LLMs blend Axum 0.6 and 0.7 syntax. Silent mis-match produces compile errors that are hard to diagnose without knowing which API surface is expected.</rationale>
+    </rule>
+  </section>
+</text>

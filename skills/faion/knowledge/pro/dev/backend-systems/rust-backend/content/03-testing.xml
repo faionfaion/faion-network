@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-testing" title="Unit and Integration Testing Patterns">
+  <summary>Unit tests with mockall trait abstractions and integration tests using tower::ServiceExt::oneshot.</summary>
+
+  <section title="Unit Tests with mockall">
+    <rule>
+      <statement>Define a DatabaseTrait (or Repository trait) abstraction and mock it with mockall::mock!. Never mock a concrete struct whose methods use sqlx::query! macros — those embed file paths at compile time.</statement>
+      <rationale>sqlx::query! macros require DATABASE_URL at compile time. Mocking the concrete Database struct breaks when these macros are present. A trait abstraction separates the DB interface from the implementation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::predicate::*;
+    use mockall::mock;
+
+    mock! {
+        Database {}
+        impl Database {
+            async fn fetch_user_by_id(&self, id: i32) -> Result<Option<User>, sqlx::Error>;
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id_returns_user() {
+        let mut mock_db = MockDatabase::new();
+        mock_db
+            .expect_fetch_user_by_id()
+            .with(eq(1))
+            .times(1)
+            .returning(|_| Ok(Some(create_test_user())));
+        let service = UserService::new(&mock_db);
+        let result = service.get_by_id(1).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id_not_found() {
+        let mut mock_db = MockDatabase::new();
+        mock_db
+            .expect_fetch_user_by_id()
+            .with(eq(999))
+            .returning(|_| Ok(None));
+        let service = UserService::new(&mock_db);
+        let result = service.get_by_id(999).await;
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Integration Tests with oneshot">
+    <rule>
+      <statement>Use tower::ServiceExt::oneshot per request in integration tests. The oneshot call consumes the router, so create a fresh app per test case.</statement>
+      <rationale>Agents attempt to send a second request to the same router instance after oneshot and get a cryptic error. oneshot is not repeatable; construct a new router or clone before each call.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+#[tokio::test]
+async fn test_create_user() {
+    let app = setup_app().await; // creates test DB, runs migrations, returns Router
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/users")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    json!({"name":"John","email":"john@example.com","password":"pass1234"})
+                        .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+      ]]></code>
+    </example>
+    <note>setup_app() must use testcontainers or a transactional rollback wrapper for DB isolation. Never leave it as todo!().</note>
+  </section>
+</text>

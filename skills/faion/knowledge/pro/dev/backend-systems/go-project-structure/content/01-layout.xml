@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-layout" title="Go Project Directory Layout and Module Init">
+  <summary>Standard cmd+internal layout, module initialisation, and main.go with graceful shutdown for HTTP + workers.</summary>
+
+  <section title="Directory Tree">
+    <rule>
+      <statement>Default to cmd+internal. Add pkg/ only when you can name an external module that imports code from it. Add a second cmd/&lt;name&gt; only when a real second binary exists.</statement>
+      <rationale>pkg/ is routinely misused as a dumping ground. Once code is in pkg/ it is technically importable; moving it to internal/ later is a breaking change for external consumers.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+project/
+├── cmd/
+│   ├── api/
+│   │   └── main.go        # HTTP server binary
+│   └── worker/
+│       └── main.go        # Background worker binary (add only if needed)
+├── internal/
+│   ├── config/
+│   │   └── config.go
+│   ├── database/
+│   │   └── database.go
+│   ├── handler/
+│   │   ├── handler.go
+│   │   └── user.go
+│   ├── middleware/
+│   │   ├── auth.go
+│   │   └── logging.go
+│   ├── model/
+│   │   └── user.go
+│   ├── repository/
+│   │   └── user.go
+│   └── service/
+│       └── user.go
+├── deployments/
+│   ├── Dockerfile
+│   └── kubernetes/
+├── api/
+│   └── openapi.yaml
+├── scripts/
+│   └── build.sh
+├── go.mod
+├── go.sum
+└── Makefile
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Module Initialisation">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+go mod init github.com/username/project
+go get github.com/gin-gonic/gin@latest
+go mod tidy
+go mod verify
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Graceful Shutdown">
+    <rule>
+      <statement>Graceful shutdown must close DB pools, drain queue consumers, and cancel contexts — not just call srv.Shutdown. Every long-running goroutine needs a select on quit or ctx.Done.</statement>
+      <rationale>Agents stop at srv.Shutdown and leave background goroutines running. Under Kubernetes SIGTERM, this causes in-flight requests to be abandoned and queued messages to be reprocessed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func main() {
+    cfg, err := config.Load()
+    if err != nil { log.Fatalf("config: %v", err) }
+
+    db, err := database.Connect(cfg.DatabaseURL)
+    if err != nil { log.Fatalf("db: %v", err) }
+    defer db.Close()
+
+    h := handler.New(service.NewUserService(repository.NewUserRepository(db)))
+
+    srv := &http.Server{
+        Addr:              ":" + cfg.Port,
+        Handler:           h.Routes(),
+        ReadHeaderTimeout: 5 * time.Second,
+        WriteTimeout:      15 * time.Second,
+        IdleTimeout:       60 * time.Second,
+    }
+
+    go func() {
+        if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+            log.Fatalf("server: %v", err)
+        }
+    }()
+
+    quit := make(chan os.Signal, 1)
+    signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+    <-quit
+
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    _ = srv.Shutdown(ctx)
+}
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-wrapping-and-sentinels" title="Error Wrapping and Sentinel Errors">
+  <summary>fmt.Errorf with %w for wrapping, package-level sentinel vars, and repository-boundary translation of storage errors.</summary>
+
+  <section title="Wrapping Once per Layer">
+    <rule>
+      <statement>Wrap errors exactly once per layer using fmt.Errorf("verb context %s: %w", arg, err). The verb describes what THIS layer was doing. Never wrap with %v — it drops the errors.Is chain.</statement>
+      <rationale>%v formats the error message but breaks errors.Is and errors.As traversal. %w wraps the error and preserves the chain. Wrapping more than once per layer produces noisy redundant context in logs.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func (s *UserService) GetUser(ctx context.Context, id string) (*User, error) {
+    user, err := s.repo.FindByID(ctx, id)
+    if err != nil {
+        return nil, fmt.Errorf("getting user %s: %w", id, err)
+    }
+    if user == nil {
+        return nil, fmt.Errorf("user %s: %w", id, ErrNotFound)
+    }
+    return user, nil
+}
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>fmt.Errorf("getting user: %v", err) — using %v instead of %w.</description>
+      <reason>errors.Is(wrapped, ErrNotFound) returns false. The entire sentinel-error machinery stops working.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Sentinel Errors">
+    <rule>
+      <statement>Define all sentinel errors once in a single apperror package. Never call errors.New("not found") at individual call sites — each call allocates a new pointer and breaks errors.Is matching.</statement>
+      <rationale>errors.Is uses pointer equality for errors created by errors.New. Two different calls to errors.New("not found") produce two non-equal errors. Centralise in package vars.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// internal/apperror/sentinel.go
+package apperror
+
+import "errors"
+
+var (
+    ErrNotFound     = errors.New("resource not found")
+    ErrUnauthorized = errors.New("unauthorized")
+    ErrForbidden    = errors.New("forbidden")
+    ErrValidation   = errors.New("validation failed")
+    ErrConflict     = errors.New("resource conflict")
+)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Repository Boundary Translation">
+    <rule>
+      <statement>Translate storage-layer sentinels (sql.ErrNoRows, pgx.ErrNoRows, mongo.ErrNoDocuments) into domain sentinels (ErrNotFound) at the repository layer. Never let storage errors escape to the service or handler.</statement>
+      <rationale>Service code should not know which storage engine the repository uses. Leaking sql.ErrNoRows to a service couples it to the database driver.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func (r *userRepository) FindByID(ctx context.Context, id string) (*model.User, error) {
+    var user model.User
+    err := r.db.GetContext(ctx, &user, "SELECT * FROM users WHERE id = $1", id)
+    if errors.Is(err, sql.ErrNoRows) {
+        return nil, apperror.ErrNotFound   // translate here
+    }
+    if err != nil {
+        return nil, fmt.Errorf("querying user %s: %w", id, err)
+    }
+    return &user, nil
+}
+      ]]></code>
+    </example>
+  </section>
+</text>

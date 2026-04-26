@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-gotchas" title="Ownership Gotchas and Agent Failure Modes">
+  <summary>Self-referential structs, async + borrows, clone abuse, and 'static misuse — the most common LLM-generated ownership failures.</summary>
+
+  <section title="Self-Referential Structs">
+    <antipattern>
+      <description>A struct field that borrows from another field of the same struct (self-referential).</description>
+      <reason>Not expressible in safe Rust without Pin + unsafe or crates like ouroboros. Agents write these confidently and produce "cannot borrow as mutable" or "borrowed value does not live long enough" errors. Redesign to hold owned data or use indices instead of references.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Async + Borrowed Data">
+    <antipattern>
+      <description>Capturing a reference to a local variable inside tokio::spawn(async move { ... &amp;ref ... }).</description>
+      <reason>tokio::spawn requires 'static. Local references are not 'static. The "fix" of adding 'static to the type is wrong — use Arc::clone to share ownership instead.</reason>
+    </antipattern>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+// BAD: agents make `shared_ref` 'static by leaking
+// GOOD: Arc::clone passes ownership
+let db = Arc::clone(&state.db);
+tokio::spawn(async move {
+    db.fetch_user(42).await
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Clone Abuse">
+    <antipattern>
+      <description>Adding .clone() to silence a borrow-checker error without understanding the lifetime conflict.</description>
+      <reason>Gratuitous clones double allocation, hide architectural problems, and mask bugs that the borrow checker was correctly diagnosing. Force agents to articulate the lifetime conflict before applying any clone.</reason>
+    </antipattern>
+    <rule>
+      <statement>When a borrow-checker error appears, diagnose the conflict first. If the fix is .clone(), justify it: "this is cheap because T is a small struct" or "this value must be owned by two futures". Reject silent clone additions.</statement>
+      <rationale>Silent clone additions accumulate and become performance problems. Each one should be a conscious trade-off, not a reflexive silencer.</rationale>
+    </rule>
+  </section>
+
+  <section title="Spurious 'static Lifetimes">
+    <antipattern>
+      <description>Adding 'static bounds to structs, function parameters, or generics "to make it compile".</description>
+      <reason>'static means the type must live for the entire program. Adding it to an API parameter forces every caller to provide a leaked or globally-static value. Use Arc instead.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/audit-clones.sh">Clippy script surfacing gratuitous clone calls in a crate</reference>
+</text>

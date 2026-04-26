@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-model-patterns" title="Eloquent Model Patterns">
+  <summary>Eloquent model with fillable, scopes, Attribute accessors/mutators, and a reusable Searchable trait.</summary>
+
+  <section title="Fillable and Guard Rules">
+    <rule>
+      <statement>Always declare $fillable explicitly on models. Never use $guarded = [] (guards nothing). Never pass $request->all() to Model::create() or fill() — always use $request->validated() from a Form Request.</statement>
+      <rationale>Mass assignment via $request->all() sends all user-supplied fields to the model, including fields like is_admin or organization_id that should never be set by arbitrary request data.</rationale>
+    </rule>
+  </section>
+
+  <section title="Scopes and Attribute API">
+    <rule>
+      <statement>Use Laravel 9+ Attribute::make(get:, set:) for accessors/mutators. Do not use the legacy getXxxAttribute / setXxxAttribute naming convention in new code.</statement>
+      <rationale>The Attribute API is explicit, testable, and IDE-friendly. Legacy magic methods rely on naming conventions that are error-prone and harder to discover.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="php"><![CDATA[
+class User extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = ['name', 'email', 'role', 'organization_id'];
+    protected $hidden   = ['password', 'remember_token'];
+    protected $casts    = ['is_active' => 'boolean', 'settings' => 'array'];
+
+    // Scope: User::active()->role('admin')->get()
+    public function scopeActive($query) { return $query->where('is_active', true); }
+    public function scopeRole($query, string $role) { return $query->where('role', $role); }
+
+    // Attribute API (Laravel 9+)
+    protected function email(): Attribute
+    {
+        return Attribute::make(set: fn (string $v) => strtolower($v));
+    }
+
+    // Relationship
+    public function organization(): BelongsTo { return $this->belongsTo(Organization::class); }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Searchable Trait">
+    <example type="good">
+      <code lang="php"><![CDATA[
+// app/Models/Concerns/Searchable.php
+trait Searchable
+{
+    public function scopeSearch($query, ?string $term)
+    {
+        if (empty($term)) return $query;
+        $columns = $this->searchable ?? ['name'];
+        return $query->where(function ($q) use ($columns, $term) {
+            foreach ($columns as $column) {
+                $q->orWhere($column, 'ILIKE', "%{$term}%");
+            }
+        });
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Eager Loading Rule">
+    <rule>
+      <statement>Always eager-load relationships at the query layer (User::with(['organization', 'posts'])). Never access a relationship inside a foreach without prior with().</statement>
+      <rationale>Eloquent's lazy loading executes a separate query per relationship access. For N users, N+1 queries are issued. Bullet in test mode with raise: true catches this automatically.</rationale>
+    </rule>
+    <antipattern>
+      <description>$users = User::all(); foreach ($users as $u) { echo $u->organization->name; }</description>
+      <reason>N+1: one SELECT per user to load organisation. Use User::with('organization')->get() instead.</reason>
+    </antipattern>
+  </section>
+</text>

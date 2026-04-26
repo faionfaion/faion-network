@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-service-result" title="Canonical ServiceResult Class">
+  <summary>One ServiceResult class for the entire codebase; all service objects return it.</summary>
+
+  <section title="ServiceResult Definition">
+    <rule>
+      <statement>Define exactly one ServiceResult at app/services/service_result.rb. All service objects return it from #call. CI must fail if a second definition is found. Use success?/failure? as the only API — never ok?, result?, or error?.</statement>
+      <rationale>LLMs invent slightly different ServiceResult shapes per service file (sometimes result.ok?, sometimes result.success?). A divergent API means every controller must handle multiple shapes. Lock the API in CI with a simple grep.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+# app/services/service_result.rb
+class ServiceResult
+  attr_reader :data, :errors
+
+  def initialize(success:, data: nil, errors: [])
+    @success = success
+    @data    = data
+    @errors  = Array(errors)
+  end
+
+  def success? = @success
+  def failure? = !@success
+
+  def self.success(data = nil) = new(success: true, data: data)
+  def self.failure(errors)     = new(success: false, errors: errors)
+end
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Controller Usage Pattern">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+module Api
+  module V1
+    class UsersController < ApplicationController
+      def create
+        result = Users::CreateService.new(
+          params: user_params, current_user: current_user
+        ).call
+
+        if result.success?
+          render json: UserSerializer.new(result.data), status: :created
+        else
+          render json: { errors: result.errors }, status: :unprocessable_entity
+        end
+      end
+
+      private
+
+      def user_params
+        params.require(:user).permit(:name, :email, :password)
+      end
+    end
+  end
+end
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure-and-entities" title="Project Structure and JPA Entities">
+  <summary>Spring Boot 3.x layered project layout, BaseEntity with auditing, and User entity with JPA annotations.</summary>
+
+  <section title="Project Layout">
+    <rule>
+      <statement>Follow the layered package structure: controller/, service/, service/impl/, repository/, entity/, dto/request/, dto/response/, mapper/, exception/. Never place business logic in controllers or entities as data-only bags.</statement>
+      <rationale>Spring Boot's layered architecture enforces separation of concerns. The structure matches the AOP proxy model: @Transactional works correctly only when calls cross Spring bean boundaries.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+src/main/java/com/example/app/
+├── controller/
+│   ├── UserController.java
+│   └── advice/GlobalExceptionHandler.java
+├── service/
+│   ├── UserService.java           (interface)
+│   └── impl/UserServiceImpl.java
+├── repository/
+│   ├── UserRepository.java
+│   └── specification/UserSpecification.java
+├── entity/
+│   ├── BaseEntity.java
+│   └── User.java
+├── dto/
+│   ├── request/CreateUserRequest.java
+│   └── response/UserResponse.java
+├── mapper/UserMapper.java
+└── exception/
+    ├── ResourceNotFoundException.java
+    └── BusinessException.java
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="BaseEntity with Auditing">
+    <rule>
+      <statement>All persistent entities extend BaseEntity which provides UUID primary key, createdAt, updatedAt via @CreationTimestamp/@UpdateTimestamp, and optimistic locking via @Version.</statement>
+      <rationale>Centralising audit fields in a superclass avoids repetition. @Version provides optimistic locking without explicit code; concurrent updates fail fast with OptimisticLockException instead of silently overwriting.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="java"><![CDATA[
+@MappedSuperclass
+@Getter @Setter
+public abstract class BaseEntity {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+
+    @Version
+    private Long version;
+}
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Annotate the Spring Boot application class with @EnableJpaAuditing. Without it, @CreationTimestamp and @UpdateTimestamp do not fire and audit fields remain null.</statement>
+      <rationale>JPA auditing is opt-in in Spring Boot 3. Missing @EnableJpaAuditing is a frequent agent error that only surfaces in integration tests when audit fields are asserted.</rationale>
+    </rule>
+  </section>
+
+  <section title="Entity vs Anemic Domain Model">
+    <rule>
+      <statement>Entities must contain at least one domain method per non-trivial behaviour (e.g., promote(), addPost(), deactivate()). Service classes should orchestrate, not hold every business rule.</statement>
+      <rationale>Purely anemic entities (only getters/setters) push all logic into services, making it impossible to enforce invariants at the entity level. Entity methods can throw IllegalStateException on invalid transitions without a service call.</rationale>
+    </rule>
+    <antipattern>
+      <description>@Data on JPA entities — Lombok generates equals/hashCode using all fields.</description>
+      <reason>Entity equality must be based on identity (ID), not value. @Data-generated equals causes incorrect Set behaviour for managed entities and can produce infinite loops with bidirectional relationships.</reason>
+    </antipattern>
+  </section>
+</text>

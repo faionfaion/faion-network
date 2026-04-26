@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ownership-rules" title="Ownership Rules and Borrowing">
+  <summary>The three ownership rules, move semantics, Copy vs Clone, and the borrow checker's borrowing constraints.</summary>
+
+  <section title="Three Ownership Rules">
+    <rule>
+      <statement>Each value has exactly one owner. When the owner goes out of scope, the value is dropped. Assignment moves ownership for non-Copy types; Copy types are bitwise-copied.</statement>
+      <rationale>Enforced at compile time. No GC pause, no dangling pointers. The compiler rejects use-after-move at the call site.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let s1 = String::from("hello");
+let s3 = s1;        // s1 moved to s3; s1 no longer valid
+// println!("{s1}"); // compile error: value borrowed after move
+
+let x: i32 = 5;
+let y = x;          // i32 is Copy; both x and y are valid
+println!("{x} {y}");
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Borrowing Rules">
+    <rule>
+      <statement>Multiple shared borrows (&amp;T) are allowed simultaneously. Only one exclusive borrow (&amp;mut T) is allowed at a time, and it cannot coexist with shared borrows.</statement>
+      <rationale>The borrow rules eliminate data races at compile time: shared = read-only, exclusive = sole writer.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let mut s = String::from("hello");
+
+// Multiple shared borrows OK
+let r1 = &s;
+let r2 = &s;
+println!("{r1} {r2}");   // last use of r1, r2
+
+// After last use of shared borrows, exclusive borrow is legal
+let r3 = &mut s;
+r3.push_str("!");
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Keeping an immutable reference live while attempting a mutable borrow of the same value.</description>
+      <reason>The compiler rejects this to prevent data races. Restructure so the shared borrow ends before the mutable one begins.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Lifetime Basics">
+    <rule>
+      <statement>Add explicit lifetime annotations only when the compiler cannot infer them. Do not add lifetime parameters to every type "to be safe" — it corrupts public APIs.</statement>
+      <rationale>Spurious lifetimes force every caller to annotate too. The compiler infers lifetimes in the vast majority of cases through lifetime elision rules.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+// Explicit lifetime needed: compiler can't know which input the output borrows from
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Function Signature Rules">
+    <rule>
+      <statement>Pass &amp;str, &amp;[T], &amp;Path in function parameters. Accept String/Vec/PathBuf only when the function stores the value. Use impl Into&lt;String&gt; in builder constructors for ergonomic caller API.</statement>
+      <rationale>Taking &amp;str accepts both &amp;String and &amp;str. Taking String forces the caller to allocate or clone. The difference is zero-cost for the callee and visible at every call site.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-packages" title="Package Patterns: Config, Model, Repository, Service">
+  <summary>Constructor injection, interface-at-consumer pattern, typed config, and DI wiring for the internal/ layer.</summary>
+
+  <section title="Config">
+    <rule>
+      <statement>Use a typed config loader (envconfig, koanf, viper) rather than hand-rolled getEnv helpers. Hand-rolled helpers silently return defaults on type-parse failures.</statement>
+      <rationale>A getEnv that returns "" on missing PORT instead of an error lets the server start on the wrong port silently. Typed loaders fail loudly at startup.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// internal/config/config.go
+type Config struct {
+    Port        string `envconfig:"PORT" default:"8080"`
+    Environment string `envconfig:"ENVIRONMENT" default:"development"`
+    DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
+    JWTSecret   string `envconfig:"JWT_SECRET" required:"true"`
+}
+
+func Load() (*Config, error) {
+    var cfg Config
+    return &cfg, envconfig.Process("", &cfg)
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Repository with Interface at Consumer">
+    <rule>
+      <statement>Define interfaces at the consumer (the service), not the producer (the repository). The service file owns UserRepository interface; the repository package provides the concrete impl.</statement>
+      <rationale>This is idiomatic Go: the interface lives with the code that uses it, not the code that satisfies it. It avoids forcing all consumers to import the repository package just to get an interface.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// internal/service/user.go — interface lives here
+type UserRepository interface {
+    FindByID(ctx context.Context, id string) (*model.User, error)
+    Create(ctx context.Context, user *model.User) error
+}
+
+type UserService struct{ repo UserRepository }
+
+func NewUserService(repo UserRepository) *UserService {
+    return &UserService{repo: repo}
+}
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Defining the interface in the repository package and importing it in the service.</description>
+      <reason>Inverts the dependency — service must import repository. Idiomatic Go reverses this.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Package-level Global State">
+    <antipattern>
+      <description>var DB *sql.DB at package level, accessed directly from handlers.</description>
+      <reason>Global state is untestable (cannot inject a mock), causes data races when reset between tests, and makes the dependency graph invisible.</reason>
+    </antipattern>
+    <example type="good">
+      <code lang="go"><![CDATA[
+// GOOD: constructor injection everywhere
+func NewUserRepository(db *sqlx.DB) UserRepository {
+    return &userRepository{db: db}
+}
+      ]]></code>
+    </example>
+  </section>
+</text>

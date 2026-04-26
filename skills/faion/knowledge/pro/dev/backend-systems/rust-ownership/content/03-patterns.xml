@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-patterns" title="Builder Pattern, Struct Ownership, and Closure Captures">
+  <summary>Builder pattern consuming self for typestate, struct ownership methods, and move closures.</summary>
+
+  <section title="Builder Pattern Consuming self">
+    <rule>
+      <statement>Builder methods take self (not &amp;mut self) and return Self. This enforces at the type level that the builder cannot be used after build() is called.</statement>
+      <rationale>Consuming self prevents cloning a partially-built builder and calling build() twice with subtly different states. The typestate pattern is zero-cost.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+struct RequestBuilder {
+    url: String,
+    method: String,
+    headers: Vec<(String, String)>,
+}
+
+impl RequestBuilder {
+    pub fn new(url: impl Into<String>) -> Self {
+        Self { url: url.into(), method: "GET".into(), headers: vec![] }
+    }
+
+    pub fn method(mut self, method: impl Into<String>) -> Self {
+        self.method = method.into();
+        self
+    }
+
+    pub fn header(mut self, k: impl Into<String>, v: impl Into<String>) -> Self {
+        self.headers.push((k.into(), v.into()));
+        self
+    }
+
+    pub fn build(self) -> Request {
+        Request { url: self.url, method: self.method, headers: self.headers }
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Struct Method Ownership">
+    <example type="good">
+      <code lang="rust"><![CDATA[
+struct User { name: String, email: String }
+
+impl User {
+    pub fn name(&self) -> &str { &self.name }          // borrows
+    pub fn set_name(&mut self, name: String) { self.name = name; }  // mutably borrows
+    pub fn into_name(self) -> String { self.name }     // consumes
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Closures and move">
+    <rule>
+      <statement>Use move closures when the closure outlives the current scope or is passed to tokio::spawn. Without move, the closure borrows locals which may not live long enough.</statement>
+      <rationale>tokio::spawn requires 'static. A closure that borrows a local variable cannot be 'static. move transfers ownership into the closure, making it self-contained.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let user_id = 42u64;
+tokio::spawn(async move {
+    fetch_user(user_id).await   // user_id moved into closure; no borrow issue
+});
+      ]]></code>
+    </example>
+  </section>
+</text>

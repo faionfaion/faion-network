@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-retry-and-antipatterns" title="Retry with Backoff and Antipatterns">
+  <summary>Exponential backoff retry helper with Retryable interface and the most common agent antipatterns.</summary>
+
+  <section title="Retryable Interface">
+    <rule>
+      <statement>Tag retryable errors via a Retryable() bool interface, not by string-sniffing. Retry loops must check IsRetryable(err) before sleeping — 4xx errors must never be retried.</statement>
+      <rationale>String matching on error messages is fragile and breaks on i18n or message changes. An explicit interface is type-safe and readable.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+type Retryable interface{ Retryable() bool }
+
+func IsRetryable(err error) bool {
+    var r Retryable
+    return errors.As(err, &r) && r.Retryable()
+}
+
+func Do(ctx context.Context, maxAttempts int, fn func() error) error {
+    var lastErr error
+    wait := 100 * time.Millisecond
+    for i := 0; i < maxAttempts; i++ {
+        if err := fn(); err == nil { return nil } else { lastErr = err }
+        if !IsRetryable(lastErr) { return lastErr }
+        select {
+        case <-ctx.Done(): return ctx.Err()
+        case <-time.After(wait):
+        }
+        wait *= 2
+        if wait > 10*time.Second { wait = 10 * time.Second }
+    }
+    return fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>data, _ := json.Marshal(user) — ignoring errors with blank identifier.</description>
+      <reason>json.Marshal fails on channels, functions, and cyclic structures. Silently ignoring the error sends malformed JSON to the client.</reason>
+    </antipattern>
+    <antipattern>
+      <description>if err != nil { log.Printf(...); return err } — logging then returning.</description>
+      <reason>Every intermediate layer that logs-and-returns produces a duplicate log line. Only the outermost handler should log.</reason>
+    </antipattern>
+    <antipattern>
+      <description>panic(err) to handle expected failures like "user not found".</description>
+      <reason>Panics propagate up the call stack and may crash the entire server if not recovered. Use error returns for expected conditions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Retrying context.Canceled or context.DeadlineExceeded errors.</description>
+      <reason>These mean the client cancelled or the deadline passed. Retrying wastes resources. Check errors.Is(err, context.Canceled) before retry.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/check-errors.sh">Pre-commit gate: errcheck, golangci-lint, storage-sentinel leak check</reference>
+</text>

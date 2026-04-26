@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-async-and-antipatterns" title="Async Error Handling and Antipatterns">
+  <summary>Error handling in async/await code and concrete antipatterns LLMs introduce.</summary>
+
+  <section title="Async with ? and context">
+    <example type="good">
+      <code lang="rust"><![CDATA[
+async fn fetch_user(id: &str) -> Result<User> {
+    let response = reqwest::get(format!("https://api.example.com/users/{id}"))
+        .await
+        .context("fetch user HTTP call")?;
+
+    if !response.status().is_success() {
+        bail!("API returned status: {}", response.status());
+    }
+
+    response.json::<User>()
+        .await
+        .context("parse user JSON")
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>unwrap() or expect() in production async fn "to keep it short".</description>
+      <reason>Any None or Err panics the entire Tokio task, crashing all concurrent requests sharing that thread. Use ? and propagate instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>let _ = save_to_db(data); — silently ignoring errors.</description>
+      <reason>The save fails invisibly. At minimum, log the error; for data integrity paths, propagate with ?.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Adding #[from] anyhow::Error to a thiserror enum variant in a library.</description>
+      <reason>Collapses all downstream errors into one opaque variant. Callers lose the ability to match on specific failure types.</reason>
+    </antipattern>
+    <antipattern>
+      <description>From&lt;&amp;str&gt; or From&lt;String&gt; impls on error enums.</description>
+      <reason>These silently swallow context. Use #[from] on real error types only, not on string messages.</reason>
+    </antipattern>
+    <antipattern>
+      <description>IntoResponse returning 500 for every AppError variant.</description>
+      <reason>Hides NotFound (should be 404), Unauthorized (401), etc. Clients cannot act on the response. Require per-variant status mapping.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Panic vs Result Boundary">
+    <rule>
+      <statement>Use panic!/expect only for programming errors (invariant violations). Use Result for all expected failure paths. Use unwrap only in tests or when the value is logically guaranteed to be Ok/Some.</statement>
+      <rationale>Panics propagate out of tokio::spawn as JoinError, not as AppError. Unguarded panics in handlers can crash the runtime depending on configuration.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/check-errors.sh">CI script banning unwrap_used, expect_used, Box&lt;dyn Error&gt; in public APIs</reference>
+</text>

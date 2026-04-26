@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-anyhow" title="anyhow for Application Code">
+  <summary>When and how to use anyhow at binary boundaries versus typed errors in library crates.</summary>
+
+  <section title="anyhow vs thiserror Boundary">
+    <rule>
+      <statement>Use anyhow::Result at binary/main.rs boundaries. Use thiserror enums in library crates and at public API surfaces. Never add anyhow::Error as a thiserror variant in a library — it collapses the type system.</statement>
+      <rationale>anyhow::Error is type-erased. A library returning anyhow::Error forces callers to downcast to match on failure kind. thiserror preserves the variant for matching.</rationale>
+    </rule>
+  </section>
+
+  <section title="context and bail">
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use anyhow::{anyhow, bail, Context, Result};
+
+fn run_app() -> Result<()> {
+    let config = load_config()
+        .context("failed to load configuration")?;
+
+    if config.port == 0 {
+        bail!("invalid port: must be non-zero");
+    }
+
+    start_server(config.port)?;
+    Ok(())
+}
+
+fn process_file(path: &str) -> Result<String> {
+    std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read file: {path}"))
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Downcasting">
+    <example type="good">
+      <code lang="rust"><![CDATA[
+fn handle_error(err: anyhow::Error) {
+    if let Some(db_err) = err.downcast_ref::<sqlx::Error>() {
+        tracing::error!("db error: {db_err}");
+    } else {
+        tracing::error!("unexpected: {err}");
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Backtrace">
+    <rule testable="false">
+      <statement>Set RUST_BACKTRACE=1 in production and ensure anyhow::Error::backtrace() is surfaced in structured logs. Without this, anyhow errors lose stack context in release builds.</statement>
+      <rationale>Release builds strip debug info. RUST_BACKTRACE=1 enables the libstd capture mechanism that anyhow uses. Without it, error chains show only the message chain.</rationale>
+    </rule>
+  </section>
+</text>
