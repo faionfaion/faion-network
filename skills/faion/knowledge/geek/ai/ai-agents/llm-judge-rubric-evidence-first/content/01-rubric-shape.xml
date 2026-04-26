@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rubric-shape" title="Required rubric shape for LLM-as-judge">
+  <summary>A judge prompt is only useful when it forces named criteria, evidence quotes from the candidate output, and per-criterion scoring inside a strict JSON schema.</summary>
+
+  <section title="Anatomy of a usable rubric">
+    <p>A rubric has four moving parts: named criteria with weights, scale definition with anchors, output schema that requires evidence before scoring, and a per-criterion rationale.</p>
+
+    <rule testable="true">
+      <statement>Every judge prompt must require structured JSON output with: per-criterion evidence (verbatim quote from candidate), per-criterion score on a fixed scale, per-criterion rationale, and a final weighted total — in that order.</statement>
+      <rationale>Forcing the judge to quote evidence BEFORE emitting a score binds the score to specific text, which is what raises Cronbach's alpha from ~0.45 (1-10 prompts) to ~0.85 across studies summarised by Adnan Masood (2024) and Langfuse's 2026 evaluation guide.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "evidence": {
+    "correctness": "Returned `null` on missing key (line 7)",
+    "completeness": "All four required fields present"
+  },
+  "scores": {"correctness": 4, "completeness": 5, "safety": 5},
+  "rationale": {"correctness": "Logic correct but error path swallows exception"},
+  "weighted_total": 4.6
+}
+      ]]></code>
+      <note>Evidence is quoted from the candidate, scores reference fixed criteria, total is computed not guessed.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"score": 8, "comment": "Looks good overall"}
+      ]]></code>
+      <note>No criteria, no evidence, no rationale — judge has nothing to anchor on, so output is pure narrative drift.</note>
+    </example>
+
+    <antipattern>
+      <description>"Rate this response 1-10" with no rubric, no evidence requirement, no JSON.</description>
+      <reason>Output becomes a function of judge mood, candidate length, and surface fluency rather than the criteria you actually care about.</reason>
+    </antipattern>
+
+    <reference path="templates/rubric.json">Reusable rubric skeleton with criteria, weights, evidence-first JSON schema.</reference>
+    <reference path="templates/judge-prompt.txt">Plain-text judge prompt slot that wires the rubric into a model call.</reference>
+    <reference href="https://medium.com/@adnanmasood/rubric-based-evals-llm-as-a-judge-methodologies-and-empirical-validation-in-domain-context-71936b989e80">Empirical validation of rubric-based evals.</reference>
+    <reference href="https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge">Langfuse 2026 LLM-as-judge methodology guide.</reference>
+    <reference href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic eval guidance — outcome plus rubric for open-ended outputs.</reference>
+  </section>
+
+  <section title="Validating the judge itself">
+    <rule testable="true">
+      <statement>Run the judge prompt on the same candidate set 3-5 times with shuffled candidate order; compute Cronbach's alpha across runs. Reject the judge if alpha &lt; 0.7.</statement>
+      <rationale>An unstable judge can never be a reliable eval signal. Stability is a precondition, not a nice-to-have, per Galileo's 2026 framework.</rationale>
+    </rule>
+    <reference href="https://galileo.ai/blog/agent-evaluation-framework-metrics-rubrics-benchmarks">Galileo 2026 agent eval framework — judge validation steps.</reference>
+  </section>
+
+  <see-also>
+    <link path="02-bias-mitigation.xml">Concrete countermeasures for the four canonical judge biases.</link>
+  </see-also>
+</text>

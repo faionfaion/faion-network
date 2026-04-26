@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-modes-contract" title="The record / replay contract">
+  <summary>Record captures every nondeterministic boundary; replay serves them back from disk so the agent's decision path is bit-for-bit reproducible.</summary>
+
+  <section title="What record must capture">
+    <list>
+      <item>Every LLM request: full messages array, model, temperature, seed, tool definitions, response, timestamps.</item>
+      <item>Every tool call: tool name, arguments, return value (or exception), wallclock timestamp.</item>
+      <item>Every clock read, RNG draw, and uuid generation — the agent's "small" sources of nondeterminism.</item>
+      <item>Every external state read (file mtime, environment variable, MCP server handshake) used in a decision.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>In replay mode, the agent process must make zero outbound network calls; LLM and tool boundaries are served from the recorded trace, and an attempt to call an unrecorded boundary must raise immediately.</statement>
+      <rationale>Silent fallthrough to live network calls is the failure mode that destroys reproducibility — Sakura Sky's 2026 trustworthy-AI primer flags this as the single most common bug in DIY replay harnesses.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ReplayLLM:
+    def __init__(self, trace):
+        self._events = iter(trace["llm_calls"])
+    def call(self, messages, **kw):
+        ev = next(self._events)
+        if ev["request"]["messages"] != messages:
+            raise ReplayMismatch("LLM input drifted from trace")
+        return ev["response"]
+      ]]></code>
+      <note>Strict input-match guard catches drift the moment a prompt edit changes the path.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class ReplayLLM:
+    def call(self, messages, **kw):
+        try:
+            return self._cache[hash(messages)]
+        except KeyError:
+            return live_anthropic.call(messages, **kw)  # silent fallthrough
+      ]]></code>
+      <note>Cache miss falls back to a live call; replay is no longer deterministic and silently drifts.</note>
+    </example>
+
+    <antipattern>
+      <description>Recording only the final answer and a few "important" intermediate steps.</description>
+      <reason>Any unrecorded nondeterminism (retry timing, RNG, tool order in parallel calls) breaks replay; you find out the bug is unreproducible the moment you need it most.</reason>
+    </antipattern>
+
+    <reference path="templates/trace-schema.json">JSON-schema for a recorded run with explicit nondeterminism markers.</reference>
+    <reference href="https://www.sakurasky.com/blog/missing-primitives-for-trustworthy-ai-part-8/">Sakura Sky 2026 — record/replay as a missing primitive.</reference>
+    <reference href="https://debugg.ai/resources/deterministic-replay-meets-debug-ai-time-travel-debugging-llm-reproduce">debugg.ai 2025 — time-travel debugging for LLM agents.</reference>
+    <reference href="https://dev.to/sreeni5018/debugging-non-deterministic-llm-agents-implementing-checkpoint-based-state-replay-with-langgraph-5171">LangGraph checkpoint-based state replay tutorial.</reference>
+  </section>
+
+  <section title="Side-effects and the replay boundary">
+    <rule testable="true">
+      <statement>Tools that mutate external state (send email, charge card, post webhook) must be tagged side_effect=true in the trace; replay short-circuits these to a recorded stub return value and never re-executes the side effect.</statement>
+      <rationale>Without the tag, replaying a production trace re-sends real emails or re-charges real cards. Tagging is required by every mature replay system (Phoenix, AgentOps, LangGraph time-travel).</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="02-mutation-replay.xml">Using replay to verify a fix by mutating one variable at a time.</link>
+  </see-also>
+</text>

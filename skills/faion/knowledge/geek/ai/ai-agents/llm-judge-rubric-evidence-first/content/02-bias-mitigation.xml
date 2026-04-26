@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-bias-mitigation" title="Mitigating the four canonical judge biases">
+  <summary>Position, verbosity, self-preference, and authority biases each have a known mechanism and a known counter; ship none of the counters and your judge becomes a length-and-style detector.</summary>
+
+  <section title="The four biases and their counters">
+    <list>
+      <item>Position bias: judge prefers whichever candidate is shown first (or last) in pairwise prompts.</item>
+      <item>Verbosity bias: longer answers score higher regardless of correctness.</item>
+      <item>Self-preference: a model judging its own family's outputs scores them ~5-15% higher.</item>
+      <item>Authority bias: the judge defers to confident-sounding language even when factually wrong.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>For pairwise judging, randomise candidate order per task AND run each pair twice with positions swapped; final verdict requires agreement across both orderings — disagreements count as ties.</statement>
+      <rationale>Direct measurement by Arize (2024-2026) shows position-swap reduces Order Bias by 60-90%; tie-on-disagree prevents the judge from breaking arbitrary ties as if they were meaningful.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+def judge_pair(a, b, judge):
+    s1 = judge(a, b)        # candidate A first
+    s2 = judge(b, a)        # candidate B first
+    if s1.winner == s2.winner:
+        return s1.winner
+    return "tie"            # disagree -> tie, never break arbitrarily
+      ]]></code>
+      <note>Two orderings, agreement required — kills position bias on the metric you actually report.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def judge_pair(a, b, judge):
+    return judge(a, b).winner   # one ordering, no swap
+      ]]></code>
+      <note>Whichever candidate sits first wins ~57% of borderline cases regardless of merit.</note>
+    </example>
+
+    <rule testable="true">
+      <statement>Normalise candidate length before judging: truncate to a common token cap, OR add explicit instruction "ignore length differences; longer is not better".</statement>
+      <rationale>Verbosity bias is consistently 10-30% on raw prompts (Arize 2026 LLM-judge writeup); normalisation drops it to under 5%.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>Cross-judge: never use a single model family as the only judge for outputs from that same family. Use at least two different families (e.g., Claude judges GPT outputs, GPT judges Claude outputs) and compare.</statement>
+      <rationale>Self-preference is well-documented (Zheng et al. MT-bench, replicated across 2024-2026 evaluations). Cross-family judging exposes the bias and lets you flag tasks where only the in-family judge "agrees".</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Single-judge production setup with no order swap, no length normalisation, no cross-model verification.</description>
+      <reason>Looks rigorous because there is JSON output and a rubric, but the four biases combine to make the metric a measurement of style, not quality.</reason>
+    </antipattern>
+
+    <reference href="https://arize.com/llm-as-a-judge/">Arize 2026 catalog of LLM-judge biases and counters.</reference>
+    <reference href="https://galileo.ai/blog/agent-evaluation-framework-metrics-rubrics-benchmarks">Galileo 2026 — bias mitigation as part of judge readiness.</reference>
+  </section>
+</text>

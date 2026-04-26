@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-failure-taxonomy" title="Five canonical failure modes for agent tools">
+  <summary>Inject these five faults at randomized trajectory points; together they cover the failure distribution observed by ReliabilityBench and agent-chaos.</summary>
+
+  <section title="The five modes">
+    <list>
+      <item>tool_timeout — call hangs past a configured deadline.</item>
+      <item>tool_error — call returns a 4xx/5xx or raises an exception.</item>
+      <item>llm_rate_limit — the LLM provider returns 429 with retry-after.</item>
+      <item>tool_mutate — call returns plausible but corrupted data (wrong type, missing field, slightly-off number).</item>
+      <item>service_disconnect — long-lived connection drops mid-stream (MCP server, websocket, streaming LLM).</item>
+    </list>
+
+    <rule testable="true">
+      <statement>A chaos-eval middleware must be able to inject each of the five canonical faults at a configurable per-call probability AND at a fixed deterministic step index for reproducibility. Both interfaces are required.</statement>
+      <rationale>Probability gives realistic distributions; deterministic step-index gives reproducible regression cases. ReliabilityBench (2026) and agent-chaos both expose both interfaces because random-only injection prevents reliable bug fixing.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+chaos = ChaosInjector(faults=[
+    Fault("tool_timeout",   p=0.10),
+    Fault("tool_error",     p=0.05, code=500),
+    Fault("llm_rate_limit", p=0.02),
+    Fault("tool_mutate",    p=0.03),
+    Fault("service_disconnect", p=0.01),
+], seed=42)
+# OR deterministic regression:
+chaos = ChaosInjector(injections={"step_4": "tool_timeout"})
+      ]]></code>
+      <note>Both random and deterministic surfaces — usable for fuzzing and for fixed regression cases.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+if random.random() < 0.1:
+    raise TimeoutError()  # ad-hoc, no seed, no taxonomy, no replay
+      ]]></code>
+      <note>Single failure mode, no determinism, no scoring — not a chaos suite, just flakiness.</note>
+    </example>
+
+    <antipattern>
+      <description>Injecting only "tool_error" because it is the easiest to simulate.</description>
+      <reason>The most damaging real-world failure is tool_mutate (corrupted data) — agents react to wrong-but-plausible returns with confident wrong answers. Skipping mutate guarantees you never measure that risk.</reason>
+    </antipattern>
+
+    <reference path="templates/chaos-config.json">Reusable fault-injection config (probabilities, seed, scope).</reference>
+    <reference href="https://arxiv.org/pdf/2601.06112">ReliabilityBench — fault taxonomy and benchmark methodology.</reference>
+    <reference href="https://github.com/deepankarm/agent-chaos">agent-chaos — open-source chaos middleware for LLM agents.</reference>
+    <reference href="https://arxiv.org/abs/2505.03096">Stress-testing LLM agents under tool failure (2025).</reference>
+  </section>
+
+  <section title="Where to inject">
+    <rule testable="true">
+      <statement>Faults must be injectable at every tool boundary AND at every LLM call boundary, not only at "user-facing" tools. Hidden internal tools (vector lookup, MCP discovery, schema fetch) are the ones that hurt most when they fail silently.</statement>
+      <rationale>Most production-fragility comes from invisible infra calls; a chaos suite that only fuzzes the visible surface misses the actual failure distribution.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="02-recovery-grading.xml">How to grade the agent's response to each fault.</link>
+  </see-also>
+</text>

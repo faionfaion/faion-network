@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-mutation-replay" title="Mutation-replay: verifying a fix by changing one variable">
+  <summary>Replay is more useful as a fix-verification harness than as a reproduction tool: you change one variable in a recorded trace and re-run to confirm the bug path is gone.</summary>
+
+  <section title="The mutation loop">
+    <p>Once a trace reproduces a bug, the value of replay is that you can mutate any single boundary and observe whether the bug persists — without re-running the full agent against live infrastructure.</p>
+
+    <rule testable="true">
+      <statement>Treat each recorded trace as a fixture and parametrise the replay harness over four mutation axes: prompt text, tool stub return value, model identifier, system instruction. Each fix is verified by mutating exactly ONE axis and asserting the bug path is gone while other paths remain unchanged.</statement>
+      <rationale>One-variable mutations isolate cause from coincidence. Mutating multiple axes at once produces correlated changes that look like a fix but mask the real defect — the same lesson as one-variable-at-a-time experiments in classical debugging.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+def replay_with_mutation(trace, *, prompt=None, tool_stub=None, model=None):
+    h = ReplayHarness(trace)
+    if prompt is not None: h.override_system_prompt(prompt)
+    if tool_stub is not None: h.override_tool(tool_stub.name, tool_stub.fn)
+    if model is not None: h.override_model(model)
+    return h.run()
+
+# Verify fix: only the system prompt changed
+fixed = replay_with_mutation(bug_trace, prompt=NEW_PROMPT)
+assert "WrongToolCall" not in fixed.events
+      ]]></code>
+      <note>One mutation, one assertion — clean causal claim.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+fixed = replay_with_mutation(
+    bug_trace, prompt=NEW_PROMPT, model="opus", tool_stub=stub
+)
+assert fixed.success
+      ]]></code>
+      <note>Three variables changed at once; you cannot tell which one removed the bug.</note>
+    </example>
+
+    <antipattern>
+      <description>Treating replay as a record-once / replay-once correctness check.</description>
+      <reason>Wastes the main affordance of replay. The harness pays for itself only when one trace is replayed dozens of times under controlled mutations.</reason>
+    </antipattern>
+
+    <reference href="https://debugg.ai/resources/deterministic-replay-meets-debug-ai-time-travel-debugging-llm-reproduce">debugg.ai — mutation replay as the primary fix-verification flow.</reference>
+    <reference href="https://www.sakurasky.com/blog/missing-primitives-for-trustworthy-ai-part-8/">Sakura Sky — replay loops in trustworthy-AI primitives.</reference>
+  </section>
+
+  <section title="Trace-to-eval promotion">
+    <rule testable="true">
+      <statement>Whenever a recorded trace surfaces a real production bug, promote it to the eval suite as a regression case: keep the trace plus the asserted "must-not-happen" event signature; the regression test is replay + assertion.</statement>
+      <rationale>Eval suites grow most reliably from real incidents (Anthropic's eval guide). Replay traces are already the perfect, deterministic, full-fidelity test fixture.</rationale>
+    </rule>
+    <reference href="https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents">Anthropic — eval-from-incident growth pattern.</reference>
+  </section>
+</text>
