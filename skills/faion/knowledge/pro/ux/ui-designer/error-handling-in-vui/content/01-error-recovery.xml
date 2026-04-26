@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-error-recovery" title="VUI Error Handling — Recovery Patterns">
+  <summary>The four VUI error types, a three-tier progressive recovery sequence, concrete dialogue examples, and antipatterns for voice interface error handling.</summary>
+
+  <section title="Error Types">
+    <list>
+      <item>No input: user is silent — microphone open but no speech detected</item>
+      <item>No match: speech detected but not recognized as any valid intent</item>
+      <item>Ambiguous: speech matches multiple valid intents with similar confidence</item>
+      <item>System error: technical failure in ASR, NLU, or backend service</item>
+    </list>
+  </section>
+
+  <section title="Three-Tier Recovery Sequence">
+    <rule>
+      <statement>Apply a three-tier escalation for any failed recognition: Tier 1 — simple retry prompt; Tier 2 — retry with example phrases; Tier 3 — offer a different modality (visual interface, human agent). Never loop back to Tier 1 after Tier 2 has failed.</statement>
+      <rationale>Repeating the same prompt provides no new information and drives abandonment; each tier must add information or a new path forward to break the failure loop.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Tier 1 — No input:
+  "I didn't catch that. What's the city?"
+
+Tier 2 — Still no match:
+  "I'm having trouble understanding. Try saying something like
+   'New York' or 'Chicago'."
+
+Tier 3 — Second failure:
+  "Let me try another way. I'll show you a list to choose from."
+  [Switch to visual selection interface]
+      ]]></code>
+      <note>Tier 3 switches the interaction modality entirely rather than repeating voice prompts a third time.</note>
+    </example>
+  </section>
+
+  <section title="Per-Error-Type Responses">
+    <rule>
+      <statement>For ambiguous input, name the top two interpretations explicitly and ask the user to confirm one — do not guess silently.</statement>
+      <rationale>Silent resolution of ambiguous input is the most common cause of unexpected VUI behavior; users cannot debug what they cannot see.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+User: "Call Mary"
+VUI:  "Did you mean Mary Smith or Mary Johnson?"
+      ]]></code>
+    </example>
+    <rule>
+      <statement>For system errors, acknowledge the failure immediately, apologize without blaming the user, and offer a concrete next action (retry, switch to app, call support).</statement>
+      <rationale>Silent failures or vague "something went wrong" messages leave users without a recovery path and damage trust disproportionately to the severity of the error.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+VUI: "Sorry, I'm having trouble connecting right now.
+      You can try again in a moment, or tap here to use the app."
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Design Principles">
+    <rule>
+      <statement>Never phrase an error response as the user's fault. Omit "I didn't understand you" in favor of "I didn't catch that" or "I'm having trouble."</statement>
+      <rationale>Blame language increases user anxiety, reduces confidence in the system, and causes abandonment — particularly for non-native speakers and users with speech impediments.</rationale>
+    </rule>
+    <rule>
+      <statement>Always provide a visual fallback path — display a list of options, a text input, or a menu — at Tier 3. Voice-only dead-ends must not exist.</statement>
+      <rationale>Some users will never succeed with voice recognition in certain contexts (strong accent, noise, speech impediment); a visual path is mandatory to maintain access.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Repeating the exact same error prompt more than twice without adding new information.</description>
+      <reason>Creates a frustrating loop with no path forward; users abandon the interface after the second identical prompt.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Silently resolving ambiguous input by picking the highest-confidence interpretation without confirmation.</description>
+      <reason>Users experience unexpected behavior with no explanation; trust is damaged and errors compound.</reason>
+    </antipattern>
+    <antipattern>
+      <description>A voice-only interface with no fallback modality at Tier 3.</description>
+      <reason>Users who cannot succeed with voice have no recourse; the interface is inaccessible to them.</reason>
+    </antipattern>
+  </section>
+</text>

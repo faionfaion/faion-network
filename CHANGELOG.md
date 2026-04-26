@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: vui-accessibility-inclusivity, accessibility-first-design, enterprise-xr-applications, spatial-computing-overview, spatial-design-tools, error-handling-in-vui, spatial-interaction-patterns, vui-iot-integration)
 - refactor: 8/8 ux-ui-designer methodologies migrated to new shape (batch: spatial-design-tools, design-tokens-fundamentals, testing-with-assistive-technology, diary-studies, error-handling-in-vui, vui-testing-best-practices, spatial-ux-fundamentals, focus-groups)
 - refactor: 8/8 ux-ui-designer methodologies migrated to new shape (batch: vui-privacy-security, spatial-accessibility, vui-accessibility-inclusivity, accessibility-first-design, accessibility-evaluation, design-system-success-factors, semantic-tokens-and-modes, spatial-ui-patterns)
 - refactor: 8/8 methodologies migrated to new shape (batch: risk-register, pm-framework-focus-areas, team-development, six-core-principles, schedule-development, performance-domains-overview, pm-certification-changes-2026, cost-estimation)
