@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="Grafana Dashboard Examples">
+  <summary>RED method panel queries, SLO gauge configuration, and dashboard variable definitions.</summary>
+
+  <section title="Dashboard Variables">
+    <example type="good">
+      <code lang="json"><![CDATA[
+[
+  {
+    "name": "datasource",
+    "type": "datasource",
+    "query": "prometheus"
+  },
+  {
+    "name": "namespace",
+    "type": "query",
+    "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+    "query": "label_values(kube_namespace_labels, namespace)",
+    "refresh": 1,
+    "sort": 1
+  },
+  {
+    "name": "interval",
+    "type": "interval",
+    "auto": true,
+    "auto_min": "1m",
+    "options": [
+      {"text": "1m", "value": "1m"},
+      {"text": "5m", "value": "5m"},
+      {"text": "15m", "value": "15m"},
+      {"text": "1h", "value": "1h"}
+    ]
+  }
+]
+]]></code>
+    </example>
+  </section>
+
+  <section title="RED Method Stat Panels">
+    <example type="good">
+      <code lang="json"><![CDATA[
+[
+  {
+    "type": "stat",
+    "title": "Request Rate",
+    "targets": [{"expr": "sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval]))", "legendFormat": "req/s"}],
+    "fieldConfig": {"defaults": {"unit": "reqps", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 1000},
+      {"color": "red", "value": 5000}
+    ]}}}
+  },
+  {
+    "type": "stat",
+    "title": "Error Rate",
+    "targets": [{"expr": "sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[$interval])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[$interval])) * 100"}],
+    "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 1},
+      {"color": "red", "value": 5}
+    ]}}}
+  },
+  {
+    "type": "stat",
+    "title": "P99 Latency",
+    "targets": [{"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))"}],
+    "fieldConfig": {"defaults": {"unit": "s", "thresholds": {"steps": [
+      {"color": "green", "value": null},
+      {"color": "yellow", "value": 0.5},
+      {"color": "red", "value": 1}
+    ]}}}
+  }
+]
+]]></code>
+    </example>
+  </section>
+
+  <section title="SLO Availability Gauge">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "type": "gauge",
+  "title": "Availability SLO (99.9%)",
+  "description": "30-day rolling availability against 99.9% SLO target",
+  "targets": [{
+    "expr": "(1 - sum(rate(http_requests_total{namespace=\"$namespace\",status=~\"5..\"}[30d])) / sum(rate(http_requests_total{namespace=\"$namespace\"}[30d]))) * 100"
+  }],
+  "options": {"showThresholdMarkers": true},
+  "fieldConfig": {
+    "defaults": {
+      "unit": "percent",
+      "min": 99,
+      "max": 100,
+      "thresholds": {"mode": "absolute", "steps": [
+        {"color": "red", "value": null},
+        {"color": "yellow", "value": 99.5},
+        {"color": "green", "value": 99.9}
+      ]}
+    }
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Latency Percentiles Time Series">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "type": "timeseries",
+  "title": "Latency Distribution",
+  "targets": [
+    {"expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P50"},
+    {"expr": "histogram_quantile(0.90, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P90"},
+    {"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[$interval])) by (le))", "legendFormat": "P99"}
+  ],
+  "fieldConfig": {
+    "defaults": {"unit": "s", "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10}},
+    "overrides": [
+      {"matcher": {"id": "byName", "options": "P50"}, "properties": [{"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}]},
+      {"matcher": {"id": "byName", "options": "P99"}, "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]}
+    ]
+  }
+}
+]]></code>
+    </example>
+  </section>
+</text>

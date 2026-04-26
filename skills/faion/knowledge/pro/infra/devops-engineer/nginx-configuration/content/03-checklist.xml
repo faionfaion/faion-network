@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-checklist" title="Nginx Pre-Deployment Checklist">
+  <summary>Ordered checklist rules for SSL, security headers, rate limiting, compression, and testing before going live.</summary>
+
+  <section title="Configuration Syntax Check">
+    <rule>
+      <statement>Run nginx -t before every reload or deploy. Never reload without passing -t — a broken config silently keeps the old config running but the next reload will fail.</statement>
+      <rationale>nginx -t validates syntax and checks include paths without restarting. On managed systems, an invalid config on reload can leave the server running stale configuration for hours until noticed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+sudo nginx -t && sudo nginx -s reload
+# Or on systemd:
+sudo nginx -t && sudo systemctl reload nginx
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Checklist">
+    <list>
+      <item>server_tokens off in http{} block — verify with curl -I and check for Server: nginx/x.x header absence</item>
+      <item>TLS 1.2 and 1.3 only — verify: openssl s_client -connect host:443 and check Protocol field</item>
+      <item>All five security headers present — verify with curl -I or securityheaders.com</item>
+      <item>HSTS max-age at least 31536000 (1 year) for public sites</item>
+      <item>SSL session tickets disabled (ssl_session_tickets off)</item>
+      <item>DH parameters file generated if using custom ciphers (openssl dhparam -out /etc/nginx/dhparam.pem 2048)</item>
+      <item>HTTP to HTTPS redirect: 301 not 302 for permanent redirect</item>
+      <item>File permissions: config files 644, SSL private keys 600, owned by root</item>
+      <item>Deny access to .git, .env, and sensitive paths with location ~ /\. { deny all; }</item>
+    </list>
+  </section>
+
+  <section title="SSL/TLS Validation">
+    <rule>
+      <statement>Run SSL Labs test (ssllabs.com/ssltest) for every new domain. Aim for A+ grade. Resolve any warnings before going live.</statement>
+      <rationale>SSL Labs checks protocol versions, cipher strength, certificate chain, HSTS, and 40+ other criteria. A+ grade means all current best practices are met and no known vulnerabilities are present.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Quick local SSL check
+echo | openssl s_client -connect example.com:443 2>/dev/null | openssl x509 -noout -dates
+
+# Check certificate chain validity
+curl -sI https://example.com | grep -E 'HTTP|Strict|X-Frame|X-Content'
+
+# Verify TLS version
+openssl s_client -connect example.com:443 -tls1 2>&1 | grep -E 'Protocol|Cipher'
+]]></code>
+    </example>
+  </section>
+
+  <section title="Performance and Compression Checklist">
+    <list>
+      <item>Gzip enabled and returning Content-Encoding: gzip for text responses: curl -H "Accept-Encoding: gzip" -I https://example.com</item>
+      <item>Static assets served with far-future cache headers (expires max or Cache-Control: public, max-age=31536000)</item>
+      <item>Keepalive working: verify via curl -v --http1.1 and check for Connection: keep-alive in response</item>
+      <item>Upstream keepalive configured (keepalive 32 in upstream block) to avoid per-request TCP handshakes to backend</item>
+      <item>worker_processes auto and worker_connections 4096+ in nginx.conf</item>
+    </list>
+  </section>
+
+  <section title="Reverse Proxy Checklist">
+    <list>
+      <item>proxy_pass URL has no trailing slash if location has no trailing slash (avoid double-slash bugs)</item>
+      <item>X-Forwarded-For set using $proxy_add_x_forwarded_for (not $remote_addr alone)</item>
+      <item>Proxy timeouts match backend service SLA (proxy_read_timeout, proxy_send_timeout)</item>
+      <item>Health check endpoint responds correctly through Nginx</item>
+      <item>WebSocket locations have Upgrade and Connection headers if applicable</item>
+      <item>Rate limiting applied to auth and sensitive API endpoints</item>
+    </list>
+  </section>
+
+  <section title="Post-Deploy Validation">
+    <list>
+      <item>All routes return expected HTTP status codes</item>
+      <item>HTTP to HTTPS redirect works (301, not redirect loop)</item>
+      <item>Certificate expiry monitoring configured (alert at 30 days before expiry)</item>
+      <item>stub_status endpoint accessible from monitoring only, not public</item>
+      <item>Error log level set to warn (not debug) in production</item>
+      <item>Log rotation configured (logrotate.d or systemd log rotation)</item>
+    </list>
+  </section>
+</text>

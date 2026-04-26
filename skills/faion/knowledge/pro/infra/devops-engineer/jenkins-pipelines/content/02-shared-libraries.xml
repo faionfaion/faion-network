@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-shared-libraries" title="Jenkins Shared Libraries">
+  <summary>Shared library structure, function patterns, and versioning to centralize reusable pipeline logic across Jenkinsfiles.</summary>
+
+  <section title="Library Structure">
+    <rule>
+      <statement>Define reusable functions in vars/ (global variables) for use in declarative pipelines. Use src/ classes only for complex stateful logic.</statement>
+      <rationale>vars/ functions are callable directly from declarative pipeline steps. src/ classes require script block and import statements, adding friction.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+jenkins-shared-library/
+├── vars/
+│   ├── buildApp.groovy       # Docker build + push
+│   ├── deployToK8s.groovy    # kubectl set image + rollout status
+│   └── notifySlack.groovy    # Slack notification
+├── src/com/example/
+│   ├── Docker.groovy         # Complex Docker operations class
+│   └── Kubernetes.groovy     # Complex K8s operations class
+└── resources/
+    └── templates/
+        └── deployment.yaml
+]]></code>
+    </example>
+  </section>
+
+  <section title="Function Patterns">
+    <rule>
+      <statement>Shared library functions must accept a Map config parameter with named keys. Fail fast on missing required keys with error().</statement>
+      <rationale>Named map parameters are self-documenting and extensible without breaking existing callers. Explicit error() on missing required keys gives clear messages.</rationale>
+    </rule>
+    <reference path="templates/buildApp.groovy">buildApp shared library function</reference>
+    <reference path="templates/deployToK8s.groovy">deployToK8s shared library function</reference>
+    <reference path="templates/notifySlack.groovy">notifySlack shared library function</reference>
+    <example type="good">
+      <code lang="groovy"><![CDATA[
+// vars/deployToK8s.groovy
+def call(Map config = [:]) {
+    def namespace  = config.namespace  ?: error('namespace is required')
+    def deployment = config.deployment ?: error('deployment is required')
+    def image      = config.image      ?: error('image is required')
+    def timeout    = config.timeout    ?: '5m'
+
+    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+        sh """
+            kubectl set image deployment/${deployment} ${deployment}=${image} -n ${namespace}
+            kubectl rollout status deployment/${deployment} -n ${namespace} --timeout=${timeout}
+        """
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Versioning and Usage">
+    <rule>
+      <statement>Pin shared library version in Jenkinsfile with @Library('my-library@v1.2.3'). Never use @main or @HEAD in production.</statement>
+      <rationale>Unpinned library versions mean a library update breaks all consuming pipelines simultaneously without a planned upgrade.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="groovy"><![CDATA[
+@Library('my-shared-library@v1.2.3') _
+
+pipeline {
+    agent any
+    stages {
+        stage('Build and Deploy') {
+            steps {
+                buildApp(appName: 'myapp', registry: 'registry.example.com')
+                deployToK8s(namespace: 'staging', deployment: 'myapp', image: 'registry.example.com/myapp:latest')
+                notifySlack(channel: '#builds')
+            }
+        }
+    }
+}
+]]></code>
+    </example>
+    <antipattern>
+      <description>Writing the same Docker build/push logic in every Jenkinsfile.</description>
+      <reason>Copy-paste logic diverges over time. When the registry URL or build flags change, each Jenkinsfile must be updated individually.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-security-checklist" title="Terraform Security and CI/CD Checklist">
+  <summary>Secrets management, IAM least-privilege, state file security, and CI/CD pipeline checklist rules.</summary>
+
+  <section title="Secrets Management">
+    <rule>
+      <statement>Never store secrets in Terraform code, tfvars files, or state. Reference secrets via data sources (AWS Secrets Manager, Vault).</statement>
+      <rationale>State files are stored in S3 and may be logged in CI. Secrets in code are committed to version control. External secret managers provide rotation and audit trails.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="hcl"><![CDATA[
+data "aws_secretsmanager_secret_version" "db_password" {
+  secret_id = "myapp/database/password"
+}
+
+resource "aws_db_instance" "main" {
+  password = data.aws_secretsmanager_secret_version.db_password.secret_string
+}
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="hcl"><![CDATA[
+# Bad: secret hardcoded in resource or tfvars
+variable "db_password" {
+  default = "supersecret123"
+}
+]]></code>
+      <note>Use AWS Secrets Manager or Vault data source; never provide defaults for secret variables.</note>
+    </example>
+  </section>
+
+  <section title="IAM Best Practices">
+    <rule>
+      <statement>Use IAM roles, not users. Apply least-privilege: no wildcard actions except read-only describe calls. Add resource-level conditions where available.</statement>
+      <rationale>Roles use temporary credentials. Wildcard actions grant more permissions than required; resource conditions restrict to tagged/named resources.</rationale>
+    </rule>
+    <list>
+      <item>CI/CD uses OIDC workload identity — no long-lived access keys in environment variables</item>
+      <item>No * in IAM Action for mutating operations (create, delete, modify)</item>
+      <item>Add aws:RequestedRegion condition to restrict to allowed regions</item>
+      <item>Enable MFA delete on state S3 bucket for production</item>
+    </list>
+  </section>
+
+  <section title="Pre-Apply Checklist">
+    <list>
+      <item>Run terraform plan and review all changes — no unexpected destroys</item>
+      <item>Correct workspace/environment selected and backend state is current</item>
+      <item>Sensitive values not exposed in plan output (check sensitive = true)</item>
+      <item>Run tfsec or checkov and address critical/high findings</item>
+      <item>Database changes reviewed: no accidental instance recreation</item>
+    </list>
+  </section>
+
+  <section title="CI/CD Pipeline">
+    <rule>
+      <statement>In CI: run terraform fmt -check, terraform validate, and security scanning (tfsec/checkov) before plan. Save plan as artifact; apply only from protected branch using the saved plan.</statement>
+      <rationale>fmt -check catches formatting drift early. Saved plan ensures apply uses exactly the reviewed plan, preventing race conditions if code changes between plan and apply.</rationale>
+    </rule>
+    <list>
+      <item>terraform fmt -check -recursive on every PR</item>
+      <item>terraform validate after init -backend=false</item>
+      <item>tfsec or checkov as a required CI step</item>
+      <item>Plan saved as artifact; apply downloads and uses the artifact</item>
+      <item>Apply only runs on merge to main/protected branch</item>
+      <item>OIDC authentication — no long-lived credentials stored in CI secrets</item>
+    </list>
+  </section>
+</text>

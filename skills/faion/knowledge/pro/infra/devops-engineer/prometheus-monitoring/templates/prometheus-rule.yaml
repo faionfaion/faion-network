@@ -1,0 +1,58 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: myapp-rules
+  namespace: monitoring
+  labels:
+    prometheus: main
+spec:
+  groups:
+    - name: http.recording
+      interval: 30s
+      rules:
+        - record: job:http_requests:rate5m
+          expr: sum(rate(http_requests_total[5m])) by (job)
+
+        - record: job:http_request_duration_seconds:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+            )
+
+        - record: job:sli_availability:rate5m
+          expr: |
+            sum(rate(http_requests_total{status!~"5.."}[5m])) by (job)
+            / sum(rate(http_requests_total[5m])) by (job)
+
+    - name: http.alerts
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            1 - job:sli_availability:rate5m < 0.95
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate for {{ $labels.job }}"
+            description: "Availability {{ $value | humanizePercentage }} below 95%"
+            runbook_url: "https://runbooks.example.com/high-error-rate"
+
+        - alert: HighLatencyP99
+          expr: job:http_request_duration_seconds:p99 > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High P99 latency for {{ $labels.job }}"
+            description: "P99 latency is {{ $value | humanizeDuration }}"
+            runbook_url: "https://runbooks.example.com/high-latency"
+
+        - alert: ErrorBudgetBurn
+          expr: |
+            (1 - job:sli_availability:rate5m) / (1 - 0.999) > 14.4
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Error budget burning at {{ $value }}x rate for {{ $labels.job }}"
+            runbook_url: "https://runbooks.example.com/error-budget-burn"

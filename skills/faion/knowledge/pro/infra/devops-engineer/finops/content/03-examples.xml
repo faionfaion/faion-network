@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="FinOps Implementation Examples">
+  <summary>Idle instance detection, savings plan calculation, S3 lifecycle optimization, and AWS SCP for budget governance.</summary>
+
+  <section title="Idle Instance Detection">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+#!/bin/bash
+# Find idle EC2 instances: avg CPU < 5% over 7 days
+INSTANCES=$(aws ec2 describe-instances \
+  --filters "Name=instance-state-name,Values=running" \
+  --query "Reservations[].Instances[].InstanceId" --output text)
+
+for INSTANCE_ID in $INSTANCES; do
+  AVG_CPU=$(aws cloudwatch get-metric-statistics \
+    --namespace AWS/EC2 --metric-name CPUUtilization \
+    --dimensions Name=InstanceId,Value=$INSTANCE_ID \
+    --start-time $(date -d '7 days ago' --iso-8601=seconds) \
+    --end-time $(date --iso-8601=seconds) \
+    --period 86400 --statistics Average \
+    --query 'Datapoints[].Average | avg(@)' --output text)
+
+  if (( $(echo "$AVG_CPU < 5" | bc -l) )); then
+    echo "IDLE: $INSTANCE_ID (Avg CPU: $AVG_CPU%)"
+  fi
+done
+]]></code>
+      <note>Run weekly; pipe output to a Jira ticket or Slack alert for owner assignment.</note>
+    </example>
+  </section>
+
+  <section title="Savings Plan Calculation">
+    <p>Example: $100k/month on EC2 on-demand. Usage pattern: 60% steady baseline, 25% predictable peaks, 15% variable.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Baseline (60%):   $60,000 * 0.66 (34% discount) = $39,600
+Predictable (25%): $25,000 * 0.62 (38% discount) = $15,500
+Variable (15%):   $15,000 * 1.00 (on-demand)    = $15,000
+-----------------------------------------------------------
+New monthly cost:  $70,100
+Monthly savings:   $29,900 (29.9%)
+Annual savings:    $358,800
+]]></code>
+      <note>Use Compute Savings Plans (region-flexible) for baseline, EC2 Instance SP for predictable peaks.</note>
+    </example>
+  </section>
+
+  <section title="S3 Lifecycle Optimization">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "Rules": [{
+    "ID": "tiered-storage",
+    "Status": "Enabled",
+    "Filter": {},
+    "Transitions": [
+      { "Days": 30,  "StorageClass": "STANDARD_IA" },
+      { "Days": 90,  "StorageClass": "GLACIER_IR" },
+      { "Days": 365, "StorageClass": "DEEP_ARCHIVE" }
+    ]
+  }]
+}
+]]></code>
+      <note>For 50TB: Standard $1,150/mo → $487/mo after tiering (58% reduction)</note>
+    </example>
+  </section>
+
+  <section title="SCP for Budget Governance">
+    <rule>
+      <statement>Use AWS Organizations SCPs to require mandatory tags at resource creation time and deny expensive instance families without approval.</statement>
+      <rationale>SCPs prevent untagged or oversized resource creation at the API level, eliminating the need for retroactive remediation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireTagging",
+      "Effect": "Deny",
+      "Action": ["ec2:RunInstances", "rds:CreateDBInstance"],
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/Environment": "true",
+          "aws:RequestTag/Owner": "true"
+        }
+      }
+    }
+  ]
+}
+]]></code>
+    </example>
+  </section>
+</text>

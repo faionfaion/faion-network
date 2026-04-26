@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="Helm Chart Examples">
+  <summary>Production values.yaml with security context, environment-specific overrides, and values schema validation.</summary>
+
+  <section title="Production values.yaml">
+    <p>Key sections of a production-ready values.yaml. All values must be commented. Security context and HPA are required.</p>
+    <reference path="templates/deployment.yaml">Full deployment template using these values</reference>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# -- Replicas (ignored if autoscaling.enabled=true)
+replicaCount: 3
+
+image:
+  repository: myapp
+  tag: ""          # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop: [ALL]
+
+autoscaling:
+  enabled: true
+  minReplicas: 3       # never 1 in production
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+podAntiAffinity:
+  enabled: true
+  type: soft           # hard for critical services
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits:   { cpu: 500m, memory: 512Mi }
+]]></code>
+    </example>
+  </section>
+
+  <section title="Environment Overrides">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# values-dev.yaml — minimal, no HA
+replicaCount: 1
+autoscaling:
+  enabled: false
+podDisruptionBudget:
+  enabled: false
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits:   { cpu: 200m, memory: 256Mi }
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# values-prod.yaml — full HA
+replicaCount: 3
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+podAntiAffinity:
+  enabled: true
+  type: hard
+resources:
+  requests: { cpu: 500m, memory: 512Mi }
+  limits:   { cpu: 2000m, memory: 2Gi }
+]]></code>
+    </example>
+  </section>
+
+  <section title="Schema Validation">
+    <rule>
+      <statement>Define values.schema.json with types, descriptions, and minimum/maximum constraints for numeric fields. Mark image.repository as required.</statement>
+      <rationale>Schema validation catches wrong types (string instead of integer) and missing required values at helm install time rather than at runtime.</rationale>
+    </rule>
+    <reference path="templates/values.schema.json">JSON Schema for values validation</reference>
+  </section>
+</text>

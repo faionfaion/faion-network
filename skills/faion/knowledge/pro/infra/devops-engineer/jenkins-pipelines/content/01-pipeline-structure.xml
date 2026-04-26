@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-structure" title="Jenkins Pipeline Structure">
+  <summary>Declarative pipeline syntax with essential options, parallel stages, when conditions, and post-build actions.</summary>
+
+  <section title="Declarative vs Scripted">
+    <rule>
+      <statement>Default to declarative syntax. Use scripted (node block) only when you need dynamic logic such as detecting changed services at runtime.</statement>
+      <rationale>Declarative is readable, maintainable, and supports all built-in features. Scripted requires Groovy expertise and is harder to review.</rationale>
+    </rule>
+  </section>
+
+  <section title="Essential Options">
+    <rule>
+      <statement>Every pipeline must include: timeout, timestamps, buildDiscarder, and disableConcurrentBuilds in the options block.</statement>
+      <rationale>timeout prevents hung builds consuming agents; buildDiscarder prevents disk exhaustion; disableConcurrentBuilds prevents race conditions on shared environments.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="groovy"><![CDATA[
+options {
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    disableConcurrentBuilds()
+    ansiColor('xterm')
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Parallel Stages">
+    <rule>
+      <statement>Use parallel blocks for independent tasks (unit tests, integration tests, security scans) to reduce total build time.</statement>
+      <rationale>Sequential execution of independent tasks wastes time. Parallel execution of three 5-minute stages takes 5 minutes, not 15.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="groovy"><![CDATA[
+stage('Test') {
+    parallel {
+        stage('Unit Tests') {
+            steps { container('node') { sh 'npm run test:unit -- --coverage' } }
+            post { always { junit 'junit.xml' } }
+        }
+        stage('Integration Tests') {
+            steps { container('node') { sh 'npm run test:integration' } }
+        }
+        stage('Security Scan') {
+            steps { container('node') { sh 'npm audit --audit-level=high' } }
+        }
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="When Conditions and Approval Gates">
+    <rule>
+      <statement>Gate production deployments with an input block requiring named approvers. Use when { branch 'main' } to prevent feature branches from deploying.</statement>
+      <rationale>Unnamed approvals allow anyone to click through. Named submitter restriction enforces change control without external tooling.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="groovy"><![CDATA[
+stage('Deploy to Production') {
+    when { branch 'main' }
+    input {
+        message "Deploy to production?"
+        ok "Deploy"
+        submitter "admin,deployers"
+    }
+    steps { /* kubectl apply */ }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Post Actions">
+    <rule>
+      <statement>Always clean the workspace in post { always { cleanWs() } }. Send failure notifications in post { failure { ... } }.</statement>
+      <rationale>Stale workspace files cause intermittent failures in subsequent builds. Post-failure notifications alert the team without requiring manual monitoring.</rationale>
+    </rule>
+    <antipattern>
+      <description>Hardcoding secrets directly in the pipeline environment block.</description>
+      <reason>Secrets in Jenkinsfiles are committed to version control and visible in build logs. Use withCredentials() or the credentials() binding instead.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-configuration" title="Prometheus Configuration">
+  <summary>Scrape intervals, ServiceMonitor and PodMonitor CRDs, recording rules, and alerting philosophy.</summary>
+
+  <section title="Scrape Intervals">
+    <rule>
+      <statement>Set global scrape interval to 15s. Override to 10s only for critical systems. Use 30–60s for low-priority metrics. Never scrape faster than the metric changes.</statement>
+      <rationale>10s scrape doubles storage and CPU load compared to 15s with minimal benefit for most metrics. Scrape interval below 10s is unsupported in practice — Prometheus needs time to complete each scrape cycle.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  scrape_timeout:      10s
+
+scrape_configs:
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: 'true'
+]]></code>
+    </example>
+  </section>
+
+  <section title="Kubernetes Operator CRDs">
+    <rule>
+      <statement>Use ServiceMonitor for scraping services by label selector. Use PodMonitor only when pods do not have a backing Service. Define PrometheusRule for all recording rules and alerts.</statement>
+      <rationale>ServiceMonitor is the standard Prometheus Operator CRD for service-level scraping. It is self-service — teams can add a ServiceMonitor to their namespace without touching prometheus.yaml. PrometheusRule keeps alerts version-controlled alongside the application.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: myapp
+  namespace: monitoring
+  labels:
+    prometheus: main
+spec:
+  selector:
+    matchLabels:
+      app: myapp
+  namespaceSelector:
+    matchNames: [production]
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+]]></code>
+    </example>
+  </section>
+
+  <section title="Recording Rules">
+    <rule>
+      <statement>Pre-compute expensive queries used in dashboards as recording rules. Follow the naming format: level:metric:operation (e.g., job:http_requests:rate5m).</statement>
+      <rationale>Dashboard queries running on every panel refresh under load multiply Prometheus CPU usage. Recording rules run once per evaluation interval and store the result as a new time series, making dashboards fast regardless of cardinality.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: http-recording-rules
+  labels:
+    prometheus: main
+spec:
+  groups:
+    - name: http.rules
+      interval: 30s
+      rules:
+        - record: job:http_requests:rate5m
+          expr: sum(rate(http_requests_total[5m])) by (job)
+        - record: job:http_request_duration_seconds:p99
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)
+            )
+        - record: job:sli_availability:rate5m
+          expr: |
+            sum(rate(http_requests_total{status!~"5.."}[5m])) by (job)
+            / sum(rate(http_requests_total[5m])) by (job)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Alerting Philosophy">
+    <rule>
+      <statement>Alert on symptoms, not causes. Alert on error rate exceeding threshold, not on individual pod failures. Every alert must have a runbook_url annotation.</statement>
+      <rationale>Symptom-based alerts (high error rate, high latency) are actionable and describe user impact. Cause-based alerts (pod crashed) create alert fatigue — a pod may crash and restart with no user impact. Runbook URLs eliminate information lookup time during incidents.</rationale>
+    </rule>
+    <rule>
+      <statement>Use the for: duration to require alerts to persist before firing. Set at least 2m for critical alerts and 5–15m for warning alerts.</statement>
+      <rationale>Transient spikes lasting seconds should not page on-call engineers. A minimum for: duration filters out flapping alerts caused by temporary metric anomalies during deployments or garbage collection.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+- alert: HighErrorRate
+  expr: job:http_requests:error_rate5m > 0.05
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "High error rate for {{ $labels.job }}"
+    description: "Error rate {{ $value | humanizePercentage }} exceeds 5%"
+    runbook_url: "https://runbooks.example.com/high-error-rate"
+]]></code>
+    </example>
+  </section>
+</text>

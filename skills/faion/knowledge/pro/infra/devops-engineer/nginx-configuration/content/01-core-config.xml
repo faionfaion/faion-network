@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-config" title="Nginx Core Configuration">
+  <summary>worker_processes, keepalive, gzip, security directives, and TLS configuration rules.</summary>
+
+  <section title="Worker and Connection Settings">
+    <rule>
+      <statement>Set worker_processes to auto and worker_connections to 4096 or higher for production servers.</statement>
+      <rationale>auto matches CPU core count. Each worker handles worker_connections simultaneous connections; 4096 supports high-traffic workloads without tuning per server type.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+worker_processes auto;
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+http {
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    server_tokens   off;
+}
+]]></code>
+      <note>tcp_nopush requires sendfile on. server_tokens off hides the Nginx version from response headers.</note>
+    </example>
+  </section>
+
+  <section title="Gzip Compression">
+    <rule>
+      <statement>Enable gzip for all text content types with comp_level 6 and min_length 256. Always include gzip_vary on.</statement>
+      <rationale>Level 6 gives the best compression-to-CPU ratio. min_length 256 avoids compressing tiny responses where overhead exceeds gain. gzip_vary ensures proxies cache both compressed and uncompressed variants.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+gzip              on;
+gzip_vary         on;
+gzip_proxied      any;
+gzip_comp_level   6;
+gzip_min_length   256;
+gzip_types
+    text/plain text/css text/xml text/javascript
+    application/json application/javascript application/xml
+    application/rss+xml image/svg+xml;
+]]></code>
+    </example>
+  </section>
+
+  <section title="TLS Configuration">
+    <rule>
+      <statement>Allow TLSv1.2 and TLSv1.3 only. Disable session tickets. Use ssl_session_cache shared. Let's Encrypt no longer supports OCSP (deprecated August 2025) — remove ssl_stapling directives.</statement>
+      <rationale>TLS 1.0 and 1.1 are deprecated by RFC 8996 and fail PCI DSS compliance. ssl_session_tickets off prevents reuse of session keys that compromise forward secrecy. OCSP stapling is now unsupported by Let's Encrypt.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+ssl_protocols       TLSv1.2 TLSv1.3;
+ssl_ciphers         ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+ssl_prefer_server_ciphers off;
+ssl_session_cache   shared:SSL:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="nginx"><![CDATA[
+ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;  # TLS 1.0/1.1 deprecated
+ssl_stapling on;  # Unsupported since Let's Encrypt dropped OCSP (Aug 2025)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Headers">
+    <rule>
+      <statement>Add all five required security headers to every HTTPS server block: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.</statement>
+      <rationale>Each header mitigates a specific attack class: HSTS forces HTTPS, X-Frame-Options prevents clickjacking, X-Content-Type-Options prevents MIME sniffing, Referrer-Policy limits information leakage, Permissions-Policy disables unneeded browser APIs.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header X-Frame-Options           "SAMEORIGIN"                          always;
+add_header X-Content-Type-Options    "nosniff"                             always;
+add_header Referrer-Policy           "strict-origin-when-cross-origin"     always;
+add_header Permissions-Policy        "geolocation=(), microphone=(), camera=()" always;
+]]></code>
+      <note>Use always to include headers in error responses, not just 200 OK.</note>
+    </example>
+  </section>
+</text>

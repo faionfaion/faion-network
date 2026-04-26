@@ -1,0 +1,57 @@
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: myapp-alerts
+  namespace: monitoring
+spec:
+  route:
+    receiver: slack-critical
+    groupBy: [alertname, job]
+    groupWait:      30s
+    groupInterval:  5m
+    repeatInterval: 4h
+    routes:
+      - matchers:
+          - name: severity
+            value: critical
+        receiver: pagerduty
+      - matchers:
+          - name: severity
+            value: warning
+        receiver: slack-warnings
+
+  receivers:
+    - name: slack-critical
+      slackConfigs:
+        - apiURL:
+            key: url
+            name: slack-webhook-secret
+          channel: "#alerts-critical"
+          title: "[CRITICAL] {{ .GroupLabels.alertname }}"
+          text: "{{ range .Alerts }}{{ .Annotations.description }}\nRunbook: {{ .Annotations.runbook_url }}\n{{ end }}"
+          color: "danger"
+
+    - name: slack-warnings
+      slackConfigs:
+        - apiURL:
+            key: url
+            name: slack-webhook-secret
+          channel: "#alerts-warning"
+          title: "[WARNING] {{ .GroupLabels.alertname }}"
+          color: "warning"
+
+    - name: pagerduty
+      pagerdutyConfigs:
+        - routingKey:
+            key: routing-key
+            name: pagerduty-secret
+          description: "{{ .GroupLabels.alertname }} — {{ .CommonAnnotations.summary }}"
+
+  inhibitRules:
+    - sourceMatchers:
+        - name: severity
+          value: critical
+      targetMatchers:
+        - name: severity
+          value: warning
+      equal: [alertname, job]

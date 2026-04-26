@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-chart-structure" title="Helm Chart Structure">
+  <summary>Chart.yaml fields, directory layout, naming conventions, and dependency management for production Helm charts.</summary>
+
+  <section title="Chart.yaml">
+    <rule>
+      <statement>Set apiVersion: v2, include kubeVersion constraint, list all maintainers, and use SemVer 2 for version.</statement>
+      <rationale>apiVersion v2 is required for Helm 3 features (dependencies, library charts). kubeVersion prevents deployment to incompatible clusters.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+apiVersion: v2
+name: myapp
+description: A Helm chart for MyApp
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+kubeVersion: ">=1.25.0"
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled
+]]></code>
+    </example>
+  </section>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Include templates/NOTES.txt, templates/_helpers.tpl, and templates/tests/test-connection.yaml in every chart.</statement>
+      <rationale>NOTES.txt shows access instructions post-install. _helpers.tpl centralizes naming logic. Test pod verifies the release works end-to-end.</rationale>
+    </rule>
+    <rule>
+      <statement>Add values.schema.json to validate user inputs at helm install/upgrade time.</statement>
+      <rationale>Schema validation catches type errors and missing required values before Kubernetes rejects manifests, surfacing errors with clear messages.</rationale>
+    </rule>
+  </section>
+
+  <section title="Naming Conventions">
+    <rule>
+      <statement>Chart name: lowercase letters, numbers, hyphens only; starts with a letter; no dots or underscores. Template files: {chart}-{resource}.yaml.</statement>
+      <rationale>Kubernetes name constraints propagate from chart names. Consistent template naming makes navigation predictable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Dependency Management">
+    <rule>
+      <statement>Pin dependency versions (never use wildcard *). Add condition: dep.enabled flag. Commit Chart.lock. Run helm dependency update before packaging.</statement>
+      <rationale>Wildcards silently pull breaking changes. Condition flags allow disabling subcharts for minimal installs. Lock file ensures reproducible builds.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Bad: wildcard version, no condition flag
+dependencies:
+  - name: redis
+    version: "*"
+    repository: https://charts.bitnami.com/bitnami
+]]></code>
+      <note>Use "17.x.x" and add condition: redis.enabled</note>
+    </example>
+  </section>
+
+  <section title="Values Design">
+    <rule>
+      <statement>All configurable values must be in values.yaml. No hardcoded values in templates. Document every value with a comment.</statement>
+      <rationale>Hardcoded values prevent per-environment customization and make charts unusable by others.</rationale>
+    </rule>
+    <rule>
+      <statement>Never put secrets in values.yaml. Use External Secrets Operator or reference existing Kubernetes secrets.</statement>
+      <rationale>values.yaml is committed to version control and passed in plain text to helm upgrade; secrets must not be stored there.</rationale>
+    </rule>
+  </section>
+</text>

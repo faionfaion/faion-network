@@ -1,0 +1,40 @@
+Create a Grafana dashboard JSON for: [SERVICE NAME]
+
+Service details:
+- Metrics source: [Prometheus endpoint and scrape interval]
+- Framework: [RED / USE / Four Golden Signals — choose one or specify]
+- Namespace: [Kubernetes namespace(s)]
+- Key metrics exposed: [list the metric names and types]
+
+Dashboard requirements:
+
+1. Variables (required)
+   - datasource: type=datasource, query=prometheus
+   - namespace: type=query, label_values(kube_namespace_labels, namespace), refresh=1
+   - interval: type=interval, auto=true, auto_min=1m, options=[1m, 5m, 15m, 1h]
+
+2. Summary row (top row, stat panels)
+   - Request Rate (reqps): sum(rate(http_requests_total{namespace="$namespace"}[$interval]))
+   - Error Rate (%): 5xx / total * 100, thresholds green/yellow at 1%/red at 5%
+   - P99 Latency (s): histogram_quantile(0.99, ...), thresholds green/yellow at 0.5s/red at 1s
+   - Availability SLO: 30-day rolling, gauge panel, min=99, max=100
+
+3. Detail rows (time series panels)
+   - Request rate by status code (color overrides: 5xx=red, 4xx=orange, 2xx=green)
+   - Latency percentiles: P50, P90, P99 on same panel (P50=green, P99=red)
+   - Pod CPU usage by pod name
+   - Pod memory usage by pod name
+
+4. Annotations
+   - Deployment annotation: changes(kube_deployment_status_observed_generation[5m]) > 0
+   - Alert annotation: ALERTS{alertstate="firing"}
+
+5. Dashboard metadata
+   - uid: [service-name]-v1 (stable, no change after creation)
+   - schemaVersion: 38
+   - tags: [service name, team name]
+   - time: { from: "now-1h", to: "now" }
+
+Provisioning: wrap the dashboard JSON in a Kubernetes ConfigMap with label grafana_dashboard=1.
+
+Output: ConfigMap YAML containing the full dashboard JSON.
