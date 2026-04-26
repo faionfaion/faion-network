@@ -1,0 +1,43 @@
+# .github/workflows/trunk.yml
+# GitHub Actions CI pipeline for Trunk-Based Development
+# Target: complete in <10 minutes
+
+name: Trunk CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest --cov=src --cov-fail-under=80
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        run: mypy src/
+
+  deploy-staging:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to staging
+        run: ./deploy.sh staging

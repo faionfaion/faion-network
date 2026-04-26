@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-structure" title="Rust Backend Project Structure and Axum Router">
+  <summary>Directory layout for Axum backends, AppState wiring, and router composition by feature module.</summary>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Organise the crate as routes/ → handlers/ → services/ → db/; handlers stay HTTP-only, all business logic lives in services.</statement>
+      <rationale>Thin handlers are testable with axum::test without standing up a real HTTP server. Services are testable with plain async functions and mocked DB traits.</rationale>
+    </rule>
+    <p>Standard layout: src/main.rs (entry), src/lib.rs (library root), src/config.rs, src/error.rs, src/routes/, src/handlers/, src/services/, src/models/, src/db/, src/middleware/. Also: migrations/, tests/.</p>
+  </section>
+
+  <section title="AppState and Router">
+    <rule>
+      <statement>AppState must be Clone (cheap — use Arc inside); pass it via with_state() so every handler gets typed access without globals.</statement>
+      <rationale>Global mutable state defeats Rust's ownership guarantees and makes parallel tests fragile. AppState as a Clone+Send+Sync value composes safely with Tower middleware.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use axum::{routing::get, Router};
+use std::sync::Arc;
+use tower_http::trace::TraceLayer;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub db: Database,
+    pub config: Arc<Config>,
+}
+
+pub fn build_app(state: AppState) -> Router {
+    Router::new()
+        .nest("/api/v1", api_routes())
+        .layer(TraceLayer::new_for_http())
+        .with_state(state)
+}
+
+pub fn api_routes() -> Router<AppState> {
+    Router::new()
+        .nest("/users", users::routes())
+        .route("/health", get(|| async { "OK" }))
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Configuration">
+    <rule>
+      <statement>Load configuration from environment variables via a Config struct at startup; never use dotenv in production binaries.</statement>
+      <rationale>dotenv silently overwrites environment variables set by the deployment system. In production, env vars come from the orchestrator (Docker, systemd, k8s); dotenv is for local dev only.</rationale>
+    </rule>
+  </section>
+</text>

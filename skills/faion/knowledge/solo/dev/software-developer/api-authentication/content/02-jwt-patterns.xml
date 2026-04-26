@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-jwt-patterns" title="JWT Patterns: Claims, RS256, Short TTL, Refresh Rotation">
+  <summary>JWT payload requirements, RS256/EdDSA signing, access token TTL limits, refresh token rotation, and denylist approach.</summary>
+
+  <section title="Required Claims">
+    <rule>
+      <statement>Always verify iss, aud, exp, nbf with clock-skew tolerance of at most 60 s; reject tokens missing any of these.</statement>
+      <rationale>Missing audience check lets a token issued for service A be replayed at service B. Missing issuer check lets any party in the trust boundary mint tokens for your service.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "sub": "user-123",
+  "iss": "https://api.example.com",
+  "aud": "https://api.example.com",
+  "exp": 1735689600,
+  "iat": 1735603200,
+  "jti": "unique-token-id",
+  "scope": "read:users write:users"
+}
+]]></code>
+      <note>jti enables denylist revocation. scope allows fine-grained permission checks.</note>
+    </example>
+  </section>
+
+  <section title="Signing Algorithm">
+    <rule>
+      <statement>Use RS256 or EdDSA for multi-service architectures; never HS256 with a shared secret across services.</statement>
+      <rationale>A shared HS256 secret means any service that holds it can mint admin-level tokens. RS256 lets services verify with the public key; only the auth service can sign.</rationale>
+    </rule>
+    <rule>
+      <statement>Never pass algorithm=none or accept tokens without an explicit algorithms=[...] list in the decoder.</statement>
+      <rationale>alg:none is a historical CVE class; jwt.decode without explicit algorithms accepts it on some libraries.</rationale>
+    </rule>
+  </section>
+
+  <section title="Token Lifetime and Refresh">
+    <rule>
+      <statement>Access token TTL must be at most 15 minutes; refresh tokens rotate on every use and must detect reuse.</statement>
+      <rationale>Short access TTL limits the blast radius of a stolen token. Refresh token rotation with reuse detection invalidates the entire refresh family on replay, catching stolen tokens.</rationale>
+    </rule>
+    <rule>
+      <statement>For revocation: keep a Redis denylist keyed by jti with TTL equal to the remaining token lifetime.</statement>
+      <rationale>Stateless JWTs cannot be invalidated mid-life without a server-side record. A denylist with matching TTL avoids indefinite storage growth.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
+
+ALGORITHM = "RS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
+
+def create_access_token(data: dict, private_key: str) -> str:
+    payload = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    return jwt.encode(payload, private_key, algorithm=ALGORITHM)
+
+def verify_token(token: str, public_key: str, audience: str) -> dict:
+    try:
+        return jwt.decode(
+            token, public_key,
+            algorithms=[ALGORITHM],
+            audience=audience,
+        )
+    except JWTError:
+        raise HTTPException(401, "Invalid token")
+]]></code>
+      <note>Explicit algorithms list, audience verification, and UTC-aware timestamps.</note>
+    </example>
+  </section>
+
+  <section title="Storage and Transport">
+    <rule>
+      <statement>Store JWTs in HTTP-only SameSite=Lax cookies for SPAs; never in localStorage.</statement>
+      <rationale>localStorage is readable by any JavaScript on the page — XSS immediately steals all tokens. HTTP-only cookies are invisible to JS; SameSite=Lax blocks most CSRF.</rationale>
+    </rule>
+  </section>
+</text>

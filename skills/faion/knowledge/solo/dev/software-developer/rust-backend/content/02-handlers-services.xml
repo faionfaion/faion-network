@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-handlers-services" title="Typed Handlers, Service Layer, Concurrent Processing">
+  <summary>Axum typed extractor pattern, service layer with tokio::try_join! for concurrent DB calls, and Semaphore-bounded batch processing.</summary>
+
+  <section title="Typed Handlers">
+    <rule>
+      <statement>Extract all handler inputs via typed extractors (Path, Query, Json, State); return Result&lt;Json&lt;T&gt;, AppError&gt; — never raw StatusCode + String.</statement>
+      <rationale>Typed extractors fail at the framework boundary with a 422 before business logic runs. AppError with IntoResponse keeps error shape consistent across all routes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+
+pub async fn list(
+    State(state): State<AppState>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<ListResponse>, AppError> {
+    let svc = UserService::new(&state.db);
+    let (users, total) = svc.list(params.page, params.per_page).await?;
+    Ok(Json(ListResponse {
+        data: users.into_iter().map(UserResponse::from).collect(),
+        total, page: params.page, per_page: params.per_page,
+    }))
+}
+
+pub async fn create(
+    State(state): State<AppState>,
+    Json(payload): Json<CreateUserRequest>,
+) -> Result<(StatusCode, Json<UserResponse>), AppError> {
+    payload.validate()?;
+    let svc = UserService::new(&state.db);
+    let user = svc.create(&payload.name, &payload.email, &payload.password).await?;
+    Ok((StatusCode::CREATED, Json(user.into())))
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Service Layer">
+    <rule>
+      <statement>Use tokio::try_join! to run independent DB queries in parallel; use tokio::task::spawn_blocking for CPU-intensive work like password hashing.</statement>
+      <rationale>Sequential awaits on independent queries serialise IO unnecessarily. CPU work (Argon2) blocks the async executor thread — spawn_blocking offloads it to a dedicated pool.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+pub async fn list(&self, page: u32, per_page: u32) -> Result<(Vec<User>, i64), AppError> {
+    let offset = ((page - 1) * per_page) as i64;
+    let (users, total) = tokio::try_join!(
+        self.db.fetch_users(per_page as i64, offset),
+        self.db.count_users()
+    )?;
+    Ok((users, total))
+}
+
+pub async fn create(&self, name: &str, email: &str, password: &str) -> Result<User, AppError> {
+    if self.db.fetch_user_by_email(email).await?.is_some() {
+        return Err(AppError::Conflict("Email already exists".into()));
+    }
+    let pw = password.to_string();
+    let hash = tokio::task::spawn_blocking(move || {
+        let salt = SaltString::generate(&mut OsRng);
+        Argon2::default().hash_password(pw.as_bytes(), &salt).map(|h| h.to_string())
+    }).await??;
+    self.db.insert_user(name, email, &hash).await
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Concurrent Batch Processing">
+    <rule>
+      <statement>Bound concurrency with a Semaphore when processing a collection of async tasks; use buffer_unordered to collect results preserving order semantics.</statement>
+      <rationale>Unbounded spawning can exhaust DB connection pools or file descriptors. Semaphore + buffer_unordered processes at most N concurrent tasks without blocking the executor.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use futures::stream::{self, StreamExt};
+use tokio::sync::Semaphore;
+
+pub async fn process_batch<T, F, Fut, R>(
+    items: Vec<T>, limit: usize, f: F,
+) -> Vec<R>
+where
+    T: Send + 'static,
+    F: Fn(T) -> Fut + Send + Sync + 'static,
+    Fut: std::future::Future<Output = R> + Send,
+    R: Send + 'static,
+{
+    let sem = Arc::new(Semaphore::new(limit));
+    let f = Arc::new(f);
+    stream::iter(items)
+        .map(|item| {
+            let sem = sem.clone(); let f = f.clone();
+            async move { let _p = sem.acquire().await.unwrap(); f(item).await }
+        })
+        .buffer_unordered(limit)
+        .collect()
+        .await
+}
+]]></code>
+    </example>
+  </section>
+</text>

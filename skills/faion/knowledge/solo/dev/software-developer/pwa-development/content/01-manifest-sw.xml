@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-manifest-sw" title="Web App Manifest, Workbox Caching Strategies, SW Registration">
+  <summary>Required manifest fields for installability, Workbox caching strategy selection per resource type, and service worker registration with update detection.</summary>
+
+  <section title="Web App Manifest Requirements">
+    <rule>
+      <statement>Manifest must include name, short_name, start_url, display: standalone, and icon entries for 192px and 512px with a maskable variant for Android adaptive icons.</statement>
+      <rationale>Missing any of these fields fails the installability check. The 512px maskable icon is required for the Android adaptive icon system; without it, install is blocked on some devices.</rationale>
+    </rule>
+    <reference path="templates/manifest.json">Complete Web App Manifest with required fields and icon sizes</reference>
+  </section>
+
+  <section title="Caching Strategy Selection">
+    <rule>
+      <statement>Use NetworkFirst for API responses and HTML navigation; CacheFirst for images and fonts; StaleWhileRevalidate for JS/CSS static assets.</statement>
+      <rationale>CacheFirst on APIs returns stale data indefinitely. NetworkFirst with a networkTimeoutSeconds fallback gives fresh data when online and cached data when offline.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+// WRONG - CacheFirst on API returns stale data indefinitely
+registerRoute(({ url }) => url.pathname.startsWith('/api/'), new CacheFirst());
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// CORRECT - NetworkFirst with 10s timeout for API
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/api/'),
+  new NetworkFirst({
+    cacheName: 'api-cache',
+    networkTimeoutSeconds: 10,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 3600 }),
+    ],
+  })
+);
+
+// CacheFirst only for long-lived static assets
+registerRoute(
+  ({ request }) => request.destination === 'image',
+  new CacheFirst({
+    cacheName: 'images-cache',
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 3600 }),
+    ],
+  })
+);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Service Worker Registration">
+    <rule>
+      <statement>Register the SW from the same origin as the app; handle updatefound events to notify users of new versions rather than silently calling skipWaiting.</statement>
+      <rationale>Silent skipWaiting terminates in-flight requests and can corrupt client state mid-session. An explicit user-driven reload preserves UX.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+export async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  reg.addEventListener('updatefound', () => {
+    const newWorker = reg.installing;
+    newWorker?.addEventListener('statechange', () => {
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner(); // let user decide when to reload
+      }
+    });
+  });
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Offline Fallback">
+    <rule>
+      <statement>Pre-cache and serve /offline.html from the SW install event; register it as the fallback for all failed navigations.</statement>
+      <rationale>Without an offline fallback, failed navigations show a browser error page — the service worker makes the experience worse than having no SW at all.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-service-rules" title="Django Services: Decision Tree, Function vs Class, Lazy Imports">
+  <summary>Rules for deciding when to create a service function, function-first vs class design, lazy model imports, and keyword-only argument convention.</summary>
+
+  <section title="Placement Decision Tree">
+    <rule>
+      <statement>Place logic in services/ when it changes the DB, makes outbound calls, or needs to be called from views AND Celery tasks. Place pure functions in utils/.</statement>
+      <rationale>Views calling queryset methods directly couple business logic to HTTP context and make it impossible to reuse from management commands or async tasks without importing Django's request machinery.</rationale>
+    </rule>
+    <p>Decision: Changes DB (CREATE/UPDATE/DELETE)? → services/. Makes outbound API calls? → services/ or integrations/. Pure function (validation, calculation)? → utils/. Data transformation? → utils/.</p>
+  </section>
+
+  <section title="Function vs Class">
+    <rule>
+      <statement>Default to service functions; use a class only when dependency injection is required (e.g., a swappable payment gateway).</statement>
+      <rationale>Classes with no DI are fake-OO: they have no state beyond what a function argument could carry. Function-first keeps the call site simple and avoids instantiation ceremony.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Function-style (preferred)
+def activate_user_item(user: "User", item_code: str, *, activated_by: "Admin") -> "Item":
+    """Activate item for user."""
+    from apps.inventory.models import Item
+    item = Item.objects.get(code=item_code)
+    item.user = user
+    item.is_active = True
+    item.save(update_fields=["user", "is_active", "updated_at"])
+    return item
+
+# Class-style only when DI is needed
+class OrderProcessingService:
+    def __init__(self, payment_gateway: PaymentGateway):
+        self.payment_gateway = payment_gateway
+
+    def process(self, order: "Order") -> ProcessingResult: ...
+]]></code>
+    </example>
+  </section>
+
+  <section title="Lazy Imports">
+    <rule>
+      <statement>Import Django models inside the function body or under TYPE_CHECKING to prevent app-loading order errors in large codebases.</statement>
+      <rationale>Django apps load in a defined order. A service module that imports models at top-level triggers an AppRegistryNotReady error if it's imported before its app is ready.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.inventory.models import Item
+    from apps.users.models import User
+
+def activate_item(user: "User", code: str) -> "Item":
+    from apps.inventory.models import Item  # lazy import
+    ...
+]]></code>
+    </example>
+  </section>
+
+  <section title="Keyword-Only Arguments">
+    <rule>
+      <statement>Mark all optional parameters as keyword-only with * in the signature to prevent positional-arg drift across versions.</statement>
+      <rationale>Positional optional parameters can be silently passed in the wrong order by callers; * enforces named call sites that break loudly when signatures change.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def create_order(
+    user: "User",
+    amount: "Decimal",
+    order_type: str,
+    *,
+    item: "Item | None" = None,
+    notify: bool = True,
+) -> "Order":
+    ...
+]]></code>
+    </example>
+  </section>
+</text>

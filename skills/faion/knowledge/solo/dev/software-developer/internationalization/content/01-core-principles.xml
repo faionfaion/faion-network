@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-principles" title="i18n Core Principles: ICU, Keys, Plurals, Never-Concat">
+  <summary>The foundational rules for internationalisation: ICU MessageFormat, stable key naming, locale priority chain, and the never-concatenate rule.</summary>
+
+  <section title="Never-Concatenate Rule">
+    <rule>
+      <statement>Never compose translated text from multiple fragments; one message = one complete sentence with ICU placeholders.</statement>
+      <rationale>Word order differs across languages. "Hello, " + name + "!" becomes "name-san, konnichiwa" in Japanese — fragment concatenation produces grammatically invalid output in most non-English locales.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# WRONG - breaks Japanese, Arabic, German word order
+msg = _("Hello, ") + user.name + _("!")
+]]></code>
+      <note>Fragments cannot be reordered by translators.</note>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# CORRECT - single ICU message with placeholder
+msg = _("Hello, {name}!").format(name=user.name)
+# or via babel ngettext for plurals:
+msg = _n("{count} item", "{count} items", count).format(count=count)
+]]></code>
+    </example>
+  </section>
+
+  <section title="ICU MessageFormat">
+    <rule>
+      <statement>Use ICU MessageFormat for plurals (plural selector) and gender/context (select); never write if n == 1 ... else.</statement>
+      <rationale>English has 2 plural forms; Russian/Ukrainian 3; Arabic 6; Welsh 6; Irish 5. if/else breaks for any language beyond English.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// react-intl ICU message
+'{count, plural, =0 {No items} one {# item} other {# items}}'
+
+// Ukrainian needs 3 forms
+'{count, plural, one {# елемент} few {# елементи} many {# елементів} other {# елемента}}'
+]]></code>
+    </example>
+  </section>
+
+  <section title="Key Naming">
+    <rule>
+      <statement>Use hierarchical stable keys (checkout.button.submit), never English text as the key.</statement>
+      <rationale>When copy is edited, text-as-key breaks all translation lookups in every locale. Hierarchical keys remain stable through copy changes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Locale Priority Chain">
+    <rule>
+      <statement>Resolve locale in this order: explicit user setting &gt; account default &gt; Accept-Language &gt; geo-IP &gt; app default. Persist user choice in DB.</statement>
+      <rationale>Accept-Language alone changes per device on multilingual systems. Persisting user choice ensures consistent experience across sessions and devices.</rationale>
+    </rule>
+  </section>
+
+  <section title="Formatting Rules">
+    <rule>
+      <statement>Format dates, numbers, and currencies through Intl.* (JS) or babel.numbers / babel.dates (Python) — never strftime or string-concat currency symbols.</statement>
+      <rationale>1,234.56 (en-US) vs 1.234,56 (de-DE) vs 1 234,56 (fr-FR). MM/DD/YYYY is local to the US. $amount is wrong for anyone outside USD.</rationale>
+    </rule>
+  </section>
+
+  <antipattern>
+    <description>Translating technical strings (API errors, log messages).</description>
+    <reason>Log aggregation tools and support engineers need English. Translate only user-visible UI.</reason>
+  </antipattern>
+</text>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-oauth-flows" title="OAuth 2.0 Flows and Scope Management">
+  <summary>Authorization Code + PKCE flow for web/mobile apps, Client Credentials for S2S, and scope-based permission enforcement.</summary>
+
+  <section title="Authorization Code with PKCE">
+    <rule>
+      <statement>Use Authorization Code + PKCE for all public clients (SPAs, mobile); never Implicit flow or Password grant — both are deprecated in OAuth 2.1.</statement>
+      <rationale>Implicit flow exposes tokens in the URL fragment (logged by proxies). Password grant defeats the purpose of OAuth (the app never sees the password is a false claim when it collects it directly).</rationale>
+    </rule>
+    <rule>
+      <statement>Always verify the state parameter on the callback to prevent CSRF; verify the PKCE code_verifier to prevent code interception.</statement>
+      <rationale>LLM-generated OAuth callbacks routinely omit state and PKCE verification, making them vulnerable to CSRF and authorization code interception attacks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+1. User clicks "Login with Provider"
+2. Redirect to:
+   https://auth.example.com/authorize?
+     client_id=abc&
+     redirect_uri=https://app.com/callback&
+     response_type=code&
+     scope=read:profile&
+     state=RANDOM_CSRF_TOKEN&
+     code_challenge=BASE64URL(SHA256(code_verifier))&
+     code_challenge_method=S256
+
+3. User authenticates and grants permission
+4. Redirect to: https://app.com/callback?code=AUTH_CODE&state=RANDOM_CSRF_TOKEN
+   (verify state matches stored value)
+
+5. Exchange code for tokens:
+   POST https://auth.example.com/token
+   grant_type=authorization_code&
+   code=AUTH_CODE&
+   code_verifier=ORIGINAL_RANDOM_STRING&
+   client_id=abc&
+   redirect_uri=https://app.com/callback
+]]></code>
+      <note>Use authlib or oauthlib — never hand-roll the redirect dance.</note>
+    </example>
+  </section>
+
+  <section title="Client Credentials (S2S)">
+    <rule>
+      <statement>Use Client Credentials grant for machine-to-machine; store client_secret in env or a secrets manager, never in source code.</statement>
+      <rationale>S2S tokens don't involve user context; a simple POST to the token endpoint with client credentials gives a short-lived access token scoped to the requested permissions.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+curl -X POST https://auth.example.com/token \
+  -d "grant_type=client_credentials" \
+  -d "client_id=${CLIENT_ID}" \
+  -d "client_secret=${CLIENT_SECRET}" \
+  -d "scope=read:users"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Scope Enforcement">
+    <rule>
+      <statement>Define scopes as a registry and enforce per-route via a policy layer; never scatter if user.role checks across handler code.</statement>
+      <rationale>Scattered role checks are easy to forget and hard to audit. A centralised scope checker raises 403 consistently and can be tested independently of business logic.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+SCOPES = {
+    "read:users":   "Read user profiles",
+    "write:users":  "Create and update users",
+    "delete:users": "Delete users",
+    "admin":        "Full administrative access",
+}
+
+def require_scope(required: str):
+    def checker(token: dict = Depends(verify_token)):
+        scopes = token.get("scope", "").split()
+        if required not in scopes and "admin" not in scopes:
+            raise HTTPException(403, f"Scope '{required}' required")
+        return token
+    return checker
+
+@app.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    _: dict = Depends(require_scope("delete:users")),
+):
+    ...
+]]></code>
+    </example>
+  </section>
+</text>

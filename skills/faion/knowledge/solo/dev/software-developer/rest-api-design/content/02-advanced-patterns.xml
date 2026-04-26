@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-advanced-patterns" title="HATEOAS, Pagination, Filtering, Idempotency">
+  <summary>HATEOAS links, cursor vs offset pagination, consistent filter parameters, bulk operation patterns, and idempotency keys for POST.</summary>
+
+  <section title="HATEOAS">
+    <rule>
+      <statement>Include _links only when clients actually follow them; don't invest in full hypermedia if clients ignore links and hardcode paths anyway.</statement>
+      <rationale>HATEOAS is the ideal but rarely justified in practice — most client teams hardcode paths regardless. YAGNI applies; add links only when a client will use them.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "id": "123",
+  "name": "John Doe",
+  "_links": {
+    "self":   { "href": "/users/123" },
+    "orders": { "href": "/users/123/orders" },
+    "update": { "href": "/users/123", "method": "PATCH" }
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Pagination">
+    <rule>
+      <statement>Pick one pagination strategy globally — cursor for streams, offset for finite listings — and use consistent parameter names (?limit, ?cursor or ?offset).</statement>
+      <rationale>Per-endpoint pagination parameters make API clients maintain per-endpoint pagination logic. One strategy, one parameter set, applied everywhere.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+# Offset (finite, sortable):
+GET /users?limit=20&offset=0
+
+# Cursor (stream, stable):
+GET /events?limit=20&cursor=eyJpZCI6MTIzfQ
+]]></code>
+    </example>
+  </section>
+
+  <section title="Filtering and Sorting">
+    <rule>
+      <statement>Use query params for filtering (?status=active) and sorting (?sort=-created_at for descending). Use ?fields=a,b,c for sparse fieldsets.</statement>
+      <rationale>Consistent filter and sort conventions mean SDK generators and LLM agents can infer the pattern from one example and apply it to all endpoints.</rationale>
+    </rule>
+  </section>
+
+  <section title="Idempotency Keys">
+    <rule>
+      <statement>Document and enforce Idempotency-Key headers on POST endpoints that charge, create orders, or send messages; without them retries cause double-creates.</statement>
+      <rationale>Network failures make retries necessary. Without idempotency keys, a client that retried a timed-out order creation will create two identical orders.</rationale>
+    </rule>
+  </section>
+
+  <section title="Sub-resource Depth">
+    <rule>
+      <statement>Limit sub-resource nesting to two levels (/a/{id}/b/{id}); anything deeper is a code smell — flatten with query params.</statement>
+      <rationale>Deep nesting (/a/{id}/b/{id}/c/{id}) creates excessively long, hard-to-maintain URLs. LLM agents readily produce three+ levels of nesting.</rationale>
+    </rule>
+  </section>
+</text>
