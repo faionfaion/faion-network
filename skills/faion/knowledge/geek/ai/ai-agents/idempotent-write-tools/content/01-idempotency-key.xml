@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-idempotency-key" title="Idempotency key contract for write tools">
+  <summary>How the agent and the tool exchange an idempotency key so retries replay instead of duplicating the side effect.</summary>
+
+  <section title="The key contract">
+    <p>An idempotency key is a string (typically a UUID or a deterministic hash of the operation) that the agent generates ONCE per logical write and resends on every retry. The tool stores `key → result` for at least 24h. Second call with same key returns the stored result without running the side effect again.</p>
+
+    <rule testable="true">
+      <statement>Every tool whose `execute` mutates external state MUST accept a required `idempotency_key: str` parameter. The tool MUST persist `key → result` for &gt;= 24h and short-circuit on key hit. Reads MUST NOT take the parameter.</statement>
+      <rationale>Long agent loops retry on transient tool failures; without a key, the retry cannot be distinguished from a fresh call, and the side effect runs twice. Stripe, AWS Lambda, and Square all ship the same contract for the same reason — at-least-once delivery is the default, exactly-once is a key-store away.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+@tool
+def stripe_refund_charge(charge_id: str, amount_cents: int, idempotency_key: str) -> Refund:
+    if hit := key_store.get(idempotency_key):
+        return hit  # replay — no second refund
+    refund = stripe.Refund.create(charge=charge_id, amount=amount_cents,
+                                  idempotency_key=idempotency_key)
+    key_store.set(idempotency_key, refund, ttl_seconds=86400)
+    return refund
+      ]]></code>
+      <note>Replay is cheap, cannot double-refund, and the key is forwarded to Stripe so even the upstream is protected.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+@tool
+def send_email(to: str, subject: str, body: str) -> dict:
+    return mailer.send(to=to, subject=subject, body=body)  # no key, no dedup
+      ]]></code>
+      <note>If the tool times out after the SMTP server accepted the message, the agent will retry and the user gets two emails.</note>
+    </example>
+
+    <antipattern>
+      <description>Generating the idempotency key INSIDE the tool (`key = uuid4()` at the top of `execute`).</description>
+      <reason>The key must be the same across retries. If the tool generates it, every retry gets a fresh key and the dedup never fires.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Adding `idempotency_key` to read tools "for consistency".</description>
+      <reason>Bloats the schema, confuses the model, costs tokens — reads are already safe to repeat.</reason>
+    </antipattern>
+
+    <reference path="templates/idempotent_tool.py">Reference Python implementation: Pydantic schema, key-store, replay semantics.</reference>
+    <reference href="https://docs.stripe.com/api/idempotent_requests">Stripe — Idempotent Requests (canonical contract).</reference>
+    <reference href="https://achan2013.medium.com/ai-agent-anti-patterns-part-2-tooling-observability-and-scale-traps-in-enterprise-agents-42a451ea84ec">Allen Chan — Agent anti-patterns (tooling).</reference>
+  </section>
+</text>

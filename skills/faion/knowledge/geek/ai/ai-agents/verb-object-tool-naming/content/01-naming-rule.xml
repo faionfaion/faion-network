@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-naming-rule" title="verb_object names with namespace prefix">
+  <summary>The concrete rule for tool names: verb_object form, lowercase snake_case, prefixed by service namespace whenever multiple servers expose similar verbs.</summary>
+
+  <section title="The rule">
+    <p>Tool names are part of the prompt. The model selects by name first, description second. A vague or ambiguous name forces the model to read every description on every turn, which collapses selection accuracy as the catalog grows.</p>
+
+    <rule testable="true">
+      <statement>Every tool name MUST be lowercase snake_case in the form `verb_object` (e.g., `create_issue`, `search_files`). When the agent sees tools from more than one service or MCP server, prepend a service namespace (`github_create_issue`, `stripe_refund_charge`).</statement>
+      <rationale>Anthropic's internal evals show prefix and naming schemes meaningfully change selection accuracy; verb_object mirrors CRUD endpoint conventions Claude saw millions of times in pre-training, while namespaces eliminate name collisions inside MCP aggregators.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{ "name": "github_search_issues",  "description": "Search issues in a GitHub repository by query." }
+{ "name": "github_create_issue",   "description": "Open a new issue with title and body." }
+{ "name": "github_close_issue",    "description": "Close an existing issue by number." }
+{ "name": "asana_search_tasks",    "description": "Search Asana tasks by project and assignee." }
+      ]]></code>
+      <note>Verb is unambiguous, object is explicit, namespace eliminates collision with `asana_*` and any future `gitlab_*`.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{ "name": "search",  "description": "Searches things." }
+{ "name": "manage",  "description": "Manages files. Pass action=copy|move|delete." }
+{ "name": "do_thing","description": "Generic helper." }
+      ]]></code>
+      <note>`search` collides with every other server's `search` in a gateway. `manage` hides three verbs behind one name — the model must guess. `do_thing` carries zero signal.</note>
+    </example>
+
+    <antipattern>
+      <description>Polymorphic verb tools that take an `action` enum (`manage_files(action="copy"|"move"|"delete", ...)`).</description>
+      <reason>The model has to read the description and remember which kwargs are valid per action. Atomic verbs (`copy_file`, `move_file`, `delete_file`) are self-describing and have typed schemas the runtime can validate.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Marketing-padded names (`acme_corp_internal_v2_search_documents_advanced`).</description>
+      <reason>Long names burn context budget, dilute the verb, and hurt lexical match with the user's request.</reason>
+    </antipattern>
+
+    <reference path="templates/tool-naming-checklist.txt">Pre-ship checklist for any new tool name.</reference>
+    <reference href="https://www.anthropic.com/engineering/writing-tools-for-agents">Anthropic — Writing tools for agents.</reference>
+    <reference href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools">Claude API — Define tools.</reference>
+  </section>
+</text>

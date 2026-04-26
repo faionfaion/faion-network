@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-loop-policy" title="Mapping recoveryHint to loop policy">
+  <summary>Each recoveryHint enum value corresponds to a specific action the agent loop must take — make this mapping explicit in the runner.</summary>
+
+  <section title="Hint → action table">
+    <p>The whole point of a closed enum is deterministic dispatch. The agent runner inspects `recoveryHint` and routes the next step without involving the model again, saving a turn and avoiding hallucinated retry policies.</p>
+
+    <rule testable="true">
+      <statement>The agent runner MUST map each `recoveryHint` value to exactly one action: `RETRY_LATER` → wait `retry_after_seconds` (clamped 1-300s) and retry the same call up to a per-tool retry budget; `CHECK_INPUT` → return the error to the model with no automatic retry; `TRY_ALTERNATIVE` → return to the model, signal to pick a different tool; `REPORT_TO_USER` → halt the loop, surface to user; `NEEDS_AUTH` → halt the loop, request credentials.</statement>
+      <rationale>Without an explicit mapping, the model invents its own retry policy each turn, often retrying `INVALID_ARGUMENT` (waste) or escalating `RATE_LIMITED` (premature). Explicit dispatch is cheaper and safer.</rationale>
+    </rule>
+
+    <list>
+      <item>`RETRY_LATER` — transient (rate limit, 503, network blip). Runner sleeps and retries automatically.</item>
+      <item>`CHECK_INPUT` — argument problem (validation, bad ID). Send back to model so it can rethink.</item>
+      <item>`TRY_ALTERNATIVE` — this tool cannot serve the request (wrong scope, missing permission). Model picks a different tool.</item>
+      <item>`REPORT_TO_USER` — irrecoverable for the agent (data inconsistency, business rule violation). Halt, surface.</item>
+      <item>`NEEDS_AUTH` — credentials missing or expired. Halt, request via the user-facing flow.</item>
+    </list>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+ACTION = {
+    "RETRY_LATER":      lambda env: ("retry", min(max(env.get("retry_after_seconds", 5), 1), 300)),
+    "CHECK_INPUT":      lambda env: ("send_to_model", None),
+    "TRY_ALTERNATIVE":  lambda env: ("send_to_model", None),
+    "REPORT_TO_USER":   lambda env: ("halt", env),
+    "NEEDS_AUTH":       lambda env: ("auth", env),
+}
+
+def dispatch(error_envelope, retries_left):
+    hint = error_envelope["recoveryHint"]
+    kind, payload = ACTION[hint](error_envelope)
+    if kind == "retry" and retries_left > 0:
+        return ("sleep_then_retry", payload)
+    if kind == "retry":
+        return ("send_to_model", error_envelope)  # exhausted
+    return (kind, payload)
+      ]]></code>
+      <note>Closed enum + closed table. Every hint has exactly one outcome. Retry budget bounds the loop.</note>
+    </example>
+
+    <antipattern>
+      <description>Returning the error envelope to the model on every hint and letting the model decide whether to retry.</description>
+      <reason>Burns tokens, invites hallucinated retry decisions, and bypasses the runner's retry budget — the loop can spin forever.</reason>
+    </antipattern>
+
+    <reference href="https://www.arunbaby.com/ai-agents/0033-error-handling-recovery/">Arun Baby — Error handling and recovery in AI agents.</reference>
+  </section>
+</text>

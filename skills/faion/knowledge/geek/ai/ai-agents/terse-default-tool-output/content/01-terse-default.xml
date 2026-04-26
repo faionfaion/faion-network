@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-terse-default" title="Terse-default tool output with verbosity opt-in">
+  <summary>Default to one-line-per-result summary; expose a `format` parameter so the agent opts into the full payload only when needed.</summary>
+
+  <section title="The output rule">
+    <p>Verbose tool outputs poison every subsequent prompt. The default shape should be the smallest representation that still lets the agent decide what to do next — usually a count plus IDs plus one summary line per result. Full payloads stay one parameter away.</p>
+
+    <rule testable="true">
+      <statement>Any tool whose worst-case output exceeds ~500 tokens MUST default to a compact shape (summary line, table of IDs, top-N) AND accept a `format: Literal["summary","full"]` (or equivalent `verbosity` enum) parameter so the agent can opt into raw payloads on demand.</statement>
+      <rationale>SkillReducer (arXiv 2603.29919) compressed tool descriptions and bodies by ~40% and observed a 2.8% absolute task-quality LIFT — verbose context distracts the model and inflates per-call cost across the rest of the loop. Compact-by-default plus opt-in verbose preserves correctness without the bloat.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 20,
+                format: Literal["summary","full"] = "summary") -> str | list[dict]:
+    rows = es.search(query, size=limit)
+    if format == "summary":
+        # one line per hit, ~30 tokens total
+        return "\n".join(f"{r.ts} [{r.level}] {r.msg[:80]}" for r in rows)
+    return [r.dict() for r in rows]   # full JSON only when asked
+      ]]></code>
+      <note>Default mode burns ~30 tokens/hit; agent escalates to `format="full"` only after a summary points it at the row that matters.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+@tool
+def search_logs(query: str, limit: int = 50) -> list[dict]:
+    return [r.dict() for r in es.search(query, size=limit)]
+    # 50 hits * ~80 fields = 5-15k tokens every call
+      ]]></code>
+      <note>Every call dumps full rows into context, even when the agent only needs timestamps to plan.</note>
+    </example>
+
+    <antipattern>
+      <description>Summary mode that drops the IDs the agent needs to escalate to full mode.</description>
+      <reason>If the summary is not pointable, the agent has to re-search to get the same row. Always include the primary key in the terse shape.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Implicit truncation — silently cutting output to N tokens without telling the agent.</description>
+      <reason>Model thinks it saw all results. Always return an explicit `truncated: true` flag plus the count it would have returned.</reason>
+    </antipattern>
+
+    <reference path="templates/search_tool.py">Reference search tool with summary/full modes.</reference>
+    <reference href="https://arxiv.org/html/2603.29919v1">SkillReducer — compression improves agent task quality.</reference>
+    <reference href="https://medium.com/@shamsul.arefin/building-an-ai-agent-with-mcp-code-execution-from-confusion-to-clarity-6b13fccc8c4b">Shamsul Arefin — MCP code execution: from confusion to clarity.</reference>
+  </section>
+</text>

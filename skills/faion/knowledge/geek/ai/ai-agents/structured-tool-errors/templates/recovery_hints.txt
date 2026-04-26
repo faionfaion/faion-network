@@ -1,0 +1,29 @@
+recoveryHint enum — closed vocabulary
+=====================================
+
+RETRY_LATER       Transient upstream issue. Runner sleeps `retry_after_seconds`
+                  (clamped 1-300) and retries up to per-tool retry budget.
+
+CHECK_INPUT       Argument-level problem (validation failure, missing ID,
+                  malformed query). Runner returns envelope to the model so
+                  it can reconsider — NO automatic retry.
+
+TRY_ALTERNATIVE   This tool cannot serve the request (wrong scope, missing
+                  permission, feature not enabled). Runner returns envelope
+                  to the model and prompts it to pick a different tool.
+
+REPORT_TO_USER    Irrecoverable for the agent (data inconsistency, business
+                  rule violation, hard limit). Runner HALTS the loop and
+                  surfaces the envelope to the user.
+
+NEEDS_AUTH        Credentials missing, expired, or insufficient. Runner
+                  HALTS the loop and triggers the user-facing auth flow.
+
+Picking the hint
+================
+- 401/403          → NEEDS_AUTH
+- 400 / schema bad → CHECK_INPUT
+- 404 / wrong tool → TRY_ALTERNATIVE
+- 429 / 503        → RETRY_LATER (with retry_after_seconds)
+- 409 / conflict   → REPORT_TO_USER (data state needs human decision)
+- unknown 500      → RETRY_LATER on first try, REPORT_TO_USER after budget
