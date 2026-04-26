@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-structure" title="GitLab CI/CD Pipeline Structure">
+  <summary>Stage/job organization, DAG via needs:, caching vs artifacts, workflow rules, and performance patterns.</summary>
+
+  <section title="Pipeline Building Blocks">
+    <rule>
+      <statement>Use rules: instead of only/except for all conditional job execution.</statement>
+      <rationale>only/except is deprecated and cannot combine conditions. rules: supports if/changes/exists combinators and per-rule variable overrides.</rationale>
+    </rule>
+    <rule>
+      <statement>Use needs: to form a DAG — jobs start when their specific dependencies finish, not after the whole stage finishes.</statement>
+      <rationale>Stage-based execution forces serial stage gates. needs: allows test and lint to run in parallel after build, cutting wall-clock time by 30-60%.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep compiled outputs in artifacts, keep dependency folders in cache.</statement>
+      <rationale>Artifacts are guaranteed delivery between jobs. Cache is best-effort and shared across pipelines. Mixing them causes missing dist/ in deploy jobs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Workflow and Default Rules">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_MERGE_REQUEST_TITLE =~ /^Draft:/
+      when: never
+
+default:
+  image: node:22-alpine
+  tags: [docker]
+  retry:
+    max: 2
+    when: [runner_system_failure, stuck_or_timeout_failure]
+  interruptible: true
+]]></code>
+      <note>workflow rules prevent duplicate pipelines for push+MR events. Default retry covers transient runner failures.</note>
+    </example>
+  </section>
+
+  <section title="Caching Strategy">
+    <rule>
+      <statement>Scope cache keys with a lockfile hash to invalidate when dependencies change.</statement>
+      <rationale>A stale cache with the wrong package versions causes intermittent test failures that are hard to reproduce.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - node_modules/
+    - .npm/
+  policy: pull-push
+]]></code>
+      <note>policy: pull-push updates cache after install. Use policy: pull in downstream jobs that only read.</note>
+    </example>
+    <antipattern>
+      <description>Caching dist/ or build/ output directories.</description>
+      <reason>Built assets change every pipeline. Cache miss is expensive (re-download on every job). Use artifacts: paths: [dist/] instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Performance Patterns">
+    <rule>
+      <statement>Parallelize independent jobs using needs: [] or needs: [specific-job] rather than stage ordering.</statement>
+      <rationale>With stage ordering, lint waits for all build jobs. With needs: lint can run in parallel with other test jobs as soon as its single dependency finishes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+build:
+  stage: build
+  script: [npm ci, npm run build]
+  artifacts:
+    paths: [dist/]
+    expire_in: 1 day
+
+unit-test:
+  stage: test
+  needs: [build]
+  script: [npm run test:unit -- --coverage]
+
+lint:
+  stage: test
+  needs: [build]
+  script: [npm run lint]
+  # runs in parallel with unit-test
+]]></code>
+    </example>
+    <rule>
+      <statement>Set expire_in on all artifacts. Use 1 day for CI intermediates, longer only for release artifacts.</statement>
+      <rationale>Without expiry, artifacts accumulate indefinitely. GitLab default is 30 days which fills storage.</rationale>
+    </rule>
+    <reference path="templates/pipeline-full.yml">Complete production pipeline combining all patterns</reference>
+  </section>
+</text>

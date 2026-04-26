@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-production-config" title="Kubernetes Production Configuration">
+  <summary>Resource requests/limits, health probes, security context hardening, PodDisruptionBudget, and image policy.</summary>
+
+  <section title="Resource Requests and Limits">
+    <rule>
+      <statement>Always set resource requests AND limits on every container; base requests on P95 observed usage, not guesses.</statement>
+      <rationale>Without requests, the scheduler cannot make correct node placement decisions. Without limits, a runaway process can consume all node memory and evict neighboring pods. Requests set to P95 usage prevent 99.94% over-provisioning seen in typical clusters.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"  # consider omitting CPU limit to avoid throttling
+]]></code>
+      <note>CPU limits cause throttling even when node capacity is available. Many teams omit CPU limits and rely on requests for scheduling. Memory limits remain critical — OOMKill is a hard boundary.</note>
+    </example>
+    <antipattern>
+      <description>Setting requests equal to limits (Guaranteed QoS) for all pods.</description>
+      <reason>Guaranteed QoS is appropriate for latency-sensitive workloads. For most workloads, Burstable QoS (requests lower than limits) allows better bin-packing and handles traffic spikes without OOMKill.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Health Probes">
+    <rule>
+      <statement>Configure all three probes: startupProbe for slow-starting apps, readinessProbe to gate traffic, livenessProbe to restart deadlocked containers.</statement>
+      <rationale>Without startupProbe, livenessProbe can kill a container during initialization before it is ready. Without readinessProbe, load balancers send traffic to pods that are not yet serving. Without livenessProbe, deadlocked processes accumulate.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  failureThreshold: 30  # up to 5 minutes to start
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  failureThreshold: 3
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 15
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Context">
+    <rule>
+      <statement>Every container must have all four security context fields set: runAsNonRoot: true, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities.drop: ["ALL"].</statement>
+      <rationale>These four together prevent the most common container escape paths. runAsNonRoot prevents trivial UID 0 exploitation. readOnlyRootFilesystem prevents persistence. drop ALL capabilities removes Linux kernel attack surface. allowPrivilegeEscalation: false prevents setuid escalation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+]]></code>
+    </example>
+  </section>
+
+  <section title="High Availability and Disruption">
+    <rule>
+      <statement>Define a PodDisruptionBudget for every Deployment with more than one replica; set minAvailable to at least 1 (or maxUnavailable to 1 for larger deployments).</statement>
+      <rationale>Without a PDB, a node drain during maintenance can remove all replicas simultaneously, causing a complete outage. PDB ensures at least one replica stays healthy during voluntary disruptions.</rationale>
+    </rule>
+    <rule>
+      <statement>Never use latest as image tag in production; pin to a specific immutable tag (digest or version).</statement>
+      <rationale>latest is mutable — the image it points to can change between pod restarts. A node restart can pull a different image version than the currently running pods, causing split-brain versions in a Deployment.</rationale>
+    </rule>
+    <reference path="templates/deployment-secure.yaml">Production Deployment with full security context, probes, PDB</reference>
+  </section>
+</text>

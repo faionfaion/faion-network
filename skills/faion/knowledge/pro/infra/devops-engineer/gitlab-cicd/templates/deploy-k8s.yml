@@ -1,0 +1,22 @@
+# GitLab CI Kubernetes rolling deploy via kubectl
+.deploy-k8s:
+  stage: deploy
+  image: bitnami/kubectl:${KUBERNETES_VERSION:-1.29}
+  before_script:
+    - |
+      kubectl config set-cluster k8s \
+        --server="$KUBE_URL" \
+        --certificate-authority="$KUBE_CA_PEM_FILE"
+      kubectl config set-credentials gitlab --token="$KUBE_TOKEN"
+      kubectl config set-context default \
+        --cluster=k8s \
+        --user=gitlab \
+        --namespace=$KUBE_NAMESPACE
+      kubectl config use-context default
+  script:
+    - kubectl set image deployment/$DEPLOYMENT_NAME $CONTAINER_NAME=$IMAGE_TAG
+    - kubectl rollout status deployment/$DEPLOYMENT_NAME --timeout=5m
+
+# Variables required:
+# KUBE_URL, KUBE_CA_PEM_FILE, KUBE_TOKEN, KUBE_NAMESPACE
+# DEPLOYMENT_NAME, CONTAINER_NAME, IMAGE_TAG

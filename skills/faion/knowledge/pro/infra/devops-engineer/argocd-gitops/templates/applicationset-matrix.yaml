@@ -1,0 +1,92 @@
+# ApplicationSet with Matrix generator
+# Generates one Application per (cluster × environment × app) combination
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: all-services
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  generators:
+    - matrix:
+        generators:
+          # Generator 1: clusters from ArgoCD cluster secrets
+          - clusters:
+              selector:
+                matchLabels:
+                  environment: production  # only production clusters
+
+          # Generator 2: apps from Git directory listing
+          - git:
+              repoURL: https://github.com/org/gitops-repo.git
+              revision: HEAD
+              directories:
+                - path: apps/*/base      # discovers app directories
+              template:
+                metadata: {}
+                spec:
+                  source:
+                    repoURL: ""
+                    targetRevision: ""
+                    path: ""
+
+  template:
+    metadata:
+      name: "{{.path.basenameNormalized}}-{{.name}}"  # app-clustername
+      labels:
+        app: "{{.path.basenameNormalized}}"
+        cluster: "{{.name}}"
+    spec:
+      project: production
+      source:
+        repoURL: https://github.com/org/gitops-repo.git
+        targetRevision: HEAD
+        path: "apps/{{.path.basenameNormalized}}/overlays/{{.metadata.labels.environment}}"
+      destination:
+        server: "{{.server}}"
+        namespace: "{{.path.basenameNormalized}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+
+---
+# Simpler: List generator for explicit environment promotion
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: myapp-environments
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - environment: staging
+            cluster: https://staging.k8s.example.com
+            namespace: staging
+            revision: HEAD
+          - environment: production
+            cluster: https://prod.k8s.example.com
+            namespace: production
+            revision: v1.2.3   # pinned tag for production
+
+  template:
+    metadata:
+      name: "myapp-{{environment}}"
+    spec:
+      project: "{{environment}}"
+      source:
+        repoURL: https://github.com/org/gitops-repo.git
+        targetRevision: "{{revision}}"
+        path: "apps/myapp/overlays/{{environment}}"
+      destination:
+        server: "{{cluster}}"
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

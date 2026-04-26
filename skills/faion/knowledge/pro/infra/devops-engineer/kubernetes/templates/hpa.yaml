@@ -1,0 +1,90 @@
+# Horizontal Pod Autoscaler — CPU + memory + custom metric scaling
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp
+  namespace: production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp
+
+  minReplicas: 3     # never below 3 for HA across zones
+  maxReplicas: 20
+
+  metrics:
+    # Scale on CPU utilization (most common)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70   # target 70% of requests.cpu
+
+    # Scale on memory utilization
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+    # Scale on custom metric from Prometheus (via prometheus-adapter)
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "100"       # 100 RPS per pod
+
+    # Scale on external metric (e.g., SQS queue depth)
+    # - type: External
+    #   external:
+    #     metric:
+    #       name: sqs_queue_depth
+    #       selector:
+    #         matchLabels:
+    #           queue: myapp-jobs
+    #     target:
+    #       type: AverageValue
+    #       averageValue: "50"
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # wait 5 min before scaling down
+      policies:
+        - type: Percent
+          value: 25                    # remove at most 25% of pods per minute
+          periodSeconds: 60
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+      selectPolicy: Min                # use the most conservative policy
+
+    scaleUp:
+      stabilizationWindowSeconds: 0   # scale up immediately
+      policies:
+        - type: Percent
+          value: 100                   # can double pod count per minute
+          periodSeconds: 60
+        - type: Pods
+          value: 4                     # or add 4 pods per minute
+          periodSeconds: 60
+      selectPolicy: Max                # use the most aggressive scale-up
+
+---
+# PodDisruptionBudget — required alongside HPA
+# Ensures HPA scale-down and node drains don't break availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: myapp
+  namespace: production
+spec:
+  minAvailable: 2    # always keep at least 2 pods running
+  # OR: maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: myapp

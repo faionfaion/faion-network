@@ -1,0 +1,64 @@
+You are a Kubernetes production-readiness reviewer. Audit the Kubernetes manifests or Helm chart below and identify all issues.
+
+Context:
+- Manifests/chart: {{PASTE_YAML_HERE}}
+- Cluster type: {{GKE_AUTOPILOT | GKE_STANDARD | EKS | AKS | VANILLA}}
+- Environment: {{production | staging | development}}
+- Ingress controller: {{nginx | traefik | none}}
+- Service mesh: {{istio | linkerd | none}}
+
+Audit against these categories. For each violation: state the field path, the problem, and the fix.
+
+CATEGORY 1: Resource Management (CRITICAL if missing)
+- Every container must have requests.cpu, requests.memory
+- Every container must have limits.cpu, limits.memory
+- Requests should match expected baseline; limits should be 2-4x requests for burstable
+- Check: LimitRange exists in namespace to catch unset resources?
+
+CATEGORY 2: Health Probes (CRITICAL if missing)
+- All 3 probes required: startupProbe, livenessProbe, readinessProbe
+- startupProbe: failureThreshold × periodSeconds must exceed max startup time
+- livenessProbe: must NOT call external dependencies (only self-health)
+- readinessProbe: gates traffic; should check DB connectivity and dependencies
+- httpGet preferred over exec (exec forks a process each check)
+
+CATEGORY 3: Security Context (CRITICAL if missing)
+- Pod-level: runAsNonRoot: true, seccompProfile.type: RuntimeDefault
+- Container-level: allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities.drop: [ALL]
+- serviceAccountName: explicit (not "default")
+- automountServiceAccountToken: false (unless the app uses K8s API)
+- No privileged: true unless absolutely required with documented justification
+
+CATEGORY 4: Availability
+- replicas >= 2 for staging; >= 3 for production
+- PodDisruptionBudget exists for the Deployment?
+- topologySpreadConstraints across zones?
+- RollingUpdate with maxUnavailable: 0 for zero-downtime?
+- terminationGracePeriodSeconds sufficient for graceful shutdown?
+
+CATEGORY 5: Image Hygiene
+- No :latest tag — always pinned semver or SHA digest
+- imagePullPolicy: IfNotPresent (not Always unless using :latest)
+- Image from trusted registry?
+- Multi-stage build reducing image size and attack surface?
+
+CATEGORY 6: Network Policies
+- NetworkPolicy exists for this namespace?
+- default-deny-all applied?
+- Ingress only from necessary sources?
+- Egress restricted to needed destinations?
+
+CATEGORY 7: Secrets and Config
+- No plaintext secrets in env vars (should be secretKeyRef or envFrom secretRef)
+- No secrets in ConfigMap
+- Secret created by ESO/Sealed Secrets/CSI driver (not kubectl create secret)?
+- RBAC: ServiceAccount has minimum necessary permissions?
+
+CATEGORY 8: Observability
+- Prometheus scrape annotations or ServiceMonitor?
+- Structured logging (JSON)?
+- /metrics endpoint exposed?
+- Tracing headers propagated?
+
+For each category: PASS / FAIL / WARNING with specific line references.
+Summary: production readiness score and top 5 blocking issues.

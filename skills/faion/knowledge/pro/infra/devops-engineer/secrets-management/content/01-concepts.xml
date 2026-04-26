@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts" title="Secrets Management Concepts">
+  <summary>Secret lifecycle, tool selection, dynamic vs static secrets, and JIT access patterns for 2025-2026.</summary>
+
+  <section title="Secret Lifecycle">
+    <rule>
+      <statement>Every secret must have an owner, a rotation schedule, and an audit log — secrets without these three properties are unmanaged liabilities.</statement>
+      <rationale>Unrotated secrets that are breached remain valid indefinitely. Without an audit log, breach investigation cannot determine when and which secrets were accessed.</rationale>
+    </rule>
+    <list>
+      <item>Creation: generate with sufficient entropy (min 128-bit); never use predictable values</item>
+      <item>Storage: encrypted at rest in a secrets backend; never in code, .env files, or ConfigMaps</item>
+      <item>Access: RBAC with audit logging; each service gets its own identity, not shared credentials</item>
+      <item>Rotation: automated 30-day max cycle; applications must handle rotation without restart</item>
+      <item>Revocation: immediate revocation capability; test the revocation path before production</item>
+    </list>
+  </section>
+
+  <section title="Dynamic vs Static Secrets">
+    <rule>
+      <statement>Prefer dynamic secrets (Vault database engine, cloud IAM short-lived tokens) over static secrets wherever the target system supports it.</statement>
+      <rationale>Dynamic secrets are issued per-request with a short TTL (minutes to hours). A compromised dynamic credential expires before an attacker can typically exploit it. Static secrets are valid indefinitely until manually rotated.</rationale>
+    </rule>
+    <example type="good">
+      <note>Vault database secrets engine: application requests PostgreSQL credentials, Vault creates a role with 15-minute TTL, credentials are valid only for that request lifecycle. On expiry, the role is automatically revoked.</note>
+    </example>
+    <example type="bad">
+      <note>Shared DATABASE_URL in .env file with a password that was last rotated 18 months ago and is used by 5 different services.</note>
+    </example>
+  </section>
+
+  <section title="Tool Selection">
+    <rule>
+      <statement>Use HashiCorp Vault for multi-cloud or hybrid environments; use the cloud provider's native secrets service (AWS Secrets Manager, GCP Secret Manager, Azure Key Vault) for single-cloud workloads.</statement>
+      <rationale>Vault adds operational overhead (HA cluster, unseal management, upgrades). If all workloads are in AWS, the operational simplicity of AWS Secrets Manager outweighs Vault's cross-cloud capabilities.</rationale>
+    </rule>
+    <list>
+      <item>HashiCorp Vault: multi-cloud, dynamic secrets, complex PKI, regulated industries</item>
+      <item>AWS Secrets Manager: AWS-native, managed rotation for RDS/Redshift, pay-per-secret</item>
+      <item>External Secrets Operator: Kubernetes bridge — syncs any backend into K8s Secrets</item>
+      <item>SOPS: GitOps workflows, encrypts files in repos, no runtime server required</item>
+    </list>
+  </section>
+
+  <section title="CI/CD Secrets">
+    <rule>
+      <statement>Use OIDC-based authentication for CI/CD pipelines (GitHub Actions id-token, GitLab CI JWT) to eliminate long-lived service account keys entirely.</statement>
+      <rationale>Service account keys stored in CI secrets rotate infrequently and are accessible to all pipeline users. OIDC tokens are issued per-run, expire in 15 minutes, and are scoped to the specific repository and branch.</rationale>
+    </rule>
+    <antipattern>
+      <description>Storing cloud provider access keys (AWS_ACCESS_KEY_ID, GCP_SA_KEY) as CI/CD secrets.</description>
+      <reason>Long-lived keys exposed in logs or to pipeline contributors grant persistent access. OIDC eliminates this risk entirely with no key to steal.</reason>
+    </antipattern>
+  </section>
+</text>

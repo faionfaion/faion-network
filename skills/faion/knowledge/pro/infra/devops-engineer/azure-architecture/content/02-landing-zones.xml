@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-landing-zones" title="Azure Landing Zones and Governance">
+  <summary>Eight design areas, management group hierarchy, policy-driven governance, and IaC tooling recommendations.</summary>
+
+  <section title="Landing Zone Design Areas">
+    <p>Eight design areas must be addressed before the first workload deploys. Retrofitting governance onto running workloads is exponentially harder.</p>
+    <list>
+      <item>1. Azure Billing and Entra Tenant — tenant structure, EA/MCA billing, cost management</item>
+      <item>2. Identity and Access Management — Entra ID, RBAC, PIM, Conditional Access</item>
+      <item>3. Management Groups and Subscriptions — resource hierarchy, subscription democratization</item>
+      <item>4. Network Topology and Connectivity — hub-spoke or vWAN, Private Link, DNS</item>
+      <item>5. Security — Microsoft Defender, security policies, threat protection</item>
+      <item>6. Management — monitoring, backup, patching, update management</item>
+      <item>7. Governance — Azure Policy, compliance, tagging standards</item>
+      <item>8. Platform Automation and DevOps — IaC, CI/CD for platform team</item>
+    </list>
+  </section>
+
+  <section title="Management Group Hierarchy">
+    <rule>
+      <statement>Limit management group hierarchy depth to 3-4 levels; assign Azure Policy at management group level, not subscription level.</statement>
+      <rationale>Deep hierarchies are hard to reason about and debug policy inheritance. Management group assignment means policies apply automatically to all current and future subscriptions in the group.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Tenant Root Group
+├── Platform
+│   ├── Identity       (Entra ID, certificate services)
+│   ├── Management     (monitoring, logging, automation)
+│   └── Connectivity   (hub VNet, firewalls, DNS)
+├── Landing Zones
+│   ├── Corp           (internal workloads, no internet ingress)
+│   └── Online         (internet-facing apps)
+├── Sandbox            (dev/test, relaxed policy)
+└── Decommissioned     (quarantine before deletion)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Policy-Driven Governance">
+    <rule>
+      <statement>Use Azure Policy Initiatives (groups of policies) rather than individual policies for governance themes — easier to audit and assign.</statement>
+      <rationale>Individual policy assignment creates hundreds of separate assignments. An Initiative bundles related policies (e.g., all security hardening policies) into a single assignable unit with one compliance dashboard.</rationale>
+    </rule>
+    <list>
+      <item>Prefer built-in policies before writing custom — Microsoft maintains them for new resource types</item>
+      <item>Enable remediation tasks for policies with deployIfNotExists effect</item>
+      <item>Use exemptions sparingly; always set an expiration date on exemptions</item>
+      <item>Deploy policies via CI/CD pipeline — policy-as-code is auditable and reversible</item>
+    </list>
+  </section>
+
+  <section title="IaC Tooling">
+    <rule>
+      <statement>Use Azure Verified Modules (AVM) for new Azure deployments; the ESLZ Terraform module is deprecated as of August 2026 and should not be used for new projects.</statement>
+      <rationale>AVM modules are authored and maintained by Microsoft with security best practices, semantic versioning, and compatibility guarantees. ESLZ is end-of-life and will not receive security updates.</rationale>
+    </rule>
+    <list>
+      <item>AVM + Bicep: preferred for Azure-only projects; native Azure toolchain, no state management</item>
+      <item>Terraform + AzureRM provider: use for multi-cloud IaC or teams with existing Terraform expertise</item>
+      <item>ALZ Accelerator: automated Landing Zone deployment via GitHub or Azure DevOps pipelines</item>
+      <item>Bicep vs ARM: Bicep is the abstraction layer over ARM; never write ARM JSON directly</item>
+    </list>
+    <reference path="templates/management-group-hierarchy.md">Standard management group tree template</reference>
+  </section>
+</text>

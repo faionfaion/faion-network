@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-security-deploy" title="GitLab CI/CD Security and Deployment">
+  <summary>Built-in security scan templates, protected variables, environments with review apps, and Docker/Kubernetes deploy patterns.</summary>
+
+  <section title="Security Scanning">
+    <rule>
+      <statement>Include GitLab security templates via include: rather than writing custom SAST/DAST jobs.</statement>
+      <rationale>GitLab-maintained templates stay updated with new vulnerability signatures. Custom jobs require ongoing maintenance.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+container_scanning:
+  variables:
+    CS_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+]]></code>
+      <note>Override specific variables to point container scanning at your built image rather than the default.</note>
+    </example>
+    <rule>
+      <statement>Mark all CI/CD secrets as Protected AND Masked in GitLab variable settings.</statement>
+      <rationale>Protected limits the variable to protected branches/tags. Masked prevents the value from appearing in job logs. Both are required; neither alone is sufficient.</rationale>
+    </rule>
+  </section>
+
+  <section title="Environments and Review Apps">
+    <rule>
+      <statement>Define environment: name and url on every deploy job, and pair with an on_stop job.</statement>
+      <rationale>Environments enable deployment tracking, approval workflows, and rollback. Without on_stop, review namespaces accumulate and consume cluster resources.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+deploy-staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.example.com
+    on_stop: stop-staging
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+review-app:
+  stage: deploy
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    url: https://$CI_MERGE_REQUEST_IID.review.example.com
+    on_stop: stop-review
+    auto_stop_in: 1 week
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+stop-review:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    action: stop
+  script:
+    - kubectl delete namespace review-$CI_MERGE_REQUEST_IID --ignore-not-found
+  when: manual
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+]]></code>
+    </example>
+  </section>
+
+  <section title="Docker and Kubernetes Deployment">
+    <rule>
+      <statement>Enable Docker BuildKit and use --cache-from with the latest tag to speed up image builds.</statement>
+      <rationale>Without layer cache reuse, every build starts from scratch. BuildKit parallelizes layer builds and enables cache import/export.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+docker-build:
+  stage: build
+  image: docker:26
+  services:
+    - docker:26-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_BUILDKIT: "1"
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build
+        --cache-from $IMAGE_LATEST
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --tag $IMAGE_TAG --tag $IMAGE_LATEST .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+]]></code>
+    </example>
+    <rule>
+      <statement>Use when: manual for production deployments; use automated sync for staging.</statement>
+      <rationale>Production requires human gate. Staging should be continuously deployed to catch integration issues early.</rationale>
+    </rule>
+    <reference path="templates/deploy-k8s.yml">Kubernetes rolling deploy via kubectl</reference>
+    <reference path="templates/deploy-helm.yml">Helm upgrade/install deploy job</reference>
+  </section>
+</text>

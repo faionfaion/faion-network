@@ -1,0 +1,99 @@
+# ArgoCD AppProject — RBAC boundary per environment/team
+# Projects restrict: source repos, destinations, resource kinds, cluster resources
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: production
+  namespace: argocd
+spec:
+  description: "Production environment — platform team only"
+
+  # Allowed source repositories (wildcard supported but not recommended)
+  sourceRepos:
+    - https://github.com/org/gitops-repo.git
+    - https://github.com/org/helm-charts.git
+
+  # Allowed destination clusters and namespaces
+  destinations:
+    - server: https://prod.k8s.example.com
+      namespace: production
+    - server: https://prod.k8s.example.com
+      namespace: monitoring     # allow deploying monitoring stack
+
+  # Cluster-scoped resources this project may create
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+
+  # Namespace-scoped resources this project may create (empty = all allowed)
+  # Use blacklist instead to block dangerous types:
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota   # prevent apps from overriding quota
+
+  # Sync windows: allow sync only during business hours + maintenance window
+  syncWindows:
+    - kind: allow
+      schedule: "0 8 * * 1-5"   # weekdays 08:00
+      duration: 10h              # until 18:00
+      applications:
+        - "*"
+    - kind: allow
+      schedule: "0 2 * * 6"     # Saturday 02:00 maintenance
+      duration: 4h
+      applications:
+        - "*"
+      manualSync: true           # still allow manual sync during deny windows
+
+  # RBAC roles within this project
+  roles:
+    - name: platform-team
+      description: "Full sync control for platform team"
+      policies:
+        - p, proj:production:platform-team, applications, *, production/*, allow
+      groups:
+        - org:platform-engineers
+
+    - name: app-team-readonly
+      description: "Read-only access for app developers"
+      policies:
+        - p, proj:production:app-team-readonly, applications, get, production/*, allow
+        - p, proj:production:app-team-readonly, applications, sync, production/myapp-*, allow
+      groups:
+        - org:developers
+
+  # Orphaned resource monitoring: alert on K8s resources not tracked by any Application
+  orphanedResources:
+    warn: true
+    ignore:
+      - group: ""
+        kind: ConfigMap
+        name: kube-root-ca.crt
+
+---
+# Staging project — less restricted
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: staging
+  namespace: argocd
+spec:
+  description: "Staging environment — all developers can sync"
+  sourceRepos:
+    - "*"   # allow any repo in staging
+  destinations:
+    - server: https://staging.k8s.example.com
+      namespace: "*"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  roles:
+    - name: developers
+      policies:
+        - p, proj:staging:developers, applications, *, staging/*, allow
+      groups:
+        - org:developers

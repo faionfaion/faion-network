@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strategy" title="Backup Strategy: 3-2-1-1-0 and Tool Selection">
+  <summary>The 3-2-1-1-0 rule, immutable storage implementation, RPO/RTO tiers, and tool selection by backup target.</summary>
+
+  <section title="3-2-1-1-0 Rule">
+    <rule>
+      <statement>Implement the 3-2-1-1-0 rule: 3 copies, 2 media types, 1 offsite, 1 immutable, 0 verified recovery errors.</statement>
+      <rationale>Traditional 3-2-1 does not protect against ransomware because all three copies can be on network-reachable storage. The immutable copy cannot be encrypted or deleted even by admin credentials. The zero-error component mandates automated restore verification — backups that have never been tested are not backups.</rationale>
+    </rule>
+    <example type="good">
+      <note>Example 3-2-1-1-0 layout for a production PostgreSQL database: Copy 1 = local NAS (disk). Copy 2 = AWS S3 Standard-IA (cloud). Copy 3 = S3 bucket with Object Lock COMPLIANCE mode, 90-day retention (immutable). Zero errors = automated pg_restore to isolated test DB nightly.</note>
+    </example>
+  </section>
+
+  <section title="Immutable Storage Options">
+    <rule>
+      <statement>Use COMPLIANCE mode (not GOVERNANCE) for S3 Object Lock when regulatory requirements apply — COMPLIANCE cannot be overridden even by the root account.</statement>
+      <rationale>GOVERNANCE mode allows users with s3:BypassGovernanceRetention permission to delete objects. COMPLIANCE mode is truly immutable for the retention period.</rationale>
+    </rule>
+    <list>
+      <item>AWS S3 Object Lock COMPLIANCE — cannot be deleted by any IAM principal during retention</item>
+      <item>Azure Immutable Blob Storage WORM policy — time-based or legal hold</item>
+      <item>GCP Bucket Lock retention policy — bucket-level immutability</item>
+      <item>Physical WORM tape — highest security, slowest recovery</item>
+    </list>
+  </section>
+
+  <section title="RPO and RTO Tiers">
+    <rule>
+      <statement>Define RPO and RTO per data class before selecting backup frequency — the numbers drive tool choice, not the reverse.</statement>
+      <rationale>A team that chooses daily backups and then discovers their RPO is 1 hour must redesign the entire backup system. Start with business requirements.</rationale>
+    </rule>
+    <list>
+      <item>Critical (RPO &lt; 1h, RTO &lt; 1h): continuous replication or WAL streaming + frequent base backups</item>
+      <item>Important (RPO &lt; 4h, RTO &lt; 4h): hourly snapshots + incremental</item>
+      <item>Standard (RPO &lt; 24h, RTO &lt; 24h): daily full + transaction logs</item>
+      <item>Archive (RPO &lt; 1 week, RTO &lt; 1 week): weekly full to cold storage</item>
+    </list>
+  </section>
+
+  <section title="Tool Selection by Target">
+    <list>
+      <item>PostgreSQL: pg_basebackup + WAL archiving for PITR; pg_dump for logical backups</item>
+      <item>MySQL/MariaDB: XtraBackup for hot physical backups; mysqldump for logical</item>
+      <item>MongoDB: mongodump --oplog for PITR on replica sets</item>
+      <item>File systems: Restic (deduplication + encryption, multi-backend) or BorgBackup (space-efficient archives)</item>
+      <item>Kubernetes: Velero (cluster-level, PVC snapshots) or Kasten K10 (enterprise app-aware)</item>
+      <item>Cloud-native: AWS Backup, Azure Backup, GCP Cloud Backup for managed service integration</item>
+    </list>
+  </section>
+</text>

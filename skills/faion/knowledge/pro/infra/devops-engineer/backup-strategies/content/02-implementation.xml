@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="Backup Implementation Patterns">
+  <summary>Concrete implementation patterns for PostgreSQL PITR, Restic, Velero, and automated verification.</summary>
+
+  <section title="PostgreSQL Point-in-Time Recovery">
+    <rule>
+      <statement>Configure WAL archiving in addition to base backups to enable point-in-time recovery; base backups alone only restore to backup completion time.</statement>
+      <rationale>A database corrupted at 14:30 with a base backup from 02:00 and 12 hours of WAL archives can be restored to 14:29 — 1 minute of data loss. Without WAL, the loss is 12.5 hours.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# postgresql.conf settings for WAL archiving
+archive_mode = on
+archive_command = 'aws s3 cp %p s3://backup-bucket/wal/%f'
+archive_timeout = 300   # archive WAL at most every 5 minutes
+
+# Base backup (streaming WAL during backup)
+pg_basebackup \
+  -h localhost -U replication \
+  -D /backup/base_$(date +%Y%m%d_%H%M%S) \
+  -Ft -z -P -X stream --checkpoint=fast
+]]></code>
+    </example>
+  </section>
+
+  <section title="Restic File Backup">
+    <rule>
+      <statement>Always run restic check after backup to verify repository integrity; silent corruption is the failure mode Restic is designed to detect.</statement>
+      <rationale>Restic uses content-addressed storage with SHA-256 hashes. check verifies all data blobs are present and uncorrupted. Omitting it defeats the integrity guarantee.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+export RESTIC_REPOSITORY="s3:s3.amazonaws.com/backup-bucket/restic"
+export RESTIC_PASSWORD_FILE="/etc/restic/password"
+
+restic backup /var/www /etc /home \
+  --exclude="*.log" --exclude="node_modules" \
+  --tag production --tag "$(hostname)"
+
+restic forget \
+  --keep-daily 7 --keep-weekly 4 --keep-monthly 12 \
+  --prune
+
+restic check   # mandatory — verify integrity
+]]></code>
+    </example>
+  </section>
+
+  <section title="Velero Kubernetes Backup">
+    <rule>
+      <statement>Use defaultVolumesToFsBackup: true in Velero schedules for PVCs without snapshot support; use volume snapshots for supported storage classes.</statement>
+      <rationale>File system backup (Restic/Kopia) works on any PVC but is slower. Volume snapshots are faster but require CSI driver support. Omitting both means PVC data is not backed up.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    includedNamespaces: [production, staging]
+    excludedResources: [events, events.events.k8s.io]
+    ttl: 720h             # 30-day retention
+    snapshotVolumes: true
+    defaultVolumesToFsBackup: true
+]]></code>
+    </example>
+    <reference path="templates/velero-schedule.yaml">Full Velero schedule with storage location</reference>
+  </section>
+
+  <section title="Automated Backup Verification">
+    <rule>
+      <statement>Automate restore verification after every backup job — restore to an isolated environment, check table counts and recent data, push a success metric to Prometheus.</statement>
+      <rationale>The 0 in 3-2-1-1-0 is not aspirational — it requires a concrete verification step. Manual restore tests happen rarely or never. Automation makes verification continuous.</rationale>
+    </rule>
+    <rule>
+      <statement>Alert when backup age exceeds 1.5x the scheduled interval — a 36-hour-old backup from a daily job indicates missed runs.</statement>
+      <rationale>Backup jobs fail silently (exit 0 on partial failure, disk full, network timeout). Age-based alerting catches these without requiring job-level monitoring hooks.</rationale>
+    </rule>
+    <reference path="templates/verify-backup.sh">Automated PostgreSQL restore verification script with alerting</reference>
+    <reference path="templates/prometheus-alerts.yaml">Prometheus rules for backup age, failure, and size anomaly</reference>
+  </section>
+</text>

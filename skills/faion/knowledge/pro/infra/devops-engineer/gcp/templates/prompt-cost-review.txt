@@ -1,0 +1,66 @@
+You are a GCP cost optimization expert. Review the GCP usage described below and identify all cost reduction opportunities.
+
+Context:
+- Monthly GCP spend: ${{MONTHLY_SPEND}}
+- Top services by cost: {{SERVICES_AND_COST}}
+- Workload description: {{WORKLOAD_DESCRIPTION}}
+- Current compute: {{COMPUTE_TYPES}} (GKE Standard/Autopilot, Cloud Run, GCE, etc.)
+- Regions in use: {{REGIONS}}
+- Usage patterns: {{USAGE_PATTERNS}} (e.g., 24/7, business hours only, batch overnight)
+
+Analyze by service category:
+
+1. COMPUTE (GKE / Cloud Run / GCE)
+   GKE:
+   - Are node pools using e2 machine family? (best price/performance for general workloads)
+   - Are Spot VMs used for non-critical/batch workloads? (up to 91% discount)
+   - Is Autopilot preferred over Standard? (no idle node cost, bin-packing included)
+   - Is Vertical Pod Autoscaling enabled? (avoids over-provisioned requests)
+   - Are committed use discounts (1yr/3yr CUDs) purchased for stable baseline?
+   - Is cluster utilization > 70%? (below 50% = over-provisioned nodes)
+
+   Cloud Run:
+   - Is CPU throttling enabled? (CPU only during requests = major saving for low-traffic)
+   - Is min-instances=0 acceptable? (eliminates idle cost; latency tradeoff)
+   - Is concurrency tuned? (low concurrency = more instances = higher cost)
+
+   GCE:
+   - Could any VMs migrate to Cloud Run or GKE? (managed = lower ops cost)
+   - Are preemptible/Spot VMs used for batch jobs?
+
+2. STORAGE
+   - Are GCS bucket storage classes appropriate? (Nearline for monthly access, Coldline for yearly, Archive for 7yr+)
+   - Is object lifecycle management configured? (auto-transition and deletion policies)
+   - Are old/unused GCS buckets identified and cleaned up?
+   - Are persistent disk sizes right-sized? (standard PD vs SSD PD: 3x cost difference)
+   - Are snapshots retained longer than needed?
+
+3. NETWORK
+   - Is traffic routing across regions unnecessarily? (inter-region egress is expensive)
+   - Are Cloud NAT logs enabled but not needed? (disabling saves logging cost)
+   - Is Cloud CDN used for static assets? (reduces origin egress)
+   - Are external IP addresses attached to stopped VMs? (charged even when stopped)
+
+4. DATABASE (Cloud SQL / Spanner / BigQuery)
+   Cloud SQL:
+   - Is HA (high availability) enabled in non-production? (2x cost, not needed in dev/staging)
+   - Is instance size right-sized? (check CPU/memory utilization in Cloud Monitoring)
+   - Is point-in-time recovery retention period minimal (default 7 days is max cost)?
+   BigQuery:
+   - Is on-demand vs flat-rate pricing appropriate? (<100 TB/month: on-demand usually cheaper)
+   - Are partitioning and clustering enabled? (reduces bytes scanned = lower query cost)
+   - Are slot reservations needed or can on-demand suffice?
+
+5. OBSERVABILITY
+   - Is Cloud Logging retention beyond 30 days? (_Default bucket 30 days = free; longer = pay)
+   - Are noisy log sinks exporting everything to BigQuery? (logs filtered before export?)
+   - Is Cloud Trace sampling rate tuned? (100% sampling = high cost for high-traffic services)
+
+For each finding:
+- Estimated monthly savings ($ or %)
+- Implementation effort: Low / Medium / High
+- Risk: None / Low / Medium (data loss, availability impact)
+- Specific gcloud/Terraform command or config change
+
+Priority matrix: list top 10 changes sorted by (savings × ease).
+Total estimated monthly savings if all recommendations implemented.

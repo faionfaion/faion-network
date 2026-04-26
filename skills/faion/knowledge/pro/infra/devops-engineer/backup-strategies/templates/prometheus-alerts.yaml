@@ -1,0 +1,49 @@
+groups:
+  - name: backup-alerts
+    rules:
+      - alert: BackupNotRecent
+        expr: time() - backup_last_success_timestamp > 86400
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup older than 24 hours"
+          description: "Last successful backup for {{ $labels.job }} was {{ humanizeTimestamp $value }}"
+
+      - alert: BackupFailed
+        expr: backup_last_status == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup job failed"
+          description: "Backup job {{ $labels.job }} on {{ $labels.instance }} failed"
+
+      - alert: BackupVerificationFailed
+        expr: backup_verification_success == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup restore verification failed"
+          description: "Could not restore and verify backup for {{ $labels.backup }}"
+
+      - alert: BackupSizeAnomaly
+        expr: |
+          abs(backup_size_bytes - backup_size_bytes offset 1d)
+          / backup_size_bytes offset 1d > 0.5
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup size changed more than 50%"
+          description: "Backup {{ $labels.job }} size anomaly detected"
+
+      - alert: BackupStorageLow
+        expr: backup_storage_free_bytes / backup_storage_total_bytes < 0.2
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup storage below 20%"
+          description: "Backup storage at {{ humanizePercentage $value }}"

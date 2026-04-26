@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-iam-networking" title="GCP IAM and Networking">
+  <summary>Workload Identity Federation, service account best practices, VPC design, Shared VPC, and Private Service Connect.</summary>
+
+  <section title="Workload Identity Federation">
+    <rule>
+      <statement>Use Workload Identity Federation for all external workloads (GitHub Actions, GitLab CI, AWS, on-premises) to eliminate service account keys.</statement>
+      <rationale>Service account keys are long-lived credentials that must be rotated, securely stored, and audited. Workload Identity Federation exchanges short-lived OIDC tokens for temporary GCP credentials — no key to steal, no rotation burden.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Create WIF pool and GitHub provider
+gcloud iam workload-identity-pools create github-pool \
+  --location=global --display-name="GitHub Actions Pool"
+
+gcloud iam workload-identity-pools providers create-oidc github \
+  --workload-identity-pool=github-pool \
+  --location=global \
+  --issuer-uri=https://token.actions.githubusercontent.com \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository=='my-org/my-repo'"
+
+# Bind GitHub Actions to a service account
+gcloud iam service-accounts add-iam-policy-binding \
+  my-sa@project.iam.gserviceaccount.com \
+  --role=roles/iam.workloadIdentityUser \
+  --member="principalSet://iam.googleapis.com/projects/PROJECT_NUM/locations/global/workloadIdentityPools/github-pool/attribute.repository/my-org/my-repo"
+]]></code>
+    </example>
+  </section>
+
+  <section title="GKE Workload Identity">
+    <rule>
+      <statement>On GKE, bind Kubernetes ServiceAccounts to GCP service accounts via Workload Identity annotations — never mount service account key files into pods.</statement>
+      <rationale>Key files in pods are readable by any process in the container. WI uses the GKE metadata server to issue short-lived tokens automatically without any secret management.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-ksa
+  namespace: production
+  annotations:
+    iam.gke.io/gcp-service-account: my-gsa@project.iam.gserviceaccount.com
+]]></code>
+    </example>
+  </section>
+
+  <section title="IAM Best Practices">
+    <rule>
+      <statement>Never assign primitive roles (Owner, Editor, Viewer) to service accounts — use predefined roles or custom roles with exactly the permissions needed.</statement>
+      <rationale>Editor role grants write access to almost all GCP resources. A compromised service account with Editor can exfiltrate all data, deploy malicious workloads, and modify IAM policies.</rationale>
+    </rule>
+    <list>
+      <item>Use predefined roles first — Google maintains them for new resource types and APIs</item>
+      <item>Create custom roles for narrow, specific permission sets</item>
+      <item>Apply IAM Conditions for time-based or resource attribute-based restrictions</item>
+      <item>Run IAM Recommender weekly to identify and remove unused permissions</item>
+    </list>
+  </section>
+
+  <section title="VPC and Private Service Connect">
+    <rule>
+      <statement>Use Private Service Connect (not VPC Peering) to access Google-managed APIs and services — PSC gives granular endpoint control with your own internal IP addresses.</statement>
+      <rationale>VPC Peering for Google APIs uses shared IP ranges with limited routing control. PSC creates explicit private endpoints in your VPC that you control, compatible with VPC Service Controls for data exfiltration prevention.</rationale>
+    </rule>
+    <list>
+      <item>Delete the default VPC and create custom VPCs with explicit subnet definitions</item>
+      <item>Use Shared VPC for multi-project networking — centralized firewall management</item>
+      <item>Enable VPC Flow Logs for security analysis and network troubleshooting</item>
+      <item>Cloud Armor for DDoS protection on external load balancers</item>
+    </list>
+    <reference path="templates/gke-autopilot.tf">Terraform GKE Autopilot with Workload Identity and private networking</reference>
+    <reference path="templates/workload-identity-sa.yaml">K8s ServiceAccount annotation for GKE Workload Identity</reference>
+  </section>
+</text>

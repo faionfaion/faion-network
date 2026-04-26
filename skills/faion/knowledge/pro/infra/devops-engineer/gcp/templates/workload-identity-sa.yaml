@@ -1,0 +1,76 @@
+# Kubernetes ServiceAccount with GCP Workload Identity annotation
+# The annotation links this K8s SA to a GCP Service Account
+# Prerequisite: GKE cluster has workloadPool configured (workload_identity_config in Terraform)
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: myapp
+  namespace: production
+  annotations:
+    # Links to GCP SA: iam.gke.io/gcp-service-account = <gcp-sa>@<project>.iam.gserviceaccount.com
+    iam.gke.io/gcp-service-account: gke-workload@my-gcp-project.iam.gserviceaccount.com
+  labels:
+    app.kubernetes.io/name: myapp
+automountServiceAccountToken: false  # explicit; set true only if app uses K8s API
+
+---
+# Deployment that uses the annotated ServiceAccount
+# No secret volume or key file needed — OIDC token is injected automatically
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: myapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: myapp
+    spec:
+      serviceAccountName: myapp      # use the annotated SA above
+      containers:
+        - name: myapp
+          image: gcr.io/my-gcp-project/myapp:1.0.0
+          # GCP client libraries auto-detect the Workload Identity token:
+          # GOOGLE_APPLICATION_CREDENTIALS is NOT needed
+          # ADC (Application Default Credentials) picks up the projected SA token
+          env:
+            - name: GOOGLE_CLOUD_PROJECT
+              value: my-gcp-project
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+---
+# Required Terraform / gcloud commands (shown as comments for reference):
+#
+# 1. Create GCP SA:
+#    gcloud iam service-accounts create gke-workload \
+#      --project=my-gcp-project \
+#      --display-name="GKE Workload SA for myapp"
+#
+# 2. Grant GCP SA → K8s SA workloadIdentityUser binding:
+#    gcloud iam service-accounts add-iam-policy-binding \
+#      gke-workload@my-gcp-project.iam.gserviceaccount.com \
+#      --project=my-gcp-project \
+#      --role=roles/iam.workloadIdentityUser \
+#      --member="serviceAccount:my-gcp-project.svc.id.goog[production/myapp]"
+#
+# 3. Grant GCP SA needed permissions (example: Secret Manager reader):
+#    gcloud projects add-iam-policy-binding my-gcp-project \
+#      --member="serviceAccount:gke-workload@my-gcp-project.iam.gserviceaccount.com" \
+#      --role="roles/secretmanager.secretAccessor"
+#
+# 4. Verify binding works from inside the pod:
+#    kubectl exec -n production deploy/myapp -- \
+#      curl -H "Metadata-Flavor: Google" \
+#      "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
