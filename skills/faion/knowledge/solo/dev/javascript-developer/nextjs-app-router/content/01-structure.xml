@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure" title="App Router file conventions and project layout">
+  <summary>The App Router maps filesystem paths under app/ to URL routes; each segment can define page, layout, loading, error, and not-found files.</summary>
+
+  <section title="Reserved file names">
+    <rule>
+      <statement>Place exactly one file per reserved name per route segment: page.tsx (route UI), layout.tsx (persistent shell), loading.tsx (streaming skeleton), error.tsx (error boundary, must be 'use client'), not-found.tsx (404), global-error.tsx (root error boundary).</statement>
+      <rationale>Missing loading.tsx causes the entire layout tree to block on navigation. Missing error.tsx lets exceptions bubble to the nearest parent boundary.</rationale>
+    </rule>
+  </section>
+
+  <section title="Route groups">
+    <rule>
+      <statement>Wrap a folder in parentheses — (group-name) — to share a layout without adding a URL segment.</statement>
+      <rationale>Avoids duplicating providers (auth wrappers, theme) across logically separate sections like (auth) and (marketing).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+app/
+├── (marketing)/
+│   ├── layout.tsx      # marketing layout, no /marketing in URL
+│   ├── about/page.tsx  # /about
+│   └── contact/page.tsx # /contact
+├── (auth)/
+│   ├── layout.tsx      # centered auth layout
+│   ├── login/page.tsx  # /login
+│   └── register/page.tsx # /register
+└── dashboard/
+    ├── layout.tsx
+    └── page.tsx        # /dashboard
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Dynamic segments">
+    <rule>
+      <statement>Name dynamic folders with square brackets: [id]. Access the segment value via the params prop. In Next.js 15 params is a Promise — always await it.</statement>
+      <rationale>Next.js 15 made params async; synchronous access (params.id) silently returns undefined in builds targeting the new runtime.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+// app/users/[id]/page.tsx — Next.js 15 style
+export default async function UserPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const user = await getUser(id);
+  if (!user) notFound();
+  return <div>{user.name}</div>;
+}
+      ]]></code>
+    </example>
+    <example type="bad">
+      <note>Next.js 13/14 pattern — breaks silently in Next.js 15</note>
+      <code lang="tsx"><![CDATA[
+export default async function UserPage({ params }: { params: { id: string } }) {
+  const user = await getUser(params.id); // synchronous access removed in 15
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Parallel and intercepted routes">
+    <rule>
+      <statement>Use @slot folders for parallel routes (multiple pages in one layout). Use (.)path or (..)path prefixes for intercepted routes (modal patterns that show a page without full navigation).</statement>
+      <rationale>Parallel routes allow dashboards with independent loading states per panel. Intercepted routes enable photo/modal patterns where the URL changes but layout stays.</rationale>
+    </rule>
+  </section>
+
+  <section title="API routes">
+    <rule>
+      <statement>Create route.ts (not page.tsx) for API endpoints. Export named HTTP method functions (GET, POST, PUT, DELETE). Only create route.ts for webhooks or third-party integrations — internal data access goes through Server Components or Server Actions.</statement>
+      <rationale>Routing data through an API route from a Server Component adds an unnecessary HTTP round-trip; direct DB access in Server Components is faster and simpler.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/root-layout.tsx">Root layout with metadata, font, and Providers</reference>
+  <reference path="templates/dynamic-page.tsx">Dynamic page with generateStaticParams and generateMetadata</reference>
+  <reference path="templates/api-route.ts">route.ts with GET and POST handlers</reference>
+</text>

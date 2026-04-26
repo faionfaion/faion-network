@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="Common App Router antipatterns and agent gotchas">
+  <summary>Recurring mistakes when generating App Router code: misplaced use client, synchronous params in Next.js 15, and middleware importing Node.js-only modules.</summary>
+
+  <section title="Misplaced use client directive">
+    <antipattern>
+      <description>Adding 'use client' to a page or layout that only needs interactivity in one child component.</description>
+      <reason>Converts the entire route segment to client-rendered code, breaking SSR, streaming, and direct DB access for the whole page.</reason>
+    </antipattern>
+    <rule>
+      <statement>Move 'use client' to the smallest child component that actually uses useState, useEffect, event handlers, or browser APIs.</statement>
+      <rationale>Keeps parent pages as Server Components so they can stream, fetch directly from the DB, and ship zero client JS for their own markup.</rationale>
+    </rule>
+  </section>
+
+  <section title="Synchronous params access in Next.js 15">
+    <antipattern>
+      <description>Accessing params.id synchronously in a dynamic page component trained on Next.js 13/14 patterns.</description>
+      <reason>Next.js 15 changed params and searchParams to be Promises. Synchronous access returns undefined at runtime without a visible compile error.</reason>
+    </antipattern>
+    <rule>
+      <statement>Always type params as Promise and await it before accessing fields in Next.js 15+ projects.</statement>
+      <rationale>The async change was introduced to support streaming and partial prerendering; synchronous access is a deprecated behavior.</rationale>
+    </rule>
+  </section>
+
+  <section title="Server Action payload limit for file uploads">
+    <antipattern>
+      <description>Sending file uploads through a Server Action form.</description>
+      <reason>Server Actions have a 1 MB default payload limit. Files larger than this will silently fail or error at runtime.</reason>
+    </antipattern>
+    <rule>
+      <statement>Use presigned URL upload (e.g., Uploadthing, S3 presigned POST) for file uploads. The Server Action only receives the resulting file URL, not the binary data.</statement>
+      <rationale>Presigned URLs bypass the Server Action payload limit by uploading directly from the browser to storage.</rationale>
+    </rule>
+  </section>
+
+  <section title="Middleware importing Node.js modules">
+    <antipattern>
+      <description>Importing Node.js-only modules (e.g., fs, path, crypto) in middleware.ts.</description>
+      <reason>Middleware runs on the Edge runtime which has a limited Node.js API surface. Importing unavailable modules causes silent build failures.</reason>
+    </antipattern>
+    <rule>
+      <statement>Middleware must only use Edge-compatible APIs. Use next-auth/jwt getToken (Edge-compatible) for auth checks; do not import full Node.js auth libraries.</statement>
+      <rationale>Edge runtime is a subset of Node.js APIs. The build may succeed locally with experimental flags but fail in production deployment.</rationale>
+    </rule>
+  </section>
+
+  <section title="Overly broad middleware matcher">
+    <antipattern>
+      <description>Using matcher: ['/'] or matcher: ['/:path*'] in middleware config, intercepting static assets and API routes.</description>
+      <reason>Running middleware on every request including _next/static assets and public files adds latency and can break static asset delivery.</reason>
+    </antipattern>
+    <rule>
+      <statement>Scope middleware matchers to specific path prefixes (e.g., '/dashboard/:path*', '/api/protected/:path*'). Explicitly exclude static assets if using a broad pattern.</statement>
+      <rationale>Middleware runs at the edge on every matched request; broad matchers multiply unnecessary latency.</rationale>
+    </rule>
+    <reference path="templates/middleware.ts">Middleware with scoped matcher config</reference>
+  </section>
+
+  <reference path="templates/prompt-scaffold-page.txt">Prompt for scaffolding a complete App Router page</reference>
+</text>
