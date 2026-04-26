@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-tag-as-release-trigger" title="Git Tag Drives Every Release Step">
+  <summary>A pushed `v*` tag is the only manual input; one CI workflow runs `jreleaser full-release` and produces every artifact.</summary>
+
+  <section title="Tag-driven, single workflow">
+    <p>JReleaser reads `jreleaser.yml`, computes the next version from the tag, builds & signs artifacts, uploads them, drafts/publishes GitHub Release, regenerates package-manager descriptors (Homebrew, Scoop, SDKMAN, Snap), and writes a changelog from conventional commits since the previous tag. Everything is one command in CI.</p>
+
+    <rule testable="true">
+      <statement>Every JVM library or CLI release MUST be triggered by a git tag matching `v[0-9]+.[0-9]+.[0-9]+(-rc[0-9]+)?` and execute exactly one CI job invoking `./mvnw -DskipTests -Prelease deploy && jreleaser full-release` (or the Gradle equivalent). Manual `mvn deploy`, manual GitHub Release creation, and manual `CHANGELOG.md` edits in the release commit are forbidden. AI agents may bump the version in source files, but the publish step must be the workflow.</statement>
+      <rationale>Tag-as-trigger gives a single, auditable provenance line ("commit X tagged v1.4.0 produced artifacts Y") and removes every step a human (or agent) might forget. Per JReleaser docs and JEP-style "one source of truth" guidance.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Local: bump version, commit, tag, push.
+./mvnw versions:set -DnewVersion=1.4.0 -DgenerateBackupPoms=false
+git commit -am "release: 1.4.0"
+git tag v1.4.0
+git push --follow-tags origin main
+# CI takes over: mvn deploy + jreleaser full-release
+      ]]></code>
+      <note>Three commands; everything else is the workflow.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Old hand-rolled flow (drift risk)
+./mvnw deploy -P release-sign-artifacts -Dgpg.passphrase=$P
+gh release create v1.4.0 --notes "(empty)"   # changelog forgotten
+# Homebrew tap update missed; SDKMAN not refreshed.
+      ]]></code>
+      <note>Each missing step is silent until a downstream user reports it.</note>
+    </example>
+
+    <antipattern>
+      <description>Triggering JReleaser on `push` to `main` instead of on a tag, then editing `jreleaser.yml` to skip steps when no version bump is detected.</description>
+      <reason>Conflates branch CI with release CI; permission scopes (signing keys, package-manager tokens) leak into every PR and the release log loses its provenance line.</reason>
+    </antipattern>
+
+    <reference path="templates/release.yml">GitHub Actions workflow triggered by tags only.</reference>
+    <reference href="https://jreleaser.org/guide/latest/index.html">JReleaser user guide.</reference>
+  </section>
+</text>

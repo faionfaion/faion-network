@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tapioca-rbi-pipeline" title="Tapioca RBI Pipeline for Rails DSLs and Gems">
+  <summary>Tapioca runtime-introspects gems and Rails DSLs to emit static RBIs that Sorbet reads, closing the metaprogramming gap.</summary>
+
+  <section title="Generate, commit, and verify RBIs">
+    <p>Sorbet sees only static Ruby; Rails relies on metaprogramming (`has_many`, `scope`, attribute readers from columns). Tapioca calls into the running app and emits `.rbi` files describing those generated methods so Sorbet can typecheck call sites against the real shape. The RBIs MUST be committed; CI re-runs `tapioca check-shims` to detect drift between checked-in RBIs and the current code.</p>
+
+    <rule testable="true">
+      <statement>Every project ships `bin/tapioca`; the workflow is `tapioca init` once, then `tapioca gem` after `Gemfile.lock` changes, `tapioca dsl` after model/concern changes. RBIs (`sorbet/rbi/gems/*.rbi`, `sorbet/rbi/dsl/*.rbi`) MUST be committed. CI MUST run `bundle exec tapioca check-shims` AND `bundle exec tapioca dsl --verify` — any divergence fails the build.</statement>
+      <rationale>Without `check-shims` and `dsl --verify`, an agent can edit code that invalidates a checked-in RBI, get a green local typecheck against the stale RBI, and ship a method call that breaks at boot. The verify pass is the determinism guarantee.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# After adding a new gem
+bundle add stripe
+bin/tapioca gem stripe
+git add sorbet/rbi/gems/stripe@*.rbi Gemfile Gemfile.lock
+git commit -m "deps: add stripe + tapioca rbi"
+
+# After changing an ActiveRecord model
+bin/tapioca dsl User
+git add sorbet/rbi/dsl/user.rbi
+      ]]></code>
+      <note>Each shape change is paired with the matching RBI commit.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Agent adds a gem and skips the RBI step
+bundle add stripe
+git add Gemfile Gemfile.lock
+git commit -m "feat: add stripe billing"
+# srb tc passes (stripe types unknown, falls back to T.untyped)
+# Production: NoMethodError on the first Stripe::Charge call.
+      ]]></code>
+      <note>Without RBI, Sorbet can't refute hallucinated Stripe APIs.</note>
+    </example>
+
+    <antipattern>
+      <description>Edit a hand-written shim under `sorbet/rbi/shims/` to silence a Sorbet error instead of regenerating the DSL RBI.</description>
+      <reason>Hand-written shims lie about the real shape; `tapioca check-shims` flags them, but if CI is missing the check, drift compounds silently.</reason>
+    </antipattern>
+
+    <reference path="templates/tapioca.yml">Tapioca config with DSL compilers and gem skiplist.</reference>
+    <reference href="https://github.com/Shopify/tapioca">Tapioca source and docs.</reference>
+    <reference href="https://sorbet.org/docs/rbi">Sorbet RBI format reference.</reference>
+  </section>
+</text>

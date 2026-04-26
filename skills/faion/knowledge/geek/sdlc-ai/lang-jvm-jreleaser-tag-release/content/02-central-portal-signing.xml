@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-central-portal-signing" title="Sonatype Central Portal + GPG Signing">
+  <summary>Use the post-OSSRH Central Portal endpoint and JReleaser's signing block; never hand-roll `nexus-staging-maven-plugin`.</summary>
+
+  <section title="Central Portal is mandatory in 2026">
+    <p>Sonatype OSSRH was retired June 30 2025; new and existing namespaces must publish via the Central Portal (`https://central.sonatype.com/api/v1/publisher`). JReleaser ships a `mavenCentral` deployer for this endpoint; the legacy `nexus2` deployer points at OSSRH and no longer works for new releases.</p>
+
+    <rule testable="true">
+      <statement>`jreleaser.yml` MUST configure `deploy.maven.mavenCentral.sonatype` with `url: https://central.sonatype.com/api/v1/publisher` and `applyMavenCentralRules: true`. Signing MUST be enabled (`signing.active: ALWAYS`, `signing.armored: true`, with GPG key + passphrase in env vars / OIDC, never in the file). Agents are forbidden from setting `signing.active: NEVER` to "fix" a CI failure.</statement>
+      <rationale>OSSRH-targeted configs deploy nowhere in 2026; Central Portal rules (POM completeness, sources/javadoc jars, signed checksums) are stricter than legacy OSSRH and JReleaser bakes them in.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+signing:
+  active: ALWAYS
+  armored: true
+  mode: MEMORY  # key from env, not filesystem
+
+deploy:
+  maven:
+    mavenCentral:
+      sonatype:
+        active: ALWAYS
+        url: https://central.sonatype.com/api/v1/publisher
+        applyMavenCentralRules: true
+        stagingRepositories:
+          - target/staging-deploy
+
+release:
+  github:
+    overwrite: true
+    draft: false
+    changelog:
+      formatted: ALWAYS
+      preset: conventional-commits
+      contributors:
+        format: "- {{contributorName}} ({{contributorUsernameAsLink}})"
+      ]]></code>
+      <note>Central Portal endpoint, signed deploy, conventional-commit notes generated automatically.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+deploy:
+  maven:
+    nexus2:
+      maven-central:
+        active: ALWAYS
+        url: https://oss.sonatype.org/service/local      # retired
+        snapshotUrl: https://oss.sonatype.org/content/repositories/snapshots
+signing:
+  active: NEVER  # disabled to make CI green
+      ]]></code>
+      <note>Endpoint is dead; signing-disabled release will be rejected by Central Portal anyway.</note>
+    </example>
+
+    <antipattern>
+      <description>Storing the GPG passphrase in `jreleaser.yml` so the agent can run releases locally for testing.</description>
+      <reason>Secrets in source control leak forever; use `JRELEASER_GPG_PASSPHRASE` env var, repository secret, or OIDC, and run dry-runs against `target/staging-deploy` instead.</reason>
+    </antipattern>
+
+    <reference path="templates/jreleaser.yml">Minimum-viable JReleaser config.</reference>
+    <reference href="https://central.sonatype.org/news/20250326_ossrh_sunset/">Sonatype OSSRH sunset notice (June 2025).</reference>
+    <reference href="https://jreleaser.org/guide/latest/reference/deploy/maven/maven-central.html">JReleaser Maven Central deployer reference.</reference>
+  </section>
+</text>

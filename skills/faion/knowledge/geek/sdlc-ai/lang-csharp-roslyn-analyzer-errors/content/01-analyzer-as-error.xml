@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-analyzer-as-error" title="Roslyn Analyzers Escalated to Error Severity">
+  <summary>For each LLM bug class, set the matching analyzer's `dotnet_diagnostic.<id>.severity` to `error` so the build refuses to compile.</summary>
+
+  <section title="Lock recurring failure modes at the compiler">
+    <p>Roslyn analyzers ship rich, type-aware diagnostics (CA, IDE, VSTHRD, CS rules). Severity is configured per-rule in `.editorconfig`. When set to `error`, a violation breaks the build instead of generating a warning the agent will silently dismiss in its tool-use loop.</p>
+
+    <rule testable="true">
+      <statement>Project repos MUST commit a top-level `.editorconfig` that escalates at least these analyzer ids to `error`: `CS8602`/`CS8618`/`CS8625` (nullable reference warnings), `CA2007` (missing `ConfigureAwait`), `VSTHRD100` (async-void), `VSTHRD002` (synchronous wait on async), `CA2016` (missing `CancellationToken`). MSBuild MUST set `TreatWarningsAsErrors=true` at minimum for `Release`. Agents are forbidden from suppressing a diagnostic via `#pragma warning disable` or `[SuppressMessage]` without a same-line justification comment.</statement>
+      <rationale>An analyzer at `warning` severity is invisible to an LLM agent unless the harness surfaces it; at `error` it becomes a compile failure the agent must address before proceeding (per Microsoft .NET team's "make the bug class structurally impossible" pattern).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# .editorconfig (root)
+root = true
+
+[*.cs]
+dotnet_diagnostic.CS8602.severity = error  # null deref
+dotnet_diagnostic.CS8618.severity = error  # uninitialized non-null field
+dotnet_diagnostic.CA2007.severity = error  # missing ConfigureAwait
+dotnet_diagnostic.VSTHRD100.severity = error  # async void
+dotnet_diagnostic.VSTHRD002.severity = error  # .Result / .Wait()
+dotnet_diagnostic.CA2016.severity = error  # forward CancellationToken
+
+# only the rule-specific suppression below is allowed
+[*Tests.cs]
+dotnet_diagnostic.CA2007.severity = none  # tests run in known sync context
+      ]]></code>
+      <note>Bug classes are errors globally; suppression is scoped, narrow, and explained.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="csharp"><![CDATA[
+// Agent suppresses the analyzer to make the build green
+#pragma warning disable CA2007
+public async Task DoWork() => await _client.GetAsync(url);
+#pragma warning restore CA2007
+      ]]></code>
+      <note>Suppression without comment hides the real fix (`.ConfigureAwait(false)`); the lock is bypassed.</note>
+    </example>
+
+    <antipattern>
+      <description>Setting `TreatWarningsAsErrors=false` in CI to "unblock" a flaky build instead of repairing the diagnostics.</description>
+      <reason>Once warnings are not errors, every analyzer effectively becomes optional, and the next agent edit that triggers one slips through review.</reason>
+    </antipattern>
+
+    <reference path="templates/.editorconfig">Severity escalation file for the canonical LLM bug classes.</reference>
+    <reference href="https://learn.microsoft.com/en-us/visualstudio/code-quality/roslyn-analyzers-overview">Roslyn analyzers overview.</reference>
+    <reference href="https://devblogs.microsoft.com/dotnet/github-copilot-testing-for-dotnet/">Microsoft .NET Copilot testing pattern (2026).</reference>
+  </section>
+</text>

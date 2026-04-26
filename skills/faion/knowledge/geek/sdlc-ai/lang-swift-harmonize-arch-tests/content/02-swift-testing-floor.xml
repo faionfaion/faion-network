@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-swift-testing-floor" title="swift-format + SwiftLint + Swift Testing Interop">
+  <summary>Pair Harmonize with swift-format (layout), SwiftLint (idiom), and Swift Testing + XCTest interop (ST-0021) so the deterministic floor is one `swift test` away.</summary>
+
+  <section title="Single-command floor for agents">
+    <p>Apple ships `swift-format` in the Xcode 16+ toolchain. SwiftLint adds idiomatic rules. Swift Testing (`@Test`, `#expect`) is the new framework; ST-0021 (accepted March 2026) lets `XCTest`-based suites and `@Test` suites coexist in one process so migrations don't require a big-bang rewrite.</p>
+
+    <rule testable="true">
+      <statement>Every Swift project's CI MUST run, in order: `swift-format lint --strict --recursive Sources Tests`, `swiftlint --strict`, `swift test` (which executes Harmonize + unit + integration tests via the ST-0021 bridge). All four steps MUST be green for merge. Agents are forbidden from passing `--quiet` or removing `--strict` to silence findings.</statement>
+      <rationale>A single command shape (`swift test`) for both unit and architecture tests means the agent's loop has one signal to interpret; mixing `xcodebuild` and `swift test` introduces format differences that LLMs misparse.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# bin/check (run by pre-commit and CI)
+set -euo pipefail
+swift-format lint --strict --recursive Sources Tests
+swiftlint --strict
+swift test --enable-code-coverage
+      ]]></code>
+      <note>Same script local + CI; agent reproduces failures verbatim.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# CI pipeline that drops strictness to "unblock" an agent PR
+swift-format lint --recursive Sources Tests || true
+swiftlint || true
+swift test || true
+      ]]></code>
+      <note>Suppressing exit codes turns the floor into theatre.</note>
+    </example>
+
+    <antipattern>
+      <description>Migrating tests to Swift Testing piecemeal but disabling the XCTest target instead of using the ST-0021 interop, leaving entire legacy suites unrun.</description>
+      <reason>The interop is what makes incremental migration safe; turning off XCTest leaves a coverage gap exactly while the rewrite is in progress.</reason>
+    </antipattern>
+
+    <reference path="templates/.swiftformat">swift-format config used by the floor.</reference>
+    <reference href="https://github.com/realm/SwiftLint">SwiftLint reference.</reference>
+    <reference href="https://forums.swift.org/t/accepted-st-0021-targeted-interoperability-between-swift-testing-and-xctest/85331">ST-0021: Swift Testing / XCTest interop.</reference>
+    <reference href="https://www.apple.com/newsroom/2026/02/xcode-26-point-3-unlocks-the-power-of-agentic-coding/">Xcode 26.3 agentic coding announcement.</reference>
+  </section>
+</text>

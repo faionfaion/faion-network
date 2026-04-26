@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strict-typed-floor" title="Sorbet Strict Floor for Agent-Authored Files">
+  <summary>Files in the agent's edit surface declare `# typed: true` minimum, with `srb tc` blocking PRs on any typecheck failure.</summary>
+
+  <section title="Agent-edit files MUST be at least typed:true">
+    <p>Sorbet's sigil controls how strictly each file is checked. `false` runs only constant resolution; `true` checks method calls and signatures; `strict` additionally forbids `T.untyped` returns and untyped instance variables. Files an agent may modify autonomously must hit at least `true` so the typechecker can refuse hallucinated calls.</p>
+
+    <rule testable="true">
+      <statement>Every Ruby file under directories writable by an AI agent MUST start with `# typed: true` or `# typed: strict`. CI MUST run `bundle exec srb tc` and `bundle exec tapioca check-shims`; both must exit 0 before merge. Agents are forbidden from downgrading a file's sigil to silence errors; they must fix the type instead.</statement>
+      <rationale>Sorbet at `typed: true` rejects calls to methods Sorbet does not see in any RBI, which is exactly the failure mode of LLM-invented methods. Without `srb tc` in CI, the typecheck is advisory and agents will route around it (per Shopify's adoption write-up).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+# typed: strict
+# frozen_string_literal: true
+
+class UserMailer
+  extend T::Sig
+
+  sig { params(user: User).returns(Mail::Message) }
+  def self.welcome(user)
+    new.welcome(user)
+  end
+
+  sig { params(user: User).returns(Mail::Message) }
+  def welcome(user)
+    Mail.new(to: user.email, subject: "Welcome")
+  end
+end
+      ]]></code>
+      <note>Explicit `sig` blocks; strict sigil; no `T.untyped` returns.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="ruby"><![CDATA[
+# typed: false  # downgraded by agent to silence errors
+class UserMailer
+  def self.welcome(user)
+    Mail.new(to: user.emial, subject: "Welcome")  # typo, runtime crash
+  end
+end
+      ]]></code>
+      <note>Sigil downgrade hides the typo until production; the floor is gone.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent appends `T.unsafe(self).method_name(...)` to bypass a Sorbet error instead of fixing the type or generating the missing RBI.</description>
+      <reason>`T.unsafe` blackholes type information past that point, defeating the gate; legitimate uses are rare and require human review with a comment.</reason>
+    </antipattern>
+
+    <reference path="templates/sorbet-config">Sorbet path config with strict-only directories.</reference>
+    <reference href="https://sorbet.org/docs/static">Sorbet static type checking reference.</reference>
+    <reference href="https://shopify.engineering/adopting-sorbet">Shopify's Sorbet adoption write-up.</reference>
+  </section>
+</text>
