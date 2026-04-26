@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-implementation" title="GraphRAG Implementation Checklist and Cost Model">
+  <summary>Phased implementation checklist, quality validation thresholds, cost model, and agent-specific gotchas for GraphRAG deployments.</summary>
+
+  <section title="Implementation Phases">
+    <list>
+      <item>Phase 1 — Planning: define entity ontology, choose graph DB, select extraction method, set accuracy vs cost trade-offs</item>
+      <item>Phase 2 — Graph construction: entity extraction → entity resolution → relationship extraction → graph write</item>
+      <item>Phase 3 — Community detection: Leiden algorithm → hierarchical summarization → cache summaries</item>
+      <item>Phase 4 — Retrieval: query classifier → local/global router → context assembler</item>
+      <item>Phase 5 — Production: incremental indexing, query latency monitoring, community refresh strategy</item>
+    </list>
+  </section>
+
+  <section title="Validation Thresholds">
+    <rule testable="true">
+      <statement>After graph construction: entity extraction F1 must exceed 0.75; relationship accuracy must exceed 0.70; zero duplicate entities.</statement>
+      <rationale>Below these thresholds, community detection produces semantically incoherent clusters that degrade global search quality.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>After community detection: communities must be semantically coherent; hierarchical levels must be meaningful; summaries must capture key themes.</statement>
+      <rationale>Incoherent communities cause global queries to return irrelevant summaries; the LLM synthesizes from noise.</rationale>
+    </rule>
+    <rule testable="true">
+      <statement>Production readiness: P95 query latency under 3s, error rate under 1%, hallucination rate under 10%.</statement>
+      <rationale>GraphRAG is inherently slower than vector RAG; 3s is the practical ceiling for interactive use cases.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cost Model">
+    <p>Indexing: entity extraction ~500 tokens/chunk, relationship extraction ~300 tokens/chunk, community summarization ~1000 tokens/community. Query: global ~2000 tokens, local ~500 tokens.</p>
+    <rule>
+      <statement>Batch entity extraction chunks in groups of 10-20 per LLM call to reduce API overhead by 5-8x.</statement>
+      <rationale>Single-chunk extraction calls are the primary cost driver. Batching keeps extraction cost proportional to corpus size rather than chunk count.</rationale>
+    </rule>
+    <rule>
+      <statement>Use LightRAG for cost-sensitive workloads where 10x token reduction is worth the trade-off in relationship granularity.</statement>
+      <rationale>LightRAG uses dual-level graph retrieval with significantly fewer LLM calls. Not suitable for legal/medical precision requirements.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Deploying GraphRAG without a human review checkpoint for graph writes from unverified sources.</description>
+      <reason>One hallucinated relationship from entity extraction can corrupt multi-hop reasoning for all subsequent queries across the affected entities.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Relying on Leiden community detection to be deterministic across rebuilds.</description>
+      <reason>Leiden is non-deterministic; rebuilding the index with identical data produces different community structures. Do not use community IDs as stable references.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using LightRAG for legal or medical knowledge graphs requiring precise relationship granularity.</description>
+      <reason>LightRAG's 10x token reduction compresses relationship metadata. Fine-grained distinctions between relationship types are lost.</reason>
+    </antipattern>
+  </section>
+</text>

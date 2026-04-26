@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-gotchas" title="LangChain and LangGraph Known Failure Modes">
+  <summary>Concrete failure modes: deprecated patterns, async pitfalls, tool routing issues, and security considerations.</summary>
+
+  <section title="Deprecated Patterns">
+    <antipattern>
+      <description>Using LLMChain, AgentExecutor, ConversationChain, or SequentialChain from legacy LangChain.</description>
+      <reason>These are deprecated but still widely documented on Stack Overflow. Agents trained on web data will suggest them. Use LCEL equivalents: `prompt | model | parser`, `create_react_agent`, `RunnableWithMessageHistory`, LCEL pipe chain.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Async and Threading">
+    <antipattern>
+      <description>Using a custom `CallbackHandler` with blocking I/O in an async chain.</description>
+      <reason>LangChain callbacks execute synchronously in async chains by default. A blocking callback stalls the entire chain. Use `AsyncCallbackHandler` instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using `batch()` with tools that are not thread-safe.</description>
+      <reason>LCEL `batch()` runs in a thread pool by default. Non-thread-safe tools cause race conditions. Use `abatch()` with async tools instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Tool Routing">
+    <antipattern>
+      <description>Providing ambiguous or overlapping tool descriptions without testing tool selection explicitly.</description>
+      <reason>The LLM reads tool descriptions verbatim. Ambiguous descriptions cause the agent to select wrong tools without error. Wrong tool selection fails silently.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Security">
+    <rule>
+      <statement>Sanitize user input before injecting into prompts; validate retrieved content before including in RAG chains to prevent prompt injection.</statement>
+      <rationale>A malicious document in the corpus or a crafted user input can override agent instructions. Retrieved content must be treated as untrusted data, not trusted instructions.</rationale>
+    </rule>
+  </section>
+
+  <section title="LangSmith Overhead">
+    <rule>
+      <statement>Disable LangSmith tracing (`LANGCHAIN_TRACING_V2=false`) in latency-critical paths; tracing adds ~30ms per chain call.</statement>
+      <rationale>At high throughput, 30ms per call compounds. In a 10-step chain, tracing adds 300ms — measurable in user-facing endpoints.</rationale>
+    </rule>
+  </section>
+</text>

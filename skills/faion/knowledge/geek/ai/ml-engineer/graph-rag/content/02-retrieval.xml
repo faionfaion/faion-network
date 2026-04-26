@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-retrieval" title="GraphRAG Retrieval Strategies">
+  <summary>Three retrieval strategies (local, global, hybrid), query classification, and context assembly rules for GraphRAG query execution.</summary>
+
+  <section title="Query Classification">
+    <rule>
+      <statement>Classify every query as LOCAL, GLOBAL, or HYBRID before retrieval; route to the corresponding strategy.</statement>
+      <rationale>Local and global searches use fundamentally different backends. Misrouting a global query to local search returns an empty or irrelevant subgraph; misrouting a local query to global wastes 2000+ tokens per community on summaries that don't contain the answer.</rationale>
+    </rule>
+    <reference path="templates/prompt-query-classification.txt">Query classification prompt returning LOCAL / GLOBAL / HYBRID</reference>
+  </section>
+
+  <section title="Local Search">
+    <rule>
+      <statement>Cap graph traversal depth at 2 hops for agent tool calls; 3-hop queries return too much context for reliable synthesis.</statement>
+      <rationale>At 3 hops, subgraph size grows exponentially. The LLM context fills with tangentially related entities, reducing synthesis precision.</rationale>
+    </rule>
+    <example type="good">
+      <note>Minimal local search using Neo4j APOC path expansion</note>
+      <code lang="python"><![CDATA[
+from neo4j import GraphDatabase
+
+def local_search(driver, entity_name: str, hops: int = 2) -> list[dict]:
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (e:Entity {name: $name})
+            CALL apoc.path.subgraphNodes(e, {maxLevel: $hops}) YIELD node
+            MATCH (node)-[r]-(neighbor)
+            RETURN node.name, type(r), neighbor.name, r.description
+            LIMIT 50
+            """,
+            name=entity_name, hops=hops,
+        )
+        return [dict(record) for record in result]
+]]></code>
+    </example>
+    <reference path="templates/cypher-queries.cypher">Traversal patterns including 1-hop, 2-hop, weighted, path-finding, and hybrid vector+graph</reference>
+  </section>
+
+  <section title="Global Search">
+    <rule>
+      <statement>Always cache global search results; regenerate only when corpus changes. Global search is too expensive to run per-query in real time.</statement>
+      <rationale>Map-reduce over 1000 community summaries at 2000 tokens each = 2M tokens per query. Without caching, a single global search in a ReAct loop can exhaust a session's token budget.</rationale>
+    </rule>
+    <antipattern>
+      <description>Running global search inside a ReAct agent loop without result caching.</description>
+      <reason>Each iteration burns 2000+ tokens per community summary. Three loop iterations on a corpus with 500 communities costs 3M tokens.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Hybrid Search">
+    <rule>
+      <statement>For hybrid search, start vector search, then expand matched nodes by 1-2 hops in the graph to capture related entities missed by semantic similarity.</statement>
+      <rationale>Vector search finds semantically similar text; graph traversal finds structurally connected entities. Combined, they surface entities mentioned in context but not in the query vocabulary.</rationale>
+    </rule>
+  </section>
+
+  <section title="Entity Name Normalization">
+    <rule>
+      <statement>Normalize entity names before every graph lookup; graph databases return empty results without error when names don't match exactly.</statement>
+      <rationale>An agent interpreting empty results as "no relevant information" will hallucinate. Silent empty returns are the #1 cause of GraphRAG agent hallucination in practice.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-lcel-chains" title="LCEL Chains and Core Patterns">
+  <summary>LangChain Expression Language pipe syntax, chain patterns (sequential, router, fallback), structured output, and streaming.</summary>
+
+  <section title="LCEL Fundamentals">
+    <rule>
+      <statement>Use `langchain-core` only in production agents, not the full `langchain` package — core is stable; full langchain pulls 200+ transitive dependencies.</statement>
+      <rationale>Dependency bloat creates version conflicts and larger container images. Core contains everything needed for LCEL chains and structured output.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `.with_structured_output(PydanticModel)` instead of output parsers; structured output is enforced by the API, not fragile string parsing.</statement>
+      <rationale>String parsers break silently when the model changes its output format. Structured output fails with a clear error that is easier to debug.</rationale>
+    </rule>
+    <example type="good">
+      <note>LCEL pipe chain patterns</note>
+      <code lang="python"><![CDATA[
+# Basic chain
+chain = prompt | model | StrOutputParser()
+
+# With structured output
+chain = prompt | model.with_structured_output(MySchema)
+
+# With retry on transient errors
+chain = (prompt | model | parser).with_retry(stop_after_attempt=3)
+
+# With fallback model
+chain = primary_chain.with_fallbacks([fallback_chain])
+]]></code>
+    </example>
+    <antipattern>
+      <description>Using `.with_retry()` on chains without distinguishing transient errors from logic errors.</description>
+      <reason>Blind retry amplifies costs without fixing root cause. Rate limit errors need backoff; logic errors need prompt fixes, not retries.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Chain Patterns">
+    <p>Sequential: `prompt | model | parser`. Router: classifier → branch to chain_a or chain_b. MapReduce: `[doc1, doc2] → map → reduce`. Fallback: `primary_chain.with_fallbacks([fallback])`. RunnableParallel: run independent chains concurrently.</p>
+    <rule>
+      <statement>Test chains by invoking each component individually before wiring with `|`; isolates bugs before they compound in full chain traces.</statement>
+      <rationale>LCEL `|` produces hard-to-debug stack traces when intermediate steps fail; error messages point to internal chain internals rather than your code.</rationale>
+    </rule>
+  </section>
+
+  <section title="Streaming">
+    <rule>
+      <statement>Enable LangSmith tracing from day 1 on new projects; retrofitting observability into existing chains is painful.</statement>
+      <rationale>LangSmith traces every `|` step with full input/output. Without it, debugging unexpected chain outputs requires print-statement archaeology.</rationale>
+    </rule>
+  </section>
+</text>

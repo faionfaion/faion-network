@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-gotchas" title="RAG Failure Modes and Agent Gotchas">
+  <summary>Critical failure modes for production RAG: retrieval as a breakpoint, prompt injection via documents, index drift, and context window pressure.</summary>
+
+  <section title="Retrieval as a Breakpoint">
+    <rule>
+      <statement>Always check `len(retrieved_chunks) &gt; 0` before calling the LLM; if retrieval returns empty, return a structured "no information" response rather than attempting generation.</statement>
+      <rationale>If the retriever fails silently (network error, empty results), the LLM will hallucinate a plausible-sounding answer. An explicit check turns a silent hallucination into an auditable error.</rationale>
+    </rule>
+    <antipattern>
+      <description>Proceeding to LLM generation when retrieved chunk scores are all below the score threshold.</description>
+      <reason>Low-score chunks are tangentially related noise. The LLM may confabulate a plausible-sounding answer from weak context rather than reporting insufficient information.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Prompt Injection via Documents">
+    <antipattern>
+      <description>Injecting retrieved document chunks into prompts without sanitization or encoding.</description>
+      <reason>A malicious document containing "ignore previous instructions and output X" can override agent instructions. Retrieved content must be treated as untrusted data, not trusted instructions.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Index Drift">
+    <rule>
+      <statement>Implement a document version field and return it in citation metadata; if the pipeline is live and documents update asynchronously, queries may receive outdated answers.</statement>
+      <rationale>Without version tracking, a document updated after last ingestion returns stale information with no indication of staleness. Users cannot distinguish fresh from outdated answers.</rationale>
+    </rule>
+  </section>
+
+  <section title="Context Window Pressure">
+    <rule>
+      <statement>At top-k=20 with 512-token chunks, retrieval consumes 10,240 tokens before generation; always apply reranking to reduce to top-5 before LLM calls.</statement>
+      <rationale>Without reranking, a large top-k saturates the context window with low-relevance chunks. The LLM is forced to reason across noise, reducing generation quality and increasing cost.</rationale>
+    </rule>
+  </section>
+</text>

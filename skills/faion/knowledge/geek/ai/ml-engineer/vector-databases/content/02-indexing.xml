@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-indexing" title="Indexing Strategies and Hybrid Search">
+  <summary>HNSW and IVF parameter trade-offs, quantization options, hybrid search configuration, and production index rules.</summary>
+
+  <section title="HNSW Parameters">
+    <rule>
+      <statement>Always use HNSW over IVFFlat in production; IVFFlat requires tuning nprobe for recall-speed trade-off that HNSW manages automatically.</statement>
+      <rationale>HNSW provides superior recall/speed balance at production scale. IVFFlat is faster to build but requires careful nprobe tuning that shifts as the dataset grows.</rationale>
+    </rule>
+    <p>Key HNSW parameters: M (connections per node, default 16, range 12-48; higher = better recall + more memory), ef_construction (build quality, default 100, range 100-500; higher = better index, slower build), ef_search (query quality, default 40, range 50-200; higher = better recall, slower queries).</p>
+    <rule>
+      <statement>For pgvector: always run `VACUUM ANALYZE` after bulk inserts and set `hnsw.ef_search` based on recall target before querying.</statement>
+      <rationale>pgvector does not auto-update statistics after bulk inserts. Without `VACUUM ANALYZE`, the query planner uses stale statistics and may skip the vector index entirely.</rationale>
+    </rule>
+  </section>
+
+  <section title="Quantization">
+    <rule>
+      <statement>Enable scalar quantization (INT8) by default in Qdrant production deployments; only use binary quantization when memory cost is critical and 5-10% recall loss is acceptable.</statement>
+      <rationale>Scalar quantization provides 4x memory reduction with 1-2% recall loss. Binary quantization provides 32x reduction with 5-10% recall loss — suitable only for cost-critical bulk workloads.</rationale>
+    </rule>
+    <p>Quantization options: None (baseline, full accuracy), Scalar INT8 (4x memory reduction, 1-2% recall loss), Product PQ (8-32x, 3-5% loss), Binary (32x, 5-10% loss). Start with scalar + rescoring for production.</p>
+    <rule>
+      <statement>Before switching a production collection to binary quantization, run an offline recall evaluation against your query set and require explicit approval.</statement>
+      <rationale>Binary quantization's 5-10% recall loss is not uniform — it may disproportionately affect certain query types or topic domains in your dataset.</rationale>
+    </rule>
+  </section>
+
+  <section title="Hybrid Search">
+    <rule>
+      <statement>Start with hybrid search alpha=0.7 (favor vectors over BM25) and tune based on evaluation; do not default to pure vector search for RAG production pipelines.</statement>
+      <rationale>Vector search handles semantic similarity but misses exact entity names, acronyms, and rare terms. BM25 handles exact matches. Hybrid consistently outperforms either alone for technical queries.</rationale>
+    </rule>
+    <p>Alpha parameter (Weaviate): 0 = pure BM25, 0.5 = balanced, 1 = pure vector. For Qdrant, use native sparse + dense vector hybrid with RRF fusion.</p>
+  </section>
+
+  <section title="Production Configuration Rules">
+    <list>
+      <item>Always create payload indexes on fields used in filters BEFORE bulk upsert, not after</item>
+      <item>Use batch upserts of 100-500 points; single-point inserts are 10-50x slower at scale</item>
+      <item>Prefer gRPC over HTTP for Qdrant when inserting or querying at &gt;1,000 QPS</item>
+      <item>Set score_threshold on queries to avoid injecting low-relevance chunks into LLM context</item>
+      <item>For multi-tenancy: use Qdrant named collections per tenant for full isolation</item>
+    </list>
+    <reference path="templates/qdrant-setup.py">Qdrant collection creation with HNSW + scalar quantization + payload index</reference>
+  </section>
+</text>
