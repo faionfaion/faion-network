@@ -15,3 +15,4 @@
 [2026-04-26 04:40] pool-batch agents:mem-:3 — promoted progressive-disclosure-skills, filesystem-as-working-memory, previous-response-id-reasoning-reuse → 31/50 (mem- 4/4 target reached). NEW shape (AGENTS.md + content/*.xml + templates/).
 [2026-04-26 04:50] pool-batch agents:eval-:3 — promoted llm-judge-rubric-evidence-first, record-replay-debugging, chaos-eval-fault-injection → 34/50. eval- category 4/4 (target met).
 [2026-04-26 12:00] pool-batch agents:pl-:4 — promoted manifest-then-fetch, compaction-preserve-refs, handoff-id-payload → 37/50 (pl- 5/6). REJECTED: auto-evict-tool-result (near-duplicate of previously-merged auto-evict-tool-results from concurrent batch).
+[2026-04-26 05:00] pool-batch agents:tu-:4 fixup — registered verb-object-tool-naming, idempotent-write-tools, terse-default-tool-output, structured-tool-errors in jsonl/state (folders pushed in 449f8ac); → 41/50 (tu- 6/6 complete).
