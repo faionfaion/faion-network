@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-memoize" title="useCallback, useMemo, and useReducer">
+  <summary>Memoization rules (measure before applying), useReducer for complex multi-field state, discriminated-union Action types.</summary>
+
+  <section title="useCallback and useMemo">
+    <rule>
+      <statement>Apply useCallback only to functions passed as props to memoized children or as effect dependencies; apply useMemo only to computations that are demonstrably slow under profiling or that stabilize object references for effect deps.</statement>
+      <rationale>Both hooks add overhead (extra memory + comparison on every render). Premature memoization makes code harder to read without measurable benefit.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// useCallback — stable reference for memoized child or effect dep
+const handleClick = useCallback((id: string) => {
+  setSelectedId(id);
+}, []);
+
+const handleSubmit = useCallback(async (data: FormData) => {
+  await api.submit(userId, data);
+  onSuccess();
+}, [userId, onSuccess]);
+
+// useMemo — expensive sort, runs only when items changes
+const sortedItems = useMemo(
+  () => [...items].sort((a, b) => a.name.localeCompare(b.name)),
+  [items],
+);
+
+// useMemo — stabilize object reference used as effect dep
+const options = useMemo(() => ({ endpoint: '/api', timeout: 5000 }), []);
+]]></code>
+    </example>
+    <antipattern>
+      <description>Wrapping cheap calculations in useMemo.</description>
+      <reason>The memoization overhead exceeds the cost of the computation; just calculate inline.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+const doubled = useMemo(() => count * 2, [count]); // unnecessary
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const doubled = count * 2; // just compute it
+]]></code>
+    </example>
+  </section>
+
+  <section title="useReducer for Complex State">
+    <rule>
+      <statement>Prefer useReducer over multiple useState calls when state fields change together or when the next state depends on the previous state across multiple transitions.</statement>
+      <rationale>A reducer co-locates all state transitions in one function, making it easier to test and reason about, and eliminates race conditions from interleaved setState calls.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+type State = {
+  items: Item[];
+  isLoading: boolean;
+  error: Error | null;
+};
+
+type Action =
+  | { type: 'FETCH_START' }
+  | { type: 'FETCH_SUCCESS'; payload: Item[] }
+  | { type: 'FETCH_ERROR'; payload: Error }
+  | { type: 'ADD_ITEM'; payload: Item }
+  | { type: 'REMOVE_ITEM'; payload: string };
+
+const initialState: State = { items: [], isLoading: false, error: null };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'FETCH_START':
+      return { ...state, isLoading: true, error: null };
+    case 'FETCH_SUCCESS':
+      return { ...state, isLoading: false, items: action.payload };
+    case 'FETCH_ERROR':
+      return { ...state, isLoading: false, error: action.payload };
+    case 'ADD_ITEM':
+      return { ...state, items: [...state.items, action.payload] };
+    case 'REMOVE_ITEM':
+      return { ...state, items: state.items.filter(i => i.id !== action.payload) };
+    default:
+      return state;
+  }
+}
+
+function ItemList() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  useEffect(() => {
+    dispatch({ type: 'FETCH_START' });
+    fetchItems()
+      .then(items => dispatch({ type: 'FETCH_SUCCESS', payload: items }))
+      .catch(error => dispatch({ type: 'FETCH_ERROR', payload: error }));
+  }, []);
+}
+]]></code>
+    </example>
+  </section>
+</text>

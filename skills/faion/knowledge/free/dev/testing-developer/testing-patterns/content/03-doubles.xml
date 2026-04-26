@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-doubles" title="Test Doubles: Mock, Stub, Spy, Fake, Dummy">
+  <summary>Five test double types (Meszaros vocabulary): Dummy fills a parameter, Stub returns canned values, Spy records calls, Fake is a working simplified implementation, Mock verifies expected interactions. Stubs test state; Mocks test behavior.</summary>
+
+  <section title="Decision Table">
+    <rule>
+      <statement>Select the simplest double that satisfies the test: Dummy if the parameter is never used, Stub if you need a controlled return value, Mock if you need to assert the dependency was called correctly, Fake if a real but simplified implementation is acceptable, Spy when you need post-hoc verification without strict pre-specification.</statement>
+      <rationale>Over-mocking creates brittle tests that break on implementation change, not behavior change. A Fake (e.g., in-memory repository) is more robust than a Mock with many pre-specified expectations.</rationale>
+    </rule>
+    <list>
+      <item>Dummy — fills unused parameters; no behavior needed</item>
+      <item>Stub — returns predefined value; test checks returned state</item>
+      <item>Spy — records calls for after-the-fact assertion; flexible</item>
+      <item>Fake — working implementation (e.g., in-memory DB); realistic behavior</item>
+      <item>Mock — pre-specified expectations; fails if call sequence or args don't match</item>
+    </list>
+  </section>
+
+  <section title="Stub vs Mock Distinction">
+    <rule>
+      <statement>Use a Stub when the test assertion is on the return value of the code under test; use a Mock when the test assertion is that a specific method was called on the dependency.</statement>
+      <rationale>Mixing the two purposes makes tests test implementation details when they should test behavior, leading to high maintenance cost.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# STUB — test cares about return value, not whether repo was called
+def test_user_service_returns_none_for_unknown_email(user_service, repo_stub):
+    repo_stub.find_by_email.return_value = None
+
+    result = user_service.find_by_email("unknown@example.com")
+
+    assert result is None  # asserting state
+
+# MOCK — test cares that email was sent
+def test_user_service_sends_welcome_email_on_registration(user_service, email_mock):
+    user_service.register(email="new@example.com", name="New")
+
+    email_mock.send_welcome.assert_called_once_with("new@example.com")  # asserting behavior
+]]></code>
+    </example>
+    <antipattern>
+      <description>Asserting on mock call counts for behavior that is an implementation detail, not a business requirement.</description>
+      <reason>The test becomes coupled to the exact implementation, breaking on refactoring even when behavior is preserved.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Fake Objects">
+    <rule>
+      <statement>Prefer a Fake (in-memory repository, in-process message bus) over a Mock for integration boundaries that are called many times or in complex sequences.</statement>
+      <rationale>A Fake with correct semantics is more faithful than a Mock with many pre-programmed return values. It tests the same logic without requiring a real external service.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class InMemoryUserRepository:
+    """Fake — implements the real interface with in-memory storage."""
+
+    def __init__(self):
+        self._store: dict[str, User] = {}
+
+    def save(self, user: User) -> None:
+        self._store[user.id] = user
+
+    def find_by_id(self, user_id: str) -> User | None:
+        return self._store.get(user_id)
+
+    def find_by_email(self, email: str) -> User | None:
+        return next((u for u in self._store.values() if u.email == email), None)
+]]></code>
+    </example>
+  </section>
+</text>

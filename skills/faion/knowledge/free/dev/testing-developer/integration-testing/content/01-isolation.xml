@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-isolation" title="Test Isolation Strategies">
+  <summary>Four strategies for preventing integration tests from interfering with each other: transaction rollback (fastest), table truncate (accurate), Testcontainers (reproducible), and unique IDs (parallelizable). Choose based on the accuracy vs. speed trade-off.</summary>
+
+  <section title="Strategy Comparison">
+    <list>
+      <item>Transaction rollback — fastest; wraps each test in a transaction that rolls back; misses commit-time errors (unique constraints)</item>
+      <item>Truncate tables — medium speed; catches all errors; accurate but slower than rollback</item>
+      <item>Testcontainers — slowest startup, fastest per-test after warm-up; real DB behavior; requires Docker; ideal for CI</item>
+      <item>Unique IDs per test run — allows parallel execution; data accumulates; suitable when cleanup is handled separately</item>
+    </list>
+    <note>Combine strategies: session-scoped Testcontainers container (one Docker start) + function-scoped transaction rollback (fast per-test isolation). This is the recommended default.</note>
+  </section>
+
+  <section title="Transaction Rollback">
+    <rule>
+      <statement>Use transaction rollback as the default isolation strategy: begin a transaction in the fixture, yield the session, then rollback unconditionally in teardown.</statement>
+      <rationale>Rollback is faster than DELETE or TRUNCATE because it is a single low-level operation. The test never commits, so the database state is always clean for the next test.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def session(engine):
+    connection = engine.connect()
+    transaction = connection.begin()
+    Session = sessionmaker(bind=connection)
+    db = Session()
+
+    yield db
+
+    db.close()
+    transaction.rollback()
+    connection.close()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Unique ID Isolation">
+    <rule>
+      <statement>When running tests in parallel, use UUID-based unique identifiers for email addresses, usernames, and any unique-constrained fields instead of relying on cleanup.</statement>
+      <rationale>Parallel test workers cannot share a transaction; unique IDs prevent constraint violations without serializing execution.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import uuid
+
+@pytest.fixture
+def unique_email():
+    return f"test-{uuid.uuid4()}@example.com"
+
+def test_user_registration(client, unique_email):
+    response = client.post("/api/users", json={"email": unique_email})
+    assert response.status_code == 201
+]]></code>
+    </example>
+  </section>
+</text>

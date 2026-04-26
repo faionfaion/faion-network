@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-data" title="Test Data Patterns: Builder and Object Mother">
+  <summary>Test Data Builder provides a fluent API for constructing objects with sensible defaults; Object Mother provides pre-named scenarios. Combine them: Object Mother returns a Builder for flexible customization.</summary>
+
+  <section title="Test Data Builder">
+    <rule>
+      <statement>Create a Builder class per domain entity that initializes all fields with valid defaults; each with-* method returns `this` for chaining; build() returns a deep copy of the accumulated state.</statement>
+      <rationale>Tests should specify only the properties relevant to the scenario under test. Builder defaults prevent test code from depending on irrelevant fields, making tests resilient to schema changes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// See templates/entity-builder.ts for full implementation
+const activeAdmin = new UserBuilder()
+  .withEmail('admin@example.com')
+  .withRole('admin')
+  .asActive()
+  .build();
+
+// Test only specifies what matters
+const inactiveUser = new UserBuilder().asInactive().build();
+]]></code>
+    </example>
+    <reference path="templates/entity-builder.ts">Full TypeScript EntityBuilder implementation</reference>
+  </section>
+
+  <section title="Object Mother">
+    <rule>
+      <statement>Create an Object Mother with static factory methods for common test scenarios; each method returns a configured Builder so callers can further customize before calling build().</statement>
+      <rationale>Object Mother eliminates copy-paste of common setup across test files. Returning a Builder (not a built object) gives callers the flexibility to override specific fields without duplicating the whole preset.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// Object Mother returns Builder — caller can override
+const admin = UserMother.admin().withEmail('custom@example.com').build();
+
+// Or use the preset as-is
+const guest = UserMother.guest().build();
+
+// Compose scenarios
+const shippedOrder = OrderMother.paid().asShipped().build();
+]]></code>
+    </example>
+    <reference path="templates/object-mother.ts">Full TypeScript Object Mother implementation</reference>
+  </section>
+
+  <section title="Fresh Fixture Rule">
+    <rule>
+      <statement>Each test must create its own test data from scratch; never share mutable fixture objects across tests via module-level variables.</statement>
+      <rationale>Shared mutable fixtures create test-order dependencies. When one test mutates a shared object, subsequent tests may pass or fail depending on execution order — a flaky test root cause.</rationale>
+    </rule>
+    <antipattern>
+      <description>Module-level mutable fixture objects shared across tests.</description>
+      <reason>Any mutation by one test leaves the fixture in unexpected state for the next test, causing intermittent failures.</reason>
+    </antipattern>
+  </section>
+</text>

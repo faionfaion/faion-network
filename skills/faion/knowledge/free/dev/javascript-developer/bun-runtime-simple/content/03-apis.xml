@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-apis" title="Bun Native APIs: File I/O, Env, Testing, Bundling">
+  <summary>Bun.file/Bun.write for file operations, type-safe Bun.env wrapper, bun:test patterns, and build commands.</summary>
+
+  <section title="File I/O">
+    <rule>
+      <statement>Use Bun.file() to read and Bun.write() to write; stream large files to avoid loading them fully into memory.</statement>
+      <rationale>Bun's file APIs use native I/O paths that outperform fs/promises; the streaming API prevents OOM on large files.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const text = await Bun.file('data.txt').text();
+const json = await Bun.file('config.json').json();
+await Bun.write('output.txt', 'Hello World');
+const exists = await Bun.file('maybe.txt').exists();
+
+const stream = Bun.file('large.csv').stream();
+for await (const chunk of stream) { /* process */ }
+]]></code>
+    </example>
+  </section>
+
+  <section title="Type-Safe Environment Variables">
+    <rule>
+      <statement>Wrap Bun.env in a validated accessor function that throws on missing required vars at startup, not at first use.</statement>
+      <rationale>Failing at startup with a clear message is better than a cryptic TypeError later in a request handler when the var is first accessed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+interface Env {
+  DATABASE_URL: string;
+  JWT_SECRET: string;
+  PORT?: string;
+}
+
+function getEnv(): Env {
+  const required = ['DATABASE_URL', 'JWT_SECRET'];
+  for (const key of required) {
+    if (!Bun.env[key]) throw new Error(`Missing required env var: ${key}`);
+  }
+  return Bun.env as unknown as Env;
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Testing with bun:test">
+    <rule>
+      <statement>Import describe, it, expect, mock from bun:test; replace jest.fn() with mock().</statement>
+      <rationale>bun:test is Jest-compatible in API but runs 10-100x faster due to native execution; no additional packages needed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { describe, it, expect, mock } from 'bun:test';
+
+describe('Users API', () => {
+  it('returns empty list', async () => {
+    const response = await app.request('/api/users');
+    expect(response.status).toBe(200);
+  });
+});
+
+const mockGetUser = mock(() => Promise.resolve({ id: '1', name: 'Test' }));
+]]></code>
+    </example>
+  </section>
+
+  <section title="Build Commands">
+    <p>Build for Bun: bun build ./src/index.ts --outdir ./dist --target bun --minify</p>
+    <p>Build for Node.js: bun build ./src/index.ts --outdir ./dist --target node --minify</p>
+    <reference path="templates/dockerfile.bun">Multi-stage Dockerfile for Bun production</reference>
+  </section>
+</text>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-narrowing" title="Type Narrowing Patterns">
+  <summary>Type guards, discriminated unions, in/instanceof narrowing, and assertion functions for safe type refinement.</summary>
+
+  <section title="Type Guards and Discriminated Unions">
+    <rule>
+      <statement>Model sum types as discriminated unions with a literal discriminant field; use that field to narrow instead of type assertions.</statement>
+      <rationale>Discriminated unions give exhaustiveness checking; type assertions bypass the type system and hide errors.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: Error };
+
+function handleResult<T>(result: Result<T>): T {
+  if (result.success) {
+    return result.data; // narrowed
+  }
+  throw result.error;  // narrowed
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="in and instanceof Narrowing">
+    <rule>
+      <statement>Use the in operator to narrow between types that share a union but differ by property presence; use instanceof for class hierarchies.</statement>
+      <rationale>These are the safe built-in narrowing forms — no risk of false narrowing that a manual cast would allow.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+interface Dog { bark(): void }
+interface Cat { meow(): void }
+function speak(animal: Dog | Cat): void {
+  if ('bark' in animal) {
+    animal.bark();
+  } else {
+    animal.meow();
+  }
+}
+
+function formatDate(input: Date | string): string {
+  if (input instanceof Date) {
+    return input.toISOString();
+  }
+  return new Date(input).toISOString();
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Using the non-null assertion chain: user!.name!.first!</description>
+      <reason>Every ! silently produces a TypeError at runtime if the value is actually null; use optional chaining and nullish coalescing instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Casting unknown external data with "as User".</description>
+      <reason>Type assertions are unchecked — invalid shapes pass at compile time but crash at runtime. Validate with a type guard or Zod instead.</reason>
+    </antipattern>
+  </section>
+</text>
