@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-retry-cost" title="Rate Limiting, Retry Logic, and Cost Tracking">
+  <summary>Rate limit tiers, mandatory retry logic for 529 errors, tenacity-based backoff pattern, and cost tracking by model including cache pricing.</summary>
+
+  <section title="Rate Limits and Retry">
+    <rule>
+      <statement>Implement exponential backoff with tenacity for both RateLimitError (429) and overloaded_error (529) — 529 is not a client error; it is a transient server condition requiring retry.</statement>
+      <rationale>529 overloaded_error is frequent during peak hours. Applications that do not retry it fail unnecessarily. Applications that do not back off amplify the overload.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from tenacity import (retry, stop_after_attempt,
+                      wait_exponential, retry_if_exception_type)
+from anthropic import RateLimitError, APIStatusError
+
+@retry(
+    retry=retry_if_exception_type((RateLimitError, APIStatusError)),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(5),
+)
+def make_request(client, model, messages, max_tokens=1024):
+    return client.messages.create(
+        model=model, max_tokens=max_tokens, messages=messages)
+]]></code>
+      <note>APIStatusError with status_code >= 500 covers both 529 and other transient server errors.</note>
+    </example>
+
+    <reference path="templates/retry-wrapper.py">Standalone retry decorator module</reference>
+
+    <rule>
+      <statement>For concurrent agent workloads: parallel subagents sharing one API key share rate limits — budget requests/min per subagent thread and monitor x-ratelimit-remaining-requests headers.</statement>
+      <rationale>Tier 1 limits (50 req/min) are hit immediately by even 3 concurrent subagents making rapid calls. Header-based throttling prevents cascading 429 failures.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cost Tracking">
+    <rule>
+      <statement>Use the response.model field (not the requested model) for cost lookup — Anthropic aliases may resolve to a different model ID than requested.</statement>
+      <rationale>Cost tracking that uses the requested model string will misattribute costs when aliases resolve to different model IDs. The response field is authoritative.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Enable prompt caching (anthropic-beta: prompt-caching-2024-07-31) for repeated system prompts; cache reads are 90% cheaper than regular input tokens.</statement>
+      <rationale>Cache write is 25% more expensive, but cache read is 90% cheaper. For agents with large repeated system prompts across many calls, caching typically yields 60–80% cost reduction.</rationale>
+    </rule>
+
+    <reference path="templates/cost-tracker.py">CostTracker class with cache pricing</reference>
+  </section>
+</text>

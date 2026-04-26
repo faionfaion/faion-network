@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-retry-service" title="Retry Logic, Streaming, and StructuredOutputService">
+  <summary>Error-injecting retry pattern, streaming JSON limitations, and the StructuredOutputService abstraction for production pipelines.</summary>
+
+  <section title="Retry with Error Injection">
+    <rule>
+      <statement>On ValidationError retry, include the error message in the next prompt — blind retries rarely improve results because the model repeats the same mistake without knowing what failed.</statement>
+      <rationale>The model does not know it failed validation unless told. Adding the Pydantic error message to the prompt ("The previous response failed validation: {error}. Please fix: ...") guides it to correct the specific field.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Log all ValidationError instances with the raw LLM output — patterns in failures reveal schema improvement opportunities.</statement>
+      <rationale>Repeated failures on the same field indicate the schema description is inadequate or the field is genuinely ambiguous. Logs are the only way to identify and fix these patterns.</rationale>
+    </rule>
+  </section>
+
+  <section title="Streaming Structured Output">
+    <rule>
+      <statement>Do not parse partial JSON chunks from a streaming structured output call — partial JSON is not valid JSON and json.loads() will fail on every chunk except the last.</statement>
+      <rationale>Streaming + JSON mode produces one valid JSON only at completion. Attempting to parse intermediary chunks wastes compute and produces only errors. Stream for UX progress indicators only, not for parsing.</rationale>
+    </rule>
+  </section>
+
+  <section title="StructuredOutputService">
+    <rule>
+      <statement>Centralize structured extraction in a StructuredOutputService that handles retries, schema injection, and validation; subagents receive typed Pydantic objects as inputs and outputs, not raw strings.</statement>
+      <rationale>Duplicating extraction logic across subagents creates inconsistent error handling and retry behavior. A shared service ensures uniform behavior across the pipeline.</rationale>
+    </rule>
+
+    <reference path="templates/structured-output-service.py">StructuredOutputService implementation</reference>
+    <reference path="templates/agent-task-schema.py">Canonical AgentTaskResult schema</reference>
+  </section>
+</text>

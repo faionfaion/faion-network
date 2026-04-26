@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-strategy-selection" title="CoT Strategy Selection and Self-Consistency">
+  <summary>Heuristics for selecting the right CoT strategy, self-consistency sampling rules, and native CoT in o1/Claude extended thinking.</summary>
+
+  <section title="Strategy Selection">
+    <rule>
+      <statement>Always try zero-shot CoT ("Think step by step.") first — it solves 70–80% of cases at the cost of only a few extra tokens. Escalate to advanced techniques only after zero-shot fails on your specific problem class.</statement>
+      <rationale>Advanced techniques multiply API calls, cost, and latency. Zero-shot is free in terms of additional API calls. Measure before upgrading strategy.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use o1/o3 (OpenAI) or Claude extended thinking (Anthropic) for problems that natively benefit from deep reasoning — they handle CoT internally and are cheaper than explicit multi-call ToT.</statement>
+      <rationale>Extended thinking tokens are billed but not visible in the response text — they represent internal reasoning the model does natively. Running explicit ToT on top of o1 is redundant and expensive.</rationale>
+    </rule>
+
+    <reference path="templates/strategy-selector.py">Keyword heuristic for strategy routing</reference>
+    <reference path="templates/cot-prompts.txt">Trigger phrases for each strategy</reference>
+  </section>
+
+  <section title="Self-Consistency">
+    <rule>
+      <statement>For self-consistency: sample at temperature=0.7, deduplicate identical outputs before majority vote, and benchmark accuracy gain vs. cost before using more than 5 samples.</statement>
+      <rationale>Low-temperature sampling produces identical outputs that artificially inflate one answer's count. Cost multiplies linearly with sample count — 10 samples = 10x the cost of a single call.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Using self-consistency when all samples share the same systematic bias.</description>
+      <reason>If the model has a consistent bias on a problem type, majority vote amplifies the wrong answer. Self-consistency assumes independent errors; correlated errors defeat it.</reason>
+    </antipattern>
+  </section>
+</text>

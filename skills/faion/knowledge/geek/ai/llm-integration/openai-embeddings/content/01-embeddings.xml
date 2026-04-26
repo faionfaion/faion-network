@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-embeddings" title="Embedding Models, Chunking, and Similarity">
+  <summary>Model selection guide, chunking rules, cosine similarity, and dimension reduction trade-offs for OpenAI embeddings.</summary>
+
+  <section title="Model Selection">
+    <rule>
+      <statement>Use text-embedding-3-small for most tasks (20x cheaper than ada-002 with better quality); only switch to text-embedding-3-large when retrieval recall is measurably insufficient after benchmarking.</statement>
+      <rationale>text-embedding-3-small at $0.02/M tokens vs. text-embedding-3-large at $0.13/M tokens represents a 6.5x cost difference. Quality gap is negligible for most semantic search tasks.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Never mix embedding model or dimensions between ingestion and query — incompatible vectors produce random similarity scores with no error.</statement>
+      <rationale>Embedding a query with text-embedding-3-small at 1536 dims against a corpus embedded with text-embedding-3-large at 3072 dims produces meaningless cosine similarity values.</rationale>
+    </rule>
+  </section>
+
+  <section title="Chunking Rules">
+    <rule>
+      <statement>Chunk documents at semantic boundaries (paragraphs, sections) with ~10% overlap; always chunk before embedding — input silently truncated at 8191 tokens produces poor-quality embeddings for the truncated portion.</statement>
+      <rationale>Fixed-token chunking at sentence boundaries loses semantic coherence. Overlap prevents missing information at chunk boundaries. Silent truncation produces embeddings that represent only part of the content.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Store both the embedding vector and the original chunk text; cache embeddings for static content — never re-embed unchanged text.</statement>
+      <rationale>Embeddings cannot be reversed to recover text. Agents that store only vectors have no way to return the source text in search results. Re-embedding static content wastes money and time.</rationale>
+    </rule>
+  </section>
+
+  <section title="Similarity Computation">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import numpy as np
+from openai import OpenAI
+
+client = OpenAI()
+
+def embed(texts: list[str], model="text-embedding-3-small",
+          dims=1536) -> list[list[float]]:
+    resp = client.embeddings.create(model=model, input=texts, dimensions=dims)
+    return [d.embedding for d in resp.data]
+
+def cosine(a, b) -> float:
+    a, b = np.array(a), np.array(b)
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+def top_k(query_emb, corpus_embs, corpus_texts, k=5):
+    scores = [(cosine(query_emb, e), t)
+              for e, t in zip(corpus_embs, corpus_texts)]
+    return sorted(scores, reverse=True)[:k]
+]]></code>
+      <note>Normalize embeddings before storing — cosine similarity on normalized vectors equals dot product, which most vector DBs optimize for.</note>
+    </example>
+
+    <rule>
+      <statement>For RAG retrieval, embed a rewritten/expanded version of the user query, not the raw message; expanded queries improve recall for short or ambiguous inputs.</statement>
+      <rationale>Short queries (2–5 words) embed into sparse regions of the vector space that miss relevant documents. Query expansion via LLM rewrites them into semantically richer representations.</rationale>
+    </rule>
+
+    <reference path="templates/embed-and-search.py">Reusable embed + cosine + top_k utility</reference>
+  </section>
+</text>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tool-design" title="Tool Definition Quality and Security">
+  <summary>Rules for writing tool descriptions that maximize correct selection, handling errors structurally, and gating destructive tools before execution.</summary>
+
+  <section title="Description Quality">
+    <rule>
+      <statement>Write tool descriptions as if explaining to a junior developer who does not know the system — the model uses the description, not the code, to decide when to call a tool.</statement>
+      <rationale>Vague descriptions are the #1 cause of wrong tool selection. A description that says "get data" is worse than one that says "fetch current weather conditions for a city by calling the external weather API".</rationale>
+    </rule>
+
+    <rule>
+      <statement>Return structured error objects from tools ({"error": "reason"}) instead of raising exceptions; let the model decide how to recover.</statement>
+      <rationale>Exceptions propagate out of the tool loop and crash the agent. A structured error lets the model reason about failure and potentially retry with different arguments.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security and Destructive Tools">
+    <rule>
+      <statement>Sandbox any code execution tool (subprocess, exec) to prevent model-generated code from accessing the host filesystem or network without restriction.</statement>
+      <rationale>A model-generated os.system("rm -rf /") in an unsandboxed subprocess is a critical security incident. Code execution tools must be isolated.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Require explicit human confirmation before executing any tool that modifies external state (database writes, API calls that create/delete resources, email sending).</statement>
+      <rationale>Autonomous tool execution without approval is appropriate only for read-only tools. Destructive actions triggered by ambiguous natural language intent cause irreversible harm.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Passing large tool results (>50KB) back to the model without truncation.</description>
+      <reason>Very large tool results inflate context dramatically, pushing other messages out of the window and causing the model to lose track of earlier instructions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Executing parallel tool calls (OpenAI default) when tools share mutable state.</description>
+      <reason>Parallel calls can produce race conditions — e.g., two concurrent writes to the same database row. Use sequential execution for stateful tools.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Performance">
+    <rule>
+      <statement>Execute independent tool calls in parallel using asyncio.gather; log each tool call with name, args, result, and latency to a persistent trace.</statement>
+      <rationale>Sequential execution of N independent tools multiplies latency by N. Parallel execution with async implementations reduces multi-tool workflows to the slowest single call. Trace logs enable replay on failure.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/01-tool-loop.xml"/>
+  </see-also>
+</text>

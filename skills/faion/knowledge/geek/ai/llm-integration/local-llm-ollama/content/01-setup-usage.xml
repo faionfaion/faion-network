@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-setup-usage" title="Ollama Setup, Model Selection, and API Usage">
+  <summary>Installation, RAM-based model selection, health check pattern, and OpenAI-compatible endpoint for local/cloud switching.</summary>
+
+  <section title="Setup">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Install (Linux)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Start server (keep as systemd service in production)
+ollama serve
+
+# Pull a model (blocking — handle in agent as a blocking operation)
+ollama pull llama3.1:8b
+
+# List available models
+ollama list
+]]></code>
+    </example>
+
+    <rule>
+      <statement>Keep Ollama running as a systemd service on Linux; check server availability via /api/tags at agent startup and fail fast with a clear error if Ollama is not running.</statement>
+      <rationale>Agents that assume Ollama is running will produce cryptic connection errors. A health check at startup with a descriptive error message saves debug time.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+import requests
+
+def ollama_ready(base_url="http://localhost:11434") -> bool:
+    """Health check — call at agent startup before any model call."""
+    try:
+        return requests.get(f"{base_url}/api/tags", timeout=2).status_code == 200
+    except Exception:
+        return False
+
+def check_and_generate(prompt: str, model="llama3.1:8b") -> str:
+    OLLAMA = "http://localhost:11434"
+    if not ollama_ready(OLLAMA):
+        raise RuntimeError("Ollama not running. Start with: ollama serve")
+    models = [m["name"] for m in
+              requests.get(f"{OLLAMA}/api/tags").json()["models"]]
+    if model not in models:
+        raise RuntimeError(f"Model {model!r} not pulled. Run: ollama pull {model}")
+    r = requests.post(f"{OLLAMA}/api/generate",
+                      json={"model": model, "prompt": prompt, "stream": False},
+                      timeout=120)
+    return r.json()["response"]
+]]></code>
+    </example>
+  </section>
+
+  <section title="OpenAI-Compatible Endpoint">
+    <rule>
+      <statement>Use the OpenAI-compatible /v1 endpoint for all agent code — it enables local/cloud switching by changing only base_url and api_key, with zero code changes.</statement>
+      <rationale>Maintaining two code paths (Ollama API + OpenAI API) doubles testing surface. The /v1 compatibility layer makes Ollama a drop-in replacement for development.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+
+# Local Ollama — identical API surface as cloud
+local_client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+
+# Cloud — only base_url and api_key change
+cloud_client = OpenAI()  # uses OPENAI_API_KEY from env
+
+def get_client(use_local: bool = False):
+    if use_local:
+        return OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
+    return OpenAI()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Model Selection by RAM">
+    <list>
+      <item>phi3:mini (2.3GB) — 4GB RAM, lightweight tasks</item>
+      <item>llama3.1:8b (4.7GB) — 8GB RAM, general purpose, supports tool use</item>
+      <item>mistral:7b (4.1GB) — 8GB RAM, fast, efficient</item>
+      <item>codellama:13b (7.4GB) — 16GB RAM, code generation</item>
+      <item>mixtral:8x7b (26GB) — 32GB RAM, mixture of experts</item>
+      <item>llama3.1:70b (40GB) — 48GB RAM, complex reasoning</item>
+    </list>
+
+    <rule>
+      <statement>Use quantized variants (Q4_K_M, Q5_K_M) — they cut VRAM by 50–60% with 2–5% quality loss; log eval_count and total_duration to detect GPU fallback to CPU (10–50x slower).</statement>
+      <rationale>Unquantized models that exceed VRAM fall back to CPU inference, which is 10–50x slower. eval_count/total_duration expose this without needing nvidia-smi in the agent.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-input-guardrails" title="Input Validation and Prompt Injection Detection">
+  <summary>Rules and patterns for validating user input before it reaches the LLM: length limits, PII redaction, and prompt injection detection.</summary>
+
+  <section title="Input Validation Rules">
+    <rule>
+      <statement>Validate length, blocked patterns, and PII in one pass before the LLM call; return a structured result with is_valid, sanitized_input, and violations list.</statement>
+      <rationale>Cheap regex checks catch most violations in microseconds. Passing invalid input to the LLM wastes tokens and risks leaking PII in the response.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import List
+import re
+
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    sanitized_input: str
+    violations: List[str]
+
+class InputGuardrails:
+    def __init__(self, max_length=4000, blocked_patterns=None, pii_patterns=None):
+        self.max_length = max_length
+        self.blocked_patterns = blocked_patterns or []
+        self.pii_patterns = pii_patterns or {
+            'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+            'phone': r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
+            'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
+            'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
+        }
+
+    def validate(self, text: str) -> ValidationResult:
+        violations = []
+        sanitized = text
+        if len(text) > self.max_length:
+            violations.append(f"Input exceeds max length ({self.max_length})")
+            sanitized = sanitized[:self.max_length]
+        for pattern in self.blocked_patterns:
+            if re.search(pattern, text, re.IGNORECASE):
+                violations.append("Blocked pattern detected")
+                sanitized = re.sub(pattern, '[BLOCKED]', sanitized, flags=re.IGNORECASE)
+        for pii_type, pattern in self.pii_patterns.items():
+            if re.search(pattern, text):
+                violations.append(f"PII detected: {pii_type}")
+                sanitized = re.sub(pattern, f'[{pii_type.upper()}_REDACTED]', sanitized)
+        return ValidationResult(is_valid=len(violations) == 0,
+                                sanitized_input=sanitized, violations=violations)
+]]></code>
+      <note>Always return sanitized_input even when violations exist — callers may still want to pass the cleaned version to the LLM with a warning.</note>
+    </example>
+  </section>
+
+  <section title="Prompt Injection Detection">
+    <rule>
+      <statement>Use regex patterns to detect role-manipulation, instruction-override, and jailbreak phrases; return (is_injection: bool, detections: list) so callers can log and block.</statement>
+      <rationale>Regex-based detection covers common injection templates at negligible latency. It is not foolproof — Unicode lookalikes and whitespace normalization can evade it — but it is the correct first layer.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Run injection detection on ALL external data that enters the LLM context, not just direct user messages — tool results, web page content, and database rows can carry injection payloads.</statement>
+      <rationale>Agents that fetch external content and include it in the next LLM call are vulnerable to indirect prompt injection if they skip validation of that content.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+INJECTION_PATTERNS = [
+    r'ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)',
+    r'disregard\s+(all\s+)?(previous|above)',
+    r'you\s+are\s+(now|actually)\s+a',
+    r'pretend\s+(to\s+be|you\s+are)',
+    r'(show|reveal|display|print)\s+(your|the)\s+(system\s+)?prompt',
+    r'(DAN|STAN|DUDE|KEVIN)\s+mode',
+    r'bypass\s+(safety|filter)',
+    r'<\s*script',
+    r'\$\{.*\}',
+]
+
+def detect_injection(text: str, patterns=INJECTION_PATTERNS):
+    detections = []
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            detections.append({'pattern': pattern, 'matches': matches})
+    return len(detections) > 0, detections
+]]></code>
+      <note>Test each pattern independently against known Unicode evasions (e.g., "ign​ore" with zero-width space) before deploying to production.</note>
+    </example>
+
+    <antipattern>
+      <description>Logging the raw blocked content alongside the violation record.</description>
+      <reason>Raw injection payloads in logs create secondary attack surface and may violate PII policies. Log violation type, user ID, and sanitized input only.</reason>
+    </antipattern>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-guardrails.xml"/>
+  </see-also>
+</text>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-tool-loop" title="Request-Execute-Respond Loop">
+  <summary>The tool use loop pattern: send tools to LLM, detect tool calls in response, execute, feed results back, and cap iterations to prevent runaway loops.</summary>
+
+  <section title="Core Loop Rule">
+    <rule>
+      <statement>Cap every tool use loop at a fixed iteration limit (10 is a safe default) and return a partial result with a [max_iterations_reached] marker when the limit is hit — never run unbounded.</statement>
+      <rationale>If tool results never satisfy the model's reasoning, it keeps calling tools until the context overflows or costs spike. A hard cap is mandatory for production stability.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json
+
+def agent_loop(client, messages, tools, tool_registry,
+               model="gpt-4o", max_iter=10):
+    """Run tool-use loop with iteration cap."""
+    for _ in range(max_iter):
+        resp = client.chat.completions.create(
+            model=model, messages=messages, tools=tools)
+        msg = resp.choices[0].message
+        messages.append(msg)
+        if not msg.tool_calls:
+            return msg.content
+        for tc in msg.tool_calls:
+            fn = tc.function.name
+            args = json.loads(tc.function.arguments)
+            result = tool_registry.get(
+                fn, lambda **_: {"error": f"unknown tool: {fn}"})(**args)
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": json.dumps(result),
+            })
+    return "[max_iterations_reached]"
+]]></code>
+      <note>Wrap json.loads in try/except — the model occasionally produces malformed JSON arguments, especially with complex schemas.</note>
+    </example>
+
+    <reference path="templates/agent-loop.py">Standalone iteration-capped loop module</reference>
+  </section>
+
+  <section title="Provider Schema Differences">
+    <rule>
+      <statement>Never assume OpenAI and Anthropic tool schemas are interchangeable; maintain a single tool registry and translate to provider-specific format at call time.</statement>
+      <rationale>OpenAI uses "type": "function" wrapper + "parameters"; Anthropic uses "input_schema" not "parameters"; Gemini uses protos.FunctionDeclaration. A single registry must translate between formats.</rationale>
+    </rule>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Hardcoding Anthropic schema into OpenAI call
+tools = [{"name": "get_weather", "input_schema": {...}}]  # wrong for OpenAI
+client.chat.completions.create(model="gpt-4o", tools=tools)
+]]></code>
+      <note>OpenAI expects {"type": "function", "function": {"name": ..., "parameters": ...}}; Anthropic expects {"name": ..., "input_schema": ...}.</note>
+    </example>
+
+    <rule>
+      <statement>Always include the tool_call_id (OpenAI) or tool_use_id (Anthropic) in the tool result message; omitting it causes a validation error.</statement>
+      <rationale>Both providers require correlation IDs in tool results to match calls to responses. Missing IDs fail silently or raise SDK errors depending on the provider version.</rationale>
+    </rule>
+  </section>
+</text>

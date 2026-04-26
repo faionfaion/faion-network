@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-production" title="Modelfiles, Docker, and Production Gotchas">
+  <summary>Baking system prompts into Modelfiles, Docker deployment with GPU passthrough, and critical concurrency and tool-use limitations.</summary>
+
+  <section title="Modelfiles">
+    <rule>
+      <statement>Use Modelfiles to bake system prompts and parameters into a named model (ollama create task-agent -f Modelfile); this avoids re-sending system prompts on every call and sets context size explicitly.</statement>
+      <rationale>Default context window (num_ctx) is model-dependent and often too small for production. Sending large system prompts on every call wastes tokens. Modelfiles bake both into the model artifact.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="dockerfile"><![CDATA[
+# Modelfile for a code assistant
+FROM codellama:13b
+PARAMETER temperature 0.2
+PARAMETER num_ctx 8192
+SYSTEM """You are an expert Python programmer.
+Write clean, documented code with error handling."""
+]]></code>
+      <note>Build with: ollama create python-coder -f Modelfile</note>
+    </example>
+  </section>
+
+  <section title="Concurrency Limitations">
+    <rule>
+      <statement>Ollama does not support parallel request processing by default — design agents to expect serialized local inference, not parallelized; never send concurrent requests expecting parallel execution.</statement>
+      <rationale>An agent pool sending concurrent requests will serialize them, not parallelize. Designing for parallelism leads to unexpected queueing and latency spikes in production.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use /api/chat (not /api/generate) for tool use / function calling; only llama3.1 and mistral-nemo support it — check model compatibility before designing tool-calling agents.</statement>
+      <rationale>The /api/generate endpoint does not support tool use. Older Mistral models do not implement function calling. Tool-calling agents must verify model support at startup.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Hardcoding the model name in agent code (e.g., always using "llama3.1:8b").</description>
+      <reason>Different machines have different VRAM. A hardcoded model that exceeds available VRAM will fail or run on CPU. Model name must be configurable via environment or config file.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Docker Deployment">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# docker-compose.yml for Ollama with GPU passthrough
+services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+volumes:
+  ollama_data:
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-setup-usage.xml"/>
+  </see-also>
+</text>

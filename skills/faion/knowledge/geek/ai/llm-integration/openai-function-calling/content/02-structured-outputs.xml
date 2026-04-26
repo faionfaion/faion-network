@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-structured-outputs" title="Pydantic Structured Extraction">
+  <summary>Using client.beta.chat.completions.parse for schema-enforced structured output, JSON mode fallback, and critical gotchas (refusal, model support, null-check).</summary>
+
+  <section title="Structured Output Rules">
+    <rule>
+      <statement>Use client.beta.chat.completions.parse with a Pydantic model for any extraction with required fields; fall back to json_object mode + manual validation only for models that do not support structured outputs (pre-gpt-4o).</statement>
+      <rationale>parse enforces field presence at the API level. json_object mode only prevents non-JSON responses; it does not enforce schema shape. Missing required fields cause downstream KeyErrors.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always null-check response.choices[0].message.parsed before accessing fields — it is None if the model refused to fill the schema (e.g., safety filter triggered).</statement>
+      <rationale>A non-null message.refusal alongside a null parsed indicates a safety refusal. Accessing parsed without null-checking raises AttributeError in production.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from typing import Optional, List
+from openai import OpenAI
+
+client = OpenAI()
+
+class Person(BaseModel):
+    name: str
+    age: int
+    email: Optional[str] = None
+
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[{"role": "user",
+               "content": "Extract: John Doe, 30, john@example.com"}],
+    response_format=Person,
+)
+
+msg = response.choices[0].message
+if msg.refusal:
+    raise ValueError(f"Model refused: {msg.refusal}")
+person = msg.parsed  # validated Pydantic instance
+print(person.name, person.age)
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Calling client.beta.chat.completions.parse on gpt-3.5-turbo or older models.</description>
+      <reason>Structured Outputs are only available on gpt-4o and newer. Calling parse on unsupported models raises NotImplementedError at runtime.</reason>
+    </antipattern>
+
+    <reference path="templates/pydantic-extraction.py">Full extraction with retry and fallback</reference>
+  </section>
+</text>

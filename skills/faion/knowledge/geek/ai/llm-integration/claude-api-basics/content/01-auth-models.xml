@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-auth-models" title="Authentication and Model Selection">
+  <summary>Required headers, API key security, model IDs, and the task-to-model routing table for Claude API calls.</summary>
+
+  <section title="Authentication">
+    <rule>
+      <statement>Store ANTHROPIC_API_KEY in the environment only — never in source code, agent prompts, or log files. Log the x-request-id response header for every call for support debugging.</statement>
+      <rationale>API keys in source code are exposed via version control. x-request-id is required by Anthropic support to trace specific requests — without it, debugging production failures is impossible.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Required headers for direct curl calls
+curl https://api.anthropic.com/v1/messages \
+  -H "x-api-key: $ANTHROPIC_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model": "claude-sonnet-4-20250514", "max_tokens": 1024,
+       "messages": [{"role": "user", "content": "Hello!"}]}'
+]]></code>
+    </example>
+  </section>
+
+  <section title="Model Selection">
+    <rule>
+      <statement>Pin model IDs with full date strings (e.g., claude-sonnet-4-20250514) in all production calls; never use alias strings that resolve to different models over time.</statement>
+      <rationale>Alias updates silently change model behavior and break cost tracking lookups that match on model ID. Full-date pinning is the only way to ensure reproducible behavior.</rationale>
+    </rule>
+
+    <p>Current models (2025–2026) and recommended tasks:</p>
+    <list>
+      <item>claude-opus-4-5-20251101 — complex reasoning, research, extended thinking; $15/$75 per 1M tokens</item>
+      <item>claude-sonnet-4-20250514 — balanced, recommended default, code; $3/$15 per 1M tokens</item>
+      <item>claude-3-5-haiku-20241022 — fast classification, cheap, high-throughput; $0.80/$4 per 1M tokens</item>
+    </list>
+
+    <rule>
+      <statement>Check response.stop_reason after every call — "max_tokens" means output was truncated, not complete; increase max_tokens or decompose the task.</statement>
+      <rationale>max_tokens is a hard ceiling. A truncated response with stop_reason="max_tokens" silently produces incomplete output that downstream processing treats as complete.</rationale>
+    </rule>
+  </section>
+</text>

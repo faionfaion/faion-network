@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-guardrails" title="Content Moderation and Layered Check Ordering">
+  <summary>Output guardrail patterns: OpenAI Moderation API integration, intent classification, and the mandatory fast-to-slow ordering of layered checks.</summary>
+
+  <section title="Layered Check Ordering">
+    <rule>
+      <statement>Order guardrail checks by speed: length/regex (microseconds) → moderation API (50–200ms) → LLM intent classifier (300–800ms); fail fast and do not escalate to the next layer if the previous layer blocks.</statement>
+      <rationale>LLM-based classifiers add 300–800ms per request. Running them on every input makes latency unacceptable. The fast layers eliminate 90%+ of bad inputs before the slow layer is needed.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+def check_input(text: str, detector, moderator, max_len: int = 4000) -> dict:
+    """Run layered input checks, fast to slow."""
+    if len(text) > max_len:
+        return {"safe": False, "reason": "length_exceeded"}
+    is_injection, _ = detector.detect(text)
+    if is_injection:
+        return {"safe": False, "reason": "prompt_injection"}
+    mod = moderator.moderate(text)
+    if mod["is_flagged"]:
+        return {"safe": False, "reason": "moderation",
+                "categories": mod["flagged_categories"]}
+    return {"safe": True}
+]]></code>
+      <note>Return a reason code, not the specific pattern that triggered — revealing which guardrail triggered lets adversaries fingerprint and evade the filter.</note>
+    </example>
+
+    <reference path="templates/layered-check.py">Standalone layered check function</reference>
+  </section>
+
+  <section title="Content Moderation">
+    <rule>
+      <statement>Use the OpenAI Moderation API for harmful content detection on both input and output; set a threshold (default 0.5) and block only categories relevant to the application domain.</statement>
+      <rationale>OpenAI Moderation API is free, fast (~50ms), and covers 11 harm categories. Blocking all categories at default threshold causes false positives in domains like healthcare or security research.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def moderate(text: str, blocked_categories=None, threshold=0.5) -> dict:
+    ALL_CATEGORIES = [
+        'hate', 'hate/threatening', 'harassment', 'harassment/threatening',
+        'self-harm', 'self-harm/intent', 'sexual', 'sexual/minors',
+        'violence', 'violence/graphic',
+    ]
+    blocked = blocked_categories or ALL_CATEGORIES
+    result = client.moderations.create(input=text).results[0]
+    flagged = []
+    for cat in blocked:
+        score = getattr(result.category_scores,
+                        cat.replace('/', '_').replace('-', '_'))
+        if score > threshold:
+            flagged.append({'category': cat, 'score': score})
+    return {'is_flagged': bool(flagged), 'flagged_categories': flagged}
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Running the moderation API on every request in a high-throughput streaming pipeline.</description>
+      <reason>At 50–200ms per call, two LLM-based guardrails add 1s+ to every request, which breaks streaming UX. Measure P95 latency impact before enabling in real-time contexts.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Multi-Turn and Agentic Guardrails">
+    <rule>
+      <statement>For multi-turn conversations, run a sliding-window check over the last N turns, not just the current message; for agentic tool pipelines, run injection detection on all external data before it enters the LLM context.</statement>
+      <rationale>Harmful intent can be distributed across several harmless-looking turns, and tool results from web pages or databases can carry injection payloads. Per-turn guardrails miss both attack vectors.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Require a second reviewer before lowering any moderation threshold in production; log all threshold change decisions with justification.</statement>
+      <rationale>Threshold reductions in response to false positives can open real attack vectors. This change requires human review, not autonomous agent action.</rationale>
+    </rule>
+  </section>
+</text>
