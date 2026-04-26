@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture" title="Voice Agent Architecture and BasicVoiceAgent">
+  <summary>STT to LLM to TTS pipeline, latency budget per component, and BasicVoiceAgent implementation.</summary>
+
+  <section title="Pipeline Architecture">
+    <p>A voice agent chains three components sequentially: STT (Whisper) converts audio to text, an LLM generates a text response, and TTS converts the response back to audio. The pipeline is sequential — parallelizing STT and LLM is not possible.</p>
+    <rule>
+      <statement>Budget each pipeline component: STT under 300ms, LLM under 500ms, TTS under 200ms — targeting under 1000ms total end-to-end.</statement>
+      <rationale>The typical range is 650–1900ms. VAD adds 50–100ms. Total exceeding 2s feels unresponsive for interactive voice.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Latency targets per component
+# VAD:  50-100ms  → target <100ms
+# STT:  200-500ms → target <300ms
+# LLM:  300-1000ms→ target <500ms
+# TTS:  100-300ms → target <200ms
+# Total:650-1900ms→ target <1000ms
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="BasicVoiceAgent">
+    <reference path="templates/basic-voice-agent.py">BasicVoiceAgent with listen/think/speak loop</reference>
+    <p>BasicVoiceAgent records a fixed-duration audio clip, transcribes via Whisper, sends to GPT-4o, and plays back via TTS.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class BasicVoiceAgent:
+    def __init__(self, system_prompt: str = "You are a helpful assistant.",
+                 voice: str = "nova", sample_rate: int = 16000):
+        self.conversation_history = [{"role": "system", "content": system_prompt}]
+        self.voice = voice
+        self.sample_rate = sample_rate
+
+    def listen(self, duration: float = 5.0) -> str:
+        """Record and transcribe. Fixed-duration — use VAD in production."""
+        audio = sd.rec(int(duration * self.sample_rate), samplerate=self.sample_rate,
+                       channels=1, dtype='int16')
+        sd.wait()
+        # save to temp .wav → transcribe with whisper-1
+        ...
+
+    def think(self, user_input: str) -> str:
+        self.conversation_history.append({"role": "user", "content": user_input})
+        response = client.chat.completions.create(
+            model="gpt-4o", messages=self.conversation_history)
+        msg = response.choices[0].message.content
+        self.conversation_history.append({"role": "assistant", "content": msg})
+        return msg
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Using fixed-duration recording (sd.rec with a hardcoded duration).</description>
+      <reason>Truncates long speech; records silence for short utterances. Always use VAD-based recording in production.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Tool-Enabled Voice Agent">
+    <reference path="templates/tool-voice-agent.py">ToolEnabledVoiceAgent with function calling</reference>
+    <p>Tool calls inside a voice turn must complete before TTS can begin. Long-running tools (web search, DB queries) should return a brief "thinking" audio response first.</p>
+    <antipattern>
+      <description>Awaiting tool calls synchronously in the voice loop without a "thinking" response.</description>
+      <reason>Long-running tool calls stall TTS — the user hears silence for several seconds with no feedback.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Vision Application Rules">
+  <summary>Token budget, image prep, JSON mode gotchas, and async batch patterns for production vision tasks.</summary>
+
+  <section title="Image Preparation Rules">
+    <rule>
+      <statement>Validate image size and format before base64 encoding. Reject files over 20MB and unsupported formats early.</statement>
+      <rationale>OpenAI Vision API rejects images over 20MB. Base64 encoding increases payload size by ~33%; a 20MB image becomes ~27MB on the wire.</rationale>
+    </rule>
+    <rule>
+      <statement>Use detail="auto" by default; switch to detail="high" only for dense text documents or charts with small labels.</statement>
+      <rationale>detail="high" costs 85 tokens per 512x512 tile plus a base 85 tokens — a 4K image consumes 1500+ prompt tokens just for the image.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from PIL import Image
+import io, base64
+
+def prepare_image_for_api(path: str, max_short_side: int = 768) -> str:
+    """Resize and encode. Keeps detail:auto within token budget."""
+    img = Image.open(path)
+    w, h = img.size
+    short = min(w, h)
+    if short > max_short_side:
+        scale = max_short_side / short
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    buf = io.BytesIO()
+    fmt = "JPEG" if path.lower().endswith((".jpg", ".jpeg")) else "PNG"
+    img.save(buf, format=fmt, quality=85)
+    return base64.standard_b64encode(buf.getvalue()).decode()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="JSON Mode Rules">
+    <rule>
+      <statement>Always wrap json.loads() in try/except json.JSONDecodeError when using json_mode=True.</statement>
+      <rationale>Vision models hallucinate invalid JSON on complex nested structures. Silent failures propagate to downstream routing.</rationale>
+    </rule>
+    <rule>
+      <statement>Define the exact JSON schema in the prompt and use response_format={"type": "json_object"}. json_mode does not guarantee schema adherence — normalize output fields (e.g., enforce lowercase severity values).</statement>
+      <rationale>A ContentModerator returning {"severity": "HIGH"} instead of "high" breaks downstream logic silently.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using json_mode without a schema in the prompt.</description>
+      <reason>Model chooses field names and nesting arbitrarily — output is unpredictable across requests.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Batch and Caching Rules">
+    <rule>
+      <statement>For batch processing, use asyncio.gather() with a concurrency limit of 10-20 simultaneous requests.</statement>
+      <rationale>Sequential batch_analyze() is 10-100x slower than parallel calls. Rate limits apply per minute; 10-20 concurrent is safe for most tier-2 keys.</rationale>
+    </rule>
+    <rule>
+      <statement>Cache base64-encoded images by content hash to avoid re-encoding on retry.</statement>
+      <rationale>Re-encoding on each retry wastes CPU and adds latency to the critical path.</rationale>
+    </rule>
+    <rule>
+      <statement>For content moderation: set a confidence threshold and route low-confidence results to human review, not to auto-action.</statement>
+      <rationale>Vision LLM moderation is probabilistic — false negative rate on subtly harmful content is non-zero. Human review for confidence &lt; 0.7 prevents policy violations.</rationale>
+    </rule>
+  </section>
+</text>

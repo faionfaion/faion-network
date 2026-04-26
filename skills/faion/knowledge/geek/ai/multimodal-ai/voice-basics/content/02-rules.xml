@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Voice Agent Rules">
+  <summary>VAD recording, history truncation, TTS response length, interrupt handling, and latency optimization rules.</summary>
+
+  <section title="Recording and VAD">
+    <rule>
+      <statement>Use VAD-based recording (webrtcvad or Silero VAD) instead of fixed-duration recording in any production deployment.</statement>
+      <rationale>Fixed-duration recording truncates variable-length speech and records silence for short utterances. VAD-based recording stops when the speaker stops.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import webrtcvad, sounddevice as sd, collections
+
+def record_until_silence(sample_rate: int = 16000, silence_ms: int = 1000) -> bytes:
+    vad = webrtcvad.Vad(2)  # aggressiveness 0-3
+    frame_ms, frame_bytes = 30, sample_rate * 30 // 1000 * 2
+    silence_frames = silence_ms // 30
+    ring = collections.deque(maxlen=silence_frames)
+    frames = []
+    with sd.RawInputStream(samplerate=sample_rate, channels=1, dtype='int16') as s:
+        while True:
+            data, _ = s.read(frame_bytes // 2)
+            frame = bytes(data)
+            is_speech = vad.is_speech(frame, sample_rate)
+            ring.append(is_speech)
+            frames.append(frame)
+            if len(frames) > silence_frames and not any(ring):
+                break
+    return b"".join(frames)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Response and History Management">
+    <rule>
+      <statement>Keep TTS responses under 50 words per turn. Use tts-1 (not tts-1-hd) for real-time conversation.</statement>
+      <rationale>Longer responses feel unnatural and cannot be interrupted. tts-1-hd latency is not suitable for real-time — use it for pre-generated audio only.</rationale>
+    </rule>
+    <rule>
+      <statement>Truncate conversation_history to the last 10 turns to prevent context overflow. Summarize older context into the system prompt.</statement>
+      <rationale>Conversation history grows unboundedly — will hit context limits after 20-50 turns on GPT-4o, causing silent truncation or API errors.</rationale>
+    </rule>
+    <rule>
+      <statement>Always specify the language parameter explicitly in Whisper calls (e.g., language="uk", language="en").</statement>
+      <rationale>Auto-detection adds ~200ms latency and occasionally misidentifies similar languages (Ukrainian/Russian, Serbian/Croatian).</rationale>
+    </rule>
+  </section>
+
+  <section title="Latency Optimization">
+    <rule>
+      <statement>Use OpenAI Realtime API (WebSocket) for lowest-latency deployments — it eliminates the STT + LLM + TTS round-trip chain.</statement>
+      <rationale>The Realtime API delivers approximately 200ms end-to-end vs 650-1900ms for the chained approach.</rationale>
+    </rule>
+    <rule>
+      <statement>Use client.audio.speech.with_streaming_response to stream TTS audio to the speaker as chunks arrive rather than buffering the full response.</statement>
+      <rationale>Streaming reduces perceived TTS latency from full-response time to first-byte time — typically 100-200ms faster.</rationale>
+    </rule>
+    <antipattern>
+      <description>Implementing interrupt detection only as an afterthought.</description>
+      <reason>If new audio is detected during TTS playback and the agent does not stop playback immediately, the user hears overlapping speech — a blocking UX failure.</reason>
+    </antipattern>
+  </section>
+</text>

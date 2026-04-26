@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules" title="Voice Implementation Production Rules">
+  <summary>VAD replacement, context window management, markdown stripping, latency, and async tool function rules.</summary>
+
+  <section title="VAD and Audio Rules">
+    <rule>
+      <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD for any production deployment outside of silent environments.</statement>
+      <rationale>Energy-based VAD (RMS threshold) triggers on HVAC noise, keyboard sounds, and background music. Silero and WebRTC VAD use speech-specific models that work reliably in real-world environments.</rationale>
+    </rule>
+    <rule>
+      <statement>Run tool functions in a thread executor to avoid blocking the async event loop during voice turns.</statement>
+      <rationale>Synchronous tool functions that call external APIs block asyncio's event loop — no audio can be received or sent during the blocking call.</rationale>
+    </rule>
+  </section>
+
+  <section title="Response Quality Rules">
+    <rule>
+      <statement>Strip markdown from all LLM responses before TTS synthesis: re.sub(r'[*_`#&gt;]', '', text).</statement>
+      <rationale>TTS reads markdown symbols literally — "**bold**" becomes "asterisk asterisk bold asterisk asterisk". Markdown must be removed before the text reaches TTS.</rationale>
+    </rule>
+    <rule>
+      <statement>Cap max_response_tokens at 150-200. Implement sliding window on conversation_history: keep system prompt + last N turns + tool results.</statement>
+      <rationale>max_response_tokens=200 is too low for complex tool responses but correct for voice output length. Context overflow at 50 turns causes silent truncation. Sliding window prevents both problems.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import re
+
+def strip_markdown(text: str) -> str:
+    """Strip markdown before TTS — asterisks and hashes are read literally."""
+    return re.sub(r'[*_`#>]', '', text).strip()
+
+def truncate_history(history: list, max_turns: int = 10) -> list:
+    """Keep system prompt + last max_turns user/assistant pairs."""
+    system = [m for m in history if m["role"] == "system"]
+    turns = [m for m in history if m["role"] != "system"]
+    return system + turns[-(max_turns * 2):]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Latency Optimization">
+    <rule>
+      <statement>Use OpenAI Realtime API for deployments requiring under 300ms end-to-end latency. Use Groq Whisper for STT-only latency reduction (10x faster than OpenAI, ~80ms vs ~800ms).</statement>
+      <rationale>The standard STT+LLM+TTS chain has a 650-1900ms minimum. The Realtime API bypasses this with a native WebSocket protocol, delivering ~200ms end-to-end.</rationale>
+    </rule>
+  </section>
+
+  <section title="Session Management">
+    <rule>
+      <statement>Log each turn with: input_transcript, llm_response, tool_calls, audio_duration, and turn_latency.</statement>
+      <rationale>Without per-turn logs, debugging voice quality issues (truncation, tool failures, state machine errors) requires reproducing the exact conversation — expensive and often impossible.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using bare except Exception in the WebSocket endpoint.</description>
+      <reason>WebSocketDisconnect must be handled separately from actual errors — they require different logging and response behavior. Catch WebSocketDisconnect first, then generic exceptions.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-providers" title="Video Generation Provider Implementations">
+  <summary>RunwayVideoGenerator, LumaVideoGenerator, and ReplicateVideoGenerator with known bugs and fixes.</summary>
+
+  <section title="Runway Gen-3">
+    <reference path="templates/runway-generator.py">RunwayVideoGenerator: text-to-video and image-to-video</reference>
+    <p>Runway provides an official Python SDK. Tasks are async — poll with _wait_for_completion. Video URLs are pre-signed and expire in 30-60 minutes; download immediately after SUCCEEDED.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class RunwayVideoGenerator:
+    def __init__(self):
+        self.client = runwayml.RunwayML()
+
+    def generate_from_text(self, prompt: str, duration: int = 5,
+                           aspect_ratio: str = "16:9") -> dict:
+        task = self.client.image_to_video.create(
+            model="gen3a_turbo", prompt_text=prompt,
+            duration=duration, ratio=aspect_ratio)
+        return self._wait_for_completion(task.id)
+
+    def _wait_for_completion(self, task_id: str, timeout: int = 300) -> dict:
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            task = self.client.tasks.retrieve(task_id)
+            if task.status == "SUCCEEDED":
+                return {"status": "success", "video_url": task.output[0], "task_id": task_id}
+            elif task.status == "FAILED":
+                return {"status": "failed", "error": task.failure, "task_id": task_id}
+            time.sleep(5)
+        return {"status": "timeout", "task_id": task_id}
+      ]]></code>
+      <note>Runway content policy violations return FAILED with no useful error message. Do not retry without modifying the prompt.</note>
+    </example>
+  </section>
+
+  <section title="Luma Dream Machine">
+    <reference path="templates/luma-generator.py">LumaVideoGenerator: generate, extend, image-to-video</reference>
+    <p>Luma has no official Python SDK — use httpx REST calls. The original _wait_for_completion has no timeout; a fixed version is required for production.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def _wait_for_completion(self, generation_id: str, timeout: int = 300) -> dict:
+    """Fixed version with timeout — original loops infinitely."""
+    start = time.time()
+    while time.time() - start < timeout:
+        response = requests.get(
+            f"{self.base_url}/generations/{generation_id}",
+            headers={"Authorization": f"Bearer {self.api_key}"}
+        )
+        gen = response.json()
+        if gen["state"] == "completed":
+            return {"status": "success",
+                    "video_url": gen["assets"]["video"], "id": generation_id}
+        elif gen["state"] == "failed":
+            return {"status": "failed",
+                    "error": gen.get("failure_reason"), "id": generation_id}
+        time.sleep(5)
+    return {"status": "timeout", "id": generation_id}
+      ]]></code>
+      <note>Luma video extension uses generation IDs (not video URLs) in keyframes.frame0. Agents must track IDs, not just URLs.</note>
+    </example>
+  </section>
+
+  <section title="Replicate Models">
+    <reference path="templates/replicate-generator.py">ReplicateVideoGenerator: SVD, AnimateDiff, Zeroscope</reference>
+    <p>Replicate returns an iterator or URL depending on model and output type. output[0] fails if output is not a list. Pin model version hashes in config — they go stale as providers update.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def generate_stable_video(self, image_path: str, motion_bucket_id: int = 127) -> str:
+    output = replicate.run(
+        # Pin hash — update intentionally, not automatically
+        "stability-ai/stable-video-diffusion:3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438",
+        input={"input_image": open(image_path, "rb"),
+               "motion_bucket_id": motion_bucket_id, "fps": 7, "num_frames": 25}
+    )
+    return output  # returns URL string for SVD
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Assuming output[0] works for all Replicate models.</description>
+      <reason>Replicate returns an iterator or a URL string depending on the model. Calling [0] on a string iterator returns the first character.</reason>
+    </antipattern>
+  </section>
+</text>

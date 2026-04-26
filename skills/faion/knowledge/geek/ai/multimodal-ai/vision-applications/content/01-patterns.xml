@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-patterns" title="Vision Application Patterns">
+  <summary>DocumentAnalyzer, ImageClassifier, ContentModerator, and VisionService production classes for vision LLM integration.</summary>
+
+  <section title="Document Analysis">
+    <p>DocumentAnalyzer wraps GPT-4o Vision to extract text and structured fields from documents including receipts, forms, and passports.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class DocumentAnalyzer:
+    def __init__(self, model: str = "gpt-4o"):
+        self.client = OpenAI()
+        self.model = model
+
+    def extract_structured_data(self, image_path: str, fields: list[str]) -> dict:
+        fields_str = ", ".join(fields)
+        prompt = f"Extract these fields: {fields_str}. Return JSON. Use null for missing fields."
+        response = self._analyze(image_path, prompt, json_mode=True)
+        return json.loads(response)
+
+    def analyze_receipt(self, image_path: str) -> dict:
+        prompt = "Extract store_name, date, items (name/qty/price), subtotal, tax, total. Return JSON."
+        return json.loads(self._analyze(image_path, prompt, json_mode=True))
+      ]]></code>
+      <note>Always use json_mode=True for structured extraction and wrap json.loads in try/except.</note>
+    </example>
+  </section>
+
+  <section title="Image Classification">
+    <p>ImageClassifier sends predefined categories with the image and receives a category, confidence score, and reasoning.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ImageClassifier:
+    def classify(self, image_path: str) -> dict:
+        categories_str = ", ".join(self.categories)
+        prompt = (
+            f"Classify this image into one of: {categories_str}. "
+            "Return JSON: {category, confidence (0-1), reasoning}"
+        )
+        with open(image_path, "rb") as f:
+            image_data = base64.standard_b64encode(f.read()).decode()
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]}],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Content Moderation">
+    <p>ContentModerator checks images for policy violations and returns a structured severity flag. Never use as the sole moderation layer — false negative rate on subtly harmful content is non-zero.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Moderation prompt pattern
+prompt = """Analyze for policy violations.
+Categories: violence, adult_content, hate_symbols, self_harm, illegal_activity.
+Return JSON: {"is_safe": bool, "flags": [str], "severity": "none|low|medium|high",
+              "confidence": 0-1, "needs_human_review": bool}
+Set needs_human_review: true when confidence < 0.7."""
+      ]]></code>
+      <note>Normalize severity values (enforce lowercase) — "HIGH" vs "high" breaks downstream routing silently.</note>
+    </example>
+  </section>
+
+  <section title="Production Vision Service">
+    <reference path="templates/document-analyzer.py">VisionService with VisionConfig, retry, size validation, and media type detection</reference>
+    <p>VisionService wraps all vision calls with size validation (reject over 20MB), base64 encoding, retry logic, and structured output parsing.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class VisionConfig:
+    model: str = "gpt-4o"
+    max_image_size_mb: int = 20
+    detail: str = "auto"   # "low" | "high" | "auto"
+    max_retries: int = 3
+    timeout: int = 60
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Passing remote image URLs from user input directly to the API without validation.</description>
+      <reason>Remote URLs embedded in prompts are fetched by the API server; URLs behind auth or expired pre-signed URLs cause silent failures.</reason>
+    </antipattern>
+  </section>
+
+  <see-also>
+    <link path="content/02-rules.xml"/>
+  </see-also>
+</text>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-pipeline" title="ImagePipeline and PromptTemplates">
+  <summary>ImagePipeline for variant sets and A/B generation; PromptTemplates static methods for common use cases.</summary>
+
+  <section title="ImagePipeline">
+    <p>ImagePipeline builds on ImageGenerationService to generate style-by-size variant matrices and A/B test image sets. For A/B tests, generate all variants before surfacing any to avoid partial-set delivery.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ImagePipeline:
+    def generate_variant_set(self, base_prompt: str,
+                             styles: list[str], sizes: list[str]) -> dict:
+        """Generate styles × sizes matrix. Add rate-limit delay between calls."""
+        results = {}
+        for style in styles:
+            style_results = []
+            for size in sizes:
+                prompt = f"{base_prompt}, {style}"
+                result = self.service.generate(prompt=prompt, size=size)
+                style_results.append({"size": size, "url": result["url"]})
+                time.sleep(12)  # DALL-E tier-1: 5 img/min = 12s/img
+            results[style] = style_results
+        return results
+
+    def a_b_test_images(self, concept: str, variations: list[str]) -> list[dict]:
+        """Label variants A/B/C. Generate all before surfacing any."""
+        results = []
+        for i, variation in enumerate(variations):
+            result = self.service.generate(prompt=f"{concept}, {variation}")
+            results.append({"variant": chr(65 + i), "url": result["url"]})
+        return results  # return complete set
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="PromptTemplates">
+    <reference path="templates/prompt-templates.py">PromptTemplates static methods: product_photo, logo, social_media, ui_mockup</reference>
+    <p>PromptTemplates provides static methods for common image use cases. Use these as the single source of truth for prompt construction — avoid ad-hoc prompt strings in pipeline code.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class PromptTemplates:
+    @staticmethod
+    def product_photo(product: str, background: str = "white studio background",
+                      lighting: str = "professional studio lighting") -> str:
+        return f"{product}, {background}, {lighting}, product photography, high quality, 4K"
+
+    @staticmethod
+    def logo(concept: str, style: str = "minimalist", colors: str = "modern color palette") -> str:
+        return f"{style} logo design, {concept}, {colors}, vector art, clean, professional"
+
+    @staticmethod
+    def social_media(content: str, platform: str = "instagram", mood: str = "vibrant") -> str:
+        return f"{content}, {mood} mood, social media post, eye-catching, {platform} style"
+      ]]></code>
+    </example>
+    <reference path="templates/cache-to-s3.py">Download generated image and upload to S3 to resolve URL expiry</reference>
+  </section>
+
+  <section title="Flux-schnell Gotcha">
+    <rule>
+      <statement>Use next(iter(output)) instead of output[0] when consuming Replicate Flux-schnell results.</statement>
+      <rationale>Replicate flux-schnell returns an iterator object, not a list. output[0] raises TypeError — the correct access pattern is next(iter(output)).</rationale>
+    </rule>
+  </section>
+</text>

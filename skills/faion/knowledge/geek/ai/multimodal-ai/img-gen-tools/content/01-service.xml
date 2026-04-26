@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-service" title="ImageGenerationService and MultiProviderImageService">
+  <summary>Production image generation service with caching, retry, and multi-provider fallback; known bugs in the base implementation.</summary>
+
+  <section title="ImageGenerationService">
+    <reference path="templates/image-service.py">ImageGenerationService with SHA-256 caching and DALL-E 3 / SDXL backends</reference>
+    <p>ImageGenerationService wraps DALL-E 3 and SDXL with SHA-256 content-hash caching, retry logic, and configurable provider selection. The cache stores provider URLs — these expire in ~1 hour for DALL-E. Replace with byte-based caching backed by S3 for production.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class ImageGenerationConfig:
+    model: ImageModel = ImageModel.DALLE3
+    default_size: str = "1024x1024"
+    default_quality: str = "standard"
+    max_retries: int = 3
+    cache_enabled: bool = True
+    cache_dir: str = "./image_cache"
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>File-based URL caching for DALL-E generated images.</description>
+      <reason>DALL-E pre-signed URLs expire in ~1 hour. Agents resuming after 1+ hours get 404 on all cached entries. Cache image bytes to S3 instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="MultiProviderImageService">
+    <reference path="templates/multi-provider.py">MultiProviderImageService with ordered provider fallback</reference>
+    <p>MultiProviderImageService iterates a provider list in order and returns the first success. The result metadata must always include the provider field — silent fallback to lower quality is a hidden failure mode.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def select_provider(use_case: str) -> str:
+    return {
+        "product_photo": "dalle3",   # best photorealism
+        "logo": "dalle3",            # clean vector-like output
+        "social_media": "flux",      # fast and cheap for volume
+        "mockup": "sdxl",            # controllable composition
+    }.get(use_case, "dalle3")
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Always include provider field in generated image result metadata. Silent fallback to a lower-quality provider must be visible to the caller.</statement>
+      <rationale>An agent that receives an image from SDXL when it expected DALL-E 3 may pass it to review logic tuned for higher quality — metadata exposure prevents silent quality degradation.</rationale>
+    </rule>
+  </section>
+
+  <section title="Known Bugs">
+    <rule>
+      <statement>Normalize prompts before hashing for cache keys: strip whitespace and lowercase. Use content-based (byte) cache, not URL cache.</statement>
+      <rationale>SHA-256 of "product photo " and "product photo" are different strings — near-identical prompts miss cache. URLs expire after ~1 hour invalidating all URL-based cache entries.</rationale>
+    </rule>
+    <antipattern>
+      <description>Passing **kwargs directly to multiple providers with incompatible parameter sets.</description>
+      <reason>DALL-E 3 accepts quality and style parameters; SDXL does not. Passing unified kwargs causes TypeError on incompatible providers.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running generate_variant_set without rate-limit delays between DALL-E calls.</description>
+      <reason>DALL-E tier-1 rate limit is 5 images/minute (12s/image). Generating 12 variants without delay triggers 429 errors on all but the first few requests.</reason>
+    </antipattern>
+  </section>
+</text>

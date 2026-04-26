@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules" title="Image Generation Rules">
+  <summary>Rate-limit, URL expiry, revised_prompt logging, content policy, and provider selection rules.</summary>
+
+  <section title="Critical Rules">
+    <rule>
+      <statement>Always log revised_prompt alongside the original prompt for every DALL-E 3 generation.</statement>
+      <rationale>DALL-E 3 silently rewrites prompts — revised_prompt can diverge substantially from input. Downstream vision review agents must compare against the revised prompt, not the original.</rationale>
+    </rule>
+    <rule>
+      <statement>Download images immediately after generation. Use content-based (SHA-256 of bytes) cache with S3 or Redis as backend — never cache provider URLs.</statement>
+      <rationale>DALL-E pre-signed URLs expire in approximately 60 minutes. File-based URL caches go stale; agents resuming after 1+ hours get 404 on all cached entries.</rationale>
+    </rule>
+    <rule>
+      <statement>Test prompts manually on the first 3 before launching a batch of 100+ images.</statement>
+      <rationale>Content policy enforcement is not deterministic. A prompt that passes today may be rejected next week. Early validation prevents wasted batch budget.</rationale>
+    </rule>
+  </section>
+
+  <section title="Provider Selection">
+    <rule>
+      <statement>Use Replicate Flux-schnell for high-volume generation where cost is the primary constraint. Use DALL-E 3 for photorealistic quality. Never use Midjourney in automated pipelines — automation violates ToS.</statement>
+      <rationale>DALL-E 3 at $0.04-$0.12/image accumulates quickly at scale. Flux-schnell at ~$0.001/image is 40-120x cheaper with acceptable quality for social content.</rationale>
+    </rule>
+  </section>
+
+  <section title="Content Policy">
+    <rule>
+      <statement>Handle content policy refusals gracefully without infinite retry. Log the prompt and error, then surface for human review.</statement>
+      <rationale>Content policy decisions are not deterministic — retrying the exact same prompt will eventually pass or fail differently, wasting API budget. Human review is the correct escalation path.</rationale>
+    </rule>
+    <antipattern>
+      <description>Expecting DALL-E 3 to render precise text within the image.</description>
+      <reason>All current models including DALL-E 3 are unreliable for rendering text strings inside images — characters are frequently garbled or misspelled.</reason>
+    </antipattern>
+  </section>
+</text>

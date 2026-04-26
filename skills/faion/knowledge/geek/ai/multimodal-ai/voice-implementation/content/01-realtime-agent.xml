@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-realtime-agent" title="RealtimeVoiceAgent with VAD and Threading">
+  <summary>RealtimeVoiceAgent with VADConfig, threaded audio capture, energy-based VAD, and utterance processing.</summary>
+
+  <section title="Architecture">
+    <p>RealtimeVoiceAgent uses two threads: one captures audio from the microphone into a queue; the second processes chunks with energy-based VAD, accumulates speech, and dispatches complete utterances to the STT-LLM-TTS handler.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class VADConfig:
+    threshold: float = 0.02           # energy threshold for speech detection
+    min_speech_duration: float = 0.5  # seconds
+    silence_duration: float = 0.8     # seconds of silence to end utterance
+
+class RealtimeVoiceAgent:
+    def start(self):
+        self.is_listening = True
+        capture_thread = threading.Thread(target=self._capture_audio)
+        process_thread = threading.Thread(target=self._process_audio)
+        capture_thread.start()
+        process_thread.start()
+        return capture_thread, process_thread
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Energy-Based VAD">
+    <p>Energy-based VAD computes RMS of audio chunks and compares to a threshold. This is a prototype approximation — it fails in noisy environments, with background music, or HVAC noise. Replace with Silero VAD or WebRTC VAD for production.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def _process_audio(self):
+    audio_buffer, speech_detected, silence_frames = [], False, 0
+    while self.is_listening:
+        try:
+            audio_chunk = self.audio_queue.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        # Energy-based VAD — prototype only
+        energy = np.sqrt(np.mean(audio_chunk ** 2))
+        if energy > self.vad_config.threshold:
+            speech_detected = True
+            silence_frames = 0
+            audio_buffer.append(audio_chunk)
+        elif speech_detected:
+            silence_frames += 1
+            audio_buffer.append(audio_chunk)
+            if silence_frames > self.vad_config.silence_duration * 10:
+                if len(audio_buffer) > self.vad_config.min_speech_duration * 10:
+                    audio_data = np.concatenate(audio_buffer)
+                    self._handle_utterance(audio_data)
+                audio_buffer, speech_detected, silence_frames = [], False, 0
+      ]]></code>
+      <note>silence_duration of 0.8s is aggressive for non-native speakers — users with longer thinking pauses are cut off mid-thought. Increase to 1.2-1.5s for diverse audiences.</note>
+    </example>
+    <rule>
+      <statement>Replace energy-based VAD with Silero VAD or WebRTC VAD before any production deployment in non-silent environments.</statement>
+      <rationale>Energy-based VAD triggers on HVAC noise, keyboard clicks, and background music. Silero VAD and WebRTC VAD use learned speech models and work reliably in real environments.</rationale>
+    </rule>
+  </section>
+
+  <section title="TTS Streaming">
+    <p>Stream TTS audio directly to pyaudio output as chunks arrive. Buffering the full response before playback adds 100-500ms latency proportional to response length.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def _speak(self, text: str):
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, channels=1, rate=24000, output=True)
+    with self.client.audio.speech.with_streaming_response.create(
+        model="tts-1", voice=self.voice, input=text, response_format="pcm"
+    ) as response:
+        for chunk in response.iter_bytes(chunk_size=1024):
+            stream.write(chunk)
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+      ]]></code>
+    </example>
+  </section>
+</text>

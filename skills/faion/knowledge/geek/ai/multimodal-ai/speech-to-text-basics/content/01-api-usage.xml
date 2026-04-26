@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-api-usage" title="Speech-to-Text API Usage">
+  <summary>Whisper API transcription with timestamps and translation; LocalWhisper and FasterWhisperTranscriber classes.</summary>
+
+  <section title="OpenAI Whisper API">
+    <reference path="templates/whisper-api.py">transcribe_audio, transcribe_with_timestamps, translate_audio</reference>
+    <p>The Whisper API accepts MP3, MP4, MPEG, MPGA, M4A, WAV, WEBM — not FLAC or OGG. Files must be under 25MB. Use verbose_json with timestamp_granularities for production work.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def transcribe_with_timestamps(audio_path: str) -> dict:
+    with open(audio_path, "rb") as audio_file:
+        response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file,
+            response_format="verbose_json",
+            timestamp_granularities=["word", "segment"]
+        )
+    return {
+        "text": response.text,
+        "segments": response.segments,
+        "words": response.words,
+        "duration": response.duration
+    }
+      ]]></code>
+      <note>response.words is a list of Word objects, not dicts. json.dumps() on raw response objects raises TypeError.</note>
+    </example>
+    <antipattern>
+      <description>Using response_format other than "verbose_json" when requesting timestamp_granularities=["word"].</description>
+      <reason>Non-verbose formats silently drop word timestamps — no error is raised, the timestamps are simply absent from the response.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Local Whisper">
+    <p>Local Whisper avoids API costs and the 25MB limit. Model sizing: tiny/base for real-time on CPU; small/medium for quality; large-v3 requires ~10GB RAM and GPU for production throughput.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class LocalWhisper:
+    def __init__(self, model_size: str = "base", device: str = None):
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = whisper.load_model(model_size, device=device)
+
+    def transcribe(self, audio_path: str, language: str = None,
+                   task: str = "transcribe", word_timestamps: bool = False) -> dict:
+        result = self.model.transcribe(audio_path, language=language,
+                                       task=task, word_timestamps=word_timestamps)
+        return {"text": result["text"], "segments": result["segments"],
+                "language": result["language"]}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Faster Whisper">
+    <reference path="templates/faster-whisper.py">FasterWhisperTranscriber with VAD filter and streaming output</reference>
+    <p>faster-whisper uses CTranslate2 for 4x speed improvement over original Whisper at the same model size. vad_filter=True removes silence and reduces processing time 20-40% on long files.</p>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class FasterWhisperTranscriber:
+    def transcribe(self, audio_path: str, language: str = None,
+                   beam_size: int = 5, vad_filter: bool = True) -> dict:
+        segments, info = self.model.transcribe(
+            audio_path, language=language, beam_size=beam_size,
+            word_timestamps=True, vad_filter=vad_filter
+        )
+        full_text = ""
+        all_segments = []
+        for segment in segments:
+            all_segments.append({
+                "start": segment.start, "end": segment.end, "text": segment.text
+            })
+            full_text += segment.text
+        return {"text": full_text.strip(), "segments": all_segments,
+                "language": info.language, "duration": info.duration}
+      ]]></code>
+      <note>vad_filter=True can silently drop speech segments under 0.5s — disable for audio with single words or short interjections.</note>
+    </example>
+  </section>
+</text>
