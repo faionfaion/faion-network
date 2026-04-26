@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-queries" title="Cohort SQL Patterns and Implementation Rules">
+  <summary>Three warehouse-native SQL patterns (acquisition, behavioral, feature-adoption cohorts), implementation rules, and agent gotchas for cohort analysis.</summary>
+
+  <section title="Core Implementation Rules">
+    <rule>
+      <statement>Always use COUNT(DISTINCT user_id), never COUNT(*) in cohort queries.</statement>
+      <rationale>Duplicate events from retry logic, client-side buffering, or ETL replays inflate retention percentages. COUNT(DISTINCT) is the only safe aggregate.</rationale>
+    </rule>
+    <rule>
+      <statement>Store cohort tables in long-format (cohort, day_offset, retention_pct) and pivot only in BI tools.</statement>
+      <rationale>Wide-pivot in SQL is inflexible — adding a new day_offset value requires a schema change. BI tools pivot interactively. Long-format also enables dbt tests on the retention_pct column.</rationale>
+    </rule>
+    <rule>
+      <statement>Materialize cohort_size as a column on every output row.</statement>
+      <rationale>Downstream tools should never recompute cohort_size via subquery. Recomputing is fragile to filter changes and expensive at scale.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin the retention metric definition in the model description; a silent change from login to core_action invalidates all historical comparisons.</statement>
+      <rationale>Cohort comparisons are only valid when the retention metric is identical across cohorts. Metric drift is invisible until someone notices a suspicious trend jump.</rationale>
+    </rule>
+    <rule>
+      <statement>Use LEFT JOIN events ON user_id, not INNER JOIN, to preserve cohort_size denominator.</statement>
+      <rationale>INNER JOIN silently drops users with no activity in the join window, making cohort_size appear smaller than actual and inflating retention percentages.</rationale>
+    </rule>
+  </section>
+
+  <section title="Acquisition Cohort Query">
+    <p>Groups users by signup week, tracks login activity, calculates D1/D7/D30 retention.</p>
+    <example type="good">
+      <reference path="templates/cohort-retention-weekly.sql">Production dbt incremental model — use this for warehouse deployments</reference>
+      <note>For quick prototyping, the basic pattern below works on any SQL warehouse. Replace DATEDIFF syntax per engine: BigQuery uses DATE_DIFF(end, start, DAY); Snowflake/Redshift use DATEDIFF(day, start, end).</note>
+      <code lang="sql"><![CDATA[
+WITH cohorts AS (
+  SELECT DATE_TRUNC('week', signup_date) AS cohort_week,
+         user_id, signup_date
+    FROM users
+),
+user_activity AS (
+  SELECT c.cohort_week, c.user_id,
+         DATEDIFF('day', c.signup_date, e.event_date) AS days_since_signup
+    FROM cohorts c
+    LEFT JOIN events e ON c.user_id = e.user_id
+   WHERE e.event_type = 'login'
+     AND e.event_date >= c.signup_date
+),
+retention_by_day AS (
+  SELECT cohort_week, days_since_signup,
+         COUNT(DISTINCT user_id) AS active_users
+    FROM user_activity
+   GROUP BY 1, 2
+),
+cohort_sizes AS (
+  SELECT cohort_week, COUNT(DISTINCT user_id) AS cohort_size
+    FROM cohorts GROUP BY 1
+)
+SELECT r.cohort_week, r.days_since_signup,
+       r.active_users, c.cohort_size,
+       ROUND(100.0 * r.active_users / c.cohort_size, 1) AS retention_pct
+  FROM retention_by_day r
+  JOIN cohort_sizes c USING (cohort_week)
+ WHERE r.days_since_signup IN (1, 7, 30)
+ ORDER BY 1, 2;
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Behavioral Cohort Query">
+    <p>Splits users by a behavioral milestone (onboarding completion) to compare retention impact.</p>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+WITH cohorts AS (
+  SELECT u.user_id, u.signup_date,
+         CASE WHEN oc.user_id IS NOT NULL THEN 'Completed'
+              ELSE 'Not Completed' END AS cohort_type
+    FROM users u
+    LEFT JOIN onboarding_completed oc ON u.user_id = oc.user_id
+   WHERE u.signup_date >= CURRENT_DATE - INTERVAL '30 days'
+)
+-- Join to activity and aggregate as in acquisition cohort pattern above,
+-- grouping by cohort_type instead of cohort_week.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Feature-Adoption Cohort Query">
+    <p>Compares retention of users who adopted a specific feature in their first 7 days vs those who did not.</p>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+WITH feature_users AS (
+  SELECT DISTINCT user_id FROM events
+   WHERE event_type = 'feature_x_used'
+     AND event_date <= signup_date + INTERVAL '7 days'
+),
+cohorts AS (
+  SELECT u.user_id, u.signup_date,
+         CASE WHEN fu.user_id IS NOT NULL THEN 'Used Feature X'
+              ELSE 'Did Not Use' END AS cohort_type
+    FROM users u
+    LEFT JOIN feature_users fu ON u.user_id = fu.user_id
+   WHERE u.signup_date >= CURRENT_DATE - INTERVAL '90 days'
+)
+-- Aggregate as in behavioral cohort pattern above.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Using DATEDIFF without specifying the warehouse; BigQuery and Snowflake/Redshift have opposite argument order.</description>
+      <reason>Silent wrong results — the query runs but returns incorrect day offsets. Always specify the warehouse in agent prompts and validate output against a known cohort week.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using the schedule + while True refresh loop from notebook examples in production code.</description>
+      <reason>A long-running Python process with sleep is not reliable for production. Use Airflow DAG, Cloud Scheduler, or dbt Cloud scheduled runs instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Joining on user PII (email, name) instead of user_id in cohort queries.</description>
+      <reason>PII joins bypass anonymization controls and create GDPR compliance risk. Always join on opaque user_id.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/cohort-retention-weekly.sql">dbt incremental model for production use</reference>
+  <reference path="templates/schema.yml">dbt schema tests for cohort model</reference>
+</text>

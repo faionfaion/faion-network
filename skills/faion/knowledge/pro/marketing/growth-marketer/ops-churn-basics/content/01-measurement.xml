@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-measurement" title="Churn Measurement, Health Scoring, and Antipatterns">
+  <summary>Canonical churn metric definitions, benchmarks, health score model, and common mistakes that invalidate churn analysis.</summary>
+
+  <section title="Churn Metric Definitions">
+    <rule>
+      <statement>Define churn once in writing with cancel-date semantics and grace-period rules; pin that definition in every dashboard description.</statement>
+      <rationale>Ambiguity in "churn date" (cancel event vs end-of-paid-period vs failed-payment threshold) produces different numbers in different tools and makes cross-team reporting meaningless.</rationale>
+    </rule>
+    <rule>
+      <statement>Always report voluntary and involuntary churn separately.</statement>
+      <rationale>Involuntary churn (failed payments) is recoverable with dunning and smart retries — it has different root causes and different fixes than voluntary cancellation. Lumping them hides a fixable revenue leak.</rationale>
+    </rule>
+    <rule>
+      <statement>Report customer churn alongside NRR; never report NRR alone in an expansion-led business.</statement>
+      <rationale>NRR above 100% can mask high logo churn when expansion MRR from surviving accounts exceeds lost MRR from churned accounts. SaaS investors look at NRR &gt;= 110% (good) and &gt;= 120% (great) but always alongside logo churn.</rationale>
+    </rule>
+    <list>
+      <item>Customer churn rate = customers lost this month / customers at start of month</item>
+      <item>MRR churn rate = lost MRR this month / MRR at start of month</item>
+      <item>Net Revenue Retention = (start MRR + expansion MRR - churned MRR) / start MRR</item>
+      <item>Annual churn from monthly: 1 - (1 - monthly_rate)^12 (non-linear — do not linearly extrapolate)</item>
+    </list>
+  </section>
+
+  <section title="Benchmarks">
+    <list>
+      <item>Consumer SaaS: 5-7% monthly, 45-60% annual</item>
+      <item>SMB SaaS: 3-5% monthly, 30-45% annual</item>
+      <item>Mid-market: 1-2% monthly, 10-20% annual</item>
+      <item>Enterprise: below 1% monthly, below 10% annual</item>
+    </list>
+  </section>
+
+  <section title="Health Score Model">
+    <rule>
+      <statement>Backtest health-score thresholds against last 90 days of actual churn before trusting the alerts.</statement>
+      <rationale>Health scores derived from short windows drift fast after product changes. An unvalidated score will fire false alerts and train teams to ignore it. Retro-fit threshold values against known churners before deploying to CS teams.</rationale>
+    </rule>
+    <example type="good">
+      <note>Composite health score combining four signals, each 0-25 points:</note>
+      <code lang="text"><![CDATA[
+Health Score = (
+  login_frequency_score  (0-25) +
+  feature_usage_score    (0-25) +
+  support_sentiment      (0-25) +
+  account_age_score      (0-25)
+) / 100
+
+Thresholds (validate against actual churn):
+  < 40  = At-risk → CS outreach
+  40-70 = Needs attention → automated nudge
+  > 70  = Healthy
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Common Churn Reasons">
+    <list>
+      <item>Not using product: 25-30% of churn, preventable with activation fix</item>
+      <item>Not seeing value: 20-25%, preventable with onboarding or success team</item>
+      <item>Switched to competitor: 15-20%, partially preventable</item>
+      <item>Budget/price: 15-20%, partially preventable with pricing tiers</item>
+      <item>Business closed: 5-10%, not preventable</item>
+      <item>Bad support experience: 5-10%, preventable</item>
+    </list>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Only measuring churn rate without leading indicators.</description>
+      <reason>Churn rate is a lagging metric — the customer has already left. Leading indicators (login frequency drop, feature usage reduction, support frustration) provide a 2-4 week window for intervention.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Annualizing monthly churn by multiplying by 12.</description>
+      <reason>Monthly churn compounds non-linearly. At 5% monthly, annual churn is 46%, not 60%. Linear extrapolation overstates the problem and distorts forecasts.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running health-score alerts without backtesting thresholds.</description>
+      <reason>Unvalidated thresholds produce high false-positive rates. CS teams start ignoring alerts within weeks, making the entire system useless.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/monthly-churn.sql">Voluntary vs involuntary customer + MRR churn SQL</reference>
+  <reference path="templates/churn-report.md">Monthly churn dashboard template</reference>
+</text>

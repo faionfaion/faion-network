@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-checklists" title="Docker Production Checklists and Quick Audit Commands">
+  <summary>Dockerfile quality, security, production readiness, Compose, multi-stage build, and CI/CD integration checklists; quick audit commands.</summary>
+
+  <section title="Critical (Must Fix Before Production)">
+    <list>
+      <item>Non-root user created and set with USER instruction</item>
+      <item>No secrets in image (no ENV for passwords, no ARG secrets baked into layers)</item>
+      <item>Base image pinned to specific version (not latest)</item>
+      <item>Base image scanned for CVEs (Trivy or Docker Scout)</item>
+      <item>HEALTHCHECK configured with appropriate interval and timeout</item>
+      <item>Resource limits set (memory and CPU) at runtime</item>
+    </list>
+  </section>
+
+  <section title="Dockerfile Quality">
+    <list>
+      <item>.dockerignore present and excludes: .git, node_modules, .env, test files, docs</item>
+      <item>Layer caching optimized: dependency files copied before source code</item>
+      <item>RUN commands combined where appropriate to reduce layers</item>
+      <item>Multi-stage build used when build-time tools are needed</item>
+      <item>WORKDIR set before any COPY or RUN</item>
+      <item>COPY used instead of ADD unless extracting archives</item>
+      <item>Exec form used for CMD and ENTRYPOINT</item>
+      <item>EXPOSE documents ports even if not enforced</item>
+      <item>Cache mounts used for package managers: --mount=type=cache,target=/root/.cache/pip</item>
+    </list>
+  </section>
+
+  <section title="Security Checklist">
+    <list>
+      <item>No private keys or certificates in image layers</item>
+      <item>Read-only root filesystem enabled at runtime (--read-only) where possible</item>
+      <item>All capabilities dropped (--cap-drop ALL) with only required caps added back</item>
+      <item>no-new-privileges security option set</item>
+      <item>Internal-only services not exposed on host ports</item>
+      <item>Docker Secrets used for sensitive runtime values (not ENV)</item>
+      <item>Regular image scanning in CI/CD; critical CVEs block deployment</item>
+    </list>
+  </section>
+
+  <section title="Production Readiness">
+    <list>
+      <item>Image tagged with semantic version + git SHA (not just latest)</item>
+      <item>Image size optimized (below 500MB for most applications)</item>
+      <item>Logging to stdout/stderr in JSON structured format</item>
+      <item>SIGTERM handled gracefully (pre-stop hook or signal handler in app)</item>
+      <item>All configuration via environment variables with sensible defaults</item>
+      <item>Restart policy defined (unless-stopped or always)</item>
+      <item>Rolling update strategy defined</item>
+    </list>
+  </section>
+
+  <section title="Quick Audit Commands">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Scan for CVEs
+trivy image myapp:latest
+docker scout cves myapp:latest
+
+# Lint Dockerfile
+hadolint Dockerfile
+
+# Analyze layer sizes
+dive myapp:latest
+docker history myapp:latest
+
+# Check running container security posture
+docker inspect --format='{{.Config.User}}' container_name
+docker inspect --format='{{.HostConfig.ReadonlyRootfs}}' container_name
+docker inspect --format='{{.HostConfig.CapDrop}}' container_name
+
+# Resource usage
+docker stats container_name
+
+# Health status
+docker inspect --format='{{.State.Health.Status}}' container_name
+      ]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/Dockerfile.python">Multi-stage Python Dockerfile example</reference>
+  <reference path="templates/docker-compose.yml">Compose template with health checks and named networks</reference>
+</text>

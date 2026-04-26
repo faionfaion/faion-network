@@ -5,6 +5,7 @@
 ### Changed
 - refactor: 8/8 marketing methodologies migrated to new shape (batch: growth-affiliate-marketing, conversion-tracking, retention-strategies, aarrr-pirate-metrics, ops-metrics-basics, activation-metrics, north-star-metric, growth-loops)
 - refactor: 8/8 methodologies migrated to new shape (batch: ads-google-keywords, ads-meta-reporting, ads-meta-creative, ads-meta-targeting, ads-retargeting, ads-ab-testing-ads, growth-press-coverage, growth-gtm-strategy)
+- refactor: 8/8 methodologies migrated to new shape (batch: retention-basics, ops-churn-basics, cohort-implementation, terraform-iac, aiops, docker, gitops, kubernetes-deployment)
 - refactor: 8/8 ppc-manager methodologies migrated to new shape (batch: instagram-ads, meta-audience-targeting, ads-budget-optimization, google-ads-optimization, ads-meta-campaign-setup, ads-conversion-tracking, ads-google-creative, ads-twitter-ads)
 - refactor: 8/8 conversion-optimizer methodologies migrated to new shape (batch: growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization, plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide)
 - refactor: 8/8 growth-marketer methodologies migrated to new shape (batch: statistics-basics, activation-tactics, viral-metrics, growth-referral-programs, viral-loops, statistics-application, activation-framework, google-analytics)

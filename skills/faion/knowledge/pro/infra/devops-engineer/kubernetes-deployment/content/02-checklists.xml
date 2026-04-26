@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-checklists" title="Kubernetes Deployment Checklists and Rollback Commands">
+  <summary>Pre-deployment, Rolling Update, Blue-Green, Canary, Argo Rollouts setup, rollback, and production-readiness checklists with kubectl commands.</summary>
+
+  <section title="Pre-Deployment Checklist">
+    <list>
+      <item>Image tagged with specific version (NOT latest) and vulnerability-scanned</item>
+      <item>Resource requests and limits defined for every container</item>
+      <item>Liveness, readiness, and startup probes configured and tested</item>
+      <item>Service and Ingress configured; TLS certificates provisioned</item>
+      <item>HPA configured with appropriate metrics</item>
+      <item>Pod Disruption Budget defined to protect against simultaneous evictions</item>
+      <item>Anti-affinity rules set for HA (prefer spreading pods across nodes/zones)</item>
+      <item>Deployment strategy selected and configured</item>
+      <item>Rollback command prepared and documented</item>
+    </list>
+  </section>
+
+  <section title="Rolling Update Checklist">
+    <list>
+      <item>Current deployment healthy: kubectl rollout status deployment/name</item>
+      <item>maxUnavailable set to 1 (conservative) or appropriate value</item>
+      <item>maxSurge set to 2-3 for moderate rollout speed</item>
+      <item>revisionHistoryLimit set to 5 for rollback options</item>
+      <item>Monitor pod status during rollout; watch for CrashLoopBackOff</item>
+      <item>Verify metrics (error rate, latency) within SLA after all pods updated</item>
+    </list>
+  </section>
+
+  <section title="Blue-Green Checklist">
+    <list>
+      <item>Sufficient resources for 2x replica count during deployment window</item>
+      <item>Preview service routing verified to green environment</item>
+      <item>Smoke tests and integration tests on preview passed before promotion</item>
+      <item>Rollback command prepared: kubectl argo rollouts undo name</item>
+      <item>Monitor error rates and latency for 5+ minutes after traffic switch</item>
+      <item>Old (blue) pods scaled down after scaleDownDelaySeconds</item>
+    </list>
+  </section>
+
+  <section title="Canary Checklist">
+    <list>
+      <item>Baseline metrics captured before canary deployment</item>
+      <item>AnalysisTemplate configured with success-rate and latency thresholds</item>
+      <item>Traffic management configured: Istio VirtualService or NGINX annotations</item>
+      <item>Verify canary pods receiving correct traffic percentage</item>
+      <item>Confirm analysis metrics being collected and evaluated</item>
+      <item>Abort if needed: kubectl argo rollouts abort name</item>
+    </list>
+  </section>
+
+  <section title="Rollback Commands">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Native Kubernetes rollback
+kubectl rollout history deployment/<name>
+kubectl rollout undo deployment/<name>
+kubectl rollout undo deployment/<name> --to-revision=<N>
+
+# Argo Rollouts rollback
+kubectl argo rollouts abort <name>      # abort current rollout, revert to stable
+kubectl argo rollouts undo <name>       # undo to previous version
+kubectl argo rollouts promote <name>    # manually promote canary to 100%
+kubectl argo rollouts retry <name>      # retry aborted rollout after fix
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Production Readiness">
+    <list>
+      <item>Pods running as non-root with read-only root filesystem</item>
+      <item>Capabilities dropped (--cap-drop ALL); only required caps added</item>
+      <item>Network policies restricting inter-service traffic to minimum required</item>
+      <item>Secrets encrypted at rest; no secrets in environment variables or ConfigMaps</item>
+      <item>Prometheus metrics exposed; structured logging implemented; distributed tracing enabled</item>
+      <item>Alerts configured for key metrics (error rate, latency, saturation)</item>
+      <item>Pod anti-affinity and topology spread constraints configured</item>
+      <item>Runbook for common failure modes documented and accessible</item>
+    </list>
+  </section>
+</text>
