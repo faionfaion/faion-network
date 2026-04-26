@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure" title="Semantic Token Layers, Mode Types, and DTCG Format">
+  <summary>Three-layer token model (reference, system, component), supported mode types, Figma Variables implementation pattern, and W3C DTCG format rules for interoperable token pipelines.</summary>
+
+  <section title="Three-Layer Model">
+    <rule>
+      <statement>Maintain exactly three token layers — reference (raw palette/scale), system (semantic, mode-aware), component (component-scoped) — and forbid direct references from component layer to reference layer.</statement>
+      <rationale>Jumping from component to reference bypasses the semantic abstraction. When the palette changes, every component that referenced raw colors must update individually. The system layer is the isolation boundary that makes theme swaps cheap.</rationale>
+    </rule>
+    <rule>
+      <statement>One semantic token encodes one intent; never let a single token do duty for two different roles (e.g., both action primary and brand primary).</statement>
+      <rationale>Dual-purpose tokens create coupling: a contrast fix for the action color changes the brand color, or a rebrand breaks interactive affordances. Separate intents into separate tokens.</rationale>
+    </rule>
+    <example type="good">
+      <note>action.primary → button fill, link color. brand.primary → logo tint, hero background. Changing action.primary for contrast does not affect brand.primary.</note>
+    </example>
+    <example type="bad">
+      <note>color.primary used for both button fill and logo tint. A contrast fix for the button breaks the logo color.</note>
+    </example>
+  </section>
+
+  <section title="Mode Types">
+    <rule>
+      <statement>Every semantic token must have a value defined in every mode within its collection; a missing mode value must fail the CI build.</statement>
+      <rationale>Missing mode values cause runtime fallback to the default mode — which is often invisible until users switch themes. Build-time enforcement catches this at the authoring step.</rationale>
+    </rule>
+    <list>
+      <item>Color modes: Light, Dark, High Contrast</item>
+      <item>Typography modes: Desktop, Mobile, Compact</item>
+      <item>Density modes: Default, Compact, Comfortable</item>
+      <item>Brand modes: Brand A, Brand B, White-label</item>
+    </list>
+    <reference path="templates/check-modes.mjs">CI gate: fails build if any semantic token is missing a value in any required mode</reference>
+  </section>
+
+  <section title="DTCG Format and Pipeline">
+    <rule>
+      <statement>Use the W3C Design Tokens Community Group format ($value, $type) for all token files so tooling remains interoperable across Style Dictionary, Tokens Studio, and Specify.</statement>
+      <rationale>Proprietary token formats lock teams into a single tool. The DTCG format is the emerging standard; adopting it now prevents migration cost when tooling converges.</rationale>
+    </rule>
+    <rule>
+      <statement>Generate all platform outputs (tokens.css, tokens.swift, tokens.compose.kt) from the pipeline; never hand-write per-platform token files.</statement>
+      <rationale>Hand-written per-platform files diverge from source immediately after the first unsynced edit. Generated outputs are always consistent with the canonical source.</rationale>
+    </rule>
+    <rule>
+      <statement>Lint all source files to reject raw hex values and direct references to reference tokens; redirect violations to the semantic equivalent.</statement>
+      <rationale>A component that uses var(--color-blue-500) directly defeats the theme-switching mechanism. Lint must be automated and block PRs — design review alone misses these.</rationale>
+    </rule>
+  </section>
+</text>

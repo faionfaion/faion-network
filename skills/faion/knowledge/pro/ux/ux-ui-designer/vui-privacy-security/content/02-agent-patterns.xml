@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-patterns" title="VUI Privacy: Agentic Audit Workflow and Gotchas">
+  <summary>Agentic pipeline for privacy-by-design voice interfaces: subagent roles, PII audit prompt, adversarial replay pattern, and gotchas for LLM-based voice agents handling sensitive data.</summary>
+
+  <section title="Agentic Workflow">
+    <p>Build a three-subagent privacy pipeline: the first reviews dialog flows for PII capture and missing consent; the second drafts jurisdiction-compliant disclosure scripts; the third runs adversarial replay (jailbreaks, social engineering) against the deployed agent. All three outputs require human-in-the-loop: legal review of disclosure copy and DPIA sign-off before launch.</p>
+    <rule>
+      <statement>Require legal review for all disclosure scripts and security review for all transcript-handling pipelines before production deployment.</statement>
+      <rationale>Automated agents cannot assess legal sufficiency of consent language. Disclosure that fails GDPR Article 13 or HIPAA Notice of Privacy Practices requirements creates direct regulatory liability.</rationale>
+    </rule>
+  </section>
+
+  <section title="Subagent Prompt Pattern">
+    <example type="good">
+      <note>Privacy audit prompt: "You are a VUI privacy auditor. For each dialog turn, output JSON: { turn, captures_pii: bool, pii_types[], consent_present: bool, sensitive_action: bool, recommendation }. PII types: name, email, phone, address, dob, ssn, card, health, biometric, location, child. If sensitive_action true (transfer, delete, change-password), require step-up auth in recommendation."</note>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Embedding real user PII or API secrets in the system prompt, treating it as private.</description>
+      <reason>The system prompt is semi-public — adversaries extract it via creative jailbreaks. Any secrets or PII embedded in prompts will be leaked eventually.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Assuming "delete from our database" removes voice data from all persistence layers.</description>
+      <reason>Cloud transcripts persist on third-party infrastructure (OpenAI, Google, AWS). Local deletion does not guarantee removal from provider storage unless Zero Data Retention is explicitly negotiated and documented in the DPIA.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Trusting voice speaker ID as sufficient authentication for high-value actions.</description>
+      <reason>Voice cloning is accessible and speaker ID fails under noise. Adversaries can bypass voice biometrics with clones; step-up with a knowledge or possession factor is mandatory for high-risk actions.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Logging tool-call payloads without redacting PII at the boundary.</description>
+      <reason>Tool calls typically log request and response payloads in full. PII redaction must happen at the tool boundary before any persistence layer receives the data — not as a post-processing step.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Regulatory References">
+    <list>
+      <item>GDPR: ICO guidance on voice-data and consent — https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/</item>
+      <item>HIPAA Security Rule — https://www.hhs.gov/hipaa/for-professionals/security/index.html</item>
+      <item>Illinois BIPA (biometric voice prints): 740 ILCS 14</item>
+      <item>EU AI Act voice biometrics provisions — https://eur-lex.europa.eu/eli/reg/2024/1689</item>
+      <item>OWASP LLM Top 10 — https://owasp.org/www-project-top-10-for-large-language-model-applications/</item>
+    </list>
+  </section>
+</text>

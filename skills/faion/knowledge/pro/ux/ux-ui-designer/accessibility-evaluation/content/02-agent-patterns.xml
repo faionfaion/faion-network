@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-patterns" title="Accessibility Evaluation: Agent Pipeline Roles and Gotchas">
+  <summary>Agent orchestration for accessibility audits: pipeline roles, triage prompt pattern, keyboard-trace prompt, and LLM gotchas that produce false compliance records or introduce new violations.</summary>
+
+  <section title="Agent Pipeline Roles">
+    <p>Stage 1 (scan) and Stage 5 (report) are fully agent-owned. Stage 3 (keyboard) is scripted via Playwright. Stage 4 (screen reader) is human-in-the-loop — no LLM can replicate NVDA/JAWS/VoiceOver speech buffers. The orchestrator fans out to: a scanner subagent (axe + Pa11y JSON output), a triage subagent (dedup + WCAG mapping), and a writer subagent (markdown report).</p>
+    <rule>
+      <statement>Treat each WCAG criterion as a separate test case with a stable ID so re-runs produce diffs, not full rewrites.</statement>
+      <rationale>Without stable IDs, every re-run generates a new report that cannot be compared to the previous one. Diffs are the only way to track remediation progress and detect regressions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Triage Prompt Pattern">
+    <example type="good">
+      <note>Triage: "Given axe-core JSON (violations[]), produce ## Detailed Findings. For each violation: WCAG SC, priority (Critical/High/Medium/Low), location (selector + page URL), recommendation (cite W3C technique G/H/F number), and minimal HTML before/after. Group by Perceivable/Operable/Understandable/Robust."</note>
+    </example>
+    <example type="good">
+      <note>Keyboard trace: "Given Playwright keyboard-only trace, emit a row in the keyboard-testing table for: Tab navigation, Focus visible, Logical order, Skip links, Traps, Shortcuts. Pass = boolean + evidence (frame index)."</note>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent generating alt="Description" placeholders that pass automated checks but fail SC 1.1.1 for decorative or context-specific images.</description>
+      <reason>Placeholder alt text passes the "attribute present" check but fails the "alternative text conveys equivalent information" criterion. Require the agent to cite the source content the alt is derived from.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent fixing contrast by editing CSS variables without checking dark-mode token consistency.</description>
+      <reason>Token-layer edits propagate to all modes. A contrast fix in light mode can create a new violation in dark mode. Require diffs with both modes regenerated.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent mass-adding aria-label to elements that already have visible text labels.</description>
+      <reason>Adding aria-label to an element with visible text creates a SC 2.5.3 (Label in Name) violation if the label text differs. Lint for accessible-name vs visible-text mismatch before applying.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent closing findings as "won't fix" without a human accessibility lead sign-off with documented rationale.</description>
+      <reason>Suppressed findings without rationale create phantom compliance. Legal and procurement reviewers will ask for documented risk acceptance; agents cannot provide it.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Scanning logged-out fallback pages instead of authenticated application states.</description>
+      <reason>Authenticated pages have additional dynamic content, modals, and forms not visible to unauthenticated scans. Clean reports from unauthenticated pages are false negatives.</reason>
+    </antipattern>
+  </section>
+</text>

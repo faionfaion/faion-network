@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-patterns" title="Design System: Agent Audit Workflow and Gotchas">
+  <summary>Agent automation for design system health: measurable audit areas, coverage probe prompt patterns, and LLM gotchas when generating components or metrics for a design system.</summary>
+
+  <section title="Agent-Automatable Audit Areas">
+    <p>Agents handle the measurable parts of the four pillars: documentation freshness (last-updated vs last-source-commit), token-design parity (Figma vs code), contribution telemetry (PR merge rates), and adoption scanning (AST import analysis across consumer repos). Ownership and "real adoption" framing require human review — agents cannot decide whether to fund a platform team.</p>
+    <rule>
+      <statement>Pair every component release with a codemod (jscodeshift) that migrates consumers; documentation-only releases erode trust and drive forks.</statement>
+      <rationale>Consumer teams that must manually migrate to a new API version lose confidence in the system's release discipline. Codemods remove the migration burden and increase actual adoption of new releases.</rationale>
+    </rule>
+  </section>
+
+  <section title="Coverage Probe Prompt Pattern">
+    <example type="good">
+      <note>Coverage: "Crawl the apps/ workspace. For each consumer app, list components imported from @org/ui, count usages, and list visual primitives (button, input, card, modal) implemented locally instead. Emit coverage.json with { app, system_uses, snowflake_uses, coverage_pct }."</note>
+    </example>
+    <example type="good">
+      <note>Docs freshness: "Given Storybook's index.json and the system's source src/components/*, list components with no Storybook story (docs gap) or whose story has not changed in 180+ days while source has."</note>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent fabricating adoption percentage by counting import statements without counting render sites.</description>
+      <reason>A team may import the Button once and implement 40 custom buttons locally. Import-level counting inflates coverage metrics; render-site AST scanning (ts-morph) provides the actual figure.</reason>
+    </antipattern>
+    <antipattern>
+      <description>LLM generating components that re-implement existing system primitives because the catalogue was not provided as context.</description>
+      <reason>Without the system's catalogue (Storybook index.json or package exports), the agent does not know what already exists and will write duplicate components that increase snowflake usage.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Token rename PRs from agents missing CSS-in-JS template literals and Tailwind config references.</description>
+      <reason>AST token rename tools typically handle import paths and property access, but miss string-interpolated CSS-in-JS patterns and Tailwind config keys. Require a second-pass regex sweep before merging.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent-authored PRs merging to consumer app main branches without per-app release-train coordination.</description>
+      <reason>Codemods to unrelated apps must respect their release schedules. Auto-merging into main of unrelated apps can ship breaking visual changes ahead of their release cycle.</reason>
+    </antipattern>
+  </section>
+</text>
