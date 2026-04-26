@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-ts-fixtures" title="TypeScript Test Fixtures and Factories">
+  <summary>TypeScript factory helpers, fishery factories, and Jest fixture patterns for frontend and Node.js tests.</summary>
+
+  <section title="Factory Functions">
+    <rule>
+      <statement>Export a `create{Entity}` factory function from `__fixtures__/{entity}.ts` that accepts `Partial&lt;Entity&gt;` overrides. Never export hard-coded literal objects as the primary test data.</statement>
+      <rationale>Literal objects cannot express variants without duplication. Factory functions with overrides allow each test to specify only the attributes relevant to its scenario.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[// __fixtures__/users.ts
+import { User } from '../types';
+
+export function createUser(overrides: Partial<User> = {}): User {
+  return {
+    id: `user-${Date.now()}`,
+    email: `user-${Date.now()}@example.com`,
+    name: 'Test User',
+    role: 'user',
+    createdAt: new Date('2024-01-01'),  // Fixed date for snapshots
+    ...overrides,
+  };
+}
+
+// Named constants only for stable reference values
+export const adminUser = createUser({ id: 'user-admin', role: 'admin' });
+
+// Usage
+const user = createUser({ role: 'admin', name: 'Alice' });]]></code>
+    </example>
+  </section>
+
+  <section title="fishery (TypeScript)">
+    <example type="good">
+      <code lang="typescript"><![CDATA[import { Factory } from 'fishery';
+import { User } from '../types';
+
+export const userFactory = Factory.define<User>(({ sequence }) => ({
+  id: `user-${sequence}`,
+  email: `user${sequence}@example.com`,  // Deterministic, not random
+  name: 'Test User',
+  role: 'user',
+  createdAt: new Date('2024-01-01'),
+}));
+
+// Traits
+export const adminUserFactory = userFactory.params({ role: 'admin' });
+
+// Usage
+const user = userFactory.build({ name: 'Alice' });
+const admin = adminUserFactory.build();
+const [u1, u2] = userFactory.buildList(2);]]></code>
+      <note>`sequence` is deterministic per factory instance. `buildList` creates N unique instances.</note>
+    </example>
+  </section>
+</text>

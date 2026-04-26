@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="Test Fixture Antipatterns">
+  <summary>Scope leakage, factory drift, Faker non-determinism, mock-as-fixture confusion, and cleanup race conditions.</summary>
+
+  <antipattern>
+    <description>Fixture marked `scope="session"` or `scope="module"` when its state can be mutated by tests.</description>
+    <reason>Mutable shared fixtures cause tests to pass or fail based on execution order. The failure is non-deterministic and only reproducible with the same test ordering. Default to `scope="function"`.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Factory function defaults silently changed after 200 tests are written against the old defaults.</description>
+    <reason>Factory defaults are the implicit contract for all tests that use the factory. Changing them without a type error breaks assumptions invisible to the test author. Use keyword-only args so all callers are explicit.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>`Faker('email')` used as the default for a field that appears in snapshot assertions.</description>
+    <reason>Random Faker values change on every run, making snapshot tests flake. Use `factory.Sequence` or a fixed format like `f"user{n}@example.com"` for fields referenced in assertions.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>`Mock(spec=Service)` placed in `conftest.py` as a shared fixture without resetting between tests.</description>
+    <reason>Mock call history accumulates across tests; `assert_called_with` checks from test N find calls from test N-1, producing false positives that mask real bugs.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Yield-based fixture without try/finally when the cleanup can fail.</description>
+    <reason>If the test raises during execution, the code after `yield` still runs. But if that cleanup code raises a second exception, it masks the original test failure, making diagnosis impossible.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Using `scope="session"` with `tmp_path` (built-in fixture).</description>
+    <reason>`tmp_path` does not support session scope; pytest raises an obscure error. Use `tmp_path_factory.mktemp("...")` for session-scoped temporary directories.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Returning a shared mutable list or dict from a factory function without deep-copying.</description>
+    <reason>Test A mutates the returned object; Test B receives the same (mutated) object because factory returns the same reference. Always create new instances on each factory call.</reason>
+  </antipattern>
+</text>

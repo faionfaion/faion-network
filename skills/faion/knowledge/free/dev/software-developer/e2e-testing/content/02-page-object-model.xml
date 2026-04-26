@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-page-object-model" title="Page Object Model">
+  <summary>POM structure, method naming conventions, and locator rules for Playwright tests.</summary>
+
+  <section title="POM Conventions">
+    <rule>
+      <statement>Create one Page Object class per route. Name methods after user intent, not DOM events: `login()` not `clickSubmitButton()`.</statement>
+      <rationale>Intent-based names make test specs read like user stories. DOM-event names couple the test to the implementation and break on any UI restructure.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[// e2e/pages/LoginPage.ts
+export class LoginPage {
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly submitButton: Locator;
+
+  constructor(private page: Page) {
+    this.emailInput = page.getByTestId('login-email');
+    this.passwordInput = page.getByTestId('login-password');
+    this.submitButton = page.getByTestId('login-submit');
+  }
+
+  async goto() {
+    await this.page.goto('/login');
+    await expect(this.emailInput).toBeVisible();
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+
+  async expectLoggedIn() {
+    await expect(this.page).toHaveURL('/dashboard');
+  }
+}]]></code>
+      <note>All locators use `getByTestId`. `goto()` waits for page readiness. Methods are named after user actions.</note>
+    </example>
+  </section>
+
+  <section title="Fixtures for Shared State">
+    <example type="good">
+      <code lang="typescript"><![CDATA[// e2e/fixtures.ts
+export const test = base.extend<{
+  loginPage: LoginPage;
+  testUser: { email: string; password: string; id: string };
+  authenticatedPage: Page;
+}>({
+  testUser: async ({ request }, use) => {
+    const user = await createTestUser(request);
+    await use(user);
+    await cleanupTestData(request);
+  },
+  authenticatedPage: async ({ page, testUser }, use) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(testUser.email, testUser.password);
+    await expect(page).toHaveURL('/dashboard');
+    await use(page);
+  },
+});]]></code>
+      <note>Fixtures compose: `authenticatedPage` depends on `testUser`. Cleanup runs automatically after each test.</note>
+    </example>
+    <reference path="templates/page-object.ts">POM skeleton with constructor, goto, action, and assertion methods</reference>
+  </section>
+</text>

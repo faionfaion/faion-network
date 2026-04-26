@@ -1,0 +1,40 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run linters
+        run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: make test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check coverage threshold
+        run: pytest --cov=src --cov-fail-under=80
+
+  pr-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Warn on large PR
+        run: |
+          CHANGED=$(git diff --stat origin/${{ github.base_ref }} | tail -1 | awk '{print $4}')
+          if [ "${CHANGED:-0}" -gt 400 ]; then
+            echo "::warning::PR has ${CHANGED} changed lines (>400). Consider splitting."
+          fi

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-integration-tests" title="Rust Integration Tests">
+  <summary>Integration tests in tests/*.rs against real axum::Router via tower::ServiceExt, with testcontainers for real databases.</summary>
+
+  <section title="Axum Integration Tests">
+    <rule>
+      <statement>Test HTTP endpoints by calling the `axum::Router` directly via `tower::ServiceExt::oneshot`, without starting a real TCP server.</statement>
+      <rationale>Direct router testing is faster, avoids port conflicts, and still exercises middleware, routing, extractors, and response serialization — the full HTTP stack minus TCP.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[// tests/api_tests.rs
+use axum::{body::Body, http::{Request, StatusCode}};
+use tower::ServiceExt;
+use serde_json::json;
+
+#[tokio::test]
+async fn test_create_user_returns_201() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/users")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    json!({"name": "Alice", "email": "alice@example.com", "password": "pass123"})
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let user: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(user["email"], "alice@example.com");
+}]]></code>
+    </example>
+  </section>
+
+  <section title="Real Database Testing">
+    <rule>
+      <statement>Use `testcontainers` for integration tests that touch a database. Avoid SQLite-as-Postgres substitutes.</statement>
+      <rationale>SQLite silently accepts SQL that Postgres rejects (type casting, RETURNING clauses, JSON operators). Real Postgres catches dialect bugs that SQLite misses.</rationale>
+    </rule>
+  </section>
+</text>
