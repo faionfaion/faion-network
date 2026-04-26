@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-automation-etl" title="Reporting Automation and ETL Rules">
+  <summary>Rules for scheduled report agents, ETL pipelines, tool-specific API gotchas, and BI integration setup.</summary>
+
+  <section title="Report Agent Pattern">
+    <rule>
+      <statement>Separate report generation from report delivery in the agent chain: generate → validate → archive → deliver. Never combine generation and delivery in a single step. A report that fails validation should send an error alert, not a broken report.</statement>
+      <rationale>Skipping the validate step leads to sending empty tables, 0% completions from query failures, or missing data fields. Recipients lose trust in automation after the first bad report.</rationale>
+    </rule>
+    <rule>
+      <statement>Report agents must treat PM tool data as read-only. Never update, close, or modify PM records during a reporting run. Read-only agents can run more frequently without risk and simplify permission scoping.</statement>
+      <rationale>A reporting agent that inadvertently closes issues or updates statuses during a reporting pass causes data corruption that is difficult to reverse at scale.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pagination">
+    <rule>
+      <statement>PM tool APIs return paginated results. Default page sizes are 50-100 items. An agent that stops at page 1 will silently undercount metrics for projects with more than 50 issues. Always paginate until the last page or until maxResults is reached.</statement>
+      <rationale>JQL results (Jira) are capped at 1000 items per request. A board with 200+ issues needs at least 3 pages at default size. Undercounting creates systematically wrong velocity metrics.</rationale>
+    </rule>
+  </section>
+
+  <section title="Tool-specific API Gotchas">
+    <rule>
+      <statement>JQL (Jira) and GraphQL (Linear/GitHub) filter syntax differs. Never reuse a query written for one tool in prompts targeting another tool. Maintain tool-specific query templates in .aidocs/memory/ or templates/.</statement>
+      <rationale>A JQL query like "sprint in openSprints()" will fail verbatim on Linear's GraphQL API. Tool-specific prompts prevent silent query failures that return empty datasets.</rationale>
+    </rule>
+    <rule>
+      <statement>Scheduled agents that run at sprint boundaries may query a "transitional" state: the old sprint is closed but the new sprint has no committed issues yet. Add a guard: if sprint start date is in the future or the sprint has 0 committed issues, skip report generation and send a "sprint not started" notification instead.</statement>
+      <rationale>A sprint boundary report with 0% completion and 0 issues committed is always a false negative from timing. Guards prevent misleading reports during setup periods.</rationale>
+    </rule>
+  </section>
+
+  <section title="ETL for BI Integration">
+    <rule>
+      <statement>Use idempotent upserts (not inserts) when writing to a database for BI. Running the ETL agent twice should produce the same database state. Key on sprint_id + issue_id for row identity.</statement>
+      <rationale>ETL jobs run on schedules and may run twice (restart, cron overlap). Duplicate rows in a BI database produce double-counted metrics that compound over time.</rationale>
+    </rule>
+    <rule>
+      <statement>API token rotation for PowerBI/Grafana/Metabase connectors breaks pipelines silently — the connector stops updating but does not error visibly. Set a calendar reminder for token expiry and store token expiry dates in .aidocs/memory/.</statement>
+      <rationale>Long-lived API tokens (90-365 day expiry) are commonly used for BI connectors. Silent expiry is the most common cause of "why hasn't the dashboard updated?" incidents.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human Checkpoint">
+    <rule>
+      <statement>Add a human checkpoint before sending executive-level reports. Automated numbers can be technically correct but contextually misleading without narrative. The checkpoint is a review step, not approval — the agent generates, a human adds 1-2 sentence context, then the report goes out.</statement>
+      <rationale>A sprint with 85% completion but a production incident on Day 10 is "On Track" by the metric but not by stakeholder expectation. Human context bridges the gap.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/jira-metrics-fetcher.py">Python script: Jira sprint metrics to Slack</reference>
+  <reference path="templates/weekly-status-report.md">Weekly status report template</reference>
+</text>

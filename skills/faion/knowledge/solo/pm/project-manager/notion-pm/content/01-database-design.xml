@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-database-design" title="Notion Database Design Rules">
+  <summary>Rules for relational database design, property type selection, rollup patterns, and performance constraints in Notion.</summary>
+
+  <section title="Database Architecture">
+    <rule>
+      <statement>Create three core databases: Projects (one row per initiative), Tasks (one row per work item), Sprints (one row per iteration). Connect them bidirectionally: Tasks relation to Projects (and back), Tasks relation to Sprints (and back). This schema supports rollups for completion tracking without duplicating data.</statement>
+      <rationale>Flat databases require manual status tracking. Relations + rollups compute project progress, sprint velocity, and workload automatically from task data.</rationale>
+    </rule>
+    <rule>
+      <statement>Limit database properties to 15-20 maximum per database. Archive properties that are not used in views, rollups, or automations.</statement>
+      <rationale>Notion databases with many properties load slowly. Complex formulas referencing many relations are the primary performance bottleneck.</rationale>
+    </rule>
+  </section>
+
+  <section title="Property Types">
+    <rule>
+      <statement>Use Status property type (not Select) for task workflow states. Status groups Not Started / In Progress / Complete and renders progress rings in relation views — Select does not.</statement>
+      <rationale>The Status type is purpose-built for workflow tracking and enables native progress visualization that Select cannot replicate.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Relation + Rollup for computed metrics (task count per project, total story points, completion %). Never compute these manually in a formula that re-reads source database rows — rollups are cached; formulas that iterate rows are not.</statement>
+      <rationale>Formulas that aggregate related rows query the source database on every page load. Rollups are pre-computed and significantly faster on large databases.</rationale>
+    </rule>
+  </section>
+
+  <section title="Rollup Patterns">
+    <example type="good">
+      <note>Project "Completed Tasks": Rollup → relation: Tasks → property: Status → calculation: Count values filtered to "Done". Project "Progress %": Formula → round(prop("Completed Tasks") / prop("Total Tasks") * 100). Project "Total Points": Rollup → relation: Tasks → property: Estimate → calculation: Sum.</note>
+    </example>
+    <antipattern>
+      <description>Formula that uses prop("Tasks") to iterate task relations and check each task's status manually.</description>
+      <reason>Formula iteration over relations is not supported in Notion formulas. Use a Rollup with a filter instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Performance">
+    <rule>
+      <statement>Archive completed sprints and done tasks older than 90 days to an Archive database. Use linked databases (not duplicated databases) to show archived data in context when needed.</statement>
+      <rationale>Notion databases with 500+ active rows and complex formula properties load in 3-8 seconds. Archiving old data keeps the primary database fast.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/task-template.md">Task page template</reference>
+  <reference path="templates/sprint-template.md">Sprint page template</reference>
+</text>

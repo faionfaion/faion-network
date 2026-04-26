@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-api-agent" title="GitHub Projects API and Agent Rules">
+  <summary>GraphQL API rules, gh CLI patterns, and agent-specific gotchas for GitHub Projects v2.</summary>
+
+  <section title="ID Management">
+    <rule>
+      <statement>Store project_id (PVT_kwDO...), field_ids for Status/Priority/Sprint, and option_ids for field values in .aidocs/memory/ or constitution.md after the first fetch. GraphQL mutations require these IDs on every call — re-fetching them each session wastes API quota and rate limits.</statement>
+      <rationale>GraphQL mutations need node_ids (not human names). A project with 50 items consumes 50-100 GraphQL points per query; at 5000 points/hour limit, repeated ID lookups exhaust the quota.</rationale>
+    </rule>
+    <antipattern>
+      <description>Agent fetches project_id and field_ids at the start of every operation without caching.</description>
+      <reason>Each GraphQL query consumes 50-100 of the 5000 points/hour rate limit. Caching IDs reduces overhead to zero for subsequent sessions.</reason>
+    </antipattern>
+  </section>
+
+  <section title="gh CLI Patterns">
+    <rule>
+      <statement>Use `gh project` subcommands as the primary agent interface for standard operations: item-list, item-add, item-edit. Fall back to raw GraphQL only for operations not covered by the CLI (e.g., custom field creation).</statement>
+      <rationale>gh CLI abstracts GraphQL complexity and handles authentication transparently. Direct GraphQL mutations require explicit token management.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# List current sprint items
+gh project item-list 1 --owner myorg --format json \
+  | jq '.items[] | select(.fieldValues[] | .name == "In Progress")'
+
+# Move item to In Review
+gh project item-edit --id PVTI_xxx --project-id PVT_xxx \
+  --field-id PVTF_xxx --single-select-option-id PVTO_xxx
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="GitHub Actions Integration">
+    <rule>
+      <statement>Use PROJECT_TOKEN (classic token with project scope) for GitHub Actions workflows that write to Projects. The default GITHUB_TOKEN does not have project scope — Actions using it will fail silently on project field updates.</statement>
+      <rationale>Missing project scope on GITHUB_TOKEN is the most common cause of silent project automation failures in CI.</rationale>
+    </rule>
+    <rule>
+      <statement>Rate limit: 5000 GraphQL points per hour per token. Complex project queries consume 50-100 points each. Monitor usage for boards with more than 200 items; consider caching project state locally between queries.</statement>
+      <rationale>Large open-source projects with many items can exhaust the hourly GraphQL quota in a single automated triage pass.</rationale>
+    </rule>
+  </section>
+
+  <section title="Milestones and Releases">
+    <rule>
+      <statement>Use milestones for release targets in addition to project iteration fields. Milestones are fully accessible via `gh milestone` CLI and REST API, and provide a release-scoped view that project boards cannot replicate.</statement>
+      <rationale>Project iteration fields show sprint scope; milestones show release scope. Both are needed: sprint for team execution, milestone for stakeholder communication.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/issue-feature.yml">Feature issue template (YAML form with project auto-assign)</reference>
+  <reference path="templates/workflow-project-automation.yml">GitHub Actions workflow for project field automation</reference>
+</text>

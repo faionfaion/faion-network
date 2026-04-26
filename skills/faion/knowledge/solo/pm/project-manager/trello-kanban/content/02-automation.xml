@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-automation" title="Trello Automation and API Rules">
+  <summary>Butler automation patterns, REST API integration rules, and agent-usage gotchas for Trello.</summary>
+
+  <section title="Butler Automation">
+    <rule>
+      <statement>Use Butler rules for mechanical state transitions: move card when all checklists are complete, add "Blocked" label and notify on manual block, post stale-card comment after 7 days of inactivity. Document all Butler rules in constitution.md — agents cannot create or modify Butler rules via API.</statement>
+      <rationale>Butler rules are UI-configured only; no API endpoint exists. Agents must treat Butler automation as pre-existing infrastructure.</rationale>
+    </rule>
+    <example type="good">
+      <note>Butler rule: when all checklists on a card are complete → move to Done. Butler rule: when card has no activity for 7 days AND is not in Done → add "Stale" label and post comment. These are configured once in the board UI and documented in constitution.md.</note>
+    </example>
+  </section>
+
+  <section title="REST API Agent Usage">
+    <rule>
+      <statement>All write operations require board/list/card IDs (not names). Agents must do a read pass first to map human-readable names to IDs. Store board ID, list IDs, and label IDs in .aidocs/memory/ or constitution.md — do not fetch them on every session.</statement>
+      <rationale>Trello API requires numeric/hash IDs for all writes. Agents that skip the read pass fail silently or operate on wrong lists.</rationale>
+    </rule>
+    <rule>
+      <statement>Respect the rate limit: 100 requests per 10 seconds per token. Parallel agent operations that create or move multiple cards simultaneously will hit this limit. Batch sequentially with a small delay or use n8n for bulk operations.</statement>
+      <rationale>Rate limit violations return 429 errors that agents must handle; unhandled, they cause silent data loss.</rationale>
+    </rule>
+    <rule>
+      <statement>Moving a card to Done via API does not trigger Butler card-archive automation. If archiving is required, make a separate API call: PUT /cards/{id} with closed=true.</statement>
+      <rationale>Butler automation fires on UI events, not on API-triggered state changes. Agents that rely on Butler archive automation after an API move will leave cards unarchived.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// Agent pattern: fetch list IDs once, then create card
+const lists = await fetch(
+  `https://api.trello.com/1/boards/${BOARD_ID}/lists?key=${KEY}&token=${TOKEN}`
+).then(r => r.json());
+const backlogId = lists.find(l => l.name === "Backlog").id;
+
+await fetch(`https://api.trello.com/1/cards?key=${KEY}&token=${TOKEN}`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'Add OAuth integration',
+    desc: '## Feature\n...',
+    idList: backlogId,
+    idLabels: [FEATURE_LABEL_ID]
+  })
+});
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Creating a card with idList set by fetching the list name on every API call.</description>
+      <reason>Wastes 1 API call per card write. Store list IDs in session memory after the first fetch.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Secrets">
+    <rule>
+      <statement>Store TRELLO_KEY and TRELLO_TOKEN in environment variables or 1Password. Never hardcode in agent prompts, scripts, or configuration files.</statement>
+      <rationale>Trello tokens have board-level write access. Exposed tokens allow full board modification by anyone who reads the file.</rationale>
+    </rule>
+  </section>
+</text>
