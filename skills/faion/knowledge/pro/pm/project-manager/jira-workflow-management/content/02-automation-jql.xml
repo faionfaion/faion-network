@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-automation-jql" title="Jira Automation and JQL">
+  <summary>Automation rule patterns, JQL query cookbook, and agent-specific gotchas for operating Jira programmatically.</summary>
+
+  <section title="Automation Rules">
+    <rule>
+      <statement>Test automation rules in a sandbox project with a copy of production schemes before promoting to production.</statement>
+      <rationale>Automation rule loops (rule A triggers rule B triggers A) are trivially created and can exhaust the monthly rule-execution quota in minutes. Sandbox testing catches cycles before they hit production.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# Auto-assign to code reviewer on transition
+rule: auto_assign_reviewer
+trigger: issue_transitioned_to_code_review
+action: assign_to_field(code_reviewer)
+
+# Close subtasks when parent is Done
+rule: close_subtasks
+trigger: parent_issue_done
+action: transition_subtasks_to_done
+
+# Alert on blocker priority
+rule: notify_on_blocker
+trigger: priority_changed_to_blocker
+action: send_slack_message(channel=#dev-alerts)
+]]></code>
+      <note>Tag every automation-created issue with an "automation" label for audit trails.</note>
+    </example>
+    <rule>
+      <statement>Add cycle guards to every automation rule that could trigger another rule.</statement>
+      <rationale>Without cycle guards, rule A → rule B → rule A loops consume the entire monthly execution budget (Cloud: per-tier monthly limit) in seconds.</rationale>
+    </rule>
+  </section>
+
+  <section title="JQL Queries">
+    <rule>
+      <statement>Always validate JQL with validateQuery=strict before executing in production.</statement>
+      <rationale>LLMs invent Jira field names. Strict validation catches hallucinated fields before they return empty result sets that silently appear as "no issues found".</rationale>
+    </rule>
+    <example type="good">
+      <code lang="sql"><![CDATA[
+-- My open issues
+assignee = currentUser() AND resolution = Unresolved
+
+-- Sprint backlog
+project = PROJ AND sprint in openSprints()
+
+-- Bugs created this week
+project = PROJ AND type = Bug AND created >= -7d
+
+-- Blocked items
+status = "In Progress" AND flagged = "Impediment"
+
+-- Overdue issues
+duedate < now() AND resolution = Unresolved
+
+-- Release scope
+fixVersion = "1.0.0" AND resolution = Unresolved
+]]></code>
+    </example>
+    <antipattern>
+      <description>Using JQL WAS queries on transition history for large issue sets.</description>
+      <reason>WAS queries against transition history time out above ~10k issues because they scan the full changelog. Use status-based queries with date filters instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agent Gotchas">
+    <rule>
+      <statement>Cache /rest/api/3/field and provide the field schema in system prompt before any JQL generation.</statement>
+      <rationale>LLMs invent field names that pass syntax validation but return empty results. The field list is stable; caching it once per session eliminates hallucination.</rationale>
+    </rule>
+    <list>
+      <item>ADF (Atlassian Document Format) for issue descriptions != Markdown; agents writing Markdown produce empty description fields. Use the ADF conversion utility.</item>
+      <item>Permission errors return HTTP 200 with empty issue lists in some endpoints — always check the total count, not just the array.</item>
+      <item>Rate limits: Cloud allows ~50 req/sec/site; automation rules have a per-tier monthly budget. Throttle bulk operations to 5 req/sec.</item>
+      <item>Service account that creates issues becomes the reporter; disable notifications on the bot user to prevent fan-out.</item>
+      <item>Webhook signatures rotate on app reinstall; agents listening to webhooks need rotation handling.</item>
+    </list>
+    <reference path="scripts/apply-workflow.sh">Push workflow JSON to sandbox project via REST API</reference>
+    <reference path="scripts/bulk-jql-update.py">Bulk-transition issues with rate-limit safety</reference>
+  </section>
+</text>
