@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="API Gateway Configuration Examples and Antipatterns">
+  <summary>Kong declarative YAML, AWS API Gateway serverless.yml, Nginx config, BFF aggregation, and antipatterns to reject.</summary>
+
+  <section title="Kong declarative route">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+_format_version: "3.0"
+services:
+  - name: user-service
+    url: http://user-service:8080
+    routes:
+      - name: users-route
+        paths:
+          - /api/users
+        strip_path: false
+        preserve_host: true
+plugins:
+  - name: jwt
+    config:
+      claims_to_verify: [exp]
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: redis
+      limit_by: consumer
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true
+  - name: cors
+    config:
+      origins: ["https://app.example.com"]
+      methods: [GET, POST, PUT, DELETE]
+      headers: [Authorization, Content-Type]
+      ]]></code>
+      <note>Rate limiting by consumer, not IP. preserve_host: true prevents Host header breakage. correlation-id plugin at ingress.</note>
+    </example>
+    <reference path="templates/kong-route.yml">Full Kong route template</reference>
+  </section>
+
+  <section title="Nginx gateway">
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+upstream user_service {
+    server user-service-1:8080 weight=3;
+    server user-service-2:8080 weight=2;
+    keepalive 32;
+}
+
+limit_req_zone $http_x_consumer_id zone=api_limit:10m rate=10r/s;
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+    ssl_certificate /etc/ssl/certs/api.crt;
+    ssl_certificate_key /etc/ssl/private/api.key;
+
+    location /api/users {
+        limit_req zone=api_limit burst=20 nodelay;
+        proxy_pass http://user_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 5s;
+    }
+
+    location /health {
+        return 200 '{"status":"ok"}';
+        add_header Content-Type application/json;
+    }
+}
+      ]]></code>
+      <note>Rate limit by X-Consumer-ID not $binary_remote_addr. Timeouts set to 5s (shorter than typical 10s client timeout).</note>
+    </example>
+    <reference path="templates/nginx-gateway.conf">Full Nginx gateway config template</reference>
+  </section>
+
+  <section title="BFF aggregation">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@app.get("/api/dashboard")
+async def get_dashboard(authorization: str = Header(...)):
+    headers = {"Authorization": authorization}
+    async with httpx.AsyncClient(timeout=2.0) as c:
+        try:
+            user, orders, notifs = await asyncio.gather(
+                c.get("http://user-svc/me", headers=headers),
+                c.get("http://order-svc/me/orders?limit=5", headers=headers),
+                c.get("http://notify-svc/me/unread", headers=headers),
+            )
+        except httpx.TimeoutException:
+            raise HTTPException(504, "upstream timeout")
+    return {
+        "user": user.json() if user.is_success else None,
+        "orders": orders.json() if orders.is_success else [],
+        "notifications": notifs.json() if notifs.is_success else [],
+    }
+      ]]></code>
+      <note>Parallel upstream calls. Partial failures return null/[] instead of 500. Timeout propagated as 504.</note>
+    </example>
+    <reference path="templates/bff-aggregator.py">Full BFF aggregator module</reference>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Business logic in Kong Lua plugin or AWS Lambda authorizer beyond token validation.</description>
+      <reason>Creates a new domain monolith owned by the platform team, invisible to feature developers, and gated by a separate release cycle.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Rate limiting by $binary_remote_addr (source IP) behind a CDN or load balancer.</description>
+      <reason>All consumers share the CDN's IP as source, so they share one rate-limit bucket — one consumer can exhaust the limit for everyone.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Gateway configuration changed via web UI without a corresponding git commit.</description>
+      <reason>Unversioned, unreviewed, unreproducible. Cannot be rolled back, audited, or replayed in a new environment.</reason>
+    </antipattern>
+  </section>
+</text>

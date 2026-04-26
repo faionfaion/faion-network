@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-patterns" title="ASP.NET Core BackgroundService Patterns">
+  <summary>Rules for BackgroundService + Channel wiring, scoped DI, PeriodicTimer, and health check integration in .NET 8+.</summary>
+
+  <section title="BackgroundService structure">
+    <rule>
+      <statement>Always extend BackgroundService (not implement IHostedService directly). Pass stoppingToken into every await call inside ExecuteAsync.</statement>
+      <rationale>BackgroundService handles cancellation plumbing. Without stoppingToken on awaits, shutdown blocks for the default 30-second timeout before forced kill.</rationale>
+    </rule>
+    <rule>
+      <statement>Wrap the per-item handler in try/catch inside ExecuteAsync. Never let exceptions bubble to the loop level — this kills the BackgroundService in older .NET and may stop the host in .NET 6+.</statement>
+      <rationale>.NET 6+ BackgroundServiceExceptionBehavior defaults to StopHost; an unhandled exception in ExecuteAsync brings down the whole process.</rationale>
+    </rule>
+    <rule>
+      <statement>Resolve scoped services (DbContext, scoped repositories) via IServiceProvider.CreateScope() inside the processing loop. Never inject scoped services into the singleton BackgroundService constructor.</statement>
+      <rationale>BackgroundService is registered as a singleton. Injecting a scoped DbContext directly creates a captive dependency — the context is reused across requests, causing concurrency bugs and connection leaks.</rationale>
+    </rule>
+  </section>
+
+  <section title="Channel rules">
+    <rule>
+      <statement>Always use Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait }) for back-pressure. Never use CreateUnbounded.</statement>
+      <rationale>An unbounded channel becomes a memory bomb under producer spikes. Bounded + Wait blocks the producer, propagating back-pressure to the caller.</rationale>
+    </rule>
+    <rule>
+      <statement>One BackgroundService per concern. Never put email dispatch, cleanup, and cache warming in a single class.</statement>
+      <rationale>Mixing concerns makes the service impossible to test in isolation and difficult to scale independently.</rationale>
+    </rule>
+  </section>
+
+  <section title="Periodic timer">
+    <rule>
+      <statement>Use PeriodicTimer over Task.Delay loops for periodic work. PeriodicTimer does not accumulate drift and integrates with CancellationToken via WaitForNextTickAsync.</statement>
+      <rationale>Task.Delay(period) accumulates drift because the work duration is added to the period. PeriodicTimer fires on a wall-clock schedule.</rationale>
+    </rule>
+  </section>
+
+  <section title="Health checks">
+    <rule>
+      <statement>Wire an IHealthCheck that tracks the last-success timestamp of the BackgroundService. Report Unhealthy if no successful run occurred within the expected window.</statement>
+      <rationale>Without a health check, a stuck background service is invisible to Kubernetes liveness probes and load balancer health checks.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent gotchas">
+    <rule testable="false">
+      <statement>Reject diffs that use Task.Run(async () =&gt; { while (true) ... }) instead of BackgroundService. Require the base class.</statement>
+      <rationale>Task.Run bypasses IHost lifecycle, cancellation propagation, and DI scoping.</rationale>
+    </rule>
+    <rule testable="false">
+      <statement>Reject diffs that inject DbContext directly into a BackgroundService constructor. Require CreateScope() in the processing loop.</statement>
+      <rationale>Singleton + scoped = captive dependency: DbContext is not thread-safe and was not designed for singleton lifetime.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Spring Boot Transaction, Fetch, Mapping, and Agent Rules">
+  <summary>Concrete rules for transaction placement, fetch strategy, DTO mapping, and common LLM mistakes to reject.</summary>
+
+  <section title="Transaction rules">
+    <rule>
+      <statement>Place @Transactional only on public, non-final service methods. Never on controllers, private methods, or final methods.</statement>
+      <rationale>Spring proxies only intercept public non-final methods. Placing @Transactional on a controller or private method silently does nothing.</rationale>
+    </rule>
+    <rule>
+      <statement>Never call a @Transactional method from within the same bean (self-invocation). The proxy is bypassed and the transaction does not start.</statement>
+      <rationale>Spring AOP proxies intercept calls from outside the bean only. Self-calls go direct, bypassing the proxy.</rationale>
+    </rule>
+  </section>
+
+  <section title="Fetch strategy rules">
+    <rule>
+      <statement>Always use FetchType.LAZY on associations. Use JOIN FETCH in @Query or @EntityGraph when the association is needed. Never use FetchType.EAGER.</statement>
+      <rationale>EAGER loads the association even when unused, causing N+1 on collections. LAZY + explicit fetch is always controllable.</rationale>
+    </rule>
+    <rule>
+      <statement>Use @JsonIgnore on all lazy collection fields exposed directly (e.g., bidirectional @OneToMany). Prefer DTO projection to avoid infinite recursion.</statement>
+      <rationale>Jackson serializes lazy proxies, triggering the query; bidirectional relations cause infinite recursion without @JsonIgnore.</rationale>
+    </rule>
+  </section>
+
+  <section title="DTO and mapping rules">
+    <rule>
+      <statement>Never return JPA entities from controllers or service public methods. Always map to a response DTO at the service layer.</statement>
+      <rationale>Returning entities exposes internal schema, lazy-load exceptions, and prevents adding computed fields.</rationale>
+    </rule>
+    <rule>
+      <statement>Use MapStruct for entity-DTO mapping. Pin lombok + mapstruct-processor + lombok-mapstruct-binding in the maven-compiler-plugin annotationProcessorPaths in that order.</statement>
+      <rationale>Without the binding artifact, Lombok generates setters after MapStruct reads fields, producing null mappers at runtime.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async rules">
+    <rule>
+      <statement>@Async methods must return CompletableFuture&lt;T&gt; or void. Use CompletableFuture&lt;T&gt; when the caller needs the result. Use void only for fire-and-forget with caught exceptions inside.</statement>
+      <rationale>Async @Async void methods swallow exceptions silently. CompletableFuture propagates them to the caller.</rationale>
+    </rule>
+    <rule>
+      <statement>Never call @Async methods from within the same bean. The proxy is bypassed and the call runs synchronously.</statement>
+      <rationale>Same proxy bypass as @Transactional — Spring AOP does not intercept self-calls.</rationale>
+    </rule>
+    <rule>
+      <statement>Declare a named ThreadPoolTaskExecutor bean per workload type (e.g., emailExecutor, reportExecutor). Never share the default executor across unrelated tasks.</statement>
+      <rationale>Sharing the default executor causes head-of-line blocking when slow tasks (reports) block fast ones (emails).</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent gotchas to reject">
+    <rule testable="false">
+      <statement>Reject diffs that import javax.* in a Boot 3.x project. Boot 3 requires jakarta.* namespaces. Reject WebSecurityConfigurerAdapter — use SecurityFilterChain bean instead.</statement>
+      <rationale>Boot 3 / Spring 6 migrated to Jakarta EE. WebSecurityConfigurerAdapter was removed in Spring Security 6.</rationale>
+    </rule>
+    <rule testable="false">
+      <statement>Reject @Autowired field injection. Require constructor injection via @RequiredArgsConstructor (Lombok) or explicit constructor.</statement>
+      <rationale>Field injection hides required dependencies, breaks immutability, and makes unit testing harder.</rationale>
+    </rule>
+    <rule testable="false">
+      <statement>Reject service methods that call findAll() without Pageable. Every list endpoint must accept Pageable.</statement>
+      <rationale>findAll() without pagination loads the entire table into memory, causing OOM in production.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/springboot-pr-gate.sh">CI gate that enforces these rules mechanically</reference>
+</text>

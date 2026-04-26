@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-gateway-rules" title="API Gateway Core Rules">
+  <summary>Stateless gateway rules: auth, rate limiting, request tracing, timeouts, circuit breakers, and the smart-gateway antipattern.</summary>
+
+  <section title="Gateway responsibility boundary">
+    <rule>
+      <statement>Gateways handle only cross-cutting concerns: auth (JWT/mTLS), rate limiting, routing, CORS, tracing headers, and SSL termination. Never put business logic, data transformation, or domain rules in gateway plugins.</statement>
+      <rationale>Business logic in gateway plugins (Lua, JS, WASM) creates a new monolith owned by the platform team, invisible to domain developers, and blocked by a different release cycle.</rationale>
+    </rule>
+    <rule>
+      <statement>Gateway must be stateless. Auth state lives in tokens (JWT, mTLS certs). Rate-limit counters live in Redis. Never store session state in the gateway process.</statement>
+      <rationale>Stateful gateways cannot be horizontally scaled and become a single point of failure for all traffic.</rationale>
+    </rule>
+  </section>
+
+  <section title="Rate limiting">
+    <rule>
+      <statement>Rate-limit by consumer (API key or JWT sub), not by source IP. When behind a CDN or load balancer, source IP is the CDN's IP — all consumers share the same limit bucket.</statement>
+      <rationale>IP-based rate limiting behind a CDN applies the limit to all consumers collectively, not individually. Consumer-based limiting is fair and attributable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Request tracing">
+    <rule>
+      <statement>Inject X-Request-ID at ingress ($request_id in nginx, correlation-id plugin in Kong). Propagate the header to all upstream services. Log the ID on every gateway response.</statement>
+      <rationale>Without a correlation ID, tracing a failed request across 5 microservices requires timestamp matching in logs — unreliable under concurrent traffic.</rationale>
+    </rule>
+  </section>
+
+  <section title="Timeouts and circuit breakers">
+    <rule>
+      <statement>Set gateway timeout shorter than client timeout: if client waits 10s, set gateway to 5s. This ensures the gateway returns 504 cleanly before the client disconnects.</statement>
+      <rationale>If the gateway timeout equals or exceeds the client timeout, clients abort before receiving the gateway's 504 response, losing error context.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure circuit breakers per upstream service. A slow upstream must not degrade gateway response times for all other services.</statement>
+      <rationale>Without isolation, one slow upstream causes thread/connection pool exhaustion in the gateway, degrading all routes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Config-as-code">
+    <rule>
+      <statement>All gateway configuration must be versioned in git and deployed via CI. Never change routes or plugins via a web UI without a matching PR.</statement>
+      <rationale>Web UI changes are unreviewed, unversioned, and unreproducible. A mis-click can take down all traffic with no rollback path.</rationale>
+    </rule>
+  </section>
+</text>

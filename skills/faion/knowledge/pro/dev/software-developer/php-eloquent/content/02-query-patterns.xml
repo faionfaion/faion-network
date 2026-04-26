@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-query-patterns" title="Eloquent Query Patterns: Repository vs Query Object">
+  <summary>When to use repositories, when to use Query Objects, eager loading rules, and pagination enforcement.</summary>
+
+  <section title="Repository vs Query Object">
+    <rule>
+      <statement>Use a Repository only when you need a second data-source implementation or a mock boundary for unit testing. A thin repository wrapping $model->find/create is dead abstraction.</statement>
+      <rationale>Eloquent already implements the Repository pattern internally. Adding a second layer duplicates method signatures and adds no domain value unless you have multiple data sources.</rationale>
+    </rule>
+    <rule>
+      <statement>Use a Query Object (app/Queries/XQuery.php) for multi-condition report queries. Chain methods fluently; call paginate() or get() at the call site.</statement>
+      <rationale>Query Objects are composable without coupling to the model class or the controller. They can be unit-tested by asserting SQL or by running against an in-memory SQLite.</rationale>
+    </rule>
+    <reference path="templates/query-object.php">Fluent Query Object skeleton with active/search/role filters</reference>
+  </section>
+
+  <section title="Eager loading">
+    <rule>
+      <statement>Use with('relation') when loading a collection in a controller/service. Use loadMissing('relation') when the model is already hydrated and the relation might not be loaded.</statement>
+      <rationale>with() runs one JOIN before hydration. loadMissing() adds the relation on-demand without re-running the base query.</rationale>
+    </rule>
+    <rule>
+      <statement>Never access $model->relation inside a loop when $model was retrieved without eager loading. This generates one SQL query per iteration (N+1).</statement>
+      <rationale>N+1 queries multiply with dataset size and are invisible in development unless Model::preventLazyLoading() is active.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pagination">
+    <rule>
+      <statement>All user-facing list endpoints must use paginate($perPage) or cursorPaginate($perPage). Never call get() or all() on a user-facing query without a LIMIT.</statement>
+      <rationale>Unbounded get() on large tables loads the entire result set into PHP memory, causing OOM and slow responses.</rationale>
+    </rule>
+  </section>
+
+  <section title="Bulk operations">
+    <rule>
+      <statement>For bulk inserts/updates (&gt; 100 rows), use upsert(), insert(), or chunked LazyCollection. Never call Model::create() in a loop.</statement>
+      <rationale>Model::create() in a loop generates N INSERT statements, each with full model lifecycle hooks. upsert() sends one batch statement.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="ASP.NET Core Error Handling, Mapping, and Agent Gotchas">
+  <summary>ProblemDetails error handling, DTO mapping rules, middleware order, and LLM mistakes to reject.</summary>
+
+  <section title="Error handling">
+    <rule>
+      <statement>Use IExceptionHandler (.NET 8+) with AddProblemDetails() and UseExceptionHandler() in Program.cs. Map domain exceptions to RFC 7807 ProblemDetails responses. Never create custom error envelope classes.</statement>
+      <rationale>RFC 7807 is the HTTP standard for machine-readable error details. Custom envelopes diverge per endpoint and break API clients that expect the standard format.</rationale>
+    </rule>
+    <reference path="templates/problem-details-handler.cs">IExceptionHandler implementation mapping exceptions to RFC 7807</reference>
+  </section>
+
+  <section title="DTO mapping">
+    <rule>
+      <statement>Prefer Mapperly (source-generated) over AutoMapper (reflection-based) for DTO mapping. Mapperly is AOT-compatible and fails at compile time on misconfigured maps.</statement>
+      <rationale>AutoMapper mapping misconfigurations fail at runtime (often in production). Mapperly catches mismatches at compile time and has zero runtime overhead.</rationale>
+    </rule>
+    <rule>
+      <statement>Never return EF tracked entities from controllers or from public service methods. Always map to a DTO at the service layer.</statement>
+      <rationale>Tracked entities serialize with circular references, expose internal columns, and prevent lazy-load exceptions from being caught at the service boundary.</rationale>
+    </rule>
+  </section>
+
+  <section title="Middleware order">
+    <rule>
+      <statement>In Program.cs, middleware order must be: UseExceptionHandler → UseHttpsRedirection → UseAuthentication → UseAuthorization → MapControllers. Never reverse UseAuthentication and UseAuthorization.</statement>
+      <rationale>UseAuthorization checks ClaimsPrincipal set by UseAuthentication. If UseAuthentication runs after, the principal is always anonymous and [Authorize] is silently skipped.</rationale>
+    </rule>
+  </section>
+
+  <section title="Transactions">
+    <rule>
+      <statement>For multi-step writes (two entity saves + external call), use await using var tx = await db.Database.BeginTransactionAsync(ct); and commit explicitly. Never rely on SaveChanges for cross-aggregate atomicity.</statement>
+      <rationale>SaveChanges commits all pending changes in the DbContext at once, but two separate SaveChanges calls in the same request are NOT atomic without an explicit transaction.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent gotchas to reject">
+    <rule testable="false">
+      <statement>Reject diffs that inject DbContext into a singleton service constructor. Require IServiceProvider + CreateScope() or change service registration to Scoped.</statement>
+      <rationale>Captive dependency: DbContext is scoped; singleton holds it for the process lifetime, causing state corruption under concurrent requests.</rationale>
+    </rule>
+    <rule testable="false">
+      <statement>Reject diffs that add Result&lt;T&gt; wrappers in services when the project uses exception-based error handling. Do not mix the two patterns in one codebase.</statement>
+      <rationale>Mixing exception-based and Result-based error handling creates dual error paths; controllers must handle both, and inconsistency spreads.</rationale>
+    </rule>
+    <rule testable="false">
+      <statement>Reject diffs with tests using MockBehavior.Default that don't assert call counts. Require MockBehavior.Strict or integration tests with Testcontainers.</statement>
+      <rationale>MockBehavior.Default silently returns default values for unconfigured calls, allowing tests to pass even when the production code calls wrong methods.</rationale>
+    </rule>
+  </section>
+</text>

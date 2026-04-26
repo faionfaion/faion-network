@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture" title="ASP.NET Core Layered Architecture">
+  <summary>Layer responsibilities, DI scoping rules, EF Core guidance, and CancellationToken propagation for .NET 8/9 APIs.</summary>
+
+  <section title="Layer boundaries">
+    <rule>
+      <statement>Controllers handle HTTP only: deserialize request, call one service method, return ActionResult or typed result. No business logic, no DbContext access, no direct EF queries.</statement>
+      <rationale>Controllers with domain logic cannot be unit-tested without spinning up an HTTP stack. Service isolation enables faster, cleaner tests.</rationale>
+    </rule>
+    <rule>
+      <statement>Services accept DTOs (records), execute domain logic, call repositories or DbContext, and return DTOs. Never return EF entity objects from public service methods.</statement>
+      <rationale>Returning tracked entities from services exposes EF internals, risks circular JSON serialization, and leaks internal schema to API consumers.</rationale>
+    </rule>
+    <rule>
+      <statement>Pass CancellationToken through every async call: ToListAsync(ct), SaveChangesAsync(ct), FindAsync(ct). Never call async EF methods without a cancellation token.</statement>
+      <rationale>Without CancellationToken, a client disconnect leaves the EF query running until completion, wasting DB connections and CPU.</rationale>
+    </rule>
+  </section>
+
+  <section title="DI scoping">
+    <rule>
+      <statement>Never inject a scoped service (DbContext, scoped repository) into a singleton. Singleton dependencies must also be singletons or transients resolved via IServiceProvider.CreateScope().</statement>
+      <rationale>A singleton holding a scoped DbContext keeps the context for the process lifetime, causing EF state corruption across concurrent requests.</rationale>
+    </rule>
+  </section>
+
+  <section title="DTOs">
+    <rule>
+      <statement>Use C# record types with required init properties for all DTOs. Request records carry DataAnnotations or FluentValidation rules. Response records carry no logic.</statement>
+      <rationale>Records provide immutability, structural equality, and concise syntax. required init ensures all fields are set at construction without mutable setters.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pagination">
+    <rule>
+      <statement>Use keyset pagination (WHERE id &gt; @after ORDER BY id LIMIT 20) on large tables. Never use Skip/Take on tables with &gt;100k rows.</statement>
+      <rationale>Skip/Take (OFFSET/FETCH) scans and discards all preceding rows — performance degrades linearly with page number. Keyset pagination is O(1).</rationale>
+    </rule>
+  </section>
+
+  <section title="Time">
+    <rule>
+      <statement>Inject TimeProvider and call timeProvider.GetUtcNow() instead of DateTime.UtcNow or DateTimeOffset.UtcNow.</statement>
+      <rationale>DateTime.UtcNow is a static call that cannot be controlled in tests. TimeProvider is the .NET 8 standard abstraction for testable time.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-rules.xml"/>
+    <link path="content/03-examples.xml"/>
+  </see-also>
+</text>

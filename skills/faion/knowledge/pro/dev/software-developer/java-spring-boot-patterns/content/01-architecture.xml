@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture" title="Spring Boot 3.x Layered Architecture">
+  <summary>Project structure, layer responsibilities, and canonical package layout for Spring Boot 3.x applications.</summary>
+
+  <section title="Layer responsibilities">
+    <rule>
+      <statement>Controllers handle HTTP only: deserialize request, call one service method, return response. No business logic, no repository access, no @Transactional.</statement>
+      <rationale>Controllers are HTTP adapters. Business logic in controllers cannot be tested without starting the HTTP stack.</rationale>
+    </rule>
+    <rule>
+      <statement>Service layer owns @Transactional boundaries. Mark the class @Transactional(readOnly = true) and override individual write methods with @Transactional.</statement>
+      <rationale>Read-only transactions skip flush and allow read replicas. Write transactions need explicit opt-in to avoid accidental writes.</rationale>
+    </rule>
+    <rule>
+      <statement>Repositories extend JpaRepository and JpaSpecificationExecutor. Custom JPQL uses @Query with named @Param. Force FetchType.LAZY on all @OneToMany, @ManyToMany, @OneToOne.</statement>
+      <rationale>Default EAGER fetch causes N+1 on collection loading. LAZY + explicit JOIN FETCH in @Query is always faster.</rationale>
+    </rule>
+    <rule>
+      <statement>DTOs are Java records. Request records carry Bean Validation annotations; response records carry no logic. Map entity to DTO at the service boundary using MapStruct.</statement>
+      <rationale>Records are immutable and concise. Mapping at the service boundary prevents leaking JPA internals to the HTTP layer.</rationale>
+    </rule>
+  </section>
+
+  <section title="Project package layout">
+    <p>Canonical layout under com.example.app:</p>
+    <list>
+      <item>config/ — SecurityConfig, WebConfig, OpenApiConfig</item>
+      <item>controller/ — XController, advice/GlobalExceptionHandler</item>
+      <item>service/ — XService interface, impl/XServiceImpl</item>
+      <item>repository/ — XRepository, specification/XSpecification</item>
+      <item>entity/ — X, BaseEntity (UUID id, createdAt, updatedAt, @Version)</item>
+      <item>dto/request/ — CreateXRequest, UpdateXRequest (records)</item>
+      <item>dto/response/ — XResponse (record)</item>
+      <item>mapper/ — XMapper (MapStruct interface)</item>
+      <item>exception/ — ResourceNotFoundException, BusinessException</item>
+    </list>
+  </section>
+
+  <section title="BaseEntity">
+    <rule>
+      <statement>Every entity extends BaseEntity with UUID @Id (GenerationType.UUID), @CreationTimestamp createdAt, @UpdateTimestamp updatedAt, and @Version for optimistic locking.</statement>
+      <rationale>UUID PKs prevent ID enumeration attacks. @Version catches concurrent modification before data corruption.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error handling">
+    <rule>
+      <statement>Use ProblemDetail (RFC 7807) in @RestControllerAdvice. Never invent custom error envelopes. Include a timestamp property on every response.</statement>
+      <rationale>RFC 7807 is the industry standard; clients have stable parsing. Custom envelopes diverge per endpoint and break frontend SDKs.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-rules.xml"/>
+    <link path="content/03-examples.xml"/>
+  </see-also>
+</text>

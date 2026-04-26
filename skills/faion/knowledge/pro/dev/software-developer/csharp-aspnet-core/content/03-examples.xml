@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="ASP.NET Core Code Examples and Antipatterns">
+  <summary>Controller, service, IExceptionHandler, and integration test examples; plus antipatterns to reject.</summary>
+
+  <section title="Controller">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        return Ok(await _userService.GetAllAsync(page, pageSize, ct));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+    }
+}
+      ]]></code>
+      <note>CancellationToken on every action. No DbContext, no business logic. Returns DTO (never entity).</note>
+    </example>
+  </section>
+
+  <section title="Service">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UserService : IUserService
+{
+    private readonly AppDbContext _db;
+    private readonly IMapper _mapper;
+    private readonly TimeProvider _time;
+
+    public UserService(AppDbContext db, IMapper mapper, TimeProvider time)
+    {
+        _db = db;
+        _mapper = mapper;
+        _time = time;
+    }
+
+    public async Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct)
+    {
+        var user = _mapper.Map<User>(dto);
+        user.CreatedAt = _time.GetUtcNow();
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync(ct);
+        return _mapper.Map<UserDto>(user);
+    }
+}
+      ]]></code>
+      <note>TimeProvider injected for testable time. CancellationToken on SaveChangesAsync. Returns DTO, not entity.</note>
+    </example>
+  </section>
+
+  <section title="IExceptionHandler">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class ProblemDetailsHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext ctx, Exception ex, CancellationToken ct)
+    {
+        var pd = ex switch
+        {
+            NotFoundException nf =>
+                new ProblemDetails { Status = 404, Title = nf.Message },
+            ValidationException ve =>
+                new ProblemDetails { Status = 422, Title = "Validation failed",
+                                     Detail = ve.Message },
+            _ => new ProblemDetails { Status = 500, Title = "Server error" }
+        };
+        ctx.Response.StatusCode = pd.Status!.Value;
+        await ctx.Response.WriteAsJsonAsync(pd, ct);
+        return true;
+    }
+}
+
+// Program.cs registration:
+// builder.Services.AddProblemDetails();
+// builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
+// app.UseExceptionHandler();
+      ]]></code>
+    </example>
+    <reference path="templates/problem-details-handler.cs">Standalone IExceptionHandler file</reference>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>DbContext injected into a singleton service (captive dependency).</description>
+      <reason>DbContext is scoped; singleton holds it for the process lifetime, causing state corruption and connection leaks under concurrent requests.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Returning EF tracked entity from controller or service public method.</description>
+      <reason>Circular JSON serialization, internal schema exposure, and lazy-load exceptions outside the DbContext scope.</reason>
+    </antipattern>
+    <antipattern>
+      <description>UseAuthentication and UseAuthorization in wrong order in Program.cs.</description>
+      <reason>UseAuthorization reads the ClaimsPrincipal that UseAuthentication sets. Wrong order means [Authorize] checks an anonymous principal and silently allows all requests.</reason>
+    </antipattern>
+  </section>
+</text>
