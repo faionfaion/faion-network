@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Content Audit Antipatterns and Agent Failure Modes">
+  <summary>Common audit mistakes, LLM scoring failure modes, privacy rules, and cost gotchas.</summary>
+
+  <section title="Inventory Mistakes">
+    <antipattern>
+      <description>Incomplete inventory from sitemap-only crawl missing orphan pages, JS-rendered SPAs, PDFs behind auth, and gated content.</description>
+      <reason>Sitemap-only crawls miss 15-30% of URLs depending on site quality. Combine sitemap with log-file or GSC impressions inventory to capture orphans. Exclude gated content before LLM ingestion.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Inventory keyed by URL string rather than URL hash, producing double-counting from redirects and trailing-slash variants.</description>
+      <reason>Redirects and trailing slashes silently duplicate rows. Hash the canonical URL after redirect resolution and use the hash as the join key.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Scoring Mistakes">
+    <antipattern>
+      <description>Pages scored by LLM whose value is primarily visual (galleries, infographics, video) receive falsely low quality scores.</description>
+      <reason>LLMs cannot see images. Flag image-heavy pages with a content-type classifier before scoring and route them to human review instead of automated scoring.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Content less than 90 days old scored as low-traffic and flagged for removal.</description>
+      <reason>GA4 data lags new content by weeks to months. Apply a recency guard: exclude any URL with a publish date less than 90 days before the audit date from traffic-based scoring.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Privacy and Cost">
+    <antipattern>
+      <description>Gated or PII-containing pages sent to a cloud LLM scoring agent without exclusion.</description>
+      <reason>Gated content may contain PII. Add a robots-style allowlist check upstream of the scoring agent. Never ingest content the user has not consented to share with an external model.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running Opus-tier scoring on all URLs in a large site without tiering.</description>
+      <reason>50k URLs at Opus pricing is non-trivial cost. Use Haiku for first-pass triage; escalate only borderline URLs (score 2-4) to a higher-tier model for re-scoring.</reason>
+    </antipattern>
+  </section>
+</text>
