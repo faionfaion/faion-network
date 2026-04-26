@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="Tailwind Token Antipatterns">
+  <summary>Common failures when integrating design tokens with Tailwind: hardcoded values, opacity modifier breakage, naming drift, and dynamic class assembly issues.</summary>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Hardcoded hex values in tailwind.config.js: colors: { primary: '#1A73E8' }</description>
+      <reason>Hardcoded values require a code rebuild for any color change, cannot be overridden at runtime for theming, and are invisible to CSS variable consumers like Storybook or server-side rendering.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using opacity modifier syntax (bg-primary/50) with CSS variable token values</description>
+      <reason>Tailwind's opacity modifiers require the color value to be in RGB channels format, not a hex string or CSS variable reference. bg-primary/50 silently fails or produces incorrect output when --color-primary is a hex value.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Token naming mismatch between Figma Variables, Style Dictionary output, and Tailwind config</description>
+      <reason>Three different naming conventions (Figma uses /, Style Dictionary uses -, Tailwind uses .) cause drift that makes automated token pipelines fail and requires manual reconciliation on every design update.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Overwriting the full tailwind.config.js when regenerating tokens from a pipeline</description>
+      <reason>Full overwrites destroy manual customizations (custom screens, plugins, content paths). Always merge the generated token block into the existing config using Object.assign or spread, never replace.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Dynamic class assembly without safelist: `className={\`bg-\${colorToken}\`}`</description>
+      <reason>JIT cannot statically analyze string templates. The class bg-primary assembled at runtime will not exist in the generated CSS because JIT never saw the complete string bg-primary in a source file.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Generating a Tailwind v3 config for a Tailwind v4 project (or vice versa)</description>
+      <reason>Tailwind v4 uses a CSS-first configuration approach with @theme directive; there is no tailwind.config.js. Generating v3 config for a v4 project produces a file the framework ignores entirely.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Correct Opacity Modifier Setup">
+    <rule>
+      <statement>To use opacity modifiers with token colors, declare CSS variables in RGB channel format (not hex) and configure Tailwind colors with the RGB variable and opacity fallback.</statement>
+      <rationale>Tailwind's opacity modifier injects its own opacity value at the color level. This requires the color to be decomposable into RGB components, which hex values are not at CSS variable evaluation time.</rationale>
+    </rule>
+    <example type="good">
+      <note>RGB channels format enabling opacity modifiers</note>
+      <code lang="css"><![CDATA[
+:root {
+  /* Declare as R G B channels (no rgb() wrapper) */
+  --color-primary-rgb: 26 115 232;
+}
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>Tailwind config using RGB channels for opacity modifier support</note>
+      <code lang="javascript"><![CDATA[
+colors: {
+  primary: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+}
+// Now bg-primary/50 works correctly
+      ]]></code>
+    </example>
+  </section>
+</text>
