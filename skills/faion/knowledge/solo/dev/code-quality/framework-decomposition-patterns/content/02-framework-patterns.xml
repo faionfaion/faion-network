@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-framework-patterns" title="Per-Framework Decomposition Patterns">
+  <summary>Framework-specific extraction rules and antipatterns for Django, Rails, Laravel, and React.</summary>
+
+  <section title="Django: Service Layer + Selectors">
+    <rule>
+      <statement>In Django, extract selectors.py (pure queryset reads, no writes) and services.py (business logic, writes, side effects) from views.py. Keep views to URL-dispatch and HTTP layer only.</statement>
+      <rationale>Django Styleguide (HackSoft) pattern: fat views are the most common Django debt source. Service+Selector split gives agents a clear mental model: "does this touch the database? Is it a read or write?"</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# selectors.py — reads only, no side effects
+def get_active_users(org_id: int):
+    return User.objects.filter(org_id=org_id, is_active=True).select_related("profile")
+
+# services.py — writes and business logic
+def deactivate_user(user_id: int) -> None:
+    user = User.objects.get(id=user_id)
+    user.is_active = False
+    user.save()
+    email_service.send_deactivation_notice(user.email)
+]]></code>
+    </example>
+    <antipattern>
+      <description>Creating UserService.get_user_by_id() that just wraps User.objects.get().</description>
+      <reason>Wrappers without behavior are noise. They add indirection without adding testability or clarity.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Rails: Service Objects + Query Objects">
+    <rule>
+      <statement>In Rails, use service objects for multi-step business actions only — not for trivial CRUD. Return Result.success(value) / Result.failure(error) not exceptions.</statement>
+      <rationale>Service objects that wrap simple ActiveRecord calls fight the framework. Result types let agents handle success/failure paths reliably without rescuing exceptions.</rationale>
+    </rule>
+    <antipattern>
+      <description>Rails service objects for simple CRUD that ActiveRecord handles natively.</description>
+      <reason>Adds ceremony without benefit. Use Rails idioms for standard CRUD; service objects for multi-step actions with side effects.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Laravel: Actions + DTOs">
+    <rule>
+      <statement>In Laravel, use single-class Actions (from laravel-actions package or plain invokable classes) for each business operation. Use Form Requests or typed DTOs as the input contract.</statement>
+      <rationale>Actions map 1:1 to business operations, giving agents a clear entry point. DTOs typed with constructor promotion prevent silent field drift in service signatures.</rationale>
+    </rule>
+  </section>
+
+  <section title="React: Component Composition + Custom Hooks">
+    <rule>
+      <statement>In React, extract a custom hook when: the stateful logic is used in 2+ components, OR the hook body exceeds 30 LOC. Do not split JSX into 3-line components — composition has overhead.</statement>
+      <rationale>Over-extraction fragments the component tree without reducing complexity. Hook extraction yields returns only when logic is genuinely reused or genuinely large.</rationale>
+    </rule>
+    <antipattern>
+      <description>React custom hook used in exactly one component and under 30 LOC.</description>
+      <reason>Inline the logic — a hook used once adds indirection without discoverability benefit.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Finding Decomposition Candidates">
+    <reference path="templates/find-fat-files.sh">Bash: top-20 longest Python app files</reference>
+    <reference path="templates/find-fat-components.mjs">Node: list React components over 150 LOC</reference>
+  </section>
+</text>

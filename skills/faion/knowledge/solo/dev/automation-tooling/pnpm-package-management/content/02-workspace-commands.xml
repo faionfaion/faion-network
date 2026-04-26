@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workspace-commands" title="pnpm Workspace Commands and Monorepo Patterns">
+  <summary>Monorepo workspace declaration, filter commands, workspace protocol, dep management, and publishing workflow.</summary>
+
+  <section title="Workspace Setup">
+    <reference path="templates/pnpm-workspace.yaml">Workspace definition for apps/packages/tools layout</reference>
+    <p>Root package.json: private: true, scripts running pnpm -r build / test / lint across all packages.</p>
+    <rule>
+      <statement>Use workspace:* for all internal dependency references. pnpm publish rewrites workspace:* to actual resolved versions at publish time — no manual conversion needed.</statement>
+      <rationale>workspace:* ensures internal packages always use the local version during development and get correct semver ranges in the published artifact.</rationale>
+    </rule>
+  </section>
+
+  <section title="Filter Commands">
+    <p>pnpm --filter web build — run in specific package by name.</p>
+    <p>pnpm --filter "@mycompany/*" build — run in all packages matching scope.</p>
+    <p>pnpm --filter web... build — run in package and all its dependencies.</p>
+    <p>pnpm --filter "...[origin/main]" build — build only packages changed since origin/main. Major CI win for monorepos.</p>
+    <p>pnpm -r build — run in all packages in topological order (respects dep graph).</p>
+    <p>pnpm -r --parallel build — run in all packages in parallel (ignore dep order).</p>
+  </section>
+
+  <section title="Dependency Management">
+    <p>Add: pnpm add express zod / pnpm add -D typescript @types/node / pnpm add --save-peer react</p>
+    <p>Add workspace dep: pnpm --filter web add @mycompany/ui --workspace</p>
+    <p>Update: pnpm update --latest (ignore semver) / pnpm update -i (interactive)</p>
+    <p>Show outdated: pnpm outdated / pnpm outdated -r --format json (for agent consumption)</p>
+    <rule>
+      <statement>Run pnpm dedupe after major upgrades. Without it, the lockfile accumulates duplicate package versions that slow installs and increase bundle size.</statement>
+      <rationale>Agents forget dedupe. Over time, the lockfile bloats with multiple versions of the same package at slightly different patch versions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Store Management">
+    <p>pnpm store prune — remove unreferenced packages. pnpm store status — verify integrity. pnpm fetch — populate store without install (Docker layer pre-warming).</p>
+    <p>Cache store separately in CI: ~/.local/share/pnpm/store/v3 (not node_modules).</p>
+    <reference path="templates/dockerfile-pnpm">Multi-stage Dockerfile using pnpm fetch for layer caching</reference>
+    <reference path="templates/ci-pnpm.yml">GitHub Actions workflow with pnpm store cache</reference>
+  </section>
+
+  <section title="Publishing">
+    <p>pnpm publish / pnpm -r publish for workspace. Use Changesets for version management: pnpm add -Dw @changesets/cli, pnpm changeset (create), pnpm changeset version (update), pnpm -r publish.</p>
+    <rule>
+      <statement>After pnpm patch, commit both the patch file and the pnpm.patchedDependencies field in package.json in the same commit.</statement>
+      <rationale>The patch file alone without package.json registration is ignored; the package.json update alone without the patch file fails install. Both are required atomically.</rationale>
+    </rule>
+  </section>
+</text>

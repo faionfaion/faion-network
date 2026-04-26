@@ -1,0 +1,35 @@
+name: Quality Gates
+on: [push, pull_request]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check complexity (Python)
+        run: |
+          pip install radon
+          radon cc src/ -a -nc  # Fail on any file with complexity > 10
+
+      - name: Check coverage
+        run: |
+          pytest --cov=src --cov-fail-under=80
+
+      - name: Check duplication
+        run: |
+          pip install pylint
+          pylint src/ --disable=all --enable=duplicate-code
+
+      - name: Check dependencies
+        run: |
+          pip install safety
+          safety check -r requirements.txt
+
+      - name: Check TODO/FIXME count
+        run: |
+          count=$(grep -r "TODO\|FIXME\|HACK\|XXX" src/ | wc -l)
+          if [ "$count" -gt 50 ]; then
+            echo "Too many unlinked TODOs: $count (max 50)"
+            exit 1
+          fi

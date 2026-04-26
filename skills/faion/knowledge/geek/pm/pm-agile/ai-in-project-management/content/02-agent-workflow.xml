@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-workflow" title="PM Agent Workflow and Integration Patterns">
+  <summary>Subagent patterns for PM digest generation and risk scoring, prompt structures, CLI tools, and failure modes.</summary>
+
+  <section title="Agentic Architecture">
+    <p>A Claude subagent is well-suited to the data-aggregation and synthesis layer: pull structured data from project APIs, run heuristic risk scoring, generate stakeholder digests, surface anomalies. Never let agents trigger budget reallocations or deadline changes autonomously — gate all writes behind a human confirmation step.</p>
+    <rule>
+      <statement>Use Haiku for routine weekly digest generation; use Sonnet for retrospective pattern analysis across multiple sprints.</statement>
+      <rationale>Weekly digests are pattern application on structured JSON — low reasoning demand. Retrospective pattern analysis requires cross-sprint reasoning about causes and trends.</rationale>
+    </rule>
+    <rule>
+      <statement>Scope AI automation to observation and synthesis; keep action triggers human-initiated.</statement>
+      <rationale>An agent that auto-closes risks or auto-updates status fields can corrupt the PM system state. The PM tool is the source of truth; agent writes without human approval destroy auditability.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <reference path="templates/pm-digest-prompt.txt">Project status digest from sprint JSON data</reference>
+    <reference path="templates/risk-score.py">Risk scoring script: Low/Medium/High per register item</reference>
+  </section>
+
+  <section title="CLI Tools">
+    <p>jira-cli: query Jira issues, sprints, boards from terminal. install: brew install ankitpokhrel/tap/jira-cli</p>
+    <p>gh (GitHub CLI): pull PR/issue data into agent context. install: brew install gh</p>
+    <p>gsheet-cli: read/write Google Sheets for budget tracking. github.com/lidaobing/gsheet-cli</p>
+    <p>mlflow CLI: track experiment runs if AI models are embedded in delivery pipeline. pip install mlflow</p>
+  </section>
+
+  <section title="API Rate Limit Gotcha">
+    <rule>
+      <statement>Log the record count fetched versus expected from Jira/Linear on every API call — rate limits can silently truncate data.</statement>
+      <rationale>Silent truncation gives a partial sprint view that looks complete. Risk scores and velocity calculations built on partial data produce false confidence.</rationale>
+    </rule>
+    <rule>
+      <statement>Timestamp-gate sprint data queries: if the agent runs mid-sprint, partial data skews velocity calculations.</statement>
+      <rationale>Sprint boundary detection requires knowing whether the sprint has ended. Running on day 3 of 14 gives data that cannot be compared to completed-sprint baselines.</rationale>
+    </rule>
+  </section>
+
+  <section title="Failure Modes">
+    <antipattern>
+      <description>LLM hallucinating task IDs and dates in long-context report generation.</description>
+      <reason>Always validate task IDs and dates against the source PM system before including in reports; hallucinated IDs cause stakeholder confusion and erode trust.</reason>
+    </antipattern>
+    <antipattern>
+      <description>AI-generated summaries reporting "green" status that hides a critical qualitative flag.</description>
+      <reason>AI risk scoring is only as good as its structured inputs; qualitative concerns from team members (unstated in tickets) don't appear in data-driven summaries.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Pinning to no model version for digest agents.</description>
+      <reason>A Haiku upgrade can change summary tone noticeably — pin the model; digest style should be consistent across reports.</reason>
+    </antipattern>
+  </section>
+</text>

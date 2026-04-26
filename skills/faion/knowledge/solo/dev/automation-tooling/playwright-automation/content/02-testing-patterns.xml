@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-testing-patterns" title="Playwright Testing Patterns">
+  <summary>Test structure, fixtures, assertion patterns, Page Object Model, and advanced browser handling.</summary>
+
+  <section title="Test Structure">
+    <p>Use @playwright/test runner: test.describe for grouping, test.beforeEach for navigation, test for individual behaviors.</p>
+    <p>One assertion per behavior. Soft assertions (expect.soft) let remaining assertions run after a failure — useful for form validation checks.</p>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+const { test, expect } = require('@playwright/test');
+
+test.describe('Login', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
+  });
+
+  test('successful login redirects to dashboard', async ({ page }) => {
+    await page.getByLabel('Email').fill('user@example.com');
+    await page.getByLabel('Password').fill('password123');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page).toHaveURL(/.*dashboard/);
+  });
+});
+]]></code>
+    </example>
+  </section>
+
+  <section title="Fixtures for Auth">
+    <p>Extend test with fixtures: base.extend({ authenticatedPage: async ({ browser }, use) => { ... } }) to provide pre-authenticated page objects without per-test login.</p>
+  </section>
+
+  <section title="Page Object Model">
+    <p>Extract page classes for complex flows: class LoginPage { constructor(page) {...} async login(user, pass) {...} }. Use locator constants as class properties. This separates selector management from test logic.</p>
+    <rule>
+      <statement>In Page Objects, store locators as class properties using page.getByRole/Label, not CSS strings. Locator objects update lazily — they're re-evaluated on each action.</statement>
+      <rationale>Locator objects created at page load time are not stale references; they re-query on use. CSS strings stored as class properties are not locators — they're just strings and need repeated calls to page.locator().</rationale>
+    </rule>
+  </section>
+
+  <section title="Advanced Patterns">
+    <p>Multi-tab: const [newPage] = await Promise.all([context.waitForEvent('page'), page.click('a[target="_blank"]')])</p>
+    <p>iFrame: page.frameLocator('iframe#id').locator('#button-inside').click()</p>
+    <p>Dialog: page.on('dialog', dialog => dialog.accept()) before triggering the dialog.</p>
+    <p>Download: const dl = page.waitForEvent('download'); await page.click('#download'); const path = await (await dl).path();</p>
+    <p>Mobile emulation: browser.newContext({ ...devices['iPhone 12'] })</p>
+  </section>
+
+  <section title="Trace and Screenshot Config">
+    <p>CI recommended: trace: 'on-first-retry', screenshot: 'only-on-failure'. This captures diagnostics only when tests fail, keeping artifact size manageable.</p>
+    <p>Visual regression: set expect.toHaveScreenshot.maxDiffPixelRatio >= 0.01 to absorb font rendering noise across platforms.</p>
+    <rule>
+      <statement>Run npx playwright install --with-deps in CI. Missing system libraries are the #1 cause of Playwright CI failures on fresh runners.</statement>
+      <rationale>Playwright requires OS-level browser dependencies. GitHub Actions and other fresh runners don't include these; the action/step silently exits or reports cryptic errors if --with-deps is omitted.</rationale>
+    </rule>
+  </section>
+</text>

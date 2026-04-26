@@ -1,0 +1,50 @@
+name: Performance Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start application
+        run: docker compose up -d && sleep 30
+
+      - name: Smoke test (5 VUs, 30s)
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/performance/k6-test.js
+          flags: --vus 5 --duration 30s
+        env:
+          BASE_URL: http://localhost:8000
+
+      - name: Full load test
+        uses: grafana/k6-action@v0.3.1
+        with:
+          filename: tests/performance/k6-test.js
+          flags: --out json=results.json
+        env:
+          BASE_URL: http://localhost:8000
+
+      - name: Check thresholds
+        run: python scripts/check-perf.py results.json
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-results
+          path: results.json
+
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run pytest benchmarks
+        run: |
+          pip install pytest-benchmark
+          pytest tests/benchmarks/ --benchmark-only \
+            --benchmark-json=benchmark.json \
+            --benchmark-compare-fail=mean:10%

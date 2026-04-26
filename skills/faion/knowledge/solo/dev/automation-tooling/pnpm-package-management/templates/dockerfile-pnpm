@@ -1,0 +1,26 @@
+# Dockerfile — multi-stage build with pnpm store layer caching
+# Stage 1: fetch deps into store (cached layer)
+# Stage 2: install + build
+# Stage 3: minimal runtime image
+
+FROM node:20-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+FROM base AS deps
+WORKDIR /app
+COPY pnpm-lock.yaml ./
+# Populate pnpm store without installing (enables offline install in build stage)
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
+
+FROM deps AS build
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
+RUN pnpm build
+
+FROM base AS runtime
+WORKDIR /app
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+CMD ["node", "dist/index.js"]

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-prevention" title="Debt Prevention: CI Gates and Pre-Commit Hooks">
+  <summary>Automated quality gates and pre-commit hooks that prevent debt accumulation without requiring manual discipline.</summary>
+
+  <section title="CI Quality Gates">
+    <reference path="templates/quality-gates.yml">GitHub Actions workflow: complexity, coverage, duplication, dep audit, TODO count</reference>
+    <rule>
+      <statement>Gate on cyclomatic complexity (radon cc, threshold 10), test coverage (80% minimum), duplicate code (pylint), vulnerable dependencies (safety/npm audit), and TODO count (&lt;= 50 unlinked markers).</statement>
+      <rationale>Each gate targets a distinct debt type. Combining them in CI means every PR is evaluated before merge; manual code review catches things automation misses, but automation catches things code review skips.</rationale>
+    </rule>
+    <p>Tools: radon (Python complexity), lizard (multi-language), pytest --cov (coverage), pylint --enable=duplicate-code, safety (Python deps), npm audit / cargo audit.</p>
+  </section>
+
+  <section title="Pre-Commit TODO Enforcement">
+    <reference path="templates/check-debt-comments.py">Pre-commit hook: enforces TODO(TICKET-ID) format</reference>
+    <rule>
+      <statement>Enforce TODO(PROJ-123): description format via pre-commit hook. Reject commits with unlinked TODO/FIXME/HACK/XXX/TECH_DEBT markers.</statement>
+      <rationale>Unlinked debt markers are invisible in project management tools. Ticket-linked markers create an audit trail, appear in sprint planning, and get closed when the ticket is resolved.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Good: linked marker
+# TODO(PROJ-123): Replace this with the new billing service once TD-045 is resolved
+
+# Bad: unlinked marker (will be rejected by pre-commit hook)
+# TODO: fix this later
+# FIXME: this is a hack
+]]></code>
+    </example>
+  </section>
+
+  <section title="Hotspot Finder">
+    <reference path="templates/debt-hotspots.sh">Bash script: cross-reference git churn with lizard complexity</reference>
+    <p>Run monthly or before planning a refactoring sprint. Output: top-20 files by (churn_count, complexity) — these are the highest-leverage targets.</p>
+  </section>
+
+  <section title="Anti-Patterns">
+    <antipattern>
+      <description>Pre-commit gates configured too strictly (threshold 5 complexity on legacy code).</description>
+      <reason>Over-strict gates become bypassed with --no-verify, losing all enforcement. Set thresholds at current median + 10%, then tighten each quarter.</reason>
+    </antipattern>
+    <antipattern>
+      <description>CI-only gates without pre-commit enforcement.</description>
+      <reason>CI catches regressions after the fact; developers get slow feedback. Pre-commit gates catch at the moment of writing, when fixing is cheapest.</reason>
+    </antipattern>
+  </section>
+</text>
