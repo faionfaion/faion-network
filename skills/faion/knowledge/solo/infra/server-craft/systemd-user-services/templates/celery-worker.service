@@ -1,0 +1,40 @@
+[Unit]
+Description=NERO Core (Celery Workers)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/nero/nero-core/src
+EnvironmentFile=/home/nero/workspace/.env
+
+ExecStart=/srv/nero/nero-core/.venv/bin/celery \
+    -A nero_core.celery \
+    worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --pool=gevent \
+    --max-memory-per-child=512000
+
+Restart=on-failure
+RestartSec=5
+
+# Resource limits: LLM responses can be large
+MemoryMax=8G
+MemoryHigh=6G
+MemorySwapMax=512M
+CPUQuota=400%
+LimitNOFILE=65536
+TasksMax=512
+
+# Celery workers are sacrificial (restore after OOM)
+OOMScoreAdjust=0
+OOMPolicy=stop
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target

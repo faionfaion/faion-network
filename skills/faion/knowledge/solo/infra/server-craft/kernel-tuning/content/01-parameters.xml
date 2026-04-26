@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-parameters" title="Kernel Tuning: Parameters by Category">
+  <summary>Key sysctl parameters: TCP BBR, buffers, inotify, memory management, security hardening, and file descriptors. Tuned for Ubuntu 24.04 VPS with web services and AI agent workloads.</summary>
+
+  <section title="sysctl.d Configuration Structure">
+    <rule>
+      <statement>Place custom parameters in `/etc/sysctl.d/60-*.conf`. Files are loaded alphabetically — prefix `60-` ensures overriding Ubuntu's `10-*` defaults without editing them.</statement>
+      <rationale>Editing distro-provided files under `10-*` causes confusing diffs during OS upgrades. The `60-` prefix gives a clean namespace above distro defaults but below emergency overrides at `99-`.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Apply all sysctl configs (including new drop-ins)
+sudo sysctl --system
+
+# Apply a single file
+sudo sysctl -p /etc/sysctl.d/60-agent-tuning.conf
+
+# Verify a value
+sysctl fs.inotify.max_user_watches
+]]></code>
+    </example>
+  </section>
+
+  <section title="TCP BBR and Network Performance">
+    <rule>
+      <statement>Enable BBR congestion control with `fq` qdisc. BBR outperforms the default Cubic on high-latency connections, giving ~18% throughput improvement on transatlantic and cloud-to-cloud traffic.</statement>
+      <rationale>BBR models network bandwidth directly instead of reacting to packet loss. Combined with the `fq` (Fair Queue) qdisc (not `fq_codel`), it paces traffic accurately and reduces latency for WebSocket and long-lived API connections.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-network-perf.conf
+net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
+
+# TCP buffer sizes (for 30GB RAM server)
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+
+# Connection handling
+net.core.somaxconn = 65535
+net.core.netdev_max_backlog = 5000
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 300
+net.ipv4.tcp_keepalive_intvl = 60
+net.ipv4.tcp_keepalive_probes = 5
+]]></code>
+    </example>
+    <note>Scale `rmem_max`/`wmem_max` with available RAM. For 4GB servers use 4194304; for 8GB use 8388608.</note>
+  </section>
+
+  <section title="inotify Watches">
+    <rule>
+      <statement>Set `fs.inotify.max_user_watches = 524288`. The default (65536) is exhausted by Claude Code on large codebases, triggering "ENOSPC: System limit for number of file watchers reached" errors.</statement>
+      <rationale>Claude Code creates one inotify watch per tracked file. A 50k-file repository consumes 50k watches. With multiple worktrees or VS Code also running, the default 65536 ceiling is hit immediately. 524288 (512k) supports ~5 concurrent large workspaces.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-agent-tuning.conf
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_queued_events = 32768
+fs.file-max = 2097152
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Diagnose inotify usage: which processes consume the most watches
+find /proc/*/fd -lname anon_inode:inotify 2>/dev/null \
+  | cut -d/ -f3 \
+  | xargs -I{} sh -c 'cat /proc/{}/cmdline 2>/dev/null | tr "\0" " "; echo' \
+  | sort | uniq -c | sort -rn | head -10
+]]></code>
+    </example>
+  </section>
+
+  <section title="Memory Management">
+    <rule>
+      <statement>Set `vm.swappiness = 10` on servers with 8GB+ RAM running interactive workloads. Never set it to 0 — that risks OOM kills when RAM fills suddenly.</statement>
+      <rationale>Default swappiness=60 causes aggressive paging even when many gigabytes of RAM are free, adding latency to LLM API calls. Value 10 means: start swapping when only ~10% of RAM remains, keeping hot data in RAM while still having a swap safety net.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-memory.conf
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+vm.vfs_cache_pressure = 50
+vm.max_map_count = 1048576
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Hardening">
+    <rule>
+      <statement>Apply four security parameters as a baseline: hide kernel addresses (`kptr_restrict=1`), restrict ptrace (`ptrace_scope=1`), restrict dmesg (`dmesg_restrict=1`), enable SYN cookies (`tcp_syncookies=1`).</statement>
+      <rationale>These four parameters close the most common information-leakage vectors without affecting normal application behavior. `kptr_restrict` prevents KASLR bypass; `ptrace_scope=1` limits process inspection to parent/child; SYN cookies protect against SYN flood DDoS.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-security.conf
+kernel.kptr_restrict = 1
+kernel.yama.ptrace_scope = 1
+kernel.dmesg_restrict = 1
+kernel.randomize_va_space = 2
+kernel.sysrq = 176
+
+net.ipv4.tcp_syncookies = 1
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.all.rp_filter = 2
+net.ipv4.conf.all.log_martians = 1
+net.ipv6.conf.all.accept_redirects = 0
+]]></code>
+    </example>
+  </section>
+
+  <section title="File Descriptor Limits">
+    <rule>
+      <statement>Set per-user `nofile` to 65535 in `/etc/security/limits.d/`. The kernel `fs.file-max` rarely needs changing; per-user PAM limits are the practical bottleneck.</statement>
+      <rationale>RabbitMQ, Node.js, and Python asyncio services open many file descriptors. The default soft limit of 1024 is hit almost immediately by production services. PAM limits propagate to all processes started in user sessions, including systemd user services.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/security/limits.d/99-nero.conf
+nero  soft  nofile  65535
+nero  hard  nofile  65535
+nero  soft  nproc   65535
+nero  hard  nproc   65535
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/60-network-perf.conf">TCP BBR + buffer sizes drop-in</link>
+    <link path="templates/60-agent-tuning.conf">inotify + file descriptors drop-in</link>
+    <link path="templates/60-memory.conf">Memory management drop-in</link>
+    <link path="templates/60-security.conf">Security hardening drop-in</link>
+    <link path="templates/kernel-audit.sh">Audit current values vs recommended</link>
+    <link path="content/02-examples.xml">Before/after benchmarks and diagnosis examples</link>
+  </see-also>
+</text>

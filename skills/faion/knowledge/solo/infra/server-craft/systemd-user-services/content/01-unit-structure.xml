@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-unit-structure" title="systemd User Services: Unit File Structure">
+  <summary>Unit/Service/Install sections, service types, restart policies, dependency types, and resource limit directives for systemd user services on Ubuntu 24.04.</summary>
+
+  <section title="User vs System Services">
+    <rule>
+      <statement>Place application unit files in `~/.config/systemd/user/` and control them with `systemctl --user`. Never run application code as root via system services.</statement>
+      <rationale>User services are scoped to one user account, need no `sudo` to manage, and are isolated from system services. They work with the deploy script (rsync + venv) pattern and produce logs in `journalctl --user -u name`.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Location:   ~/.config/systemd/user/nero-core.service
+Control:    systemctl --user start|stop|restart|status nero-core
+Logs:       journalctl --user -u nero-core -f
+Enable:     systemctl --user enable nero-core  (+ loginctl enable-linger)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Unit File Three-Section Structure">
+    <rule>
+      <statement>Every unit file has `[Unit]` (metadata + dependencies), `[Service]` (execution + limits), and `[Install]` (boot integration). `ExecStart` must use an absolute path.</statement>
+      <rationale>systemd resolves `ExecStart` before starting the service and rejects relative paths. A relative path silently fails to start the service with an uninformative error. Always use the full path from the venv: `/srv/nero/nero-core/.venv/bin/celery`.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Unit]
+Description=NERO Core (Celery Workers)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/nero/nero-core/src
+EnvironmentFile=/home/nero/workspace/.env
+ExecStart=/srv/nero/nero-core/.venv/bin/celery -A nero_core.celery worker --loglevel=info
+Restart=on-failure
+RestartSec=5
+
+MemoryMax=8G
+MemoryHigh=6G
+CPUQuota=400%
+LimitNOFILE=65536
+OOMScoreAdjust=0
+
+[Install]
+WantedBy=default.target
+]]></code>
+    </example>
+    <note>Put `StartLimitBurst` in `[Unit]`, NOT in `[Service]`. In `[Service]` it is silently ignored on systemd >= 229.</note>
+  </section>
+
+  <section title="Service Types">
+    <rule>
+      <statement>Use `Type=simple` for Python/Node apps (uvicorn, celery, aiogram). Use `Type=oneshot` for scripts and migrations. Use `Type=forking` only for legacy daemons that fork by design.</statement>
+      <rationale>`Type=simple` means ExecStart IS the main process — systemd watches its PID directly. With `Type=forking`, systemd waits for the parent to exit and then tracks the child, which requires the app to support SIGTERM correctly. Most modern Python/Node apps do not fork.</rationale>
+    </rule>
+  </section>
+
+  <section title="Restart Policies">
+    <rule>
+      <statement>Use `Restart=on-failure` with `RestartSec=5` for long-running services. Pair with `StartLimitBurst=5` and `StartLimitIntervalSec=60` in `[Unit]` to prevent infinite restart loops.</statement>
+      <rationale>`on-failure` restarts only on non-zero exit codes, signals, or timeout — it does not restart on clean shutdown (`systemctl stop`). The `StartLimitBurst=5` cap prevents a crashing service from consuming 100% CPU in a fast restart loop.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Unit]
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Restart=on-failure
+RestartSec=5
+]]></code>
+    </example>
+  </section>
+
+  <section title="Resource Limits">
+    <rule>
+      <statement>Set `MemoryMax`, `MemoryHigh`, `CPUQuota`, and `LimitNOFILE` on every production service. Without limits, a runaway worker can starve all other services on the VPS.</statement>
+      <rationale>`MemoryHigh` triggers memory reclaim before the hard cap; the service is throttled but not killed. `MemoryMax` is the hard backstop. `LimitNOFILE=65536` overrides the session-level PAM limit for this specific service, ensuring it is applied even if PAM is misconfigured.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Service]
+MemoryMax=2G
+MemoryHigh=1500M
+MemorySwapMax=256M
+CPUQuota=200%
+LimitNOFILE=65536
+TasksMax=256
+OOMScoreAdjust=-300
+OOMPolicy=stop
+]]></code>
+    </example>
+  </section>
+
+  <section title="EnvironmentFile Security">
+    <rule>
+      <statement>Load secrets via `EnvironmentFile=/home/nero/workspace/.env`. Never use `Environment=SECRET_KEY=xxx` in the unit file — it is visible in `systemctl show` output to any user who can query the service.</statement>
+      <rationale>`systemctl show nero-core` dumps all service properties, including inline `Environment=` values, in plaintext. `EnvironmentFile=` loads the file at start time but does not expose values via systemctl queries.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="templates/fastapi.service">FastAPI/uvicorn service template</link>
+    <link path="templates/celery-worker.service">Celery worker template</link>
+    <link path="templates/telegram-bot.service">aiogram Telegram bot template</link>
+    <link path="content/02-patterns.xml">Linger, drop-in overrides, timer units, troubleshooting</link>
+  </see-also>
+</text>

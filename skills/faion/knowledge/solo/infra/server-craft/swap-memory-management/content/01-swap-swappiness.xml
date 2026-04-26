@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-swap-swappiness" title="Swap and Memory Management: Swap File and Swappiness">
+  <summary>Swap file sizing, creation, fstab persistence, and vm.swappiness tuning for Ubuntu 24.04 VPS servers running AI/web workloads.</summary>
+
+  <section title="Swap File Sizing">
+    <rule>
+      <statement>For a server with 16–32 GB RAM, create a 4 GB swap file. Swap is a safety net — it prevents OOM kills under burst conditions but should rarely be used during normal operation.</statement>
+      <rationale>Large swap on a RAM-rich server does not improve performance. With swappiness=10, the kernel will only start using swap when RAM is nearly exhausted, so 4 GB covers burst situations without wasting disk on idle swap space.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+RAM          Swap
+1–2 GB    →  2–4 GB   (2× RAM; small VPS needs breathing room)
+4–8 GB    →  4–8 GB   (equal to RAM)
+16–32 GB  →  4 GB     (safety net only)
+32+ GB    →  1–2 GB   (minimal; mainly for hibernation)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Creating a Swap File">
+    <rule>
+      <statement>Use `fallocate` to create the swap file; set `chmod 600` before `mkswap`; add to `/etc/fstab`; verify with `findmnt --verify` to guard against a typo that prevents boot.</statement>
+      <rationale>A swap file with world-readable permissions leaks RAM content to unprivileged users. An invalid `/etc/fstab` entry can render the server unbootable. `findmnt --verify` catches syntax errors before reboot.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+
+# Persist across reboots
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# Verify fstab (broken entry can prevent boot)
+sudo findmnt --verify
+
+# Confirm swap is active
+swapon --show
+free -h
+]]></code>
+    </example>
+  </section>
+
+  <section title="vm.swappiness Tuning">
+    <rule>
+      <statement>Set `vm.swappiness = 10` on servers with 8 GB+ RAM. Never set it to 0 — value 0 means the kernel will not swap at all and may OOM-kill instead of using the swap safety net.</statement>
+      <rationale>Default swappiness=60 causes the kernel to start swapping when 40% of RAM is used, creating latency spikes during LLM API calls. Value 10 delays swapping until RAM is almost full while still keeping the swap safety valve functional.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Persist via sysctl.d
+echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/60-memory.conf
+sudo sysctl vm.swappiness=10  # apply immediately without reboot
+
+# Verify
+sysctl vm.swappiness
+# vm.swappiness = 10
+]]></code>
+    </example>
+    <antipattern>
+      <description>Setting `vm.swappiness = 0`</description>
+      <reason>With swappiness=0 the kernel will never use swap and will OOM-kill processes instead. A value of 10 keeps the safety valve open.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Additional vm Parameters">
+    <rule>
+      <statement>Pair swappiness tuning with `vm.dirty_ratio=15`, `vm.dirty_background_ratio=5`, and `vm.vfs_cache_pressure=50` for stable I/O behavior and longer inode/dentry cache retention.</statement>
+      <rationale>`dirty_background_ratio=5` starts background writeback early, preventing a sudden I/O spike when `dirty_ratio=15` is reached. `vfs_cache_pressure=50` tells the kernel to reclaim page cache before dentry/inode caches, keeping filesystem metadata resident.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/sysctl.d/60-memory.conf
+vm.swappiness = 10
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+vm.vfs_cache_pressure = 50
+vm.max_map_count = 1048576
+vm.overcommit_memory = 0
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/swap-create.sh">Idempotent swap file creation script</link>
+    <link path="templates/99-memory.conf">sysctl.d drop-in for memory tuning</link>
+    <link path="content/02-oom-cgroups.xml">OOM killer scoring and systemd MemoryMax</link>
+  </see-also>
+</text>

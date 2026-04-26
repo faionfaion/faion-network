@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-kernel-limits" title="Agent Dev Tuning: Kernel Limits and Swap">
+  <summary>inotify watch limits, PAM nofile/nproc, swap sizing, swappiness, and filesystem noatime tuning for running Claude Code and other AI agents on a Linux VPS.</summary>
+
+  <section title="inotify Watch Limits">
+    <rule>
+      <statement>Set `fs.inotify.max_user_watches = 524288` as the first tuning step on any server running Claude Code. The kernel default (65536 or sometimes 8192) is exhausted on large workspaces, causing "ENOSPC: System limit for number of file watchers reached" errors that look like disk-full.</statement>
+      <rationale>Claude Code creates one inotify watch per tracked file. A 50k-file repository with multiple git worktrees active can exceed the default limit immediately. The error message ("ENOSPC") is misleading — disk space is not the issue, the inotify watch table is full.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Apply immediately + persist
+echo 'fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_queued_events = 65536' | sudo tee /etc/sysctl.d/60-agent-dev.conf
+sudo sysctl --system
+
+# Verify
+sysctl fs.inotify.max_user_watches
+# fs.inotify.max_user_watches = 524288
+]]></code>
+    </example>
+  </section>
+
+  <section title="PAM File Descriptor Limits">
+    <rule>
+      <statement>Set `nofile` to 65535 (soft) and 131072 (hard) for the agent user in `/etc/security/limits.d/`. The default soft limit of 1024 is hit immediately when Claude Code opens many files during workspace indexing.</statement>
+      <rationale>Claude Code's workspace indexer, MCP servers, and subprocesses collectively open thousands of file descriptors. The PAM limit gates every process started in the user's session, including systemd user services.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/security/limits.d/nero-agent.conf
+nero  soft  nofile    65535
+nero  hard  nofile    131072
+nero  soft  nproc     4096
+nero  hard  nproc     8192
+]]></code>
+    </example>
+  </section>
+
+  <section title="Swap for LLM Workloads">
+    <rule>
+      <statement>Create a 4–8 GB swap file on any server running LLM API calls, even if RAM is abundant. LLM response processing and large context windows cause memory spikes that can trigger OOM kills without swap.</statement>
+      <rationale>The Python runtime allocating a 100MB JSON response tree from a large LLM context window is a transient spike. Without swap, the kernel OOM-kills the process. With 4 GB swap and swappiness=10, the spike lands in swap and the process completes normally.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo findmnt --verify
+
+# Set low swappiness: use RAM first, swap only under pressure
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.d/60-agent-dev.conf
+sudo sysctl vm.swappiness=10
+]]></code>
+    </example>
+  </section>
+
+  <section title="Filesystem noatime">
+    <rule>
+      <statement>Mount the root filesystem with `noatime` to eliminate write operations triggered by file reads. Agent workloads read thousands of source files; each read generates an atime write by default.</statement>
+      <rationale>On every file read, the kernel updates the `atime` (access time) field, generating a write. With Claude Code reading 50k files during workspace indexing, this creates 50k unnecessary writes that slow SSD flash cells and compete with real write I/O.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# /etc/fstab: add noatime to root mount options
+# Before: UUID=xxx / ext4 defaults 0 1
+# After:  UUID=xxx / ext4 defaults,noatime 0 1
+
+# Apply without reboot
+sudo mount -o remount,noatime /
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/60-agent-dev.conf">sysctl drop-in: inotify + memory + file descriptors</link>
+    <link path="templates/nero-agent.limits.conf">PAM limits for agent user</link>
+    <link path="content/02-agent-patterns.xml">tmux session setup, worktree workflow, pre-flight check</link>
+  </see-also>
+</text>

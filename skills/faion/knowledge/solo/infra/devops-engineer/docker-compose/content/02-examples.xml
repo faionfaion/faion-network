@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Docker Compose Examples">
+  <summary>Full-stack compose example with dev/prod override pattern, watch live-reload block, and common antipatterns.</summary>
+
+  <section title="Full-Stack Web Application">
+    <p>Production-ready stack: app + PostgreSQL + Redis + Nginx + optional Celery worker. All secrets via .env, internal backend network, healthchecks on all depends_on targets.</p>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  app:
+    build:
+      context: .
+      target: production
+    image: myapp:${VERSION:-latest}
+    container_name: ${PROJECT_NAME}-app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://app:${DB_PASSWORD}@db:5432/appdb
+      REDIS_URL: redis://redis:6379/0
+    env_file: [.env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits: {memory: 512M, cpus: "1.0"}
+        reservations: {memory: 128M}
+    networks: [frontend, backend]
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  db:
+    image: postgres:16-alpine
+    container_name: ${PROJECT_NAME}-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: appdb
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 256M, cpus: "0.5"}
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory ${REDIS_MAXMEM:-100mb} --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 128M, cpus: "0.25"}
+
+  nginx:
+    image: nginx:alpine
+    container_name: ${PROJECT_NAME}-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on: [app]
+    networks: [frontend]
+
+  worker:
+    build: {context: ., target: production}
+    image: myapp:${VERSION:-latest}
+    container_name: ${PROJECT_NAME}-worker
+    restart: unless-stopped
+    command: celery -A app worker --loglevel=info
+    env_file: [.env]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [backend]
+    deploy:
+      resources:
+        limits: {memory: 256M, cpus: "0.5"}
+    profiles: [worker]
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:
+]]></code>
+      <note>Worker is profile-gated; starts only with `docker compose --profile worker up -d`.</note>
+    </example>
+  </section>
+
+  <section title="Dev/Prod Override Pattern">
+    <p>`docker-compose.override.yml` is auto-loaded in development. `docker-compose.prod.yml` is merged explicitly with `-f`.</p>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# docker-compose.override.yml (dev, auto-loaded)
+services:
+  app:
+    build:
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      DEBUG: "true"
+    ports:
+      - "9229:9229"   # debug port
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"   # expose for local tools
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# docker-compose.prod.yml (explicit: -f docker-compose.yml -f docker-compose.prod.yml)
+services:
+  app:
+    image: registry.example.com/myapp:${VERSION}
+    build: null    # never build in production
+    restart: always
+    deploy:
+      mode: replicated
+      replicas: 2
+      resources:
+        limits: {memory: 1G, cpus: "2.0"}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Live Reload with docker compose watch">
+    <p>Available in Compose v2.22+. Replaces volume bind-mount hot reload with explicit sync rules.</p>
+    <reference path="templates/watch-block.yml">Watch block template for `develop.watch`</reference>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  app:
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore: [node_modules/, __pycache__/]
+        - action: rebuild
+          path: package.json
+        - action: sync+restart
+          path: ./config
+          target: /app/config
+]]></code>
+      <note>Run with `docker compose watch` (not `up`). Sync does not restart; rebuild recreates the image; sync+restart syncs then gracefully restarts the container.</note>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Hard-coding secrets: `environment: POSTGRES_PASSWORD: mysecret`</description>
+      <reason>`docker compose config` and `docker inspect` reveal these values to anyone with Docker socket access.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using `depends_on: [db]` without a healthcheck on `db`.</description>
+      <reason>Provides only startup ordering, not readiness. The dependent service starts before the database is accepting connections.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Building images in production compose files.</description>
+      <reason>Build context includes dev files (.git, test data). Use pre-built images from a registry in production.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Binding ports as `"5432:5432"` (no interface binding).</description>
+      <reason>Docker inserts an ACCEPT iptables rule before UFW rules, exposing the port to the internet regardless of firewall settings.</reason>
+    </antipattern>
+  </section>
+</text>

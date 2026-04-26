@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-oom-cgroups" title="Swap and Memory Management: OOM Killer and cgroup Limits">
+  <summary>OOM killer scoring, per-service OOM priority table, systemd MemoryMax/MemoryHigh/MemorySwapMax directives, and cgroup monitoring commands.</summary>
+
+  <section title="OOM Killer Scoring">
+    <rule>
+      <statement>Set `OOMScoreAdjust` in systemd unit files to control kill order. Databases: −900. Core API: −300. Celery workers: 0. Static file servers: +100. Never set −1000 for application services — reserve that for kernel threads.</statement>
+      <rationale>Without explicit OOM priorities the kernel picks victims by memory usage alone, often killing the database instead of a worker. Explicit priorities ensure that if OOM must kill something, it kills the least critical service first, in a deterministic order.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Service              OOMScoreAdjust   Rationale
+PostgreSQL           -900             Data integrity paramount
+Redis                -700             Losing context cache is expensive
+RabbitMQ             -600             Message broker must stay up
+nero-channel-web     -300             User-facing API gateway
+nero-channel-tg      -200             Telegram bridge
+nero-core (Celery)    0               Workers can be restarted
+nero-web              +100            Static server, instant restart
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# In the [Service] section of any .service file
+OOMScoreAdjust=-300
+]]></code>
+    </example>
+  </section>
+
+  <section title="systemd MemoryMax and MemoryHigh">
+    <rule>
+      <statement>Set `MemoryMax` (hard kill limit) and `MemoryHigh` (soft throttle limit) on every service. Without limits, a Celery worker processing a large context window grows unbounded and triggers the kernel OOM killer against the wrong process.</statement>
+      <rationale>`MemoryHigh` causes the kernel to throttle the cgroup and activate memory reclaim before hitting `MemoryMax`. This gives the service a chance to release memory gracefully. `MemoryMax` is the hard backstop — the process receives SIGKILL when it exceeds this.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Service]
+MemoryMax=8G
+MemoryHigh=6G
+MemorySwapMax=512M
+OOMScoreAdjust=0
+OOMPolicy=stop
+]]></code>
+    </example>
+  </section>
+
+  <section title="Recommended Memory Limits for NERO Platform">
+    <example type="good">
+      <code lang="text"><![CDATA[
+Service              MemoryMax   MemoryHigh   Notes
+nero-core (Celery)   8G          6G           LLM responses can be large
+nero-channel-web     2G          1500M        FastAPI + connection pool
+nero-channel-tg      1G          768M         Lightweight bot bridge
+nero-web (static)    512M        384M         nginx-like static serving
+PostgreSQL           8G          6G           shared_buffers + work_mem
+Redis                4G          3G           context cache
+RabbitMQ             2G          1500M        message queues
+]]></code>
+    </example>
+  </section>
+
+  <section title="cgroup Memory Monitoring">
+    <rule>
+      <statement>Monitor cgroup memory usage via `systemctl status` and the cgroup fs at `/sys/fs/cgroup/`. Use `systemd-cgtop` for a live overview of all services.</statement>
+      <rationale>High-water-mark memory usage is not visible in `free -h` — it is scoped to the cgroup. Checking `memory.peak` (if available) or watching `memory.current` reveals whether a service is regularly approaching its `MemoryHigh` limit and needs an increase.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Live overview of all user cgroups by memory
+systemd-cgtop
+
+# Current memory for a specific service (systemd user services)
+UID=$(id -u)
+CGROUP="/sys/fs/cgroup/user.slice/user-${UID}.slice/user@${UID}.service/nero-core.service"
+cat "$CGROUP/memory.current"   # bytes currently used
+cat "$CGROUP/memory.max"       # hard limit
+
+# Per-process memory sorted by RSS
+ps aux --sort=-%mem | head -15
+
+# Swap usage by process
+for f in /proc/[0-9]*/status; do
+    awk '/VmSwap|Name/{printf $2 " " $3}END{print ""}' "$f"
+done | sort -k2 -rn | head -10
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/nero-core.service.snippet">systemd service memory limit directives</link>
+    <link path="templates/memory-alert.sh">Alert when RAM or swap exceeds threshold</link>
+    <link path="content/01-swap-swappiness.xml">Swap file creation and swappiness</link>
+  </see-also>
+</text>

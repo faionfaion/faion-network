@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patterns" title="systemd User Services: Patterns and Operations">
+  <summary>Linger for boot persistence, drop-in overrides, timer units for scheduled tasks, essential commands, and troubleshooting table.</summary>
+
+  <section title="Linger for Boot Persistence">
+    <rule>
+      <statement>Run `loginctl enable-linger` once per user account. Without it, user services stop when the last login session ends and do not start at boot.</statement>
+      <rationale>By default, the user's systemd manager exits when the last login session (SSH, TTY, sudo) ends. Linger keeps a permanent user session alive from boot to shutdown, regardless of login state — identical to how system services work, but without root.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Enable (run as root, or the user themselves)
+loginctl enable-linger nero
+
+# Verify
+loginctl show-user nero | grep Linger
+# Linger=yes
+
+# After enabling, enable and start services normally
+systemctl --user daemon-reload
+systemctl --user enable nero-core nero-channel-web nero-channel-tg
+systemctl --user start nero-core nero-channel-web nero-channel-tg
+]]></code>
+    </example>
+  </section>
+
+  <section title="Drop-in Overrides">
+    <rule>
+      <statement>Use `systemctl --user edit name.service` to create drop-in overrides rather than modifying the unit file directly. Drop-ins survive unit file replacements during deploy.</statement>
+      <rationale>If the deploy script overwrites the unit file, any manual edits are lost. A drop-in file (`~/.config/systemd/user/nero-core.service.d/override.conf`) is merged at runtime and is not affected by rewriting the base unit.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Creates ~/.config/systemd/user/nero-core.service.d/override.conf
+systemctl --user edit nero-core
+
+# File created by the editor:
+[Service]
+MemoryMax=16G   # temporarily increase for a heavy task
+]]></code>
+    </example>
+  </section>
+
+  <section title="Timer Units for Scheduled Tasks">
+    <rule>
+      <statement>Use systemd timer units instead of cron for scheduled tasks. Timers log to journald, support `Persistent=true` (catch up after downtime), and can be managed with `systemctl --user`.</statement>
+      <rationale>cron sends output to email (usually lost) and silently misses runs after reboots. `Persistent=true` on a timer runs the missed execution once after boot if the scheduled time was missed. `journalctl --user -u backup.service` gives the full run history with timestamps.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# ~/.config/systemd/user/backup.timer
+[Unit]
+Description=Daily backup timer
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# ~/.config/systemd/user/backup.service
+[Unit]
+Description=Daily backup
+
+[Service]
+Type=oneshot
+ExecStart=/home/nero/workspace/scripts/backup.sh
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+systemctl --user enable --now backup.timer
+systemctl --user list-timers
+]]></code>
+    </example>
+  </section>
+
+  <section title="Target Unit for Service Groups">
+    <rule>
+      <statement>Create a `.target` unit to group related services. `systemctl --user start nero.target` then starts all services in the group in the correct order.</statement>
+      <rationale>Starting and stopping a multi-service platform one service at a time is error-prone. A target unit encodes the group membership once; operators (and deploy scripts) use a single command.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# ~/.config/systemd/user/nero.target
+[Unit]
+Description=NERO Platform
+Wants=nero-core.service nero-channel-web.service nero-channel-tg.service nero-web.service
+
+[Install]
+WantedBy=default.target
+]]></code>
+    </example>
+  </section>
+
+  <section title="Troubleshooting">
+    <rule>
+      <statement>When a service fails to start, check `journalctl --user -u name -n 50 --no-pager` first, then `systemctl --user status name`. Most startup failures are captured in the last 10 log lines.</statement>
+      <rationale>The status output truncates logs. The `journalctl` command shows the full stderr/stdout from ExecStart, including Python tracebacks and missing module errors that are cut off in the status summary.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Problem                       Cause                    Fix
+Service stops on logout       Linger not enabled       loginctl enable-linger
+"Failed to connect to bus"    No DBUS in session       Export XDG_RUNTIME_DIR
+Permission denied port <1024  User can't bind low port Use nginx reverse proxy
+ExecStart fails silently      Relative path            Use absolute path in ExecStart
+Secrets visible in show       Inline Environment=      Use EnvironmentFile= instead
+Restart loop (failed)         StartLimitBurst reached  Fix root cause; reset-failed
+OOM killed                    MemoryMax too low        Increase limit or tune app
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Reset a service stuck in "failed" state after fixing the root cause
+systemctl --user reset-failed nero-core
+systemctl --user start nero-core
+
+# Check if linger is enabled
+loginctl show-user nero | grep Linger
+
+# Watch all user service logs combined
+journalctl --user -f
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/timer-pair.service">Timer + oneshot service pair</link>
+    <link path="templates/target.service">Target unit grouping multiple services</link>
+    <link path="content/01-unit-structure.xml">Unit file structure and resource limits</link>
+  </see-also>
+</text>

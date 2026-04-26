@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Deploy Scripts: Output Examples and Scenarios">
+  <summary>Annotated deploy output examples: single service, full stack, rollback after bad deploy, migration hook, and SDK cascade redeploy.</summary>
+
+  <section title="Single Service Deploy">
+    <example type="good">
+      <code lang="text"><![CDATA[
+$ bash ~/workspace/deploy/deploy.sh nero-core
+Pre-deploy checks passed
+[DEPLOY] nero-core
+  Requirements changed, installing...
+  Restarted nero-core.service
+  nero-core: OK
+[DONE]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Full Stack Deploy">
+    <example type="good">
+      <code lang="text"><![CDATA[
+$ bash ~/workspace/deploy/deploy.sh all
+Pre-deploy checks passed
+[DEPLOY] nero-sdk      — library synced (no restart)
+[DEPLOY] nero-infra    — docker compose up -d
+[DEPLOY] nero-core     — synced, deps installed, restarted: OK
+[DEPLOY] nero-channel-web — synced, deps installed, restarted: OK
+[DEPLOY] nero-channel-tg  — synced, deps installed, restarted: OK
+[DEPLOY] nero-web      — static files synced: OK
+[DONE]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Rollback After Bad Deploy">
+    <p>A code change in nero-core introduced a ModuleNotFoundError. Rolling back to HEAD~1.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Detect failure
+$ journalctl --user -u nero-core --since "5 min ago" | tail -5
+nero-core[12345]: ModuleNotFoundError: No module named 'nero_core.new_feature'
+
+# Roll back
+$ bash ~/workspace/deploy/rollback.sh nero-core
+[ROLLBACK] nero-core: abc1234 → HEAD~1
+[DEPLOY] nero-core
+  nero-core: OK
+[ROLLBACK DONE] now at def5678
+To return to main: git -C ~/workspace/repos/nero-core checkout main && deploy.sh nero-core
+
+# Verify
+$ systemctl --user is-active nero-core.service
+active
+$ curl -s http://127.0.0.1:8100/health | jq .status
+"ok"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Deploy with Database Migration Hook">
+    <p>nero-channel-web has a `post-sync.sh` hook that runs Alembic migrations after code sync.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+$ bash ~/workspace/deploy/deploy.sh nero-channel-web
+Pre-deploy checks passed
+[DEPLOY] nero-channel-web
+  [hook] post-sync
+  INFO [alembic] Running upgrade abc123 -> def456, add user preferences table
+  Migrations complete
+  Restarted nero-channel-web.service
+  nero-channel-web: OK
+[DONE]
+]]></code>
+    </example>
+  </section>
+
+  <section title="SDK Cascade Redeploy">
+    <p>When nero-sdk gains a new model field, all consuming services need redeployment so they pick up the updated editable install.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# nero-sdk was updated
+$ git -C ~/workspace/repos/nero-sdk log --oneline -1
+abc1234 feat: add message priority field
+
+# Deploy SDK first, then all dependents
+$ bash ~/workspace/deploy/deploy.sh nero-sdk
+[DEPLOY] nero-sdk — library synced (no restart)
+
+$ for svc in nero-core nero-channel-web nero-channel-tg; do
+    bash ~/workspace/deploy/deploy.sh "$svc"
+done
+# Each service's pip install -e . now picks up the updated SDK
+]]></code>
+    </example>
+  </section>
+
+  <section title="Pre-Deploy Validation Output">
+    <example type="good">
+      <code lang="text"><![CDATA[
+$ bash ~/workspace/deploy/pre-deploy-check.sh
+=== Pre-Deploy Validation ===
+[PASS] .env exists
+[PASS] Runtime /srv/nero exists
+[PASS] Disk: 283000MB free
+[PASS] systemd user session active
+[PASS] DATABASE_URL set
+[PASS] REDIS_URL set
+[PASS] ANTHROPIC_API_KEY set
+[PASS] Python3: 3.12.8
+[PASS] Redis: responding
+[WARN] nero-core: uncommitted changes
+=== Results: 0 errors, 1 warning — ready to deploy ===
+]]></code>
+    </example>
+  </section>
+
+  <section title="Status Check After Deploy">
+    <example type="good">
+      <code lang="text"><![CDATA[
+$ bash ~/workspace/deploy/status.sh
+=== NERO Platform Status ===
+systemd:
+  nero-core         ACTIVE
+  nero-channel-web  ACTIVE
+  nero-channel-tg   ACTIVE
+  nero-web          ACTIVE
+docker:
+  nero-postgres     Up 3 days (healthy)
+  nero-redis        Up 3 days (healthy)
+  nero-rabbitmq     Up 3 days (healthy)
+health:
+  nero-channel-web  ok (port 8100)
+resources:
+  Memory: 8.2Gi/30Gi   Swap: 0B/4.0Gi
+  Disk:   12G/310G (4%)  Load: 0.45 0.38 0.32
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/deploy.sh">Full deploy orchestrator</link>
+    <link path="templates/rollback.sh">Git-based rollback script</link>
+    <link path="templates/pre-deploy-check.sh">Pre-deploy validation</link>
+    <link path="templates/status.sh">Platform status checker</link>
+    <link path="content/01-deploy-flow.xml">Deploy lifecycle and patterns</link>
+  </see-also>
+</text>

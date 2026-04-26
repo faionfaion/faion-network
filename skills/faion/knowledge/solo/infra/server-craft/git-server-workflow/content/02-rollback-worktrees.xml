@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rollback-worktrees" title="Git Server Workflow: Rollback and Worktrees">
+  <summary>Git-based rollback procedure, tagged releases, worktree commands for parallel agents, and post-receive hook pattern.</summary>
+
+  <section title="Rollback Procedure">
+    <rule>
+      <statement>To roll back a service, check out the previous commit (or a tag) in the workspace repo, then re-run the deploy script. Never manually edit files in the runtime directory.</statement>
+      <rationale>Rolling back via the deploy script ensures the runtime is brought to a consistent state: correct source files, correct pip dependencies, and a clean systemd restart. Ad-hoc manual edits in the runtime diverge from the workspace and break the next normal deploy.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Roll back nero-core to the previous commit
+cd ~/workspace/repos/nero-core
+git checkout HEAD~1
+bash ~/workspace/deploy/deploy.sh nero-core
+
+# Roll back to a specific tag
+git checkout v1.4.2
+bash ~/workspace/deploy/deploy.sh nero-core
+
+# Return to latest after investigation
+git checkout main
+bash ~/workspace/deploy/deploy.sh nero-core
+]]></code>
+    </example>
+    <rule>
+      <statement>Tag every production release with `git tag v<major>.<minor>.<patch>` before deploying. Push tags to origin.</statement>
+      <rationale>Untagged history requires `git log` forensics to find a safe rollback point. Tags make `git checkout v1.4.1` instant and unambiguous. Tags are also visible in `git log --oneline --decorate`.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+git tag v1.5.0
+git push origin v1.5.0
+bash ~/workspace/deploy/deploy.sh all
+]]></code>
+    </example>
+  </section>
+
+  <section title="Git Worktrees for Parallel Agents">
+    <rule>
+      <statement>Use `git worktree add` to give each parallel agent its own working directory on a separate branch. Never have two agents operate on the same branch simultaneously.</statement>
+      <rationale>Two agents on the same branch will overwrite each other's uncommitted changes, cause merge conflicts on push, and produce interleaved commits that are hard to review. Each worktree has its own index and HEAD, so agents are fully isolated at the git level.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Create a worktree for an agent task
+git worktree add ../nero-core-agent-1 -b agent/task-123
+# Agent 1 works in ../nero-core-agent-1/
+
+git worktree add ../nero-core-agent-2 -b agent/task-456
+# Agent 2 works in ../nero-core-agent-2/
+
+# List active worktrees
+git worktree list
+
+# Remove after merging
+git worktree remove ../nero-core-agent-1
+git branch -d agent/task-123
+]]></code>
+    </example>
+    <note>Claude Code uses worktrees automatically when the `worktrees` feature is enabled in `.claude/settings.json`. The pattern above is for manual agent orchestration or scripts.</note>
+  </section>
+
+  <section title="Post-Receive Hook Pattern">
+    <rule>
+      <statement>On a bare repo server, use a `post-receive` hook to trigger deploys automatically when `main` is pushed. The hook must be idempotent and log output to a file.</statement>
+      <rationale>Manual SSH + pull cycles after every push are error-prone and slow. A post-receive hook runs once per push, on the correct branch, with no human step required. Logging to a file allows asynchronous inspection of deploy output without holding the git push connection open.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# ~/repos/nero-core.git/hooks/post-receive
+DEPLOY_LOG=~/workspace/logs/deploy-nero-core.log
+WORKSPACE=~/workspace/repos/nero-core
+
+while read oldrev newrev refname; do
+    branch="${refname#refs/heads/}"
+    if [[ "$branch" == "main" ]]; then
+        echo "[post-receive] Deploying nero-core @ $newrev"
+        cd "$WORKSPACE" || exit 1
+        git fetch origin main
+        git reset --hard origin/main
+        bash ~/workspace/deploy/deploy.sh nero-core >> "$DEPLOY_LOG" 2>&1
+        echo "[post-receive] Done. Log: $DEPLOY_LOG"
+    fi
+done
+]]></code>
+    </example>
+    <antipattern>
+      <description>Running `git pull` inside the post-receive hook without `--ff-only`.</description>
+      <reason>A non-fast-forward pull triggers an interactive merge or rebase prompt, which hangs the hook indefinitely because there is no TTY. Use `git fetch` + `git reset --hard origin/main` instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Branch Strategy for Services">
+    <rule>
+      <statement>Use `main` as the single deployable branch. Feature work goes on short-lived branches merged via PR. Never deploy from feature branches to production.</statement>
+      <rationale>Deploying from arbitrary feature branches creates ambiguity about what is running in production. A single deployable branch (`main`) means the deploy script always knows what to check out, and the post-receive hook has a single trigger condition.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="templates/deploy.sh">Master deploy script: rsync + venv + systemd restart</link>
+    <link path="templates/rollback.sh">Rollback a service to a commit or tag</link>
+    <link path="templates/post-receive">Bare repo post-receive hook</link>
+    <link path="content/01-patterns.xml">Directory layout and rsync flags</link>
+  </see-also>
+</text>

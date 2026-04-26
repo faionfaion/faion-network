@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-patterns" title="Docker Compose Patterns: Core Rules">
+  <summary>Service definition rules, network isolation (Docker bypasses UFW), healthcheck requirements for depends_on, volume types, resource limits, and log rotation.</summary>
+
+  <section title="Port Binding: Docker Bypasses UFW">
+    <rule>
+      <statement>Always bind infrastructure ports to `127.0.0.1`, never `0.0.0.0`. Docker inserts iptables ACCEPT rules that bypass UFW — a port bound to `0.0.0.0:5432` is reachable from the internet regardless of `ufw status`.</statement>
+      <rationale>Docker modifies iptables at a lower level than UFW. UFW rules are inserted into the `ufw-user-input` chain, but Docker's DNAT rules are in the `DOCKER` chain which is evaluated first. There is no UFW-level fix; the only reliable solution is binding to `127.0.0.1`.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+ports:
+  - "127.0.0.1:5432:5432"    # Only localhost can connect
+  - "127.0.0.1:6379:6379"
+]]></code>
+    </example>
+    <antipattern>
+      <description>`ports: - "5432:5432"` (binds to all interfaces)</description>
+      <reason>Equivalent to `0.0.0.0:5432:5432`. Database is internet-accessible even with UFW blocking port 5432, because Docker bypasses UFW via iptables DNAT.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Healthchecks Required for depends_on Conditions">
+    <rule>
+      <statement>Every service referenced by `depends_on: condition: service_healthy` must have a `healthcheck:` block. Without it, `service_healthy` is silently ignored and `depends_on` behaves as `service_started`.</statement>
+      <rationale>When `healthcheck` is missing, Docker Compose has no signal for "ready" — it falls back to "started" (the container exists), which for PostgreSQL means the process is up but not yet accepting connections. The dependent service connects, gets "connection refused", and fails to start.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    image: postgres:16-alpine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api:
+    depends_on:
+      postgres:
+        condition: service_healthy   # REQUIRES healthcheck block above
+]]></code>
+    </example>
+  </section>
+
+  <section title="Named Volumes for Database Data">
+    <rule>
+      <statement>Use named volumes (`pgdata:`, `redis-data:`) for all database data directories. Never use bind mounts for database storage.</statement>
+      <rationale>Named volumes are managed by Docker, survive container recreations, and live outside the project directory. Bind mounts for PostgreSQL data cause permission issues (the postgres user inside the container has a different UID than the host) and are not portable between environments.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    volumes:
+      - pgdata:/var/lib/postgresql/data       # named volume: Docker manages it
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # bind: read-only config only
+
+volumes:
+  pgdata:    # declaration; Docker creates /var/lib/docker/volumes/<project>_pgdata/
+]]></code>
+    </example>
+  </section>
+
+  <section title="Resource Limits">
+    <rule>
+      <statement>Set `deploy.resources.limits` on every long-running container. Without limits, a PostgreSQL vacuum or RabbitMQ memory flood can consume all available RAM and trigger OOM kills of unrelated processes.</statement>
+      <rationale>`deploy.resources` is supported by `docker compose up` in Compose V2. The `limits.memory` value causes the container to receive SIGKILL (not graceful shutdown) when exceeded — set it higher than the expected peak, not the steady-state usage.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+        reservations:
+          memory: 512M
+]]></code>
+    </example>
+  </section>
+
+  <section title="Log Rotation">
+    <rule>
+      <statement>Set `logging.options.max-size` and `max-file` on every service, or configure it globally in `/etc/docker/daemon.json`. Without log rotation, container logs grow unbounded and fill the disk.</statement>
+      <rationale>Docker's default json-file driver writes one log file per container with no size limit. A chatty service (RabbitMQ, nginx) can fill a 50 GB disk in hours without rotation. Three files × 10 MB = 30 MB max per service is a safe default.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="json"><![CDATA[
+// /etc/docker/daemon.json (global default for all containers)
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Network Isolation">
+    <rule>
+      <statement>Create a named `backend` network with `internal: true` for database and broker services. Only add the `backend` network to services that need database access.</statement>
+      <rationale>An `internal: true` network has no internet egress — containers on it cannot make outbound HTTP calls or be accessed from outside. This limits the blast radius of a compromised container: it can reach the database but not exfiltrate data to the internet.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    networks: [backend]
+  redis:
+    networks: [backend]
+  api:
+    networks: [backend]   # needs DB access
+    ports: ["127.0.0.1:8000:8000"]
+
+networks:
+  backend:
+    driver: bridge
+    internal: true
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/infra-stack.yml">Ready-to-use postgres + redis + rabbitmq stack</link>
+    <link path="content/02-infra-stack.xml">NERO-style infrastructure stack and profile patterns</link>
+  </see-also>
+</text>

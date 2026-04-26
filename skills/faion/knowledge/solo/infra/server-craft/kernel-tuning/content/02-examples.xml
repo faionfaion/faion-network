@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Kernel Tuning: Diagnosis and Verification Examples">
+  <summary>inotify exhaustion diagnosis, swappiness fix verification, BBR activation check, and WebSocket connection handling examples.</summary>
+
+  <section title="Diagnosing inotify Exhaustion">
+    <p>Symptom: Claude Code or VS Code shows "ENOSPC: System limit for number of file watchers reached" even though disk is not full.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Check current limit vs usage
+sysctl fs.inotify.max_user_watches
+# fs.inotify.max_user_watches = 65536  ← too low
+
+# Count watches consumed by each process
+find /proc/*/fd -lname anon_inode:inotify 2>/dev/null \
+  | cut -d/ -f3 \
+  | xargs -I{} sh -c 'cat /proc/{}/cmdline 2>/dev/null | tr "\0" " "; echo' \
+  | sort | uniq -c | sort -rn | head -10
+
+# Apply fix immediately (survives until next reboot)
+echo fs.inotify.max_user_watches=524288 | sudo tee /etc/sysctl.d/60-agent-tuning.conf
+sudo sysctl --system
+
+# Verify
+sysctl fs.inotify.max_user_watches
+# fs.inotify.max_user_watches = 524288  ← fixed
+]]></code>
+    </example>
+  </section>
+
+  <section title="Verifying BBR Activation">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Check congestion control
+sysctl net.ipv4.tcp_congestion_control
+# net.ipv4.tcp_congestion_control = bbr
+
+# Check qdisc
+tc qdisc show dev eth0
+# qdisc fq 8001: root refcnt 2 ...
+
+# If still showing cubic after applying conf:
+sudo sysctl --system
+sysctl net.ipv4.tcp_congestion_control
+# Should now show bbr
+]]></code>
+    </example>
+  </section>
+
+  <section title="Verifying Swappiness Change">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Before: aggressive swapping at 60
+sysctl vm.swappiness
+# vm.swappiness = 60
+
+# Apply fix
+echo "vm.swappiness = 10" | sudo tee /etc/sysctl.d/60-memory.conf
+sudo sysctl vm.swappiness=10
+
+# Verify
+sysctl vm.swappiness
+# vm.swappiness = 10
+
+# Check current swap usage
+free -h
+# Swap:         4.0Gi       0B     4.0Gi   ← no active swap with RAM available
+]]></code>
+    </example>
+  </section>
+
+  <section title="Verifying Security Parameters">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Check all four security baseline values
+sysctl kernel.kptr_restrict kernel.yama.ptrace_scope kernel.dmesg_restrict net.ipv4.tcp_syncookies
+# kernel.kptr_restrict = 1
+# kernel.yama.ptrace_scope = 1
+# kernel.dmesg_restrict = 1
+# net.ipv4.tcp_syncookies = 1
+]]></code>
+    </example>
+  </section>
+
+  <section title="File Descriptor Check">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# System-level file descriptor usage
+cat /proc/sys/fs/file-nr
+# 12480  0  2097152
+# ↑ allocated  ↑ free from allocated  ↑ system max
+
+# Per-process FD count (find high consumers)
+for pid in /proc/[0-9]*; do
+    count=$(ls "$pid/fd" 2>/dev/null | wc -l)
+    name=$(cat "$pid/comm" 2>/dev/null)
+    echo "$count $name"
+done | sort -rn | head -10
+
+# Verify PAM limits applied (must be in a new login session)
+ulimit -n
+# 65535
+]]></code>
+    </example>
+  </section>
+
+  <section title="Connection Tracking for WebSocket Services">
+    <p>nginx WebSocket proxy and RabbitMQ AMQP connections consume conntrack table entries. Monitor usage when serving many concurrent long-lived connections.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Check conntrack usage vs limit
+sudo conntrack -C 2>/dev/null || cat /proc/sys/net/netfilter/nf_conntrack_count
+# 8241
+
+sysctl net.netfilter.nf_conntrack_max
+# net.netfilter.nf_conntrack_max = 262144
+
+# If count/max ratio > 80%, increase nf_conntrack_max
+echo "net.netfilter.nf_conntrack_max = 524288" | sudo tee -a /etc/sysctl.d/60-network-perf.conf
+sudo sysctl net.netfilter.nf_conntrack_max=524288
+]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/kernel-audit.sh">Automated audit: current vs recommended values</link>
+    <link path="content/01-parameters.xml">Full parameter reference</link>
+  </see-also>
+</text>

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# post-receive — Bare repo hook: deploy on push to main
+# Install: cp post-receive ~/repos/<service>.git/hooks/post-receive && chmod +x ...
+# Assumes: workspace clone at ~/workspace/repos/<service>
+#          deploy script at ~/workspace/deploy/deploy.sh
+set -euo pipefail
+
+SERVICE="${DEPLOY_SERVICE:-}"
+if [[ -z "$SERVICE" ]]; then
+    # Derive service name from repo directory (strips .git suffix)
+    REPO_DIR="$(basename "$(pwd)")"
+    SERVICE="${REPO_DIR%.git}"
+fi
+
+WORKSPACE=~/workspace/repos/$SERVICE
+DEPLOY_LOG=~/workspace/logs/deploy-${SERVICE}.log
+DEPLOY_SCRIPT=~/workspace/deploy/deploy.sh
+
+mkdir -p "$(dirname "$DEPLOY_LOG")"
+
+while read -r oldrev newrev refname; do
+    branch="${refname#refs/heads/}"
+    if [[ "$branch" == "main" ]]; then
+        echo "[post-receive] Push to main detected: $oldrev → $newrev"
+        echo "[post-receive] Updating workspace and deploying $SERVICE..."
+
+        # Update workspace clone from bare repo
+        git --work-tree="$WORKSPACE" --git-dir="$(pwd)" checkout -f main
+
+        # Run deploy script (captures output to log)
+        bash "$DEPLOY_SCRIPT" "$SERVICE" >> "$DEPLOY_LOG" 2>&1
+        EXIT_CODE=$?
+
+        if [[ $EXIT_CODE -eq 0 ]]; then
+            echo "[post-receive] Deploy OK. Log: $DEPLOY_LOG"
+        else
+            echo "[post-receive] Deploy FAILED (exit $EXIT_CODE). Log: $DEPLOY_LOG" >&2
+            tail -20 "$DEPLOY_LOG" >&2
+        fi
+    fi
+done

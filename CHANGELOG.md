@@ -4,6 +4,7 @@
 
 ### Changed
 - refactor: 8/8 server-craft methodologies migrated to new shape (batch: monitoring-logging, tmux-power-user, backup-recovery, bash-aliases, secrets-management, dotfiles-management, shell-productivity, multi-project-hosting)
+- refactor: 8/8 server-craft methodologies migrated to new shape (batch: devops-engineer/docker-compose, git-server-workflow, deploy-scripts, kernel-tuning, swap-memory-management, agent-dev-tuning, systemd-user-services, docker-compose-patterns)
 - refactor: 8/8 product-manager methodologies migrated to new shape (batch: user-story-mapping, backlog-management, spec-writing, continuous-discovery, product-discovery, feature-prioritization-rice, product-launch, outcome-based-roadmaps-advanced)
 - refactor: 8/8 product-planning methodologies migrated to new shape (batch: mvp-scoping, roadmap-design, user-story-mapping, spec-writing, continuous-discovery, product-discovery, product-launch, outcome-based-roadmaps-advanced)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-app-store-optimization, ops-pricing-strategy, growth-cold-outreach, growth-hacker-news-launch, growth-indiehackers-strategy, ops-subscription-models, growth-webinar-delivery, growth-reddit-marketing)
