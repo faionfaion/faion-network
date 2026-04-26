@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rules" title="Embedding Generation Rules">
+  <summary>Concrete rules for model selection, batching, caching, normalization, and common pitfalls in embedding generation pipelines.</summary>
+
+  <section title="Model Selection">
+    <rule>
+      <statement>Use the same embedding model for indexing and querying; never mix models within a single collection.</statement>
+      <rationale>Each model defines its own vector space. Querying with a different model than was used for indexing produces incorrect similarity scores because the vectors live in incompatible spaces.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin the model name and provider in a config file before indexing begins; treat any model change as a full re-index event.</statement>
+      <rationale>A model change invalidates every stored vector. Config-pinning makes the dependency explicit and prevents accidental drift.</rationale>
+    </rule>
+    <rule>
+      <statement>For OpenAI text-embedding-3 models, prefer native dimension reduction over post-hoc PCA when storage is constrained.</statement>
+      <rationale>Native reduction (via the `dimensions` parameter) preserves the model's internal geometry; PCA applied after the fact discards directions the model considers important.</rationale>
+    </rule>
+  </section>
+
+  <section title="Batching">
+    <rule>
+      <statement>Always batch embedding requests; never call the API once per text in a loop.</statement>
+      <rationale>API round-trip latency dominates at small batch sizes. Batching cuts wall-clock time by 10-100x and reduces rate-limit exposure.</rationale>
+    </rule>
+    <rule>
+      <statement>Cap OpenAI embedding batches at 2048 items; validate before sending to avoid a 400 error.</statement>
+      <rationale>The API enforces a hard 2048-item-per-request limit. Exceeding it raises a non-retryable error.</rationale>
+    </rule>
+    <rule>
+      <statement>Sort OpenAI batch response by `item.index` before mapping back to inputs.</statement>
+      <rationale>The API may return embeddings out of order. Skipping the sort step produces misaligned embeddings for shuffled input lists.</rationale>
+    </rule>
+  </section>
+
+  <section title="Caching">
+    <rule>
+      <statement>Cache embeddings keyed by hash(model + text); retrieve from cache before calling the API.</statement>
+      <rationale>Repeated texts (common in RAG pipelines that re-ingest updated documents) waste API budget without caching.</rationale>
+    </rule>
+    <rule>
+      <statement>Use SHA-256 for cache keys in production; MD5 has non-zero collision probability at billion-document scale.</statement>
+      <rationale>MD5 collisions exist in practice. A collision silently returns the wrong embedding for a text.</rationale>
+    </rule>
+  </section>
+
+  <section title="Normalization">
+    <rule>
+      <statement>Normalize embeddings to unit length before storing when cosine similarity is the intended metric.</statement>
+      <rationale>Pre-normalization reduces query-time computation to a dot product, which is faster than the full cosine formula and numerically identical for unit vectors.</rationale>
+    </rule>
+    <rule>
+      <statement>Guard against zero-length vectors before normalizing; skip or flag them rather than dividing by zero.</statement>
+      <rationale>Empty strings and whitespace-only texts can produce near-zero vectors that cause division-by-zero or NaN propagation.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pitfalls">
+    <antipattern>
+      <description>Embedding texts that exceed the model's token limit without truncation.</description>
+      <reason>Some SDKs silently truncate overlong inputs; others raise an error. Either way, the tail of the text is lost, producing embeddings that do not represent the full content.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Instantiating multiple SentenceTransformer model instances in the same process.</description>
+      <reason>Each instance loads the full model into GPU/CPU RAM. Two instances of bge-large-en-v1.5 on a 16 GB GPU will OOM.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Euclidean distance on unnormalized vectors when cosine similarity was intended.</description>
+      <reason>Euclidean distance conflates vector magnitude with direction. Cosine similarity requires normalization to measure directional agreement alone.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Calling the Ollama embedding endpoint in a per-text loop without batching.</description>
+      <reason>Ollama has no native batch endpoint; the loop is O(n) HTTP calls. For large corpora this is impractically slow.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -8,6 +8,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: guardrails-implementation, gemini-multimodal, claude-tool-use, openai-chat-completions, prompt-basics, structured-output-basics, claude-api-integration, claude-messages-api)
 - refactor: 8/8 methodologies migrated to new shape (batch: guardrails-basics, tool-use-basics, openai-function-calling, claude-api-basics, openai-embeddings, cot-techniques, local-llm-ollama, structured-output-patterns)
 - refactor: 8/8 methodologies migrated to new shape (batch: claude-advanced-features, gemini-function-calling, openai-assistants, cot-basics, claude-best-practices, function-calling-patterns, rag, hybrid-search-basics)
+- refactor: 8/8 rag-engineer methodologies migrated to new shape (batch: embedding-generation, db-chroma, embedding-models, db-qdrant, vector-database-setup, rag-implementation, hybrid-search-implementation, reranking-models)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: agentic-rag, chunking-strategies, chain-of-thought, hybrid-search, multi-agent-systems, structured-output, openai-api, cost-optimization)
 - refactor: 8/8 infrastructure-engineer methodologies migrated to new shape (batch: aws-architecture-services, terraform-basics, terraform-state, gcp-arch-patterns, aws-lambda, terraform, aws-networking, aws-s3-storage)
 - refactor: 8/8 methodologies migrated to new shape (batch: llm-friendly-architecture x2, ai-assisted-dev, claude-md-creation, ai-content-strategy, ai-marketing-tools-stack-2026, agentic-commerce-future-trends, technical-seo-for-ai)

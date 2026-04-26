@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-quantization" title="Qdrant Quantization">
+  <summary>Scalar and binary quantization configuration with rescoring parameters for memory-constrained production deployments.</summary>
+
+  <section title="Quantization Options">
+    <list>
+      <item>Scalar quantization (int8): 4x memory reduction, minimal recall loss for most corpora</item>
+      <item>Binary quantization: 32x memory reduction, fastest search, recall degrades for low-dimensional embeddings (&lt;256 dims)</item>
+      <item>Product quantization: highest compression, moderate recall — use when scalar is insufficient</item>
+    </list>
+    <rule>
+      <statement>Enable rescoring (oversampling=2.0) when using quantization to recover the top-k precision loss.</statement>
+      <rationale>Quantization reduces recall. Fetching 2x candidates and rescoring with original float vectors restores near-original precision at the cost of extra memory reads.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not use binary quantization for embeddings with fewer than 256 dimensions; recall degrades significantly at low dimensionality.</statement>
+      <rationale>Binary quantization compresses each float to a single bit. Low-dimensional vectors have few bits, making the approximation too coarse for reliable similarity.</rationale>
+    </rule>
+  </section>
+
+  <section title="Scalar Quantization">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from qdrant_client.models import ScalarQuantization, ScalarQuantizationConfig
+
+client.update_collection(
+    collection_name="documents",
+    quantization_config=ScalarQuantization(
+        scalar=ScalarQuantizationConfig(
+            type="int8",
+            quantile=0.99,
+            always_ram=True,
+        )
+    ),
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Binary Quantization">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from qdrant_client.models import BinaryQuantization, BinaryQuantizationConfig
+
+client.update_collection(
+    collection_name="documents",
+    quantization_config=BinaryQuantization(
+        binary=BinaryQuantizationConfig(always_ram=True)
+    ),
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Search with Rescoring">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from qdrant_client.models import SearchParams, QuantizationSearchParams
+
+results = client.search(
+    collection_name="documents",
+    query_vector=query_embedding,
+    limit=10,
+    search_params=SearchParams(
+        quantization=QuantizationSearchParams(
+            rescore=True,
+            oversampling=2.0,  # fetch 20 candidates, rescore to top 10
+        )
+    ),
+)
+]]></code>
+    </example>
+  </section>
+</text>

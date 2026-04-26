@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-selection" title="Vector Database Selection">
+  <summary>Provider comparison, index type selection rules, and critical pitfalls for vector database setup.</summary>
+
+  <section title="Provider Comparison">
+    <list>
+      <item>Pinecone: managed SaaS, serverless, auto-scale, pay-per-use — best for teams wanting zero infra ops</item>
+      <item>Qdrant: open-source, self-hosted Docker/K8s, best performance + filtering + quantization at scale</item>
+      <item>Chroma: open-source, in-process SQLite, zero infra — best for local dev and eval harnesses</item>
+      <item>Weaviate: open-source/managed, schema-first, GraphQL API, built-in vectorizer integrations</item>
+      <item>Milvus: open-source, K8s-native, enterprise scale (billions of vectors)</item>
+      <item>pgvector: PostgreSQL extension — best when the application already uses Postgres and vector count is moderate</item>
+    </list>
+  </section>
+
+  <section title="Index Type Selection">
+    <rule>
+      <statement>Use HNSW for real-time search requiring &lt;10ms latency and datasets up to tens of millions of vectors.</statement>
+      <rationale>HNSW achieves 95-99% recall with the lowest query latency of any ANN index. Memory overhead is ~40-50 bytes per vector per HNSW link.</rationale>
+    </rule>
+    <rule>
+      <statement>Use IVF for memory-constrained environments where query latency of 10-50ms is acceptable.</statement>
+      <rationale>IVF divides the space into Voronoi cells; query probes only a subset of cells, trading some recall for lower memory usage than HNSW.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Flat (exact brute-force) only for datasets with fewer than 10K vectors.</statement>
+      <rationale>Flat search is O(n); at 10K vectors it remains under 10ms, but at 1M vectors it becomes prohibitively slow.</rationale>
+    </rule>
+  </section>
+
+  <section title="Critical Rules">
+    <rule>
+      <statement>Choose the distance metric (cosine, L2, dot product) before creating the collection and treat it as immutable; changing it requires recreating the collection and re-ingesting all data.</statement>
+      <rationale>Vector DB indexes are built for a specific metric. Using the wrong metric produces incorrect similarity rankings; correcting it is a full re-index.</rationale>
+    </rule>
+    <rule>
+      <statement>Validate embedding dimensions match the collection definition before ingesting; dimension mismatches cause silent failures in some clients.</statement>
+      <rationale>Some clients silently truncate or reject mismatched vectors. Catching this at ingestion time prevents a corrupt index.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pitfalls">
+    <antipattern>
+      <description>Storing full document text as metadata (kilobytes per record).</description>
+      <reason>Metadata is loaded into memory at query time. Large payloads bloat RAM and slow query throughput. Store text externally; keep only IDs and small filter fields in metadata.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using a cloud managed DB (Pinecone Serverless) for hard real-time SLAs without testing cold-start latency.</description>
+      <reason>Serverless instances have cold-start latency on the first query after idle periods. Not suitable for sub-100ms P99 requirements.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Not implementing a document update/delete strategy before bulk ingestion.</description>
+      <reason>Vector DBs have no referential integrity. Deleted source documents leave stale chunks in the index. Plan delete+re-insert or soft-delete tracking before the first ingest.</reason>
+    </antipattern>
+  </section>
+</text>

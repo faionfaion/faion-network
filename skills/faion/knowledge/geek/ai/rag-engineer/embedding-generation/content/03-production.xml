@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-production" title="Production Embedding Utilities">
+  <summary>Similarity helpers and normalization utilities used alongside the EmbeddingService and EmbeddingCache templates.</summary>
+
+  <section title="Similarity Helpers">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import numpy as np
+from typing import List, Tuple
+
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+def find_most_similar(
+    query_embedding: np.ndarray,
+    document_embeddings: np.ndarray,
+    top_k: int = 5,
+) -> List[Tuple[int, float]]:
+    """Vectorised cosine search; assumes document_embeddings is (N, D)."""
+    norms = np.linalg.norm(document_embeddings, axis=1) * np.linalg.norm(query_embedding)
+    similarities = np.dot(document_embeddings, query_embedding) / norms
+    top_indices = np.argsort(similarities)[::-1][:top_k]
+    return [(int(idx), float(similarities[idx])) for idx in top_indices]
+]]></code>
+      <note>Pre-normalize embeddings at storage time so query-time search reduces to a dot product.</note>
+    </example>
+  </section>
+
+  <section title="Normalization">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import numpy as np
+
+def normalize_embedding(embedding: np.ndarray) -> np.ndarray:
+    norm = np.linalg.norm(embedding)
+    return embedding if norm == 0 else embedding / norm
+
+def normalize_batch(embeddings: np.ndarray) -> np.ndarray:
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    norms[norms == 0] = 1  # avoid division by zero on zero vectors
+    return embeddings / norms
+]]></code>
+    </example>
+  </section>
+
+  <section title="Templates Reference">
+    <reference path="templates/embedding_service.py">EmbeddingService: provider dispatch, caching, batch embed, single embed, similarity</reference>
+    <reference path="templates/embedding_cache.py">EmbeddingCache: SHA-256-keyed file-based cache for embeddings</reference>
+  </section>
+
+  <section title="Model Comparison Table">
+    <p>Select model based on dimensions, context window, cost, and whether the model is local or API-hosted.</p>
+    <list>
+      <item>text-embedding-3-large: 3072 dims, 8191 tokens, $0.13/1M, OpenAI API</item>
+      <item>text-embedding-3-small: 1536 dims, 8191 tokens, $0.02/1M, OpenAI API</item>
+      <item>voyage-3: 1024 dims, 32K tokens, $0.06/1M, Voyage API</item>
+      <item>embed-english-v3.0: 1024 dims, 512 tokens, $0.10/1M, Cohere API</item>
+      <item>BAAI/bge-large-en-v1.5: 1024 dims, 512 tokens, free, local HuggingFace</item>
+      <item>all-MiniLM-L6-v2: 384 dims, 256 tokens, free, local HuggingFace</item>
+      <item>nomic-embed-text: 768 dims, 8192 tokens, free, Ollama local</item>
+    </list>
+  </section>
+</text>

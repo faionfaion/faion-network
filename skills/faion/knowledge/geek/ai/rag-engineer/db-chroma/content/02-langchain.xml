@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-langchain" title="Chroma LangChain Integration">
+  <summary>LangChain Chroma integration patterns: creating from documents, loading existing collections, and searching with scores.</summary>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
+
+embeddings = OpenAIEmbeddings()  # uses OPENAI_API_KEY
+
+# Create from documents
+vectorstore = Chroma.from_documents(
+    documents=docs,
+    embedding=embeddings,
+    persist_directory="./chroma_db",
+    collection_name="my_collection",
+)
+
+# Load existing collection
+vectorstore = Chroma(
+    persist_directory="./chroma_db",
+    embedding_function=embeddings,
+    collection_name="my_collection",
+)
+
+# Similarity search with scores
+results = vectorstore.similarity_search_with_score(
+    query="search query",
+    k=10,
+    filter={"source": "file.pdf"},
+)
+for doc, score in results:
+    print(f"Score: {1 - score:.3f} | {doc.page_content[:80]}")
+]]></code>
+    <note>LangChain also returns distances. Apply 1 - score for cosine similarity. Use the filter kwarg to pass Chroma where-clause dicts.</note>
+  </example>
+
+  <section title="Auto-embedding Collection">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import chromadb
+from chromadb.utils import embedding_functions
+import os
+
+client = chromadb.PersistentClient(path="./chroma_db")
+
+openai_ef = embedding_functions.OpenAIEmbeddingFunction(
+    api_key=os.environ["OPENAI_API_KEY"],
+    model_name="text-embedding-3-small",
+)
+
+collection = client.get_or_create_collection(
+    name="auto_embed",
+    embedding_function=openai_ef,
+)
+
+# Add raw text — Chroma calls OpenAI automatically
+collection.add(ids=["1", "2"], documents=["First doc", "Second doc"])
+
+# Query with raw text
+results = collection.query(query_texts=["search query"], n_results=5)
+]]></code>
+      <note>Auto-embedding is convenient but couples the collection to a specific API key at creation time. Prefer explicit embeddings for production pipelines.</note>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline" title="RAG Pipeline Structure and Rules">
+  <summary>RAGPipeline design: ingest/retrieve/generate contract, key rules, and failure modes.</summary>
+
+  <section title="Pipeline Stages">
+    <p>Ingest: load documents → chunk → embed → upsert to vector store. Query: embed question → retrieve top-K → filter by score threshold → generate with context.</p>
+    <reference path="templates/rag_pipeline.py">Full RAGPipeline implementation with Document/Chunk/RetrievalResult types and DocumentLoader</reference>
+  </section>
+
+  <section title="Critical Rules">
+    <rule>
+      <statement>Include an explicit system prompt instruction: "Answer ONLY from the provided context. If the context does not contain the answer, say so."</statement>
+      <rationale>Without this constraint the LLM falls back to parametric knowledge and hallucinates. The rule must be stated even when context is present.</rationale>
+    </rule>
+    <rule>
+      <statement>Set top_k conservatively (3-7) and measure token usage; top-K chunks must fit in the context window alongside the answer.</statement>
+      <rationale>Over-fetching fills the context, leaving no room for the LLM to generate a quality response. Token budget = context_limit - question - system_prompt - answer_budget.</rationale>
+    </rule>
+    <rule>
+      <statement>Filter retrieved chunks below a minimum similarity threshold (e.g., 0.6) before passing to generation.</statement>
+      <rationale>Low-scoring chunks add noise without contributing relevant information and can cause the model to contradict itself.</rationale>
+    </rule>
+  </section>
+
+  <section title="Failure Modes">
+    <antipattern>
+      <description>Fixed-size chunking splits mid-sentence, producing semantically incomplete chunks.</description>
+      <reason>An incomplete chunk embeds the partial thought, not the full concept. Retrieval scores are lower and the retrieved text is harder for the LLM to use.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using pypdf to load scanned PDFs or complex multi-column layouts.</description>
+      <reason>pypdf text extraction fails on scanned images (needs OCR) and produces garbled text on complex layouts. Use a dedicated OCR pipeline or AWS Textract for such sources.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Re-ingesting updated documents without deleting stale chunks first.</description>
+      <reason>Without a delete+re-insert strategy, old chunk versions accumulate. The LLM may retrieve outdated information and produce contradictory answers.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using HyDE (hypothetical document embedding) without accounting for 2x embedding cost per query.</description>
+      <reason>HyDE generates a hypothetical answer then embeds it. This doubles embedding API cost and adds LLM latency on every query. Budget it explicitly.</reason>
+    </antipattern>
+  </section>
+</text>

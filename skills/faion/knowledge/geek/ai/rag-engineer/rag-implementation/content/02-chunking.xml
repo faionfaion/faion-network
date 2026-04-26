@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-chunking" title="Chunking Strategies">
+  <summary>Five chunking strategies: fixed-size, sentence, paragraph, semantic, and Markdown-header with selection criteria.</summary>
+
+  <section title="Strategy Selection">
+    <list>
+      <item>Fixed-size (500 chars, 50 overlap): fast, predictable, sufficient for most prose corpora</item>
+      <item>Sentence-based: better for factual Q&amp;A where answers align with sentence boundaries</item>
+      <item>Paragraph-based: preserves logical units in blog posts and documentation</item>
+      <item>Semantic (embedding-based splits): highest quality, highest cost — use for complex multi-topic docs</item>
+      <item>Markdown-header: natural for technical docs; preserves heading context in each chunk</item>
+    </list>
+  </section>
+
+  <section title="Fixed-Size">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def fixed_size(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+    chunks, start = [], 0
+    while start < len(text):
+        chunks.append(text[start : start + chunk_size])
+        start += chunk_size - overlap
+    return chunks
+]]></code>
+    </example>
+  </section>
+
+  <section title="Sentence-Based">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import nltk
+nltk.download("punkt", quiet=True)
+
+def sentence_based(text: str, max_size: int = 500, min_size: int = 100) -> list[str]:
+    sentences = nltk.sent_tokenize(text)
+    chunks, current = [], ""
+    for s in sentences:
+        if len(current) + len(s) <= max_size:
+            current += s + " "
+        else:
+            if len(current) >= min_size:
+                chunks.append(current.strip())
+            current = s + " "
+    if current.strip():
+        chunks.append(current.strip())
+    return chunks
+]]></code>
+    </example>
+  </section>
+
+  <section title="Markdown-Header">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import re
+
+def markdown_header(text: str) -> list[str]:
+    sections = re.split(r"(^#{1,6}\s+.+$)", text, flags=re.MULTILINE)
+    chunks, header, content = [], "", ""
+    for part in sections:
+        part = part.strip()
+        if not part:
+            continue
+        if re.match(r"^#{1,6}\s+", part):
+            if content:
+                chunks.append(f"{header}\n\n{content}".strip())
+            header, content = part, ""
+        else:
+            content += part + "\n"
+    if content:
+        chunks.append(f"{header}\n\n{content}".strip())
+    return chunks
+]]></code>
+    </example>
+  </section>
+</text>

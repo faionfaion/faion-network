@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-collection-setup" title="Qdrant Collection Setup">
+  <summary>Collection creation with HNSW config, named multi-vector collections, and payload index creation.</summary>
+
+  <section title="Installation and Connection">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# docker run -p 6333:6333 -p 6334:6334 \
+#   -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant
+# pip install qdrant-client
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams, Distance, HnswConfigDiff, OptimizersConfigDiff
+
+# REST (default)
+client = QdrantClient(host="localhost", port=6333)
+
+# gRPC — 2-3x higher throughput; open port 6334 in firewall
+client = QdrantClient(host="localhost", port=6334, prefer_grpc=True, timeout=30)
+
+# Qdrant Cloud
+# client = QdrantClient(url="https://xxx.qdrant.io", api_key="...")
+]]></code>
+      <note>gRPC port 6334 must be explicitly opened; forgetting it causes silent REST-only mode.</note>
+    </example>
+  </section>
+
+  <section title="Single-Vector Collection">
+    <example type="good">
+      <code lang="python"><![CDATA[
+client.create_collection(
+    collection_name="documents",
+    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    hnsw_config=HnswConfigDiff(m=16, ef_construct=100),
+    optimizers_config=OptimizersConfigDiff(indexing_threshold=20000),
+    on_disk_payload=True,  # large payloads on disk, not RAM
+)
+
+info = client.get_collection("documents")
+print(f"Points: {info.points_count}, Indexed: {info.indexed_vectors_count}")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Named Multi-Vector Collection">
+    <example type="good">
+      <code lang="python"><![CDATA[
+client.create_collection(
+    collection_name="multimodal",
+    vectors_config={
+        "text": VectorParams(size=1536, distance=Distance.COSINE),
+        "image": VectorParams(size=512, distance=Distance.COSINE),
+    },
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Payload Indexes">
+    <rule>
+      <statement>Create payload indexes for every metadata field used in query filters before bulk ingestion; building them after is synchronous and stalls queries.</statement>
+      <rationale>Qdrant scans unindexed payload fields linearly. Payload index creation on large collections blocks search while building.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from qdrant_client.models import PayloadSchemaType
+
+client.create_payload_index("documents", field_name="category", field_schema=PayloadSchemaType.KEYWORD)
+client.create_payload_index("documents", field_name="created_at", field_schema=PayloadSchemaType.DATETIME)
+client.create_payload_index("documents", field_name="page", field_schema=PayloadSchemaType.INTEGER)
+client.create_payload_index("documents", field_name="text", field_schema=PayloadSchemaType.TEXT)
+]]></code>
+    </example>
+  </section>
+</text>

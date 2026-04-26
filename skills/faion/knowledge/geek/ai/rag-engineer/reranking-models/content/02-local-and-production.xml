@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-local-and-production" title="Local Cross-Encoders and Production Patterns">
+  <summary>Local cross-encoder usage, model selection guide, LangChain integration, and critical pitfalls for production reranking pipelines.</summary>
+
+  <section title="Local Cross-Encoder">
+    <rule>
+      <statement>Require GPU for cross-encoder production throughput; CPU inference on MiniLM-L6 is ~30ms/pair, which becomes 1500ms for 50 candidates.</statement>
+      <rationale>Cross-encoders score each query-document pair independently. 50 pairs at 30ms each exceed typical P99 SLAs on CPU.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from sentence_transformers import CrossEncoder
+import numpy as np
+
+model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+
+def cross_encoder_rerank(query: str, documents: list[str], top_k: int = 5) -> list[dict]:
+    pairs = [[query, doc] for doc in documents]
+    scores = model.predict(pairs, batch_size=32)
+    top_idx = np.argsort(scores)[::-1][:top_k]
+    return [{"document": documents[i], "score": float(scores[i]), "index": i} for i in top_idx]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Model Selection">
+    <list>
+      <item>Cohere rerank-english-v3.0: English, high quality, 100-300ms, $$$</item>
+      <item>Jina jina-reranker-v2-base-multilingual: multilingual, balanced, 150-400ms, $$</item>
+      <item>Voyage rerank-2: domain-specific, 100-300ms, $$$</item>
+      <item>cross-encoder/ms-marco-MiniLM-L-6-v2: local, small, 20-50ms GPU, good quality</item>
+      <item>cross-encoder/ms-marco-MiniLM-L-12-v2: local, medium, 40-100ms GPU, better quality</item>
+      <item>cross-encoder/ms-marco-electra-base: local, large, 80-200ms GPU, best local quality</item>
+    </list>
+  </section>
+
+  <section title="LangChain Integration">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CohereRerank
+
+base_retriever = vector_store.as_retriever(search_kwargs={"k": 50})
+compressor = CohereRerank(cohere_api_key="your-key", model="rerank-english-v3.0", top_n=5)
+compression_retriever = ContextualCompressionRetriever(base_compressor=compressor, base_retriever=base_retriever)
+docs = compression_retriever.get_relevant_documents("What is the capital of France?")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Pitfalls">
+    <antipattern>
+      <description>Comparing relevance scores across different reranking providers (e.g., Cohere 0.9 vs local cross-encoder 0.9).</description>
+      <reason>Reranker output scores are not calibrated probabilities. The same numeric value from two providers carries different semantics. Use rankings, not absolute scores, for cross-provider comparisons.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Relying on reranking to surface a document not retrieved in the first stage.</description>
+      <reason>Rerankers only re-order the candidate set returned by ANN. If the relevant document is not in the top-50 candidates, reranking cannot surface it.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Template Reference">
+    <reference path="templates/reranker_service.py">RerankerService with cross-encoder + Cohere dispatch, fallback, and FastAPI endpoint</reference>
+  </section>
+</text>
