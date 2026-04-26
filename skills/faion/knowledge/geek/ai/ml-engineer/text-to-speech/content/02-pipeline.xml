@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-pipeline" title="Text-to-Speech: Pipeline and Text Normalization">
+  <summary>Text normalization rules, chunking for streaming, SSML usage, audio format selection, and production integration patterns.</summary>
+
+  <section title="Text Normalization">
+    <rule>
+      <statement>Normalize text before sending to TTS: expand abbreviations, convert numbers to words, spell out acronyms, remove markdown formatting. Do not send raw LLM output directly to TTS — markdown asterisks, code blocks, and URL fragments produce audible artifacts.</statement>
+      <rationale>TTS models convert text to phonemes. Symbols like *, #, `, and [] have no phoneme mapping — the model either skips them silently or reads them as "asterisk", "hashtag", "backtick". URLs read as individual characters. Normalization produces natural speech from any text source.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import re
+
+def normalize_for_tts(text: str) -> str:
+    """Clean LLM output for TTS consumption."""
+    # Strip markdown formatting
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # **bold**
+    text = re.sub(r'\*(.*?)\*', r'\1', text)        # *italic*
+    text = re.sub(r'`[^`]+`', '', text)             # `code`
+    text = re.sub(r'```[\s\S]*?```', '', text)       # code blocks
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # [text](url)
+
+    # Expand common abbreviations
+    abbreviations = {
+        "e.g.": "for example",
+        "i.e.": "that is",
+        "vs.": "versus",
+        "API": "A P I",
+        "URL": "U R L",
+    }
+    for abbr, expansion in abbreviations.items():
+        text = text.replace(abbr, expansion)
+
+    # Collapse multiple spaces/newlines
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Chunking for Streaming">
+    <rule>
+      <statement>Chunk text at sentence boundaries for streaming TTS. Send chunks of 1-3 sentences to the TTS API. Do not send the entire response as one string — this blocks audio output until the full request is processed. Do not chunk mid-word or mid-number — it causes pronunciation artifacts.</statement>
+      <rationale>TTS APIs buffer the full input before generating audio for the first chunk. Sending a 500-word response as one request results in 2-5 seconds of processing before the first audio byte. Sentence-level chunking starts audio within 100-200ms while the rest continues processing. Mid-word chunking creates split-phoneme artifacts that sound robotic.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import re
+from typing import Generator
+
+def split_into_chunks(text: str, max_sentences: int = 2) -> Generator[str, None, None]:
+    """Split text at sentence boundaries for streaming TTS."""
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+')
+    sentences = sentence_pattern.split(text.strip())
+
+    buffer = []
+    for sentence in sentences:
+        buffer.append(sentence)
+        if len(buffer) >= max_sentences:
+            yield ' '.join(buffer)
+            buffer = []
+    if buffer:
+        yield ' '.join(buffer)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Audio Format Selection">
+    <rule>
+      <statement>Use mp3_44100_128 for web/browser playback, pcm_16000 for telephony/voice agents (8kHz for PSTN), and mp3_44100_192 for podcast/narration archiving. Never use wav for streaming — uncompressed audio at 44100Hz requires 10x more bandwidth than mp3.</statement>
+      <rationale>Browser Audio API plays MP3 natively. Telephony systems (Twilio, SIP) expect PCM at 8000Hz or 16000Hz — sending MP3 requires transcoding that adds latency. Podcast archives benefit from 192kbps for long-term quality preservation.</rationale>
+    </rule>
+  </section>
+
+  <section title="SSML Usage">
+    <rule>
+      <statement>Use SSML only when default prosody is insufficient for the use case (e.g., reading phone numbers, adding pauses for slide transitions). For conversational voice agents, SSML adds complexity without quality benefit — modern neural TTS models infer prosody from punctuation.</statement>
+      <rationale>SSML adds markup overhead and complicates text normalization. Modern TTS models (ElevenLabs, OpenAI) are trained on natural text and infer pauses from periods, emphasis from word choice. SSML is most useful for structured content (phone numbers, addresses, dates) where explicit prosody control produces clearer speech.</rationale>
+    </rule>
+    <note>ElevenLabs does not support SSML. Use Azure Neural TTS or Google Cloud TTS when SSML is required.</note>
+  </section>
+
+  <section title="Caching Architecture">
+    <rule>
+      <statement>Cache TTS outputs with key = sha256(text + voice_id + model_id + output_format). Store audio in object storage (S3, GCS). Cache TTL: permanent for static phrases (UI strings, error messages), 24h for dynamic content. Serve from CDN to minimize latency on cache hits.</statement>
+      <rationale>TTS caching eliminates the most expensive and latency-sensitive part of the pipeline for repeated phrases. A CDN-served cached audio file has sub-50ms latency vs 75-300ms for a live TTS API call. For UI strings and error messages that never change, permanent caching is safe and eliminates 100% of those API calls.</rationale>
+    </rule>
+  </section>
+</text>

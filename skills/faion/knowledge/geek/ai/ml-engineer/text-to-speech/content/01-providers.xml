@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-providers" title="Text-to-Speech: Provider Comparison and Selection">
+  <summary>Provider comparison (ElevenLabs, OpenAI, Google, Azure, Kokoro), latency benchmarks, pricing, and voice quality selection rules.</summary>
+
+  <section title="Provider Selection">
+    <rule>
+      <statement>Use ElevenLabs Flash v2.5 for production applications requiring both quality and low latency (75ms TTFB). Use OpenAI TTS-1-HD when already inside the OpenAI ecosystem and quality is prioritized over cost. Use Kokoro (open source) for offline, privacy-sensitive, or budget-critical deployments.</statement>
+      <rationale>ElevenLabs Flash v2.5 achieves 75ms time-to-first-byte with quality matching older non-flash models. OpenAI TTS-1-HD is simpler to integrate when already calling OpenAI APIs but costs $30/1M chars vs ElevenLabs' $11/1M chars at scale. Kokoro (Apache 2.0) runs locally with no API cost, acceptable for batch generation where latency is not critical.</rationale>
+    </rule>
+    <list>
+      <item>ElevenLabs Flash v2.5: 75ms TTFB, $11/1M chars, 29 languages, best quality+speed trade-off</item>
+      <item>ElevenLabs Turbo v2.5: 110ms TTFB, $11/1M chars, 32 languages, slightly better naturalness than Flash</item>
+      <item>OpenAI TTS-1: 200ms TTFB, $15/1M chars, 57 languages, good for multilingual apps</item>
+      <item>OpenAI TTS-1-HD: 300ms TTFB, $30/1M chars, highest OpenAI quality, use for podcast/narration</item>
+      <item>Google Cloud TTS (WaveNet): 250ms TTFB, $16/1M chars, 220+ voices, strong multilingual</item>
+      <item>Azure Neural TTS: 150ms TTFB, $15/1M chars, 400+ voices, SSML support, enterprise SLAs</item>
+      <item>Kokoro (local): 50ms TTFB on GPU, $0 API cost, English only (v0.19), Apache 2.0</item>
+    </list>
+  </section>
+
+  <section title="Streaming vs Non-Streaming">
+    <rule>
+      <statement>Always use streaming TTS for voice agents and interactive applications. Request audio chunks in 50-100ms chunks and begin playback on the first chunk. Do not wait for the full audio to be generated before playback begins.</statement>
+      <rationale>Full-audio-wait adds 1-5 seconds of silence before the user hears anything. Streaming TTS with 75ms TTFB means the user hears the first syllable within 75ms+network latency. For voice agent conversations, this is the difference between natural conversation flow and an awkward pause.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from elevenlabs.client import ElevenLabs
+from elevenlabs import stream
+
+client = ElevenLabs()
+
+def speak_streaming(text: str, voice_id: str = "JBFqnCBsd6RMkjVDRZzb") -> None:
+    """Stream audio directly to speakers with minimal latency."""
+    audio_stream = client.text_to_speech.stream(
+        voice_id=voice_id,
+        text=text,
+        model_id="eleven_flash_v2_5",
+        output_format="mp3_44100_128",
+    )
+    stream(audio_stream)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Voice Cloning">
+    <rule>
+      <statement>Instant Voice Cloning requires 1-5 minutes of clean audio. Professional Voice Cloning requires 30+ minutes. Do not use instant cloning for production voices — the quality degrades on edge pronunciations and emotional range. Use professional cloning for production, instant cloning for demos and prototyping.</statement>
+      <rationale>Instant cloning captures timbre and basic cadence but not the full expressiveness of the speaker. On non-standard pronunciations (proper nouns, technical terms) instant clones produce artifacts. Professional cloning with 30+ minutes captures prosody patterns that make the voice indistinguishable from the original across diverse text.</rationale>
+    </rule>
+    <antipattern>
+      <description>Cloning voices without explicit written consent from the voice owner.</description>
+      <reason>Voice cloning without consent violates GDPR Article 9 (biometric data), CCPA biometric provisions, and most major platform terms of service. ElevenLabs and other providers require voice owner consent verification. Always obtain and store written consent with timestamp before cloning any voice for production use.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cost Management">
+    <rule>
+      <statement>Cache TTS outputs by content hash. A typical application re-generates the same phrases (greetings, confirmations, error messages) thousands of times per day. Cache the audio file, serve it from storage — never call the TTS API for identical text twice.</statement>
+      <rationale>TTS cost is proportional to character count. A "Hello, how can I help you today?" greeting re-generated 10,000 times per month costs $0.33/month at ElevenLabs pricing. A content-hash cache eliminates 40-70% of TTS API calls in production applications with predictable response patterns.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-production" title="Reasoning-First: Production Cost Control and Gotchas">
+  <summary>Cost guards, caching strategy, human-in-loop requirements, and reasoning-specific failure modes in production.</summary>
+
+  <section title="Cost Control">
+    <rule>
+      <statement>Add per-call cost guards in agent loops: o3 with reasoning_effort=high can cost $5-15 per call. Set a hard budget per reasoning call and abort if the estimated token count exceeds it.</statement>
+      <rationale>Reasoning tokens are billed as output tokens. A single reasoning call with a large thinking budget and complex task can consume the monthly budget of a small team. Cost guards prevent runaway spending in automated agent loops.</rationale>
+    </rule>
+    <rule>
+      <statement>Cache reasoning outputs for identical inputs using content hash as the key. Reasoning tokens are non-deterministic even at temperature=0 — cache the final answer, not the reasoning trace.</statement>
+      <rationale>Reasoning calls are expensive. Identical tasks in agent loops (same planning step, same verification) should not re-invoke the reasoning model. Cache the final answer by input hash; discard the reasoning trace after extracting the answer.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human-in-Loop Requirements">
+    <rule>
+      <statement>Gate any irreversible action (deploy, delete, send, payment) that follows from reasoning output behind a human review checkpoint. Reasoning models can produce confident-sounding but incorrect reasoning chains.</statement>
+      <rationale>Extended thinking is not verified reasoning — it is a prediction of what reasoning would look like. Models hallucinate confidently-sounding logic chains just as they hallucinate facts. Human review prevents automated execution of plausible-but-wrong reasoning.</rationale>
+    </rule>
+  </section>
+
+  <section title="Provider-Specific Gotchas">
+    <list>
+      <item>Claude Extended Thinking: cannot be combined with system prompt caching in the same request (as of 2026-01); check API changelog</item>
+      <item>Claude Extended Thinking: cannot be interrupted mid-thought; no streaming of reasoning tokens to the user; set timeout &gt;120s in agent harness</item>
+      <item>o3/o4 tool use: batch tool calls per reasoning step to reduce round-trips; interleaved thinking with tool calls has higher latency per tool</item>
+      <item>DeepSeek R1: think blocks may contain PII echoed from input — scrub before logging</item>
+      <item>o3/o4: reasoning tokens are non-deterministic even at temperature=0; don't diff raw reasoning between runs</item>
+    </list>
+    <antipattern>
+      <description>Using reasoning models for high-throughput classification (thousands of calls per minute).</description>
+      <reason>Reasoning models have higher latency (5-30s per call) and cost (10-50x). At high throughput, reasoning cost becomes prohibitive and latency makes the system unusable. Use standard models with classification prompts; escalate to reasoning models only for edge cases flagged by the classifier.</reason>
+    </antipattern>
+  </section>
+</text>

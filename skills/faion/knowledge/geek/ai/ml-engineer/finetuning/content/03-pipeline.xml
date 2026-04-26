@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-pipeline" title="Fine-Tuning: Data Pipeline and Validation">
+  <summary>Data format specifications, JSONL validation, deduplication, train/val split, data augmentation, and common data quality pitfalls.</summary>
+
+  <section title="Data Format">
+    <rule>
+      <statement>Use JSONL format with one JSON object per line. Each object must have "messages" key with a list of role/content dicts (system, user, assistant). Validate the schema before training — a single malformed line causes training failure after hours of GPU time.</statement>
+      <rationale>JSONL is the standard format accepted by all major fine-tuning frameworks and OpenAI's fine-tuning API. Schema validation upfront catches malformed examples (missing fields, wrong types, empty content) before they cause cryptic mid-training crashes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json
+from pathlib import Path
+
+def validate_jsonl(path: str, required_roles: tuple = ("user", "assistant")) -> None:
+    """Validate fine-tuning dataset format before training."""
+    errors = []
+    with open(path) as f:
+        for i, line in enumerate(f, 1):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as e:
+                errors.append(f"Line {i}: invalid JSON: {e}")
+                continue
+
+            if "messages" not in obj:
+                errors.append(f"Line {i}: missing 'messages' key")
+                continue
+
+            roles = [m.get("role") for m in obj["messages"]]
+            for role in required_roles:
+                if role not in roles:
+                    errors.append(f"Line {i}: missing required role '{role}'")
+
+            for j, msg in enumerate(obj["messages"]):
+                if not msg.get("content", "").strip():
+                    errors.append(f"Line {i}, message {j}: empty content")
+
+    if errors:
+        raise ValueError(f"Dataset validation failed:\n" + "\n".join(errors[:20]))
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Train/Validation Split">
+    <rule>
+      <statement>Use 90/10 train/validation split for datasets under 10K examples. Use 95/5 for datasets over 10K. Stratify the split by task category or difficulty if you have those labels. Never use temporal order as the split criterion — it causes distribution mismatch.</statement>
+      <rationale>Validation set is used for early stopping and eval gating. Too small a validation set (under 50 examples) produces high-variance metrics that cannot reliably detect overfitting. Too large wastes training data. Stratified split ensures all task categories appear in both splits.</rationale>
+    </rule>
+    <rule>
+      <statement>Deduplicate training examples using exact hash match before train/val split. Remove near-duplicates (cosine similarity above 0.98) using embedding comparison on examples with more than 1,000 examples. Deduplication before splitting prevents data leakage from train to validation.</statement>
+      <rationale>Duplicate training examples inflate perceived training loss convergence and cause overconfident validation metrics when the duplicate appears in both splits. Near-deduplication removes paraphrased examples that teach the model the same pattern, wasting capacity.</rationale>
+    </rule>
+  </section>
+
+  <section title="Data Augmentation">
+    <rule>
+      <statement>Augment fine-tuning data by: (1) paraphrasing user turns with an LLM to create query variation, (2) generating harder negative examples (plausible wrong answers) for preference datasets, (3) back-translating non-English examples. Do not augment assistant turns — preserving output format is critical.</statement>
+      <rationale>User turn variation teaches the model to handle diverse phrasings of the same intent. Assistant turn augmentation introduces format drift and quality degradation. Negative examples for DPO datasets improve contrastive learning signal but must be plausible, not obviously wrong.</rationale>
+    </rule>
+    <antipattern>
+      <description>Generating synthetic training data entirely from the same model you are fine-tuning.</description>
+      <reason>This creates a circular training loop: the model learns to imitate itself, amplifying existing patterns and errors rather than correcting them. Use a stronger or different model to generate synthetic data, then validate the outputs before including them in the training set.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Data Format Reference">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a customer support agent for Acme Corp. Answer questions about products and policies."
+    },
+    {
+      "role": "user",
+      "content": "What is your return policy?"
+    },
+    {
+      "role": "assistant",
+      "content": "Our return policy allows returns within 30 days of purchase with original receipt. Items must be unused and in original packaging. Contact support@acme.com to initiate a return."
+    }
+  ]
+}
+      ]]></code>
+    </example>
+  </section>
+</text>
