@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules-and-antipatterns" title="Conversion Tracking Rules and Antipatterns">
+  <summary>Event registry discipline, PII restrictions, currency unit consistency, consent gating, and server-side reconciliation rules.</summary>
+
+  <section title="Event Registry">
+    <rule>
+      <statement>Maintain a versioned event registry (YAML or JSON) checked into the repo; treat event schema changes like API changes — bump a version, emit a deprecation alias for one release before removing the old name.</statement>
+      <rationale>Renaming events silently breaks all dashboards, alerts, and ML models that depend on them. A registry with CI validation prevents unregistered events from reaching production.</rationale>
+    </rule>
+    <rule>
+      <statement>Use snake_case for all event names and property names without exception; never mix camelCase mid-project.</statement>
+      <rationale>Inconsistent casing creates duplicate events in analytics tools (sign_up vs signUp vs SignUp are three separate events), inflating acquisition counts and breaking funnel steps.</rationale>
+    </rule>
+    <reference path="templates/validate-events.py">CI script that fails if any tracking call uses an unregistered event name</reference>
+  </section>
+
+  <section title="Currency and Value">
+    <rule>
+      <statement>Store all monetary values as integer cents in a single canonical field (`value_cents`); document this unit at the top of the event registry and in every code comment that touches the field.</statement>
+      <rationale>Mixed dollar/cent values in purchase events corrupt revenue reporting silently — the error is invisible until a discrepancy is noticed in monthly reconciliation.</rationale>
+    </rule>
+  </section>
+
+  <section title="PII and Consent">
+    <rule>
+      <statement>Never include email addresses, full names, or other directly identifying fields as event properties; pair each conversion with user-property updates (plan, signup_source) for cohorting instead.</statement>
+      <rationale>PII in event streams violates GDPR/CCPA. User properties stored in the analytics platform are separate from raw events and provide segmentation without raw PII exposure in event logs.</rationale>
+    </rule>
+    <rule>
+      <statement>Gate all analytics dispatches behind a CMP consent check; do not fire any events before consent state is resolved.</statement>
+      <rationale>Firing before consent state is resolved is a GDPR violation. Events from unconsented sessions must fall back to aggregate-only metrics without user identifiers.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Tracking purchase events only client-side (browser JavaScript).</description>
+      <reason>Client-side purchase events are the most fraud-prone and lossy event type — ad blockers, ITP, and tab-close race conditions cause 20-40% loss. Use Stripe webhook server-side events as the authoritative source.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Adding 10 optional properties to every event "for completeness."</description>
+      <reason>Downstream warehouses charge per row times column count. Sparse columns with mostly-null values inflate cost without analytical value.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Firing tracking events in test environments without a production guard.</description>
+      <reason>Test runs burn through GA4 hit quotas and pollute conversion data with automated traffic, skewing funnel metrics.</reason>
+    </antipattern>
+  </section>
+</text>
