@@ -11,6 +11,7 @@
 - refactor: 8/8 methodologies in pm-agile migrated to new shape (batch: gitlab-boards, pm-tools-overview, value-stream-management, jira-workflow-management, raci-matrix, tool-migration-basics, kanban-scaled-agile-ceremonies, azure-devops-boards)
 - refactor: 8/8 methodologies migrated to new shape (batch: scope-management, earned-value-management, benefits-realization, stakeholder-register, risk-management, change-control, wbs-creation, stakeholder-engagement-advanced)
 - refactor: 8/8 methodologies migrated to new shape (batch: cost-estimation, agile-ceremonies-setup, procurement-management, lessons-learned, communications-management, hybrid-delivery, cross-tool-migration, pm-certification-alignment-2026)
+- refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
 - agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).

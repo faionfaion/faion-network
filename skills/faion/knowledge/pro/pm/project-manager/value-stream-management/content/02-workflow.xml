@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="Value Stream Management — Agentic Workflow and Subagents">
+  <summary>Flow-instrumenter and bottleneck-analyzer pipeline, prompt patterns, and AI-specific failure modes in VSM automation.</summary>
+
+  <section title="Agentic VSM Pipeline">
+    <rule>
+      <statement>A flow-instrumenter subagent maps the actual value stream by tracing IDs across tools (issue → branch → PR → deploy → incident → support ticket), normalizes timestamps into stream stages, and emits per-stage metrics.</statement>
+      <rationale>Manual cross-tool ID linking is error-prone and stale within a week; automated tracing from authoritative event logs is the only way to maintain a live VSM.</rationale>
+    </rule>
+    <p>A DORA collector runs daily on git + deploy logs. A bottleneck-analyzer applies Theory of Constraints weekly, flags the constraint stage, and proposes 1-3 experiments. Humans choose which experiment to run; agents track its effect.</p>
+    <reference path="templates/flow-item.yaml">Schema for a single traced work item across VSM stages</reference>
+    <reference path="templates/dora-quick.sh">Bash script to compute last-30-day DORA from git + deploy log</reference>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>flow-instrumenter — wires Jira/Linear, GitHub, deploy logs, Sentry; traces item IDs cross-tool; produces stream JSON per work item.</item>
+      <item>dora-collector — daily DORA: deploy frequency, lead time for changes, change failure rate, MTTR from git + PagerDuty.</item>
+      <item>bottleneck-analyzer — applies Little's Law; identifies constraint by highest (cycle time × WIP); requires at least 50 items per work type before declaring a bottleneck.</item>
+      <item>experiment-tracker — A/B's a process change (e.g., trunk-based vs. feature-branch) on flow metrics; tracks before/after lead time distribution.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Flow-instrumenter prompt — skips items with missing stages rather than hallucinating timestamps:</note>
+      <code lang="text"><![CDATA[
+You are a flow-instrumenter. Trace work item {issue_id} across tools using
+mapping {tool_id_links.yaml}. Emit JSON {item_id, stages: [{name, enter_ts,
+exit_ts, blocked_h, type}], outcome: shipped|cancelled, work_type: feature|
+defect|risk|debt}. Skip items with > 1 missing stage — do not interpolate.
+All timestamps in UTC ISO 8601.
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>Bottleneck-analyzer prompt — requires minimum sample before declaring constraint:</note>
+      <code lang="text"><![CDATA[
+You are a bottleneck-analyzer. Given last 90 days of flow data {flow.json},
+return: (1) constraint stage by Little's Law (highest cycle time x WIP),
+(2) flow distribution across work types, (3) top 3 experiments to elevate
+the constraint, ranked by expected throughput lift / cost.
+Require >= 50 items per work type before declaring a bottleneck.
+Flag insufficient data explicitly rather than guessing.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent hallucinates ID links across tools using loose regex matching.</description>
+      <reason>ID linking is the failure point; agents using fuzzy matching will connect unrelated items, producing fabricated flow metrics. Require explicit referenced-by chains only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Timezone bugs in lead-time calculation produce negative or inflated durations.</description>
+      <reason>GitLab, GitHub, Jira, and PagerDuty return timestamps in different timezone representations; force UTC normalization before any arithmetic.</reason>
+    </antipattern>
+    <antipattern>
+      <description>AI-generated PRs inflate Deployment Frequency without raising Earned Value.</description>
+      <reason>Bot PRs skew throughput metrics; tag bot commits and report human/bot split separately to prevent gaming of DORA scores.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Constraint declared after 5 items in a work type.</description>
+      <reason>Small samples produce statistically meaningless bottleneck declarations that flip month-to-month. Require at least 50 items per work type before applying Little's Law.</reason>
+    </antipattern>
+    <list>
+      <item>Webhook-driven instrumentation drops events under load; reconcile with periodic full pulls.</item>
+      <item>The 5th DORA metric (Reliability) is org-defined — never let an agent pick the SLO target unilaterally.</item>
+      <item>Mandatory human checkpoints: experiment selection, SLO changes, constraint declaration that triggers org-level process changes.</item>
+    </list>
+  </section>
+</text>

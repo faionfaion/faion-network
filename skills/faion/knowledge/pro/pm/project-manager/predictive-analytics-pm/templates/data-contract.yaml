@@ -1,0 +1,45 @@
+# data-contract.yaml — feature contract schema for the data-contract agent.
+# Emitted by the data-contract-agent; reviewed by humans before training begins.
+# Source: predictive-analytics-pm methodology.
+
+features:
+  - name: planned_duration_days
+    type: numeric
+    source_field: custom_field_planned_days
+    nullable: false
+    notes: "Baseline planned duration at project kickoff; must not be updated mid-project."
+
+  - name: owner_change_count
+    type: numeric
+    source_field: derived_from_history
+    nullable: false
+    notes: "Number of times the issue assignee changed; high values correlate with slip."
+
+  - name: comment_cadence_7d
+    type: numeric
+    source_field: derived_from_comments
+    nullable: true
+    notes: "Comment count in last 7 days; proxy for active attention."
+
+  - name: issue_type
+    type: categorical
+    source_field: issuetype
+    nullable: false
+    notes: "Feature|Bug|Task|Epic — split models per type for best results."
+
+target:
+  name: schedule_slip_days
+  type: regression
+  rationale: "Continuous slip in calendar days from originally planned completion."
+
+exclusions:
+  - actual_cost         # target-adjacent; leakage risk
+  - vendor_name         # PII / competitive sensitivity
+  - customer_id         # PII
+  - salary_band         # PII
+
+data_quality_rules:
+  - "status not in {Open, In Progress, Done, Closed} → flag for review"
+  - "actual_start > actual_end → drop row"
+  - "planned_duration_days <= 0 → drop row"
+  - "slip_days < -365 OR slip_days > 1825 → cap and flag as outlier"

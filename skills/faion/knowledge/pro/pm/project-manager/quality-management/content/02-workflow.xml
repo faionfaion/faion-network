@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="Quality Management — Agentic Workflow and Subagents">
+  <summary>DoD-validator and metric-collector agent pipeline, defect triage prompt pattern, and AI-specific failure modes in quality gate automation.</summary>
+
+  <section title="Agentic Quality Pipeline">
+    <rule>
+      <statement>Run quality gates twice: pre-commit (fast — lint, format) and pre-merge (full — tests, coverage, security scan); do not duplicate slow checks in both phases.</statement>
+      <rationale>Duplicating slow checks in pre-commit kills developer velocity; duplicating only in pre-merge creates late-stage surprises. The split is the correct trade-off.</rationale>
+    </rule>
+    <p>A quality-auditor subagent reads changed files in a PR, applies the DoD checklist, runs static analysis, and posts a structured review. A metric-collector aggregates coverage, defect rate, escape rate, and MTTR into a weekly dashboard. Human-in-loop is required for severity classification and any waiver decision.</p>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>dod-validator — checks PR against DoD line items from dod.yaml; posts pass/fail per item with evidence link; blocks merge if any must item fails.</item>
+      <item>quality-metric-collector — pulls coverage, lint, defect counts, MTTR; emits dashboard JSON for trend visualization.</item>
+      <item>defect-triager — drafts severity + priority with one-sentence rationale citing user impact, frequency, workaround; awaits human confirmation before assigning.</item>
+      <item>quality-trend-analyst — weekly run; identifies regressions in any metric; opens incident if SPC control limits breached.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>DoD-validator prompt — blocks on must items, requires evidence links:</note>
+      <code lang="text"><![CDATA[
+You are a dod-validator subagent. Apply DoD {dod.yaml} to PR diff {diff}.
+For each item return: {item_id, status: pass|fail|n/a, evidence_link}.
+Block merge if any "must" item fails. Do not invent evidence.
+For "n/a" items: flag for human approval — never auto-skip.
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>Defect-triager prompt — structured severity output awaiting human confirmation:</note>
+      <code lang="text"><![CDATA[
+You are a defect-triager. Given bug report {report}, draft:
+- severity: Critical|High|Medium|Low
+- priority: P1|P2|P3
+- rationale: one sentence citing user impact, frequency, workaround availability
+- similar_issue_ids: [ ... ]
+Output JSON. Wait for human confirm before assigning.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent writes assertion-free tests to hit the coverage percentage target.</description>
+      <reason>Coverage tools measure lines executed, not assertion correctness. Gate on mutation score (mutmut, stryker) for critical modules to detect tautological tests.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Defect severity consistently classified as "Medium" by the triager.</description>
+      <reason>Medium is the safest answer for an LLM avoiding both over- and under-escalation. Calibrate with rubric examples and force evidence citation per severity choice.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent auto-skips "n/a" DoD items without human approval.</description>
+      <reason>N/a bypass is the most exploited DoD escape hatch; require explicit human approval for any n/a tag to preserve the gate's integrity.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Static analyzer run produces 10,000 legacy issues; agent attempts to fix all in one PR.</description>
+      <reason>Bulk fixes in a single PR are impossible to review and routinely introduce regressions. Chunk by file or module with incremental PRs.</reason>
+    </antipattern>
+    <list>
+      <item>For agent-written code: require 90%+ coverage, mutation testing on critical modules, no warning suppressions without explanatory comment.</item>
+      <item>Quality cost is U-shaped: too little = rework, too much = lost velocity. Re-tune gates quarterly using lead-time and defect data.</item>
+      <item>Sentry/BugSnag rate-limits can drop events during incident spikes; do not trust raw counts for SLO breach declarations.</item>
+    </list>
+  </section>
+</text>

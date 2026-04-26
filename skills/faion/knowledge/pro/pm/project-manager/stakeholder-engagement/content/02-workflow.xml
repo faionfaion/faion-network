@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="Stakeholder Engagement — Agentic Workflow and Subagents">
+  <summary>Register-as-code pipeline, subagent roles, prompt pattern for the register-curator, and AI-specific failure modes.</summary>
+
+  <section title="Register as Code">
+    <rule>
+      <statement>Store the register in git (YAML), not a wiki — diffs become the engagement history; CODEOWNERS gate sponsor sign-off on attitude changes.</statement>
+      <rationale>Wiki pages have no diff history, no access control per field, and no CI integration. Git provides all three and makes the history auditable.</rationale>
+    </rule>
+    <p>The register (stakeholders/register.yaml) feeds a generated engagement-plan.md. The plan never auto-sends to executives — it drafts; humans deliver.</p>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>register-curator-agent (sonnet): ingests org chart, kickoff transcripts, RFP; emits patch with new/changed entries; never overwrites existing entries silently.</item>
+      <item>attitude-triangulator-agent (sonnet): cross-references self-reported attitude against meeting attendance, response time, escalations; flags drift.</item>
+      <item>engagement-planner-agent (sonnet): converts register quadrants into Step-5 engagement table with cadence, channel, owner, content.</item>
+      <item>salience-scorer-agent (opus): applies Mitchell-Agle-Wood (power × legitimacy × urgency); identifies definitive stakeholders requiring daily attention.</item>
+      <item>engagement-sentiment-agent (sonnet): listens to feedback channels and updates attitude column with evidence trail.</item>
+      <item>password-scrubber-agent: runs over engagement docs before commit; the register frequently leaks salaries, customer names, candid commentary.</item>
+    </list>
+  </section>
+
+  <section title="Register-Curator Prompt Pattern">
+    <example type="good">
+      <note>Strict JSON patch — prevents overwrite, enforces evidence requirement:</note>
+      <code lang="text"><![CDATA[
+You are the register-curator agent. Inputs:
+1. Kickoff transcript / charter / RFP.
+2. Org-chart export (names, titles, reporting lines).
+3. Existing register (may be empty).
+
+For each named or implied party, emit STRICT JSON patch:
+{ "action": "add|update",
+  "id": "S-NN",
+  "name": "...",
+  "category": "Sponsor|User|Customer|Team|Regulator|Supplier|Influencer",
+  "power": "H|M|L",
+  "interest": "H|M|L",
+  "attitude": "+|0|-|unknown",
+  "quadrant": "Manage Closely|Keep Satisfied|Keep Informed|Monitor",
+  "evidence": ["quote or org-chart line"],
+  "cadence": "daily|weekly|biweekly|monthly|quarterly|release",
+  "channel": "1:1|email|digest|meeting|portal",
+  "owner": "<role>",
+  "rationale": "<= 2 sentences" }
+
+Rules: do not invent people. attitude defaults to "unknown" without evidence.
+quadrant must follow power x interest unless override rationale provided.
+Flag hidden stakeholders (legal, infosec, works council, procurement,
+downstream consumers) in suggested_to_verify.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent invents stakeholder names not found in org-chart or charter inputs.</description>
+      <reason>LLMs hallucinate plausible-sounding personas; always seed with real org-chart export and reject any name not in the source list unless flagged suggested_to_verify.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent sends engagement communications directly to executives without human review.</description>
+      <reason>Auto-send is forbidden to executives, regulators, customers, board. Agent drafts; sponsor or PM approves and sends.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bulk reclassification of stakeholder quadrants in a single agent run.</description>
+      <reason>Cap agent edits to 5 stakeholders per run and require human review on the diff — bulk changes destroy the evidence trail and can reverse carefully built relationships.</reason>
+    </antipattern>
+    <list>
+      <item>Mandatory human checkpoints: adding a stakeholder, changing attitude, escalating to sponsor, dropping a stakeholder from active engagement.</item>
+      <item>Stakeholder data is regulated PII (GDPR Art. 9 if attitude implies political opinion). Never send the register to a third-party model without DPA.</item>
+      <item>Registers with more than 50 stakeholders blow context — page by category (Internal/External/Regulator) and operate on slices.</item>
+    </list>
+  </section>
+</text>
