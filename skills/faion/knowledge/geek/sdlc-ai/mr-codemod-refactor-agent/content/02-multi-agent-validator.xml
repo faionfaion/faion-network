@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-multi-agent-validator" title="Architect → Migration → Validator + Idempotence Gate">
+  <summary>Split the refactor into three roles; the codemod must be idempotent; CI re-runs the codemod and fails on any new diff.</summary>
+
+  <section title="Three-role split">
+    <p>One agent that "does the migration" produces unreliable output. Splitting into Architect (plans the rename and the codemod), Migration (writes the codemod and runs it), and Validator (re-runs codemod on the produced branch and asserts no diff) produces a verifiable pipeline.</p>
+
+    <rule testable="true">
+      <statement>Cross-cutting refactor PRs MUST be produced by a three-role pipeline: (a) Architect agent emits a written migration plan listing files to touch and out-of-scope items; (b) Migration agent writes a re-runnable codemod and runs it; (c) Validator agent re-runs the codemod on the produced branch and asserts `git diff --quiet`. The Validator MUST run inside CI, not only locally.</statement>
+      <rationale>The idempotence assertion (`re-run produces no diff`) catches every failure mode: a missed call-site, a wrong AST matcher, a hand-edit that broke determinism. Augment Code's multi-file refactor study and OpenAI's sandboxed migration cookbook both adopt this pipeline.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/refactor-validator.yml
+name: refactor-validator
+on:
+  pull_request:
+    paths: ['codemods/**', '**/*.ts', '**/*.tsx']
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx codemod run ${{ github.event.pull_request.head.ref }}
+      - run: |
+          if ! git diff --quiet; then
+            echo "Codemod is not idempotent — re-run produced changes"
+            git diff
+            exit 1
+          fi
+      ]]></code>
+      <note>Idempotence gate fails the PR if a re-run produces any diff.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# No validator stage; codemod ran once and was hand-edited
+gh pr create --title "refactor: rename"
+      ]]></code>
+      <note>No proof the codemod is re-runnable; future maintainers cannot reproduce the migration.</note>
+    </example>
+
+    <antipattern>
+      <description>Hand-editing files inside a codemod PR after the codemod ran.</description>
+      <reason>Breaks idempotence — a re-run regenerates the original; the manual edit is silently dropped on the next migration.</reason>
+    </antipattern>
+
+    <reference path="templates/migration-pr-body.md">PR body skeleton with codemod stats, risk, manual-touch list.</reference>
+    <reference href="https://www.augmentcode.com/learn/automate-multi-file-code-refactoring-with-ai-agents-a-step-by-step-guide">Augment Code — multi-file refactor with AI agents.</reference>
+    <reference href="https://developers.openai.com/cookbook/examples/agents_sdk/sandboxed-code-migration/sandboxed_code_migration_agent">OpenAI Agents SDK — sandboxed code migration with validator.</reference>
+  </section>
+</text>

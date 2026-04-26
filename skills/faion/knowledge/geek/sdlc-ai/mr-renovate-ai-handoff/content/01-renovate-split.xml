@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-renovate-split" title="Semver Split: Renovate Auto-Merges Patch/Minor, AI Agent Owns Major + Breaking">
+  <summary>Patch and minor with high Merge-Confidence auto-merge through Renovate; major bumps and vulnerable packages get a `agent-fixable` label that hands off to the LLM coding agent.</summary>
+
+  <section title="Split rule">
+    <p>The split is by semver-update-type plus Merge-Confidence score. Patch and minor with `mergeConfidence >= "high"` and green CI auto-merge; major bumps land with the `agent-fixable` label so an LLM agent picks them up and opens the breaking-change PR.</p>
+
+    <rule testable="true">
+      <statement>Renovate config MUST include two `packageRules`: (a) `matchUpdateTypes: [patch, minor]` with `automerge: true`, `automergeType: branch`, `platformAutomerge: true` (Mend Merge-Confidence "high"); (b) `matchUpdateTypes: [major]` with `labels: [agent-fixable]` and `automerge: false`. A coding-agent workflow MUST listen for the `agent-fixable` label and hand the PR to a designated agent (Copilot Coding Agent, Claude, Codex, Devin).</statement>
+      <rationale>Renovate's deterministic merge succeeds on >90% of patch-bumps when CI is green; the Merge-Confidence layer eliminates the silent-regression class. Agents are far cheaper to invoke once on the breaking 10% than to reason about every dep bump. GitHub's April 2026 Dependabot→Agent handoff formalises this exact pattern.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "extends": ["config:recommended", "schedule:weekly"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["patch", "minor"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+      "automergeType": "branch",
+      "platformAutomerge": true
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "labels": ["agent-fixable"],
+      "automerge": false
+    }
+  ],
+  "vulnerabilityAlerts": { "labels": ["agent-fixable", "security"] }
+}
+      ]]></code>
+      <note>Patch+minor auto-merge; major bumps and vulnerability alerts hand off to the agent.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "extends": ["config:recommended"],
+  "packageRules": [
+    { "matchUpdateTypes": ["major"], "automerge": true }
+  ]
+}
+      ]]></code>
+      <note>Major auto-merge regularly breaks call-sites that no human or agent reviewed.</note>
+    </example>
+
+    <antipattern>
+      <description>Routing every bump (patch, minor, major) through the AI agent "for safety".</description>
+      <reason>Burns agent tokens on the deterministic 90%, slows the pipeline, and increases the surface for prompt-injection attacks via release notes.</reason>
+    </antipattern>
+
+    <reference path="templates/renovate.json">Renovate config with semver split and agent label.</reference>
+    <reference path="templates/dependabot-handoff.yml">Dependabot alert → coding agent assignment workflow.</reference>
+    <reference href="https://www.mend.io/renovate/">Mend Renovate — Merge-Confidence and 90+ package managers.</reference>
+    <reference href="https://docs.renovatebot.com/">Renovate documentation — config recipes, auto-merge gating.</reference>
+    <reference href="https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/">GitHub changelog — Dependabot alerts assignable to AI agents.</reference>
+    <reference href="https://www.dynatrace.com/news/blog/dynatrace-mcp-server-and-github-copilot-coding-agent/">Runtime vulnerability context → MCP → Copilot agent → PR.</reference>
+  </section>
+</text>

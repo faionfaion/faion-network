@@ -1,0 +1,33 @@
+# .github/workflows/dependabot-agent-handoff.yml
+# When a PR (Dependabot or Renovate) carries the `agent-fixable` label,
+# assign it to a coding agent so the agent rewrites breaking call-sites
+# and pushes new commits to the same branch.
+# Reference: https://github.blog/changelog/2026-04-07-dependabot-alerts-are-now-assignable-to-ai-agents-for-remediation/
+
+name: dependabot-agent-handoff
+on:
+  pull_request:
+    types: [labeled, opened, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  assign:
+    if: contains(github.event.pull_request.labels.*.name, 'agent-fixable')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pick the agent
+        id: pick
+        run: |
+          echo "agent=copilot" >> "$GITHUB_OUTPUT"  # or claude | codex | devin
+
+      - name: Assign PR to coding agent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} \
+            --add-assignee "${{ steps.pick.outputs.agent }}-swe-agent" \
+            --add-label "assigned:${{ steps.pick.outputs.agent }}"
