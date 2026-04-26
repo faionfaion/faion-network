@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-lifecycle" title="A/B Test Lifecycle and Decision Rules">
+  <summary>The six-step A/B test lifecycle: hypothesis, design, sample size, run, analyze, decide — with statistical interpretation table and ship/kill criteria.</summary>
+
+  <section title="Hypothesis Format">
+    <rule>
+      <statement>Write every hypothesis in if/then/because format before any code is written.</statement>
+      <rationale>Pre-registration prevents HARKing (Hypothesizing After Results are Known) and anchors the team to a single primary metric.</rationale>
+    </rule>
+    <example type="bad">
+      <note>"The new design is better" — no metric, no mechanism, cannot be falsified.</note>
+    </example>
+    <example type="good">
+      <note>IF we simplify signup from 6 fields to 3, THEN conversion will increase 10%, BECAUSE friction decreases.</note>
+    </example>
+  </section>
+
+  <section title="Lifecycle Steps">
+    <rule>
+      <statement>Progress through all six steps in order; do not begin analysis before the pre-committed sample size and end date are reached.</statement>
+      <rationale>Peeking at interim results and stopping early inflates false positives by 5–10x.</rationale>
+    </rule>
+    <list>
+      <item>1. HYPOTHESIS — if/then/because, primary metric, guardrails, MDE</item>
+      <item>2. DESIGN — one change only; define control and treatment</item>
+      <item>3. SAMPLE SIZE — calculate n per variant using statsmodels NormalIndPower</item>
+      <item>4. RUN — random assignment, no peeking, simultaneous variants</item>
+      <item>5. ANALYZE — SRM check first, then z-test primary, then guardrails</item>
+      <item>6. DECIDE — ship, kill, retest, or investigate tradeoffs</item>
+    </list>
+  </section>
+
+  <section title="Statistical Interpretation">
+    <rule>
+      <statement>Require raw counts (n1, x1, n2, x2) before computing significance; never accept a reported p-value without verifying the inputs.</statement>
+      <rationale>LLMs and junior analysts fabricate plausible-looking p-values when given only percentages.</rationale>
+    </rule>
+    <p>Interpretation table by p-value:</p>
+    <list>
+      <item>p &lt; 0.01 — strong evidence, ship B</item>
+      <item>0.01 to 0.05 — good evidence, ship B</item>
+      <item>0.05 to 0.10 — weak evidence, retest with larger sample</item>
+      <item>p &gt; 0.10 — not significant, keep A</item>
+    </list>
+    <rule>
+      <statement>Treat 0.05 &lt; p &lt; 0.10 as "no result, need more data" — not as "almost a win".</statement>
+      <rationale>Rounding borderline results to wins doubles the realized false-positive rate over an experiment program.</rationale>
+    </rule>
+  </section>
+
+  <section title="Decision Rules">
+    <list>
+      <item>B wins significantly → ship B to 100% via phased rollout (10% → 50% → 100%)</item>
+      <item>A wins significantly → keep A, document what failed and why</item>
+      <item>No significant difference → keep A (simpler), test a different hypothesis</item>
+      <item>B wins primary but hurts a guardrail → investigate tradeoffs before shipping</item>
+    </list>
+  </section>
+
+  <section title="Metric Selection">
+    <rule>
+      <statement>Choose exactly ONE primary metric per test; declare guardrail metrics as "watch only" — they cannot win or lose the test alone.</statement>
+      <rationale>Multiple primaries inflate the family-wise error rate; guardrails exist to catch Pyrrhic victories.</rationale>
+    </rule>
+    <list>
+      <item>Landing page test → primary: signup conversion rate</item>
+      <item>Checkout flow test → primary: purchase completion rate</item>
+      <item>Email test → primary: click rate (not open rate — iOS prefetch noise)</item>
+      <item>Onboarding test → primary: activation rate within 7 days</item>
+    </list>
+  </section>
+</text>

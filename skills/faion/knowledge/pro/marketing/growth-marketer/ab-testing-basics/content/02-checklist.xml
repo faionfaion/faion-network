@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-checklist" title="Pre-Launch and Analysis Checklist">
+  <summary>Mandatory pre-launch gates and analysis steps that prevent the most common A/B test invalidations: SRM, underpowered tests, peeking, and guardrail neglect.</summary>
+
+  <section title="Pre-Launch Gates">
+    <rule>
+      <statement>Block test launch if any of these six items is absent: hypothesis_if_then_because, primary_metric, mde_relative, sample_per_variant, end_date, guardrails.</statement>
+      <rationale>Tests missing any one of these cannot be analyzed correctly or compared to prior experiments in the log.</rationale>
+    </rule>
+    <reference path="templates/pretest-check.py">Python function that enforces all six pre-launch gates and returns a pass/fail list</reference>
+    <list>
+      <item>hypothesis written in if/then/because format</item>
+      <item>primary metric tied to a business outcome (not a vanity metric)</item>
+      <item>MDE stated as relative percentage (e.g. 10% relative lift on a 5% baseline)</item>
+      <item>sample_per_variant &gt;= 1000 (below this, results are unreliable)</item>
+      <item>end_date committed in writing before traffic flows</item>
+      <item>3+ guardrail metrics named explicitly</item>
+      <item>no overlapping test on the same surface or user segment</item>
+    </list>
+  </section>
+
+  <section title="Day-1 Monitoring">
+    <rule>
+      <statement>Configure a sample-ratio mismatch (SRM) check on day 1; if observed split deviates from expected (chi-square p &lt; 0.001), pause and investigate before proceeding.</statement>
+      <rationale>SRM indicates randomization failure and silently invalidates the entire test — an SRM-affected result cannot be trusted even if the primary metric looks significant.</rationale>
+    </rule>
+    <list>
+      <item>verify tracking fires on both variants</item>
+      <item>run chi-square SRM test on observed traffic split</item>
+      <item>check that partial first/last days with ramp-up traffic are excluded from analysis window</item>
+    </list>
+  </section>
+
+  <section title="Analysis Steps">
+    <list>
+      <item>1. SRM check (chi-square on split) — invalidate if p &lt; 0.001</item>
+      <item>2. Primary metric z-test with raw counts n1, x1, n2, x2</item>
+      <item>3. Confidence interval on the lift</item>
+      <item>4. Secondary metrics (informational only)</item>
+      <item>5. All guardrail metrics — flag any regression &gt; 5%</item>
+      <item>6. Segment check (day-of-week, device, acquisition channel) for heterogeneity</item>
+    </list>
+    <antipattern>
+      <description>Running analysis before the pre-committed sample size is reached.</description>
+      <reason>Peeking inflates false positives — the test is not valid until the pre-registered sample and end date are both met.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Testing 5 segments and calling the one that wins the "result".</description>
+      <reason>Multiple comparisons without Bonferroni correction produces a ~23% family-wise false-positive rate at 5 tests.</reason>
+    </antipattern>
+  </section>
+</text>

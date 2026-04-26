@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="Agent Workflow Rules for Churn Prevention">
+  <summary>Rules constraining agent behavior in churn-prevention workflows: draft-only mode, offer constraints, reason classification, and health-score SQL baseline.</summary>
+
+  <section title="Draft-Only Mode">
+    <rule>
+      <statement>Keep the churn-prevention agent in draft-only mode — it stages campaigns to the lifecycle tool's draft status; humans approve creative and offer economics before any send.</statement>
+      <rationale>Email send is a one-way action; a batch mistake to the wrong segment cannot be undone. The agent lacks access to brand guidelines, legal review, and margin data needed to finalize offers autonomously.</rationale>
+    </rule>
+    <list>
+      <item>agent output: csv with [user_id, playbook_id, subject, body, suggested_offer]</item>
+      <item>human review: verify offer is within approved ladder, no suppression violations, correct segment</item>
+      <item>send: triggered by human action in the lifecycle tool, not by agent</item>
+    </list>
+  </section>
+
+  <section title="Offer Constraints">
+    <rule>
+      <statement>Hard-code offer ladder in the prompt template; the agent must select from the ladder and reject any request outside it.</statement>
+      <rationale>Without hard constraints LLMs generate offers that sound reasonable but violate margin floors (e.g. "60% off lifetime" appears in generated output without guardrails).</rationale>
+    </rule>
+    <list>
+      <item>maximum discount: 50% off, maximum 2 months</item>
+      <item>maximum trial extension: 30 days</item>
+      <item>no overlapping campaigns for the same user</item>
+      <item>eligibility: once per 12 months per user</item>
+    </list>
+  </section>
+
+  <section title="Reason Classification">
+    <rule>
+      <statement>Classify churn reason from structured signals only (exit survey category, ticket sentiment score, feature-usage drop); do not classify from free-text without human spot-checks.</statement>
+      <rationale>Free-text reason classification by LLMs has systematic errors — "too expensive" is frequently mislabeled as "missing feature" — causing intervention budget to be spent on the wrong playbook.</rationale>
+    </rule>
+  </section>
+
+  <section title="Health Score SQL">
+    <reference path="templates/health-score.sql">Weekly health-score snapshot SQL: login frequency, feature breadth, support sentiment, tenure components (each capped at 25 points)</reference>
+    <rule>
+      <statement>Retrain the health-score model monthly and after any major product change; a model trained on Q1 data misclassifies Q3 cohorts after feature launches.</statement>
+      <rationale>Health-score drift produces false-low or false-high risk classifications, wasting intervention budget on healthy users and missing genuinely at-risk ones.</rationale>
+    </rule>
+  </section>
+</text>

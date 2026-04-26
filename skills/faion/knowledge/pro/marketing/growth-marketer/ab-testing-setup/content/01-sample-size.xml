@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-sample-size" title="Sample Size Calculation Rules">
+  <summary>Accurate sample-size and duration calculation using statsmodels, with common pitfalls of the simplified formula and a quick reference table by baseline rate and MDE.</summary>
+
+  <section title="Canonical Formula">
+    <rule>
+      <statement>Use statsmodels NormalIndPower for all sample-size calculations; the simplified n = 16*p*(1-p)/MDE^2 is a teaching aid — it silently assumes 95% two-sided, 80% power, and 50/50 split.</statement>
+      <rationale>Deviations from those defaults (one-sided test, 90/10 split, 90% power) cause 25–50% error in the simplified formula. statsmodels handles all cases correctly.</rationale>
+    </rule>
+    <reference path="templates/sample-size.py">Python function: n_per_variant and duration_days using NormalIndPower + proportion_effectsize</reference>
+  </section>
+
+  <section title="MDE Relative vs Absolute">
+    <rule>
+      <statement>Always state MDE as relative percentage (e.g. 10% relative lift on a 5% baseline = 0.5pp absolute), and convert explicitly in the calculation output.</statement>
+      <rationale>MDE relative vs absolute confusion is the single biggest sample-size error — an agent told "MDE = 1%" on a 5% baseline can compute for a 1pp absolute lift (doubling the metric) rather than a 10% relative lift.</rationale>
+    </rule>
+    <example type="bad">
+      <note>baseline=10%, MDE="10%" — ambiguous: does this mean +1pp (absolute) or +10% relative (to 11%)?</note>
+    </example>
+    <example type="good">
+      <note>baseline=10%, mde_relative=0.10 → p2 = 0.10 * 1.10 = 0.11, effect_size = proportion_effectsize(0.11, 0.10)</note>
+    </example>
+  </section>
+
+  <section title="Duration Calculation">
+    <rule>
+      <statement>Account for weekend traffic dips when estimating duration; if daily_users is based on a Monday-Friday average, multiply by 7/5 to get true daily average before dividing into total sample.</statement>
+      <rationale>Agents using weekday-only traffic estimate durations that are 30–50% too short; the test hits its end date before reaching the required sample.</rationale>
+    </rule>
+    <p>duration_days = ceil((n_per_variant * 2) / daily_traffic_true_daily_avg)</p>
+  </section>
+
+  <section title="Quick Reference: n_per_variant at alpha=0.05, power=0.80, two-sided">
+    <list>
+      <item>baseline=1%, MDE_rel=5%: ~62k | 10%: ~16k | 20%: ~4k</item>
+      <item>baseline=5%, MDE_rel=5%: ~30k | 10%: ~8k | 20%: ~2k</item>
+      <item>baseline=10%, MDE_rel=5%: ~28k | 10%: ~7k | 20%: ~1.8k</item>
+      <item>baseline=25%, MDE_rel=5%: ~20k | 10%: ~5k | 20%: ~1.3k</item>
+      <item>baseline=50%, MDE_rel=5%: ~16k | 10%: ~4k | 20%: ~1k</item>
+    </list>
+  </section>
+
+  <section title="Asymmetric Splits">
+    <rule>
+      <statement>When using a 90/10 split to limit blast radius, pass ratio=9.0 to NormalIndPower; the small arm needs ~9x more users per-arm than a 50/50 split to achieve the same power.</statement>
+      <rationale>Asymmetric splits blow up sample requirement on the small arm; agents that forget the ratio parameter under-size and produce unreliable results.</rationale>
+    </rule>
+  </section>
+</text>

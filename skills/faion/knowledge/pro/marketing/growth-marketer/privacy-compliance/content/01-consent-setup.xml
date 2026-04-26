@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-consent-setup" title="Consent Gate Setup and Configuration">
+  <summary>Default-deny implementation pattern, GA4 Consent Mode v2 defaults, CCPA Global Privacy Control handling, and event-queuing for pre-consent period.</summary>
+
+  <section title="Default Deny">
+    <rule>
+      <statement>Ship the page with analytics_storage: 'denied' and all ad consent signals denied; only update to 'granted' on explicit user action.</statement>
+      <rationale>Implied consent ("by continuing to use this site") is not valid consent under GDPR Article 7; default-deny is the only safe starting state in EU/UK jurisdictions.</rationale>
+    </rule>
+    <reference path="templates/analytics-manager.js">AnalyticsManager class: default-deny init, consent grant/revoke, GA4 Consent Mode v2 update, event queue flush, cookie clearing</reference>
+  </section>
+
+  <section title="GA4 Consent Mode v2">
+    <list>
+      <item>analytics_storage: denied by default</item>
+      <item>ad_storage: denied by default</item>
+      <item>ad_user_data: denied by default</item>
+      <item>ad_personalization: denied by default</item>
+      <item>on explicit accept: update all four to granted (or per-category if granular consent)</item>
+    </list>
+    <rule>
+      <statement>Consent Mode v2 still pings Google with cookieless beacons even after "Reject all"; describe this in your privacy policy and verify it aligns with the applicable DPA interpretation.</statement>
+      <rationale>CNIL (France) and Austrian DSB have contested cookieless beacons as personal data processing; Consent Mode v2 reduces violation risk but does not eliminate it in all EU jurisdictions.</rationale>
+    </rule>
+  </section>
+
+  <section title="CCPA Global Privacy Control">
+    <rule>
+      <statement>Check navigator.globalPrivacyControl on page load and honor it as a Do Not Sell / Do Not Share signal without requiring any additional user action.</statement>
+      <rationale>CPRA (effective 2023) requires businesses to recognize GPC as a valid opt-out signal; failing to do so is an enforceable violation by the California AG.</rationale>
+    </rule>
+    <list>
+      <item>if navigator.globalPrivacyControl === true → gtag('set', 'restricted_data_processing', true)</item>
+      <item>also honor localStorage 'ccpa_opt_out' for users who explicitly opted out via UI</item>
+    </list>
+  </section>
+
+  <section title="Event Queuing">
+    <rule>
+      <statement>Queue tracking events fired before consent is granted and flush the queue only after the user explicitly accepts; never drop events silently or fire them before consent.</statement>
+      <rationale>Pre-consent events silently dropped cause analytics gaps; pre-consent events fired violate GDPR. Queuing + conditional flush is the correct pattern.</rationale>
+    </rule>
+  </section>
+</text>
