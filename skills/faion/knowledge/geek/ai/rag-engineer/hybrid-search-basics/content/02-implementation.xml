@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="Hybrid Search Implementation Rules">
+  <summary>Rules for Qdrant native hybrid search, dynamic alpha selection, BM25 preprocessing requirements, and incremental index update constraints.</summary>
+
+  <section title="Native Hybrid Search">
+    <rule>
+      <statement>Use the vector database's native hybrid search endpoint when available (Qdrant, Weaviate, Elasticsearch) rather than calling two endpoints and fusing client-side.</statement>
+      <rationale>Native hybrid search executes both retrievers in a single server-side call, reducing latency. Client-side fusion requires two round-trips and local merge logic.</rationale>
+    </rule>
+    <rule>
+      <statement>For Qdrant sparse vectors, pre-compute BM25 or SPLADE sparse encodings before insert. You cannot pass raw text to a sparse vector endpoint.</statement>
+      <rationale>Qdrant's sparse vector format requires pre-encoded sparse representations. Attempting to pass tokenized text directly produces a type error at the API level.</rationale>
+    </rule>
+  </section>
+
+  <section title="BM25 Preprocessing">
+    <rule>
+      <statement>Apply domain-specific stop words for BM25. Generic English stop words hurt technical corpora where words like "the" may appear in product names.</statement>
+      <rationale>Standard stop word lists remove common words that may carry meaning in technical domains. For example, "The Architect" as a product name would lose its key token.</rationale>
+    </rule>
+    <rule>
+      <statement>Rebuild the BM25 index when documents are added incrementally. Some vector databases do not support live BM25 updates.</statement>
+      <rationale>BM25 IDF scores are corpus-wide statistics. Adding documents without rebuilding the BM25 component produces stale IDF values that degrade keyword scoring for both old and new documents.</rationale>
+    </rule>
+  </section>
+
+  <section title="Dynamic Alpha">
+    <rule>
+      <statement>Compute alpha before the retrieval call, not after. An agent that decides alpha post-retrieval cannot change the already-returned result set.</statement>
+      <rationale>Alpha determines the retrieval mix at query time. It must be computed from the query characteristics before the retrieval call is made.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+def compute_alpha(query: str) -> float:
+    """1.0 = pure semantic, 0.0 = pure keyword."""
+    if '"' in query:                    return 0.2   # Quoted exact phrase
+    if any(c.isdigit() for c in query): return 0.35  # Contains codes/numbers
+    if len(query.split()) <= 3:         return 0.5   # Short specific query
+    return 0.7                                        # Long conceptual query
+    ]]></code>
+    <note>Alpha is computed from query characteristics before the retrieval call. Heuristics are starting points; tune against a labeled query set.</note>
+  </example>
+
+  <antipattern>
+    <description>Using equal weights (alpha=0.5) for all query types without per-domain tuning.</description>
+    <reason>A mistuned alpha underperforms pure vector search on semantic-heavy queries and pure BM25 on keyword-heavy queries. Equal weighting is the starting point, not the optimal value for most domains.</reason>
+  </antipattern>
+
+  <reference path="templates/dynamic-alpha.py">Alpha selection logic based on query characteristics</reference>
+</text>

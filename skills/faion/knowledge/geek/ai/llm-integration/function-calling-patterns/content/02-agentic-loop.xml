@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-loop" title="Agentic Tool Loop Rules">
+  <summary>Rules for building safe agentic loops: termination conditions, max_iterations enforcement, stop_reason handling, and human-in-loop checkpoints for destructive tools.</summary>
+
+  <section title="Termination Rules">
+    <rule>
+      <statement>Always enforce a max_iterations limit (10 or below in production). Log and alert when it triggers.</statement>
+      <rationale>Without a limit, an agent that repeatedly fails a tool call or cannot find a satisfactory answer loops indefinitely, consuming tokens and potentially causing side effects.</rationale>
+    </rule>
+    <rule>
+      <statement>Continue the loop until stop_reason == "end_turn" or "max_tokens". stop_reason == "tool_use" means the task is not complete.</statement>
+      <rationale>Each tool_use stop_reason means the model wants to call a tool and continue. Treating tool_use as task completion returns a partial result and skips the model's intended next step.</rationale>
+    </rule>
+  </section>
+
+  <section title="Destructive Tool Safety">
+    <rule>
+      <statement>Require explicit human approval before dispatching any tool that sends messages, modifies data, or charges money.</statement>
+      <rationale>Agentic loops can trigger destructive actions without user awareness. A human-in-loop checkpoint before irreversible operations is the only reliable safety gate in automated pipelines.</rationale>
+    </rule>
+    <rule>
+      <statement>Implement dry-run mode for all tools with side effects. Always test agentic loops in dry-run before enabling live execution.</statement>
+      <rationale>Without dry-run, verifying loop behavior requires making real external changes. Dry-run allows safe iteration on the loop logic without production risk.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error Feedback">
+    <rule>
+      <statement>When a tool fails, return actionable error text in the tool_result. Avoid terse error messages that the model cannot reason about.</statement>
+      <rationale>The model decides its next action based on the tool_result content. A vague error like "500 Internal Server Error" gives no guidance. "order_id 12345 not found; valid IDs are 6-digit numbers" enables self-correction.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+import json, anthropic
+
+client = anthropic.Anthropic()
+
+def agent_loop(tools: list, registry: dict, messages: list,
+               max_iterations: int = 10) -> str:
+    for i in range(max_iterations):
+        resp = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            tools=tools,
+            messages=messages
+        )
+        if resp.stop_reason == "end_turn":
+            return resp.content[0].text
+        if resp.stop_reason == "max_tokens":
+            raise ValueError("Response truncated; increase max_tokens")
+        # Handle tool_use
+        messages.append({"role": "assistant", "content": resp.content})
+        tool_results = []
+        for block in resp.content:
+            if block.type == "tool_use":
+                try:
+                    result = registry[block.name](**block.input)
+                except Exception as e:
+                    result = {"error": str(e), "code": "TOOL_ERROR"}
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result)
+                })
+        messages.append({"role": "user", "content": tool_results})
+    raise RuntimeError(f"max_iterations={max_iterations} reached")
+    ]]></code>
+    <note>Loop exits on end_turn, raises on max_tokens, and includes structured error format for tool failures.</note>
+  </example>
+
+  <antipattern>
+    <description>Treating stop_reason == "tool_use" as task completion and returning a partial response.</description>
+    <reason>tool_use stop_reason means the model wants to call a tool and has not yet produced a final answer. Returning the incomplete assistant message skips all intended tool actions.</reason>
+  </antipattern>
+
+  <reference path="templates/tool-router.py">ToolRouter class: register tools, get definitions, dispatch query</reference>
+</text>

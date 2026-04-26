@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-threads-runs" title="Thread and Run Lifecycle">
+  <summary>Rules for creating threads, executing runs, handling all run status values, streaming, and managing resource lifecycle to avoid cost accumulation.</summary>
+
+  <section title="Run Status Handling">
+    <rule>
+      <statement>Handle all run terminal statuses explicitly: completed, failed, cancelled, expired, and requires_action.</statement>
+      <rationale>Treating only "completed" as a terminal state causes silent failures. "requires_action" means a custom function tool was called and is waiting for a response — if ignored, the run expires after 10 minutes.</rationale>
+    </rule>
+    <rule>
+      <statement>When stop_reason is "requires_action", submit tool outputs within 10 minutes or the run expires.</statement>
+      <rationale>The Assistants API has a 10-minute timeout for tool output submission. Expired runs cannot be resumed; the entire interaction must be restarted.</rationale>
+    </rule>
+  </section>
+
+  <section title="Message Ordering">
+    <rule>
+      <statement>Use order="asc" when listing thread messages to retrieve conversation order; the default (newest first) reverses the conversation.</statement>
+      <rationale>messages.list returns newest first by default. Code that iterates the result in received order reads the conversation backwards, producing incorrect context assembly.</rationale>
+    </rule>
+    <rule>
+      <statement>Archive long threads by creating a new thread with a summary message after N turns rather than letting the thread grow indefinitely.</statement>
+      <rationale>Thread messages accumulate indefinitely. Long threads hit context limits and cost more per run because all prior messages are included in the context window.</rationale>
+    </rule>
+  </section>
+
+  <section title="Resource Lifecycle">
+    <rule>
+      <statement>Delete threads, vector stores, and files after use. Orphaned resources accumulate and are billed.</statement>
+      <rationale>OpenAI charges for stored files and vector stores independently of API calls. Unused resources from test sessions or one-off queries accumulate silently.</rationale>
+    </rule>
+    <rule>
+      <statement>Use metadata on threads and assistants to tag with user IDs and session IDs for cost attribution.</statement>
+      <rationale>Without metadata, there is no way to attribute token costs to specific users or sessions in the usage dashboard.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+from openai import OpenAI
+
+client = OpenAI()
+
+def query_assistant(assistant_id: str, thread_id: str, question: str) -> str:
+    client.beta.threads.messages.create(
+        thread_id=thread_id, role="user", content=question
+    )
+    run = client.beta.threads.runs.create_and_poll(
+        thread_id=thread_id, assistant_id=assistant_id
+    )
+    if run.status != "completed":
+        raise RuntimeError(f"Run failed: {run.status} — {run.last_error}")
+    msgs = client.beta.threads.messages.list(
+        thread_id=thread_id, order="desc", limit=1
+    )
+    return msgs.data[0].content[0].text.value
+    ]]></code>
+    <note>run.status is checked explicitly and raises for any non-completed terminal state.</note>
+  </example>
+
+  <reference path="templates/query-assistant.py">One-shot assistant interaction with error handling</reference>
+  <reference path="templates/managed-resources.py">Context managers for thread and vector store lifecycle</reference>
+</text>

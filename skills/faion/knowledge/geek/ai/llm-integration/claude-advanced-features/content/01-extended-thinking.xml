@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-extended-thinking" title="Extended Thinking Rules and Patterns">
+  <summary>Rules for enabling and consuming Claude Extended Thinking: budget sizing, max_tokens constraint, multi-turn preservation, and usage monitoring.</summary>
+
+  <section title="Budget and Token Rules">
+    <rule>
+      <statement>Set max_tokens to at least budget_tokens + 2048 to avoid truncating the answer block.</statement>
+      <rationale>Thinking tokens count toward the max_tokens budget. If max_tokens equals budget_tokens, the answer block may be cut off mid-sentence with no error.</rationale>
+    </rule>
+    <rule>
+      <statement>Start with budget_tokens=5000; increase only when answer quality is insufficient.</statement>
+      <rationale>More thinking budget does not always produce better answers. Start low and tune empirically to avoid unnecessary cost.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not set budget_tokens=0 to disable thinking silently; set thinking.type="disabled" instead.</statement>
+      <rationale>A budget of 0 disables thinking silently but the API still processes the thinking parameter, causing confusion. Use the explicit disable form.</rationale>
+    </rule>
+  </section>
+
+  <section title="API Constraints">
+    <rule>
+      <statement>Do not combine Extended Thinking with the temperature parameter.</statement>
+      <rationale>Setting both raises an API error. Extended Thinking requires deterministic reasoning; temperature is incompatible.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not combine Extended Thinking with streaming unless you can parse thinking SSE deltas.</statement>
+      <rationale>The event format for thinking deltas differs from text deltas. Mixing them without delta-aware parsing produces garbled output.</rationale>
+    </rule>
+  </section>
+
+  <section title="Multi-Turn Handling">
+    <rule>
+      <statement>Preserve thinking blocks in the message history when continuing a multi-turn thinking conversation.</statement>
+      <rationale>Stripping thinking blocks from prior turns breaks the model's reasoning context, producing lower-quality responses in subsequent turns.</rationale>
+    </rule>
+    <rule>
+      <statement>Never expose thinking blocks to end users.</statement>
+      <rationale>Thinking outputs can include the model reasoning about its own limitations and internal uncertainties; surfacing them to users undermines trust.</rationale>
+    </rule>
+  </section>
+
+  <section title="Monitoring">
+    <rule>
+      <statement>Track cache_read_input_tokens in usage to verify prompt caching is active when used alongside Extended Thinking.</statement>
+      <rationale>Thinking tokens are non-cacheable. Only the non-thinking input prefix can be cached. Monitor separately to understand actual savings.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+import anthropic
+client = anthropic.Anthropic()
+
+def think_deeply(problem: str, budget: int = 8000) -> tuple[str, str]:
+    resp = client.messages.create(
+        model="claude-opus-4-5-20251101",
+        max_tokens=budget + 4096,  # must exceed budget_tokens
+        thinking={"type": "enabled", "budget_tokens": budget},
+        messages=[{"role": "user", "content": problem}]
+    )
+    thinking = next((b.thinking for b in resp.content if b.type == "thinking"), "")
+    answer = next((b.text for b in resp.content if b.type == "text"), "")
+    return thinking, answer
+    ]]></code>
+    <note>max_tokens is set to budget + 4096 to guarantee the answer block is never truncated.</note>
+  </example>
+
+  <reference path="templates/think-deeply.py">Extended Thinking helper returning (thinking, answer) tuple</reference>
+</text>

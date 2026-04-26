@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-evaluation" title="RAG Evaluation and Quality Thresholds">
+  <summary>RAGAS metrics (MRR, faithfulness, answer relevance), production readiness thresholds, and agentic RAG escalation rules for complex multi-hop queries.</summary>
+
+  <section title="Evaluation Metrics">
+    <rule>
+      <statement>Evaluate retrieval quality with MRR > 0.7 and faithfulness > 0.9 before launching a RAG pipeline to production.</statement>
+      <rationale>MRR below 0.7 means the most relevant document is often not in the top-3 retrieved results — the generated answer is likely wrong or incomplete. Faithfulness below 0.9 means 10%+ of answers contain hallucinated claims.</rationale>
+    </rule>
+    <rule>
+      <statement>Track retrieval quality with regular benchmarks on a held-out query set. Re-evaluate after any index, chunking, or embedding model change.</statement>
+      <rationale>Index updates, embedding model upgrades, and chunking parameter changes all affect retrieval quality. Without re-evaluation, quality regressions go undetected until user complaints surface them.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agentic RAG Escalation">
+    <rule>
+      <statement>When a query requires combining facts from more than 3 separate chunks, switch to iterative (agentic) RAG rather than single-shot retrieval.</statement>
+      <rationale>Standard RAG degrades on multi-hop reasoning because a single retrieval step cannot surface all relevant chunks for complex cross-document questions. Iterative RAG fetches additional context based on intermediate answers.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+from llama_index.core.evaluation import FaithfulnessEvaluator, RelevancyEvaluator
+
+faithfulness_eval = FaithfulnessEvaluator(llm=llm)
+relevancy_eval = RelevancyEvaluator(llm=llm)
+
+response = query_engine.query("test query")
+
+faith = faithfulness_eval.evaluate_response(query="test query", response=response)
+rel = relevancy_eval.evaluate_response(query="test query", response=response)
+
+print(f"Faithful: {faith.passing} ({faith.score:.2f})")
+print(f"Relevant: {rel.passing} ({rel.score:.2f})")
+
+if faith.score < 0.8:
+    # Queue for human review
+    pass
+    ]]></code>
+    <note>Faithfulness score below 0.8 triggers human review queue rather than surfacing to users.</note>
+  </example>
+</text>

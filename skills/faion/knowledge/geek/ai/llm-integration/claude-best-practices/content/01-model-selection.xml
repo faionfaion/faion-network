@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-model-selection" title="Claude Model Tier Selection Rules">
+  <summary>Rules for selecting the right Claude model tier (Haiku, Sonnet, Opus) by task type, setting max_tokens correctly, and avoiding silent truncation of structured output.</summary>
+
+  <section title="Tier Selection">
+    <rule>
+      <statement>Use Haiku for formatting, routing, classification, and simple extraction tasks. Use Sonnet for generation, code, and analysis. Use Opus for complex reasoning, architecture, and strategy tasks.</statement>
+      <rationale>Model capability and cost scale together. Using Opus for a simple routing decision wastes ~10x the budget. Using Haiku for complex reasoning produces lower-quality output that may require re-work.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin exact model IDs in production configs (e.g., "claude-sonnet-4-20250514") rather than aliases ("claude-sonnet-4").</statement>
+      <rationale>Aliases can update to a newer model version without notice. A silent model upgrade can change output format or behavior, breaking downstream parsing.</rationale>
+    </rule>
+    <rule>
+      <statement>Log the model actually used in every response, not just the model requested. Log this when implementing fallback logic.</statement>
+      <rationale>Fallback to a cheaper model is invisible to the orchestrator unless explicitly logged. Downstream agents may produce worse outputs without knowing the model was downgraded.</rationale>
+    </rule>
+  </section>
+
+  <section title="Token Configuration">
+    <rule>
+      <statement>Always set max_tokens explicitly on every Messages API call.</statement>
+      <rationale>The default max_tokens is low and silently truncates structured output mid-JSON, producing invalid payloads that are hard to debug because the API returns HTTP 200.</rationale>
+    </rule>
+    <rule>
+      <statement>When stop_reason == "max_tokens" on a structured output call, the JSON is truncated and invalid. Retry with higher max_tokens; do not parse the response.</statement>
+      <rationale>A truncated JSON response from a structured output call will raise a parse error downstream. The correct action is to retry with more headroom, not to handle the parse error.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+import anthropic
+
+MODELS = {
+    "router": "claude-3-5-haiku-20241022",
+    "generator": "claude-sonnet-4-20250514",
+    "reasoner": "claude-opus-4-5-20251101",
+}
+
+client = anthropic.Anthropic()
+
+def call(role: str, messages: list, max_tokens: int = 2048) -> str:
+    model = MODELS[role]
+    r = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        messages=messages
+    )
+    if r.stop_reason == "max_tokens":
+        raise ValueError(f"Response truncated for role={role}. Retry with higher max_tokens.")
+    return r.content[0].text
+    ]]></code>
+    <note>max_tokens is explicit and stop_reason is checked before returning the response.</note>
+  </example>
+</text>

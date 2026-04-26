@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-batch-api" title="Batch API Lifecycle and Error Handling">
+  <summary>Rules for submitting, polling, and consuming Batch API results, including error detection and the cost model.</summary>
+
+  <section title="Submission Rules">
+    <rule>
+      <statement>Use custom_id values that map directly to database primary keys or job IDs.</statement>
+      <rationale>Results arrive out of order. Without a custom_id that maps to your data model, matching results back to inputs requires additional joins or lookups.</rationale>
+    </rule>
+    <rule>
+      <statement>Group batch requests by the same model and max_tokens to simplify result processing.</statement>
+      <rationale>Mixing models in one batch is allowed but produces heterogeneous result structures. Uniform batches simplify downstream parsing.</rationale>
+    </rule>
+  </section>
+
+  <section title="Polling Rules">
+    <rule>
+      <statement>Poll at intervals of at least 60 seconds; do not use a tight loop.</statement>
+      <rationale>Batch processing takes minutes to hours. Tight polling wastes API quota and adds no speed benefit.</rationale>
+    </rule>
+    <rule>
+      <statement>Check processing_status == "ended" before accessing results; do not assume completion on first poll.</statement>
+      <rationale>The batch may still be processing. Accessing results before "ended" returns an empty or partial result set.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error Handling">
+    <rule>
+      <statement>Detect result.result.type == "errored" and resubmit failed items explicitly; Batch API does not retry automatically.</statement>
+      <rationale>Errored requests are included in the results file with type "errored". They are not retried. Your code must detect and resubmit them.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cost Model">
+    <p>Batch API provides 50% cost reduction versus synchronous calls. Maximum latency is 24 hours. Use only for workloads where 24-hour SLA is acceptable: content generation, offline enrichment, evaluation suites, nightly analysis.</p>
+  </section>
+
+  <example type="good">
+    <code lang="python"><![CDATA[
+import time, anthropic
+
+client = anthropic.Anthropic()
+
+def poll_and_collect(batch_id: str, poll_interval: int = 60) -> list[dict]:
+    """Poll Batch API until done. Returns list of {id, text} or {id, error}."""
+    while True:
+        batch = client.beta.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            results = []
+            for r in client.beta.messages.batches.results(batch_id):
+                if r.result.type == "succeeded":
+                    results.append({
+                        "id": r.custom_id,
+                        "text": r.result.message.content[0].text
+                    })
+                else:
+                    results.append({"id": r.custom_id, "error": str(r.result.error)})
+            return results
+        time.sleep(poll_interval)
+    ]]></code>
+    <note>Errored results are included in the return list with an "error" key for upstream handling.</note>
+  </example>
+
+  <antipattern>
+    <description>Using Batch API for user-facing real-time responses.</description>
+    <reason>Batch API can take up to 24 hours. Any user-facing flow requiring a response within seconds must use synchronous Messages API instead.</reason>
+  </antipattern>
+
+  <reference path="templates/batch-submit-poll.py">Batch API submit + poll loop</reference>
+</text>
