@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-model-comparison" title="ModelComparison — Multi-Model Benchmark Runner">
+  <summary>ModelComparison class: running identical test sets across multiple models, ranking by metric, latency comparison, and parallelization for large test sets.</summary>
+
+  <section title="Comparison Rules">
+    <rule>
+      <statement>Run all models at temperature=0 with the identical system prompt and test cases.</statement>
+      <rationale>Any difference in prompt or temperature produces incomparable results; the comparison must control everything except the model.</rationale>
+    </rule>
+    <rule>
+      <statement>Use at least 50 cases per task type for ModelComparison; below 50, metric rankings reverse between runs due to sampling variance.</statement>
+      <rationale>Statistical reliability requires sufficient sample size; fewer than 50 cases produce confidence intervals too wide for actionable decisions.</rationale>
+    </rule>
+    <rule>
+      <statement>Parallelize model evaluation with asyncio.gather or separate subagents — never run models sequentially for large test sets.</statement>
+      <rationale>3 models x 100 cases x 1s latency = 300s sequential; parallelization reduces this to ~100s wall-clock time.</rationale>
+    </rule>
+  </section>
+
+  <section title="Ranking Inversion Gotcha">
+    <rule>
+      <statement>When using ModelComparison rankings for model selection, invert the latency ranking — lower latency is better, but the default ranking sorts higher values first.</statement>
+      <rationale>The comparison report assumes "higher is better" for all metrics. Latency ranking must be explicitly inverted or the fastest model is ranked last.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using ModelComparison.rankings["latency_ms"][0] as the "best" model selection.</description>
+      <reason>The highest latency model is ranked first by the default sort; the agent selects the slowest model when it intends to pick the fastest.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Dataset Hygiene">
+    <rule>
+      <statement>Maintain a frozen "golden" test set for regression detection and a separate "current" test set that grows with new failure modes from production.</statement>
+      <rationale>A growing test set captures new edge cases; a frozen golden set ensures regressions are detectable even as coverage expands.</rationale>
+    </rule>
+    <rule>
+      <statement>Store benchmark datasets in version control (Git LFS or DVC) alongside the prompt versions they were designed to test.</statement>
+      <rationale>Changes to either the dataset or the prompt should trigger a benchmark re-run; version co-location makes this dependency explicit.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using the same test set to tune prompts and then to evaluate quality.</description>
+      <reason>The test set is no longer an unbiased evaluator once it has been used to optimize — benchmark overfitting produces inflated scores.</reason>
+    </antipattern>
+  </section>
+</text>

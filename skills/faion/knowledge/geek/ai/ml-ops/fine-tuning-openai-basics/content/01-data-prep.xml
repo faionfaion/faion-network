@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-data-prep" title="OpenAI Fine-tuning Data Preparation">
+  <summary>JSONL format spec for OpenAI fine-tuning, create_training_example helper, dataset serialization, and the quality checklist for training data.</summary>
+
+  <section title="JSONL Format">
+    <rule>
+      <statement>Every training example must be a JSON object with a "messages" key containing at least one "user" and one "assistant" turn.</statement>
+      <rationale>OpenAI rejects files missing the assistant turn; the validation API error is non-descriptive and wastes upload time.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep the system prompt identical across ALL training examples and match it exactly to the system prompt used in production inference.</statement>
+      <rationale>Divergence between training and inference system prompts is the most common cause of unexpected fine-tuned model behavior.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def create_training_example(system: str, user: str, assistant: str) -> dict:
+    return {
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": assistant},
+        ]
+    }
+
+def prepare_dataset(examples: list, output_file: str) -> None:
+    with open(output_file, "w") as f:
+        for ex in examples:
+            f.write(json.dumps(ex) + "\n")
+]]></code>
+      <note>One JSON object per line. System prompt is a parameter — caller ensures consistency.</note>
+    </example>
+    <antipattern>
+      <description>Using different system prompts across training examples (e.g., varying the company name or tone).</description>
+      <reason>The model learns to associate different behaviors with different prompts, producing unpredictable results at inference with a single system prompt.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Dataset Size Guidelines">
+    <rule>
+      <statement>Use a minimum of 50-100 examples; for meaningful improvement on complex tasks, target 500+.</statement>
+      <rationale>Below 50 examples the fine-tuned model may not meaningfully differ from the base model on the evaluation set.</rationale>
+    </rule>
+    <rule>
+      <statement>Split dataset 80% training / 20% held-out test; never evaluate on training data.</statement>
+      <rationale>Training data evaluation produces artificially high metrics; the held-out test set is the only unbiased quality signal.</rationale>
+    </rule>
+    <rule>
+      <statement>Have a human review a random 10% sample before submitting — quality over quantity.</statement>
+      <rationale>200 excellent examples beat 2000 mediocre ones; automated generation without human review propagates systematic errors into training.</rationale>
+    </rule>
+  </section>
+
+  <section title="Decision Matrix">
+    <p>Use fine-tuning when the task requires consistent format/style. Use RAG when the task requires current factual knowledge. Use few-shot when you have fewer than 50 examples or need rapid iteration.</p>
+    <list>
+      <item>Consistent format → fine-tuning (best), RAG (OK), few-shot (OK)</item>
+      <item>Domain style → fine-tuning (best), RAG (OK), few-shot (OK)</item>
+      <item>New facts → RAG (best), few-shot (OK), fine-tuning (poor)</item>
+      <item>Reduce latency → fine-tuning (best), RAG (OK), few-shot (poor)</item>
+      <item>Reduce cost → fine-tuning (best), RAG (depends), few-shot (poor)</item>
+    </list>
+  </section>
+
+  <reference path="templates/training-example.jsonl">Minimal valid JSONL training file</reference>
+</text>

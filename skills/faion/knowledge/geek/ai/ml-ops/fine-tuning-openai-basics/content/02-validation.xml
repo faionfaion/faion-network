@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-validation" title="Dataset Validation and Cost Estimation">
+  <summary>validate_dataset function: structure checks, token counting with tiktoken, cost estimation, and error reporting before upload.</summary>
+
+  <section title="Validation Rules">
+    <rule>
+      <statement>Validate JSONL format locally before upload — check that each line is valid JSON, has "messages" key, and contains an "assistant" turn.</statement>
+      <rationale>The API rejects malformed files after upload; local validation prevents wasted time waiting for server-side rejection.</rationale>
+    </rule>
+    <rule>
+      <statement>Count tokens with tiktoken before upload and display cost estimate to humans for approval.</statement>
+      <rationale>Training cost = total_tokens * n_epochs * cost_per_1M; a bad dataset can be expensive to discover after training starts.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json
+import tiktoken
+from collections import defaultdict
+
+def validate_dataset(filepath: str, model: str = "gpt-4o-mini-2024-07-18") -> dict:
+    encoding = tiktoken.encoding_for_model(model)
+    stats = {"total_examples": 0, "total_tokens": 0, "errors": []}
+
+    with open(filepath) as f:
+        for i, line in enumerate(f):
+            try:
+                ex = json.loads(line)
+            except json.JSONDecodeError as e:
+                stats["errors"].append(f"Line {i}: invalid JSON — {e}")
+                continue
+            if "messages" not in ex:
+                stats["errors"].append(f"Line {i}: missing 'messages' key")
+                continue
+            roles = [m.get("role") for m in ex["messages"]]
+            if "assistant" not in roles:
+                stats["errors"].append(f"Line {i}: no assistant turn")
+            for msg in ex["messages"]:
+                stats["total_tokens"] += len(encoding.encode(msg.get("content", "")))
+            stats["total_examples"] += 1
+
+    stats["estimated_cost_usd"] = round(
+        (stats["total_tokens"] / 1_000_000) * 3.0 * 3, 4  # $3/1M * 3 epochs
+    )
+    return stats
+]]></code>
+      <note>Returns full stats dict including errors list. Caller checks errors before proceeding to upload.</note>
+    </example>
+  </section>
+
+  <section title="Common Validation Errors">
+    <list>
+      <item>Missing "messages" key — line is not an OpenAI chat format example</item>
+      <item>No assistant turn — training example has no target output for the model to learn</item>
+      <item>Invalid JSON on a line — JSONL requires exactly one object per line, no trailing commas</item>
+      <item>Content field is None or empty — silent token count of 0, model learns nothing from the turn</item>
+    </list>
+  </section>
+
+  <section title="Data Generation with GPT-4">
+    <rule>
+      <statement>When generating training examples with GPT-4, manually review a random 10% sample before using them — do not auto-submit LLM-generated data.</statement>
+      <rationale>GPT-4-generated training data creates a feedback loop: the fine-tuned model inherits GPT-4's errors, blind spots, and phrasings as if they were ground truth.</rationale>
+    </rule>
+  </section>
+</text>

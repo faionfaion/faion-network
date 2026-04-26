@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-llm-judge" title="LLMJudge — LLM-as-Judge Scoring and Pairwise Comparison">
+  <summary>LLMJudge class for single-output scoring (1-5 per criterion) and pairwise A/B comparison with position-bias mitigation.</summary>
+
+  <section title="Single-Output Scoring">
+    <rule>
+      <statement>Use a more capable model as judge than the model being evaluated (e.g., judge gpt-4o-mini outputs with gpt-4o).</statement>
+      <rationale>Evaluating with the same model introduces self-preference bias; a stronger model produces more calibrated scores.</rationale>
+    </rule>
+    <rule>
+      <statement>Include the word "JSON" in the prompt when using response_format=json_object; the API raises an error if it is absent.</statement>
+      <rationale>OpenAI enforces this requirement at the API level; silent omission causes evaluation failures.</rationale>
+    </rule>
+    <rule>
+      <statement>Wrap json.loads() in try/except json.JSONDecodeError and return a default error dict on failure.</statement>
+      <rationale>Judge models occasionally produce malformed JSON; uncaught errors abort the entire batch evaluation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def judge(self, input: str, output: str, criteria: list, reference=None) -> dict:
+    criteria_str = "\n".join(f"- {c}" for c in criteria)
+    prompt = f"""Evaluate the response based on these criteria:\n{criteria_str}
+Input: {input}\nResponse: {output}"""
+    if reference:
+        prompt += f"\nReference: {reference}"
+    prompt += '\nReturn JSON: {"scores": {"criterion": {"score": 1-5, "explanation": "..."}}, "overall": N}'
+    resp = self.client.chat.completions.create(
+        model=self.model,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+    )
+    try:
+        return json.loads(resp.choices[0].message.content)
+    except json.JSONDecodeError:
+        return {"error": "malformed JSON from judge", "scores": {}, "overall": None}
+]]></code>
+      <note>json.JSONDecodeError is caught explicitly. "JSON" appears in the prompt for response_format compliance.</note>
+    </example>
+  </section>
+
+  <section title="Pairwise Comparison">
+    <rule>
+      <statement>Run pairwise comparisons in both orderings (A vs B and B vs A) and average the results.</statement>
+      <rationale>Position bias causes the first-listed response to be preferred ~55-60% of the time; averaging both orderings removes this systematic error.</rationale>
+    </rule>
+    <antipattern>
+      <description>Running pairwise comparison with only one ordering (A always first) and using the winner directly.</description>
+      <reason>Position bias produces a false winner ~5-10% of the time, making model selection unreliable.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Batch Evaluation">
+    <rule>
+      <statement>Parallelize LLMJudge.evaluate_batch with asyncio or concurrent.futures for batches larger than 20 cases.</statement>
+      <rationale>Sequential API calls at 1s latency each make large batches impractical; parallelization reduces wall-clock time proportionally.</rationale>
+    </rule>
+    <rule>
+      <statement>Cap LLM judge evaluation at 50-100 examples for routine CI checks; reserve full-batch eval for major releases.</statement>
+      <rationale>Each judge call costs money; routine checks at sample size 50-100 provide sufficient signal without large spend.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not autonomously block production deployments based solely on LLM judge scores — require human review of threshold calibration.</statement>
+      <rationale>LLM-as-judge is a proxy metric; threshold calibration requires human validation before it can be treated as a gate.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/llm-judge-prompts.txt">Prompt templates for single scoring and pairwise comparison</reference>
+</text>

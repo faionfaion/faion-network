@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-workflow" title="Three-Phase Agentic Workflow for OpenAI Fine-tuning">
+  <summary>The three phases an agent must execute with explicit human-approval checkpoints: dataset preparation, job submission, and evaluation/promotion decision.</summary>
+
+  <section title="Phase Structure">
+    <rule>
+      <statement>Treat fine-tuning as three discrete phases with human approval gates between phases 1-to-2 and 2-to-3.</statement>
+      <rationale>A bad dataset is expensive to discover after training. A bad model is dangerous to deploy without evaluation. Human approval gates prevent automated systems from spending budget or affecting production without review.</rationale>
+    </rule>
+    <list>
+      <item>Phase 1 (Dataset prep): validate JSONL, count tokens, estimate cost → human approves or rejects</item>
+      <item>Phase 2 (Job submission): upload file, create job, poll for completion, download metrics → human approves evaluation</item>
+      <item>Phase 3 (Evaluation): run fine-tuned model on held-out test set, compare to base model → human decides promote or retrain</item>
+    </list>
+  </section>
+
+  <section title="Job Submission and Polling">
+    <rule>
+      <statement>Sleep at least 30-60 seconds between poll calls; never poll in a tight loop.</statement>
+      <rationale>Tight polling loops hit OpenAI rate limits and provide no value — fine-tuning jobs run for minutes to hours.</rationale>
+    </rule>
+    <rule>
+      <statement>Check job.status == "succeeded" before reading job.fine_tuned_model — the field is null until the job succeeds.</statement>
+      <rationale>Reading fine_tuned_model before job completion causes an AttributeError that silently breaks the pipeline.</rationale>
+    </rule>
+    <rule>
+      <statement>Store fine-tuned model IDs in a config file or database with metadata (base model, dataset version, training date).</statement>
+      <rationale>OpenAI model IDs are opaque strings (e.g., ft:gpt-4o-mini::abc123) that become impossible to manage at scale without a registry. Checkpoints expire after 90 days of inactivity.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time
+from openai import OpenAI
+
+def submit_finetune_job(training_file: str, model: str = "gpt-4o-mini-2024-07-18",
+                        suffix: str = "v1", n_epochs: int = 3) -> str:
+    client = OpenAI()
+    with open(training_file, "rb") as f:
+        upload = client.files.create(file=f, purpose="fine-tune")
+
+    job = client.fine_tuning.jobs.create(
+        training_file=upload.id, model=model,
+        suffix=suffix, hyperparameters={"n_epochs": n_epochs},
+    )
+
+    while job.status not in ("succeeded", "failed", "cancelled"):
+        time.sleep(60)
+        job = client.fine_tuning.jobs.retrieve(job.id)
+
+    if job.status == "succeeded":
+        return job.fine_tuned_model
+    raise RuntimeError(f"Fine-tuning failed: {job.error}")
+]]></code>
+      <note>Polls every 60 seconds. Returns model ID only on success; raises on failure.</note>
+    </example>
+  </section>
+
+  <reference path="templates/submit-job.py">Full upload-to-poll job submission script</reference>
+  <reference path="templates/dataset-review-prompt.txt">LLM quality review prompt for training examples</reference>
+</text>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-evaluator" title="ModelEvaluator — Batch Evaluation Harness">
+  <summary>Core evaluation pipeline: EvaluationCase/EvaluationResult dataclasses, metric function protocol, aggregation with latency percentiles, and a CI quality gate pattern.</summary>
+
+  <section title="Data Structures">
+    <rule>
+      <statement>Define test cases as EvaluationCase(input, expected_output, metadata) and results as EvaluationResult(case, actual_output, metrics, latency_ms, tokens_used, error).</statement>
+      <rationale>Explicit dataclasses make metric functions stateless and testable independently of the evaluator loop.</rationale>
+    </rule>
+    <rule>
+      <statement>Metric functions must have the signature (input: str, actual: str, expected: Optional[str]) -&gt; Optional[float].</statement>
+      <rationale>Uniform signature lets any metric be added with `evaluator.add_metric(fn)` without modifying the evaluation loop.</rationale>
+    </rule>
+  </section>
+
+  <section title="Evaluation Loop">
+    <rule>
+      <statement>Always set temperature=0 for all evaluation runs.</statement>
+      <rationale>Stochastic outputs make metric comparisons between runs unreliable; reproducibility requires deterministic decoding.</rationale>
+    </rule>
+    <rule>
+      <statement>Wrap each API call in try/except and store the error in EvaluationResult.error; never abort the batch on a single failure.</statement>
+      <rationale>Network errors and API rate limits are expected; aborting loses all results collected so far.</rationale>
+    </rule>
+    <rule>
+      <statement>Aggregate latency as mean, p50, and p95 — not just mean.</statement>
+      <rationale>Mean latency hides tail behavior; p95 is the metric users actually experience.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI Quality Gate">
+    <rule>
+      <statement>Compare aggregate metric means to pre-defined thresholds and return a pass/fail verdict with the full metric JSON.</statement>
+      <rationale>The CI system needs a boolean result, but the full JSON must be stored for trend analysis.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def run_ci_gate(test_cases, system_prompt, thresholds, model="gpt-4o-mini"):
+    client = OpenAI()
+    results = []
+    for case in test_cases:
+        resp = client.chat.completions.create(
+            model=model, temperature=0,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": case.input},
+            ],
+        )
+        output = resp.choices[0].message.content
+        em = 1.0 if output.strip() == (case.expected_output or "").strip() else 0.0
+        results.append({"output": output, "exact_match": em})
+    means = {m: sum(r[m] for r in results if r[m] is not None) / len(results)
+             for m in thresholds}
+    passed = all(means.get(m, 0) >= t for m, t in thresholds.items())
+    return {"passed": passed, "means": means, "thresholds": thresholds}
+]]></code>
+      <note>Temperature=0 is explicit. Returns structured dict with pass/fail and metric details.</note>
+    </example>
+    <antipattern>
+      <description>Running evaluation at temperature=1 (model default) and comparing results between runs.</description>
+      <reason>Stochastic outputs produce different metric values each run; the comparison measures noise, not quality.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Dataset Requirements">
+    <rule>
+      <statement>Use at least 100 test cases for any metric comparison used to make deployment decisions.</statement>
+      <rationale>Below 100 cases, metric rankings are statistically unreliable and reverse between runs due to sampling variance.</rationale>
+    </rule>
+    <rule>
+      <statement>Include adversarial cases (edge cases, ambiguous instructions, long inputs) alongside representative cases.</statement>
+      <rationale>Easy cases produce artificially high metrics; adversarial cases reveal real failure modes.</rationale>
+    </rule>
+    <rule>
+      <statement>Separate EvaluationCase datasets by task type (classification, QA, generation) and never mix in one aggregation run.</statement>
+      <rationale>Mixing task types makes metric aggregation meaningless — exact_match for classification and BLEU for generation are not comparable.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/ci-quality-gate.py">Minimal CI gate with exact_match metric</reference>
+</text>

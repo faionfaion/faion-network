@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-evaluation" title="Post-Training Evaluation and Promotion Decision">
+  <summary>Test set protocol, LLM-as-judge evaluation pattern with its limitations, deterministic metric alternatives, and the human-approval gate for production deployment.</summary>
+
+  <section title="Test Set Protocol">
+    <rule>
+      <statement>Hold out a test set (separate from validation) that is never used during training or hyperparameter tuning — it is the only unbiased post-training quality signal.</statement>
+      <rationale>Validation data used for early stopping is contaminated; evaluating on it produces inflated scores. A held-out test set reveals real generalization quality.</rationale>
+    </rule>
+    <rule>
+      <statement>Run the base model on the held-out test set before fine-tuning to establish a baseline — without it you cannot measure the improvement delta.</statement>
+      <rationale>Fine-tuning job cost is only justified if the improvement over the base model is measurable and exceeds the inference cost premium of the fine-tuned model.</rationale>
+    </rule>
+    <rule>
+      <statement>If improvement over base model is less than 10% on the test set, reconsider fine-tuning — the cost premium may not be justified.</statement>
+      <rationale>Fine-tuned gpt-4o-mini costs 3-6x more per token than base gpt-4o-mini; marginal quality improvement does not justify this cost increase.</rationale>
+    </rule>
+  </section>
+
+  <section title="LLM-as-Judge Limitations">
+    <rule>
+      <statement>Do not use GPT-4o to judge GPT-4o-mini outputs as the sole evaluation criterion — prefer deterministic metrics (exact_match, format_compliance) when possible.</statement>
+      <rationale>GPT-4o-to-GPT-4o-mini judgment has circular bias; the evaluator has self-preference and may inflate or deflate scores for outputs similar to its own style.</rationale>
+    </rule>
+    <rule>
+      <statement>Cap LLM-judge evaluation at 50-100 examples for routine post-training checks — each judge call costs money.</statement>
+      <rationale>Full-set LLM judge eval at 1000 examples can cost as much as the training run itself; sample-based eval provides sufficient signal for routine deployment decisions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Deployment Gate">
+    <rule>
+      <statement>The decision to promote a fine-tuned model to production must be a human checkpoint — agents should write the model ID to a config file and stop; a human approves by updating the production config.</statement>
+      <rationale>Automated promotion bypasses human review of quality, cost, and safety tradeoffs. Fine-tuning decisions have lasting production impact that requires human accountability.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/eval-prompts.txt">LLM judge prompts for format_match scoring and promotion decision</reference>
+</text>

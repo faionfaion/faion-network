@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-production-monitoring" title="ProductionEvaluator — Continuous Quality Monitoring">
+  <summary>Sampled production evaluation with JSONL persistence, sample rate guidance by traffic volume, and alert analysis prompt pattern.</summary>
+
+  <section title="Sample Rate Guidance">
+    <rule>
+      <statement>Set sample rate by traffic: 10% at 1k req/day, 1% at 100k req/day, 0.1% at 1M req/day — keep evaluation cost below 5% of production inference cost.</statement>
+      <rationale>Over-sampling wastes budget without improving signal quality; under-sampling misses infrequent failure modes.</rationale>
+    </rule>
+    <rule>
+      <statement>Persist evaluation records to a JSONL file or time-series database rather than accumulating in memory.</statement>
+      <rationale>In-memory accumulation causes OOM in high-volume long-running processes; JSONL files survive process restarts and can be analyzed historically.</rationale>
+    </rule>
+  </section>
+
+  <section title="Time-Series Analysis">
+    <rule>
+      <statement>Track benchmark results as a time-series over 4-8 weeks — a single evaluation snapshot has low diagnostic value; trends reveal model drift and quality degradation.</statement>
+      <rationale>Point-in-time scores show current quality but not whether it is improving or declining; trend lines are required for meaningful operational decisions.</rationale>
+    </rule>
+    <rule>
+      <statement>Calibrate error pattern strings (e.g., "sorry, i cannot", "as an ai") against actual model outputs every 3-6 months.</statement>
+      <rationale>Provider phrasings change across model versions; stale patterns produce false negatives that mask real quality issues.</rationale>
+    </rule>
+    <antipattern>
+      <description>Running ProductionEvaluator.evaluate_request with random.random() and expecting reproducible debugging of a specific production failure.</description>
+      <reason>Non-seeded sampling is not reproducible; the failing request will not reliably be re-captured. Log all raw requests separately from the evaluation sample.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Alert Analysis">
+    <reference path="templates/benchmark-alert-prompt.txt">Prompt for comparing 24h metrics to 7-day baseline and generating alerts</reference>
+  </section>
+</text>

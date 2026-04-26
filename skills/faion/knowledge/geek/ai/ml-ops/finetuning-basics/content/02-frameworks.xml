@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-frameworks" title="Fine-tuning Frameworks: LLaMA-Factory, Unsloth, Axolotl, TRL">
+  <summary>Framework comparison and quick-start commands for the four main open-model fine-tuning frameworks with their respective tradeoffs.</summary>
+
+  <section title="Framework Selection">
+    <rule>
+      <statement>Use Unsloth for speed and memory efficiency on a single GPU; use Axolotl for complex multi-GPU scenarios with YAML-driven configuration; use TRL directly for DPO/ORPO alignment.</statement>
+      <rationale>Unsloth's custom CUDA kernels provide 2x speed and 80% less VRAM than vanilla HF training. Axolotl's YAML config enables reproducible multi-GPU runs. TRL owns the alignment trainer implementations.</rationale>
+    </rule>
+    <list>
+      <item>Unsloth: 2x faster, 80% less VRAM, GGUF export, consumer GPU first — best for quick experiments</item>
+      <item>LLaMA-Factory: WebUI available, 100+ model families, all training methods — best for no-code iteration</item>
+      <item>Axolotl: YAML config, sample packing, Flash Attention, DeepSpeed — best for reproducible production runs</item>
+      <item>TRL: SFTTrainer, DPOTrainer, ORPOTrainer — use when alignment method is the primary concern</item>
+    </list>
+  </section>
+
+  <section title="Key Commands">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# LLaMA-Factory: LoRA fine-tuning
+llamafactory-cli train \
+    --stage sft --model_name_or_path meta-llama/Llama-3.1-8B \
+    --finetuning_type lora --lora_rank 16 \
+    --lora_target q_proj,v_proj --output_dir output/llama3-lora \
+    --per_device_train_batch_size 2 --gradient_accumulation_steps 4 \
+    --learning_rate 5e-5 --num_train_epochs 3 --fp16
+
+# LLaMA-Factory: merge LoRA adapter
+llamafactory-cli export \
+    --model_name_or_path meta-llama/Llama-3.1-8B \
+    --adapter_name_or_path output/llama3-lora \
+    --finetuning_type lora --export_dir merged_model
+
+# Axolotl: single GPU training
+accelerate launch -m axolotl.cli.train config.yaml
+
+# Axolotl: multi-GPU with DeepSpeed
+accelerate launch --config_file deepspeed.yaml -m axolotl.cli.train config.yaml
+]]></code>
+      <note>Always merge adapters before deploying to vLLM or TGI.</note>
+    </example>
+  </section>
+
+  <section title="Framework Fragility Warning">
+    <rule>
+      <statement>Pin dependency versions for Unsloth, Axolotl, and LLaMA-Factory — they update frequently and new model releases can break compatibility on unpinned installs.</statement>
+      <rationale>Framework updates often break existing configs or require new model-specific parameters; unpinned installs break silently on `pip install --upgrade`.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/axolotl-config.yaml">Axolotl YAML config for LoRA fine-tuning of a 7B LLaMA-family model</reference>
+  <reference path="templates/validate-jsonl.py">JSONL format validator for any training API</reference>
+</text>

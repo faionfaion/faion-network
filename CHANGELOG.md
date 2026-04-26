@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 ml-ops methodologies migrated to new shape (batch: evaluation-framework, fine-tuning-openai-basics, evaluation-benchmarks, cost-reduction-strategies, finetuning-basics, finetuning-datasets, fine-tuning-lora, fine-tuning-openai-production)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: llamaindex, llm-decision-framework, voice-agents, rag-pipeline-design, reasoning-first-architectures, fine-tuning-lora, text-to-speech, finetuning)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: eu-ai-act-compliance, multi-agent-design-patterns, model-evaluation, rag-evaluation, tool-use-function-calling, llm-observability-stack, gemini-api, speech-to-text)
 - refactor: 8/8 methodologies migrated to new shape (batch: guardrails-implementation, gemini-multimodal, claude-tool-use, openai-chat-completions, prompt-basics, structured-output-basics, claude-api-integration, claude-messages-api)

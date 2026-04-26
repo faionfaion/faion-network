@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-prompt-optimization" title="Prompt Optimization for Token Reduction">
+  <summary>PromptOptimizer: token counting with tiktoken, whitespace compression, redundant phrase removal, and system prompt tightening — with explicit limits on what must not be compressed.</summary>
+
+  <section title="Safe Compression">
+    <rule>
+      <statement>Compress only user-facing inputs and system prompts; never compress few-shot examples, agent scratchpad, or chain-of-thought steps.</statement>
+      <rationale>Few-shot examples depend on precise phrasing and spacing to demonstrate the target format. Compressing them produces a model that learns from corrupted demonstrations. CoT compression breaks reasoning chains.</rationale>
+    </rule>
+    <rule>
+      <statement>Run compression on the system prompt first, where savings are largest — a 500-token system prompt that compresses to 350 saves 150 tokens on every request.</statement>
+      <rationale>System prompt tokens are paid on every call; user message tokens are paid once per turn. System prompt optimization has higher ROI.</rationale>
+    </rule>
+    <antipattern>
+      <description>Aggressive compression that strips semantic information from instructions (e.g., removing examples or detail from JSON schemas).</description>
+      <reason>Losing constraint details produces outputs that do not match the required format; quality loss outweighs token savings.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Token Counting Before Calls">
+    <rule>
+      <statement>Count tokens with tiktoken before sending any expensive call; fall back to a cheaper model if the prompt exceeds a budget threshold.</statement>
+      <rationale>Token count determines cost and latency; routing before the call is cheaper than paying for an oversized request and then retrying with a smaller model.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import tiktoken
+
+def is_within_budget(text: str, model: str = "gpt-4o", max_tokens: int = 4000) -> bool:
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text)) <= max_tokens
+
+# Route by token budget before calling
+model = "gpt-4o" if is_within_budget(prompt, max_tokens=2000) else "gpt-4o-mini"
+]]></code>
+      <note>Rule-based routing — no LLM call needed for the routing decision itself.</note>
+    </example>
+  </section>
+
+  <section title="Anthropic Prompt Caching">
+    <rule>
+      <statement>Use Anthropic prompt caching (cache_control) for system prompts exceeding 1024 tokens — the 90% read discount is immediate with no code changes beyond adding the header.</statement>
+      <rationale>Anthropic caches up to 4 system prompt breakpoints; repeated calls reuse the cached prefix at 90% cost reduction, making this the highest-ROI optimization for Claude-based apps.</rationale>
+    </rule>
+  </section>
+</text>

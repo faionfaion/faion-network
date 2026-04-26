@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-production-ops" title="Model Registry, Versioning, and Checkpoint Lifecycle">
+  <summary>Fine-tuned model ID registry management, checkpoint expiry policy, cost tracking, and operational patterns for long-term production maintenance of fine-tuned models.</summary>
+
+  <section title="Model Registry">
+    <rule>
+      <statement>Store fine-tuned model IDs in a config file or database with metadata: base_model, dataset_version, n_epochs, training_date, test_score.</statement>
+      <rationale>OpenAI model IDs are opaque strings (ft:gpt-4o-mini-2024-07-18:org::abc123) that are impossible to manage at scale without a registry. The org slug in the ID becomes invalid if the organization changes.</rationale>
+    </rule>
+    <rule>
+      <statement>Monitor fine-tuned model checkpoints for the 90-day inactivity expiry — OpenAI expires checkpoints after 90 days without API calls; retrain before expiry for production models.</statement>
+      <rationale>Expired checkpoints cannot be recovered; production systems must track checkpoint health and proactively retrain or make periodic inference calls to prevent expiry.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cost Accounting">
+    <rule>
+      <statement>Estimate training token cost before upload with tiktoken: total_tokens * n_epochs * cost_per_1M.</statement>
+      <rationale>A large dataset at 3 epochs with gpt-4o pricing ($25/1M) can cost hundreds of dollars; agents must surface this estimate to humans before submitting.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import json, tiktoken
+
+def estimate_ft_cost(jsonl_path: str, model: str = "gpt-4o-mini-2024-07-18",
+                     n_epochs: int = 3, cost_per_1m: float = 3.00) -> dict:
+    enc = tiktoken.encoding_for_model("gpt-4o")  # same encoding family
+    total = 0
+    with open(jsonl_path) as f:
+        for line in f:
+            for msg in json.loads(line)["messages"]:
+                total += len(enc.encode(msg.get("content", "")))
+    training_tokens = total * n_epochs
+    return {
+        "total_tokens": total,
+        "training_tokens": training_tokens,
+        "estimated_cost_usd": round((training_tokens / 1_000_000) * cost_per_1m, 4),
+    }
+]]></code>
+      <note>Always show cost estimate to a human before auto-submitting a job.</note>
+    </example>
+  </section>
+
+  <section title="Validation File Best Practice">
+    <rule>
+      <statement>Always create a separate validation file (10% of training data) and pass validation_file to the job — OpenAI reports validation loss in job events.</statement>
+      <rationale>Without a validation file, there is no way to detect overfitting during training; OpenAI reports validation loss only when a validation file is provided.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/estimate-cost.py">Cost estimation script</reference>
+</text>

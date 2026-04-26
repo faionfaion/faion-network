@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-dataset-cleaning" title="Dataset Cleaning, Format Conversion, and Train/Val Split">
+  <summary>Deduplication, PII removal, output length filtering, format conversion between Alpaca/ShareGPT/OpenAI JSONL, and reproducible train/val split.</summary>
+
+  <section title="Cleaning Rules">
+    <rule>
+      <statement>Deduplicate by (instruction, output) exact hash; use semantic deduplication tools for datasets where near-duplicates are likely.</statement>
+      <rationale>Exact deduplication misses semantic duplicates; a model trained on near-duplicate data overfits silently while appearing to have sufficient coverage.</rationale>
+    </rule>
+    <rule>
+      <statement>Remove PII (email addresses, phone numbers, full names) from training data before upload to any external provider.</statement>
+      <rationale>Training data is processed on provider servers and may influence model outputs; PII in training data is a data governance and compliance risk.</rationale>
+    </rule>
+    <rule>
+      <statement>Tune output length filters per task: do not use a global min/max. Short-answer tasks (yes/no, single-word) are invalid short outputs for most tasks but valid for others.</statement>
+      <rationale>A global min-length filter of 10 characters removes valid single-word answers in classification tasks; filter thresholds must be task-specific.</rationale>
+    </rule>
+    <rule>
+      <statement>Format consistency is the highest-impact factor — use the same system prompt across all examples, or omit it entirely from all examples.</statement>
+      <rationale>A fine-tuned model that saw mixed system-prompt/no-system-prompt training behaves inconsistently at inference when one or the other is provided.</rationale>
+    </rule>
+  </section>
+
+  <section title="Format Conversion">
+    <list>
+      <item>Alpaca: {"instruction": "...", "input": "...", "output": "..."} — for single-turn tasks</item>
+      <item>ShareGPT: {"conversations": [{"from": "human", "value": "..."}, {"from": "gpt", "value": "..."}]} — for multi-turn chat</item>
+      <item>OpenAI JSONL: {"messages": [{"role": "system"}, {"role": "user"}, {"role": "assistant"}]} — for OpenAI API fine-tuning</item>
+    </list>
+  </section>
+
+  <section title="Train/Val Split">
+    <rule>
+      <statement>Split with a fixed random seed (random.seed(42)) after shuffling — never split sequentially, as it leaks temporal distribution bias.</statement>
+      <rationale>Sequential split means the validation set is always the "oldest" data; shuffle-and-split produces a representative val set across the full data distribution.</rationale>
+    </rule>
+    <rule>
+      <statement>Use 80-90% for training, 10-20% for validation; keep a separate held-out test set (5-10%) that is never used for training or hyperparameter tuning.</statement>
+      <rationale>Evaluating on validation data used for early stopping leaks information; the held-out test set is the only unbiased quality signal.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/clean-dataset.py">Deduplication + filter + train/val split pipeline</reference>
+</text>

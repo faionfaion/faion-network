@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-technique-selection" title="Fine-tuning Technique Selection">
+  <summary>Decision matrix for choosing between full fine-tuning, LoRA, QLoRA, and DoRA based on GPU VRAM, dataset size, and task complexity; rank selection guide; target_modules by model family.</summary>
+
+  <section title="Technique Decision Matrix">
+    <rule>
+      <statement>Select technique by available VRAM: &lt;12GB → QLoRA; 16-24GB → LoRA; 80GB+ → full fine-tuning; no GPU → OpenAI API fine-tuning.</statement>
+      <rationale>Wrong technique selection causes OOM at training start. QLoRA reduces a 7B model's VRAM requirement from 28GB to 6-8GB with minimal quality loss.</rationale>
+    </rule>
+    <list>
+      <item>Full fine-tuning: 80GB+ VRAM, best quality, highest cost, risk of catastrophic forgetting</item>
+      <item>LoRA: 16-24GB VRAM, good quality, fast iteration, adapter-based — preserves base capabilities</item>
+      <item>QLoRA: 8-12GB VRAM, good quality, 4-bit base model + fp16 adapters, best for consumer GPUs</item>
+      <item>DoRA: 16-24GB VRAM, better than LoRA on style tasks, decomposes magnitude and direction separately</item>
+      <item>OpenAI API: no GPU needed, good quality, fast, no infra — see fine-tuning-openai-basics methodology</item>
+    </list>
+  </section>
+
+  <section title="LoRA Rank Selection">
+    <rule>
+      <statement>Start with rank 16 for most tasks; increase to 32-64 only if validation loss plateaus and you have more than 5k examples.</statement>
+      <rationale>Higher rank means more trainable parameters and slower training. Rank 16 provides sufficient capacity for the majority of format/style adaptation tasks.</rationale>
+    </rule>
+    <list>
+      <item>rank 8: minimal memory, simple tasks (classification, extraction), prototyping</item>
+      <item>rank 16: general fine-tuning, instruction following — default choice</item>
+      <item>rank 32: complex tasks requiring nuanced adaptation</item>
+      <item>rank 64+: rarely needed; diminishing returns above rank 32 for most tasks</item>
+    </list>
+  </section>
+
+  <section title="Target Modules by Model Family">
+    <rule>
+      <statement>Always include at minimum q_proj and v_proj; add k_proj, o_proj, and MLP layers (gate_proj, up_proj, down_proj) for complex tasks.</statement>
+      <rationale>q_proj and v_proj are the most impactful attention components for style adaptation. MLP layers matter for knowledge-intensive tasks.</rationale>
+    </rule>
+    <list>
+      <item>LLaMA/Mistral: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj</item>
+      <item>Qwen: c_attn, c_proj</item>
+      <item>Phi: q_proj, k_proj, v_proj, dense</item>
+      <item>GPT-NeoX: query_key_value, dense</item>
+    </list>
+    <rule>
+      <statement>Verify trainable parameter count immediately after applying LoRA — if it is 0, stop and fix target_modules before starting training.</statement>
+      <rationale>Wrong module names cause 0 trainable parameters; training proceeds silently for hours producing a model identical to the base.</rationale>
+    </rule>
+  </section>
+</text>
