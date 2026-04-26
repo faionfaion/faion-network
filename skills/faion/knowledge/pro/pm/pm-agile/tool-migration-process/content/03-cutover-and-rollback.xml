@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-cutover-and-rollback" title="Cutover, Rollback, and Change Management">
+  <summary>Cutover checklist (T-24h through T+1w), rollback triggers and procedure, and change-management communications plan.</summary>
+
+  <section title="Cutover Checklist">
+    <rule>
+      <statement>Validate three numbers before declaring any wave or cutover successful: issue count, comment count, and attachment count by byte.</statement>
+      <rationale>Issue count alone misses corrupted comments and missing attachments; the three-number check catches the most common silent data-loss patterns.</rationale>
+    </rule>
+    <rule>
+      <statement>Cutover on a low-traffic window (Friday afternoon if org tolerates weekend quiet); never mid-week for large migrations.</statement>
+      <rationale>Weekend windows provide recovery time before full business-hours load resumes; mid-week cutovers interrupt peak productivity with no buffer.</rationale>
+    </rule>
+
+    <list>
+      <item>T-24h: final data export from source, backup target environment, notify all users of timeline, prepare support team</item>
+      <item>T-4h: set source tool to read-only, run final migration sync, validate issue counts, test critical integrations</item>
+      <item>T-0: enable target tool for all users, send go-live announcement, support team on standby, monitor error rate</item>
+      <item>T+1h: verify user login success, confirm automations running, address immediate issues, update stakeholders</item>
+      <item>T+24h: review error logs, collect user feedback, document known issues, plan remediation</item>
+      <item>T+1w: measure adoption metrics, complete any missing migrations, conduct retrospective, plan source tool decommission date</item>
+    </list>
+
+    <antipattern>
+      <description>Agent marks checklist steps complete based on stdout text matches rather than process exit codes.</description>
+      <reason>Text matches lie; a process can print "success" while returning exit code 1. Use exit codes for machine-verified steps.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Rollback Strategy">
+    <rule>
+      <statement>Pre-write rollback communications before cutover begins so they can be sent within seconds of a decision to revert.</statement>
+      <rationale>Rollback decisions under stress are slowed by the need to draft communications; pre-writing removes this bottleneck and enables faster response.</rationale>
+    </rule>
+
+    <section title="Rollback Triggers">
+      <list>
+        <item>Data loss detected → immediate rollback</item>
+        <item>Critical integration failure → immediate rollback</item>
+        <item>Team productivity drop ≥50% → rollback within 48 hours</item>
+        <item>User adoption under 30% at end of week 1 → rollback within 1 week</item>
+      </list>
+    </section>
+
+    <section title="Rollback Procedure (Immediate)">
+      <list>
+        <item>Pause migration — halt all ETL processes</item>
+        <item>Notify stakeholders immediately with pre-written message</item>
+        <item>Assess damage scope — what data was created only in target during cutover?</item>
+        <item>Restore source read access</item>
+        <item>Document failure root cause</item>
+        <item>Export any target-only data before reverting</item>
+      </list>
+    </section>
+
+    <rule>
+      <statement>Rollback only works if no critical data was created exclusively in the target during cutover; a single shipped feature with target-only context can pin you.</statement>
+      <rationale>Once teams start creating tickets in the new tool, those records don't exist in the source; rollback would lose that work, making true revert impossible.</rationale>
+    </rule>
+  </section>
+
+  <section title="Change Management Communications Plan">
+    <list>
+      <item>T-4 weeks: migration announcement to all users via email + Slack + meeting</item>
+      <item>T-2 weeks: training schedule distributed via email + calendar invites</item>
+      <item>T-1 week: final preparation checklist via email + Slack</item>
+      <item>T-0: go-live announcement via email + Slack + meeting for high-impact teams</item>
+      <item>Daily for 2 weeks post-cutover: tips, FAQs, and support channel reminder via Slack</item>
+    </list>
+    <rule>
+      <statement>Rate-limit webhook-based notifications to one summary per migration phase; do not send a message per event.</statement>
+      <rationale>Retry storms in migration engines can trigger hundreds of webhook notifications, spamming channels and causing teams to mute the notifications needed for real alerts.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/migration-plan.md">Full project plan with scope, timeline, risk register, success criteria</reference>
+</text>
