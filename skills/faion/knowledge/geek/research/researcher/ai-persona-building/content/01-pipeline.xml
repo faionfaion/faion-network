@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline" title="Automated Persona Pipeline Architecture">
+  <summary>End-to-end automated persona generation for large datasets: ingestion, clustering, validation, narrative generation, and drift detection with schema stability requirements.</summary>
+
+  <section title="Pipeline Architecture">
+    <p>Four stages: Haiku ingests behavioral event exports via API and normalizes to feature matrix; Opus validates cluster separability; human approval gate; Sonnet transforms validated clusters into persona JSON documents consumable by downstream agents.</p>
+
+    <rule>
+      <statement>Store the persona JSON schema in version control; downstream agents depend on a stable schema and schema changes break them silently.</statement>
+      <rationale>Downstream agents (copywriting, feature-priority, pricing) consume persona data as structured input. Unversioned schema changes break their prompts without surfacing an error.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Add schema validation at the pipeline entry point (analytics export ingestion); schema changes in Amplitude, Mixpanel, or Heap exports silently break normalization.</statement>
+      <rationale>Analytics platforms change their export format without notice. Validation at ingestion surfaces the break immediately rather than propagating corrupted data through clustering and narrative stages.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Set a persona refresh cadence (monthly or quarterly) and automate drift detection by comparing new cluster centroids against stored ones; flag centroid shift over 15% for human review.</statement>
+      <rationale>User behavior drifts with product changes and market shifts. Automated drift detection prevents stale personas from accumulating in downstream systems undetected.</rationale>
+    </rule>
+  </section>
+
+  <section title="Governance for Automated Pipelines">
+    <rule>
+      <statement>Keep a persona changelog with date, data snapshot version, k, silhouette score, and a one-line summary of what changed each cycle.</statement>
+      <rationale>Without a changelog, persona evolution is invisible. Auditors and stakeholders cannot determine when a persona changed or why, making trust impossible to maintain.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Human approval gate between Opus (cluster validation) and Sonnet (narrative generation) is non-negotiable even in fully automated pipelines.</statement>
+      <rationale>A bad cluster produces a confidently-written persona that enters downstream systems without scrutiny. The gate is the single control that prevents confident-wrong output from propagating.</rationale>
+    </rule>
+  </section>
+
+  <section title="Differences from Interactive Persona Building">
+    <list>
+      <item>Scale: automated pipeline targets 1,000+ users where manual cluster review is infeasible</item>
+      <item>Schema: outputs must conform to a stable JSON schema for downstream agent consumption</item>
+      <item>Drift detection: recurring pipeline includes centroid comparison against stored baseline</item>
+      <item>Risk: removing human review from any stage produces confident wrong personas — the gate must be enforced even at scale</item>
+    </list>
+
+    <see-also>
+      <link path="../ai-assisted-persona-building/AGENTS.md"/>
+    </see-also>
+  </section>
+
+  <reference path="templates/validate-clusters.py">Silhouette scoring across k range with weak-cluster abort</reference>
+</text>

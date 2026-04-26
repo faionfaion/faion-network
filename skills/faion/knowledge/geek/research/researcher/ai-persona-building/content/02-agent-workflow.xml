@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-workflow" title="Automated Persona Pipeline Agent Workflow">
+  <summary>Haiku/Opus/Sonnet roles, silhouette gate rules, structured JSON persona output, and gotchas for fully automated persona pipelines.</summary>
+
+  <section title="Agent Roles">
+    <rule>
+      <statement>Haiku: ingest behavioral event exports via API, normalize to feature matrix, compute cluster centroids. Do not delegate normalization to Sonnet or Opus.</statement>
+      <rationale>Normalization is mechanical and deterministic. Using higher-capability models for mechanical data processing wastes cost without quality benefit.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Opus: validate cluster separability (silhouette score), generate cluster report, flag fragile clusters (under 50 users) and redundant clusters (over 70% feature overlap).</statement>
+      <rationale>Cluster boundary identification requires reasoning about feature distributions; Opus provides the analytical depth needed for reliable cluster quality assessment.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Sonnet: generate persona narratives, JTBD maps, and pain-point summaries only after human approval of Opus cluster report.</statement>
+      <rationale>Narrative generation is expensive to redo. Running Sonnet before human approval of clusters wastes tokens and produces personas built on potentially invalid segments.</rationale>
+    </rule>
+  </section>
+
+  <section title="Silhouette Gate">
+    <rule>
+      <statement>When silhouette scores are below 0.25, the pipeline must abort and surface the issue rather than proceeding to narrative generation.</statement>
+      <rationale>Pipeline auto-retry on weak clusters compounds the error. Weak clusters produce personas with confidence language that stakeholders accept uncritically.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Run clustering with at least 3 different random seeds; if membership changes significantly across seeds, reject the k and flag for human data review.</statement>
+      <rationale>Unstable clusters signal that the feature set does not support the chosen segmentation. The solution is better feature engineering, not narrative generation from bad segments.</rationale>
+    </rule>
+  </section>
+
+  <section title="Gotchas">
+    <rule>
+      <statement>Agents generating JTBD statements from behavioral data without qualitative input produce feature descriptions dressed as motivations; require an "inferred" tag or reject.</statement>
+      <rationale>JTBD requires motivation (why), which is absent from analytics exports. Behavioral data alone produces statements like "wants to export data" when the real motivation is unstated.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Fully automated pipeline without a human gate between clustering and narrative generation is high-risk: a bad cluster produces a confidently-written persona that gets adopted without scrutiny.</statement>
+      <rationale>The entire value of data-driven personas collapses if the segments are invalid. The human gate is the last control before personas enter production systems.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/validate-clusters.py">Silhouette scoring with abort on weak clusters</reference>
+  <reference path="templates/persona-schema-prompt.txt">Prompt for structured persona JSON with data_confidence and assumptions fields</reference>
+</text>
