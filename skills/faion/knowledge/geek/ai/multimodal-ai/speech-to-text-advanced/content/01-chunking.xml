@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-chunking" title="Long Audio Chunking">
+  <summary>LongAudioTranscriber pattern for files exceeding the 25MB Whisper API limit, with overlap strategy and known bug fix.</summary>
+
+  <section title="When chunking is needed">
+    <rule>
+      <statement>Check file size in MB, not duration, before selecting transcription strategy. A 1-hour 64kbps mp3 is ~28MB and will fail the 25MB API limit even though it is less than an hour.</statement>
+      <rationale>The Whisper API limit is applied to the compressed audio file size, not to duration. A medium-quality mp3 can exceed 25MB well within a single hour of audio.</rationale>
+    </rule>
+  </section>
+
+  <section title="Bug fix: _transcribe_chunk must return text">
+    <rule>
+      <statement>Return response.text from _transcribe_chunk, not the raw response object. The merge step expects strings.</statement>
+      <rationale>The original template returns the full response object. _merge_results then concatenates objects instead of strings, silently producing garbage output.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def _transcribe_chunk(self, audio_path: str) -> str:
+    with open(audio_path, "rb") as f:
+        response = self.client.audio.transcriptions.create(
+            model="whisper-1", file=f
+        )
+    return response.text  # NOT: return response
+]]></code>
+    </example>
+  </section>
+
+  <section title="Overlap and deduplication">
+    <rule>
+      <statement>Set overlap_ms to 2000-5000ms when chunking audio. After merging, run deduplication on the chunk boundary to remove repeated words.</statement>
+      <rationale>Without overlap, words at chunk boundaries are cut off and lost. With overlap, the same words appear twice at every boundary — both halves are wrong without dedup.</rationale>
+    </rule>
+  </section>
+
+  <section title="Memory management">
+    <rule>
+      <statement>Load audio chunks from disk one at a time, not all at once. A 2-hour WAV at 16kHz 16-bit is ~230MB in RAM; loading all chunks into memory will OOM in constrained environments.</statement>
+      <rationale>pydub loads audio as full PCM in memory. Chunking on disk — writing each chunk to a temp file and discarding after transcription — keeps memory footprint constant.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import tempfile
+from pathlib import Path
+from pydub import AudioSegment
+
+class LongAudioTranscriber:
+    def __init__(self, chunk_duration_ms: int = 300000, overlap_ms: int = 3000):
+        self.chunk_duration = chunk_duration_ms
+        self.overlap = overlap_ms
+
+    def transcribe(self, audio_path: str) -> dict:
+        audio = AudioSegment.from_file(audio_path)
+        if len(audio) <= self.chunk_duration:
+            return {"text": self._transcribe_chunk(audio_path)}
+        return self._merge_results(self._process_chunks(audio))
+
+    def _process_chunks(self, audio: AudioSegment) -> list:
+        results = []
+        start = 0
+        tmpdir = tempfile.mkdtemp()  # unique dir per call — safe for concurrent agents
+        while start < len(audio):
+            end = min(start + self.chunk_duration, len(audio))
+            chunk_path = str(Path(tmpdir) / f"chunk_{start}.mp3")
+            audio[start:end].export(chunk_path, format="mp3")
+            results.append({"start": start, "end": end, "text": self._transcribe_chunk(chunk_path)})
+            Path(chunk_path).unlink()
+            start = end - self.overlap
+        return results
+]]></code>
+    </example>
+  </section>
+
+  <section title="Audio preprocessing">
+    <rule>
+      <statement>Preprocess audio to 16kHz mono WAV before transcription to reduce file size and match Whisper's training format.</statement>
+      <rationale>Whisper was trained on 16kHz mono audio. Stereo 44kHz files are twice the size for no quality benefit; preprocessing prevents unnecessary file-size limit violations.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+ffmpeg -i input.mp4 -ar 16000 -ac 1 -c:a pcm_s16le output.wav
+]]></code>
+    </example>
+    <reference path="templates/transcription_service.py">Full LongAudioTranscriber with fixes applied</reference>
+  </section>
+</text>

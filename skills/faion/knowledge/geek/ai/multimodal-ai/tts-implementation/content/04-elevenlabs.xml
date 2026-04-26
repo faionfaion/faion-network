@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-elevenlabs" title="ElevenLabs TTS and Voice Cloning">
+  <summary>elevenlabs_tts and clone_voice integration: voice settings, sample requirements, consent requirement, and performance gotchas.</summary>
+
+  <section title="Voice cloning requirements">
+    <rule>
+      <statement>Voice cloning requires explicit consent from the person whose voice is cloned. ElevenLabs ToS requires consent documentation. Do not clone a voice without it.</statement>
+      <rationale>Unauthorized voice cloning violates ElevenLabs ToS and in many jurisdictions is legally actionable as unauthorized use of likeness.</rationale>
+    </rule>
+    <rule>
+      <statement>Collect 3+ audio samples of 30-60 seconds each for clone_voice. Normalize audio levels and minimize background noise before uploading.</statement>
+      <rationale>ElevenLabs requires minimum sample duration for model training. Low-quality samples (noise, inconsistent levels) degrade clone quality; re-cloning wastes API credits.</rationale>
+    </rule>
+    <rule>
+      <statement>Run clone_voice once per voice and store the returned voice_id. Never call clone_voice on every synthesis run — it takes 10-30 seconds and re-uploads the samples.</statement>
+      <rationale>clone_voice is a model training call, not a fast lookup. Treating it as a per-request step makes the pipeline 10-30 seconds slower per synthesis with no benefit.</rationale>
+    </rule>
+  </section>
+
+  <section title="File path requirement">
+    <rule>
+      <statement>clone_voice accepts file paths (absolute), not file handles. Paths must point to existing .mp3 or .wav files of at least 30 seconds each.</statement>
+      <rationale>The ElevenLabs SDK opens files by path internally. Passing file handles or relative paths raises TypeError or FileNotFoundError with unhelpful error messages.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from elevenlabs import ElevenLabs, Voice, VoiceSettings
+
+def elevenlabs_tts(text: str, output_path: str, voice_id: str,
+                   stability: float = 0.5, similarity_boost: float = 0.75) -> str:
+    client = ElevenLabs()
+    audio = client.generate(
+        text=text,
+        voice=Voice(
+            voice_id=voice_id,
+            settings=VoiceSettings(
+                stability=stability,
+                similarity_boost=similarity_boost,
+                style=0.5,
+                use_speaker_boost=True,
+            )
+        ),
+        model="eleven_multilingual_v2",
+    )
+    with open(output_path, "wb") as f:
+        for chunk in audio:
+            f.write(chunk)
+    return output_path
+]]></code>
+    </example>
+  </section>
+
+  <section title="Google TTS voice name format">
+    <rule>
+      <statement>Google TTS voice_name format is locale-specific (en-US-Neural2-D). Picking the wrong locale for a given language_code silently generates wrong-accent audio.</statement>
+      <rationale>Google does not error on mismatched locale+voice combinations — it falls back silently to a default voice. Always validate voice_name against the language_code using the list endpoint.</rationale>
+    </rule>
+    <reference path="templates/elevenlabs_tts.py">elevenlabs_tts and clone_voice with validation</reference>
+  </section>
+</text>

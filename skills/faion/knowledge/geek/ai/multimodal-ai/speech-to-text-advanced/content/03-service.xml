@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-service" title="Production TranscriptionService">
+  <summary>TranscriptionService provider routing rules, strategy selection logic, caching, and critical agent gotchas.</summary>
+
+  <section title="Provider routing">
+    <rule>
+      <statement>Route transcription requests by file size: under 5MB → direct API call; 5-25MB → standard TranscriptionService; over 25MB → LongAudioTranscriber chunking.</statement>
+      <rationale>Direct API calls avoid service initialization overhead for small files. Chunking is required above 25MB (Whisper API limit); standard service handles the middle range.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pathlib import Path
+
+def route_transcription(path: str) -> str:
+    size_mb = Path(path).stat().st_size / (1024 * 1024)
+    if size_mb > 25:
+        return "chunked"
+    elif size_mb > 5:
+        return "standard"
+    return "direct"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Caching">
+    <rule>
+      <statement>Cache transcription results keyed on a SHA-256 of the audio file bytes (not the filename). Re-transcribing identical audio wastes money.</statement>
+      <rationale>Filenames are reused across pipeline runs. Content hashing ensures the cache key is stable even when files are re-uploaded with the same name.</rationale>
+    </rule>
+  </section>
+
+  <section title="Local provider stubs">
+    <rule>
+      <statement>TranscriptionService._transcribe_local delegates to FasterWhisperTranscriber and LocalWhisper which are not defined in the base template — implement these before using the LOCAL and FASTER_WHISPER providers.</statement>
+      <rationale>The template references these classes but does not define them. Calling the service with these providers will raise NameError at runtime without custom implementations.</rationale>
+    </rule>
+  </section>
+
+  <section title="Word timestamps">
+    <rule>
+      <statement>word_timestamps=True requires response_format="verbose_json". The template sets this correctly, but response.words uses getattr with None default — validate that word timestamps are present before using them downstream.</statement>
+      <rationale>getattr with None default means missing word timestamps fail silently. Downstream subtitle or search-index generation will break without an explicit presence check.</rationale>
+    </rule>
+  </section>
+
+  <section title="Format support">
+    <rule>
+      <statement>The default supported_formats list does not include .ogg. Add it or convert .ogg to .mp3 before calling TranscriptionService.</statement>
+      <rationale>.ogg is common in web recording APIs (MediaRecorder default). Without explicit support, the service raises ValueError and the audio is lost.</rationale>
+    </rule>
+    <list>
+      <item>Use language parameter when language is known — auto-detect adds ~1s latency and misidentifies short clips.</item>
+      <item>Whisper output is not punctuated on all audio types — downstream agents must not assume sentence structure in raw transcripts.</item>
+      <item>Groq Whisper uses the same API format as OpenAI but has stricter size limits — test before routing production traffic.</item>
+    </list>
+    <reference path="templates/transcription_service.py">TranscriptionService with all fixes applied</reference>
+    <reference path="templates/prompt-transcribe.txt">Agent task prompt for transcription subagent</reference>
+  </section>
+</text>

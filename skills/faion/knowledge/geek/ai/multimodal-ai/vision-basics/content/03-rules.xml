@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules" title="Core Vision Rules and Gotchas">
+  <summary>Detail setting selection, caching by image hash, API metadata limitation, and critical agent gotchas.</summary>
+
+  <section title="Detail settings">
+    <rule>
+      <statement>Use detail="low" for quick image classification; use detail="high" for layout-heavy documents. Mismatching costs 4x tokens unnecessarily.</statement>
+      <rationale>OpenAI's detail setting controls how many 512px tiles are processed. "low" uses a single fixed tile (85 tokens); "high" tiles the full image (up to ~1700 tokens for a 1024px image). Using "high" for a simple yes/no classification quadruples cost with no accuracy benefit.</rationale>
+    </rule>
+  </section>
+
+  <section title="Caching">
+    <rule>
+      <statement>Cache extraction results keyed on SHA-256 of the image bytes, not the filename. Re-scanning the same image should never re-call the API.</statement>
+      <rationale>Filenames are reused across pipeline runs. A content hash is stable regardless of how the file is named or moved.</rationale>
+    </rule>
+  </section>
+
+  <section title="Metadata limitation">
+    <rule>
+      <statement>VLMs cannot read image metadata (EXIF, PDF author, creation date). Extract metadata with Pillow or PyMuPDF in a separate step; do not ask the VLM for it.</statement>
+      <rationale>VLMs see only the rendered pixel content of an image. EXIF data, file creation timestamps, and PDF document properties are invisible to them.</rationale>
+    </rule>
+  </section>
+
+  <section title="Handwritten and small text">
+    <rule testable="true">
+      <statement>Treat handwritten text extraction as low-confidence and always require human review. Printed text below ~100px height also degrades significantly.</statement>
+      <rationale>VLMs are not fine-tuned as OCR engines. Handwriting accuracy varies widely; small printed text below 100px can be misread character by character.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent gotchas">
+    <list>
+      <item>Base64 encoding of a 5MB JPEG becomes ~7MB of text — monitor request size to avoid payload cap failures.</item>
+      <item>Anthropic API image size cap is 5MB (not 20MB like OpenAI). Pre-check before routing to Claude models.</item>
+      <item>For financial or legal document extraction, require human review when confidence is "low" or extracted amounts exceed a business threshold before writing to any system of record.</item>
+      <item>VLMs cannot see file metadata (EXIF, PDF author) — use Pillow or PyMuPDF for metadata extraction.</item>
+    </list>
+    <reference path="templates/prepare_image.py">Image resize and encode helper</reference>
+  </section>
+</text>

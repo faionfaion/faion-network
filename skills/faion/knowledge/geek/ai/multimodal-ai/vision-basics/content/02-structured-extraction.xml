@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-structured-extraction" title="Structured Vision Extraction">
+  <summary>Pydantic schema enforcement, response_format usage, JSON parse-with-retry pattern, and stateful Visual Q&amp;A.</summary>
+
+  <section title="Structured output enforcement">
+    <rule>
+      <statement>Always enforce structured output via response_format={"type": "json_object"} when downstream agents consume vision results. Prompt-only schema requests drift under real production load.</statement>
+      <rationale>VLM JSON output without format enforcement occasionally adds prose before the JSON, uses wrong field names, or omits required fields. response_format eliminates these cases for OpenAI; Anthropic requires explicit JSON-in-prompt instruction and parse-with-retry.</rationale>
+    </rule>
+    <rule>
+      <statement>Wrap JSON parse in try/except and re-prompt with the specific parse error on failure. Do not silently drop failed extractions.</statement>
+      <rationale>Even with response_format, edge cases can produce malformed JSON. A re-prompt with the error message typically produces valid JSON on the second attempt.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from typing import Optional
+import json
+
+class ImageResult(BaseModel):
+    description: str
+    text_content: Optional[str]
+    confidence: str  # "high" | "low"
+
+def extract_with_retry(client, image_data: str, task: str, max_retries: int = 2) -> ImageResult:
+    prompt = f"{task}\nReturn JSON: {{description, text_content, confidence}}"
+    for attempt in range(max_retries):
+        resp = client.chat.completions.create(
+            model="gpt-4o",
+            response_format={"type": "json_object"},
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
+            ]}]
+        )
+        try:
+            return ImageResult(**json.loads(resp.choices[0].message.content))
+        except Exception as e:
+            prompt = f"Previous response caused: {e}. Return valid JSON: {{description, text_content, confidence}}"
+    raise ValueError("Extraction failed after retries")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Stateful Visual Q&amp;A">
+    <rule>
+      <statement>Include the image only in the first message of a multi-turn visual Q&amp;A conversation. Subsequent turns are text-only with conversation history.</statement>
+      <rationale>Including the image in every turn re-consumes image tokens on each message, multiplying cost by the number of turns. The model retains image context from the first message.</rationale>
+    </rule>
+  </section>
+
+  <section title="VLM limitations for numbers">
+    <rule>
+      <statement>Always cross-validate numbers extracted from charts with a second VLM pass or a deterministic chart parser. VLMs frequently hallucinate chart values.</statement>
+      <rationale>Chart values are interpolated, not read precisely. VLMs produce confident-sounding but inaccurate numbers for bar heights, axis values, and table cells in charts.</rationale>
+    </rule>
+    <reference path="templates/vision_extract.py">structured_analysis and VisualQA implementations</reference>
+    <reference path="templates/prompt-vision.txt">Agent prompt for structured vision extraction</reference>
+  </section>
+</text>

@@ -11,6 +11,7 @@
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: llamaindex, llm-decision-framework, voice-agents, rag-pipeline-design, reasoning-first-architectures, fine-tuning-lora, text-to-speech, finetuning)
 - refactor: 8/8 ml-engineer methodologies migrated to new shape (batch: eu-ai-act-compliance, multi-agent-design-patterns, model-evaluation, rag-evaluation, tool-use-function-calling, llm-observability-stack, gemini-api, speech-to-text)
 - refactor: 8/8 methodologies migrated to new shape (batch: guardrails-implementation, gemini-multimodal, claude-tool-use, openai-chat-completions, prompt-basics, structured-output-basics, claude-api-integration, claude-messages-api)
+- refactor: 8/8 methodologies migrated to new shape (batch: tts-basics, speech-to-text-advanced, tts-implementation, vision-basics, idea-generation-methods, idea-generation, pricing-research, niche-evaluation)
 - refactor: 8/8 methodologies migrated to new shape (batch: guardrails-basics, tool-use-basics, openai-function-calling, claude-api-basics, openai-embeddings, cot-techniques, local-llm-ollama, structured-output-patterns)
 - refactor: 8/8 methodologies migrated to new shape (batch: claude-advanced-features, gemini-function-calling, openai-assistants, cot-basics, claude-best-practices, function-calling-patterns, rag, hybrid-search-basics)
 - refactor: 8/8 rag-engineer methodologies migrated to new shape (batch: embedding-generation, db-chroma, embedding-models, db-qdrant, vector-database-setup, rag-implementation, hybrid-search-implementation, reranking-models)
