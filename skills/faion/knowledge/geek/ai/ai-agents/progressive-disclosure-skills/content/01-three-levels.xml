@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-three-levels" title="Three loading levels of a Claude Skill">
+  <summary>A Skill is a pyramid: frontmatter is always loaded, SKILL.md loads on activation, bundled files load only on explicit Read.</summary>
+
+  <section title="Level 1 — frontmatter (always loaded)">
+    <p>YAML frontmatter is the only part of a skill that always lives in the system prompt. Keep it tiny — Claude scans every skill's frontmatter on every request to decide what to activate.</p>
+
+    <rule testable="true">
+      <statement>Frontmatter must contain at minimum name, description, and trigger keywords; the description must be under 30 lines and front-load specific verbs and nouns the user would say.</statement>
+      <rationale>Anthropic's skill-router matches the user message against the description text; vague descriptions ("helps with stuff") trigger nothing and inflate base context for zero value.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+---
+name: faion-deploy
+description: Use when user asks to deploy a faion-net project (faion.net, dev.faion.net, api.faion.net, neromedia, pashtelka, longlife, ender). Handles op_unlock, deploy-gh.sh selection, post-deploy verification, telegram notification.
+---
+      ]]></code>
+      <note>Description names every domain a user might mention, plus the steps it covers.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+---
+name: deployer
+description: A skill that helps with deployment.
+---
+      ]]></code>
+      <note>No domain triggers, no steps, no project hints — router has nothing to match.</note>
+    </example>
+  </section>
+
+  <section title="Level 2 — SKILL.md body (loaded on activation)">
+    <p>SKILL.md is loaded into the conversation only when Claude decides the skill applies. Keep it focused on procedure and decisions, defer everything else.</p>
+
+    <rule testable="true">
+      <statement>SKILL.md body must stay under 500 lines and must reference scripts, examples, and long reference docs by relative path rather than inlining their content.</statement>
+      <rationale>Activated body sits in context for the rest of the turn; inlining 2000-line reference docs costs that token tax even when the agent only needed 50 lines of it.</rationale>
+    </rule>
+  </section>
+
+  <section title="Level 3 — bundled files (loaded only on Read)">
+    <p>Anything in <code lang="text"><![CDATA[scripts/]]></code>, <code lang="text"><![CDATA[references/]]></code>, or <code lang="text"><![CDATA[assets/]]></code> loads only when SKILL.md tells Claude to Read it.</p>
+
+    <rule testable="true">
+      <statement>Place every artifact larger than ~80 lines (long runbooks, schemas, code samples) in a sibling folder and reference it from SKILL.md by relative path.</statement>
+      <rationale>Files are loaded lazily on Read — a 5000-line runbook in references/ costs zero context until the procedure actually needs it.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Pasting an entire reference document inline as a fenced code block in SKILL.md.</description>
+      <reason>Defeats progressive disclosure — the reference now loads on every activation, even for sub-tasks that never touch it.</reason>
+    </antipattern>
+
+    <reference path="templates/skill-frontmatter.yaml">Working frontmatter showing trigger-rich description.</reference>
+    <reference path="templates/skill-body.md">SKILL.md skeleton with deferred references.</reference>
+    <reference href="https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview">Anthropic Agent Skills overview.</reference>
+    <reference href="https://docs.claude.com/en/docs/agents-and-tools/agent-skills/best-practices">Skills best practices — progressive disclosure.</reference>
+    <reference href="https://resources.anthropic.com/hubfs/The-Complete-Guide-to-Building-Skill-for-Claude.pdf">Complete Guide to Building Skills for Claude (PDF).</reference>
+  </section>
+</text>

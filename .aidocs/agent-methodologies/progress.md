@@ -12,3 +12,4 @@
 [2026-04-26 04:05] pool-batch agents:lp-:4 — promoted max-turns-circuit-breaker, posttool-hook-self-correction, generator-critic-bounded-loop, map-reduce-send-fanout → 22/50. lp- category filled (5/5).
 [2026-04-26 04:10] pool-batch agents:so-:2 — promoted discriminated-union-output, strict-mode-required-fields → 24/50 (so- 6/10)
 [2026-04-26 04:35] pool-batch agents:mm-:4 — promoted preference-trained-router, role-specialized-models, rerank-before-reasoning, gateway-fallback-chain → 28/50. mm- category fully filled (6/6).
+[2026-04-26 04:40] pool-batch agents:mem-:3 — promoted progressive-disclosure-skills, filesystem-as-working-memory, previous-response-id-reasoning-reuse → 31/50 (mem- 4/4 target reached). NEW shape (AGENTS.md + content/*.xml + templates/).

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-anti-patterns" title="Working-memory anti-patterns">
+  <summary>Three failures: summarizing too early, round-tripping blobs through the model, and losing files on restart.</summary>
+
+  <section title="Summarize-too-early">
+    <antipattern>
+      <description>Compaction routine fires whenever context utilization crosses ~50%, replacing the conversation with a summary while large tool outputs are still inline.</description>
+      <reason>The lossless lever (offload to FS) was still available; the agent burned facts it could have kept.</reason>
+    </antipattern>
+
+    <rule testable="true">
+      <statement>Compaction must be the LAST resort: only fire when no inline tool result above ~2000 tokens remains AND utilization is past 85%.</statement>
+      <rationale>Order of operations matters — offload first, summarize second; reversing the order causes information loss without need.</rationale>
+    </rule>
+  </section>
+
+  <section title="Blob round-trip">
+    <antipattern>
+      <description>Tool reads a file, returns the full content to the model, model emits a tool call to write the same content to a different file.</description>
+      <reason>The blob crosses the model boundary twice for no reason — pay the input + output token cost on data the model never needed to "see".</reason>
+    </antipattern>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Server-side copy primitive — content never enters the model.
+@tool
+def copy_file(src: str, dst: str) -> dict:
+    fs.copy(src, dst)
+    return {"copied_from": src, "to": dst}
+      ]]></code>
+      <note>Operation completes without round-tripping the file content.</note>
+    </example>
+  </section>
+
+  <section title="Lost-state on restart">
+    <antipattern>
+      <description>Agent stores files in /tmp or in-memory dict, conversation in durable store; restart leaves dangling paths.</description>
+      <reason>Two persistence boundaries — agent's mental model assumes the file still exists because the message that mentions it does.</reason>
+    </antipattern>
+
+    <rule testable="true">
+      <statement>Conversation checkpoint and FS snapshot must commit atomically (same store, same transaction, or paired with a write-ahead reconciliation step) so resume is consistent.</statement>
+      <rationale>An agent recovering with one half of its memory missing produces silent data corruption — paths point to nothing, summaries describe artifacts that never existed.</rationale>
+    </rule>
+
+    <reference href="https://github.com/langchain-ai/deepagents">deepagents — example checkpointer integration.</reference>
+    <reference href="https://blog.dailydoseofds.com/p/the-anatomy-of-an-agent-harness">Anatomy of an Agent Harness — restart semantics.</reference>
+  </section>
+</text>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tool-surface" title="Minimum FS tool surface">
+  <summary>Four tools — write_file, read_file, ls, grep — are sufficient; avoid wrapping every operation in its own tool.</summary>
+
+  <section title="The four primitives">
+    <rule testable="true">
+      <statement>Expose exactly four FS tools to the agent — write_file(path, content), read_file(path, offset?, limit?), ls(path?), grep(pattern, path?) — and route every offload/recall through them.</statement>
+      <rationale>Four primitives compose like Unix utilities; adding move/copy/append separately bloats the tool list and makes the agent pick wrong tools (see bundle-vs-split-tools at ~25 tools).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "name": "read_file",
+  "description": "Read a file from agent working memory. Use offset+limit to stream large files in chunks.",
+  "input_schema": {
+    "type": "object",
+    "required": ["path"],
+    "properties": {
+      "path": {"type": "string"},
+      "offset": {"type": "integer", "default": 0},
+      "limit": {"type": "integer", "default": 2000}
+    }
+  }
+}
+      ]]></code>
+      <note>Default limit forces streaming — the agent never accidentally re-loads a 50k-token file in full.</note>
+    </example>
+  </section>
+
+  <section title="Path conventions">
+    <rule testable="true">
+      <statement>Use a stable directory taxonomy — search/, docs/, plan/, scratch/ — and let SKILL or system prompt list it; never let the agent invent ad-hoc top-level folders per call.</statement>
+      <rationale>A predictable taxonomy makes ls a useful navigation aid; ad-hoc paths force the agent to remember names instead of discovering them.</rationale>
+    </rule>
+
+    <list>
+      <item>search/ — raw search results (one file per query).</item>
+      <item>docs/ — fetched URLs and document downloads.</item>
+      <item>plan/ — TODO files, task graphs, intermediate plans.</item>
+      <item>scratch/ — agent's own notes between turns.</item>
+    </list>
+  </section>
+
+  <section title="Persistence">
+    <rule testable="true">
+      <statement>The FS backing store MUST persist into the same checkpointer as conversation state, so resume-after-failure recovers files alongside messages.</statement>
+      <rationale>If files survive but messages don't (or vice versa) the agent wakes up with dangling references — pointers to artifacts it can no longer interpret, or summaries of files that no longer exist.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>FS in tmpfs / per-process RAM, conversation in Postgres — process restart leaves the agent with file paths that 404.</description>
+      <reason>Memory model splits across two persistence boundaries; agent's references decay independently of its own awareness of them.</reason>
+    </antipattern>
+
+    <reference href="https://docs.langchain.com/oss/python/deepagents/overview">Deep Agents — checkpointer integration with FS state.</reference>
+  </section>
+</text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-zdr-fallback" title="ZDR fallback — encrypted reasoning content">
+  <summary>Under store=false, previous_response_id is silently ignored; round-trip include=["reasoning.encrypted_content"] yourself.</summary>
+
+  <section title="The fallback">
+    <rule testable="true">
+      <statement>When the request has store=false (Zero Data Retention), set include=["reasoning.encrypted_content"] on every Responses call and append the encrypted reasoning items from the prior response into the next call's input array; do not pass previous_response_id — it is ignored without a server-side store.</statement>
+      <rationale>ZDR contractually disallows server-side persistence, so the API has nothing to look up by id. The encrypted-content opt-in returns reasoning items as opaque blobs that the next call decrypts in-process only — preserving reasoning continuity without retaining anything at rest.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+r1 = client.responses.create(
+    model="o4-mini", input=user_msg, store=False,
+    include=["reasoning.encrypted_content"],
+)
+encrypted_items = [i for i in r1.output if i.type == "reasoning"]
+
+r2 = client.responses.create(
+    model="o4-mini", store=False,
+    include=["reasoning.encrypted_content"],
+    input=encrypted_items + [
+        {"type": "function_call_output",
+         "call_id": call_id, "output": tool_result}
+    ],
+)
+      ]]></code>
+      <note>Encrypted blobs are passed back literally; the server decrypts in-memory and reattaches to the new turn.</note>
+    </example>
+  </section>
+
+  <section title="Cost note">
+    <p>Encrypted reasoning items are larger than their unencrypted counterparts. Expect ~5-15% input-token overhead vs the stored variant.</p>
+
+    <antipattern>
+      <description>Using encrypted-content round-trip when the deployment does NOT have a ZDR requirement.</description>
+      <reason>Pays the encryption tax for no compliance benefit; previous_response_id is cheaper and equivalent for stored deployments.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Passing previous_response_id with store=false and assuming reasoning carries forward.</description>
+      <reason>The id resolves to nothing because nothing was stored; the call succeeds but reasoning is lost — silent regression on quality.</reason>
+    </antipattern>
+
+    <reference href="https://community.openai.com/t/how-to-use-reasoning-encrypted-content-with-store-false-stateless/1286934">OpenAI community thread — encrypted_content with store=false.</reference>
+    <reference href="https://github.com/openai/openai-agents-python/issues/2063">openai-agents-python issue #2063 — ZDR + reasoning continuity.</reference>
+  </section>
+</text>
