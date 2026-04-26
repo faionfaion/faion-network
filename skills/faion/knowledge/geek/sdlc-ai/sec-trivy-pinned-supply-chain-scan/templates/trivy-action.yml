@@ -1,0 +1,50 @@
+# .github/workflows/trivy.yml
+# SHA-pinned scanner action with explicit binary version. Replace the SHA below
+# with the latest verified commit from the trivy-action releases page after
+# checking the cosign signature against aquasecurity's keys.
+name: Trivy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  fs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy fs
+        # SHA pin (placeholder — bump deliberately, verify cosign sig).
+        uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: 'true'
+          version: v0.70.2
+          format: sarif
+          output: trivy-fs.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+
+  image:
+    needs: fs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t local/$GITHUB_REPOSITORY:${{ github.sha }} .
+      - uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+        with:
+          scan-type: image
+          image-ref: local/${{ github.repository }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          version: v0.70.2

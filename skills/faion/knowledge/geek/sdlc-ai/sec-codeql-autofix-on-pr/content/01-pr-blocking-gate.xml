@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pr-blocking-gate" title="PR-Blocking Gate Driven by SARIF">
+  <summary>Code Scanning runs CodeQL on every pull_request event; any new alert blocks merge via a required status check tied to branch protection.</summary>
+
+  <section title="Required check wired to branch protection">
+    <p>Code Scanning produces SARIF that GitHub turns into per-PR check runs. Branch protection on the default branch lists those check runs as required. Without the required-check wiring, alerts surface but do not block merge — the gate becomes advisory and stops working.</p>
+
+    <rule testable="true">
+      <statement>Every protected branch MUST list the CodeQL check name (for example `CodeQL / Analyze (javascript-typescript)`) as a required status check, and the CodeQL workflow MUST run on `pull_request` for every language matrix entry. A PR introducing one or more new CodeQL alerts MUST fail the check until the alert is dismissed-with-reason or fixed in the same PR.</statement>
+      <rationale>If the check is not required, a PR can be merged with red alerts and the gate is theatre. GitHub's own Advanced Security guidance ties the merge decision to the SARIF diff between base and head — that diff has to be the source of truth for the bot, the human reviewer, and the agent.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  analyze:
+    uses: github/codeql-action/.github/workflows/codeql.yml@v3
+      ]]></code>
+      <note>Workflow runs on PR events; the resulting check can be required in branch protection.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Monday morning only
+      ]]></code>
+      <note>A weekly scheduled scan never produces a per-PR check — there is nothing to require, and bad code lands during the week.</note>
+    </example>
+
+    <antipattern>
+      <description>Marking the CodeQL check as "informational" because the team is overwhelmed by alerts during onboarding.</description>
+      <reason>Once the gate is advisory, both humans and agents stop reading it; baseline the existing alerts as "won't fix" once, then keep the gate hard for everything new.</reason>
+    </antipattern>
+
+    <reference path="templates/codeql-workflow.yml">Minimal CodeQL workflow with PR + push triggers.</reference>
+    <reference path="templates/branch-protection.json">Required-status-check payload for `gh api`.</reference>
+    <reference href="https://docs.github.com/en/code-security/code-scanning/managing-your-code-scanning-configuration/about-code-scanning-with-codeql">GitHub: about Code Scanning with CodeQL.</reference>
+    <reference href="https://github.blog/security/application-security/github-expands-application-security-coverage-with-ai-powered-detections/">GitHub: AI-powered detections expanding Code Scanning coverage.</reference>
+  </section>
+</text>

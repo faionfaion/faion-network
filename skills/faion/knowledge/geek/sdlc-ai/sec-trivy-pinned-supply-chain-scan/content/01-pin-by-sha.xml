@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pin-by-sha" title="Pin the Scanner Itself by SHA">
+  <summary>The Trivy action and binary are pinned by SHA and explicit version; floating refs are forbidden because the scanner is part of the supply chain.</summary>
+
+  <section title="Pin tightly, bump deliberately">
+    <p>March 2026 demonstrated that a security scanner is itself an attack surface — `aquasecurity/trivy-action` was tampered with and `trivy` 0.69.4 shipped malicious payloads. Pinning by SHA stops the action from rotating under a stolen tag; pinning the binary version stops a runner from pulling a compromised release.</p>
+
+    <rule testable="true">
+      <statement>Every CI workflow MUST reference `aquasecurity/trivy-action` by its full 40-character commit SHA, and MUST pass `version:` with an explicit Trivy release that has been verified by cosign signature against `aquasecurity/trivy` keys. Floating refs (`@main`, `@v0`, `@latest`) and the known-bad versions `trivy@v0.69.4` and `trivy-action@v0.30.0` MUST NOT appear anywhere in the repo, including in archived branches and example documentation.</statement>
+      <rationale>SHA pins are immutable; tag pins are not. The 2026 compromise reused legitimate tags after the attacker pushed malicious commits, so pipelines pinned to `@v0.30.0` ran the malicious code while believing they were on a known release. SHA pin + signature verification breaks that path.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+- name: Trivy fs
+  uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+  with:
+    scan-type: fs
+    version: v0.70.2
+      ]]></code>
+      <note>SHA-pinned action; binary version is explicit and post-incident.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+- uses: aquasecurity/trivy-action@v0.30.0
+      ]]></code>
+      <note>Tag-pinned to a compromised version; pipeline silently runs the tampered scanner.</note>
+    </example>
+
+    <antipattern>
+      <description>Bumping the SHA without reviewing release notes or rerunning cosign verification because "Dependabot suggested it."</description>
+      <reason>Automated SHA bumps reintroduce the floating-ref risk in slow motion; require a human or agent review of the upstream changelog and signature on every bump.</reason>
+    </antipattern>
+
+    <reference path="templates/trivy-action.yml">SHA-pinned action workflow.</reference>
+    <reference href="https://www.stepsecurity.io/blog/trivy-compromised-a-second-time---malicious-v0-69-4-release">StepSecurity write-up of the 2026 Trivy compromise.</reference>
+    <reference href="https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions">GitHub: pin third-party actions by SHA.</reference>
+  </section>
+</text>

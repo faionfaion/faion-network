@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-autofix-suggestion-loop" title="Copilot Autofix as Reviewable Suggestion">
+  <summary>Copilot Autofix posts AI-generated patches as review suggestions; humans or agents verify, edit, then apply — never auto-merge an Autofix patch.</summary>
+
+  <section title="Suggestion, not auto-merge">
+    <p>Autofix proposes a patch attached to the alert. The patch is treated as a draft fix: it must be opened in the diff, reasoned about, and either committed via the PR suggestion API or rewritten by the author. The merge bot does not consume Autofix suggestions automatically.</p>
+
+    <rule testable="true">
+      <statement>An agent or human MUST treat each Copilot Autofix suggestion as a draft patch: read the alert's data-flow explanation, run the test suite locally with the patch applied, and only then apply via "Commit suggestion" or rewrite. Autofix patches MUST NOT be auto-applied by a bot, and MUST NOT be merged without at least one non-author approval.</statement>
+      <rationale>Autofix achieves more than two-thirds correctness on common alert types but the remaining third either misses a constraint (locale, framework version, custom wrapper) or shifts the bug rather than fixing it; the reviewable-suggestion contract keeps the human or agent in the loop while still cutting median time-to-fix by roughly five times.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+gh api -H "Accept: application/vnd.github+json" \
+  /repos/$OWNER/$REPO/code-scanning/alerts/$ALERT_ID > alert.json
+gh pr checkout $PR
+git apply <(jq -r '.most_recent_instance.fix.diff' alert.json)
+pytest -x
+gh pr review --approve
+      ]]></code>
+      <note>Agent fetches the alert + Autofix patch, applies locally, runs tests, only then surfaces for human approval.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+- uses: github/codeql-autofix-apply@v1
+  with:
+    auto-merge: true
+      ]]></code>
+      <note>An auto-merge runner on every Autofix suggestion lands incorrect patches and silently rewrites security-sensitive code without review.</note>
+    </example>
+
+    <antipattern>
+      <description>Dismissing Autofix alerts as "false positive" without recording a reason, just to clear the queue.</description>
+      <reason>Dismissals without `--reason` poison the audit trail; pick `false-positive`, `won-t-fix`, or `used-in-tests` so future scans and compliance reviews can replay the decision.</reason>
+    </antipattern>
+
+    <reference href="https://docs.github.com/en/code-security/code-scanning/managing-code-scanning-alerts/responsible-use-of-code-scanning-autofix">GitHub: responsible use of Code Scanning Autofix.</reference>
+    <reference href="https://github.blog/news-insights/product-news/found-means-fixed-introducing-code-scanning-autofix-powered-by-github-copilot-and-codeql/">Found means fixed: Copilot + CodeQL Autofix announcement.</reference>
+  </section>
+</text>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-verified-ci-gate" title="TruffleHog Verified-Only CI Gate">
+  <summary>TruffleHog runs in CI with `--results=verified` so only secrets that the issuer confirms as live trigger the merge block.</summary>
+
+  <section title="Verification removes false positives">
+    <p>Pattern matchers cannot tell a real production token from one in an example. TruffleHog calls the issuer (AWS STS, GitHub, Stripe, OpenAI, Anthropic, Slack) to confirm the candidate is live; verified findings are by definition exploitable.</p>
+
+    <rule testable="true">
+      <statement>Every PR MUST run TruffleHog against the diff between `base..head` with `--results=verified` and the job MUST fail the required check on any verified finding. Unverified findings are reported as warnings, not blockers, to keep the gate signal clean. The PR description MUST link the rotation receipt before merge if a verified finding is acknowledged as expected (rare — typically only test fixtures using known invalidated keys).</statement>
+      <rationale>A verified finding is not a "potential secret" — it is a key that the issuer just answered as authentic. Treating it as anything other than P0 is a process bug. Restricting the merge gate to verified findings stops alert fatigue and gives agents a sharp signal they can act on.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+- name: TruffleHog (verified only)
+  uses: trufflesecurity/trufflehog@main
+  with:
+    base: ${{ github.event.pull_request.base.sha }}
+    head: ${{ github.event.pull_request.head.sha }}
+    extra_args: --results=verified
+      ]]></code>
+      <note>Diff-scoped, verified-only; reproducible signal for the required check.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+- run: trufflehog filesystem .
+      ]]></code>
+      <note>Whole-tree scan with no verification floods the queue with false positives; team disables the gate.</note>
+    </example>
+
+    <antipattern>
+      <description>Running TruffleHog non-verified and adding everything it finds to the dismiss list.</description>
+      <reason>The dismiss list grows until real secrets land and are auto-suppressed; pairing diff-scope with `--results=verified` gives you a list that stays small and meaningful.</reason>
+    </antipattern>
+
+    <reference path="templates/trufflehog-action.yml">Reusable GitHub Actions step.</reference>
+    <reference href="https://github.com/trufflesecurity/trufflehog">TruffleHog repository and detector list.</reference>
+    <reference href="https://blog.gitguardian.com/secret-scanning-tools/">GitGuardian comparison of secret scanners.</reference>
+  </section>
+</text>

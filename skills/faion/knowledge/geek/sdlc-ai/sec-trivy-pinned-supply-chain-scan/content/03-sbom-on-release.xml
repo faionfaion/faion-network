@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-sbom-on-release" title="SBOM Generated and Attached on Every Release">
+  <summary>Every release tag triggers `trivy sbom --format cyclonedx`, signs the SBOM, and uploads it to the GitHub Release as a first-class asset.</summary>
+
+  <section title="Living SBOM, not one-shot">
+    <p>SBOMs are now regulatory infrastructure: EU CRA reporting starts September 2026 with full enforcement December 2027, and US Executive Order 14028 already requires SBOMs for federal procurement. A "release once, ship for years" PDF is unacceptable; the SBOM must travel with the artifact.</p>
+
+    <rule testable="true">
+      <statement>Every git tag matching the release pattern (for example `v*.*.*`) MUST trigger a workflow that generates a CycloneDX SBOM with `trivy sbom --format cyclonedx`, signs the SBOM with cosign, and uploads both the SBOM and the signature to the GitHub Release as release assets. The release MUST NOT be marked non-draft until the SBOM upload step succeeds.</statement>
+      <rationale>Tying SBOM generation to the tag event guarantees the SBOM matches the exact artifact shipped, which is what auditors verify. Cosign signing prevents downstream consumers from being fed a swapped SBOM.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+trivy sbom --format cyclonedx --output sbom.cdx.json .
+cosign sign-blob --yes sbom.cdx.json --output-signature sbom.cdx.sig
+gh release upload "$TAG" sbom.cdx.json sbom.cdx.sig
+      ]]></code>
+      <note>SBOM, signature, and upload happen as part of the tagged release pipeline.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+trivy sbom --format spdx-json . > /tmp/sbom.json
+echo "SBOM generated"
+      ]]></code>
+      <note>Generated but never published or signed; auditors cannot verify the artifact-to-SBOM mapping.</note>
+    </example>
+
+    <antipattern>
+      <description>Generating the SBOM nightly against `main` rather than against the tagged commit.</description>
+      <reason>The SBOM diverges from any released artifact between two nightly runs and is no longer admissible evidence; pin generation to the tag event.</reason>
+    </antipattern>
+
+    <reference path="templates/release-sbom.sh">Tag-triggered SBOM generation script.</reference>
+    <reference href="https://digital-strategy.ec.europa.eu/en/policies/cyber-resilience-act">EU Cyber Resilience Act overview.</reference>
+    <reference href="https://www.cisa.gov/sbom">CISA SBOM resource collection.</reference>
+    <reference href="https://www.docker.com/blog/generate-sboms-with-buildkit/">Docker / BuildKit SBOM generation guide.</reference>
+  </section>
+</text>
