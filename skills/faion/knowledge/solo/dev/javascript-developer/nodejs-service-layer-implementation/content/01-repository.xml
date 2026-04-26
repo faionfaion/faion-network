@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-repository" title="Repository Layer: Interface and Prisma Implementation">
+  <summary>Defines the IUserRepository interface contract and the UserRepository Prisma implementation with paginated findAll.</summary>
+
+  <section title="Repository Interface">
+    <rule>
+      <statement>Define IUserRepository as a TypeScript interface before implementing it. All service classes depend on the interface, not the concrete class. This enables Jest mocks without touching the database.</statement>
+      <rationale>Interface-first design decouples services from the ORM. A service that takes IUserRepository can be unit-tested with jest.Mocked&lt;IUserRepository&gt; without starting Prisma or a real database.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep Prisma inside repository classes only. Repository methods accept domain types (strings, primitive params) and return domain types (User, User[] with total). Prisma-generated types must not leak into service interfaces.</statement>
+      <rationale>Service code that imports from @prisma/client creates a direct ORM dependency. If the ORM changes, every service file must change. Repository-scoped Prisma means only repository files change.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Promise.all for independent parallel queries inside repositories. The findAll pattern should run findMany and count simultaneously, not sequentially.</statement>
+      <rationale>Sequential findMany then count doubles the round-trip time for paginated queries. Promise.all reduces latency proportionally to the slower of the two queries, which is usually findMany.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="typescript"><![CDATA[
+export interface IUserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findAll(params: FindAllParams): Promise<{ users: User[]; total: number }>;
+  create(data: CreateUserData): Promise<User>;
+  update(id: string, data: UpdateUserData): Promise<User>;
+  delete(id: string): Promise<void>;
+}
+
+export class UserRepository implements IUserRepository {
+  constructor(private prisma: PrismaClient) {}
+
+  async findAll(params: FindAllParams) {
+    const { page, limit, search } = params;
+    const skip = (page - 1) * limit;
+    const where = search
+      ? { OR: [
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { email: { contains: search, mode: 'insensitive' as const } },
+        ]}
+      : {};
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
+      this.prisma.user.count({ where }),
+    ]);
+    return { users, total };
+  }
+}
+    ]]></code>
+  </example>
+
+  <reference path="templates/user-repository.ts">Full IUserRepository interface + UserRepository Prisma implementation</reference>
+</text>

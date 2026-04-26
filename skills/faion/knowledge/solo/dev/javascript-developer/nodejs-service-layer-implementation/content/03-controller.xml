@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-controller" title="Controller Layer: HTTP Handling and Error Delegation">
+  <summary>Defines the UserController pattern: thin HTTP handling, Zod validation, and always delegating errors to next().</summary>
+
+  <section title="Controller Rules">
+    <rule>
+      <statement>Controllers handle HTTP only: parse request params and query strings, validate input with Zod schemas, call one service method, return the result. No business logic, no direct database access.</statement>
+      <rationale>A controller that contains business logic cannot be tested without an HTTP layer. When business logic is in the service, the controller becomes a trivially thin adapter that rarely needs unit tests.</rationale>
+    </rule>
+    <rule>
+      <statement>Always pass errors to next(error) in every async controller method's catch block. Never call res.status(500).json({error}) directly in a controller — that bypasses the error handler middleware.</statement>
+      <rationale>The Express error handler middleware (4-parameter form) is the single place where errors are translated to HTTP responses. Direct error responses in controllers produce inconsistent error formats and bypass logging.</rationale>
+    </rule>
+    <rule>
+      <statement>Use class-based controllers with arrow function methods to preserve `this` binding when methods are passed as route handlers. Do not bind in the route file.</statement>
+      <rationale>Arrow function class methods capture `this` at definition time. Regular methods would require `.bind(this)` at every route registration, which is easy to forget and produces runtime errors that pass TypeScript compilation.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="typescript"><![CDATA[
+export class UserController {
+  constructor(private userService: IUserService) {}
+
+  createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const data = CreateUserSchema.parse(req.body); // throws ZodError on invalid
+      const user = await this.userService.createUser(data);
+      res.status(201).json({ data: user });
+    } catch (error) {
+      next(error); // delegates to error handler middleware
+    }
+  };
+
+  getUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const user = await this.userService.getUser(id);
+      res.json({ data: user });
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+    ]]></code>
+  </example>
+
+  <reference path="templates/user-controller.ts">Full UserController class (Express, Zod schemas)</reference>
+  <reference path="templates/container.ts">DI container wiring Prisma to Repository to Service to Controller</reference>
+</text>
