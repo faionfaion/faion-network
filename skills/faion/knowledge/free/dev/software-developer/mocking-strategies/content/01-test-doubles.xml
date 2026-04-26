@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-test-doubles" title="Test Double Types">
+  <summary>Five categories of test doubles — dummy, stub, spy, mock, fake — each serving a distinct testing purpose.</summary>
+
+  <section title="Double taxonomy">
+    <rule>
+      <statement>Choose the smallest double that validates the required behavior: dummy for unused params, stub for state, spy for wrapped real objects, mock only when the call is part of the contract, fake for full working replacements.</statement>
+      <rationale>Using a mock where a stub suffices couples the test to implementation details. Mutation testing reveals over-mocked suites: tests that pass even when production code is broken.</rationale>
+    </rule>
+    <list>
+      <item>DUMMY — passed but never used; fills required parameter slots</item>
+      <item>STUB — returns canned responses; tests state, not behavior</item>
+      <item>SPY — wraps a real object; records calls for later verification</item>
+      <item>MOCK — pre-programmed with expectations; verifies interactions</item>
+      <item>FAKE — working in-memory implementation (e.g., FakeRepository)</item>
+    </list>
+  </section>
+
+  <section title="Python: stub and mock">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from unittest.mock import Mock
+import pytest
+
+# STUB — controls return value, tests state
+def test_get_user_returns_name():
+    repo = Mock()
+    repo.find_by_id.return_value = User(id="123", name="John")
+    service = UserService(repo)
+    result = service.get_user("123")
+    assert result.name == "John"
+
+# MOCK — verifies that the call happened (part of contract)
+def test_order_placed_sends_notification():
+    notifier = Mock()
+    service = OrderService(notifier=notifier)
+    service.place_order(order_id="order-123")
+    notifier.send_notification.assert_called_once_with(
+        "order-123", "Your order has been placed"
+    )
+
+# SPY — wraps real object, call passes through
+def test_spy_records_call():
+    real_calc = Calculator()
+    spy = Mock(wraps=real_calc)
+    result = spy.add(2, 3)
+    assert result == 5          # real behavior
+    spy.add.assert_called_with(2, 3)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Python: fake repository">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Optional, Dict
+from abc import ABC, abstractmethod
+from uuid import uuid4
+
+class UserRepository(ABC):
+    @abstractmethod
+    def save(self, user: "User") -> "User": ...
+    @abstractmethod
+    def find_by_id(self, user_id: str) -> Optional["User"]: ...
+    @abstractmethod
+    def find_by_email(self, email: str) -> Optional["User"]: ...
+
+class FakeUserRepository(UserRepository):
+    def __init__(self) -> None:
+        self.users: Dict[str, "User"] = {}
+        self.email_index: Dict[str, str] = {}
+
+    def save(self, user: "User") -> "User":
+        if not user.id:
+            user.id = str(uuid4())
+        self.users[user.id] = user
+        self.email_index[user.email] = user.id
+        return user
+
+    def find_by_id(self, user_id: str) -> Optional["User"]:
+        return self.users.get(user_id)
+
+    def find_by_email(self, email: str) -> Optional["User"]:
+        uid = self.email_index.get(email)
+        return self.users.get(uid) if uid else None
+]]></code>
+      <note>A 30-line fake survives refactoring and is reused across the entire test suite. Prefer fakes over mocks for repository abstractions.</note>
+    </example>
+    <reference path="templates/fake-repository.py">In-memory fake repository with ABC interface</reference>
+  </section>
+
+  <section title="TypeScript: Jest mocks">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+
+const mockUserRepository = {
+  save: jest.fn(),
+  findById: jest.fn(),
+  findByEmail: jest.fn(),
+};
+
+describe('UserService', () => {
+  beforeEach(() => { jest.clearAllMocks(); });
+
+  it('should create user and return with id', async () => {
+    const userData = { email: 'test@example.com', name: 'Test' };
+    mockUserRepository.save.mockResolvedValue({ id: '123', ...userData });
+    const service = new UserService(mockUserRepository as any);
+    const result = await service.createUser(userData);
+    expect(result.id).toBe('123');
+    expect(mockUserRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'test@example.com' })
+    );
+  });
+});
+]]></code>
+    </example>
+  </section>
+</text>

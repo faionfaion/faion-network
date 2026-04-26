@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-patching" title="Patching and AsyncMock">
+  <summary>@patch decorator / context manager usage, patch.object, patch.dict, AsyncMock for async code, and the where-to-patch rule.</summary>
+
+  <section title="Where to patch">
+    <rule>
+      <statement>Patch where the name is looked up, not where it is defined. If module_a imports function_b from module_b and you test module_a, patch 'module_a.function_b'.</statement>
+      <rationale>Patching the source module leaves the import alias in the module under test untouched; the mock never takes effect.</rationale>
+    </rule>
+  </section>
+
+  <section title="Patch forms">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from unittest.mock import patch, MagicMock
+
+# Decorator form
+@patch('mymodule.external_api.fetch_data')
+def test_with_patched_api(mock_fetch):
+    mock_fetch.return_value = {"data": "test"}
+    result = process_data()
+    assert result == "processed: test"
+
+# Context manager form
+def test_with_context_manager():
+    with patch('mymodule.datetime') as mock_dt:
+        mock_dt.now.return_value = datetime(2024, 1, 15, 10, 30)
+        result = get_current_timestamp()
+        assert result == "2024-01-15 10:30:00"
+
+# Multiple patches (bottom decorator = first arg)
+@patch('mymodule.send_email')
+@patch('mymodule.save_to_database')
+def test_with_multiple_patches(mock_save, mock_email):
+    mock_save.return_value = {"id": "123"}
+    create_user({"email": "test@example.com"})
+    mock_save.assert_called_once()
+    mock_email.assert_called_once()
+
+# Patch object attribute
+def test_patch_object():
+    with patch.object(UserService, 'validate', return_value=True):
+        service = UserService()
+        assert service.create_user({"name": "Test"}) is not None
+
+# Patch environment variable
+def test_patch_dict():
+    with patch.dict('os.environ', {'API_KEY': 'test-key'}):
+        config = load_config()
+        assert config['api_key'] == 'test-key'
+]]></code>
+    </example>
+  </section>
+
+  <section title="AsyncMock">
+    <rule>
+      <statement>Use AsyncMock for any function defined with async def. Using plain Mock for async functions causes await to return a coroutine wrapping a Mock, not the mock's return value.</statement>
+      <rationale>AsyncMock automatically awaits and returns return_value; plain Mock does not participate in the async protocol correctly.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from unittest.mock import AsyncMock, patch
+import pytest
+
+@pytest.mark.asyncio
+async def test_async_service():
+    mock_client = AsyncMock()
+    mock_client.fetch_user.return_value = {"id": "123", "name": "John"}
+    service = AsyncUserService(mock_client)
+    result = await service.get_user("123")
+    assert result["name"] == "John"
+    mock_client.fetch_user.assert_awaited_once_with("123")
+
+# Patch async HTTP call
+@pytest.mark.asyncio
+@patch('mymodule.aiohttp.ClientSession.get', new_callable=AsyncMock)
+async def test_http_client(mock_get):
+    mock_response = AsyncMock()
+    mock_response.json.return_value = {"data": "test"}
+    mock_get.return_value.__aenter__.return_value = mock_response
+    result = await fetch_api_data()
+    assert result == {"data": "test"}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Side effects">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Sequence of return values
+mock = Mock()
+mock.get_next.side_effect = [1, 2, 3, StopIteration()]
+
+# Conditional returns
+def side_effect_func(arg):
+    if arg == "valid":
+        return {"status": "ok"}
+    raise ValueError("Invalid input")
+
+mock.process.side_effect = side_effect_func
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-pytest-patterns" title="pytest Patterns">
+  <summary>conftest fixtures, factory fixtures, mocking with patch, parametrize for edge cases, and Django DB integration tests.</summary>
+
+  <section title="conftest fixtures">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from unittest.mock import MagicMock
+
+
+@pytest.fixture
+def mock_db():
+    return MagicMock()
+
+
+@pytest.fixture
+def sample_user_data() -> dict:
+    return {"email": "test@example.com", "name": "Test User"}
+
+
+@pytest.fixture
+def api_client():
+    from rest_framework.test import APIClient
+    return APIClient()
+
+
+@pytest.fixture
+def authenticated_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+]]></code>
+    </example>
+    <reference path="templates/conftest.py">Standard conftest.py with common fixtures</reference>
+  </section>
+
+  <section title="Factory fixtures">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def user_factory(db):
+    def create_user(email="user@example.com", name="Test User", **kwargs):
+        return User.objects.create(email=email, name=name, **kwargs)
+    return create_user
+]]></code>
+    </example>
+  </section>
+
+  <section title="Parametrize">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from apps.users.validators import validate_email
+
+
+@pytest.mark.parametrize("email,expected", [
+    ("user@example.com", True),
+    ("user.name@example.co.uk", True),
+    ("invalid", False),
+    ("@example.com", False),
+    ("", False),
+])
+def test_validate_email(email: str, expected: bool) -> None:
+    assert validate_email(email) == expected
+]]></code>
+    </example>
+  </section>
+
+  <section title="Django DB integration test">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from rest_framework import status
+
+
+@pytest.mark.django_db
+class TestUserAPI:
+    def test_create_user(self, api_client):
+        response = api_client.post("/api/v1/users/",
+            {"email": "new@example.com", "name": "New User"})
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["email"] == "new@example.com"
+
+    def test_get_user_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/users/me/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+]]></code>
+    </example>
+  </section>
+</text>

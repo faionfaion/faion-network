@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="FastAPI Anti-Patterns">
+  <summary>Sync I/O in async routes, business logic in routers, mutable default args, and missing docs_url guards.</summary>
+
+  <antipattern>
+    <description>Calling synchronous I/O (requests.get, psycopg2 queries) inside async route handlers.</description>
+    <reason>Sync calls block the event loop. All other pending requests wait until the blocking call returns. Use httpx.AsyncClient for HTTP and SQLAlchemy async for DB.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Business logic (validation, inventory check, payment) directly in router functions.</description>
+    <reason>Router functions with embedded logic cannot be tested without the HTTP stack, cannot be called from Celery tasks, and cannot be reused across endpoints.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Exposing /docs and /redoc in production (docs_url="/docs" with no guard).</description>
+    <reason>OpenAPI documentation exposes your full API surface, endpoint names, and schema structure. Gate with docs_url="/docs" if settings.debug else None.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Reusing a single Pydantic schema for create, update, and response operations.</description>
+    <reason>Create requires password; response must not expose it; update makes all fields optional. One schema cannot express all three constraints cleanly.</reason>
+  </antipattern>
+
+  <rule>
+    <statement>Use db.flush() + db.refresh(user) after adding a new object to get the generated ID and DB defaults without committing. Commit happens in get_db() when the request succeeds.</statement>
+    <rationale>flush() sends the INSERT to the DB without committing. refresh() reloads the object with server-generated values (UUID, created_at). The outer transaction commits or rolls back at request end.</rationale>
+  </rule>
+</text>

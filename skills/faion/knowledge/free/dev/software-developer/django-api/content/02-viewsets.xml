@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-viewsets" title="ViewSet Patterns">
+  <summary>ModelViewSet with get_queryset scoping, @action for non-CRUD verbs, and get_permissions for per-action permission classes.</summary>
+
+  <section title="Queryset scoping">
+    <rule>
+      <statement>Always scope get_queryset to the current user's data. Never expose Model.objects.all() directly in a ViewSet — it guarantees an IDOR sooner or later.</statement>
+      <rationale>An unscoped queryset allows any authenticated user to access any object by ID. Scoping in get_queryset applies to all ViewSet actions automatically.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Always scope to the requesting user
+        return Order.objects.filter(user=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Non-CRUD verb as @action — keeps URL conf flat."""
+        order = self.get_object()
+        order_services.cancel_order(order_id=order.id)
+        return Response({"status": "cancelled"})
+
+    def get_permissions(self):
+        """Per-action permissions — more granular than class-level."""
+        if self.action == "create":
+            return [IsAuthenticated(), HasOrderPermission()]
+        return [IsAuthenticated()]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Whitelist HTTP methods">
+    <rule>
+      <statement>Whitelist allowed HTTP methods on ModelViewSet via http_method_names. ModelViewSet exposes DELETE by default — agents copy-paste and accidentally ship destructive endpoints.</statement>
+      <rationale>The default ModelViewSet routes include DELETE. Unless deletion is explicitly required, restrict allowed methods to prevent accidental data loss endpoints.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ProductViewSet(viewsets.ModelViewSet):
+    http_method_names = ["get", "post", "patch", "head", "options"]
+    # DELETE is intentionally excluded
+]]></code>
+    </example>
+  </section>
+</text>

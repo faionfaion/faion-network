@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-django-patterns" title="Django Patterns">
+  <summary>BaseModel with UUID and timestamps, services layer for business logic, thin views, serializers, and admin with fieldsets.</summary>
+
+  <section title="BaseModel">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+]]></code>
+    </example>
+  </section>
+
+  <section title="Services layer">
+    <rule>
+      <statement>Business logic lives in services.py, not views. Services receive domain types (email: str, user: User), not request objects. Wrap multi-step DB operations in @transaction.atomic.</statement>
+      <rationale>Thin views delegate to services. Services are callable from Celery tasks, management commands, and tests without an HTTP request context.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db import transaction
+from .models import User, UserType
+
+
+def create_user(email: str, name: str, *, user_type: str = UserType.REGULAR) -> User:
+    return User.objects.create(email=email, name=name, user_type=user_type)
+
+
+@transaction.atomic
+def transfer_ownership(from_user: User, to_user: User, item_id: int) -> None:
+    from apps.items import models as item_models
+    item = item_models.Item.objects.select_for_update().get(id=item_id)
+    item.owner = to_user
+    item.save(update_fields=["owner", "updated_at"])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Thin views">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from . import services
+from .serializers import CreateUserRequest, UserResponse
+
+
+class UserCreateView(APIView):
+    def post(self, request):
+        serializer = CreateUserRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = services.create_user(**serializer.validated_data)
+        return Response(UserResponse(user).data, status=status.HTTP_201_CREATED)
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-serializers" title="Serializer Patterns">
+  <summary>Separate request and response serializers, validate_* methods for field validation, and read_only_fields on ModelSerializer.</summary>
+
+  <section title="Separate request and response">
+    <rule>
+      <statement>Define separate serializer classes for request input and response output. Never use one ModelSerializer for both — it leaks write-only fields (e.g., password) into responses.</statement>
+      <rationale>A combined serializer requires field exclusions or conditional read_only logic per action. Separate classes are simpler, independently testable, and OpenAPI-friendly.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from rest_framework import serializers
+from .models import Order
+
+
+# Request serializer — validates input only
+class CreateOrderSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    item_id = serializers.IntegerField()
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be positive")
+        return value
+
+
+# Response serializer — read only, from ORM model
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["id", "uid", "amount", "status", "created_at"]
+        read_only_fields = ["id", "uid", "created_at"]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Custom exception classes">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from rest_framework.views import exception_handler
+from rest_framework.exceptions import APIException
+
+
+class OrderLimitExceeded(APIException):
+    status_code = 400
+    default_detail = "Daily order limit exceeded"
+    default_code = "order_limit_exceeded"
+]]></code>
+    </example>
+  </section>
+</text>

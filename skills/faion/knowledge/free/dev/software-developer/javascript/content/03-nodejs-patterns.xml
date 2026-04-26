@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-nodejs-patterns" title="Node.js Service Patterns">
+  <summary>Express app structure, controller/service/repository split, typed error hierarchy, and Pino structured logging.</summary>
+
+  <section title="Layer separation">
+    <rule>
+      <statement>Controllers handle only HTTP concerns (parse request, call service, send response). Services contain business logic and have no HTTP imports. Repositories handle data access only.</statement>
+      <rationale>Business logic in controllers cannot be tested without an HTTP context. Service/repository separation enables unit testing without HTTP overhead and enables reuse from background jobs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error hierarchy">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public code: string = 'INTERNAL_ERROR',
+    public isOperational: boolean = true,
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = 'Resource not found') {
+    super(message, 404, 'NOT_FOUND');
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message = 'Validation failed', public errors: Record<string, string[]> = {}) {
+    super(message, 400, 'VALIDATION_ERROR');
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Error handler middleware">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { type ErrorRequestHandler } from 'express';
+import { AppError } from '../utils/errors';
+import { ZodError } from 'zod';
+
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  if (err instanceof ZodError) {
+    res.status(400).json({ error: 'Validation failed', code: 'VALIDATION_ERROR',
+      details: err.flatten().fieldErrors });
+    return;
+  }
+  if (err instanceof AppError && err.isOperational) {
+    res.status(err.statusCode).json({ error: err.message, code: err.code });
+    return;
+  }
+  // Never leak internal details to clients
+  res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
+};
+]]></code>
+    </example>
+  </section>
+</text>

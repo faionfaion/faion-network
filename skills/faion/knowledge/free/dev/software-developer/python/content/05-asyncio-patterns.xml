@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-asyncio-patterns" title="Async Python Patterns">
+  <summary>asyncio.gather for concurrent I/O, TaskGroup for structured concurrency, Semaphore for rate limiting, and timeouts.</summary>
+
+  <section title="Concurrent I/O with gather">
+    <rule>
+      <statement>Use asyncio.gather() for independent concurrent I/O operations. Sequential await calls run one at a time; gather runs them concurrently, reducing total latency proportionally.</statement>
+      <rationale>Ten 0.5s API calls take 5s sequentially; with gather they take ~0.5s. The benefit scales with the number of independent I/O operations.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import asyncio
+
+
+async def fetch_all_users(user_ids: list[int]) -> list[dict]:
+    tasks = [fetch_user(uid) for uid in user_ids]
+    return await asyncio.gather(*tasks)
+
+
+# FastAPI: aggregate multiple data sources concurrently
+@app.get("/aggregate")
+async def get_aggregate():
+    users, products, orders = await asyncio.gather(
+        fetch_users(), fetch_products(), fetch_orders()
+    )
+    return {"users": users, "products": products, "orders": orders}
+]]></code>
+    </example>
+  </section>
+
+  <section title="TaskGroup (Python 3.11+)">
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def process_batch(items: list[str]) -> list[str]:
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        for item in items:
+            task = tg.create_task(process_item(item))
+    # All tasks completed; collect results
+    return [task.result() for task in ...]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Semaphore for rate limiting">
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def fetch_with_limit(urls: list[str], max_concurrent: int = 5) -> list[dict]:
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def fetch_one(url: str) -> dict:
+        async with semaphore:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    return await response.json()
+
+    return await asyncio.gather(*[fetch_one(url) for url in urls])
+]]></code>
+    </example>
+  </section>
+
+  <section title="Timeouts">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# asyncio.wait_for (all Python versions)
+try:
+    result = await asyncio.wait_for(slow_operation(), timeout=2.0)
+except asyncio.TimeoutError:
+    ...
+
+# asyncio.timeout context manager (Python 3.11+)
+async with asyncio.timeout(2.0):
+    result = await slow_operation()
+]]></code>
+    </example>
+  </section>
+</text>

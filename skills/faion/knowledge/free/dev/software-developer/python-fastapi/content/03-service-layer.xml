@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-service-layer" title="Service Layer and Async Patterns">
+  <summary>Async service functions with SQLAlchemy 2.0, paginated queries, and the partial-update pattern with model_dump(exclude_unset=True).</summary>
+
+  <section title="Service functions">
+    <rule>
+      <statement>Service functions are async, accept typed parameters, and return ORM model instances or None. Never return raw SQL results or dicts — return the model so the router can serialize via the response schema.</statement>
+      <rationale>Returning models decouples serialization from persistence. Routers pass the model to response_model; tests can inspect model attributes directly.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from uuid import UUID
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.user import User
+from app.schemas.users import UserCreate, UserUpdate
+from app.utils.security import hash_password
+
+
+async def get_user_by_id(db: AsyncSession, user_id: UUID) -> User | None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def get_users(db: AsyncSession, *, page: int = 1, size: int = 20) -> tuple[list[User], int]:
+    count = (await db.execute(select(func.count(User.id)))).scalar_one()
+    offset = (page - 1) * size
+    users = (await db.execute(
+        select(User).order_by(User.created_at.desc()).offset(offset).limit(size)
+    )).scalars().all()
+    return list(users), count
+
+
+async def create_user(db: AsyncSession, data: UserCreate) -> User:
+    user = User(email=data.email, name=data.name,
+                hashed_password=hash_password(data.password))
+    db.add(user)
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+async def update_user(db: AsyncSession, user_id: UUID, data: UserUpdate) -> User | None:
+    user = await get_user_by_id(db, user_id)
+    if not user:
+        return None
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(user, field, value)
+    await db.flush()
+    await db.refresh(user)
+    return user
+]]></code>
+    </example>
+  </section>
+
+  <section title="Anti-patterns">
+    <antipattern>
+      <description>Using synchronous requests.get() inside an async route handler.</description>
+      <reason>Sync HTTP calls block the event loop, negating FastAPI's async performance benefit. Use httpx.AsyncClient with async with / await instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Embedding business logic directly in router functions.</description>
+      <reason>Router functions with inline validation, DB queries, and conditional logic cannot be tested without the full HTTP stack and are hard to reuse from background tasks.</reason>
+    </antipattern>
+  </section>
+</text>

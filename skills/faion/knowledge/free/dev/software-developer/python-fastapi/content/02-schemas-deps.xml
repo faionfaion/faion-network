@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-schemas-deps" title="Schemas and Dependency Injection">
+  <summary>Pydantic v2 schema hierarchy, Depends() for DB sessions and auth, and type aliases for cleaner route signatures.</summary>
+
+  <section title="Schema hierarchy">
+    <rule>
+      <statement>Define separate Base, Create, Update, and Response schemas. Response schema uses ConfigDict(from_attributes=True) for ORM object serialization. Never reuse one schema for all four roles.</statement>
+      <rationale>A single schema cannot express that Create requires password but Response must not expose it, and Update makes all fields optional. Separate schemas make each constraint explicit.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
+
+
+class UserBase(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=8, max_length=100)
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+
+
+class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    is_active: bool
+    created_at: datetime
+]]></code>
+    </example>
+    <reference path="templates/schemas.py">Full schema set with pagination response</reference>
+  </section>
+
+  <section title="Dependency injection">
+    <rule>
+      <statement>Use Annotated type aliases (DBSession, CurrentUser) for dependencies. This eliminates repeated Depends() boilerplate and makes route signatures readable.</statement>
+      <rationale>Without aliases, every route parameter uses Annotated[AsyncSession, Depends(get_db)] — verbose and hard to update if the dependency changes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.database import async_session
+from app.models.user import User
+
+
+async def get_db() -> AsyncSession:
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+# Type aliases — use these in route signatures
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+]]></code>
+    </example>
+    <reference path="templates/dependencies.py">Full dependencies.py with auth</reference>
+  </section>
+</text>
