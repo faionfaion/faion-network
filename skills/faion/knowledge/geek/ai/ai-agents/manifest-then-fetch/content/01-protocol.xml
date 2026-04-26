@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-protocol" title="Manifest-Then-Fetch Protocol">
+  <summary>Every tool returns a manifest envelope; the body is stored externally and pulled only on explicit fetch.</summary>
+
+  <section title="Two-phase contract">
+    <p>Wrap each native tool so the LLM-visible result is always a small JSON envelope, never the raw body. A companion fetch tool resolves the envelope to the full payload only when the agent decides it is needed.</p>
+
+    <rule testable="true">
+      <statement>Every tool result returned to the model MUST be a JSON object with keys execution_id, preview, size_tokens, and storage_uri. The full body MUST be stored externally and referenced by execution_id.</statement>
+      <rationale>Decouples decision-making (small envelope, always in context) from data loading (large body, on-demand). Holds effective context flat across loops, regardless of tool throughput.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>The agent MUST call a separate get_full_result(execution_id) tool to load the body. Never inline the body into the manifest.</statement>
+      <rationale>Forces an explicit decision before paying the context cost. The model's autonomy stays — it can fetch — but the default is cheap.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "execution_id": "tr_a3f9",
+  "preview": "12,847 rows; cols=[id, ts, user_id, payload]",
+  "size_tokens": 184320,
+  "storage_uri": "s3://agent-results/tr_a3f9.jsonl"
+}
+      ]]></code>
+      <note>184k token body never reached the model; the agent decided "row count is enough" and never fetched.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{"rows": [/* 12,847 full rows inlined here */]}
+      ]]></code>
+      <note>Body sits in the message history forever, eats cache prefixes, degrades subsequent reasoning.</note>
+    </example>
+
+    <antipattern>
+      <description>Returning the manifest AND the full body "in case the agent needs it".</description>
+      <reason>Defeats the whole protocol — the body is in context the moment it returns, regardless of what the agent does next.</reason>
+    </antipattern>
+
+    <reference path="templates/manifest.json">Reference shape of the manifest envelope.</reference>
+    <reference path="templates/fetch-tool.json">JSON tool definition for the get_full_result companion tool.</reference>
+    <reference href="https://github.com/agno-agi/agno/issues/5534">Agno feature request describing the lazy tool-result pattern.</reference>
+    <reference href="https://docs.databricks.com/aws/en/generative-ai/guide/agent-system-design-patterns">Databricks agent system design patterns — lazy result loading.</reference>
+    <reference href="https://arxiv.org/abs/2509.21361">Maximum Effective Context Window paper — why default-fetch wastes accuracy.</reference>
+  </section>
+</text>

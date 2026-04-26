@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-template" title="Schema'd Compaction Template">
+  <summary>The exact YAML schema the compaction prompt must produce — fixed keys, structured values, no free prose.</summary>
+
+  <section title="Required schema">
+    <p>The compacted state is a YAML document with a fixed set of top-level keys. The compaction prompt instructs the model to fill each key from the conversation; missing data becomes an empty list, never a paragraph.</p>
+
+    <rule testable="true">
+      <statement>The compacted state MUST be valid YAML with these top-level keys: goal, files_touched (list), decisions (list), errors_open (list), refs (list of {kind, id}), next_action (one sentence). NO free-text "summary" field.</statement>
+      <rationale>Fixed keys make the output machine-checkable; missing one key is a hard failure the orchestrator catches before the agent acts on bad state.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+goal: refactor auth module to use refresh-token rotation
+files_touched:
+  - src/auth/login.py:42
+  - src/auth/jwt.py:88-110
+decisions:
+  - chose RS256 over HS256 (ADR-007)
+  - rotation interval = 15 min
+errors_open:
+  - test_login_invalid_pw — AssertionError: expected 401 got 200
+refs:
+  - {kind: pr, id: "1842"}
+  - {kind: log, id: ".agent/results/pytest_4882.log"}
+next_action: implement refresh-token rotation in jwt.py
+      ]]></code>
+      <note>Every key fillable from the conversation; resume by grep on goal + reading files_touched.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+summary: |
+  Worked on auth, made some progress, will continue next session.
+status: in-progress
+      ]]></code>
+      <note>No keys, no references, no actionable next_action. The next session restarts from zero.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting the LLM add ad-hoc keys ("notes", "thoughts", "todo") that drift between calls.</description>
+      <reason>Schema drift means orchestrators can't validate; downstream tooling that expects 'errors_open' breaks when the model writes 'open_errors' instead.</reason>
+    </antipattern>
+
+    <reference path="templates/compacted-state.yaml">Reference compacted-state YAML structure.</reference>
+    <reference path="templates/compaction-prompt.txt">Compaction prompt that produces this schema.</reference>
+  </section>
+</text>

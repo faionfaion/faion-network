@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-preview-design" title="Preview Field Design">
+  <summary>What to put in preview so the agent can decide whether to fetch — without ever fetching by reflex.</summary>
+
+  <section title="Preview content rules">
+    <p>The preview is the only signal the agent has. It must answer one question: "do I need the body?" Anything more is waste.</p>
+
+    <rule testable="true">
+      <statement>Preview MUST be ≤200 tokens AND MUST be structured per tool type: row count + columns for SQL, status + content-type + first 200 chars for HTTP, line count + first/last 5 lines for logs.</statement>
+      <rationale>Fixed schema lets the agent parse the preview reliably; a free-text "summary" tempts the model to hallucinate that the body says something it doesn't.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>Preview MUST NOT contain the answer the user asked for, even if it fits. If the answer is in the preview, the contract is broken — the tool should have returned a structured answer directly.</statement>
+      <rationale>Mixing the answer into the preview short-circuits the protocol: the agent stops fetching but also never learns whether its answer is grounded in the body.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "execution_id": "tr_77",
+  "preview": {
+    "kind": "http_response",
+    "status": 200,
+    "content_type": "text/html",
+    "size_tokens": 18400,
+    "first_chars": "<!doctype html><html lang=\"en\"><head><title>...</title>"
+  }
+}
+      ]]></code>
+      <note>Structured. The agent can see "HTML page, 18k tokens, English" and decide whether to extract or just keep the URL.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "execution_id": "tr_77",
+  "preview": "The page talks about Q1 earnings and mentions revenue is up 12%."
+}
+      ]]></code>
+      <note>Free-text "smart" preview — the model now believes the claim without reading the body.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting the preview grow to several KB "to be safe".</description>
+      <reason>Equivalent to inlining the body: the protocol's whole point is keeping the LLM-facing payload tiny.</reason>
+    </antipattern>
+
+    <reference href="https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus">Manus context-engineering blog — preview discipline.</reference>
+  </section>
+</text>

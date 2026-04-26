@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-payload-shape" title="Handoff Payload Shape">
+  <summary>The handoff between two agents is a typed object with a task_id, a target, and only the metadata the next agent needs to start.</summary>
+
+  <section title="The payload">
+    <p>Handoffs are typed edges, not message forwarding. The payload contains pointers and routing flags, never the original input or the prior agent's transcript.</p>
+
+    <rule testable="true">
+      <statement>The handoff payload from agent A to agent B MUST be a structured object with at minimum: task_id (string, key into the shared store), target_agent (string, role name), decision_metadata (object, the small set of facts B needs to plan its first action). It MUST NOT contain the raw user input, the conversation history, or A's reasoning.</statement>
+      <rationale>If B needs the input, it loads from the store using task_id. Forwarding the conversation forces every agent to read the cumulative trace, which scales O(n²) in chain length.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>Supervisor agents that route between workers MUST return a SupervisorDecision object (target_agent, reason, decision_metadata) as structured output — NOT a free-form message naming the next worker.</statement>
+      <rationale>Free-form routing is fragile (model picks a worker name that doesn't exist, the orchestrator has to re-prompt). Structured output makes routing a typed dispatch.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "task_id": "t_8821",
+  "target_agent": "neromedia_writer",
+  "decision_metadata": {
+    "category": "AI",
+    "lang": "uk",
+    "source_count": 3
+  }
+}
+      ]]></code>
+      <note>53 bytes. Writer pulls the 3 source articles from /srv/nero/queue/t_8821.json on receipt.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "to": "neromedia_writer",
+  "history": [
+    {"role": "user", "content": "<6KB original article + classifier's full chain-of-thought>"}
+  ]
+}
+      ]]></code>
+      <note>The classifier's reasoning leaks into every downstream agent forever.</note>
+    </example>
+
+    <antipattern>
+      <description>Passing the entire prior conversation as the handoff because "the next agent might need it".</description>
+      <reason>It almost always doesn't; when it does, fetching by task_id costs the same and is reversible.</reason>
+    </antipattern>
+
+    <reference path="templates/handoff.json">JSON Schema for the handoff payload.</reference>
+    <reference path="templates/supervisor-decision.json">JSON Schema for the SupervisorDecision routing output.</reference>
+    <reference href="https://openai.github.io/openai-agents-python/handoffs/">OpenAI Agents SDK — handoffs as typed edges.</reference>
+    <reference href="https://docs.langchain.com/oss/python/langchain/multi-agent/handoffs">LangChain multi-agent handoffs documentation.</reference>
+    <reference href="https://towardsdatascience.com/how-agent-handoffs-work-in-multi-agent-systems/">Towards Data Science — how agent handoffs work.</reference>
+  </section>
+</text>
