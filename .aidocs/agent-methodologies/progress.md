@@ -19,3 +19,4 @@
 [2026-04-26 04:55] pool-batch agents:mcp-:2 — promoted mcp-transport-stdio-vs-http, mcp-gateway-composition → 43/50 (mcp- 3/3 target reached).
 [2026-04-26 12:30] pool-batch agents:so-:4 — promoted enum-constraints-closed-vocabularies, decimal-as-string-pattern, two-pass-reason-then-extract, array-items-wrapper-extraction → 47/50 (so- 10/10 done).
 [2026-04-26 13:00] pool-batch agents:cost-:2 — promoted batch-cache-stack, cheap-guardrail-tripwire → 49/50 (cost- 3/3 target reached).
+[2026-04-26 13:05] pool-batch agents:so-:4 — promoted inverted-header-content-first, refusal-field-strict-schema, structured-output-mode-picker, schema-version-pinning → 53/50 (so- 14/10, overshoot from research-pool depth).

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-mode-picker" title="Pick the constrained-decoding mode by use case">
+  <summary>Map use case to mode: extraction → SO strict, action dispatch → tool call, custom DSL → grammar, legacy fallback → json mode.</summary>
+
+  <section title="Mode comparison">
+    <p>Every constrained-decoding mode trades off format guarantee, schema guarantee, dispatch semantics, and provider availability. The decision is determined by what the output will be USED for, not by which API your team learned first.</p>
+
+    <list>
+      <item>JSON mode — guarantees valid JSON only, no schema. Use for legacy fallback when strict SO is unavailable.</item>
+      <item>Structured Outputs — guarantees full JSON-schema compliance via grammar mask. Use for data extraction and classification.</item>
+      <item>Tool call — guarantees schema-compliant arguments AND surfaces a function name for dispatch. Use for agent actions.</item>
+      <item>Grammar mode (XGrammar / Outlines / GBNF) — constrains to any context-free grammar including SQL, regex, custom DSLs. Use for non-JSON outputs and local models.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>Pick mode by output consumer: deterministic extraction → SO strict; agent action → tool call; custom DSL or local-model output → grammar; everything else legacy → json mode (only if strict SO unsupported).</statement>
+      <rationale>BuildMVPFast 2026 production guide and Vellum's mode comparison both show silent correctness regressions when json-mode is used for typed extraction; XGrammar paper shows 100x speedups vs alternatives on local DSL workloads.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Extraction → SO strict
+client.responses.parse(model="gpt-5", input=msgs, text_format=Verdict)
+
+# Agent action → tool call (Anthropic)
+client.messages.create(
+    model="claude-opus-4-7",
+    tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+    tool_choice={"type": "tool", "name": "submit_verdict"},
+)
+
+# Custom DSL → grammar (Outlines)
+generator = outlines.generate.cfg(model, sql_grammar)
+      ]]></code>
+      <note>Each call uses the mode whose guarantees match the consumer's needs.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Typed extraction with json_object — passes json.loads, fails typing
+client.chat.completions.create(
+    model="gpt-5",
+    response_format={"type": "json_object"},
+    messages=[{"role": "user", "content": "Extract invoice as JSON..."}],
+)
+      ]]></code>
+      <note>Fields, types, enums all unconstrained; downstream Pydantic parse fails on every malformed batch.</note>
+    </example>
+
+    <reference path="templates/mode_examples.py">Side-by-side minimal call per mode.</reference>
+    <reference href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast 2026 production guide.</reference>
+    <reference href="https://www.vellum.ai/blog/when-should-i-use-function-calling-structured-outputs-or-json-mode">Vellum mode comparison.</reference>
+    <reference href="https://arxiv.org/abs/2411.15100">XGrammar paper.</reference>
+  </section>
+</text>

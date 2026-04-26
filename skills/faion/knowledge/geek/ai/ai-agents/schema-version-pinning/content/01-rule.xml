@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Pin schema_version literal in every SO model">
+  <summary>Embed a version literal in every shared Pydantic schema, persist it in every event, route consumers by version with a typed dispatcher.</summary>
+
+  <section title="The version-literal rule">
+    <p>A Pydantic model used as a shared contract between pipeline stages MUST declare a `schema_version: Literal["vN"] = "vN"` field. Strict mode forces the model to emit exactly that literal, so the version is part of the typed payload — not a sidecar header that can drift.</p>
+
+    <rule testable="true">
+      <statement>For every Pydantic model used as a cross-stage contract, declare `schema_version: Literal["vN"] = "vN"` as the first field, persist it on every emitted event, and route consumers via a `dict[str, type[BaseModel]]` parser registry keyed by version.</statement>
+      <rationale>Without an in-payload version, schema drift is silent: old consumers parse new payloads and crash on unrelated fields, masking the actual breaking change; with a typed registry, unknown versions raise at the boundary and old data still parses with old code.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ArticleDraft(BaseModel):
+    schema_version: Literal["v3"] = "v3"
+    body: str
+    title: str
+    tags: list[str]
+
+PARSERS: dict[str, type[BaseModel]] = {
+    "v2": ArticleDraftV2,
+    "v3": ArticleDraft,
+}
+
+def parse_event(payload: dict) -> BaseModel:
+    cls = PARSERS.get(payload["schema_version"])
+    if cls is None:
+        raise UnknownSchemaVersion(payload["schema_version"])
+    return cls.model_validate(payload)
+      ]]></code>
+      <note>Backfill jobs run old and new schemas side-by-side; unknown versions fail loud at the parse boundary.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class ArticleDraft(BaseModel):
+    body: str
+    title: str
+    tags: list[str]
+
+# stage_2_enrich.py — parses untagged dicts; new producer renames `tags`
+# to `topics` and old consumer crashes deep inside model_validate.
+draft = ArticleDraft.model_validate(payload)
+      ]]></code>
+      <note>Schema change is invisible until production parse fails; root cause hides under a Pydantic ValidationError on an unrelated field.</note>
+    </example>
+
+    <antipattern>
+      <description>Tracking schema version in a sidecar header (HTTP header, Kafka header, file metadata) outside the payload.</description>
+      <reason>Sidecars are stripped by the first naive `payload = response.json()` consumer; in-payload version travels with the data and survives every serialization round-trip.</reason>
+    </antipattern>
+
+    <reference path="templates/versioned_schema.py">v3 and v4 schemas with typed dispatcher.</reference>
+    <reference href="https://collinwilkins.com/articles/structured-output">Wilkins — SO pipelines 2026, schema versioning section.</reference>
+    <reference href="https://dev.to/kuldeep_paul/continuous-integration-for-llm-prompts-a-step-by-step-guide-to-automated-prompt-deployment-359k">CI for LLM prompts — versioned contracts.</reference>
+  </section>
+</text>
