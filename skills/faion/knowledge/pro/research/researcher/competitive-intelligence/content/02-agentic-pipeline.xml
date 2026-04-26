@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-pipeline" title="CI Agentic Pipeline">
+  <summary>Six-subagent pipeline separating mechanical collection from strategic synthesis, with fact-checker and prompt patterns.</summary>
+
+  <section title="Subagent Roles">
+    <rule>
+      <statement>Assign Haiku to mechanical collection and classification; Sonnet to synthesis and battlecard writing; Opus to threat assessment and scenario planning — never invert this.</statement>
+      <rationale>Mixing reasoning-grade models into collection tasks adds 10x cost with no marginal accuracy gain. Mixing fast models into threat analysis produces hallucinated strategic claims.</rationale>
+    </rule>
+    <list>
+      <item>ci-collector (Haiku): Polls YAML watchlist (URLs, keywords, RSS, review sites). Emits normalized JSON events. No reasoning, no synthesis.</item>
+      <item>ci-classifier (Haiku/Sonnet): Tags each event as pricing | feature | hire | funding | review | content. Discards noise.</item>
+      <item>ci-synthesizer (Sonnet): Clusters week-of events per competitor, drafts digest with cited sources.</item>
+      <item>ci-threat-analyst (Opus): Generates threat assessment, "so what" recommendations, scenario planning. Run weekly or on funding/M&amp;A signals.</item>
+      <item>ci-battlecard-writer (Sonnet): Regenerates per-competitor battlecards from latest digest + win/loss notes. Output to Salesforce, Highspot, or Slack.</item>
+      <item>ci-fact-checker (Sonnet): Adversarial pass — every claim must cite a fetched URL with a date. Flags unsupported claims before distribution.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Collector prompt — XML structured output, no inference allowed:</note>
+      <code lang="xml"><![CDATA[
+<task>collect</task>
+<watchlist>{{ yaml_watchlist }}</watchlist>
+<since>{{ last_run_iso }}</since>
+<output_schema>{"events":[{"competitor","signal_type","url","fetched_at","raw_excerpt","delta_summary"}]}</output_schema>
+<rules>NO inference. NO summarization beyond delta. If page unreachable, emit error event.</rules>
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>Threat analyst prompt — Opus with evidence floor:</note>
+      <code lang="xml"><![CDATA[
+<role>CI threat analyst</role>
+<digest>{{ weekly_digest }}</digest>
+<our_positioning>{{ positioning_md }}</our_positioning>
+<deliverable>threat_score (1-5), evidence (>=3 cited events), recommended_action, decision_owner</deliverable>
+<constraint>Cite event_id for every factual claim. If evidence < 3, return INSUFFICIENT_DATA.</constraint>
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Fact-Checker Gate">
+    <rule>
+      <statement>Every digest and battlecard must pass a fact-checker agent that HEAD-requests every cited URL before the document is distributed.</statement>
+      <rationale>LLMs invent URLs like /pricing/enterprise that never existed. Publishing an invented citation to a sales rep destroys trust in the entire CI function.</rationale>
+    </rule>
+    <antipattern>
+      <description>Skipping the fact-checker to save tokens on the synthesis pass.</description>
+      <reason>A single hallucinated feature claim in a battlecard that contradicts the competitor's actual product will be caught by a prospect, not the agent.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agent Gotchas">
+    <list>
+      <item>Empty-body trap: JS-rendered SPAs return shells; Firecrawl/Jina or Playwright required. Alert on body-length variance &gt; 80%.</item>
+      <item>Cookie/paywall: SaaS pricing pages 302-redirect to login. Treat 30x/40x as a signal, not silence.</item>
+      <item>Citation hallucination: model invents URLs. Fact-checker must HEAD every URL before publishing.</item>
+      <item>Recency bias: weekly digest over-weights last 2 days. Normalize event volume per day before clustering.</item>
+      <item>Stop-words in change detection: HTML diff catches CSS/build-hash churn. Strip script/style tags before fingerprinting.</item>
+      <item>Rate limits: wrap fetches with exponential backoff and a circuit breaker. Agent loops on 429 burn tokens.</item>
+      <item>LinkedIn ToS: scraping at scale can ban the company account. Use compliant providers only.</item>
+    </list>
+  </section>
+
+  <reference path="templates/ci-collector.py">Minimal collector loop with Jina reader and NDJSON event store.</reference>
+  <reference path="templates/watchlist.yaml">Watchlist config for ci-collector.</reference>
+</text>

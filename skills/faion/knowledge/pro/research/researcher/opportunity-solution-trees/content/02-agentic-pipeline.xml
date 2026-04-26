@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-pipeline" title="OST Agentic Pipeline">
+  <summary>Multi-pass subagent pipeline, prompt patterns for synthesizer and critic, and rules for preventing common OST agent failures.</summary>
+
+  <section title="Pipeline Architecture">
+    <rule>
+      <statement>Run OST generation as multi-pass: ingest → cluster → critique → expand → diff. Never attempt a one-shot OST — token-budgeted single-call produces shallow, lossy trees.</statement>
+      <rationale>One-shot conflates all layers: outcomes phrased as features, opportunities phrased as solutions. Each pass has a single responsibility and can be verified before the next begins.</rationale>
+    </rule>
+    <list>
+      <item>ost-synthesizer: clusters raw evidence into opportunities, enforces customer-language phrasing, requires evidence citations per node</item>
+      <item>ost-solution-generator: produces 3+ solution candidates per opportunity, tags each with assumption type (desirability/viability/feasibility/usability/ethicality)</item>
+      <item>ost-experiment-designer: attaches one falsifiable assumption test per solution with a pre-registered failure threshold</item>
+      <item>ost-critic: adversarial review — flags solutions-disguised-as-opportunities, missing evidence, unfalsifiable experiments, single-solution branches</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>ost-synthesizer prompt — strict JSON output with evidence_ids required:</note>
+      <code lang="text"><![CDATA[
+You are ost-synthesizer. Input: array of interview snippets with stable IDs.
+Cluster into opportunities. Rules:
+- Phrase each opportunity in the customer's own language (verb + need + context).
+- Each opportunity must cite >=2 snippet IDs as evidence.
+- Reject any node that names a solution, technology, or feature.
+- Output JSON: {"opportunities":[{"id","statement","evidence_ids[]","parent_id|null"}]}.
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>ost-critic prompt — verdict per node with three required checks:</note>
+      <code lang="text"><![CDATA[
+You are ost-critic. For each node, answer:
+1. Is this an opportunity or a solution wearing a disguise? (cite signal)
+2. Evidence count and quality (1-5).
+3. Compare-and-contrast: how many sibling solutions exist?
+4. Falsifiable experiment attached? Y/N.
+Output: {"node_id", "verdict": "keep|rephrase|drop", "reason"}.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Assumption Test Requirements">
+    <rule>
+      <statement>Every assumption test must have a pre-registered failure threshold before it runs — "we'll measure usage after launch" is delivery, not discovery.</statement>
+      <rationale>Post-hoc interpretation of results always finds success. A pre-registered threshold ("&lt;40% completion = drop the solution") makes the test genuinely falsifiable.</rationale>
+    </rule>
+    <list>
+      <item>Allowed test types: smoke test, fake door, prototype test, Wizard of Oz, concierge, Mom Test interview, data dive</item>
+      <item>Forbidden: "ship and measure" — that is delivery, not an assumption test</item>
+      <item>Required fields: riskiest_assumption, success_metric, falsifier threshold</item>
+    </list>
+  </section>
+
+  <section title="Agent Gotchas">
+    <list>
+      <item>LLMs invent opportunities from domain training data — require evidence_ids and verify they exist in the source corpus.</item>
+      <item>Subagents drift on terminology — pin a glossary (Outcome/Opportunity/Solution/Assumption Test) in every system prompt.</item>
+      <item>"Generate 3 solutions" returns three rephrasings — force structural diversity: one tech, one process, one content solution.</item>
+      <item>Never let the agent "finish" the tree — OST is never done. Output should include next_interview_questions and next_riskiest_assumption, not a closing summary.</item>
+      <item>Miro/FigJam round-trip is brittle — prefer git-tracked YAML, sync one-way to the visual tool.</item>
+    </list>
+  </section>
+
+  <reference path="templates/ost.yaml">Canonical OST YAML schema agents produce between passes.</reference>
+  <reference path="templates/ost-render.sh">Converts ost.yaml to Mermaid SVG via mmdc.</reference>
+</text>

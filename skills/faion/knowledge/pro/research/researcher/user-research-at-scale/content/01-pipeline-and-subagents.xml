@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-and-subagents" title="Research at Scale Pipeline and Subagents">
+  <summary>Nine-stage pipeline, ten-subagent table with model assignments, and the frozen-codebook pattern for preventing theme drift.</summary>
+
+  <section title="Nine-Stage Pipeline">
+    <list>
+      <item>1. intake: convert PM brief to study spec, screener, hypotheses</item>
+      <item>2. sampling: build quotas, randomize, dedupe panel respondents</item>
+      <item>3. instrumentation: configure unmoderated test scripts in Maze/Userlytics</item>
+      <item>4. collection: execute tests and gather session recordings</item>
+      <item>5. transcription: forced-aligned transcription with diarization, PII redaction</item>
+      <item>6. coding: apply frozen codebook, tag quotes with codes and valence</item>
+      <item>7. synthesis: cross-segment pattern mining, confidence-tiered findings</item>
+      <item>8. review: human-in-the-loop checkpoint before publication</item>
+      <item>9. publish: push themes/sentiment to Looker/Notion/Dovetail</item>
+    </list>
+    <rule>
+      <statement>Run theme-coder and bias-auditor in parallel; gate report-writer on a researcher human-in-loop checkpoint at step 8.</statement>
+      <rationale>AI synthesis can proceed while bias audit runs — they are independent. But publishing without a human checkpoint after synthesis lets AI-invented "insights" reach stakeholders without review.</rationale>
+    </rule>
+  </section>
+
+  <section title="Subagent Table">
+    <rule>
+      <statement>Assign Haiku to mechanical tasks (panel-sampler, protocol-runner, transcript-cleaner, dashboard-publisher); Sonnet to structured synthesis (theme-coder, quote-curator, bias-auditor); Opus to cross-segment pattern mining and executive synthesis.</statement>
+      <rationale>This assignment minimizes cost while matching model capability to task complexity. Inverting it — Opus on transcript cleaning, Haiku on pattern mining — either burns tokens or degrades quality.</rationale>
+    </rule>
+    <list>
+      <item>research-intake (Sonnet): PM brief → study-spec.md + screener JSON</item>
+      <item>panel-sampler (Haiku): quotas, randomize, dedupe → participant CSV</item>
+      <item>protocol-runner (Haiku): execute unmoderated tests in Maze/Userlytics → session IDs</item>
+      <item>transcript-cleaner (Haiku): strip filler, redact PII, normalize timestamps → clean VTT/JSON</item>
+      <item>theme-coder (Sonnet): apply codebook, tag quotes with codes + valence → coded JSONL</item>
+      <item>pattern-analyst (Opus): cross-segment clustering, confidence-tiered findings → findings draft</item>
+      <item>quote-curator (Sonnet): representative + outlier quotes per finding → quote bank</item>
+      <item>report-writer (Opus): executive synthesis, recommendations, confidence tiers → final report MD</item>
+      <item>bias-auditor (Sonnet): leading phrasing, sample bias detection → audit notes</item>
+      <item>dashboard-publisher (Haiku): push themes/sentiment to Looker/Notion/Dovetail → URLs</item>
+    </list>
+  </section>
+
+  <section title="Frozen Codebook Pattern">
+    <rule>
+      <statement>Lock the codebook before collection; version it (v1.0.0) and bump only with documented diffs; use a separate proposed_codes overflow channel instead of modifying the codebook mid-study.</statement>
+      <rationale>Theme drift across batches is the #1 AI coding failure mode. A frozen codebook with a version + proposed_codes channel surfaces emergent themes for human review without corrupting the existing taxonomy.</rationale>
+    </rule>
+    <example type="good">
+      <note>Theme-coder prompt with frozen codebook and proposed_codes channel:</note>
+      <code lang="xml"><![CDATA[
+<task>code-transcript</task>
+<codebook src=".aidocs/research/codebook.yaml"/>
+<rules>
+  <rule>One quote may receive multiple codes; record span offsets.</rule>
+  <rule>Reject codes not in codebook. Emit proposed_codes list instead.</rule>
+  <rule>Tag valence in {-2,-1,0,1,2} with one-line evidence.</rule>
+  <rule>If transcript is less than 80% English confidence, halt and request translation.</rule>
+</rules>
+<output schema="coded_quote_v1">JSONL</output>
+<gotcha>Do not summarize. Preserve verbatim spans.</gotcha>
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Sample 10% of AI-coded segments for human re-coding every batch; track inter-rater agreement (Cohen's kappa >= 0.7) and recalibrate when it drops below threshold.</statement>
+      <rationale>AI coding accuracy drifts as transcripts vary in quality and subject matter. Kappa tracking catches drift before it contaminates an entire study's findings.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/codebook.yaml">Frozen taxonomy with codes, valence defaults, examples, and segment axes.</reference>
+  <reference path="templates/code-batch.sh">Batch-coding shell script with dedup and parquet output.</reference>
+</text>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-gotchas" title="Research at Scale Agent Gotchas and Limitations">
+  <summary>Known AI failure modes in scaled research: sentiment accuracy, hallucination risks, cost traps, privacy requirements, and cross-platform normalization.</summary>
+
+  <section title="Sentiment and Coding Limitations">
+    <antipattern>
+      <description>Running sentiment analysis on non-English transcripts without routing by language.</description>
+      <reason>Sentiment models miss sarcasm, code-switching, and culture-specific affect in non-English text. Polarity flips on negation in low-resource languages without language-aware routing.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Letting the theme-coder invent codes when the codebook is unclear rather than using the proposed_codes overflow channel.</description>
+      <reason>Invented codes contaminate the taxonomy and produce theme drift across batches. Strict allow-list enforcement with a separate proposed_codes channel keeps the codebook clean.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Hallucinating participant IDs in the report when citing quotes.</description>
+      <reason>Agents invent participant IDs that do not exist in the corpus. Require verbatim span offsets (start_char, end_char) tied to a specific session file, not paraphrases.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cost and Context Traps">
+    <antipattern>
+      <description>Re-running coding on the same transcript without caching, burning 10x tokens.</description>
+      <reason>Hash the transcript content and cache the coded output. Skip transcripts that already have a cached result. Uncached re-runs are pure waste.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Feeding full transcript bundles &gt; 200k tokens into a long-context model without chunking.</description>
+      <reason>Long-context models silently truncate at token boundaries. Chunk at session boundaries with overlap and verify completeness before synthesis.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Pattern-analyst over-indexing on the first segment in the prompt.</description>
+      <reason>LLMs weight earlier context more heavily. Randomize segment order across runs and compare findings to detect position bias.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Privacy and Consent">
+    <rule>
+      <statement>Redact PII with Presidio before any external LLM call; confirm that platform recordings have consented to AI processing before feeding into the pipeline.</statement>
+      <rationale>Sending raw PII to a non-zero-retention LLM endpoint violates GDPR and platform ToS. Presidio redaction runs locally before any external call. Consent flags must be read by the transcript-cleaner before quoting.</rationale>
+    </rule>
+    <rule>
+      <statement>Never present synthetic users or AI-generated personas as real research findings.</statement>
+      <rationale>Synthetic personas leak training-data clichés and introduce systematic bias toward the modal user in the training set. They are planning tools, not research evidence.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cross-Platform Normalization">
+    <antipattern>
+      <description>Mixing timestamp formats from different platforms (Maze milliseconds, UserTesting ISO, Otter seconds) without normalization.</description>
+      <reason>Mixed timestamps break quote offset matching and prevent cross-platform de-duplication. Normalize in the transcript-cleaner stage before any downstream use.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agents quietly dropping non-English sessions when the prompt does not explicitly handle them.</description>
+      <reason>Silently dropping sessions produces a biased corpus. Assert language coverage in tests and route non-English sessions to a translation step before coding.</reason>
+    </antipattern>
+  </section>
+</text>

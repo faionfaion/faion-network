@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-gotchas-and-tools" title="Continuous Discovery Tools, Services, and Gotchas">
+  <summary>CLI tools, service landscape, best practices for OST hygiene, and agent failure modes specific to continuous discovery pipelines.</summary>
+
+  <section title="CLI Tools">
+    <list>
+      <item>claude (Claude Code): orchestrate subagents via Task tool; slash commands per cadence (/discovery-daily, /discovery-weekly, /discovery-synth)</item>
+      <item>gh: pull GitHub issue feedback as signal source; gh issue list --label feedback --json feeds support-triage</item>
+      <item>posthog CLI / amplitude-cli: pull funnel + retention deltas; pipe into analytics-watcher</item>
+      <item>linear CLI: query bug+feature requests; tag against OST opportunity nodes</item>
+      <item>otter / fireflies / tldv API: fetch transcripts of completed interviews; auto-feed interview-synthesizer</item>
+      <item>dovetail API (/v1/notes, /v1/tags): push tagged quotes from synthesizer</item>
+      <item>userinterviews.com API: automate weekly recruit batches</item>
+      <item>slack CLI / webhook: post weekly synthesis digest to product channel</item>
+    </list>
+  </section>
+
+  <section title="Services">
+    <list>
+      <item>Dovetail: REST + webhooks; repository + AI tagging; Magic AI summaries 2025+</item>
+      <item>Looppanel: REST; AI interview analysis, auto-tagging, JTBD extraction</item>
+      <item>Userinterviews.com: REST; panel access, scheduling, incentives</item>
+      <item>Maze: REST; fast assumption tests (quant + qual) for weekly cadence</item>
+      <item>PostHog: REST + SQL; self-hostable; feeds analytics-watcher with daily funnel deltas</item>
+      <item>Otter / Fireflies / tl;dv: REST; transcription for async interview synthesis</item>
+    </list>
+  </section>
+
+  <section title="Best Practices">
+    <rule>
+      <statement>Pin one Outcome at the OST root before any opportunity work — without it agents drift into solution mining.</statement>
+      <rationale>Opportunityless trees collapse into unordered feature wishlists. A single metric-based outcome (e.g., "W1 activation rate: 30% to 45%") focuses all subsequent discovery.</rationale>
+    </rule>
+    <rule>
+      <statement>Every research-reviewer monthly pass must produce a kill list of parked or dead opportunities — without pruning, OSTs collapse under their own weight.</statement>
+      <rationale>Opportunities accumulate faster than they are resolved. A monthly kill list keeps the tree shallow and iterable and prevents discovery from becoming a graveyard.</rationale>
+    </rule>
+    <rule>
+      <statement>Tie discovery output to delivery: reference opportunity IDs in PR titles and SDD spec.md ("spec cites opp_xxx").</statement>
+      <rationale>Discovery output without delivery linkage has no feedback loop. Referencing opportunity IDs in code commits and specs enables retrospective analysis of which discoveries led to shipped features.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>LLMs inventing "insights" from thin signal without enforcing the N>=5 rule in the schema.</description>
+      <reason>Reject completions that violate N>=5. Schema enforcement is the only reliable guard — prompt instructions alone are insufficient for this rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Daily Haiku watchers overwriting the insight log instead of appending atomically.</description>
+      <reason>Use atomic append + lock file, never Write. Concurrent watcher runs without locking corrupt the log and lose the audit trail.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Assumption-tester proposing "ship and measure" as a valid test type.</description>
+      <reason>That is delivery, not discovery. Constrain allowed test types: smoke test, fake door, prototype, Wizard of Oz, concierge, Mom Test interview, data dive.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Bi-weekly synthesizer receiving full week's raw context exceeding the context window.</description>
+      <reason>Pre-summarize per-day outputs with Haiku, feed the summaries to Opus. Full-week raw context overflows and silently truncates, losing the later days.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Subagents writing to Dovetail/Notion via API creating duplicate notes on retry.</description>
+      <reason>Require idempotency keys (hash of source URL + date) for all API writes. Retries without idempotency keys multiply notes and pollute the repository.</reason>
+    </antipattern>
+  </section>
+</text>
