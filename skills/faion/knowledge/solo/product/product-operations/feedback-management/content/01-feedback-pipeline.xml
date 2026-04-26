@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-feedback-pipeline" title="Feedback Collection, Categorization, and Processing Pipeline">
+  <summary>Feedback sources, categorization taxonomy, six-step processing pipeline, and agent workflow with prompt patterns.</summary>
+
+  <section title="Feedback Sources">
+    <list>
+      <item>Support tickets — high volume, high quality (real issues, concrete pain)</item>
+      <item>In-app feedback widget — medium volume, medium quality (prompted, context-aware)</item>
+      <item>App store reviews — medium volume, mixed quality (public, harder to follow up)</item>
+      <item>Sales calls — low volume, high quality (prospect pain, concrete context)</item>
+      <item>NPS surveys — medium volume, medium quality (prompted, sentiment-reliable)</item>
+      <item>User interviews — low volume, very high quality (deep intent, behavioral)</item>
+      <item>Social media — variable volume and quality (unsolicited, harder to categorize)</item>
+    </list>
+  </section>
+
+  <section title="Categorization Taxonomy">
+    <rule>
+      <statement>Lock the taxonomy in a versioned file. Treat taxonomy changes as schema migrations: write a migration script and re-tag existing items before applying.</statement>
+      <rationale>Taxonomy drift produces categorization inconsistency over time, making trend analysis unreliable. Versioning makes changes auditable and reversible.</rationale>
+    </rule>
+    <list>
+      <item>Type: bug (something broken), request (new capability), enhancement (improve existing), confusion (UX/navigation issue), praise, complaint</item>
+      <item>Topic: create a product-specific taxonomy — typical: onboarding, core-feature-A, billing, integrations, performance, mobile, other</item>
+    </list>
+    <antipattern>
+      <description>Agent over-categorizing ambiguous items as "enhancement" (catch-all).</description>
+      <reason>Enhancement becomes a black hole for uncategorized items. Force "bug" when verbatim contains "broken", "can't", "fails". Force specific topic or reject with request for taxonomy update.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Processing Pipeline">
+    <list>
+      <item>Step 1: Centralize — single source of truth (Canny, Productboard, Notion, or spreadsheet); auto-import from support + in-app</item>
+      <item>Step 2: Triage — type, topic, source, segment, sentiment per item; always preserve verbatim</item>
+      <item>Step 3: Aggregate — volume by category, trends over time, top requests by mention count</item>
+      <item>Step 4: Prioritize — connect to backlog items; weight by segment/ARR, not raw count</item>
+      <item>Step 5: Act — build (add to roadmap), won't do (document reason), need more info, already planned</item>
+      <item>Step 6: Close loop — email "you asked, we built" when feature ships; respond within 30 days of ship date</item>
+    </list>
+    <rule>
+      <statement>Weight feedback by ARR or segment, not raw mention count. One enterprise complaint can outweigh 50 free-tier votes.</statement>
+      <rationale>Volume bias: vocal free users post many tickets; at-risk enterprise accounts may post zero. Raw count ranking optimizes for the wrong population.</rationale>
+    </rule>
+    <rule>
+      <statement>Always store the verbatim alongside structured fields. Never lose the original quote.</statement>
+      <rationale>Agent rewrites lose intent signals. Original wording reveals tone, context, and use case that structured fields cannot capture.</rationale>
+    </rule>
+    <reference path="templates/feedback-log.md">Feedback table with category breakdown by month, top requests with segment and status.</reference>
+    <reference path="scripts/triage.py">Single-item triage: normalizes text, computes dedup hash, calls LLM with strict JSON schema, validates topic against taxonomy.</reference>
+  </section>
+
+  <section title="Agent Workflow">
+    <list>
+      <item>triage agent (per item): outputs structured JSON — type, topic, sentiment, segment, severity, dedup_hash, suggested_backlog_link</item>
+      <item>weekly aggregator (per week): groups by topic + dedup_id, surfaces top requests with mention counts and segment breakdown</item>
+      <item>close-loop agent (on deploy): watches deploy pipeline, drafts "you asked, we built" emails for human approval before send</item>
+    </list>
+    <rule>
+      <statement>Auto-responding without human review is a brand risk. Default mode = draft and queue; human approves before send.</statement>
+      <rationale>Wrong close-loop email (wrong feature attributed to wrong user, incorrect status) destroys trust harder than no email at all.</rationale>
+    </rule>
+  </section>
+</text>
