@@ -1,0 +1,85 @@
+<text id="database-fixtures" title="Database Fixtures">
+
+  <summary>
+    Django TestCase vs pytest-django, transactional rollback, SQLAlchemy session fixtures, and xdist sequence collision prevention.
+  </summary>
+
+  <section title="Django: pytest-django vs TestCase">
+    <rule>Prefer pytest-django with @pytest.mark.django_db over unittest.TestCase for new tests.</rule>
+    <rule>Use transaction=True only when the test needs to see committed data (e.g., Celery tasks, multi-thread scenarios).</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Fast: wraps test in a transaction, rolls back after
+@pytest.mark.django_db
+def test_user_creation(make_user):
+    user = make_user()
+    assert User.objects.count() == 1  # visible within transaction
+
+# Slower: commits, then truncates — needed for signal/Celery tests
+@pytest.mark.django_db(transaction=True)
+def test_post_save_signal(make_user):
+    user = make_user()
+    assert EmailLog.objects.filter(user=user).exists()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="SQLAlchemy Transactional Fixture">
+    <rule>Use a nested transaction with SAVEPOINT to roll back after each test without recreating the DB.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def engine():
+    from sqlalchemy import create_engine
+    return create_engine(TEST_DATABASE_URL)
+
+@pytest.fixture(scope="session")
+def tables(engine):
+    Base.metadata.create_all(engine)
+    yield
+    Base.metadata.drop_all(engine)
+
+@pytest.fixture
+def db_session(engine, tables):
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    yield session
+    session.close()
+    transaction.rollback()
+    connection.close()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="xdist: Parallel DB Isolation">
+    <rule>When using pytest-xdist, each worker needs its own database to avoid constraint collisions.</rule>
+    <rule>Use the worker_id fixture from pytest-xdist to generate per-worker DB names.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# conftest.py
+@pytest.fixture(scope="session")
+def django_db_setup(worker_id, django_test_environment, django_db_blocker):
+    """Create separate DB per xdist worker."""
+    from django.conf import settings
+    if worker_id == "master":
+        db_name = "test_mydb"
+    else:
+        db_name = f"test_mydb_{worker_id}"
+    settings.DATABASES["default"]["NAME"] = db_name
+    with django_db_blocker.unblock():
+        from django.test.utils import setup_databases
+        setup_databases(verbosity=0, interactive=False)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Sequence Collision Prevention">
+    <antipattern>
+      <description>Using factory_boy Sequence without xdist-aware reset causes duplicate key errors</description>
+      <reason>Each worker starts its counter at 0. Use factory.Sequence(lambda n: f"{worker_id}_{n}") or UUIDs as primary keys.</reason>
+    </antipattern>
+    <rule>Prefer UUIDs over sequential integers for test object IDs to avoid collision in parallel runs.</rule>
+  </section>
+
+</text>

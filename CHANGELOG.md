@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 testing-developer methodologies migrated to new shape (batch: e2e-testing, testing-pytest, test-fixtures, mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript)
 - refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: mocking-strategies, javascript, python-fastapi, python, django-api, go-error-handling, python-type-hints, code-coverage)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: language-framework-guide, integration-testing, django-quality, python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling)

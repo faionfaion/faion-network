@@ -1,0 +1,81 @@
+<text id="pytest-configuration" title="pytest Configuration">
+
+  <summary>
+    pyproject.toml setup, essential plugins, markers, coverage with pytest-cov, parallel execution with xdist, and asyncio mode.
+  </summary>
+
+  <section title="Essential Plugins">
+    <list>
+      <item>pytest-cov — coverage reporting (replaces coverage run)</item>
+      <item>pytest-xdist — parallel execution with -n auto</item>
+      <item>pytest-mock — Mocker fixture wrapping unittest.mock</item>
+      <item>pytest-asyncio — async test support</item>
+      <item>factory-boy — model factories for fixtures</item>
+    </list>
+    <rule>Pin plugin versions in requirements-dev.txt or pyproject.toml dev dependencies.</rule>
+  </section>
+
+  <section title="pyproject.toml Configuration">
+    <example type="good">
+      <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests requiring external services",
+    "e2e: marks end-to-end tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/migrations/*", "src/settings/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Markers">
+    <rule>Declare all markers in pyproject.toml with --strict-markers to prevent typos.</rule>
+    <rule>Use markers to categorize slow or integration tests and skip them in fast feedback loops.</rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Fast unit tests only
+pytest -m "not slow and not integration"
+
+# All including slow
+pytest
+
+# Integration only
+pytest -m integration
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Parallel Execution">
+    <rule>Use pytest-xdist with -n auto for CPU-bound test suites; be aware of fixture scope issues.</rule>
+    <rule>Session-scoped fixtures are NOT shared across xdist workers — use module or function scope, or a tmp_path-based workaround.</rule>
+    <antipattern>
+      <description>Session-scoped DB fixture breaks under xdist</description>
+      <reason>Each worker gets its own session — database sequences can collide. Use separate DB per worker with worker_id fixture.</reason>
+    </antipattern>
+  </section>
+
+</text>

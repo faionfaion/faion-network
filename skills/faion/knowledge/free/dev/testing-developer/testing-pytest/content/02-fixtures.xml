@@ -1,0 +1,85 @@
+<text id="pytest-fixtures" title="pytest Fixtures">
+
+  <summary>
+    Fixture scopes (function/class/module/session), yield cleanup, conftest layering, factory fixtures, and autouse.
+  </summary>
+
+  <section title="Fixture Scopes">
+    <rule>Default to function scope — it isolates tests and prevents state leakage.</rule>
+    <rule>Use session scope only for expensive, read-only resources (e.g., DB connection pool, loaded ML model).</rule>
+    <rule>A fixture can only depend on fixtures of equal or wider scope — never narrow scope from wide.</rule>
+    <example type="bad">
+      <description>Session fixture depending on function-scoped fixture is invalid</description>
+      <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def app(settings):  # settings is function-scoped — pytest will error
+    return create_app(settings)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Yield Fixtures for Cleanup">
+    <rule>Use yield fixtures instead of finalizers — the cleanup code is co-located with setup.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def tmp_file(tmp_path):
+    path = tmp_path / "data.csv"
+    path.write_text("col1,col2\n1,2\n")
+    yield path
+    # cleanup — runs even if test fails
+    path.unlink(missing_ok=True)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="conftest.py Layering">
+    <rule>Place shared fixtures in the nearest conftest.py — root conftest for global, subdir conftest for local.</rule>
+    <rule>Do not import conftest.py files directly — pytest discovers them automatically.</rule>
+    <example type="good">
+      <description>Layered conftest structure</description>
+      <code lang="text"><![CDATA[
+tests/
+├── conftest.py          # db_session, settings, api_client
+├── unit/
+│   └── conftest.py      # lightweight mocks only
+└── integration/
+    └── conftest.py      # real DB fixtures
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Factory Fixtures">
+    <rule>Use factory fixtures (functions returning factory functions) instead of returning pre-built objects.</rule>
+    <rule>Factory fixtures allow tests to customize the object while sharing setup code.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def make_user(db):
+    def factory(email="user@example.com", role="user", **kwargs):
+        return User.objects.create(email=email, role=role, **kwargs)
+    return factory
+
+def test_admin_access(make_user):
+    admin = make_user(role="admin")
+    assert admin.can_access_admin_panel()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Autouse Fixtures">
+    <rule>Use autouse=True sparingly — only for cross-cutting concerns like resetting global state or patching env vars.</rule>
+    <rule>Document autouse fixtures in conftest.py with a comment explaining why they are automatic.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture(autouse=True)
+def reset_cache():
+    """Auto-clear in-memory cache before each test to prevent state leakage."""
+    cache.clear()
+    yield
+    cache.clear()
+      ]]></code>
+    </example>
+  </section>
+
+</text>

@@ -1,0 +1,66 @@
+<text id="e2e-ci-flakiness" title="CI/CD and Flakiness Prevention">
+
+  <summary>
+    GitHub Actions sharding, retries, trace artifacts, and rules for preventing flaky E2E tests.
+  </summary>
+
+  <section title="Flakiness Prevention">
+    <rule>Never use fixed sleep() — use page.waitForSelector(), expect().toBeVisible(), or waitForURL().</rule>
+    <rule>Never rely on network timing — mock external APIs or use waitForResponse().</rule>
+    <rule>Avoid test interdependence — each test must set up its own state.</rule>
+    <rule>Use test.describe.configure({ mode: 'parallel' }) only when tests are fully isolated.</rule>
+    <antipattern>
+      <description>Fixed sleep causes flakiness across different CI machine speeds</description>
+      <code lang="typescript"><![CDATA[
+await page.click('#submit');
+await page.waitForTimeout(2000); // BAD: arbitrary wait
+await expect(page.getByText('Success')).toBeVisible();
+      ]]></code>
+      <reason>Replace with: await expect(page.getByText('Success')).toBeVisible() — Playwright waits automatically.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Retry Strategy">
+    <rule>Set retries: 2 in CI, retries: 0 in local dev to surface failures quickly.</rule>
+    <rule>Enable trace: 'on-first-retry' to capture failure context without storing traces for every run.</rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// playwright.config.ts
+export default defineConfig({
+  retries: process.env.CI ? 2 : 0,
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="CI Sharding">
+    <rule>Shard large suites across multiple CI machines to keep total wall time under 10 minutes.</rule>
+    <rule>Use --shard=N/total with merge-reports to combine results.</rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# GitHub Actions matrix sharding
+strategy:
+  matrix:
+    shard: [1, 2, 3, 4]
+steps:
+  - run: npx playwright test --shard=${{ matrix.shard }}/4
+  - uses: actions/upload-artifact@v4
+    with:
+      name: blob-report-${{ matrix.shard }}
+      path: blob-report/
+      retention-days: 1
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Trace Artifacts">
+    <rule>Always upload Playwright reports as CI artifacts for debugging failures.</rule>
+    <rule>Merge blob reports before publishing the HTML report when using sharding.</rule>
+  </section>
+
+</text>

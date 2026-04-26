@@ -1,0 +1,88 @@
+<text id="pytest-patterns" title="pytest Test Patterns">
+
+  <summary>
+    AAA structure, parametrize (basic/IDs/cartesian/indirect), mocking with unittest.mock and pytest-mock, async tests, and debugging.
+  </summary>
+
+  <section title="Arrange-Act-Assert">
+    <rule>Every test follows Arrange → Act → Assert with a blank line between sections.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_discount_applied_for_premium_user(make_user, cart):
+    # Arrange
+    user = make_user(role="premium")
+    cart.add_item(price=100.0)
+
+    # Act
+    total = cart.calculate_total(user=user)
+
+    # Assert
+    assert total == 80.0  # 20% discount
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Parametrize">
+    <rule>Use @pytest.mark.parametrize to test multiple cases without code duplication.</rule>
+    <rule>Always provide IDs for parametrized cases to make failure messages readable.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.parametrize("email,valid", [
+    ("user@example.com", True),
+    ("invalid-email", False),
+    ("@nodomain.com", False),
+    ("user@.com", False),
+], ids=["valid", "no-at", "no-local", "no-tld"])
+def test_email_validation(email, valid):
+    assert validate_email(email) == valid
+      ]]></code>
+    </example>
+    <rule>Use indirect parametrize to pass parameters through fixtures when fixture setup depends on the parameter.</rule>
+  </section>
+
+  <section title="Mocking with pytest-mock">
+    <rule>Use mocker.patch() in test body (not conftest) for per-test mocks.</rule>
+    <rule>Use mocker.patch.object() when patching a method on a specific instance or class.</rule>
+    <rule>Always assert calls on mocks — silent mocks that never fire are useless.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_send_welcome_email(mocker, make_user):
+    mock_send = mocker.patch("myapp.services.email.send_email")
+    user = make_user(email="new@example.com")
+
+    send_welcome_email(user)
+
+    mock_send.assert_called_once_with(
+        to="new@example.com",
+        subject="Welcome!",
+    )
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Patching at import location instead of usage location</description>
+      <code lang="python"><![CDATA[
+# BAD: patches the original module, not where it's used
+mocker.patch("myapp.utils.requests.get")
+
+# GOOD: patch where it's imported/used
+mocker.patch("myapp.services.payment.requests.get")
+      ]]></code>
+      <reason>Python looks up names at call time in the namespace where they were imported, not the original module.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Async Tests">
+    <rule>Set asyncio_mode = "auto" in pyproject.toml to avoid decorating every async test.</rule>
+    <rule>Use pytest-anyio or pytest-asyncio — never run event loops manually in tests.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# asyncio_mode = "auto" in pyproject.toml
+async def test_fetch_user(async_client):
+    response = await async_client.get("/api/users/1")
+    assert response.status_code == 200
+    assert response.json()["id"] == 1
+      ]]></code>
+    </example>
+  </section>
+
+</text>

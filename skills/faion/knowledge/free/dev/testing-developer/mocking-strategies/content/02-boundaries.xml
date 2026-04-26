@@ -1,0 +1,63 @@
+<text id="mock-boundaries" title="Mock at Boundaries">
+
+  <summary>
+    Where to mock, partial vs full mocking, time mocking, external API levels, and the mock decision tree.
+  </summary>
+
+  <section title="Mock at Boundaries Principle">
+    <rule>Mock at the architectural boundary, not inside the system under test.</rule>
+    <rule>Boundaries: I/O (filesystem, network), time (datetime.now), randomness (uuid4), external services.</rule>
+    <rule>Internal collaborators within your own codebase should use real implementations in unit tests.</rule>
+    <example type="good">
+      <description>Mock the HTTP client boundary, not internal service logic</description>
+      <code lang="python"><![CDATA[
+# Good: mock at the HTTP boundary
+def test_payment_service_retries_on_timeout(mocker):
+    mock_post = mocker.patch("myapp.adapters.stripe.requests.post")
+    mock_post.side_effect = [Timeout(), Timeout(), Mock(status_code=200)]
+
+    result = PaymentService().charge(amount=100)
+
+    assert result.success is True
+    assert mock_post.call_count == 3
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Partial vs Full Mocking">
+    <rule>Full mock: replace the entire object with Mock(). Use when you want to verify call patterns.</rule>
+    <rule>Partial mock: patch one method on a real object with mocker.patch.object(). Use when most behavior should remain real.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Partial mock: only patch the external call
+def test_user_service_sends_welcome_email(mocker):
+    mocker.patch.object(EmailClient, "send", return_value=True)
+    service = UserService(email_client=EmailClient())
+    service.register(email="new@example.com")
+    EmailClient.send.assert_called_once()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Time Mocking">
+    <rule>Never test time-dependent code against real datetime.now() — use freezegun or mocker.patch.</rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from freezegun import freeze_time
+
+@freeze_time("2024-01-15 12:00:00")
+def test_subscription_expires_after_30_days():
+    sub = Subscription.create(start_date=datetime(2024, 1, 15))
+    assert sub.expires_at == datetime(2024, 2, 14)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Decision Tree">
+    <rule>Ask: Does removing this dependency make the test faster or more reliable? If yes, mock it.</rule>
+    <rule>Ask: Is this a third-party service that may be unavailable in CI? If yes, mock it.</rule>
+    <rule>Ask: Is this a collaborator in my own codebase? If yes, prefer a real or fake implementation.</rule>
+    <rule>Ask: Am I mocking to avoid writing a difficult test? If yes, fix the design instead.</rule>
+  </section>
+
+</text>
