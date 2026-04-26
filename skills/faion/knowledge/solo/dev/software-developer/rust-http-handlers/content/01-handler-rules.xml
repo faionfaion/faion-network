@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-handler-rules" title="Axum Handler Rules">
+  <summary>Concrete rules for writing type-safe, thin Axum handlers with unified error handling and validated DTOs.</summary>
+
+  <section title="Handler structure">
+    <rule>
+      <statement>Keep handlers thin: parse input → call Service → map result. No DB queries or business logic inside handler bodies.</statement>
+      <rationale>Thin handlers are independently testable without an HTTP runtime and keep the service layer reusable.</rationale>
+    </rule>
+    <rule>
+      <statement>Define one `AppError` enum with `thiserror`; implement `IntoResponse` once; never let handlers return `anyhow::Error` to callers.</statement>
+      <rationale>A single error type prevents accidental 500s from unhandled error variants and centralizes HTTP status mapping.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `Result&lt;(StatusCode, Json&lt;T&gt;), AppError&gt;` when success status varies (201 vs 200); use `Result&lt;Json&lt;T&gt;, AppError&gt;` when status is always 200.</statement>
+      <rationale>Explicit status in the return type documents intent and avoids implicit 200 for resource-creation endpoints.</rationale>
+    </rule>
+  </section>
+
+  <section title="Extractors and state">
+    <rule>
+      <statement>Order extractors: `State` first, then path/query, then `Json` body. Axum resolves extractors in declaration order; wrong order causes opaque trait errors.</statement>
+      <rationale>Extractor ordering is a common source of "the trait Handler is not satisfied" errors that LLMs struggle to diagnose.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `Arc&lt;sqlx::PgPool&gt;` (it is `Clone`) inside `AppState`; never wrap in extra `Mutex`.</statement>
+      <rationale>`sqlx::PgPool` is already connection-pool-safe; adding `Mutex` serializes all DB access unnecessarily.</rationale>
+    </rule>
+    <rule>
+      <statement>`AppState` must satisfy `Clone + Send + Sync + 'static`. Use `Arc&lt;T&gt;` for non-Clone resources; never use `Rc` or `RefCell`.</statement>
+      <rationale>Axum's `with_state` requires these bounds; violating them produces compiler errors that are hard to diagnose.</rationale>
+    </rule>
+  </section>
+
+  <section title="Validation">
+    <rule>
+      <statement>Validate input DTOs with the `validator` crate; call `.validate()?` as the first statement in the handler body; implement `From&lt;ValidationErrors&gt; for AppError` to return 422.</statement>
+      <rationale>Without the `From` impl, validator errors produce 500s instead of the correct 422 Unprocessable Entity.</rationale>
+    </rule>
+    <rule>
+      <statement>Bound JSON body size with `RequestBodyLimitLayer`; the default is unbounded and an OOM vector.</statement>
+      <rationale>A single unbounded request body can exhaust server memory with no authentication required.</rationale>
+    </rule>
+  </section>
+
+  <section title="Observability">
+    <rule>
+      <statement>Instrument handlers and services with `#[tracing::instrument]`; use `tracing` throughout, never `println!` or `dbg!` in committed code.</statement>
+      <rationale>Structured tracing integrates with OpenTelemetry and log aggregators; print statements disappear in production.</rationale>
+    </rule>
+  </section>
+
+  <section title="Testing">
+    <rule>
+      <statement>Write integration tests using `tower::ServiceExt::oneshot` against the real `Router`; test both happy path and error cases (at minimum: 200/201 and 422/404).</statement>
+      <rationale>Unit-testing handlers in isolation misses extractor resolution, middleware ordering, and state injection bugs.</rationale>
+    </rule>
+    <antipattern>
+      <description>Handler returns `anyhow::Error` directly to the client.</description>
+      <reason>Leaks internal error messages and panics on unhandled variants; every unhandled arm becomes a 500.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using `unwrap()` or `expect("TODO")` inside handler bodies.</description>
+      <reason>Any `None` or `Err` panics the task and returns a 500; use `?` with `AppError` instead.</reason>
+    </antipattern>
+  </section>
+</text>

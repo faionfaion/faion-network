@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="UI Component Library Examples">
+  <summary>Button and Input component implementations demonstrating forwardRef, variant system, ARIA, and CSS modules.</summary>
+
+  <section title="Button component">
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+// src/components/primitives/Button/Button.tsx
+import { forwardRef, ButtonHTMLAttributes, ReactNode } from 'react';
+import { clsx } from 'clsx';
+import { Slot } from '@radix-ui/react-slot';
+import styles from './Button.module.css';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
+
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  isLoading?: boolean;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
+  asChild?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  (
+    {
+      variant = 'primary', size = 'md', fullWidth = false,
+      isLoading = false, leftIcon, rightIcon, asChild = false,
+      className, disabled, children, ...props
+    },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : 'button';
+    return (
+      <Comp
+        ref={ref}
+        className={clsx(
+          styles.button, styles[variant], styles[size],
+          fullWidth && styles.fullWidth,
+          isLoading && styles.loading,
+          className
+        )}
+        disabled={disabled || isLoading}
+        {...props}
+      >
+        {isLoading && <span className={styles.spinner} aria-hidden="true" />}
+        {leftIcon && !isLoading && <span className={styles.icon} aria-hidden="true">{leftIcon}</span>}
+        <span className={styles.content}>{children}</span>
+        {rightIcon && <span className={styles.icon} aria-hidden="true">{rightIcon}</span>}
+      </Comp>
+    );
+  }
+);
+Button.displayName = 'Button';
+      ]]></code>
+      <note>forwardRef + displayName. asChild uses Radix Slot. Decorative icons are aria-hidden. isLoading disables to prevent double-submit.</note>
+    </example>
+  </section>
+
+  <section title="Input component with ARIA">
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+// src/components/primitives/Input/Input.tsx
+import { forwardRef, InputHTMLAttributes, ReactNode, useId } from 'react';
+import { clsx } from 'clsx';
+import styles from './Input.module.css';
+
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+  label?: string;
+  helperText?: string;
+  error?: string;
+  size?: 'sm' | 'md' | 'lg';
+  leftAddon?: ReactNode;
+  rightAddon?: ReactNode;
+}
+
+export const Input = forwardRef<HTMLInputElement, InputProps>(
+  ({ label, helperText, error, size = 'md', leftAddon, rightAddon,
+     required, className, id: providedId, ...props }, ref) => {
+    const generatedId = useId();
+    const id = providedId || generatedId;
+    const helperId = `${id}-helper`;
+    const errorId = `${id}-error`;
+
+    return (
+      <div className={clsx(styles.wrapper, className)}>
+        {label && (
+          <label htmlFor={id} className={styles.label}>
+            {label}
+            {required && <span className={styles.required} aria-hidden="true">*</span>}
+          </label>
+        )}
+        <div className={clsx(styles.inputWrapper, error && styles.hasError)}>
+          {leftAddon && <span className={styles.addon}>{leftAddon}</span>}
+          <input
+            ref={ref} id={id}
+            className={clsx(styles.input, styles[size])}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : helperText ? helperId : undefined}
+            aria-required={required}
+            {...props}
+          />
+          {rightAddon && <span className={styles.addon}>{rightAddon}</span>}
+        </div>
+        {error && <span id={errorId} className={styles.error} role="alert">{error}</span>}
+        {helperText && !error && <span id={helperId} className={styles.helperText}>{helperText}</span>}
+      </div>
+    );
+  }
+);
+Input.displayName = 'Input';
+      ]]></code>
+      <note>useId for stable IDs. aria-invalid + aria-describedby wired to error/helper. role="alert" on error announces to screen readers.</note>
+    </example>
+
+    <reference path="templates/new-component.sh">Scaffold component folder with tsx, css, stories, barrel update</reference>
+  </section>
+</text>
