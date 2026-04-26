@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-workflow" title="Agentic Workflow, Prompt Patterns, and Gotchas">
+  <summary>Recommended subagents, prompt templates for tagging and fraud-screening, and failure modes specific to AI-augmented research pipelines.</summary>
+
+  <section title="Recommended subagents">
+    <p>research-synthesiser: ingests transcripts and existing tag taxonomy, proposes new tags only when frequency reaches N, emits affinity clusters with quotes. bias-watcher: flags leading questions in moderator scripts before recording starts. recruit-screener: drafts screener questions and grades panel responses for fraud signals.</p>
+  </section>
+
+  <section title="Prompt patterns">
+    <example type="good">
+      <note>Tagging at scale with taxonomy enforcement:</note>
+      <code lang="text"><![CDATA[
+Given 28 unmoderated session transcripts (file IDs S1..S28) and the tag
+taxonomy in taxonomy.json, tag every utterance. For each tag with >=5
+segments, output a cluster with: definition, 3 verbatim quotes (with
+timestamp), conflicting evidence if any. Do not invent new tags; if a
+segment fits none, mark untagged for human review.
+      ]]></code>
+    </example>
+    <example type="good">
+      <note>Panel fraud screening:</note>
+      <code lang="text"><![CDATA[
+Score these 12 screener responses 0-1 for panel-fraud risk (copy-paste,
+gibberish, suspiciously fast, contradictory answers). Provide reasoning
+for any score >0.5.
+      ]]></code>
+    </example>
+    <reference path="templates/tag-session.py">Whisper + Anthropic pipeline for transcription and taxonomy tagging</reference>
+  </section>
+
+  <section title="Agentic gotchas">
+    <antipattern>
+      <description>Auto-summariser compresses a 30-minute interview to one paragraph.</description>
+      <reason>Compression loses disconfirming evidence; require quote retention with timestamps for every claim.</reason>
+    </antipattern>
+    <antipattern>
+      <description>LLM synthetic users used to validate willingness-to-pay or purchase behaviour.</description>
+      <reason>Synthetic users are sycophantic and cannot replicate real buying decisions; use them only to seed prompts and edge cases.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Multi-agent pipeline without idempotency reprocesses the same recording on re-run, double-counting tags.</description>
+      <reason>Require deduplication keys (recording ID + run ID) before any tagging write.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent pipelines push transcripts to a repository without PII redaction.</description>
+      <reason>GDPR/CCPA require PII redaction before storage; pair with a scrubber agent or equivalent before pushing.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Diarisation errors mis-attribute moderator speech to participants, biasing tag distributions.</description>
+      <reason>Always verify speaker tags before clustering; diarisation accuracy drops on overlapping speech and accents.</reason>
+    </antipattern>
+  </section>
+</text>
