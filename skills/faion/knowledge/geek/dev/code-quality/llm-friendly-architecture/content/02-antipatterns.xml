@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="LLM-Friendly Architecture Anti-Patterns">
+  <summary>Five anti-patterns that degrade AI edit accuracy: god components, utils dumping grounds, deep re-exports, inline large data, and ambiguous file names — each with the specific failure mode it causes in LLM-assisted editing.</summary>
+
+  <section title="Anti-Patterns">
+    <antipattern>
+      <description>God component: a single file over 800 lines combining routing, authentication, data fetching, state management, calculations, and rendering.</description>
+      <reason>Context truncation causes the agent to miss the lower half of the file entirely. Edits target the wrong section. Multiple concerns in one file means any change risks unintended side effects in other concerns.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Utils dumping ground: a utils/index.ts or helpers.ts with 50+ unrelated functions exported together.</description>
+      <reason>Agents cannot infer which function to edit without reading the entire file. New functions get added to the dump rather than to purpose-named files. The file grows unboundedly.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Deep barrel re-exports: components/index.ts re-exporting from 20+ files with export * from './Button', export * from './Input', etc.</description>
+      <reason>Agents see the barrel export and edit it as if it is the implementation. The actual Button.tsx is never opened. Circular dependency risk increases. After a large restructure, TypeScript path aliases may still resolve to old locations if tsconfig.json is not updated.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Inline large data: 200+ lines of JSON or data arrays defined inside a component function.</description>
+      <reason>Inflates component file past the point where the agent can hold the full rendering logic in context. Edits to data lines frequently corrupt adjacent rendering code.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Ambiguous file names: helpers.ts, utils.ts, common.ts, shared.ts, misc.ts used as catch-all files.</description>
+      <reason>Agents grep filenames to locate code. Ambiguous names produce multiple candidates; the agent opens the wrong file, makes the edit, and produces a no-op or a bug in the wrong module.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agent-Specific Failure Modes">
+    <rule>
+      <statement>When splitting a file via an agent, verify the original code is removed after creating new files. Agents frequently create the new files but leave duplicate code in the original.</statement>
+      <rationale>Agents executing multi-step refactors lose track of deletion steps when context fills up. The review pass must diff the original against the new files explicitly.</rationale>
+    </rule>
+    <rule>
+      <statement>After a large restructure, explicitly update tsconfig.json path aliases. Agents frequently miss tsconfig changes, leaving path aliases pointing to old file locations.</statement>
+      <rationale>TypeScript path aliases like @/components resolve at compile time. Agents that move files but do not update tsconfig produce code that compiles locally with old cached paths but fails in CI.</rationale>
+    </rule>
+    <rule>
+      <statement>Run madge --circular in CI to catch circular dependencies introduced when splitting files.</statement>
+      <rationale>Splitting a large file into sub-modules can accidentally create circular imports if the new modules cross-reference each other. Agents do not reliably detect this during refactoring.</rationale>
+    </rule>
+  </section>
+</text>

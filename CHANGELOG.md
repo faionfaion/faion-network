@@ -4,6 +4,7 @@
 
 ### Changed
 - refactor: 8/8 infrastructure-engineer methodologies migrated to new shape (batch: aws-architecture-services, terraform-basics, terraform-state, gcp-arch-patterns, aws-lambda, terraform, aws-networking, aws-s3-storage)
+- refactor: 8/8 methodologies migrated to new shape (batch: llm-friendly-architecture x2, ai-assisted-dev, claude-md-creation, ai-content-strategy, ai-marketing-tools-stack-2026, agentic-commerce-future-trends, technical-seo-for-ai)
 - refactor: 8/8 marketing methodologies migrated to new shape (batch: growth-affiliate-marketing, conversion-tracking, retention-strategies, aarrr-pirate-metrics, ops-metrics-basics, activation-metrics, north-star-metric, growth-loops)
 - refactor: 8/8 devops-engineer methodologies migrated to new shape (batch: gitlab-cicd, github-actions-cicd, backup-strategies, azure-architecture, secrets-management, argocd-gitops, kubernetes, gcp)
 - refactor: 8/8 methodologies migrated to new shape (batch: ads-google-keywords, ads-meta-reporting, ads-meta-creative, ads-meta-targeting, ads-retargeting, ads-ab-testing-ads, growth-press-coverage, growth-gtm-strategy)
