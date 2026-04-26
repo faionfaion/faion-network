@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 software-architect methodologies migrated to new shape (batch: modular-monolith, data-modeling, patterns-overview, quality-attributes, monolith-architecture, architecture-decision-records, c4-model, structural-patterns)
 - refactor: 8/8 methodologies migrated to new shape (agent-aac1288d12b6abb30: perf-test-basics, cd-basics, continuous-delivery, system-design-process, workflows, caching-architecture, performance-architecture, behavioral-patterns)
 - refactor: 8/8 methodologies migrated to new shape (batch: api-authentication, internationalization, rust-backend, django-services, rest-api-design, pwa-development, trunk-based-development, go-project-structure)
 - refactor: 8/8 frontend-developer methodologies migrated to new shape (batch: ui-lib-basics, shadcn-ui-architecture, ui-lib-patterns, css-in-js-advanced, pwa-advanced, storybook-setup, mobile-responsive, css-in-js-basics)

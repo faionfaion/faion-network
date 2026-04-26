@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-advanced-patterns" title="Advanced Patterns: Data Vault, Cassandra, Time-Series">
+  <summary>Data Vault 2.0 for auditable enterprise warehouses; query-first design for Cassandra/ScyllaDB; hypertables and continuous aggregates for TimescaleDB/InfluxDB.</summary>
+
+  <section title="Data Vault 2.0">
+    <rule>
+      <statement>Use Data Vault 2.0 for enterprise data warehouses that require full lineage, audit readiness, and parallel loading from multiple source systems. The three components are Hubs (business keys), Links (relationships between hubs), and Satellites (descriptive attributes with history).</statement>
+      <rationale>Star schemas are brittle when source systems change — adding a new source often requires schema redesign. Data Vault separates the business keys (stable) from the descriptive data (volatile), enabling incremental and parallel loading without breaking existing consumers.</rationale>
+    </rule>
+    <list>
+      <item>Hub: one row per unique business key (customer number, SKU); includes load timestamp and record source</item>
+      <item>Link: one row per unique relationship between hubs; hash key of composite business key</item>
+      <item>Satellite: one row per change to descriptive attributes of a hub or link; includes load_dts, load_end_dts, hash_diff for change detection</item>
+    </list>
+    <reference path="templates/data-vault-hub.sql">Hub, Link, Satellite DDL templates with hash key functions</reference>
+  </section>
+
+  <section title="Cassandra: Query-First Design">
+    <rule>
+      <statement>In Cassandra/ScyllaDB, design the table for each query — not for the entity. Define all required queries first, then design one table per query. Duplication is expected and required.</statement>
+      <rationale>Cassandra has no joins, no cross-partition queries, and no secondary index support for high-cardinality columns. The only way to query efficiently is to pre-model the data in query shape. A normalized schema in Cassandra is effectively unqueryable at scale.</rationale>
+    </rule>
+    <list>
+      <item>Partition key: determines the node that stores the row; must be in every WHERE clause; avoid hot partitions</item>
+      <item>Clustering columns: sorting within a partition; enable range queries within a partition</item>
+      <item>One table per query pattern — accept duplication, it is by design</item>
+      <item>Partition size target: &lt;100MB; avoid unbounded partitions (bucket by time if needed)</item>
+    </list>
+    <reference path="templates/cassandra-table.cql">Cassandra table template with partition/clustering key design</reference>
+  </section>
+
+  <section title="Time-Series: Hypertables and Aggregates">
+    <rule>
+      <statement>For time-series data in TimescaleDB, create hypertables with a chunk interval matching the query time window. Add continuous aggregates for pre-computed rollups; add retention policies to prevent unbounded growth.</statement>
+      <rationale>Time-series data grows indefinitely and is almost exclusively queried in time ranges. Hypertable chunks enable partition pruning for time queries, automatic compression, and retention-based chunk drops without full table scans.</rationale>
+    </rule>
+    <list>
+      <item>Hypertable chunk interval: match to most common query range (1-day chunks for hourly queries, 1-week for daily queries)</item>
+      <item>Continuous aggregates: pre-compute hourly/daily rollups; query rollup instead of raw data for dashboards</item>
+      <item>Retention policy: automatically drop chunks older than the retention window</item>
+      <item>Compression policy: compress chunks older than the hot window (e.g., &gt;7 days)</item>
+      <item>Tag vs field in InfluxDB: tag = indexed dimension (sensor_id, location); field = actual measurement value</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-migration" title="Migration Paths">
+  <summary>Two migration directions: from traditional monolith to modular monolith (add boundaries), and from modular monolith to microservices via Strangler Fig (extract with data). Data extraction must accompany code extraction — extracting code while leaving a shared database creates a distributed monolith.</summary>
+
+  <section title="Monolith to Modular Monolith">
+    <rule>
+      <statement>Modularize incrementally: identify domains, establish public APIs, separate schemas, add boundary enforcement — one module at a time, never all at once.</statement>
+      <rationale>Big-bang refactors of existing monoliths fail. Incremental extraction validates assumptions and keeps the system deployable throughout.</rationale>
+    </rule>
+    <list>
+      <item>1. Identify business capabilities and group into candidate modules</item>
+      <item>2. Extract shared infrastructure to a minimal shared/ package (DTOs, base exceptions, event bus)</item>
+      <item>3. Create module package directories with internal/ for private code</item>
+      <item>4. Define public API per module (api.py / api.go / Api.java)</item>
+      <item>5. Separate database schemas (CREATE SCHEMA per module)</item>
+      <item>6. Update all callers to use public APIs instead of direct imports</item>
+      <item>7. Add boundary enforcement linter and wire into CI</item>
+      <item>8. Introduce events for cross-cutting concerns</item>
+    </list>
+  </section>
+
+  <section title="Strangler Fig: Modular Monolith to Microservices">
+    <rule>
+      <statement>Extract one module at a time using Strangler Fig. A module is ready to extract only when it has: a clear public API, its own database schema, and event-based (or clearly bounded synchronous) communication. Extract the database with the service or do not extract at all.</statement>
+      <rationale>The most common microservices extraction failure is extracting the code while leaving the shared database. This creates a distributed monolith: network overhead and operational complexity without any of the isolation benefits.</rationale>
+    </rule>
+    <list>
+      <item>1. Verify: module has clean API boundary, owns its schema, no cross-schema joins</item>
+      <item>2. Copy module code to a new deployable repository</item>
+      <item>3. Add an in-monolith facade that routes calls to either old or new service</item>
+      <item>4. Replace in-process calls with HTTP/gRPC at the facade boundary</item>
+      <item>5. Replace in-memory events with message queue (Kafka, RabbitMQ)</item>
+      <item>6. Extract and migrate the module's database schema to its own instance</item>
+      <item>7. Remove the module from the monolith once the service is proven in production</item>
+    </list>
+    <antipattern>
+      <description>Extracting service code while keeping tables in the shared monolith database</description>
+      <reason>Creates tight runtime coupling via the database; the extracted service cannot be deployed independently and schema changes still block the monolith</reason>
+    </antipattern>
+  </section>
+</text>
