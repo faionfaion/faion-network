@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-task-rules" title="Django Celery Task Rules">
+  <summary>Mandatory attributes, idempotency pattern, time limits, and calling conventions for Celery tasks in Django.</summary>
+
+  <section title="Mandatory Task Attributes">
+    <rule>
+      <statement>Every task must declare: explicit name, bind=True, max_retries, autoretry_for with retry_backoff=True and retry_jitter=True, soft_time_limit, and time_limit. Tasks without these attributes are rejected in code review.</statement>
+      <rationale>Implicit names break on module rename. Missing bind=True makes self.retry() crash. Missing time limits let slow tasks block worker slots indefinitely. Missing retry config turns transient failures into permanent ones.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from celery import shared_task
+import requests
+
+@shared_task(
+    name="emails.send_welcome",
+    bind=True,
+    max_retries=5,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def send_welcome(self, user_id: int) -> bool:
+    """Send welcome email. Idempotent — checks sent flag before action."""
+    from apps.users.models import User
+    user = User.objects.only("id", "email", "welcome_email_sent").get(pk=user_id)
+    if user.welcome_email_sent:
+        return False  # already done
+    send_email(user.email, "Welcome!")
+    User.objects.filter(pk=user_id, welcome_email_sent=False).update(
+        welcome_email_sent=True
+    )
+    return True
+]]></code>
+      <note>The idempotency guard uses UPDATE WHERE not_done=True — a DB-level atomic check-and-set, not a read-then-write race.</note>
+    </example>
+  </section>
+
+  <section title="Argument Rule">
+    <rule>
+      <statement>Tasks accept only primitive arguments (int, str, float, bool, dict of primitives). Never pass model instances — they serialize to stale data and fail to deserialize on worker restart.</statement>
+      <rationale>ORM objects serialized into the queue carry the state at call time. By the time the worker runs, the DB row may have changed. IDs force a fresh query inside the task.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# WRONG: passes User instance
+send_welcome.delay(user=request.user)
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# CORRECT: passes primitive ID
+send_welcome.delay(user_id=request.user.id)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Queue Routing">
+    <rule>
+      <statement>Route tasks by workload class: emails, webhooks, reports, long_running. Each queue maps to one SLA. Never mix fast and slow tasks on the default queue.</statement>
+      <rationale>Long-running tasks block worker concurrency slots. A slow report task sharing a queue with email tasks can delay all email delivery.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# config/celery.py
+app.conf.task_routes = {
+    "emails.*":    {"queue": "emails"},
+    "reports.*":   {"queue": "reports"},
+    "webhooks.*":  {"queue": "webhooks"},
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Calling Conventions">
+    <rule>
+      <statement>Use .delay() for simple async dispatch. Use .apply_async() when you need countdown, eta, or explicit queue. Never call tasks synchronously in production request paths.</statement>
+      <rationale>Synchronous task execution in a request thread defeats the purpose of async processing and blocks the web worker.</rationale>
+    </rule>
+    <reference path="templates/task-idempotent.py">Canonical idempotent task with full retry and time-limit config</reference>
+    <reference path="templates/celery-worker.service">Systemd unit for a per-queue worker</reference>
+  </section>
+
+  <section title="Periodic Tasks">
+    <rule>
+      <statement>Use RedBeat or django-celery-beat with leader election for periodic tasks. Never run multiple naive celery beat processes — they produce duplicate executions.</statement>
+      <rationale>On HA deployments, two beat processes both fire the same schedule, causing duplicate emails, double-charges, or corrupt aggregations.</rationale>
+    </rule>
+  </section>
+</text>

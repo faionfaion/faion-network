@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ssr-and-meta" title="SSR Requirements and Meta Tag Rules">
+  <summary>SSR/ISR requirements, mandatory meta fields per route, canonical URL rules, and OG/Twitter card field list.</summary>
+
+  <section title="SSR Requirement">
+    <rule>
+      <statement>Every public route must deliver all required meta tags in the server-rendered HTML, not only after client-side hydration. Verify with curl -A "Googlebot/2.1", not Playwright or browser DevTools.</statement>
+      <rationale>Googlebot renders JS but Bing, Yandex, and all social crawlers often do not. Post-hydration DOM is invisible to them. curl fetches the raw SSR output, which is ground truth for indexability.</rationale>
+    </rule>
+  </section>
+
+  <section title="Required Meta Fields Per Route">
+    <rule>
+      <statement>Every public page must include: title (30-65 chars), meta[name=description] (120-160 chars), link[rel=canonical] with absolute URL hardcoded from env (never window.location.host), og:title, og:description, og:image (1200x630), og:url, og:type, twitter:card, twitter:title, twitter:description, twitter:image.</statement>
+      <rationale>Missing any of these causes partial indexing, broken social shares, or reduced click-through rate. The canonical URL from window.location.host leaks preview-deploy URLs as canonical, causing duplicate-content penalties.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// Next.js App Router — Metadata API
+import type { Metadata } from 'next';
+
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const product = await fetchProduct(params.slug);
+  const url = `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.slug}`;
+
+  return {
+    title: product.name,
+    description: product.description.slice(0, 160),
+    alternates: { canonical: url },
+    openGraph: {
+      type: 'website',
+      title: product.name,
+      description: product.description.slice(0, 160),
+      url,
+      images: [{ url: product.image, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.name,
+      description: product.description.slice(0, 160),
+      images: [product.image],
+    },
+  };
+}
+]]></code>
+      <note>NEXT_PUBLIC_SITE_URL is set to the canonical production domain. Preview deploys use a different env value.</note>
+    </example>
+  </section>
+
+  <section title="Canonical URL Rule">
+    <rule>
+      <statement>Hardcode the canonical origin in an environment variable (SITE_URL). Never derive it from the incoming request host. Preview deployments must have a different SITE_URL or suppress canonical tags entirely.</statement>
+      <rationale>Preview deploy URLs (deploy-preview-123.netlify.app) indexed as canonical URLs cause duplicate-content penalties that suppress the production URL in search results.</rationale>
+    </rule>
+  </section>
+
+  <section title="Link Rules for Crawlability">
+    <rule>
+      <statement>All navigation links must be anchor tags with href attributes. Never use onClick + router.push() without an accompanying href. Crawler bots do not execute JavaScript click handlers.</statement>
+      <rationale>Links without href are invisible to crawlers. Internal pages reachable only via JS navigation are not indexed regardless of SSR quality.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="tsx"><![CDATA[
+<div onClick={() => router.push('/products')}>Products</div>
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+<Link href="/products">Products</Link>
+]]></code>
+    </example>
+    <reference path="templates/seo-component.tsx">SEO component with all required meta fields and react-helmet-async fallback</reference>
+  </section>
+</text>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-schema-and-resolvers" title="GraphQL Schema and Resolver Rules">
+  <summary>SDL-first development, per-request DataLoader scoping, Relay pagination, and mutation return requirements.</summary>
+
+  <section title="Schema-First Development">
+    <rule>
+      <statement>Author the SDL schema first, run codegen to produce typed resolvers and clients, then implement resolvers. Never implement resolvers before the schema is committed — codegen output becomes the contract between frontend and backend.</statement>
+      <rationale>Schema-first ensures the client contract is explicit before any code is written. Resolver-first development produces schemas that are shaped by implementation accidents rather than domain requirements.</rationale>
+    </rule>
+  </section>
+
+  <section title="Per-Request DataLoader Scoping">
+    <rule>
+      <statement>Instantiate DataLoaders inside the request context, never at module scope. One DataLoader instance per request per entity type. Module-level DataLoaders cache results across users and requests, leaking data between tenants.</statement>
+      <rationale>A module-level DataLoader for User records caches user A's data and may serve it to user B's request. Per-request scoping isolates caches to a single authenticated session.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+// WRONG: module-level — shared across all requests
+const userLoader = new DataLoader(batchUsers);
+
+export const resolvers = {
+  Order: {
+    user: (order) => userLoader.load(order.userId), // leaks across users!
+  },
+};
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// CORRECT: per-request context
+function createContext(req) {
+  return {
+    loaders: {
+      user: new DataLoader(batchUsers),
+      product: new DataLoader(batchProducts),
+    },
+    userId: req.user?.id,
+  };
+}
+
+export const resolvers = {
+  Order: {
+    user: (order, _, ctx) => ctx.loaders.user.load(order.userId),
+  },
+};
+]]></code>
+    </example>
+    <reference path="templates/dataloader-pattern.ts">Per-request DataLoader context factory with batch functions</reference>
+  </section>
+
+  <section title="Relay Cursor Pagination">
+    <rule>
+      <statement>Use cursor-based (Relay) pagination for any list field that may return more than 20 items. Never return raw arrays for paginated resources — raw arrays block incremental loading and make infinite scroll impossible.</statement>
+      <rationale>Offset pagination is O(n) at the DB level and produces gaps/duplicates when items are inserted mid-page. Cursor pagination is stable and efficient at any depth.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="graphql"><![CDATA[
+type Query {
+  orders(first: Int, after: String, status: OrderStatus): OrderConnection!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrderEdge {
+  cursor: String!
+  node: Order!
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Mutation Return Rule">
+    <rule>
+      <statement>Mutations must return the modified entity, not Boolean. Boolean returns make client-side cache invalidation impossible and force an additional refetch round-trip.</statement>
+      <rationale>Apollo Client and Relay rely on the returned entity to update their caches optimistically. A Boolean return provides no information for cache update; the client must re-query the entire resource.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="graphql"><![CDATA[
+type Mutation {
+  deleteUser(id: ID!): Boolean!  # client cannot update cache
+}
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="graphql"><![CDATA[
+type Mutation {
+  deleteUser(id: ID!): DeleteUserPayload!
+}
+
+type DeleteUserPayload {
+  deletedId: ID!
+  success: Boolean!
+}
+]]></code>
+    </example>
+    <reference path="templates/codegen.yml">graphql-codegen config for TypeScript types and typed document nodes</reference>
+  </section>
+</text>

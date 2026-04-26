@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="Django Celery Antipatterns">
+  <summary>Common Celery failures: stale objects, missing bind=True, unset time limits, chains/chords abuse, and beat duplication.</summary>
+
+  <section title="Stale Object Antipattern">
+    <antipattern>
+      <description>Passing a Django model instance to a task via .delay(user=user_obj).</description>
+      <reason>Celery serializes the object at call time. The worker deserializes stale data or fails entirely on restart. Always pass the primary key and fetch fresh inside the task.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Missing bind=True">
+    <antipattern>
+      <description>Calling self.retry() inside a task defined without bind=True.</description>
+      <reason>Without bind=True, self is undefined. The task crashes on the first retry attempt with a NameError, not a retry.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Missing Time Limits">
+    <antipattern>
+      <description>Defining tasks without soft_time_limit and time_limit.</description>
+      <reason>Without limits, a hung task (blocked network call, deadlocked DB query) holds a worker slot indefinitely, starving all other tasks in that queue.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+@shared_task
+def generate_report(report_id: int):
+    # no time limits — can run forever
+    run_expensive_report(report_id)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Beat Without Leader Election">
+    <antipattern>
+      <description>Running multiple celery beat processes without RedBeat or django-celery-beat for leader election on multi-replica deployments.</description>
+      <reason>Each beat process fires the full schedule independently. N replicas produce N copies of every periodic task, causing duplicate side effects.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Chord and Chain Abuse">
+    <antipattern>
+      <description>Building deeply nested Celery chains/chords on a Redis broker without monitoring back-pressure.</description>
+      <reason>Redis-backed chord results accumulate in memory. Deep nesting stalls the entire workflow when intermediate results expire or the broker fills up.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Secrets in Task Code">
+    <antipattern>
+      <description>Inlining API keys or credentials directly in task function bodies or as default argument values.</description>
+      <reason>Task code is deployed to all workers. Secrets in code appear in logs, tracebacks, and version history. Use environment variables loaded via systemd EnvironmentFile.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Fan-out Without Approval">
+    <antipattern>
+      <description>Dispatching tasks across all users (User.objects.all().iterator()) without an explicit human approval gate.</description>
+      <reason>A single typo or bug fan-outs to every user. Require an explicit approval checkpoint before any task that sends to more than N users.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-layer-rules" title="Django Decomposition Layer Rules">
+  <summary>Service/selector/model/view rules, file-size thresholds, and layer boundary enforcement with import-linter.</summary>
+
+  <section title="Layer Definitions">
+    <rule>
+      <statement>Organize Django apps into four layers: models/ (ORM fields + simple validators + custom managers, no business logic), selectors/ (read-only QuerySet functions, no mutations), services/ (write operations with @transaction.atomic, keyword-only args), views/ (parse request, call service/selector, serialize response — 10-20 lines per method). Never mix layers in one file.</statement>
+      <rationale>Fat views mix HTTP, business logic, and DB queries, making each layer untestable in isolation. Fat models create hidden coupling between data and behavior. The four-layer split produces single-purpose, independently testable units.</rationale>
+    </rule>
+  </section>
+
+  <section title="Service Function Rules">
+    <rule>
+      <statement>Service functions use keyword-only arguments: def user_create(*, email: str, password: str) -&gt; User. Decorate with @transaction.atomic only when composing multiple writes. Never accept HTTP request objects or return HTTP responses.</statement>
+      <rationale>Positional args drift silently as signatures evolve — a reorder breaks callers without a type error. Keyword-only args make the interface explicit. @transaction.atomic on every service is wasteful and wraps single-write ops in a no-op that misleads readers.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# users/services/user_service.py
+from django.db import transaction
+from dataclasses import dataclass
+from users.models import User
+
+
+@dataclass
+class UserCreateInput:
+    email: str
+    password: str
+    first_name: str = ""
+    last_name: str = ""
+
+
+@transaction.atomic
+def user_create(*, data: UserCreateInput) -> User:
+    """Create user. Raises ValueError if email taken."""
+    if User.objects.filter(email__iexact=data.email).exists():
+        raise ValueError("Email already registered")
+    return User.objects.create_user(
+        email=data.email,
+        password=data.password,
+        first_name=data.first_name,
+        last_name=data.last_name,
+    )
+]]></code>
+    </example>
+    <reference path="templates/user_service.py">Full UserService with dataclass inputs and keyword-only args</reference>
+  </section>
+
+  <section title="Selector Rules">
+    <rule>
+      <statement>Selectors are pure functions returning QuerySet or typed iterables. They must not call save(), update(), delete(), or any service. They must include select_related/prefetch_related for all accessed related objects. Return type must be annotated.</statement>
+      <rationale>Untypeable selectors that sometimes return QuerySets and sometimes evaluated lists make N+1 detection impossible. A caller that evaluates a queryset inside a loop needs to know it is a queryset.</rationale>
+    </rule>
+    <reference path="templates/user_selectors.py">User selectors with typed returns and eager loading</reference>
+  </section>
+
+  <section title="File-Size Thresholds">
+    <rule>
+      <statement>Trigger decomposition when: models.py exceeds 300 lines → split to models/ package; services/ file exceeds 200 lines → split by subdomain; views.py exceeds 200 lines → split to views/ package. Add db_table = 'original_name' to model Meta when splitting models.py to avoid migration.</statement>
+      <rationale>File-size thresholds are objective triggers that prevent "I'll refactor later" drift. The db_table Meta attribute makes Django treat the split-package models as the same DB table, avoiding a zero-downtime migration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Layer Boundary Enforcement">
+    <rule>
+      <statement>Use import-linter to enforce that services cannot import views or serializers, and that models cannot import services. Add the .importlinter config to the repo root and run it in CI on every PR.</statement>
+      <rationale>Without enforcement, layers re-couple within weeks. An agent that adds a service.call_view() import destroys the boundary silently. import-linter makes violations a CI failure.</rationale>
+    </rule>
+    <reference path="templates/importlinter.ini">import-linter config enforcing the four-layer boundary</reference>
+  </section>
+</text>

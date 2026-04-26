@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-security-and-antipatterns" title="GraphQL Security and Antipatterns">
+  <summary>Depth limits, complexity caps, persisted queries, per-resolver auth, breaking change detection, and common failure modes.</summary>
+
+  <section title="Depth and Complexity Limits">
+    <rule>
+      <statement>Enforce a query depth limit (5-8 levels) and complexity cap (e.g., 1000 units) before any resolver runs. Both limits must be middleware, not per-resolver checks. An absence of either allows a single malicious query to DoS the server.</statement>
+      <rationale>Without depth limits, a query can request arbitrarily deep nested relationships, causing N^depth DB queries. Complexity caps prevent unbounded list traversals like querying all users' all orders' all items.</rationale>
+    </rule>
+  </section>
+
+  <section title="Per-Resolver Authorization">
+    <rule>
+      <statement>Implement authorization per-resolver or via a @auth directive on schema fields. Never rely solely on gateway-level auth — a resolver reachable from an unguarded query path leaks data even when the gateway blocks direct access.</statement>
+      <rationale>GraphQL queries can reach any field from multiple paths. A field accessible via an unrelated query traversal bypasses per-route gateway auth entirely.</rationale>
+    </rule>
+  </section>
+
+  <section title="Breaking Change Detection">
+    <rule>
+      <statement>Run graphql-inspector diff against the production schema on every PR. Fail the build on any breaking change that lacks an explicit migration note. Use @deprecated(reason: "use X instead") for field removal, removing only after analytics confirm zero usage.</statement>
+      <rationale>GraphQL has no built-in versioning. A field removal or type change silently breaks all clients using that field. graphql-inspector makes breaking changes an explicit, reviewable decision.</rationale>
+    </rule>
+  </section>
+
+  <section title="Persisted Queries">
+    <rule>
+      <statement>Enable persisted queries in production: clients send a hash, the server resolves the SDL. This eliminates arbitrary query injection DoS and slashes payload bandwidth by 60-90%.</statement>
+      <rationale>Ad-hoc query execution allows any authenticated user to submit maximally expensive queries. Persisted queries lock the server to known, pre-analyzed query shapes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Module-level DataLoader shared across requests.</description>
+      <reason>Caches results from one request and serves them to subsequent requests, leaking data between users. Per-request instantiation is mandatory.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Subscriptions using subscriptions-transport-ws (deprecated protocol).</description>
+      <reason>subscriptions-transport-ws is unmaintained and has known issues. The current standard is graphql-ws. Many server libraries still default to the old protocol — opt in explicitly.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Input types with nested optional objects creating impossible validation shapes.</description>
+      <reason>Deeply nested optional inputs produce 2^n possible shapes that are impossible to validate exhaustively. Use flat, single-purpose input types: CreateOrderInput, UpdateOrderStatusInput.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Adding a new resolver field without an accompanying DataLoader for 1:N traversal.</description>
+      <reason>Every parent object triggers a separate DB query. 100 user nodes in a list query = 100 separate order queries. Always require an XByYLoader for any 1:N field.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Mixing schema-first and code-first approaches in the same service without documentation.</description>
+      <reason>Codegen output drift between the two approaches causes type mismatches that surface only at runtime. Pick one approach and document it in CLAUDE.md.</reason>
+    </antipattern>
+  </section>
+</text>

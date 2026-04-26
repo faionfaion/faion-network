@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-versioning-rules" title="API Versioning Rules">
+  <summary>Strategy selection, deprecation header protocol, change classification, and shared-service architecture rule.</summary>
+
+  <section title="Strategy Selection">
+    <rule>
+      <statement>Use URL path versioning (/api/v1/, /api/v2/) for public REST APIs. Use header versioning (Accept-Version or X-API-Version) for internal APIs where URL pollution matters. Pick one strategy per surface and never mix.</statement>
+      <rationale>URL versioning is cacheable by CDN, visible in logs, and discoverable by humans. Mixing strategies creates client confusion and cache invalidation bugs.</rationale>
+    </rule>
+    <p>Strategy comparison:
+      URL Path (/v1/users): clear, cacheable, pollutes URLs.
+      Header (Accept-Version: v1): clean URLs, invisible to logs and CDN.
+      Query Param (?v=1): easy to test, breaks cache — reject for public APIs.
+      Content-Type (vnd.api+json;v=1): standards-based, poor tooling support.
+    </p>
+  </section>
+
+  <section title="Change Classification">
+    <rule>
+      <statement>Classify every API change before shipping: additive (new optional field, new endpoint) requires no version bump; behavioral (changed semantics on existing field) requires a deprecation warning; breaking (removed field, changed type, auth change) requires a new version.</statement>
+      <rationale>Bumping versions for additive changes wastes the support window. Missing a version bump for a breaking change silently breaks external clients.</rationale>
+    </rule>
+  </section>
+
+  <section title="Deprecation Protocol">
+    <rule>
+      <statement>When introducing v(n+1), add Deprecation, Sunset, and Link: rel="successor-version" headers to all v(n) responses. Set Sunset to at least 180 days from the deprecation date. Announce the sunset in writing to known consumers.</statement>
+      <rationale>Deprecation headers give programmatic notice. 180 days is the minimum for B2B consumers with quarterly release cycles. Headers alone are insufficient — proactive outreach is mandatory.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="http"><![CDATA[
+HTTP/1.1 200 OK
+Deprecation: Wed, 01 Jan 2026 00:00:00 GMT
+Sunset: Wed, 01 Jul 2026 00:00:00 GMT
+Link: </api/v2/users>; rel="successor-version"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Shared-Service Architecture">
+    <rule>
+      <statement>Implement v(n+1) on top of shared services. Never copy a v(n) handler to create v(n+1) — both copies drift silently and the shared service layer becomes the only source of truth.</statement>
+      <rationale>Copy-paste handlers diverge within weeks. Bug fixes applied to v2 don't reach v1; regression testing must cover both paths doubling the surface area.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Shared service — one source of truth
+class UserService:
+    def get_user(self, user_id: str) -> User: ...
+
+# v1 handler — formats in v1 shape
+@v1.get("/users/{user_id}")
+async def get_user_v1(user_id: str, svc: UserService = Depends()):
+    user = svc.get_user(user_id)
+    return {"id": user.id, "name": user.name}
+
+# v2 handler — formats in v2 envelope, same service call
+@v2.get("/users/{user_id}")
+async def get_user_v2(user_id: str, svc: UserService = Depends()):
+    user = svc.get_user(user_id)
+    return {"data": {"id": user.id, "name": user.name}, "meta": {"v": 2}}
+]]></code>
+    </example>
+    <reference path="templates/versioning.py">FastAPI multi-version router with deprecation middleware</reference>
+    <reference path="templates/spectral-rules.yaml">Spectral lint rules enforcing version prefix and deprecation headers</reference>
+  </section>
+
+  <section title="Concurrent Version Support">
+    <rule>
+      <statement>Maintain at least two concurrent API versions. Track per-version usage metrics (http.request.version label). Schedule sunset only after v(n) usage drops below a defined threshold with traffic data attached to the decision.</statement>
+      <rationale>Sunsetting before usage drops to near-zero breaks real consumers. Usage metrics make the sunset decision objective, not opinion-based.</rationale>
+    </rule>
+  </section>
+</text>

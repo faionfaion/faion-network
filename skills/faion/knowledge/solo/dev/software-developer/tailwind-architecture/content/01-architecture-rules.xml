@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture-rules" title="Tailwind Architecture Rules">
+  <summary>Token config rule, cn() merging rule, cva extraction threshold, and @apply restriction.</summary>
+
+  <section title="Design Token Config Rule">
+    <rule>
+      <statement>All design values (colors, spacing, font families, border radii, shadows) must be defined in tailwind.config.ts (v3) or an @theme block (v4). No arbitrary Tailwind values (w-[347px], bg-[#3b82f6]) are allowed outside of one-off overrides explicitly safelist-annotated.</statement>
+      <rationale>Arbitrary values bypass the token pipeline entirely. When the design changes, arbitrary values must be hunted down with grep. Config-defined utilities are found by IDE autocomplete and Tailwind's purge.</rationale>
+    </rule>
+    <reference path="templates/tailwind.config.ts">Design-token-driven Tailwind config consuming Style Dictionary outputs</reference>
+  </section>
+
+  <section title="Class Merging Rule">
+    <rule>
+      <statement>All conditional class composition must go through a project-tuned cn() function that wraps clsx + tailwind-merge. Ban raw clsx-only joins in lint. The cn() must be configured with extendTailwindMerge for any custom token utilities so conflicts are resolved correctly.</statement>
+      <rationale>Without tailwind-merge, conflicting classes (bg-red-500 overridden by bg-blue-500) both apply — the last class in the string wins based on CSS specificity, not code order. tailwind-merge resolves conflicts by Tailwind utility group.</rationale>
+    </rule>
+    <reference path="templates/cn.ts">cn() helper with tailwind-merge + clsx</reference>
+  </section>
+
+  <section title="Component Extraction Threshold">
+    <rule>
+      <statement>Extract a duplicated utility chain into a primitive component when it meets ALL of: 5 or more utilities, appears in 3 or more call sites, and represents a named UI concept (Card, Stack, Button). Do not extract for 2 duplicates — the cost of indirection exceeds the benefit.</statement>
+      <rationale>Premature extraction adds abstraction cost (imports, props, docs) without simplifying code. The 5/3 threshold is a concrete, auditable rule agents can apply without judgment.</rationale>
+    </rule>
+  </section>
+
+  <section title="@apply Restriction">
+    <rule>
+      <statement>@apply is allowed only inside @layer components in CSS files. It is forbidden inside component .tsx/.vue/.svelte files and inside @layer utilities. Any @apply in component code must be replaced with a React/Vue component abstraction.</statement>
+      <rationale>@apply in component files defeats Tailwind's JIT tree-shaking, inflates CSS bundle size, and forces CSS file management alongside component files. Component abstraction serves the same purpose with better colocation.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="tsx"><![CDATA[
+// WRONG: @apply inside component file
+<div className="btn-base"> // CSS somewhere: .btn-base { @apply px-4 py-2; }
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+// CORRECT: component abstraction with cva variants
+import { cva } from 'class-variance-authority';
+const button = cva('px-4 py-2 rounded font-medium', {
+  variants: {
+    intent: { primary: 'bg-blue-600 text-white', ghost: 'bg-transparent' },
+  },
+});
+]]></code>
+    </example>
+    <reference path="templates/cva-variant-example.tsx">Button with cva variants and cn() passthrough</reference>
+  </section>
+
+  <section title="Class Ordering">
+    <rule>
+      <statement>Use prettier-plugin-tailwindcss to enforce canonical class order automatically. Never manually reorder classes in PR review — the formatter defines the order. Run the formatter before any diff review to eliminate noise.</statement>
+      <rationale>Inconsistent class order makes diffs unreadable and causes merge conflicts on unrelated lines. Automated formatting makes class order a non-discussion.</rationale>
+    </rule>
+  </section>
+</text>

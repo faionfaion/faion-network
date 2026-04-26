@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-migration-procedure" title="Django Decomposition Migration Procedure">
+  <summary>Phased decomposition order, circular import prevention, migration safety, and agent-specific gotchas.</summary>
+
+  <section title="Phased Decomposition Order">
+    <rule>
+      <statement>Execute decomposition in this order: (1) extract shared utilities to core/, (2) split models before services (services depend on models), (3) extract services before views (views depend on services), (4) split views last. Never mix model split and service extraction in the same commit.</statement>
+      <rationale>Mixed commits create a partially broken state where imports reference files that don't exist yet. Phased commits allow pytest to stay green after each step, confirming the refactor is safe.</rationale>
+    </rule>
+  </section>
+
+  <section title="Circular Import Prevention">
+    <rule>
+      <statement>__init__.py re-exports must be explicit: from .user_service import user_create. Never use wildcard re-exports (from .user_service import *). Run pylint --disable=all --enable=cyclic-import after every batch of file moves.</statement>
+      <rationale>Wildcard re-exports hide what is available in a package and make circular import tracing impossible. Explicit re-exports make dependencies scannable by both humans and agents.</rationale>
+    </rule>
+    <antipattern>
+      <description>services/ imports views/ or serializers/ for any reason.</description>
+      <reason>Services are domain logic. Importing HTTP or serialization concerns couples the domain to delivery mechanism, making services impossible to test without an HTTP server.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Model Package Migration Safety">
+    <rule>
+      <statement>When splitting models.py into a models/ package, add Meta.db_table = 'original_tablename' to each model class. Run python manage.py makemigrations --check to verify no migration is generated. If a migration is generated, add db_table before re-running.</statement>
+      <rationale>Without db_table, Django generates a migration that renames the table. On a live database this causes downtime or requires a multi-step migration. db_table is a zero-migration path.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Agent copies a function from views.py into services/ and leaves the original in views.py.</description>
+      <reason>Both copies compile. The view calls the old location; the new service is never actually used. Run grep for the old function name after the move and delete the source.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent proposes a utils.py or helpers.py per app as a first refactor step.</description>
+      <reason>utils.py is the next thing to decompose — it becomes a dumping ground for everything that doesn't fit the pattern. Ban it early in CLAUDE.md and redirect to services/ or selectors/.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent applies @transaction.atomic to every service function as a default.</description>
+      <reason>Wrapping a single-write operation in a transaction is a no-op that wastes a DB connection slot and misleads readers into thinking the function coordinates multiple writes.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Serializer create() or update() methods calling services directly.</description>
+      <reason>This couples serializers to business logic, bypassing the view layer entirely. The view is responsible for calling the service with validated data; serializers only validate and transform.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Test Coverage Requirements">
+    <rule>
+      <statement>After decomposition: services and selectors must have &gt;90% line coverage; views may be lower because they delegate. Run pytest --cov after each phase and fail if coverage drops below the baseline established before the refactor.</statement>
+      <rationale>Decomposition without test coverage produces code that looks organized but may have introduced subtle behavioral changes. Green tests at each commit are the only reliable check.</rationale>
+    </rule>
+  </section>
+</text>
