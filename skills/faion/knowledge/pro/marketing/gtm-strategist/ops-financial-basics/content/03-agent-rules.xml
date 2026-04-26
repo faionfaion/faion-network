@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="Financial Basics — Agent Rules">
+  <summary>Safety rules for agents generating P&amp;L, computing unit economics, and categorizing transactions.</summary>
+
+  <section title="Computation safety">
+    <rule>
+      <statement>All currency arithmetic must use Python Decimal or an equivalent fixed-precision type. Never use floating-point for financial calculations; rounding errors in natural-language reasoning compound across aggregations.</statement>
+      <rationale>Floating-point arithmetic produces errors like $0.01 discrepancies that compound in monthly summaries. Financial calculations require exact decimal arithmetic.</rationale>
+    </rule>
+    <rule>
+      <statement>Stripe MRR requires reconciliation against Stripe's own MRR endpoint, not re-computation from payment records. Upgrades, downgrades, coupons, and timing differences produce different numbers. Flag when self-computed MRR diverges from Stripe MRR by more than 1%.</statement>
+      <rationale>Stripe's MRR calculation includes subscription-level adjustments that are not visible in raw payment exports. Agent-computed MRR regularly diverges by 3-8% in products with coupons or mid-cycle changes.</rationale>
+    </rule>
+    <rule>
+      <statement>Report refunds and chargebacks separately from revenue. Do not net them silently. The chargeback window (30-90 days) means current-month profit is always provisional until the window closes.</statement>
+      <rationale>Reporting net revenue before the chargeback window closes overstates current-month profit. For recurring billing products, late chargebacks from canceling customers appear weeks after the revenue was recognized.</rationale>
+    </rule>
+  </section>
+
+  <section title="Transaction categorization">
+    <rule>
+      <statement>When categorizing transactions, bias toward false negatives (flag as personal / unknown) rather than false positives (claim as business). Uncategorized is recoverable; wrongly claimed business expenses are a tax liability.</statement>
+      <rationale>Overstating business deductions creates audit risk. It is safer to understate and have the founder correct upward than to overstate and require an amended return.</rationale>
+    </rule>
+  </section>
+
+  <section title="Privacy">
+    <rule>
+      <statement>Transaction-level financial data includes sensitive PII (merchant names, amounts, timing patterns). Use local models or field-level redaction before sending raw data to external LLM APIs. Summary metrics only through Anthropic APIs.</statement>
+      <rationale>Transaction history can reveal personal habits, health spending, relationship status, and business secrets. Sending raw transactions to a cloud API is a privacy leak vector even without names or account numbers.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/unit-economics.py">Unit-economics snapshot calculator</reference>
+  <reference path="templates/monthly-pnl.md">Monthly P&amp;L template</reference>
+</text>
