@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-campaign-setup" title="Google Shopping Campaign Setup via API">
+  <summary>Creating a Shopping campaign, ad group, and product partition tree via the Google Ads API, with Merchant Center link verification.</summary>
+
+  <section title="Prerequisites">
+    <rule>
+      <statement>Validate the Merchant Center feed and verify zero critical disapprovals before creating Shopping campaigns; campaigns referencing a broken feed generate zero impressions.</statement>
+      <rationale>Shopping campaigns pull ads from the product feed. A feed with disapprovals means those products cannot serve. Creating campaigns before fixing disapprovals wastes setup time and delays launch.</rationale>
+    </rule>
+    <list>
+      <item>Google Merchant Center account created and linked to Google Ads</item>
+      <item>Product feed uploaded with required attributes: id, title, description, link, image_link, price, availability, brand, gtin</item>
+      <item>Feed diagnostics show zero critical disapprovals on at least 95% of SKUs</item>
+    </list>
+    <rule>
+      <statement>Content API for Shopping (Merchant Center) uses separate authentication from the Google Ads API; agents must manage two sets of service-account credentials.</statement>
+      <rationale>Merchant Center operations (feed upload, disapproval audit) require the content scope, not the ads scope. Agents using the same credentials for both will get authentication errors on one of the APIs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Campaign Creation">
+    <rule>
+      <statement>Set shopping_setting.merchant_id at campaign creation; it cannot be changed after the campaign is created.</statement>
+      <rationale>The Merchant Center ID is an immutable field once set. Agents that create campaigns without it must delete and recreate, losing any auction history.</rationale>
+    </rule>
+    <list>
+      <item>advertising_channel_type: SHOPPING</item>
+      <item>shopping_setting.merchant_id: Merchant Center account ID (required at creation)</item>
+      <item>shopping_setting.sales_country: country code (e.g., "US")</item>
+      <item>shopping_setting.campaign_priority: 0 (Low), 1 (Medium), 2 (High)</item>
+      <item>Bidding: manual_cpc.enhanced_cpc_enabled=True initially</item>
+      <item>Status: PAUSED</item>
+    </list>
+  </section>
+
+  <section title="Product Partition Trees">
+    <rule>
+      <statement>Product partition trees must be MECE (mutually exclusive, collectively exhaustive); every SKU must belong to exactly one partition node, always ending with an "everything else" catch-all subdivision.</statement>
+      <rationale>Missing a catch-all means SKUs not matching any explicit partition have no bid and cannot enter the auction. The campaign will run but silently miss a portion of the catalog.</rationale>
+    </rule>
+    <list>
+      <item>Dimension types: BRAND, CATEGORY, CONDITION, CHANNEL, CHANNEL_EXCLUSIVITY</item>
+      <item>Each partition must have a value node and an "everything else" sibling node</item>
+      <item>Use campaign priority (0/1/2) to control which campaign wins when multiple campaigns target the same SKU</item>
+    </list>
+  </section>
+
+  <section title="Product Performance Reporting">
+    <p>Shopping reporting uses shopping_performance_view with product-level segments instead of keyword-level data.</p>
+    <list>
+      <item>segments.product_item_id — SKU identifier</item>
+      <item>segments.product_title — product title as uploaded</item>
+      <item>segments.product_brand — brand attribute</item>
+      <item>segments.product_category_level1 — top category</item>
+    </list>
+    <reference path="templates/feed-status-audit.py">Content API helper listing disapproved and warned products by SKU from Merchant Center</reference>
+  </section>
+</text>

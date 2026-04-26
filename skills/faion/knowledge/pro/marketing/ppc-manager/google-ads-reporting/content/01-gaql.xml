@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-gaql" title="GAQL Structure, Key Metrics, and API Gotchas">
+  <summary>Google Ads Query Language structure, common resources and metrics, cost_micros division rules, and when to use search_stream vs search.</summary>
+
+  <section title="GAQL Structure">
+    <p>GAQL follows SQL-like syntax: SELECT fields FROM resource WHERE conditions ORDER BY field LIMIT n. Every query must specify a resource as the main entity.</p>
+    <list>
+      <item>campaign — campaign-level data</item>
+      <item>ad_group — ad group-level data</item>
+      <item>ad_group_ad — ad-level data</item>
+      <item>keyword_view — keyword performance</item>
+      <item>search_term_view — actual searches triggering ads</item>
+      <item>geographic_view — performance by location</item>
+      <item>change_event — account change history (30-day retention)</item>
+    </list>
+  </section>
+
+  <section title="Key Metrics">
+    <list>
+      <item>metrics.impressions — ad impressions</item>
+      <item>metrics.clicks — ad clicks</item>
+      <item>metrics.cost_micros — cost in micros; divide by 1,000,000 for currency value</item>
+      <item>metrics.ctr — click-through rate (fraction, not percentage; multiply by 100 for display)</item>
+      <item>metrics.average_cpc — average cost per click (also in micros)</item>
+      <item>metrics.conversions — conversion count (double, not int; can be 0.5 for fractional attribution)</item>
+      <item>metrics.cost_per_conversion — cost per conversion (in micros; divide by 1,000,000)</item>
+      <item>metrics.conversions_value — conversion revenue value</item>
+      <item>metrics.search_impression_share — fraction 0-1; multiply by 100 for percentage</item>
+    </list>
+    <rule>
+      <statement>Divide cost_micros and cost_per_conversion by 1,000,000 close to the data source in the ETL layer; never pass raw micros to downstream consumers.</statement>
+      <rationale>Every layer that receives raw micros is a potential off-by-1,000,000 bug. Converting once at the source eliminates the entire class of error.</rationale>
+    </rule>
+  </section>
+
+  <section title="search vs search_stream">
+    <rule>
+      <statement>Use search_stream for any query that could return more than 10,000 rows; use search (unary) only for small bounded result sets.</statement>
+      <rationale>The search endpoint has a response size cap and paginates; large queries time out. search_stream returns batches and handles large data sets without pagination.</rationale>
+    </rule>
+    <rule>
+      <statement>Always include segments.date in the WHERE clause; omitting it returns lifetime totals, not the period you intend.</statement>
+      <rationale>Without segments.date, GAQL returns all-time aggregates. Agents summing "daily" data on lifetime totals will produce wildly inflated reports.</rationale>
+    </rule>
+    <antipattern>
+      <description>Using OFFSET for pagination in GAQL.</description>
+      <reason>GAQL supports LIMIT but not OFFSET. Attempting offset-based pagination will fail or silently return wrong data. Use search_stream instead.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Version and Timezone">
+    <rule>
+      <statement>Pin api_version in client config and bump on a calendar schedule every 9 months or fewer; subscribe to Google Ads API release notes.</statement>
+      <rationale>Google deprecates API versions every ~9 months. Hardcoded version strings break silently on rollover without any warning in the response.</rationale>
+    </rule>
+    <rule>
+      <statement>segments.date uses the account timezone; normalize to UTC manually when joining with GA4 or server logs that use a different timezone.</statement>
+      <rationale>Multi-account agents computing a single "today" across accounts in different timezones will produce off-by-one date gaps in reports.</rationale>
+    </rule>
+  </section>
+</text>

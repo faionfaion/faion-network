@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="Agent Rules and GAQL Gotchas for Reporting">
+  <summary>Concrete rules for reporting agents and LLM failure modes specific to Google Ads reporting and optimization.</summary>
+
+  <section title="Metrics Unit Rules">
+    <rule>
+      <statement>All cost fields are in micros (1 unit = $0.000001); divide by 1,000,000 before display. Apply this to cost_micros, cost_per_conversion, and average_cpc.</statement>
+      <rationale>Presenting raw micros as currency values produces numbers 1,000,000x too large. Alert thresholds set in dollars will fire on every campaign if the agent forgets to convert.</rationale>
+    </rule>
+    <rule>
+      <statement>metrics.conversions is a double (float), not an integer; values like 0.5 represent fractional attribution. Do not cast to int.</statement>
+      <rationale>Fractional attribution from data-driven model assigns partial conversion credit. Truncating to int silently understates conversions and overstates CPA.</rationale>
+    </rule>
+    <rule>
+      <statement>metrics.search_impression_share is a fraction between 0 and 1; multiply by 100 to display as a percentage.</statement>
+      <rationale>Displaying 0.45 as "45%" is correct. Displaying it as "0.45%" is wrong and will cause users to incorrectly believe impression share is near zero.</rationale>
+    </rule>
+  </section>
+
+  <section title="GAQL Field Validation">
+    <antipattern>
+      <description>Generating GAQL queries with field names not in the Google Ads API (e.g., metrics.spend, metrics.budget).</description>
+      <reason>Non-existent field names cause query failures with generic INVALID_ARGUMENT errors. Agents must validate field names against the API reference for the pinned version.</reason>
+    </antipattern>
+    <rule>
+      <statement>Use metrics.conversions for ROAS and CPA calculations; use metrics.all_conversions only when the explicit goal is to count all micro-conversion actions.</statement>
+      <rationale>all_conversions includes every conversion action regardless of whether it is marked "include in Conversions." Using it for ROAS inflates the metric and gives false efficiency signals.</rationale>
+    </rule>
+  </section>
+
+  <section title="Privacy Thresholds">
+    <rule>
+      <statement>Do not assume search_term_view provides complete coverage; terms below a volume floor aggregate to "(other)" — often 30-40% of spend. Acknowledge this gap in any report.</statement>
+      <rationale>Acting as if search term data is complete leads to over-confidence in negative keyword coverage. Significant spend flows through "(other)" that no amount of triage can address.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human-in-Loop Checkpoints">
+    <list>
+      <item>Pausing any campaign: human notification required before execution</item>
+      <item>Adding/removing keywords with spend impact above $X threshold: human approval</item>
+      <item>Bid strategy change: human approval required</item>
+      <item>Changes touching more than 10% of active campaigns in one run: human approval</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-automation" title="Automation Patterns: Batch Ops, Scheduled Scripts, Change History">
+  <summary>Patterns for batch keyword updates, scheduled daily performance checks with auto-pause, and change history monitoring via change_event.</summary>
+
+  <section title="Batch Operations">
+    <rule>
+      <statement>Process mutations in batches of up to 5,000 operations per request; never issue one API call per row.</statement>
+      <rationale>The Google Ads API allows up to 5,000 operations per mutate call. Single-operation loops exhaust quota and are orders of magnitude slower than batching.</rationale>
+    </rule>
+    <reference path="templates/daily-runner.py">Guarded daily report job with retry and dry-run flag using search_stream</reference>
+  </section>
+
+  <section title="Auto-Pause Guardrails">
+    <rule>
+      <statement>Before auto-pausing any keyword or ad group: enforce a minimum impression threshold (5,000+), minimum spend threshold, minimum age (7+ days), account allow-list, and emit a paused-list log per run.</statement>
+      <rationale>Auto-pause agents that trip on day-1 of a fresh campaign or on low-data keywords kill momentum without evidence. Each guardrail prevents a distinct failure mode.</rationale>
+    </rule>
+    <antipattern>
+      <description>Running an auto-pause agent that fires within the first 7 days of campaign launch or without an impression floor.</description>
+      <reason>New campaigns need time to accumulate data. Pausing too early based on low-sample statistics produces false negatives and disrupts Smart Bidding learning.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Change History Monitoring">
+    <rule>
+      <statement>Build a change_event archive job from day one; run it daily because change_event only retains 30 days of history.</statement>
+      <rationale>When something unexpectedly breaks, the first diagnostic question is "who changed what and when." Missing even a single day of change_event creates permanent audit gaps.</rationale>
+    </rule>
+    <rule>
+      <statement>Filter the change_event query to the specific resource type needed; broad queries on large accounts return thousands of rows and burn quota.</statement>
+      <rationale>change_event queries without a resource_type filter return all changes across all entity types. On large accounts this easily exceeds result limits and wastes daily quota.</rationale>
+    </rule>
+  </section>
+
+  <section title="Scheduled Runner Pattern">
+    <rule>
+      <statement>One agent run equals one query batch equals one sink write; do not multiplex tasks in a single API session.</statement>
+      <rationale>Multiplexed sessions complicate retry logic, make partial-failure handling ambiguous, and produce inconsistent snapshots when one query succeeds and another fails.</rationale>
+    </rule>
+    <rule>
+      <statement>Include account-level filters (customer.status = ENABLED) when iterating MCC trees; cancelled accounts return malformed shapes.</statement>
+      <rationale>MCC trees contain accounts in various states. Cancelled or suspended accounts return partial data that breaks downstream aggregations without obvious errors.</rationale>
+    </rule>
+  </section>
+</text>

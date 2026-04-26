@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="Agent Rules and AI Gotchas for Attribution Models">
+  <summary>Concrete rules for agents building attribution pipelines, including variance thresholds, human-in-loop checkpoints, and failure modes specific to LLM agents.</summary>
+
+  <section title="Variance Thresholds">
+    <rule>
+      <statement>Always present three numbers per channel (platform-reported, GA4-modeled, warehouse-deduped) and flag if any two diverge by more than 15%.</statement>
+      <rationale>Below 15% variance is noise. Above 15% indicates a structural issue — mismatched windows, missing dedup key, or a tracking gap — that must be investigated before budget decisions.</rationale>
+    </rule>
+    <reference path="templates/variance-check.py">Python helper that computes platform-vs-warehouse and GA4-vs-warehouse divergence per channel and sets alert flag above 15%</reference>
+  </section>
+
+  <section title="Human-in-Loop Checkpoints">
+    <rule>
+      <statement>Require human sign-off before any budget reallocation exceeding 10% of total spend, any change to the canonical attribution model, or any retroactive re-attribution.</statement>
+      <rationale>These actions have irreversible consequences: retroactive re-attribution destroys audit trail, model changes invalidate historical comparisons, and large reallocations cannot be easily undone.</rationale>
+    </rule>
+    <list>
+      <item>Budget reallocation &gt; 10% of total spend: human approval required</item>
+      <item>Change of canonical attribution model: human approval required</item>
+      <item>Retroactive re-attribution of historical conversions: snapshot first, human approval required</item>
+      <item>New geo-holdout test design: human approval required before budget changes execute</item>
+    </list>
+  </section>
+
+  <section title="AI Gotchas">
+    <antipattern>
+      <description>Agent explains small variances (under 15%) with elaborate narratives before a minimum-variance threshold is met.</description>
+      <reason>Small variances are noise from lookback window differences, timezone offsets, and sampling. Narratives on noise mislead decision-makers.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent presents platform-reported and GA4-modeled numbers side-by-side as comparable values without labeling the model and window for each.</description>
+      <reason>They use different lookback windows and deduplication logic. An unlabeled table implies comparability where none exists.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent computes a single "today" number using GA4 property timezone and Google Ads account timezone interchangeably.</description>
+      <reason>GA4 uses property timezone; Google Ads uses account timezone. These can differ by hours and produce off-by-one date errors in daily reports.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent reports data-driven attribution point estimates without confidence intervals or sample-size caveats.</description>
+      <reason>Data-driven models have uncertainty that grows with low conversion volume. Point estimates without CIs create false precision and overconfident recommendations.</reason>
+    </antipattern>
+    <rule>
+      <statement>When uploading offline conversions, SHA-256 hash lowercase-trimmed email addresses before sending; verify match rate is above 30% before declaring the upload successful.</statement>
+      <rationale>Agents that skip email normalization (lowercase + trim) see near-zero match rates silently. A match rate below 30% indicates a normalization or hashing bug.</rationale>
+    </rule>
+  </section>
+</text>

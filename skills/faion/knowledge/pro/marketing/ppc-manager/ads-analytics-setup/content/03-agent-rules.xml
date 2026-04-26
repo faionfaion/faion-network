@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="Analytics Setup Agent Rules and Gotchas">
+  <summary>Agent-specific rules for analytics install, GTM, Measurement Protocol, and common LLM failure modes in analytics implementation.</summary>
+
+  <section title="Install Sequence Rules">
+    <rule>
+      <statement>Call gtag('config', ...) before gtag('event', ...) in all page load sequences; events queued before config runs are sent to the wrong property.</statement>
+      <rationale>gtag processes calls sequentially. An event fired before the config call has no property destination and silently drops. This commonly happens in SPA route-change handlers that fire before the config tag has loaded.</rationale>
+    </rule>
+    <rule>
+      <statement>For cross-domain tracking, configure the linker parameter explicitly; cross-domain sessions break silently after redesigns without obvious error messages.</statement>
+      <rationale>Without linker configuration, users crossing domains create new sessions and appear as new users from "direct" traffic. The conversion gets attributed to the wrong channel.</rationale>
+    </rule>
+  </section>
+
+  <section title="GTM-Specific Rules">
+    <rule>
+      <statement>Export and version-control the GTM container JSON; containers exported across accounts have secrets stripped and require manual re-linking of API keys.</statement>
+      <rationale>GTM container exports are the only backup for tracking configuration. Without version control, a misconfigured container deployment has no rollback path.</rationale>
+    </rule>
+    <antipattern>
+      <description>Firing page_view events in single-page apps before the URL route is settled.</description>
+      <reason>GTM fires on history change events immediately. In some frameworks, the route update completes asynchronously after the history push. Early fires record the previous URL as the page_view location.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Measurement Protocol">
+    <rule>
+      <statement>Server-side Measurement Protocol events require the client_id matching the gtag-set first-party cookie; events without a matching client_id create orphaned sessions and inflate session counts.</statement>
+      <rationale>GA4 stitches sessions using client_id. Server-side events with mismatched or missing client_id create new phantom sessions, inflating bounce rates and breaking funnel analysis.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human-in-Loop Checkpoints">
+    <list>
+      <item>Consent banner copy and consent categories: human legal review required</item>
+      <item>PII filtering rules for server-side tagging: human privacy review required</item>
+      <item>Conversion event designation (which events count): human business review required</item>
+      <item>Production GTM container publish: human approval required</item>
+    </list>
+    <reference path="templates/validate-events.js">Playwright script to verify event firing on staging via dataLayer interception before production publish</reference>
+  </section>
+</text>

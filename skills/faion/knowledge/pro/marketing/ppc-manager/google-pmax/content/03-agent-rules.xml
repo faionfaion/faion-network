@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-rules" title="PMax API Gotchas and Agent Rules">
+  <summary>Google Ads API-specific failure modes for Performance Max campaigns, including enums, customer_id format, and multi-account considerations.</summary>
+
+  <section title="ID and URL Requirements">
+    <rule>
+      <statement>customer_id must be provided as an unhyphenated 10-digit string (e.g., "1234567890"); the hyphenated form from the UI ("123-456-7890") causes authentication errors.</statement>
+      <rationale>The Google Ads API does not accept hyphenated customer IDs. Agents that copy-paste from the UI clipboard will silently fail with confusing auth-related error messages.</rationale>
+    </rule>
+    <rule>
+      <statement>MCC accounts require the login-customer-id header set to the MCC account ID in the API client; omitting it causes 401 errors on all child account calls.</statement>
+      <rationale>Multi-account agents accessing child accounts must authenticate through the MCC. Without the login-customer-id header, calls fail at the authentication layer before reaching the campaign logic.</rationale>
+    </rule>
+  </section>
+
+  <section title="Asset Enum Versioning">
+    <rule>
+      <statement>Pin the Google Ads API version and refresh client stubs when bumping versions; asset field type enums change across versions (e.g., MARKETING_IMAGE vs LANDSCAPE_LOGO naming).</statement>
+      <rationale>PMax asset type enums are updated as Google adds new asset types. An agent using enum values from a deprecated version will receive INVALID_ARGUMENT errors that do not name the changed field.</rationale>
+    </rule>
+  </section>
+
+  <section title="Budget Micros">
+    <rule>
+      <statement>PMax budget amount_micros uses Google Ads conventions: $50/day = 50,000,000 micros (multiply by 1,000,000). LinkedIn costs are decimal floats — do not mix unit systems across platforms.</statement>
+      <rationale>Agents working across Google and LinkedIn in the same session commonly apply the wrong unit convention. $50 submitted as 50 to Google Ads creates a $0.000050/day budget that generates zero impressions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Conversion Goal Validation">
+    <rule>
+      <statement>Before creating a PMax campaign, validate that at least one conversion action with include_in_conversions_metric=True exists at the account level and has received conversions in the last 30 days.</statement>
+      <rationale>PMax silently optimizes for the best available conversion action. If the account has no active conversion actions, or only micro-conversions, the campaign will optimize for meaningless events.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human-in-Loop Checkpoints">
+    <list>
+      <item>Enabling the campaign: human brand-safety review of generated copy required</item>
+      <item>Changing target ROAS or target CPA: human approval required</item>
+      <item>Toggling URL expansion: human approval required</item>
+      <item>Any asset swap touching more than 50% of current assets: human review required</item>
+    </list>
+  </section>
+</text>

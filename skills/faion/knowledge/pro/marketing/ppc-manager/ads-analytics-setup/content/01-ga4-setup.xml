@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ga4-setup" title="GA4 Property Setup and Event Configuration">
+  <summary>GA4 property creation, tag installation via GTM or direct, enhanced measurement settings, and standard event schema for common business types.</summary>
+
+  <section title="Setup Sequence">
+    <rule>
+      <statement>Define the event tracking spec before writing any tracking code; treat it as a versioned document in the repo reviewed alongside the code it describes.</statement>
+      <rationale>Analytics drift silently. Without a spec, events get added inconsistently, custom dimensions fill up, and the data becomes unreliable. A spec-first approach prevents this and makes the tracking auditable.</rationale>
+    </rule>
+    <list>
+      <item>Create GA4 property in Google Analytics admin</item>
+      <item>Get Measurement ID (G-XXXXXXXXXX)</item>
+      <item>Install via Google Tag Manager (recommended) or direct gtag.js</item>
+      <item>Enable enhanced measurement (page views, scrolls, outbound clicks, file downloads, video engagement)</item>
+      <item>Link to Google Ads, BigQuery, and Search Console immediately</item>
+    </list>
+    <rule>
+      <statement>Link GA4 to BigQuery from day one even if you do not use it immediately; the export cannot backfill historical data, so enabling it late means permanently losing that history.</statement>
+      <rationale>GA4 standard UI sampled above 10M events. BigQuery export is the only path to raw unsampled data. A delayed setup creates an irrecoverable data gap.</rationale>
+    </rule>
+  </section>
+
+  <section title="Event Configuration">
+    <rule>
+      <statement>Mark conversion events explicitly in GA4 Admin; do not rely on GA4's automatic conversion detection — it is unreliable across business types.</statement>
+      <rationale>GA4 auto-marks some standard events as conversions, but the logic varies by property type and is not documented clearly. Explicit designation ensures the events the business cares about are actually tracked as conversions.</rationale>
+    </rule>
+    <list>
+      <item>E-commerce key events: purchase, add_to_cart, begin_checkout, view_item</item>
+      <item>SaaS key events: sign_up, trial_started, purchase, onboarding_completed</item>
+      <item>Lead gen key events: generate_lead, form_submit, phone_call</item>
+      <item>Content key events: newsletter_signup, download, content_viewed</item>
+    </list>
+    <antipattern>
+      <description>Using GA4 reserved event names (session_start, first_visit, etc.) for custom events.</description>
+      <reason>Reserved event names cause silent collision with GA4's automatically collected events. The custom events will either be dropped or overwrite system data, corrupting session metrics.</reason>
+    </antipattern>
+    <rule>
+      <statement>Include transaction_id in the purchase event for deduplication; missing it causes inflated revenue figures when users reload the confirmation page.</statement>
+      <rationale>GA4 deduplicates purchase events by transaction_id. Without it, every page reload triggers a new purchase event, which is the most common source of inflated revenue reporting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Custom Dimensions and Limits">
+    <rule>
+      <statement>Stay under 50 custom event-scoped dimensions and 25 user-scoped dimensions per GA4 property; hitting the limit silently drops new dimensions without warning.</statement>
+      <rationale>GA4 has hard limits on custom dimensions. Once hit, new custom parameters are not collected — data simply disappears with no error message unless you check the property limits dashboard.</rationale>
+    </rule>
+    <rule>
+      <statement>Never use user_id as a custom dimension; use the dedicated User-ID feature in GA4 instead. High-cardinality dimensions (user IDs, session IDs) aggregate to "(other)" in reports.</statement>
+      <rationale>Custom dimensions with high cardinality (millions of unique values) are aggregated to "(other)" in all reports. They consume a dimension slot and provide no reporting value.</rationale>
+    </rule>
+  </section>
+</text>
