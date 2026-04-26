@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-generate-from-spec" title="Generate Pact, Never Hand-Write It">
+  <summary>Drive Pact contract generation from OpenAPI or recorded traffic via an MCP server or skill; commit the generated file as canonical and forbid hand edits.</summary>
+
+  <section title="Generation source of truth">
+    <p>Pact contracts authored by an LLM from a ticket or PR description drift from the provider's actual response shape, mismatch matchers, and produce false greens. The MCP / skill pipeline takes the spec artifact (OpenAPI, AsyncAPI, recorded HAR) plus the client code and emits both the consumer Pact JSON and the matching client test in one pass.</p>
+
+    <rule testable="true">
+      <statement>Consumer Pact files MUST be produced by a generator (PactFlow MCP, Pact AI skill, or equivalent) that reads OpenAPI / AsyncAPI / recorded traffic. The generator command MUST be committed (Makefile target, npm script, or `pact:generate` skill). Hand-edits to `pacts/*.json` MUST fail CI via a checksum or "regenerate to verify" step.</statement>
+      <rationale>PactFlow reports up to 60% creation-time reduction and deterministic output when the spec is the input. Hand edits silently mask provider regressions and break `can-i-deploy`.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# package.json
+"scripts": {
+  "pact:generate": "pactflow-mcp generate \
+      --spec ./openapi/billing-api.yaml \
+      --consumer billing-ui --provider billing-api \
+      --out pacts/billing-ui-billing-api.json --lang ts"
+}
+# CI: regenerate and diff against committed file
+- run: npm run pact:generate
+- run: git diff --exit-code pacts/
+      ]]></code>
+      <note>Generation is reproducible; CI fails when committed Pact diverges from spec.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="typescript"><![CDATA[
+// hand-written in a feature PR
+provider.uponReceiving('refund')
+  .withRequest({ method: 'POST', path: '/refund' })
+  .willRespondWith({ status: 200, body: { ok: true } });
+// real API returns { refundId, status, refundedAt }
+      ]]></code>
+      <note>Matchers don't match real schema; provider can break the consumer with a green Pact.</note>
+    </example>
+
+    <antipattern>
+      <description>Allowing humans to "tweak" generated Pact JSON in the same commit that regenerates it.</description>
+      <reason>Once the generated file is editable, the regen step becomes optional and the contract drifts the same way hand-written ones do.</reason>
+    </antipattern>
+
+    <reference path="templates/pactflow-mcp-prompt.txt">MCP / skill prompt that drives generation from an OpenAPI spec.</reference>
+    <reference href="https://docs.pact.io/ai_tools/pactflow-skill">Pact AI skill — generation from spec or traffic.</reference>
+    <reference href="https://pactflow.io/blog/pactflow-mcp-server/">PactFlow MCP server announcement.</reference>
+    <reference href="https://pactflow.io/ai/">PactFlow AI overview, including 60% creation-time figure.</reference>
+  </section>
+</text>

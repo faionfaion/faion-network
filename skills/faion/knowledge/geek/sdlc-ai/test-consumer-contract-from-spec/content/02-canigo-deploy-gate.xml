@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-canigo-deploy-gate" title="Wire can-i-deploy as the Cross-Service Gate">
+  <summary>Make `can-i-deploy` a required CI check on the provider repository so a provider release cannot ship without verifying every committed consumer contract.</summary>
+
+  <section title="Gate the provider, not the consumer">
+    <p>A generated Pact has no value if the provider deploys without verifying it. Pact Broker's `can-i-deploy` resolves the question "can provider X version A be deployed to environment E without breaking any consumer that is also in E?". Wiring it into provider CI converts the contract from documentation into a hard gate.</p>
+
+    <rule testable="true">
+      <statement>The provider repository's release pipeline MUST run `pact-broker can-i-deploy --pacticipant &lt;provider&gt; --version $GIT_SHA --to-environment &lt;env&gt;` as a required step. Deployment MUST be blocked when any consumer contract for that environment fails verification. The check MUST run before tag/push to the production registry, not after.</statement>
+      <rationale>Without `can-i-deploy`, broker verification becomes informational only. The Pact ecosystem's central guarantee — "no provider release breaks a deployed consumer" — depends on this single gate.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/release.yml (provider)
+- name: can-i-deploy
+  env: { PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER }} }
+  run: |
+    pact-broker can-i-deploy \
+      --pacticipant billing-api --version ${{ github.sha }} \
+      --to-environment production --retry-while-unknown 6
+- name: publish image
+  if: success()
+  run: docker push billing-api:${{ github.sha }}
+      ]]></code>
+      <note>Image publish runs only if every consumer contract verifies green.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Provider runs verification, then ignores the result
+- run: pact-verifier --provider billing-api || true
+- run: docker push billing-api:${{ github.sha }}
+      ]]></code>
+      <note>`|| true` swallows failures; the gate exists in name only.</note>
+    </example>
+
+    <antipattern>
+      <description>Running `can-i-deploy` only on the consumer side and not the provider release.</description>
+      <reason>Consumer-side checks block consumer deploys; provider-side checks block production breakage. Both are needed; provider-side is non-negotiable.</reason>
+    </antipattern>
+
+    <reference path="templates/canigo-deploy.yml">GitHub Actions step wiring `can-i-deploy` as a required provider check.</reference>
+    <reference href="https://docs.pact.io/pact_broker/can_i_deploy">Pact Broker can-i-deploy documentation.</reference>
+    <reference href="https://docs.pact.io/getting_started/versioning_in_the_pact_broker">Versioning + environments model that can-i-deploy depends on.</reference>
+  </section>
+</text>

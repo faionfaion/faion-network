@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-replay-and-diff-gate" title="Replay, Diff, Approve Row-by-Row">
+  <summary>Replay the corpus against the rewrite, fail on any divergence, require row-by-row sign-off when the agent intentionally changes a behaviour.</summary>
+
+  <section title="Replay and gate">
+    <p>The corpus is a test. The rewrite passes only when every `(input, expected)` pair produces the expected output. A single divergence stops the agent's loop and prints the diff, the row id, and the case input. To accept an intentional behaviour change (bugfix), the developer must update the corpus row with a commit that names the change in the message — the diff is reviewed row-by-row, never wholesale.</p>
+
+    <rule testable="true">
+      <statement>The replay test MUST iterate the entire corpus and assert byte-for-byte parity (after the same normalization used at capture). On divergence the test MUST print `case_id`, `input`, and a unified diff of `expected` vs `actual`. CI MUST fail when any case diverges. Updating an `expected` value requires a separate commit whose message starts with `golden:` and explains the behaviour change; PR review checks each updated row.</statement>
+      <rationale>Bulk-accepting a corpus diff turns golden-master into a rubber-stamp. Per-row review keeps the cost of "I changed behaviour" visible to the human approver and forces the agent to surface its assumptions.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# tests/test_golden_master.py
+import json, pathlib, difflib, pytest
+from rewrite import process
+from corpus_normalize import normalize
+
+CORPUS = pathlib.Path("tests/golden/corpus.jsonl")
+
+@pytest.mark.parametrize("case",
+    [json.loads(l) for l in CORPUS.read_text().splitlines() if l.strip()],
+    ids=lambda c: c["id"])
+def test_golden(case):
+    actual = normalize(process(**case["input"]))
+    expected = case["expected"]
+    if actual != expected:
+        diff = "\n".join(difflib.unified_diff(
+            json.dumps(expected, indent=2, sort_keys=True).splitlines(),
+            json.dumps(actual,   indent=2, sort_keys=True).splitlines(),
+            lineterm=""))
+        pytest.fail(f"{case['id']} diverged:\n{diff}")
+      ]]></code>
+      <note>Per-case parametrization gives the agent precise failure ids to act on.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def test_golden():
+    for line in CORPUS.read_text().splitlines():
+        case = json.loads(line)
+        if process(**case["input"]) != case["expected"]:
+            continue        # silently skip diffs
+      ]]></code>
+      <note>Silent skip = no gate; rewrite "passes" while quietly diverging.</note>
+    </example>
+
+    <antipattern>
+      <description>Letting the agent regenerate the corpus from its own rewrite ("update_expected=True").</description>
+      <reason>Self-pinning produces a green test on day one and zero protection against day-two regressions; the corpus must be captured against the legacy, not the candidate.</reason>
+    </antipattern>
+
+    <reference path="templates/golden_master_test.py">Pytest replay harness asserting parity over the JSONL corpus.</reference>
+    <reference href="https://martinfowler.com/articles/microservice-testing/#testing-component-out-of-process">Out-of-process behaviour pinning rationale.</reference>
+    <reference href="https://approvaltests.com/">ApprovalTests — close cousin with explicit diff approval workflow.</reference>
+  </section>
+</text>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-capture-corpus" title="Capture Corpus Before Touching Legacy">
+  <summary>Build the golden-master corpus from production traffic, fixtures, or a fuzzer; normalize nondeterminism; commit the JSONL before any rewrite begins.</summary>
+
+  <section title="Capture and normalize">
+    <p>The corpus is whatever lets the test reproduce the legacy's observed behaviour without invoking the legacy. For pure functions, wrap the entry point and record `(input, output)` pairs while replaying production logs, a fixture set, or a fuzzer. Normalize sources of nondeterminism (timestamps, UUIDs, random IDs, ORDER BY-less query results) before writing the pair, otherwise replay flickers and the gate becomes useless.</p>
+
+    <rule testable="true">
+      <statement>Before any agent touches the legacy module, capture at least 200 distinct `(input, expected_output)` pairs into a versioned JSONL corpus under `tests/golden/`. The capture script MUST normalize timestamps (frozen value), random IDs (deterministic seed or strip), and order-sensitive collections (sort by stable key). The corpus file MUST be committed and immutable; new pairs append, existing pairs MUST NOT be silently rewritten.</statement>
+      <rationale>Untested legacy has no other spec. Without a captured baseline, every agent rewrite is unverifiable. Without normalization, the replay test goes flaky and gets disabled — the worst possible outcome.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# capture_corpus.py — wraps legacy.process and writes pairs
+import json, pathlib, freezegun, random
+from legacy import process
+
+random.seed(42)
+OUT = pathlib.Path("tests/golden/corpus.jsonl")
+with freezegun.freeze_time("2026-01-01T00:00:00Z"), OUT.open("a") as f:
+    for case in load_production_inputs():
+        out = process(**case["input"])
+        out = normalize(out)         # sort keys, strip volatile IDs
+        f.write(json.dumps(
+            {"id": case["id"], "input": case["input"], "expected": out},
+            sort_keys=True) + "\n")
+      ]]></code>
+      <note>Frozen time + seeded RNG + normalized output produce a reproducible corpus.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Capture without normalization or freezing
+out = process(**case["input"])  # contains datetime.utcnow() + uuid4()
+write({"input": case["input"], "expected": out})
+      ]]></code>
+      <note>Replay never matches because timestamps and UUIDs change every run.</note>
+    </example>
+
+    <antipattern>
+      <description>Editing existing rows in the corpus when the rewrite changes output.</description>
+      <reason>The corpus is the spec. Silent edits convert "rewrite parity check" into "rewrite is whatever the agent produced today" — the original goal is lost.</reason>
+    </antipattern>
+
+    <reference path="templates/capture_corpus.py">Capture wrapper with freeze + seed + normalize.</reference>
+    <reference href="https://martinfowler.com/bliki/SnapshotTesting.html">Fowler — snapshot/golden-master pattern overview.</reference>
+    <reference href="https://news.ycombinator.com/item?id=46205015">HN thread: golden-master discipline as the AI-rewrite anchor.</reference>
+  </section>
+</text>

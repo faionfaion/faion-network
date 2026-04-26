@@ -1,0 +1,30 @@
+# Provider release pipeline step: gate deploy on can-i-deploy.
+# Drop into .github/workflows/release.yml AFTER tests pass and BEFORE any push/publish.
+
+- name: can-i-deploy
+  env:
+    PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+    PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  run: |
+    npx --yes @pact-foundation/pact-cli can-i-deploy \
+      --pacticipant "${PROVIDER_NAME}" \
+      --version "${{ github.sha }}" \
+      --to-environment production \
+      --retry-while-unknown 6 \
+      --retry-interval 10
+
+- name: publish image
+  if: success()
+  run: |
+    docker push "${REGISTRY}/${PROVIDER_NAME}:${{ github.sha }}"
+
+- name: record-deployment
+  if: success()
+  env:
+    PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+    PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  run: |
+    npx --yes @pact-foundation/pact-cli broker record-deployment \
+      --pacticipant "${PROVIDER_NAME}" \
+      --version "${{ github.sha }}" \
+      --environment production

@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- sdlc-ai-methodologies: pool-batch +2 test- (38/52) — test-consumer-contract-from-spec, test-golden-master-legacy-rewrite (NEW shape: AGENTS.md + content/*.xml + templates/). test- category complete (6/6).
 - sdlc-ai-methodologies: pool-batch +1 tracker- (36/52) — tracker-linear-agent-as-assignee (NEW shape: AGENTS.md + content/*.xml + templates/). First tracker- entry; opens category 1/5.
 - refactor: 8/8 business-analyst methodologies migrated to new shape (batch: ba-trends-summary, user-story-mapping, business-process-analysis, requirements-validation, ba-planning, decision-analysis, interface-analysis, stakeholder-analysis)
 - refactor: 8/8 methodologies migrated to new shape (batch: use-case-modeling, knowledge-areas-overview, elicitation-techniques, knowledge-areas-detail, requirements-traceability, modern-ba-framework, data-analysis, methodologies-detail)
