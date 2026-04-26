@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-confidence-calibration" title="Confidence Calibration for Patterns">
+  <summary>Confidence scoring levels, update formula, decay rules, and common calibration errors.</summary>
+
+  <section title="Confidence Levels">
+    <list>
+      <item>0.9+: High — 5+ uses, validated across contexts, no recent failures</item>
+      <item>0.7-0.89: Medium — 2-4 uses, context-specific, minor issues</item>
+      <item>0.5-0.69: Low — 1-2 uses, limited validation</item>
+      <item>0.3-0.49: Experimental — newly identified, not yet validated</item>
+    </list>
+  </section>
+
+  <section title="Update Formula">
+    <rule>
+      <statement>Apply the confidence update formula after each task outcome: success → min(0.95, score + 0.05); partial → score * 0.95; failure → max(0.30, score - 0.15).</statement>
+      <rationale>Symmetric updates would allow a single failure to destroy high-confidence patterns. The asymmetric formula requires consistent failures to reduce confidence significantly.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[def update_confidence(score: float, outcome: str) -> float:
+    if outcome == "success":
+        return min(0.95, score + 0.05)
+    elif outcome == "partial":
+        return score * 0.95
+    else:  # failure
+        return max(0.30, score - 0.15)]]></code>
+    </example>
+
+    <reference path="templates/update-confidence.py">Full confidence updater script that patches patterns.md in place</reference>
+  </section>
+
+  <section title="Calibration Gotchas">
+    <antipattern>
+      <description>Agents assign initial confidence of 0.9 to new patterns because the first use succeeded.</description>
+      <reason>One success does not validate cross-context applicability. New patterns start at 0.5 regardless of first-use outcome.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Confidence scores over 90 days old treated as current without verification.</description>
+      <reason>Framework upgrades, architecture changes, and library version bumps can invalidate high-confidence patterns silently. Treat scores older than 90 days as unreliable until re-validated.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Multiple agents writing to patterns.md concurrently.</description>
+      <reason>Concurrent writes produce last-write-wins corruption of confidence scores. In multi-agent workflows, serialize memory writes through a single coordinator agent.</reason>
+    </antipattern>
+  </section>
+</text>

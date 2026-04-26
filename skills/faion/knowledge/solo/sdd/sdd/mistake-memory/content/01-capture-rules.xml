@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-capture-rules" title="Mistake Capture Rules">
+  <summary>When to capture a mistake, minimum required fields, and quality standards for entries.</summary>
+
+  <section title="Capture Triggers">
+    <rule>
+      <statement>Document a mistake within 24 hours of the failure. Do not defer — details fade within a single conversation turn.</statement>
+      <rationale>Incomplete entries written days later omit root cause and specific context, making them useless for future warning injection.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Capture when: a bug reaches production, CI fails unexpectedly, the same error occurs twice, a task takes more than 2x estimated tokens, or an agent hallucinates an API or feature.</statement>
+      <rationale>These signals identify pattern-level failures worth documenting. One-off typos do not require entries.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Every MIS-NNN entry must include: severity (critical/high/medium/low), what happened (specific description), root cause (Five Whys chain, minimum 3 levels), and one concrete prevention step.</statement>
+      <rationale>Entries without root cause cannot generate useful prevention rules. Entries without prevention are read-only history, not actionable warnings.</rationale>
+    </rule>
+  </section>
+
+  <section title="Entry Quality Rules">
+    <antipattern>
+      <description>Prevention step is "be more careful" or "review before committing".</description>
+      <reason>These are not actionable. A concrete prevention step specifies a trigger and an action: "When task keywords include 'migration', run COUNT(*) on affected tables before planning."</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Root cause attributed to "insufficient context" without identifying the specific missing piece.</description>
+      <reason>Every LLM failure can be attributed to "insufficient context" — this is always true and always useless. Identify what specific documentation, example, or constraint was absent.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Entry title does not include domain keywords: "MIS-007: Bug in code".</description>
+      <reason>Keyword search is the primary retrieval mechanism. Domain keywords in the title ("MIS-007: Database Migration — Missing Row Count Check") enable reliable pre-task matching.</reason>
+    </antipattern>
+
+    <rule>
+      <statement>When a pattern recurs a third time, add an automated CI prevention rule; documenting the same entry twice is not sufficient.</statement>
+      <rationale>Documentation is awareness, not enforcement. Recurring patterns require automated blocking to actually prevent recurrence.</rationale>
+    </rule>
+  </section>
+
+  <section title="Five Whys Example">
+    <example type="good">
+      <code lang="markdown"><![CDATA[## MIS-007: Database Migration — Missing Row Count Check
+
+**Severity:** High
+**What happened:** Migration timed out after 30 min on production (2.8M rows).
+**Root cause:**
+1. Why did migration time out? Transaction locked the entire table.
+2. Why was it a single transaction? ALTER TABLE applied to all rows at once.
+3. Why not batched? Row count not checked before choosing migration strategy.
+**Prevention:** Before any migration, run `SELECT COUNT(*) FROM <table>`. If >100k rows, use batched approach (PAT-002).]]></code>
+      <note>Three levels of why, specific numbers, concrete prevention with a reference to a known pattern.</note>
+    </example>
+  </section>
+
+  <reference path="templates/mistake-entry.md">MIS-NNN entry template with all required fields</reference>
+</text>

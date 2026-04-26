@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)
 - refactor: 8/8 methodologies migrated to new shape (batch: active-listening, selling-ideas, feedback, business-storytelling, ideation-methods, negotiation, growth-linkedin-strategy, growth-community-building)
 - refactor: 8/8 methodologies migrated to new shape (batch: seo, growth-seo-link-building, seo-basics, topical-authority, growth-seo-fundamentals, zero-click-search-adaptation, sdd/ai-assisted-specification-writing, sdd-planning/ai-assisted-specification-writing)
 - refactor: 8/8 server-craft methodologies migrated to new shape (batch: monitoring-logging, tmux-power-user, backup-recovery, bash-aliases, secrets-management, dotfiles-management, shell-productivity, multi-project-hosting)
