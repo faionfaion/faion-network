@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="DDD Implementation Examples">
+  <summary>Concrete Python examples: Order aggregate, Money/Address value objects, domain events, repository interface, anti-corruption layer.</summary>
+
+  <section title="Order Aggregate Root">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class Order:
+    """Order aggregate root — all state changes go through methods."""
+    id: UUID = field(default_factory=uuid4)
+    customer_id: UUID = field(default=None)
+    status: OrderStatus = OrderStatus.DRAFT
+    lines: List[OrderLine] = field(default_factory=list)
+    _events: List = field(default_factory=list, repr=False)
+
+    def add_line(self, product_id: UUID, name: str, quantity: int, price: Money) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify a placed order")
+        if quantity <= 0:
+            raise DomainError("Quantity must be positive")
+        self.lines.append(OrderLine(product_id, name, quantity, price))
+
+    def place(self, shipping_address: Address) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Order already placed")
+        if not self.lines:
+            raise DomainError("Cannot place empty order")
+        self.shipping_address = shipping_address
+        self.status = OrderStatus.PLACED
+        self.placed_at = datetime.utcnow()
+        self._events.append(OrderPlaced(order_id=self.id, customer_id=self.customer_id, total=self.total))
+
+    def collect_events(self) -> List:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+      <note>Aggregate enforces all state-transition rules. No public setters. Events collected for post-commit dispatch.</note>
+    </example>
+  </section>
+
+  <section title="Value Objects">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Money:
+    amount: Decimal
+    currency: str
+
+    def __post_init__(self):
+        if self.amount < 0:
+            raise ValueError("Amount cannot be negative")
+        if len(self.currency) != 3:
+            raise ValueError("Currency must be 3-letter code")
+
+    def __add__(self, other: "Money") -> "Money":
+        if self.currency != other.currency:
+            raise ValueError("Cannot add different currencies")
+        return Money(self.amount + other.amount, self.currency)
+
+@dataclass(frozen=True)
+class Address:
+    street: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+
+    def __post_init__(self):
+        if not all([self.street, self.city, self.postal_code, self.country]):
+            raise ValueError("Address fields cannot be empty")
+]]></code>
+      <note>frozen=True enforces immutability. Validation in __post_init__ makes invalid states unconstructable.</note>
+    </example>
+  </section>
+
+  <section title="Repository Interface">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# domain/repositories.py — lives in domain, no infrastructure imports
+class OrderRepository(ABC):
+    @abstractmethod
+    async def find_by_id(self, order_id: UUID) -> Optional[Order]: ...
+
+    @abstractmethod
+    async def find_by_customer(self, customer_id: UUID) -> List[Order]: ...
+
+    @abstractmethod
+    async def save(self, order: Order) -> None: ...
+]]></code>
+      <note>Interface is defined in domain. SQLAlchemy implementation lives in infrastructure. Domain is never imported from infrastructure.</note>
+    </example>
+  </section>
+
+  <section title="Anti-Corruption Layer">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# infrastructure/acl/inventory_adapter.py
+class InventoryAdapter(InventoryChecker):
+    """Translates external inventory API to domain concepts."""
+    def __init__(self, client: InventoryApiClient):
+        self._client = client
+
+    async def check_availability(self, product_id: UUID, quantity: int) -> bool:
+        try:
+            response = await self._client.get_stock_level(str(product_id))
+            return response.get("availableUnits", 0) >= quantity
+        except ExternalApiError:
+            return True  # fail safe
+]]></code>
+      <note>External API terminology (availableUnits) is translated here. Domain code only sees the InventoryChecker interface it defined.</note>
+    </example>
+  </section>
+
+  <reference path="templates/domain-purity-check.sh">Pre-commit script that fails if domain/ imports infrastructure libraries</reference>
+  <reference path="templates/import-linter.ini">import-linter contract for domain layer purity</reference>
+  <reference path="templates/ddd-prompt.txt">LLM prompt template for aggregate modeling</reference>
+</text>

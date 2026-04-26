@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-service-structure" title="Microservice Structure and FastAPI Skeleton">
+  <summary>Per-service folder layout and FastAPI service entrypoint with lifespan, health check, and versioned API router.</summary>
+
+  <section title="Structure Rules">
+    <rule>
+      <statement>Each service is a completely independent deployment unit: its own repository (or isolated module), its own Dockerfile, its own database, its own CI/CD pipeline.</statement>
+      <rationale>Shared infrastructure creates hidden coupling. A database schema change in a shared DB can break all services that read it, defeating independent deployability.</rationale>
+    </rule>
+    <rule>
+      <statement>Every service exposes a /health endpoint. The health check returns 200 only when the service and its critical dependencies (DB, broker) are reachable.</statement>
+      <rationale>Load balancers and orchestrators use health checks to route traffic. A service that responds 200 while its DB is down accepts requests it cannot fulfill.</rationale>
+    </rule>
+  </section>
+
+  <section title="Service Folder Layout">
+    <example type="good">
+      <code lang="text"><![CDATA[
+user-service/
+├── src/
+│   ├── api/
+│   │   ├── routes.py        # FastAPI routers
+│   │   └── schemas.py       # Request/response Pydantic models
+│   ├── domain/
+│   │   ├── entities.py      # Domain entities
+│   │   ├── services.py      # Domain services
+│   │   └── events.py        # Integration events
+│   ├── infrastructure/
+│   │   ├── database.py      # DB session factory
+│   │   └── message_bus.py   # Broker producer/consumer
+│   └── main.py              # FastAPI app + lifespan
+├── tests/
+├── Dockerfile
+└── requirements.txt
+]]></code>
+    </example>
+  </section>
+
+  <section title="FastAPI Service Entrypoint">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    await init_message_bus()
+    yield
+    await close_message_bus()
+    await close_db()
+
+app = FastAPI(title="User Service", version="1.0.0", lifespan=lifespan)
+app.include_router(health_router, tags=["health"])
+app.include_router(router, prefix="/api/v1", tags=["users"])
+]]></code>
+      <note>Lifespan replaces @app.on_event deprecated hooks. Startup and shutdown logic are co-located and symmetric.</note>
+    </example>
+  </section>
+
+  <reference path="templates/service-main.py">Complete FastAPI service entrypoint with health check</reference>
+</text>

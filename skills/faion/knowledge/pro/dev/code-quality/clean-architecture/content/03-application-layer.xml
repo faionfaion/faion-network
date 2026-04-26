@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-application-layer" title="Clean Architecture — Application Layer">
+  <summary>CreateUserUseCase, GetUserUseCase, UnitOfWork interface, and UserDTO — orchestrating domain entities without ORM or HTTP.</summary>
+
+  <section title="Use Case: CreateUser">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class CreateUserInput:
+    name: str
+    email: str
+
+@dataclass
+class CreateUserOutput:
+    user: "UserDTO"
+
+class CreateUserUseCase:
+    def __init__(self, user_repository: UserRepository, unit_of_work: UnitOfWork,
+                 event_publisher: EventPublisher):
+        self._user_repository = user_repository
+        self._unit_of_work = unit_of_work
+        self._event_publisher = event_publisher
+
+    async def execute(self, input_data: CreateUserInput) -> CreateUserOutput:
+        existing = await self._user_repository.find_by_email(input_data.email)
+        if existing:
+            raise ApplicationError("User with this email already exists")
+
+        user = User.create(name=input_data.name, email=input_data.email)
+
+        async with self._unit_of_work:
+            await self._user_repository.save(user)
+            await self._unit_of_work.commit()
+
+        for event in user.collect_events():
+            await self._event_publisher.publish(event)
+
+        return CreateUserOutput(user=UserDTO.from_entity(user))
+]]></code>
+      <note>No HTTP, no ORM, no framework imports. Accepts repository interface; works with any implementation. Testable with in-memory fakes.</note>
+    </example>
+  </section>
+
+  <section title="UserDTO">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class UserDTO:
+    id: UUID
+    name: str
+    email: str
+    role: str
+    is_active: bool
+    created_at: datetime
+
+    @classmethod
+    def from_entity(cls, user: User) -> "UserDTO":
+        return cls(
+            id=user.id, name=user.name, email=user.email.value,
+            role=user.role, is_active=user.is_active, created_at=user.created_at,
+        )
+]]></code>
+    </example>
+  </section>
+
+  <section title="UnitOfWork Interface">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class UnitOfWork(ABC):
+    @abstractmethod
+    async def __aenter__(self): ...
+
+    @abstractmethod
+    async def __aexit__(self, exc_type, exc_val, exc_tb): ...
+
+    @abstractmethod
+    async def commit(self) -> None: ...
+
+    @abstractmethod
+    async def rollback(self) -> None: ...
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/use-case.py">Use case skeleton with Input/Output and dependency injection</reference>
+</text>

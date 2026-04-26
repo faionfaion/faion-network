@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-antipatterns" title="Clean Architecture Antipatterns">
+  <summary>Two critical violations: business logic in controllers, and ORM/framework imports inside domain entities.</summary>
+
+  <section title="Domain Logic in Controller">
+    <antipattern>
+      <description>Controller method contains business logic (email uniqueness check, direct entity construction) instead of delegating to a use case.</description>
+      <reason>Logic in controllers cannot be reused across delivery mechanisms (CLI, event handler, gRPC). Testing requires a running HTTP server. The same rule ends up duplicated in multiple endpoints.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+@router.post("/users")
+async def create_user(request: CreateUserRequest, session=Depends(get_session)):
+    if await session.execute(select(User).where(User.email == request.email)).scalar():
+        raise HTTPException(400, "Email exists")
+    user = User(name=request.name, email=request.email)
+    session.add(user)
+    await session.commit()
+    return user
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@router.post("/users", response_model=UserResponse, status_code=201)
+async def create_user(
+    request: CreateUserRequest,
+    use_case: CreateUserUseCase = Depends(get_create_user_use_case),
+):
+    try:
+        output = await use_case.execute(CreateUserInput(name=request.name, email=request.email))
+        return UserResponse.from_dto(output.user)
+    except ApplicationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Framework Coupling in Domain">
+    <antipattern>
+      <description>Domain entity inherits from SQLAlchemy declarative base or imports ORM columns directly.</description>
+      <reason>The domain entity becomes tied to a specific ORM. Unit tests require a database. Migrating to a different database or ORM forces changes to business rules.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+from sqlalchemy import Column, String
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+
+class User(Base):  # Domain entity inheriting from ORM base — violation
+    __tablename__ = "users"
+    email = Column(String, unique=True)
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class User:  # Pure Python, no framework imports
+    email: Email
+    name: str
+    id: UUID = field(default_factory=uuid4)
+# ORM model lives in infrastructure/persistence/orm/models.py — separate class
+]]></code>
+    </example>
+  </section>
+</text>

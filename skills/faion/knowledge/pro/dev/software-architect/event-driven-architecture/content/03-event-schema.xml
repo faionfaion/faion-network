@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-event-schema" title="Event Schema Design">
+  <summary>CloudEvents standard, naming conventions, versioning strategies, and schema evolution rules.</summary>
+
+  <section title="Event Naming Rules">
+    <rule>
+      <statement>Name events in past tense describing a completed business outcome: OrderPlaced, PaymentReceived, UserRegistered. Never use imperative names (CreateOrder) or CRUD names (OrderUpdated).</statement>
+      <rationale>Past tense signals immutability and distinguishes events (facts that happened) from commands (intentions). CRUD names like OrderUpdated lose intent — what specifically changed?</rationale>
+    </rule>
+    <rule>
+      <statement>Use a reverse-domain type hierarchy: {company}.{bounded-context}.{aggregate}.{event} — e.g., com.example.orders.order.placed.</statement>
+      <rationale>Namespaced types prevent collisions in shared brokers and make event routing rules explicit and grep-able.</rationale>
+    </rule>
+  </section>
+
+  <section title="CloudEvents Standard">
+    <rule>
+      <statement>Use CloudEvents v1.0 format for all integration events. Required attributes: specversion, id, source, type. Add datacontenttype, subject, time as optional attributes.</statement>
+      <rationale>CloudEvents is a CNCF graduated standard supported by all major cloud providers and brokers. Standardized envelopes enable tooling (routers, transformers, monitors) to work across all event types.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "specversion": "1.0",
+  "id": "A234-1234-1234",
+  "source": "/orders/order-service",
+  "type": "com.example.order.created",
+  "datacontenttype": "application/json",
+  "subject": "order-12345",
+  "time": "2026-01-25T10:30:00Z",
+  "data": {
+    "orderId": "order-12345",
+    "customerId": "cust-789",
+    "total": 99.99
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Schema Evolution Rules">
+    <rule>
+      <statement>Only make additive, backward-compatible changes to existing event schemas: add optional fields, never remove required fields, always provide default values for new fields.</statement>
+      <rationale>Events in the log are immutable but consumers must continue to deserialize old events. Removing a field or making a formerly-optional field required breaks replay of historical events.</rationale>
+    </rule>
+    <rule>
+      <statement>Enforce schema compatibility with a schema registry (Confluent Schema Registry, Apicurio, Buf BSR). Fail PRs that introduce non-additive changes.</statement>
+      <rationale>Without automated enforcement, non-additive schema changes slip through review and silently break consumers at runtime. The registry is the contract boundary.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/cloudevent.json">CloudEvents v1.0 example with all standard attributes</reference>
+</text>

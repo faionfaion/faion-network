@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-domain-layer" title="Clean Architecture — Domain Layer">
+  <summary>User entity, Email value object, UserRepository abstract interface, domain events — all without framework imports.</summary>
+
+  <section title="Entity: User">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class User:
+    id: UUID = field(default_factory=uuid4)
+    name: str = ""
+    email: Email = None
+    role: str = "member"
+    is_active: bool = True
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    _events: list = field(default_factory=list, repr=False)
+
+    @classmethod
+    def create(cls, name: str, email: str) -> "User":
+        if len(name) < 2:
+            raise DomainError("Name must be at least 2 characters")
+        user = cls(name=name, email=Email(email))
+        user._events.append(UserCreated(user.id, email))
+        return user
+
+    def change_email(self, new_email: str) -> None:
+        old = self.email.value
+        self.email = Email(new_email)
+        self._events.append(UserEmailChanged(self.id, old, new_email))
+
+    def collect_events(self) -> list:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+      <note>No ORM imports. No FastAPI imports. Testable with plain Python.</note>
+    </example>
+  </section>
+
+  <section title="Value Object: Email">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Email:
+    value: str
+
+    def __post_init__(self):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, self.value):
+            raise DomainError(f"Invalid email: {self.value}")
+        object.__setattr__(self, 'value', self.value.lower())
+]]></code>
+    </example>
+  </section>
+
+  <section title="Repository Interface">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class UserRepository(ABC):
+    """Defined in domain. Implemented in infrastructure. Domain never imports implementation."""
+
+    @abstractmethod
+    async def find_by_id(self, user_id: UUID) -> Optional[User]: ...
+
+    @abstractmethod
+    async def find_by_email(self, email: str) -> Optional[User]: ...
+
+    @abstractmethod
+    async def save(self, user: User) -> None: ...
+
+    @abstractmethod
+    async def delete(self, user: User) -> None: ...
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/repository-interface.py">Abstract repository interface template</reference>
+</text>

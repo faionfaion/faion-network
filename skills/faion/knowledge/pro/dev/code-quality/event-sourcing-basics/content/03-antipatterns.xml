@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Event Sourcing Antipatterns">
+  <summary>Two critical event sourcing violations: mutable events, and oversized catch-all events.</summary>
+
+  <section title="Mutable Events">
+    <antipattern>
+      <description>Assigning new values to event fields after construction (e.g., event.customer_id = new_id).</description>
+      <reason>Events stored in the event log become inconsistent with in-memory events. Replay produces different state than the original, making the event log unreliable as the source of truth.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+event = OrderCreated(order_id=order_id)
+event.customer_id = new_customer_id  # Modifying after creation — illegal
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderCreated(Event):
+    order_id: UUID
+    customer_id: UUID
+# frozen=True makes any assignment raise FrozenInstanceError at runtime
+]]></code>
+    </example>
+  </section>
+
+  <section title="Large Catch-All Events">
+    <antipattern>
+      <description>Using a single event type like OrderUpdated that carries the entire order state as a dict.</description>
+      <reason>Loses intent (which field actually changed?), makes projections load unnecessary data, and makes schema evolution impossible without breaking all consumers that parse the dict.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+@dataclass
+class OrderUpdated(Event):
+    entire_order_data: dict  # Full state snapshot — not a change event
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderItemAdded(Event):
+    product_id: UUID
+    quantity: int
+
+@dataclass(frozen=True)
+class ShippingAddressChanged(Event):
+    new_address: dict
+# One event per change — intent is explicit, projection subscribes only to what it needs
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-snapshots" title="Snapshots and Repository with Snapshot Support">
+  <summary>SnapshotStore implementation and EventSourcedOrderRepository that loads from snapshot + trailing events.</summary>
+
+  <section title="Snapshot Rules">
+    <rule>
+      <statement>Take a snapshot every N events (50 is a common starting point). Load the latest snapshot, then replay only the events after its version.</statement>
+      <rationale>Without snapshots, replay time grows linearly with the number of events. Long-lived aggregates (thousands of events) cause unacceptably slow command handling.</rationale>
+    </rule>
+    <rule>
+      <statement>Snapshots are an optimization, not the source of truth. The event log remains authoritative. If a snapshot is corrupt or missing, fall back to full replay.</statement>
+      <rationale>Relying on snapshots as the primary source of truth defeats the event-sourcing model and loses the audit trail.</rationale>
+    </rule>
+  </section>
+
+  <section title="SnapshotStore">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class SnapshotStore:
+    def __init__(self, session):
+        self._session = session
+
+    async def save(self, snapshot: Snapshot) -> None:
+        await self._session.execute(
+            text("""
+                INSERT INTO snapshots (stream_id, version, state, created_at)
+                VALUES (:stream_id, :version, :state, :created_at)
+                ON CONFLICT (stream_id) DO UPDATE SET
+                    version = :version, state = :state, created_at = :created_at
+            """),
+            {"stream_id": snapshot.stream_id, "version": snapshot.version,
+             "state": json.dumps(snapshot.state), "created_at": snapshot.created_at},
+        )
+
+    async def get(self, stream_id: str) -> Optional[Snapshot]:
+        result = await self._session.execute(
+            text("SELECT * FROM snapshots WHERE stream_id = :s"), {"s": stream_id}
+        )
+        row = result.fetchone()
+        return Snapshot(row.stream_id, row.version, json.loads(row.state), row.created_at) if row else None
+]]></code>
+    </example>
+  </section>
+
+  <section title="Repository with snapshot load">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class EventSourcedOrderRepository:
+    SNAPSHOT_FREQUENCY = 50
+
+    async def get(self, order_id: UUID) -> Optional[Order]:
+        stream_id = f"order-{order_id}"
+        snapshot = await self._snapshot_store.get(stream_id)
+
+        if snapshot:
+            events = await self._event_store.read_stream(stream_id, from_version=snapshot.version)
+            order = Order(**snapshot.state)
+            order.version = snapshot.version
+        else:
+            events = await self._event_store.read_stream(stream_id)
+            order = Order(id=order_id)
+
+        for event in events:
+            order._apply(event, is_new=False)
+        return order if order.version > 0 else None
+
+    async def save(self, order: Order) -> None:
+        stream_id = f"order-{order.id}"
+        events = order.collect_pending_events()
+        if not events:
+            return
+        expected_version = order.version - len(events)
+        await self._event_store.append(stream_id, events, expected_version)
+        if order.version % self.SNAPSHOT_FREQUENCY == 0:
+            await self._snapshot_store.save(Snapshot(
+                stream_id=stream_id, version=order.version,
+                state=self._serialize_order(order), created_at=datetime.utcnow(),
+            ))
+]]></code>
+      <note>expected_version = current version minus pending count, because the pending events are not yet in the store. Snapshot taken after save at multiples of SNAPSHOT_FREQUENCY.</note>
+    </example>
+  </section>
+</text>

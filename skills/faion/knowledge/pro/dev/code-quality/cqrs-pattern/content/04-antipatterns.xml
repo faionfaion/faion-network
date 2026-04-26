@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="CQRS Antipatterns">
+  <summary>Two critical CQRS violations: commands returning full read models, and queries with state-modifying side effects.</summary>
+
+  <section title="Commands Returning Data">
+    <antipattern>
+      <description>Command handler returns a DTO or full entity after saving, forcing the handler to also build a read projection inline.</description>
+      <reason>Couples write and read optimization. Breaks the single-responsibility of commands. Prevents independent scaling of read and write sides.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class CreateOrderHandler:
+    async def handle(self, command) -> OrderDto:  # Wrong return type
+        order = Order.create(...)
+        await self._repo.save(order)
+        return OrderDto.from_entity(order)  # Build read model in command handler
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class CreateOrderHandler:
+    async def handle(self, command: PlaceOrderCommand) -> UUID:
+        order = Order.create(id=command.order_id, ...)
+        await self._repo.save(order)
+        return order.id  # Or return None; caller uses a separate query to fetch state
+]]></code>
+    </example>
+  </section>
+
+  <section title="Queries With Side Effects">
+    <antipattern>
+      <description>Query handler modifies state (increments view count, updates last-seen timestamp) as part of returning data.</description>
+      <reason>Callers assume reads are idempotent and safe to retry. Hidden writes violate this assumption, cause double-counting, and break eventual consistency reasoning.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class GetOrderHandler:
+    async def handle(self, query):
+        order = await self._read_store.get(query.order_id)
+        order["view_count"] += 1  # Side effect in a query!
+        await self._read_store.set(order)
+        return order
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class GetOrderHandler:
+    async def handle(self, query: GetOrderQuery) -> OrderDto:
+        data = await self._read_store.get(f"order:{query.order_id}")
+        if not data:
+            raise OrderNotFoundError(query.order_id)
+        return OrderDto(**data)  # Pure read, no writes
+]]></code>
+    </example>
+  </section>
+</text>

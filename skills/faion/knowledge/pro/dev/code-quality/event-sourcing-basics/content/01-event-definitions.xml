@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-event-definitions" title="Event Sourcing — Event Definitions">
+  <summary>Base Event dataclass and domain event hierarchy for an Order aggregate.</summary>
+
+  <section title="Event Rules">
+    <rule>
+      <statement>Events must be immutable (frozen=True). Once persisted, an event is never modified — it is the source of truth.</statement>
+      <rationale>Mutable events invalidate the audit log and break replay: if the stored event differs from what actually happened, replayed state diverges from original state.</rationale>
+    </rule>
+    <rule>
+      <statement>Events are granular: one event per state change. Never use a catch-all UpdatedEvent with a full-state payload.</statement>
+      <rationale>Granular events make the intent explicit, allow targeted projections to subscribe only to relevant changes, and keep schema evolution manageable.</rationale>
+    </rule>
+    <rule>
+      <statement>Name events in past tense describing what happened: OrderCreated, OrderItemAdded, OrderPlaced, OrderShipped, OrderCancelled.</statement>
+      <rationale>Past tense signals immutability and distinguishes events (facts) from commands (intentions).</rationale>
+    </rule>
+  </section>
+
+  <section title="Base Event">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from datetime import datetime
+from uuid import UUID, uuid4
+
+@dataclass(frozen=True)
+class Event:
+    """Base class for all domain events."""
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict = field(default_factory=dict)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Order Event Hierarchy">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class OrderCreated(Event):
+    order_id: UUID
+    customer_id: UUID
+
+@dataclass(frozen=True)
+class OrderItemAdded(Event):
+    order_id: UUID
+    product_id: UUID
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+
+@dataclass(frozen=True)
+class OrderItemRemoved(Event):
+    order_id: UUID
+    product_id: UUID
+
+@dataclass(frozen=True)
+class OrderPlaced(Event):
+    order_id: UUID
+    shipping_address: dict
+    total_amount: Decimal
+
+@dataclass(frozen=True)
+class OrderShipped(Event):
+    order_id: UUID
+    tracking_number: str
+    carrier: str
+
+@dataclass(frozen=True)
+class OrderCancelled(Event):
+    order_id: UUID
+    reason: str
+    cancelled_by: UUID
+]]></code>
+      <note>All events inherit from Event (frozen) and carry only the data that changed. No full-state snapshots in events.</note>
+    </example>
+  </section>
+
+  <section title="Event Antipatterns">
+    <antipattern>
+      <description>Mutable event: assigning to event.customer_id after construction.</description>
+      <reason>Breaks immutability guarantee. Any code that cached the event has an inconsistent copy, making replay non-deterministic.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Catch-all event: OrderUpdated with entire_order_data: dict containing all order fields.</description>
+      <reason>Loses intent (what specifically changed?), bloats the event log, and makes schema evolution impossible without breaking all existing consumers.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/base-event.py">Frozen Event base + example event skeleton</reference>
+</text>

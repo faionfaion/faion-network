@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-projections" title="Projections and EventBus">
+  <summary>OrderDetailsProjection handlers, simple EventBus for routing events to projections, and integration with command handlers.</summary>
+
+  <section title="Projection Rules">
+    <rule>
+      <statement>Projection handlers must be idempotent — called with the same event twice must produce the same read-model state as called once.</statement>
+      <rationale>At-least-once event delivery guarantees duplicates will occur, especially during replay. Non-idempotent projections create corrupted read models on retry.</rationale>
+    </rule>
+  </section>
+
+  <section title="OrderDetailsProjection">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class OrderDetailsProjection:
+    def __init__(self, session):
+        self._session = session
+
+    async def handle_order_created(self, event: OrderCreated) -> None:
+        await self._session.execute(
+            text("""
+                INSERT INTO order_details (order_id, customer_id, status, created_at)
+                VALUES (:oid, :cid, 'draft', :occ)
+                ON CONFLICT (order_id) DO NOTHING
+            """),
+            {"oid": str(event.order_id), "cid": str(event.customer_id), "occ": event.occurred_at},
+        )
+
+    async def handle_order_placed(self, event: OrderPlaced) -> None:
+        await self._session.execute(
+            text("UPDATE order_details SET status='placed', placed_at=:occ WHERE order_id=:oid"),
+            {"oid": str(event.order_id), "occ": event.occurred_at},
+        )
+]]></code>
+      <note>ON CONFLICT DO NOTHING makes creation idempotent. UPDATE on status is naturally idempotent (setting the same value twice is harmless).</note>
+    </example>
+  </section>
+
+  <section title="EventBus">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class EventBus:
+    def __init__(self):
+        self._handlers: Dict[str, List[Callable]] = {}
+
+    def subscribe(self, event_type: str, handler: Callable) -> None:
+        self._handlers.setdefault(event_type, []).append(handler)
+
+    async def publish(self, event) -> None:
+        for handler in self._handlers.get(type(event).__name__, []):
+            await handler(event)
+
+# Wiring
+event_bus = EventBus()
+projection = OrderDetailsProjection(session)
+event_bus.subscribe("OrderCreated", projection.handle_order_created)
+event_bus.subscribe("OrderPlaced",  projection.handle_order_placed)
+]]></code>
+    </example>
+  </section>
+</text>

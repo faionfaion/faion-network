@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-communication" title="Inter-Service Communication">
+  <summary>Synchronous HTTP client, async message publish/consume with aio_pika, service discovery with load balancing.</summary>
+
+  <section title="Communication Rules">
+    <rule>
+      <statement>Prefer asynchronous messaging (events) over synchronous HTTP for cross-service state changes. Use synchronous HTTP only for queries where the caller needs an immediate response.</statement>
+      <rationale>Synchronous chains create availability dependencies: if any service in the chain is down, the entire chain fails. Async events allow each service to process when available.</rationale>
+    </rule>
+    <rule>
+      <statement>HTTP clients must set explicit timeouts. Default timeout is 10 seconds maximum — never use no timeout in production.</statement>
+      <rationale>Without timeouts, a slow downstream service holds a thread/connection indefinitely, cascading into resource exhaustion in the caller.</rationale>
+    </rule>
+  </section>
+
+  <section title="Synchronous HTTP Client">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class OrderServiceClient:
+    def __init__(self, base_url: str):
+        self._client = AsyncClient(base_url=base_url, timeout=10.0)
+
+    async def get_orders_for_user(self, user_id: UUID) -> list:
+        response = await self._client.get("/api/v1/orders", params={"user_id": str(user_id)})
+        response.raise_for_status()
+        return response.json()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Async Message Publisher">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class MessagePublisher:
+    def __init__(self, channel):
+        self._channel = channel
+
+    async def publish(self, event) -> None:
+        exchange = await self._channel.get_exchange("events")
+        message = aio_pika.Message(
+            body=json.dumps({
+                "type": "user.created",
+                "data": {"user_id": str(event.user_id), "email": event.email},
+                "occurred_at": event.occurred_at.isoformat(),
+            }).encode(),
+            content_type="application/json",
+        )
+        await exchange.publish(message, routing_key="user.created")
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/message-bus.py">MessagePublisher + MessageConsumer with aio_pika</reference>
+</text>

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-event-store" title="Event Store Interface and PostgreSQL Implementation">
+  <summary>Abstract EventStore interface and PostgresEventStore with optimistic concurrency via stream versioning.</summary>
+
+  <section title="Event Store Rules">
+    <rule>
+      <statement>Every append must include an expected_version. If the stream's current version does not match, raise ConcurrencyError and force a retry — never silently overwrite.</statement>
+      <rationale>Without optimistic concurrency, two handlers reading version N both succeed at appending version N+1; one silently overwrites the other, violating aggregate invariants.</rationale>
+    </rule>
+    <rule>
+      <statement>Events are stored with: event_id (UUID, unique), stream_id, version (per-stream monotonic), event_type (class name), event_data (JSON), metadata, occurred_at. The (stream_id, version) pair has a UNIQUE constraint.</statement>
+      <rationale>The UNIQUE constraint on (stream_id, version) is the database-level optimistic concurrency enforcement — the INSERT fails if another writer already claimed that version.</rationale>
+    </rule>
+  </section>
+
+  <section title="Abstract EventStore Interface">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class EventStore(ABC):
+    @abstractmethod
+    async def append(self, stream_id: str, events: List[Event], expected_version: int) -> None:
+        """Append events with optimistic concurrency check."""
+        pass
+
+    @abstractmethod
+    async def read_stream(self, stream_id: str, from_version: int = 0) -> List[Event]:
+        """Read all events from a stream starting at from_version."""
+        pass
+
+    @abstractmethod
+    async def read_all(self, from_position: int = 0, batch_size: int = 100) -> List[Event]:
+        """Read all events across all streams (for projection rebuilding)."""
+        pass
+]]></code>
+    </example>
+  </section>
+
+  <section title="PostgreSQL append with optimistic concurrency">
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def append(self, stream_id: str, events: List[Event], expected_version: int) -> None:
+    result = await self._session.execute(
+        text("SELECT COALESCE(MAX(version), 0) FROM events WHERE stream_id = :sid"),
+        {"sid": stream_id},
+    )
+    current_version = result.scalar()
+    if current_version != expected_version:
+        raise ConcurrencyError(f"Expected {expected_version}, got {current_version}")
+
+    for i, event in enumerate(events):
+        version = expected_version + i + 1
+        await self._session.execute(
+            text("""
+                INSERT INTO events
+                    (event_id, stream_id, version, event_type, event_data, metadata, occurred_at)
+                VALUES
+                    (:event_id, :sid, :version, :etype, :edata, :meta, :occ)
+            """),
+            {
+                "event_id": str(event.event_id), "sid": stream_id,
+                "version": version, "etype": type(event).__name__,
+                "edata": json.dumps(self._serialize(event)),
+                "meta": json.dumps(event.metadata), "occ": event.occurred_at,
+            },
+        )
+    await self._session.commit()
+]]></code>
+      <note>Current version read before insert. Mismatch raises immediately. UNIQUE constraint on (stream_id, version) provides a second line of defense.</note>
+    </example>
+  </section>
+
+  <reference path="templates/postgres-event-store.py">Full PostgresEventStore with serialize/deserialize</reference>
+  <reference path="templates/event-store-schema.sql">SQL DDL for events, snapshots, and projection tables</reference>
+</text>

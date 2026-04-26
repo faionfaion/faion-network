@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-infrastructure-layer" title="Clean Architecture — Infrastructure Layer">
+  <summary>SQLAlchemyUserRepository implementing the domain interface, SQLAlchemyUnitOfWork, and ORM model mapping.</summary>
+
+  <section title="Repository Implementation">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class SQLAlchemyUserRepository(UserRepository):
+    """Implements the domain interface. Domain code never imports this class."""
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def find_by_id(self, user_id: UUID) -> Optional[User]:
+        result = await self._session.execute(
+            select(UserModel).where(UserModel.id == user_id)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
+
+    async def save(self, user: User) -> None:
+        model = self._to_model(user)
+        self._session.add(model)
+
+    def _to_entity(self, model: "UserModel") -> User:
+        return User(
+            id=model.id, name=model.name, email=Email(model.email),
+            role=model.role, is_active=model.is_active, created_at=model.created_at,
+        )
+
+    def _to_model(self, entity: User) -> "UserModel":
+        return UserModel(
+            id=entity.id, name=entity.name, email=entity.email.value,
+            role=entity.role, is_active=entity.is_active, created_at=entity.created_at,
+        )
+]]></code>
+      <note>_to_entity and _to_model perform the translation. The domain entity never imports UserModel. UserModel never enters the domain or application layers.</note>
+    </example>
+  </section>
+
+  <section title="SQLAlchemy Unit of Work">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class SQLAlchemyUnitOfWork(UnitOfWork):
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if exc_type:
+            await self.rollback()
+
+    async def commit(self) -> None:
+        await self._session.commit()
+
+    async def rollback(self) -> None:
+        await self._session.rollback()
+]]></code>
+    </example>
+  </section>
+</text>

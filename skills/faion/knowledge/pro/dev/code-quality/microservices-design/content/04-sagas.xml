@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-sagas" title="Saga Pattern for Distributed Transactions">
+  <summary>Orchestration-based saga with compensation steps for creating an order across multiple services.</summary>
+
+  <section title="Saga Rules">
+    <rule>
+      <statement>Every saga step must have a compensating action written before the happy path is merged. Compensation runs in reverse order when any step fails.</statement>
+      <rationale>A saga without compensations is an incomplete transaction. If step 2 fails after step 1 succeeds, step 1's side effect is permanent and cannot be undone.</rationale>
+    </rule>
+    <rule>
+      <statement>Prefer orchestration (one central orchestrator) over choreography when more than 3-4 services participate. Choreography with many services creates spaghetti event flows that are impossible to debug.</statement>
+      <rationale>Orchestration centralizes the saga state machine and makes the flow readable as code. Choreography distributes it across services with no single place to observe the overall state.</rationale>
+    </rule>
+  </section>
+
+  <section title="Orchestration-Based Saga">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class OrderSagaOrchestrator:
+    async def execute(self, saga: CreateOrderSaga) -> None:
+        steps_completed = []
+        try:
+            await self._inventory_service.reserve(saga.order_id, saga.items)
+            steps_completed.append("inventory")
+
+            await self._payment_service.charge(saga.user_id, saga.total)
+            steps_completed.append("payment")
+
+            await self._order_service.create(saga.order_id, saga.items)
+            steps_completed.append("order")
+
+            saga.state = SagaState.COMPLETED
+        except Exception:
+            saga.state = SagaState.COMPENSATING
+            await self._compensate(saga, steps_completed)
+            saga.state = SagaState.FAILED
+            raise
+
+    async def _compensate(self, saga: CreateOrderSaga, steps: list) -> None:
+        for step in reversed(steps):
+            try:
+                if step == "order":
+                    await self._order_service.cancel(saga.order_id)
+                elif step == "payment":
+                    await self._payment_service.refund(saga.user_id)
+                elif step == "inventory":
+                    await self._inventory_service.release(saga.order_id)
+            except Exception:
+                # Log compensation failure; do not re-raise (best-effort compensation)
+                pass
+]]></code>
+      <note>Compensations run in reverse order. Failures in compensation are logged but not re-raised — best-effort rollback with alerting.</note>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-layer-rules" title="Clean Architecture Layer Rules">
+  <summary>Dependency rule, four-layer definitions, forbidden import directions, and project folder layout.</summary>
+
+  <section title="The Dependency Rule">
+    <rule>
+      <statement>Source code dependencies must point only inward: Frameworks → Interface Adapters → Use Cases → Entities. Nothing in an inner circle may know anything about an outer circle.</statement>
+      <rationale>Inward-only dependencies mean business rules (Entities, Use Cases) are stable and framework-independent. You can swap the database or web framework without touching business logic.</rationale>
+    </rule>
+    <rule>
+      <statement>Enforce the dependency rule with architecture tests (import-linter, ArchUnit). The rule only holds if it is machine-checked — human review alone is insufficient.</statement>
+      <rationale>Developers and LLMs routinely import ORM models into entities or inject HTTP clients into use cases. Without automated enforcement these violations accumulate silently.</rationale>
+    </rule>
+  </section>
+
+  <section title="Layer Definitions">
+    <rule>
+      <statement>Entities (domain/): Enterprise business rules. No framework imports. Python dataclasses or plain classes. Framework-independent, database-independent.</statement>
+      <rationale>If an entity imports SQLAlchemy, the business rules cannot be tested without a database, and migrating the ORM requires touching domain code.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Cases (application/): Application-specific business rules. Orchestrate entities via repository interfaces. Take Input DTOs, return Output DTOs. No HTTP, no ORM.</statement>
+      <rationale>Use cases define what the application does, not how it does it. Keeping HTTP and ORM out keeps them testable and delivery-mechanism agnostic.</rationale>
+    </rule>
+    <rule>
+      <statement>Interface Adapters (presentation/): Controllers, presenters, gateways. Convert between external formats (HTTP request/response) and use case Input/Output DTOs. No business logic here.</statement>
+      <rationale>Business logic in controllers cannot be reused across delivery mechanisms (REST API, CLI, event handler). Controllers should be thin glue.</rationale>
+    </rule>
+    <rule>
+      <statement>Frameworks and Drivers (infrastructure/): ORM implementations, external APIs, message brokers. Implement the interfaces defined in inner layers. Never imported from inner layers.</statement>
+      <rationale>Outer layers know inner layer interfaces; inner layers never import outer layers. This is the inversion of control that makes the dependency rule work.</rationale>
+    </rule>
+  </section>
+
+  <section title="Folder Layout">
+    <example type="good">
+      <code lang="text"><![CDATA[
+src/
+├── domain/             # Entities layer
+│   ├── entities/
+│   ├── value_objects/
+│   ├── events/
+│   ├── exceptions/
+│   └── interfaces/     # Repository + service interfaces
+├── application/        # Use cases layer
+│   ├── use_cases/
+│   ├── interfaces/     # UnitOfWork, EventPublisher
+│   └── dto/
+├── infrastructure/     # Frameworks layer
+│   ├── persistence/    # Repository implementations, ORM models
+│   └── services/       # Email, payment, external APIs
+└── presentation/       # Interface adapters
+    ├── api/            # Controllers, schemas, middleware
+    └── cli/            # CLI commands
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/import-linter.ini">import-linter contracts enforcing the dependency rule</reference>
+</text>

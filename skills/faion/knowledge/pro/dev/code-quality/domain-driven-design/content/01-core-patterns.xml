@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-patterns" title="DDD Core Patterns">
+  <summary>Rules and definitions for entities, value objects, aggregates, bounded contexts, and domain services.</summary>
+
+  <section title="Ubiquitous Language">
+    <rule>
+      <statement>Maintain a ubiquitous language glossary in domain/GLOSSARY.md and load it as the first context block of every LLM prompt — single largest quality lever for generated DDD code.</statement>
+      <rationale>Without an authoritative glossary, LLMs invent synonyms (User vs Customer vs Account) within the same session, poisoning the codebase across multiple files.</rationale>
+    </rule>
+  </section>
+
+  <section title="Entities">
+    <rule>
+      <statement>An entity has a stable identity (UUID) that persists over its lifetime. It encapsulates business behavior as methods that enforce invariants, never as naked setters.</statement>
+      <rationale>Getters and setters push invariant enforcement to callers, which creates duplication. The entity is the single authority for its own consistency rules.</rationale>
+    </rule>
+    <antipattern>
+      <description>Anemic entity: all fields public, all logic in service classes, entity is a bag of data with no behavior.</description>
+      <reason>The same invariant ends up enforced in multiple service methods and breaks when one copy is missed.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Value Objects">
+    <rule>
+      <statement>Value objects are immutable (frozen=True in Python, record in Java), defined by their attributes, and validated in the constructor. Two VOs with equal attributes are interchangeable.</statement>
+      <rationale>Mutable VOs break equality semantics and allow illegal states to be introduced after construction. If Money(-5, USD) cannot be constructed, every consumer is automatically safe.</rationale>
+    </rule>
+    <rule>
+      <statement>Push validation into the VO or entity constructor/factory method, not into a service.</statement>
+      <rationale>Services that validate before creating objects duplicate the rule and leave the window open when called without the guard.</rationale>
+    </rule>
+  </section>
+
+  <section title="Aggregates">
+    <rule>
+      <statement>An aggregate is a cluster of entities with one aggregate root. External objects reference the aggregate only through the root, and only by ID — never by direct object pointer to internal entities.</statement>
+      <rationale>Object references between aggregates create tight coupling and tempt callers to traverse and mutate internals, breaking the aggregate's consistency boundary.</rationale>
+    </rule>
+    <rule>
+      <statement>One aggregate per transaction, always. If two aggregates must change together, publish a domain event from the first and handle it to update the second in a separate transaction.</statement>
+      <rationale>Transactions spanning multiple aggregates cause contention, make it hard to reason about consistency, and break the aggregate invariant model.</rationale>
+    </rule>
+    <antipattern>
+      <description>Crossing aggregate boundaries: order.customer.wallet.balance accessed directly inside Order.place().</description>
+      <reason>Hydrates related aggregates implicitly, creates hidden dependencies, and breaks the aggregate root as the authority for invariants.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Bounded Contexts">
+    <rule>
+      <statement>A bounded context is an explicit boundary within which a domain model and ubiquitous language are consistent. Different contexts may use the same word for different concepts — translate at the boundary via an Anti-Corruption Layer.</statement>
+      <rationale>Without explicit boundaries, model concepts bleed between teams, creating a mudball where Customer in Sales conflicts with Customer in Billing.</rationale>
+    </rule>
+    <rule>
+      <statement>Co-locate aggregate, value objects, events, and repository interface in one folder per aggregate (e.g., order/domain/). Forbid imports between sibling aggregate folders.</statement>
+      <rationale>Folder boundaries become architectural firewalls. Without them, agents freely import across aggregates.</rationale>
+    </rule>
+  </section>
+
+  <section title="Domain Events">
+    <rule>
+      <statement>Dispatch domain events post-commit only (outbox pattern). Collect events on the aggregate during the transaction; drain the buffer after the unit-of-work commits.</statement>
+      <rationale>Publishing events before the transaction commits means consumers act on data that may be rolled back, creating phantom side effects (emails sent for orders that never existed).</rationale>
+    </rule>
+  </section>
+
+  <section title="Anti-Corruption Layer">
+    <rule>
+      <statement>Wrap every external system whose model you do not control behind an ACL interface defined in the domain. Translate in the infrastructure implementation, never inside the domain.</statement>
+      <rationale>Letting external API terminology leak into the domain contaminates the ubiquitous language and couples business rules to third-party contracts.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-examples.xml"/>
+  </see-also>
+</text>
