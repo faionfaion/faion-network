@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-stacking-rule" title="Batch and prompt-cache discounts stack multiplicatively">
+  <summary>On Anthropic and Gemini, the 50% Batch discount composes with the 90% prompt-cache-read discount; submit async workloads via Batches with cache_control on the longest stable prefix to land at ~5% of synchronous-uncached cost.</summary>
+
+  <section title="Stacking math and provider matrix">
+    <p>The Batch API charges 0.5× base price and applies before the cache layer; cache-read is 0.1× base. Both factors combine multiplicatively on cached tokens, giving 0.5 × 0.1 = 0.05 of synchronous uncached input cost per batch item that hits the cache. This works on Anthropic Messages Batches and Gemini Batch Mode; OpenAI's Batch API is 50% off but explicitly does NOT stack with prompt caching.</p>
+
+    <rule testable="true">
+      <statement>For any agent workload tolerating 24h SLA, submit through the provider Batch API AND mark the longest static prefix (tools and system) with `cache_control: ephemeral` — verify the provider documents stack composition before assuming both discounts apply.</statement>
+      <rationale>Anthropic pricing page states batch + cache compose; Gemini documents stacking with implicit caching; OpenAI documents that they do not. Skipping the cache_control inside batches forfeits 90% on the dominant input bill, so the per-item cost on stable-prefix workloads is 10× higher than necessary.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Anthropic — batch + cache stack: 0.5 * 0.1 = 0.05x on cached tokens
+client.messages.batches.create(requests=[
+    {"custom_id": f"doc-{i}",
+     "params": {
+         "model": "claude-sonnet-4-6",
+         "system": [{"type": "text", "text": STABLE_PROMPT,
+                     "cache_control": {"type": "ephemeral"}}],
+         "tools": TOOLS,  # static across all items
+         "messages": [{"role": "user", "content": doc.text}],
+     }}
+    for i, doc in enumerate(docs)
+])
+      ]]></code>
+      <note>System prompt and tools are byte-identical across items — first item pays cache-write (1.25x), every subsequent item lands at 0.5 * 0.1 = 0.05x of synchronous-uncached input.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# OpenAI — batch and cache do NOT stack
+client.batches.create(input_file_id=f.id, endpoint="/v1/chat/completions",
+                     completion_window="24h")
+# Each row reuses the same system prompt; you get 50% off.
+# Adding `prompt_cache_key` does not compose — you still get 50%, not 5%.
+      ]]></code>
+      <note>Designing the OpenAI pipeline as if stacking applied overestimates savings 10×; verify provider pricing docs before promising the number to the team.</note>
+    </example>
+
+    <antipattern>
+      <description>Embedding the timestamp, request ID, or row index inside the cached system prompt because it "feels safer."</description>
+      <reason>Every item's prefix differs by 8 bytes, so every item is a cache miss; you pay 1.25× cache-write per item AND get the 50% batch discount only — net cost is HIGHER than uncached batch.</reason>
+    </antipattern>
+
+    <reference path="templates/batch_with_cache.py">Anthropic Batches submission with cache_control on system+tools.</reference>
+    <reference href="https://platform.claude.com/docs/en/about-claude/pricing">Anthropic pricing — batch and cache discount composition.</reference>
+    <reference href="https://www.anthropic.com/news/prompt-caching">Anthropic prompt caching announcement (90% read discount).</reference>
+    <reference href="https://docs.cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini">Gemini Batch Mode (50% off, stacks with implicit caching).</reference>
+    <reference href="https://platform.openai.com/docs/guides/batch">OpenAI Batch API — 50% discount; does not stack with prompt caching.</reference>
+  </section>
+</text>

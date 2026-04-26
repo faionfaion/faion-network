@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-prefix-stability" title="Prefix stability is required for the stack to fire">
+  <summary>Cache hits require byte-identical prefixes across batch items; common drift sources (timestamps, sorted-by-runtime tools, randomized example order) silently break stacking and turn the discount into a tax.</summary>
+
+  <section title="Drift sources that kill the cache">
+    <p>A single byte difference between two items' system+tools section makes the second item a cache miss — it pays 1.25× cache-write again. Across a 100k-item batch this is the difference between a 5% input cost and a 125% input cost. Every drift source below is a real production failure in pipelines that "should have stacked".</p>
+
+    <rule testable="true">
+      <statement>Build the cached prefix once OUTSIDE the per-item loop, freeze its bytes (no f-strings, no time.time(), no dict-iteration order), and assert that hashlib.sha256(prefix) is constant across items before submitting the batch.</statement>
+      <rationale>Anthropic and Gemini both key cache lookups on exact prefix bytes including whitespace and tool ordering; an automated hash check at submit time catches drift that humans miss in code review.</rationale>
+    </rule>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Three drift sources in five lines
+for doc in docs:
+    sys = f"You are an analyst. Today is {date.today()}. Doc: {doc.id}"  # 1
+    tools = sorted(TOOL_DICT.values(), key=lambda t: t.last_used)        # 2
+    examples = random.sample(EXAMPLES, 3)                                # 3
+    submit({"system": sys, "tools": tools, "messages": [...]})
+      ]]></code>
+      <note>Date in the system prompt, runtime-sorted tools, and randomized examples each independently invalidate the cache. The pipeline pays cache-write tax on EVERY item.</note>
+    </example>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+SYSTEM = "You are an analyst. Follow the schema below."  # frozen
+TOOLS = list(TOOL_DICT.values())                          # insertion-ordered
+PREFIX_HASH = hashlib.sha256(
+    json.dumps({"sys": SYSTEM, "tools": TOOLS}, sort_keys=True).encode()
+).hexdigest()
+
+for doc in docs:
+    item = {"system": [{"type": "text", "text": SYSTEM,
+                        "cache_control": {"type": "ephemeral"}}],
+            "tools": TOOLS,
+            "messages": [{"role": "user", "content": doc.text}]}
+    assert PREFIX_HASH == _hash_prefix(item)  # cheap guard
+    submit(item)
+      ]]></code>
+      <note>Prefix is built once and reused; the per-item hash check fails fast if any future refactor reintroduces drift.</note>
+    </example>
+
+    <antipattern>
+      <description>Putting the per-item context (URL, doc text, user question) at the START of the messages section instead of as a regular `user` turn at the end.</description>
+      <reason>Cache hits require the variable content to come AFTER the cache_control breakpoint; fronting it makes every item miss — same failure mode as drift, harder to spot.</reason>
+    </antipattern>
+
+    <reference path="templates/batch_with_cache.py">Reference layout: cached prefix frozen at module load, variable content only in the user message.</reference>
+    <reference href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic prompt caching cache-key semantics.</reference>
+  </section>
+</text>

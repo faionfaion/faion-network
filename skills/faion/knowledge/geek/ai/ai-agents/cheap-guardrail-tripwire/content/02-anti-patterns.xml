@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-anti-patterns" title="Tripwire anti-patterns that erase the cost win">
+  <summary>Three guardrail mistakes turn a 100x cost reducer into pure overhead: tool-using guardrails, output-guardrails on streaming, and same-model guardrails.</summary>
+
+  <section title="Three failure modes">
+    <p>The tripwire's value is `cheap-model-cost / strong-model-cost ≈ 0.01`. Each anti-pattern below either inflates the numerator or destroys the streaming UX, erasing the win.</p>
+
+    <rule testable="true">
+      <statement>Guardrail must be one constrained-output call to a small model — never give it tools, never run it on the same model as the main agent, and never wire output_guardrails on a streaming endpoint without explicit buffering.</statement>
+      <rationale>OpenAI documents that output guardrails see the FULL final output; streaming + output-guardrail forces buffering and breaks token-by-token UX. A tool-using guardrail amortizes nothing — it costs a multi-turn loop on every request including legitimate ones. Same-model guardrails defeat the entire pricing differential.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Guardrail agent declared with `tools=[search, fetch, lookup_user]` so it can "investigate" before deciding tripwire.</description>
+      <reason>Now every legitimate request runs a multi-turn tool loop on the cheap model. Average pre-agent cost rises 5-20x; the only request type that stays cheap is the trivially-rejected one, which was already cheap with a single classification call.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Adding `output_guardrails` to a chat endpoint that streams tokens to the user without buffering.</description>
+      <reason>Output guardrails see the final output, so the stream must be fully buffered before the guardrail runs and ANY of it can be sent. First-token latency goes from 200ms to multi-second, defeating the streaming UX. Open Agents SDK issue #495 documents this.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using the same model for guardrail and main agent ("just to be safe gpt-5 will catch the jailbreaks too").</description>
+      <reason>The cost ratio collapses to 1.0 — the guardrail no longer saves anything; it doubles the cost of legitimate requests because they pay for both the guardrail call AND the main agent. Use a model at least 5-10x cheaper than the main agent.</reason>
+    </antipattern>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Streaming + output_guardrail buffers the entire response
+main = Agent(model="gpt-5", output_guardrails=[refund_check])
+async for chunk in Runner.run_streamed(main, msg):
+    yield chunk  # blocked until output_guardrail finishes on the FULL output
+      ]]></code>
+      <note>The "streaming" loop yields nothing until generation finishes — UX is identical to non-streaming, but with hidden buffering and worse error handling.</note>
+    </example>
+
+    <reference href="https://github.com/openai/openai-agents-python/issues/495">Agents SDK output guardrail vs streaming issue.</reference>
+    <reference href="https://openai.github.io/openai-agents-python/guardrails/">Agents SDK guardrails docs.</reference>
+  </section>
+</text>
