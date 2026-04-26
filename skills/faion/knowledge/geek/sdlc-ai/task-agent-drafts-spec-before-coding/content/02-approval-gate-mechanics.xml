@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-approval-gate-mechanics" title="Per-tracker Approval Gate Mechanics">
+  <summary>The agent blocks on a tracker-specific approval signal — Linear emoji reaction, Jira slash command, or GitHub label — and resumes only when the signal is detected from a non-bot user.</summary>
+
+  <section title="Detecting the approval signal">
+    <p>Each tracker exposes a different idiom for human acknowledgement. The agent's polling/webhook handler must (a) listen on the right event, (b) reject signals from agent identities, (c) idempotently record the gate clearance against the ticket so a second emoji or repeat label does not retrigger the workflow.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST treat the gate as cleared only when an approval event originates from an identity NOT matching `^(claude|copilot|devin|cursor|rovo|duo|bot)-.*$` and is one of: Linear `:thumbsup:` reaction on the agent's spec comment, Jira issue comment matching `^/agent\s+approve\b`, or GitHub issue labelled `agent:approved` by a user with write access. Self-approval, agent-to-agent approval, and approval before the spec comment is posted MUST be rejected.</statement>
+      <rationale>Atlassian's "agents respect your permissions, project configurations, workflows, and audit trails" and GitHub's branch-protection-style separation of approver from author both encode the same invariant: an automated actor cannot satisfy a gate that exists to bound automation.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# templates/approval-gate.yaml (excerpt)
+approval:
+  linear:
+    event: reaction.added
+    on_comment: agent_spec_comment_id
+    emoji: thumbsup
+    actor_filter: human_only
+  jira:
+    event: comment.created
+    body_match: '^/agent\s+approve\b'
+    actor_filter: project_role_developer
+  github:
+    event: issue.labeled
+    label: agent:approved
+    actor_filter: write_permission
+      ]]></code>
+      <note>Each tracker maps to one event with an actor filter; the agent's `proceed` only fires on the union.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# polling loop with no actor filter
+if any(c.body.startswith("/agent approve") for c in issue.comments):
+    proceed_to_implementation()
+      ]]></code>
+      <note>A second agent (or the same agent on a stale comment) trips the gate; nothing prevents self-approval.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent treats absence of dissent (no comments for N minutes) as implicit approval.</description>
+      <reason>"Silence = consent" reliably ships wrong-spec PRs when the reporter is asleep, on PTO, or in a different timezone; the gate must be an explicit positive signal.</reason>
+    </antipattern>
+
+    <reference path="templates/approval-gate.yaml">Per-tracker approval mapping consumed by the agent runtime.</reference>
+    <reference href="https://linear.app/docs/agents-in-linear">Linear: agents as first-class assignees with comment-based handoff.</reference>
+    <reference href="https://www.atlassian.com/blog/announcements/ai-agents-in-jira">Atlassian: agents inherit Jira permissions, workflows, audit trails.</reference>
+    <reference href="https://github.com/orgs/community/discussions/190731">GitHub community: enforcing the link/label contract on agent PRs.</reference>
+  </section>
+</text>

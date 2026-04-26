@@ -1,0 +1,33 @@
+# Per-tracker approval-gate config consumed by the agent runtime.
+# The agent's `proceed_to_implementation` event fires ONLY when one of
+# these signals is detected from a non-bot identity AFTER the spec
+# comment has been posted. Self-approval and agent-to-agent approval
+# are rejected by the actor_filter.
+
+bot_identity_pattern: '^(claude|copilot|devin|cursor|rovo|duo|bot)-.*$'
+
+approval:
+  linear:
+    event: reaction.added
+    on_comment: agent_spec_comment_id    # set by the agent after posting
+    emoji: thumbsup
+    actor_filter: human_only             # rejects bot_identity_pattern matches
+    record_event: linear.reaction_id     # idempotent gate clearance
+
+  jira:
+    event: comment.created
+    body_match: '^/agent\s+approve\b'
+    actor_filter: project_role_developer
+    record_event: jira.comment_id
+
+  github:
+    event: issue.labeled
+    label: 'agent:approved'
+    actor_filter: write_permission
+    record_event: github.label_event_id
+
+# Hard rejections — the agent MUST abort and post a refusal comment.
+reject_when:
+  - actor matches bot_identity_pattern
+  - approval event timestamp < spec_comment timestamp
+  - duplicate record_event already cleared this ticket

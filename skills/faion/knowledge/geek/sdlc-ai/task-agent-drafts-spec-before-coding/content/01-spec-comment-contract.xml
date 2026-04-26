@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-spec-comment-contract" title="Mandatory Spec Comment Before Any Diff">
+  <summary>The agent's first action on an assigned ticket is a structured comment with current state, desired state, and proposed plan; the comment shape is fixed and verifiable.</summary>
+
+  <section title="Spec comment shape">
+    <p>An agent that posts free-form prose as its first comment cannot be programmatically gated. A fixed four-section template lets the orchestrator parse the comment, verify completeness, and refuse to proceed if any section is missing.</p>
+
+    <rule testable="true">
+      <statement>On ticket assignment the agent MUST post exactly one comment containing the four sections in this order: Current State, Desired State, Proposed Plan (INVEST-decomposed steps), Open Questions. The comment MUST mention the issue creator. The agent MUST NOT touch the source tree until the approval gate fires; any pre-approval write to a tracked file fails the lint and the cycle aborts.</statement>
+      <rationale>Linear's own internal use of its agent and GitHub Copilot Workspace's spec→plan→diff→PR contract both treat the first-comment spec as the unit of human review; without it, reviewers must reconstruct intent from the diff, which is the exact cost the gate eliminates.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+@reporter — drafted plan for review:
+
+**Current State.** `POST /api/orders` returns 200 even when `items=[]`; downstream invoice job crashes (LIN-4421).
+
+**Desired State.** Empty `items` returns 422 with `{"error":"items_required"}`; existing flows unchanged.
+
+**Proposed Plan.**
+1. Add `items: NonEmptyList` to `OrderRequestSchema` (1 file, ~3 lines).
+2. Map ValidationError to 422 in `orders/views.py`.
+3. Add regression test `test_order_empty_items_rejected`.
+
+**Open Questions.** Confirm 422 (vs 400) is the agreed status. Tag @api-owner if otherwise.
+      ]]></code>
+      <note>Each section short, plan steps small enough to be testable, mention forces the reporter to react.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+I'll fix the empty-items bug. Opening a PR shortly.
+      ]]></code>
+      <note>No current/desired split, no plan, no open question — reviewer cannot react with a thumbs-up because there is nothing to approve.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent posts the spec comment AND opens a draft PR in the same turn.</description>
+      <reason>The PR consumes a review slot before the spec is approved; reviewers anchor on the diff and skip the cheap correction the comment was supposed to enable.</reason>
+    </antipattern>
+
+    <reference path="templates/spec-comment.md">Markdown skeleton the agent fills in.</reference>
+    <reference href="https://linear.app/now/how-we-use-linear-agent-at-linear">Linear engineering: agent posts checkpoints + PR link as comments.</reference>
+    <reference href="https://githubnext.com/projects/copilot-workspace">GitHub Copilot Workspace four-stage gate: spec, plan, diff, PR.</reference>
+  </section>
+</text>
