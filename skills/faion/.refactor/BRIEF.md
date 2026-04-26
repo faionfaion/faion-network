@@ -148,6 +148,26 @@ PATHS:
   ...
 ```
 
+## On quota exhaustion (PARK protocol)
+
+If you see `QUOTA-PARK-SUBAGENT` from the `quota-guard.py` PreToolUse hook (or any tool fails because the hook returns exit 2 with that string), STOP immediately. Do NOT keep trying tools — they will all fail.
+
+In your final response include these markers on their own lines so the orchestrator can record you to `~/.claude/parked-subagents.json`:
+
+```
+PARK_REQUEST: <your-agent-id>      (from the hook message, or your worktree dir name `agent-XXX`)
+PARENT_PID: <pid>                   (from the hook message; "unknown" is acceptable)
+PARENT_SESSION: <uuid>              (from the hook message; "unknown" is acceptable)
+BATCH_PATHS:
+<each absolute path from your TARGETS list, one per line, indented under this header>
+PARTIAL_PATHS:
+<each path where files were written but not committed, one per line>
+```
+
+Then return your normal `BATCH/ACCEPTED/REJECTED/COMMIT/PATHS` block. The orchestrator parses both blocks: it appends parked entries (keyed by `PARENT_SESSION` so each parent only resumes its own subagents) and either re-dispatches or rolls back partials when the quota recovers.
+
+If the hook error is something OTHER than `QUOTA-PARK-SUBAGENT` (e.g. the hook script went missing entirely), still emit `PARK_REQUEST` with the agent ID — the orchestrator treats that as a generic park signal and will re-dispatch on resume.
+
 ## Hard rules (do NOT violate)
 
 - NEVER `--no-verify`. Pre-commit hooks must pass.

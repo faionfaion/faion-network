@@ -93,6 +93,34 @@ TARGETS:
 - **3+ "out of extra usage" / quota errors in a 30-minute window** → `CronDelete <id>`, restore those 8-path batches to head of `QUEUE.txt`, alert user with the resume-time hint from the error.
 - **User says stop** → `CronDelete <id>`, leave queue + worktrees as-is. Resume by re-launching `/loop` later — disk state survives.
 
+## Subagent PARK protocol (quota-guard hook)
+
+When a subagent's task-notification contains a `PARK_REQUEST: <agent_id>` block (emitted because the `quota-guard.py` PreToolUse hook fired and instructed it to stop):
+
+1. Parse the markers: `PARK_REQUEST`, `PARENT_PID`, `PARENT_SESSION`, `BATCH_PATHS`, `PARTIAL_PATHS`.
+2. Append to `~/.claude/parked-subagents.json` keyed by `PARENT_SESSION` (so multiple parent sessions can coexist):
+   ```json
+   {
+     "<parent_session_uuid>": {
+       "<agent_id>": {
+         "parent_pid": "...",
+         "batch_paths": [...],
+         "partial_paths": [...],
+         "parked_at": "<iso>"
+       }
+     }
+   }
+   ```
+3. Do NOT record paths as DONE/FAIL — they need re-dispatch.
+4. Restore the `BATCH_PATHS` to the head of `QUEUE.txt` (deduplicated against entries already there) so the next available pool slot picks them up.
+5. For `PARTIAL_PATHS`: the worktree state is dirty. On the next dispatch of those paths, the new subagent will overwrite into a fresh worktree — the dirty old worktree can be cleaned up later or left orphaned (it's under `.claude/worktrees/` which is gitignored).
+6. Report ONE line: `Pool=<active>: <prev-id> PARKED (parent=<short-session>, paths=<N>), restored to QUEUE. Queue=<rem> done=<total>.`
+
+On resume (when quota recovers and `/loop` ticks again, or user runs `/quota-resume`):
+1. Read `~/.claude/parked-subagents.json` filtered by current parent session UUID.
+2. Their batch paths are already back in `QUEUE.txt` (step 4 above), so the normal pool refill logic picks them up.
+3. After the entire parked group is re-dispatched, prune those entries from the JSON.
+
 ## Resume on session restart / `/compact`
 
 Disk state is the source of truth:

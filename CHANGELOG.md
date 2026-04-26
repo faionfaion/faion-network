@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor-pool: subagent PARK protocol on quota exhaustion. quota-guard.py detects worktree cwd and emits PARK_REQUEST + PARENT_PID + PARENT_SESSION markers; BRIEF.md/TICK.md handle parking to ~/.claude/parked-subagents.json (keyed by parent session) and resume on quota recovery. hooks/quota-guard.py added to repo + global gitignore so it survives worktree/branch ops.
 - refactor: 8/8 methodologies migrated to new shape (batch: vui-accessibility-inclusivity, accessibility-first-design, enterprise-xr-applications, spatial-computing-overview, spatial-design-tools, error-handling-in-vui, spatial-interaction-patterns, vui-iot-integration)
 - refactor: 8/8 ux-ui-designer methodologies migrated to new shape (batch: voice-ui, cognitive-walkthrough, ada-title-ii-compliance-2026, cognitive-inclusion-design, w3c-design-tokens-standard, token-organization, core-vui-design-principles, surveys)
 - refactor: 8/8 ui-designer methodologies migrated to new shape (batch: cross-platform-token-distribution, voice-ui-patterns, w3c-design-tokens-standard, token-organization, core-vui-design-principles, vui-privacy-security, design-system-success-factors, semantic-tokens-and-modes)
