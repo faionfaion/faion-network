@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-entity-configuration" title="IEntityTypeConfiguration Pattern">
+  <summary>EF Core entity configuration using IEntityTypeConfiguration for clean, maintainable data-layer setup.</summary>
+
+  <section title="Configuration class structure">
+    <rule>
+      <statement>Extract every entity's configuration into a separate IEntityTypeConfiguration&lt;T&gt; class. Never inline builder calls in OnModelCreating beyond ApplyConfigurationsFromAssembly.</statement>
+      <rationale>OnModelCreating becomes unmaintainable past 5 entities when configurations are inlined. Separate files allow focused review and independent version history per entity.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+// Data/Configurations/UserConfiguration.cs
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+
+        builder.Property(u => u.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+
+        builder.Property(u => u.Email)
+            .IsRequired()
+            .HasMaxLength(255);
+
+        builder.HasIndex(u => u.Email).IsUnique();
+
+        builder.Property(u => u.CreatedAt)
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+
+        builder.HasMany(u => u.Orders)
+            .WithOne(o => o.User)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="OnModelCreating convention">
+    <rule>
+      <statement>In OnModelCreating, call only modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly). No entity-specific calls.</statement>
+      <rationale>Single-call convention makes the context trivially testable and allows new configurations to be discovered automatically without editing the context class.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Value objects and owned types">
+    <rule>
+      <statement>Use HasConversion for value objects (Money, Email). Use OwnsOne for owned entities. Use HasDiscriminator only when polymorphic queries are needed.</statement>
+      <rationale>HasConversion keeps the domain model free of EF attributes. Owned types map cleanly to columns without a join. Discriminator inheritance adds query complexity that is rarely needed.</rationale>
+    </rule>
+    <rule>
+      <statement>Index every foreign key explicitly. EF Core does not add FK indexes automatically in some provider/version combinations.</statement>
+      <rationale>Missing FK indexes cause full table scans on joins; the performance regression only appears under production data volumes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cascade delete antipatterns">
+    <antipattern>
+      <description>Using OnDelete(DeleteBehavior.Cascade) on multiple paths in SQL Server without checking the migration SQL.</description>
+      <reason>SQL Server rejects FK cycles caused by multiple cascade paths, producing a migration error only at apply time, not at code review time.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Omitting RowVersion or ConcurrencyCheck on aggregate roots.</description>
+      <reason>Without optimistic concurrency, last-write-wins silently corrupts data under concurrent updates.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/entity-configuration.cs">Full IEntityTypeConfiguration skeleton with common patterns.</reference>
+</text>

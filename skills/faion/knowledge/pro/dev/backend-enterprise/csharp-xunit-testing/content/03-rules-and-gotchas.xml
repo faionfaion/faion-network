@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rules-and-gotchas" title="Agent Rules and Gotchas">
+  <summary>Critical agent rules for xUnit test generation: async signatures, non-determinism, coverage loop, and legal patterns.</summary>
+
+  <section title="Agent-critical rules">
+    <rule>
+      <statement>All [Fact] and [Theory] test methods must return async Task, never async void.</statement>
+      <rationale>xUnit cannot await async void tests; exceptions are swallowed, tests appear to pass when they should fail.</rationale>
+    </rule>
+    <rule>
+      <statement>Replace DateTime.UtcNow with an IClock interface before generating timestamp assertions.</statement>
+      <rationale>Tests asserting on real timestamps are non-deterministic and produce flaky Assert.Equal failures on slow CI runners.</rationale>
+    </rule>
+    <rule>
+      <statement>Reject any generated test that uses Thread.Sleep or polling. Use TaskCompletionSource or IHostApplicationLifetime instead.</statement>
+      <rationale>Sleep-based tests are timing-sensitive and create random CI failures that are hard to reproduce locally.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Assert.Equal(expected, actual) form; never Assert.True(expected == actual).</statement>
+      <rationale>Assert.True without a message produces "Expected: True, Actual: False" — no information about what failed.</rationale>
+    </rule>
+  </section>
+
+  <section title="Coverage-driven test loop">
+    <rule>
+      <statement>Run coverlet after each test pass. For lines with hit count 0, emit one new [Theory] + [InlineData] case per uncovered branch, then re-run until line coverage threshold is met.</statement>
+      <rationale>Systematic coverage-driven generation avoids the common pattern of writing many tests for the same happy path while leaving error branches uncovered.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+dotnet test MyApp.Tests \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./TestResults \
+  /p:Threshold=80 /p:ThresholdType=line
+      ]]></code>
+      <note>Threshold=80 blocks the test run and returns exit code 2 if line coverage drops below 80%. Agents use this as a hard quality gate.</note>
+    </example>
+  </section>
+
+  <section title="Common agent mistakes">
+    <antipattern>
+      <description>Generating _mock.Setup(...) for every dependency method including ones the SUT never calls.</description>
+      <reason>Over-specified mocks make tests break when refactoring adds or removes method calls that are not part of the public contract.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Generating duplicate [InlineData] rows with the same logical case under different labels.</description>
+      <reason>Duplicates inflate test count without adding coverage signal; they hide the actual set of cases being exercised.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using WebApplicationFactory without public partial class Program {} in .NET 6+ minimal hosting.</description>
+      <reason>The test assembly cannot see Program unless it is public or has InternalsVisibleTo set; integration tests fail to compile silently.</reason>
+    </antipattern>
+  </section>
+</text>
