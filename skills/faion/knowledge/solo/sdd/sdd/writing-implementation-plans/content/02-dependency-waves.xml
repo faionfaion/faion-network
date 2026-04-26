@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-dependency-waves" title="Dependency Graph and Wave Analysis">
+  <summary>DAG construction algorithm, wave identification, critical path analysis, and agent-specific dependency anti-patterns.</summary>
+
+  <section title="Building the DAG">
+    <rule>
+      <statement>Build the dependency graph from design.md, not from the task list. For each file operation in design.md, ask: what must exist before this file can be created or modified? The answers are dependencies.</statement>
+      <rationale>Inferring dependencies from task descriptions introduces hidden assumptions. Grounding the DAG in design.md file operations produces a complete, objective dependency set.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use only Finish-to-Start (FS) dependencies in implementation plans. Document the others (SS, FF) only if they provide a real parallelization opportunity — do not add them for completeness.</statement>
+      <rationale>Non-FS dependencies add complexity without benefit unless agents can actually exploit them. Most agent executors handle only sequential-within-wave execution.</rationale>
+    </rule>
+  </section>
+
+  <section title="Wave Algorithm">
+    <rule>
+      <statement>Wave 1 = all tasks with no dependencies. Wave N = all tasks whose dependencies are entirely in Waves 1 through N-1. Repeat until all tasks are assigned. Tasks in the same wave can be executed in parallel.</statement>
+      <rationale>The wave algorithm is deterministic and reproducible. Agents and humans can verify it independently by inspecting the dependency list of each task.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[| Wave | Tasks | Parallel | Token Load |
+|------|-------|----------|------------|
+| 1 | TASK-001, TASK-002 | Yes | 25k + 20k |
+| 2 | TASK-003, TASK-004 | Yes | 45k + 35k |
+| 3 | TASK-005 | No | 50k |
+
+Critical path: TASK-001 → TASK-003 → TASK-005 = 120k tokens]]></code>
+    </example>
+  </section>
+
+  <section title="Critical Path">
+    <rule>
+      <statement>Identify the longest dependency chain by token sum. Prioritize optimization of critical path tasks — splitting or simplifying them reduces total execution scope more than optimizing off-path tasks.</statement>
+      <rationale>The feature cannot complete faster than its critical path. Off-path task optimization produces no schedule benefit for the overall feature execution.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Agent declares all tasks as Wave 1 (no dependencies) to maximize apparent parallelism.</description>
+      <reason>Missing dependencies cause merge conflicts and broken builds when parallel agents overwrite each other's files. Require dependency evidence from design.md for every "no dependencies" claim.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Agent declares all tasks as depending on the previous one, producing a purely sequential plan.</description>
+      <reason>LLMs default to sequential thinking. A purely sequential plan with more than 3 tasks likely contains false dependencies. Review each FS edge: does the downstream task actually need the upstream file to exist, or is it just logically related?</reason>
+    </antipattern>
+  </section>
+</text>

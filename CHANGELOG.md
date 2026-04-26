@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)
 - refactor: 8/8 methodologies migrated to new shape (batch: active-listening, selling-ideas, feedback, business-storytelling, ideation-methods, negotiation, growth-linkedin-strategy, growth-community-building)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-onboarding-emails, growth-youtube-strategy, search-everywhere-optimization, growth-customer-testimonials, plausible-analytics, ops-dashboard-setup, ops-automation-workflow, seo-techniques)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-tiktok-basics, growth-webinar-planning, growth-podcast-strategy, growth-content-marketing, growth-tiktok-strategies, growth-email-marketing, growth-newsletter-growth, growth-copywriting-fundamentals)
