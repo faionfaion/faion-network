@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="pytest-django Antipatterns">
+  <summary>Common test mistakes and LLM-specific failure modes in Django/pytest projects.</summary>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Testing internal method calls instead of observable behavior.</description>
+      <reason>Tests that assert on _validate_items was called break on any refactoring that renames the method, even if behavior is unchanged. Test the outcome (exception raised, object created) not the path.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Shared mutable state on test class attributes (class-level list or dict).</description>
+      <reason>Tests execute in arbitrary order; shared state causes order-dependent failures. Use pytest fixtures — each test gets a fresh instance.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Re-creating fixtures inline instead of reusing shared conftest fixtures.</description>
+      <reason>Inline creation duplicates logic and diverges from the shared fixture over time. LLMs must read conftest.py first and reuse user, api_client, auth_client.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using --reuse-db in CI.</description>
+      <reason>Masks migration drift — agents update models without re-running migrations, and existing DB state hides the missing column. CI must always --create-db.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Calling mocker.patch with the module the agent read, not the module where the SUT imports the symbol.</description>
+      <reason>Patching the wrong import path produces a test that always passes regardless of the mock — silent zero coverage.</reason>
+    </antipattern>
+  </section>
+
+  <section title="LLM-Specific Gotchas">
+    <rule>
+      <statement>Require agents to read tests/conftest.py before generating any test. Prompt: "Read tests/conftest.py first. Reuse existing fixtures."</statement>
+      <rationale>LLMs default to inline creation rather than reuse; reading the file first surfaces the available fixture names.</rationale>
+    </rule>
+    <rule>
+      <statement>Require --strict-markers and a lint rule that finds DB-touching code in tests without @pytest.mark.django_db.</statement>
+      <rationale>LLMs omit the marker; the resulting error is clear but wastes tokens iterating. Catch it in lint, not at runtime.</rationale>
+    </rule>
+  </section>
+</text>

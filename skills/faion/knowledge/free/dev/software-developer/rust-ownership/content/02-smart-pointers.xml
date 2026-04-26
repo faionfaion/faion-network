@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-smart-pointers" title="Smart Pointers: Box, Rc, RefCell, Arc, Mutex">
+  <summary>When to use each smart pointer, their runtime costs, and common composition patterns.</summary>
+
+  <section title="Box — Heap Allocation with Single Ownership">
+    <rule>
+      <statement>Use Box&lt;T&gt; for recursive types (where the size is unknown at compile time) or to move large values to the heap.</statement>
+      <rationale>Box provides heap allocation with ownership semantics identical to stack values; the pointer is the owner and frees on drop.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+enum List {
+    Cons(i32, Box<List>),
+    Nil,
+}
+// Without Box, List has infinite size — compiler rejects it.
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Rc — Shared Ownership (Single Thread)">
+    <rule>
+      <statement>Use Rc&lt;T&gt; for shared ownership in single-threaded code only; Rc is not Send.</statement>
+      <rationale>Rc uses non-atomic reference counting — cheaper than Arc but unsafe across threads.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use std::rc::Rc;
+let data = Rc::new(vec![1, 2, 3]);
+let data2 = Rc::clone(&data); // increments refcount
+println!("count: {}", Rc::strong_count(&data)); // 2
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="RefCell — Interior Mutability (Single Thread)">
+    <rule>
+      <statement>Use RefCell&lt;T&gt; when you need mutability inside an otherwise-immutable context; borrow rules are checked at runtime, not compile time.</statement>
+      <rationale>Moves the borrow-check to runtime — a panic replaces a compile error. Use only as a last resort when ownership redesign is truly impossible.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not reach for Rc&lt;RefCell&lt;T&gt;&gt; to silence the borrow checker — it usually means the data layout is wrong (graph forced into a tree, etc.).</statement>
+      <rationale>Runtime borrow panics are harder to debug than compile errors and add pointer-chasing overhead.</rationale>
+    </rule>
+  </section>
+
+  <section title="Arc and Mutex — Thread-Safe Shared State">
+    <rule>
+      <statement>Use Arc&lt;T&gt; (atomic reference counting) to share ownership across threads. Combine with Mutex&lt;T&gt; for shared mutation.</statement>
+      <rationale>Arc is Send + Sync; Rc is not. Atomic refcount is more expensive than Rc — prefer message passing (mpsc) over Arc&lt;Mutex&lt;T&gt;&gt; when possible.</rationale>
+    </rule>
+    <rule>
+      <statement>In async code use tokio::sync::Mutex when you need to hold the lock across an .await point; use std::sync::Mutex for compute-heavy synchronous critical sections.</statement>
+      <rationale>std::sync::Mutex is not async-aware — holding it across .await blocks a thread. tokio::Mutex yields the task instead.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use std::sync::{Arc, Mutex};
+use std::thread;
+
+let counter = Arc::new(Mutex::new(0));
+let handles: Vec<_> = (0..10).map(|_| {
+    let c = Arc::clone(&counter);
+    thread::spawn(move || { *c.lock().unwrap() += 1; })
+}).collect();
+for h in handles { h.join().unwrap(); }
+println!("{}", *counter.lock().unwrap()); // 10
+      ]]></code>
+    </example>
+  </section>
+</text>

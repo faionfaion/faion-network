@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-model-design" title="Django Model Design Patterns">
+  <summary>BaseModel inheritance, SoftDelete, TextChoices, DB constraints, and ForeignKey on_delete selection.</summary>
+
+  <section title="BaseModel Pattern">
+    <rule>
+      <statement>Every domain model inherits from BaseModel (uid + created_at + updated_at). Never inherit from models.Model directly for domain entities.</statement>
+      <rationale>Consistent base fields across all models enables audit trails and safe public APIs without per-model boilerplate.</rationale>
+    </rule>
+    <reference path="templates/base_model.py">BaseModel + SoftDeleteModel scaffold.</reference>
+  </section>
+
+  <section title="Service Layer">
+    <rule>
+      <statement>Models must be thin: fields, Meta, and __str__ only. Business logic belongs in services/. Always call full_clean() before save() in service functions.</statement>
+      <rationale>full_clean() is not called automatically by save(). Omitting it silently bypasses model-level validation (clean(), validators, constraints).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# apps/users/services.py
+def user_create(*, email: str, name: str, password: str) -> User:
+    user = User(email=email, name=name)
+    user.set_password(password)
+    user.full_clean()   # must be explicit — save() does not call it
+    user.save()
+    return user
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="TextChoices and IntegerChoices">
+    <rule>
+      <statement>Always use TextChoices or IntegerChoices for enumerated fields. Never use raw string tuples as choices.</statement>
+      <rationale>TextChoices provides .choices, .values, .labels, and .names; raw tuples require parallel string maintenance and are caught by ruff DJ rules.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# apps/orders/constants.py
+from django.db import models
+
+class OrderStatus(models.TextChoices):
+    PENDING    = 'pending',    'Pending'
+    PROCESSING = 'processing', 'Processing'
+    SHIPPED    = 'shipped',    'Shipped'
+    CANCELLED  = 'cancelled',  'Cancelled'
+
+# apps/orders/models.py
+class Order(BaseModel):
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+    )
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Database Constraints">
+    <rule>
+      <statement>Use Meta.constraints for invariants that span multiple fields. Use CheckConstraint for value-range rules and UniqueConstraint for conditional uniqueness.</statement>
+      <rationale>DB-level constraints enforce invariants even when ORM validation is bypassed (bulk_create, raw SQL). CheckConstraint with condition requires PostgreSQL — pin the backend in a comment.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db.models import Q, CheckConstraint, UniqueConstraint
+
+class Order(BaseModel):
+    quantity = models.PositiveIntegerField()
+    discount = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                check=Q(discount__gte=0) & Q(discount__lte=100),
+                name='valid_discount_pct',
+            ),
+            UniqueConstraint(
+                fields=['user', 'product'],
+                condition=Q(deleted_at__isnull=True),
+                name='unique_active_user_product',  # PostgreSQL only
+            ),
+        ]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="ForeignKey on_delete">
+    <rule>
+      <statement>Choose on_delete deliberately: PROTECT for user/account refs (delete is an event, not silent cascade), CASCADE only for child rows with no meaning without parent, SET_NULL for optional assignees.</statement>
+      <rationale>CASCADE on user references causes irreversible data loss when an account is deleted — a common production incident.</rationale>
+    </rule>
+  </section>
+</text>

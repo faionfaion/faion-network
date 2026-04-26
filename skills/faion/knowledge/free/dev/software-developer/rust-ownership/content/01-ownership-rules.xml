@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ownership-rules" title="Rust Ownership Rules, Borrowing, and Lifetimes">
+  <summary>The three ownership rules, move semantics, borrowing rules (shared vs exclusive), and lifetime annotations.</summary>
+
+  <section title="Three Ownership Rules">
+    <rule>
+      <statement>Each value in Rust has exactly one owner at any time.</statement>
+      <rationale>Enforces single-point responsibility for deallocation; when the owner goes out of scope the value is dropped.</rationale>
+    </rule>
+    <rule>
+      <statement>Assignment of a non-Copy type moves ownership; the original binding becomes invalid.</statement>
+      <rationale>Prevents double-free and use-after-free at compile time with zero runtime cost.</rationale>
+    </rule>
+    <rule>
+      <statement>Copy types (all stack-only primitives like i32, bool, char, f64, and tuples of Copy types) are copied on assignment; both bindings remain valid.</statement>
+      <rationale>Copy is safe only when bitwise duplication is semantically correct and carries no heap allocation.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+let s1 = String::from("hello");
+let s3 = s1;          // s1 moved into s3
+// println!("{}", s1); // compile error: s1 moved
+
+let x = 5;
+let y = x;            // copied — x is still valid
+println!("{} {}", x, y);
+      ]]></code>
+      <note>String is not Copy (heap allocation); i32 is Copy (stack-only).</note>
+    </example>
+  </section>
+
+  <section title="Borrowing Rules">
+    <rule>
+      <statement>At any given time you may have either any number of immutable references (&amp;T) OR exactly one mutable reference (&amp;mut T), but not both.</statement>
+      <rationale>Shared XOR mutable — eliminates data races statically.</rationale>
+    </rule>
+    <rule>
+      <statement>References must not outlive the value they point to.</statement>
+      <rationale>Dangling pointers are a compile error, not a runtime crash.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+fn calculate_length(s: &String) -> usize { s.len() }
+
+let mut s = String::from("hello");
+let len1 = calculate_length(&s);
+let len2 = calculate_length(&s);   // multiple immutable borrows OK
+// mutable borrow is fine after last immutable borrow use
+let r = &mut s;
+r.push_str(" world");
+      ]]></code>
+    </example>
+    <example type="bad">
+      <code lang="rust"><![CDATA[
+let r1 = &s;
+let r2 = &s;
+let r3 = &mut s; // ERROR: cannot borrow as mutable while immutable borrows exist
+println!("{} {}", r1, r2);
+      ]]></code>
+      <note>Rearrange so r1/r2 are last used before r3 is introduced — Non-Lexical Lifetimes (NLL) may allow it if r1/r2 are not used after r3's introduction.</note>
+    </example>
+  </section>
+
+  <section title="Lifetime Annotations">
+    <rule>
+      <statement>Add explicit lifetime parameters only when the compiler asks; name them after their meaning ('src, 'cfg) not positionally ('a, 'b).</statement>
+      <rationale>Lifetime elision handles the common cases; premature explicit lifetimes obscure intent and cascade into callers.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+// Compiler can infer: output lifetime = input lifetime
+fn first_word(s: &str) -> &str {
+    s.split_whitespace().next().unwrap_or("")
+}
+
+// Explicit needed: two inputs, compiler can't guess which to tie output to
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    if x.len() > y.len() { x } else { y }
+}
+
+// Lifetime in struct: struct cannot outlive the slice it holds
+struct Excerpt<'a> {
+    part: &'a str,
+}
+      ]]></code>
+    </example>
+    <rule>
+      <statement>For async code, all values moved into spawned tasks must be 'static — capture by value with move or Arc::clone shared state.</statement>
+      <rationale>tokio::spawn and std::thread::spawn require 'static + Send; borrowed locals do not satisfy this.</rationale>
+    </rule>
+  </section>
+</text>

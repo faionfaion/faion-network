@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-contract-testing" title="Contract Testing with Pact">
+  <summary>When Pact is justified, consumer/provider setup, Pact Broker workflow, and can-i-deploy gate.</summary>
+
+  <section title="When Contract Tests Are Justified">
+    <rule>
+      <statement>Use Pact contract tests only when consumer and provider are maintained by different teams or in separate repositories. For single-team single-repo monoliths, integration tests against TestClient cover the same surface at lower cost.</statement>
+      <rationale>Pact adds a broker, two-sided test setup, and a can-i-deploy gate. The overhead only pays off when independent deploy cycles exist.</rationale>
+    </rule>
+  </section>
+
+  <section title="Consumer Side (JavaScript/TypeScript)">
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+const { Pact } = require('@pact-foundation/pact');
+
+const provider = new Pact({ consumer: 'Frontend', provider: 'UserAPI', port: 8080 });
+
+describe('User API contract', () => {
+  beforeAll(() => provider.setup());
+  afterAll(() => provider.finalize());
+
+  it('gets user by id', async () => {
+    await provider.addInteraction({
+      state: 'user exists',
+      uponReceiving: 'GET /users/123',
+      withRequest: { method: 'GET', path: '/users/123', headers: { Authorization: 'Bearer token' } },
+      willRespondWith: {
+        status: 200,
+        body: { id: Matchers.string('123'), name: Matchers.string('John'), email: Matchers.email() },
+      },
+    });
+    const response = await userClient.getUser('123');
+    expect(response.id).toBe('123');
+  });
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Provider Side (Python)">
+    <rule>
+      <statement>Use pact-python v2 on the provider side. pactman is unmaintained — pin pact-python&gt;=2.</statement>
+      <rationale>pactman has not had releases in years; pact-python v2 aligns with the Pact Specification v3/v4.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pact Broker Workflow">
+    <rule>
+      <statement>Consumer CI publishes pacts to the Pact Broker. Provider CI verifies against the latest consumer tag. Both sides run can-i-deploy before deploying to production.</statement>
+      <rationale>can-i-deploy prevents a provider from deploying a breaking change before all consumers have been updated.</rationale>
+    </rule>
+    <rule>
+      <statement>Any change to openapi.json snapshot or a removed Pact pact must be reviewed by a human before merging.</statement>
+      <rationale>Agents will silently delete drifting tests to make CI green. Removing a pact means a consumer dependency was dropped — that is a product decision, not a test fix.</rationale>
+    </rule>
+  </section>
+</text>

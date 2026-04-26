@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="Django BaseModel Antipatterns">
+  <summary>Common mistakes when implementing or consuming BaseModel, with emphasis on LLM-specific failure modes.</summary>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Exposing auto-increment id in DRF serializers or URL patterns instead of uid.</description>
+      <reason>Leaks table size, enables enumeration attacks, and couples public API to internal DB layout. Always use uid in Meta.fields and set lookup_field = 'uid'.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Overriding Meta in a child model without inheriting BaseModel.Meta (class Meta(BaseModel.Meta)).</description>
+      <reason>Silently loses the base ordering and get_latest_by; discovered only when querysets return unexpected order in production.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using default=uuid.uuid4() (called once at import time) instead of default=uuid.uuid4 (callable).</description>
+      <reason>All rows created after the first migration get the same UUID. Caught only by a test that creates two rows and checks uid uniqueness.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Applying BaseModel to M2M through-tables and intermediate models.</description>
+      <reason>Through-tables are link entities, not domain entities. Extra UUID + index balloons index count for no benefit.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Squashing migrations without verifying the UUID unique=True constraint is preserved.</description>
+      <reason>Auto-squash can drop and re-add constraints without backfilling — corrupts production data. Never auto-squash; always review the generated migration.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Missing Indexes">
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Missing composite index — full-table scan on common query
+class Order(BaseModel):
+    status = models.CharField(max_length=20)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class Order(BaseModel):
+    status = models.CharField(max_length=20, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'status', 'created_at'])]
+      ]]></code>
+    </example>
+  </section>
+</text>

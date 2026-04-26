@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-performance" title="Python Performance Optimization">
+  <summary>Profile-first rule, optimization strategy table, and Rust+PyO3 integration notes.</summary>
+
+  <section title="Profile First">
+    <rule>
+      <statement>Always profile before optimizing. Use cProfile or py-spy to identify the actual bottleneck before choosing an optimization strategy.</statement>
+      <rationale>The optimization strategy table's speedup numbers are qualitative. Agents that quote "10-1000x" without a profile recommend the wrong strategy constantly. CPU-bound optimizations do nothing for I/O-bound code.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# CPU profiling
+python -m cProfile -s cumulative script.py | head -20
+
+# Line-level profiling
+pip install line_profiler
+kernproof -l -v script.py
+
+# Sampling profiler (minimal overhead, works on running processes)
+pip install py-spy
+py-spy top --pid <pid>
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Optimization Strategy Table">
+    <list>
+      <item>Algorithm optimization — 10-1000x, Low complexity — always try first</item>
+      <item>NumPy vectorization — 10-100x, Low — numeric operations only</item>
+      <item>Numba JIT — 10-100x, Low — numeric, CPU-bound only</item>
+      <item>Cython — 10-50x, Medium — tight loops</item>
+      <item>Rust + PyO3 — 10-100x, High — critical paths with distribution complexity</item>
+      <item>PyPy — 2-10x, Low — pure Python; not compatible with all C extensions</item>
+    </list>
+  </section>
+
+  <section title="Rust + PyO3 Notes">
+    <rule>
+      <statement>Rust+PyO3 integration is only justified after profiling confirms a CPU-bound hot path. Set up maturin with abi3 for a single wheel covering Python 3.10-3.14.</statement>
+      <rationale>Build and distribution complexity (manylinux wheels, maturin, ABI3) is substantial. FFI boundary overhead kills the win for small-payload functions.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not recommend Numba or Cython for I/O-bound code. They speed up CPU operations only — applying them to network or disk I/O loops yields zero improvement.</statement>
+      <rationale>Agents routinely recommend Numba for any "slow" code without checking whether it is CPU or I/O bound.</rationale>
+    </rule>
+  </section>
+</text>

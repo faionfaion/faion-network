@@ -11,6 +11,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: unit-testing, error-handling, react-hooks, mob-programming, nodejs-express-fastify, django-imports, go-http-handlers, css-in-js)
 - refactor: 8/8 ux-researcher methodologies migrated to new shape (batch: personas, contextual-inquiry, vui-conversation-design, content-audit-basics, vui-testing-best-practices, focus-groups, vui-market-context, tree-testing)
 - refactor: 8/8 methodologies migrated to new shape (batch: documentation, code-decomposition-patterns, pnpm-package-management, e2e-testing, rust-testing, test-fixtures, shadcn-ui, code-review)
+- refactor: 8/8 methodologies migrated to new shape (batch: rust-ownership, django-base-model, django-pytest, api-testing, python-web-frameworks, django-models, python-overview, python-fastapi)
 - refactor: 8/8 ux methodologies migrated to new shape (batch: flexibility-efficiency, help-documentation, voice-ui-basics, design-tokens-fundamentals, wireframing, tailwind-design-tokens, spatial-ux-fundamentals, prototyping)
 - refactor: 8/8 backend-enterprise methodologies migrated to new shape (batch: csharp-background-services, java-spring, php-eloquent, decomposition-laravel, csharp-aspnet-core, ruby-activerecord, decomposition-rails, csharp-dotnet-patterns)
 - refactor: 8/8 ux-researcher methodologies migrated to new shape (batch: content-audit-process, usability-testing, consistency-standards, card-sorting, error-prevention, journey-mapping, error-recovery, competitive-analysis)

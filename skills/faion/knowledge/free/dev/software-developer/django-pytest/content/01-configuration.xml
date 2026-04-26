@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-configuration" title="pytest-django Configuration and Fixtures">
+  <summary>pyproject.toml settings, directory layout, shared conftest fixtures, and factory_boy pattern.</summary>
+
+  <section title="Configuration">
+    <rule>
+      <statement>Set DJANGO_SETTINGS_MODULE in pyproject.toml [tool.pytest.ini_options] to a test-specific settings file with DEBUG=False, in-memory cache, fake email backend, and MD5PasswordHasher.</statement>
+      <rationale>Test settings reduce overhead and prevent accidental real email/payment sends. MD5PasswordHasher speeds up tests by 10-100x but must never leak into dev/prod settings.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers", "-ra"]
+markers = [
+    "slow: deselect with '-m not slow'",
+    "integration: integration tests",
+]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Directory Structure">
+    <rule>
+      <statement>Keep conftest.py close to where fixtures are used. Project-root conftest only for truly global fixtures (api_client, user, auth_client, network-blocking).</statement>
+      <rationale>Auto-discovery cascades — nested conftest fixtures shadow each other silently if not scoped.</rationale>
+    </rule>
+  </section>
+
+  <section title="Shared Fixtures">
+    <rule>
+      <statement>Add an autouse network-blocking fixture in the root conftest that raises on any socket.create_connection call. Tests that need real network must explicitly opt out.</statement>
+      <rationale>Tests that forget to mock external services produce 30s timeouts, not clear failures. A loud guard makes the gap obvious immediately.</rationale>
+    </rule>
+    <reference path="templates/conftest.py">Minimal conftest with api_client, user, auth_client, and network-blocking fixture.</reference>
+  </section>
+
+  <section title="Factory Pattern">
+    <rule>
+      <statement>Use factory_boy DjangoModelFactory instead of fixture-as-function for test data. Override fields per test with UserFactory(email='x@y.z').</statement>
+      <rationale>factory_boy handles sequences and related objects; plain fixtures-as-functions require manual wiring for each variant.</rationale>
+    </rule>
+    <reference path="templates/factories.py">DjangoModelFactory scaffolds for User and related models.</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import factory
+from apps.users.models import User
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+      ]]></code>
+    </example>
+  </section>
+</text>

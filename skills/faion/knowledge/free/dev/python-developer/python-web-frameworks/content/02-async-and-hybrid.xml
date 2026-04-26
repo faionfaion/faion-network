@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-async-and-hybrid" title="Async Support and Hybrid Architecture">
+  <summary>Async depth per framework, the FastAPI+Django hybrid pattern, and production deployment commands.</summary>
+
+  <section title="Async Support">
+    <rule>
+      <statement>For Django async views, all ORM calls must use sync_to_async or the a-prefixed ORM methods (aall, aget, etc.). Not every ORM operation has an async alias — check per Django release.</statement>
+      <rationale>Calling sync ORM inside an async view blocks the event loop thread. Django does not detect this automatically.</rationale>
+    </rule>
+    <rule>
+      <statement>Flask async views run under WSGI — each request blocks a worker for the coroutine duration. Do not use async views in Flask expecting real concurrency.</statement>
+      <rationale>WSGI is synchronous; Flask's async view support wraps the coroutine in a sync call, providing no concurrency benefit.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Django 4.1+ async ORM
+async def get_users(request):
+    users = await User.objects.filter(active=True).aall()
+    return JsonResponse({"users": [u.email for u in users]})
+
+# FastAPI — native async, no wrapper needed
+@app.get("/users")
+async def get_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+    return result.scalars().all()
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="FastAPI + Django Hybrid">
+    <rule>
+      <statement>In a FastAPI+Django hybrid, Django owns the database schema (all migrations run via manage.py). FastAPI reads from the same tables using SQLAlchemy in read-mostly mode.</statement>
+      <rationale>Two ORMs writing schema migrations to the same database causes conflicts. Single DDL owner (Django) eliminates them.</rationale>
+    </rule>
+    <p>Pattern: FastAPI handles high-throughput public API traffic; Django provides admin panel and content management. Both connect to the same database with clear read/write boundaries.</p>
+  </section>
+
+  <section title="Production Deployment">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Django ASGI (requires --lifespan off until Channels configured)
+gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker -w 4 --lifespan off
+
+# FastAPI
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Flask WSGI
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Pin one ASGI server per app and one WSGI server per app. Never mix gunicorn workers for different frameworks in the same process.</statement>
+      <rationale>LLMs switch to whatever server they saw in the last training example; locking the server in constitution.md prevents this.</rationale>
+    </rule>
+  </section>
+</text>

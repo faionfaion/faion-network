@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-test-patterns" title="pytest-django Test Patterns">
+  <summary>Unit tests, API integration tests, parametrize, and mocking external services.</summary>
+
+  <section title="Unit Tests for Services">
+    <rule>
+      <statement>Mark test classes or functions with @pytest.mark.django_db only when DB access is required. Pure logic tests must not touch the DB.</statement>
+      <rationale>DB setup costs time; pure logic tests run much faster without it. --strict-markers makes missing markers a hard error.</rationale>
+    </rule>
+    <rule>
+      <statement>Structure each test: Arrange (set up data) → Act (call code under test) → Assert (verify observable outcome). One logical assertion group per test.</statement>
+      <rationale>Tests with multiple unrelated assertions fail for multiple reasons simultaneously, making the root cause ambiguous.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestCreateOrder:
+    def test_creates_order_with_valid_data(self, user, product):
+        order = services.create_order(user=user, items=[{"product_id": product.id, "quantity": 2}])
+        assert order.user == user
+        assert order.status == "pending"
+
+    def test_raises_for_insufficient_stock(self, user, product):
+        product.stock = 1
+        product.save()
+        with pytest.raises(ValueError, match="Insufficient stock"):
+            services.create_order(user=user, items=[{"product_id": product.id, "quantity": 10}])
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Integration Tests for APIs">
+    <rule>
+      <statement>Use APIClient.force_authenticate instead of issuing real login requests in integration tests — much faster and tests the endpoint, not the auth flow.</statement>
+      <rationale>Real login calls include password hashing and token generation — 100-1000ms per test. force_authenticate bypasses all of that.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestUserAPI:
+    def test_list_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/users/")
+        assert response.status_code == 401
+
+    def test_list_returns_users(self, authenticated_client, user_factory):
+        user_factory(email="a@b.com")
+        response = authenticated_client.get("/api/v1/users/")
+        assert response.status_code == 200
+        assert len(response.data["results"]) >= 1
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Parametrize">
+    <rule>
+      <statement>Use @pytest.mark.parametrize for boundary and equivalence-class testing where the same logic runs against multiple inputs.</statement>
+      <rationale>Replaces repetitive test functions with a single declaration; failures show exactly which parameter set failed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.parametrize("password,valid", [
+    ("ValidPass1!", True),
+    ("short1!", False),
+    ("NOLOWER1!", False),
+    ("NoDigit!!", False),
+])
+def test_password_validation(password, valid):
+    assert validate_password(password).is_valid == valid
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Mocking External Services">
+    <rule>
+      <statement>Mock at the I/O boundary (HTTP, mail, payment), test the rest with real DB and real serialization. Over-mocking produces tests that prove nothing.</statement>
+      <rationale>Mocking internal methods tests implementation, not behavior. Tests that mock the wrong import path pass silently with zero real coverage.</rationale>
+    </rule>
+    <rule>
+      <statement>Use transactional_db (not db) when the code under test calls transaction.on_commit — on_commit callbacks never fire inside a rolled-back transaction.</statement>
+      <rationale>db wraps each test in a savepoint that never commits; on_commit handlers that send emails or dispatch tasks are silently skipped.</rationale>
+    </rule>
+  </section>
+</text>

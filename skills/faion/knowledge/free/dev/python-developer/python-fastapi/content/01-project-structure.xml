@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-structure" title="FastAPI Project Structure and Dependency Injection">
+  <summary>Canonical project layout, key principles, DI patterns, and yield dependencies for cleanup.</summary>
+
+  <section title="Key Principles">
+    <rule>
+      <statement>Routes are thin: validate input via Pydantic schema → call service function → return response_model. Business logic belongs in services/. Never put business logic in router functions.</statement>
+      <rationale>Business logic in routes makes code untestable (requires HTTP client), unmovable, and hard to review. Services can be tested with plain function calls.</rationale>
+    </rule>
+    <rule>
+      <statement>Every route must declare an explicit response_model. Omitting it leaks server-only fields and breaks OpenAPI generation.</statement>
+      <rationale>FastAPI strips fields not in response_model (correct security behavior) only if response_model is declared. Without it, all model fields are serialized.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Pydantic v2 only. Pin pydantic&gt;=2,&lt;3 and pydantic-settings&gt;=2. Never mix v1 idioms (class Config, @validator, .dict()) with v2 (model_config, @field_validator, .model_dump()).</statement>
+      <rationale>v1 idioms silently pass validation with wrong semantics in v2. Pinning the version and banning v1 patterns prevents this.</rationale>
+    </rule>
+  </section>
+
+  <section title="Canonical Layout">
+    <p>app/main.py — FastAPI app instance, lifespan, middleware registration. app/config.py — Settings(BaseSettings). app/dependencies.py — shared DI (db session, auth). app/routers/&lt;domain&gt;.py — routes. app/schemas/&lt;domain&gt;.py — Pydantic request/response models. app/models/&lt;domain&gt;.py — SQLAlchemy ORM models. app/services/&lt;domain&gt;.py — business logic. app/db/engine.py — async engine + session factory.</p>
+  </section>
+
+  <section title="Dependency Injection">
+    <rule>
+      <statement>Use Annotated type aliases to keep route signatures clean. Define DBSession = Annotated[AsyncSession, Depends(get_db)] and CurrentUser = Annotated[User, Depends(get_current_active_user)].</statement>
+      <rationale>Long Depends() chains in function signatures reduce readability. Annotated aliases make the intent clear and the signature short.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+
+@router.get("/me")
+async def get_me(user: CurrentUser) -> UserResponse:
+    return user
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Yield Dependencies">
+    <rule>
+      <statement>Use yield in dependency functions that require teardown (DB sessions, tracing spans). Commit on success, rollback on exception, always close.</statement>
+      <rationale>yield runs cleanup after the response is sent. Without rollback on exception, failed transactions leave the DB in an inconsistent state.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Lifespan">
+    <rule>
+      <statement>Use the lifespan context manager for startup/shutdown logic. Never use the deprecated @app.on_event("startup") / @app.on_event("shutdown") decorators.</statement>
+      <rationale>@app.on_event was deprecated in FastAPI 0.93. lifespan provides structured async context management for singletons (DB pools, Redis, Kafka).</rationale>
+    </rule>
+  </section>
+</text>
