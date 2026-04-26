@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-catalog" title="Refactoring Pattern Catalog">
+  <summary>Eight closed-list patterns for behavior-preserving code transforms, each with a concrete trigger and before/after example.</summary>
+
+  <section title="Pattern: Extract Method">
+    <rule>
+      <statement>Split a function longer than ~20 lines or with multiple distinct responsibilities into named sub-functions, one responsibility each.</statement>
+      <rationale>Long functions hide intent. Named sub-functions read as a table of contents and are individually testable.</rationale>
+    </rule>
+    <example type="good">
+      <note>process_order delegates to validate_order, calculate_totals, process_payment, send_confirmation — each under 15 lines.</note>
+      <code lang="python"><![CDATA[
+def process_order(order):
+    validate_order(order)
+    totals = calculate_totals(order)
+    process_payment(order.customer, totals.total)
+    send_confirmation(order.customer, totals)
+    return {"order_id": order.id, "total": totals.total}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Pattern: Extract Class">
+    <rule>
+      <statement>When a class has a cohesive group of fields and methods that form a natural concept, move them into a dedicated class.</statement>
+      <rationale>Reduces coupling; the extracted class becomes independently testable and reusable.</rationale>
+    </rule>
+    <example type="good">
+      <note>Address extracted from User; User.address delegates to Address.get_full_address.</note>
+      <code lang="python"><![CDATA[
+@dataclass
+class Address:
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+    def get_full_address(self) -> str:
+        return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+
+@dataclass
+class User:
+    name: str
+    email: str
+    address: Address
+]]></code>
+    </example>
+  </section>
+
+  <section title="Pattern: Replace Conditional with Polymorphism">
+    <rule>
+      <statement>Replace a type-switch or if/elif chain with 4+ branches with a strategy or subclass hierarchy; apply only when branches are expected to grow.</statement>
+      <rationale>Removes the need to touch a central dispatch every time a new variant is added (Open/Closed Principle).</rationale>
+    </rule>
+    <rule>
+      <statement>Require at least 4 distinct branches before applying; 2–3 branches produce over-abstraction with more classes than the original saved.</statement>
+      <rationale>Pattern over-application — 3-branch conditional yielding a 4-class hierarchy — creates abstraction debt greater than the original.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pattern: Introduce Parameter Object">
+    <rule>
+      <statement>When a function has 4+ parameters that travel together, group them into a typed dataclass or value object.</statement>
+      <rationale>Named fields make call sites self-documenting and prevent positional argument errors.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pattern: Replace Magic Numbers and Strings">
+    <rule>
+      <statement>Replace inline literals used as business constants with named constants or enums at the module level.</statement>
+      <rationale>Readers cannot infer intent from bare numbers; named constants make intent explicit and centralize change.</rationale>
+    </rule>
+    <rule>
+      <statement>Confine replacement to in-file constants; do not promote literals to config without a clear deploy requirement.</statement>
+      <rationale>Agents tend to inline domain meaning into config that should stay in code, adding unnecessary config surface.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pattern: Decompose Conditional">
+    <rule>
+      <statement>Extract each branch and its condition into a named predicate and named handler function to eliminate nested if/elif trees.</statement>
+      <rationale>Named predicates read as prose; readers understand intent without tracing logic.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pattern: Rename for Clarity">
+    <rule>
+      <statement>Rename any identifier whose name does not immediately convey its purpose; prefer full words over abbreviations except universally accepted ones (i, n, err).</statement>
+      <rationale>Code is read far more often than written; a name that requires tracing to understand wastes every future reader's time.</rationale>
+    </rule>
+    <antipattern>
+      <description>Public-API rename without a deprecation alias: renaming an exported symbol in the same commit as the feature work.</description>
+      <reason>Breaks downstream callers; needs a deprecation shim for one release cycle and a CI rule blocking re-export removal.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Pattern: Move Method">
+    <rule>
+      <statement>Move a method to the class whose data it uses most; the method currently lives in a class it envy-accesses.</statement>
+      <rationale>Feature envy is a smell that misaligns responsibility; placing the method with its data reduces coupling.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/planner-prompt.txt">Agent prompt for picking and applying one pattern.</reference>
+</text>

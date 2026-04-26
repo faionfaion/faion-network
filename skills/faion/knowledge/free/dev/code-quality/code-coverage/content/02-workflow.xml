@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="Coverage Workflow and Agent Gotchas">
+  <summary>Coverage-driven test loop, diff-cover for PRs, CI integration, and agent failure modes with mitigations.</summary>
+
+  <section title="Coverage-Driven Test Loop">
+    <rule>
+      <statement>Feed machine-readable coverage reports (coverage.xml, lcov.info) to the test-author subagent; do not paste the full XML — extract only uncovered lines per touched file.</statement>
+      <rationale>Full XML reports are hundreds of kilobytes; extracting uncovered lines reduces token cost and prevents context saturation.</rationale>
+    </rule>
+    <list>
+      <item>Step 1: run suite with branch coverage and machine-readable output.</item>
+      <item>Step 2: extract uncovered lines per touched file; feed to test-author subagent with the source file pinned in context.</item>
+      <item>Step 3: agent writes targeted tests, asserting behavior (not just calling the function).</item>
+      <item>Step 4: re-run coverage; if delta is less than expected, repeat or escalate to human.</item>
+    </list>
+  </section>
+
+  <section title="Diff Coverage for PRs">
+    <rule>
+      <statement>Enforce diff-coverage on changed lines (target 80–95%) rather than repo-wide percentage; legacy gaps must not block ongoing work.</statement>
+      <rationale>Repo-wide gates punish new work for historical debt; diff-coverage focuses the requirement on the changes being reviewed.</rationale>
+    </rule>
+    <reference path="templates/diff-cov-report.sh">Run pytest + diff-cover and emit per-file uncovered lines as agent-ready prompt fragments.</reference>
+  </section>
+
+  <section title="CI Integration">
+    <rule>
+      <statement>Combine coverage with mutation testing on critical modules (auth, billing, data integrity) quarterly; coverage measures execution, mutation measures assertion strength.</statement>
+      <rationale>A test that calls a function but asserts nothing shows 100% line coverage; mutation testing detects missing assertions.</rationale>
+    </rule>
+    <rule>
+      <statement>Persist HTML coverage reports as CI artifacts; do not require a SaaS coverage service for the core gate.</statement>
+      <rationale>SaaS dependency adds failure modes; artifacts are simpler and always available to the agent during post-mortem.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Coverage gaming: agent writes tests that call functions and ignore return values.</description>
+      <reason>Require at least one explicit assert/expect per test; enforce with pytest-flake8-assertions or eslint-plugin-jest/expect-expect.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Threshold ratcheting: agent adds pragma: no cover to changed files to pass the gate.</description>
+      <reason>Fail the build if pragmas are added to changed files unless explicitly justified in the PR body.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent lowering a coverage threshold to make CI green.</description>
+      <reason>Threshold changes require a labelled PR with human sign-off; never let an agent modify thresholds autonomously.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Async coverage gaps: pytest-asyncio or Jest fake timers need extra config; agent does not notice.</description>
+      <reason>Provide a complete coverage-config snippet in the test-writing prompt; do not rely on the agent inferring async requirements.</reason>
+    </antipattern>
+  </section>
+</text>
