@@ -16,3 +16,4 @@
 [2026-04-26 14:15] pool-batch sdlc:mr-:4 — promoted mr-graph-vs-diff-reviewer, mr-codemod-refactor-agent, mr-slash-command-surface, mr-renovate-ai-handoff → 35/52 (mr- 5/5 complete). Initial picks mr-error-tracker-draft-pr and mr-bot-identity-draft-gate rejected after rebase as duplicates of upstream-merged S-016. IDs S-032..S-035 after rebase on concurrent gov-/sec- batches.
 [2026-04-26 14:25] pool-batch sdlc:tracker-:1 — promoted tracker-linear-agent-as-assignee → 36/52 (tracker- 1/5).
 [2026-04-26 14:35] pool-batch sdlc:test-:2 — promoted test-consumer-contract-from-spec, test-golden-master-legacy-rewrite → 38/52 (test- 6/6 complete).
+[2026-04-26 14:50] pool-batch sdlc:lint-:4 — promoted lint-precommit-floor, lint-ruff-and-biome-as-default, lint-megalinter-polyglot, lint-autofix-vs-flag-decision-rule → 42/52 (lint- 4/6). IDs S-039..S-042 after rebase on concurrent tracker-/test- batches.

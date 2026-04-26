@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-hook-floor" title="Hooks Run Before The Commit Object Exists">
+  <summary>Pre-commit hooks must block format, lint, secret-scan and type-check failures locally before a commit object is created; agents fix the root cause instead of skipping with --no-verify.</summary>
+
+  <section title="Hooks block, agents fix">
+    <p>A pre-commit framework runs on `git commit` and aborts the commit if any registered hook returns non-zero. Because the abort happens before the commit object is written, the failing diff never enters local history and never reaches CI. AI agents observe the failure as a tool error and must read the output and patch the underlying defect, not bypass the gate.</p>
+
+    <rule testable="true">
+      <statement>Every repository with code MUST register a pre-commit framework (`pre-commit`, `lefthook`, or `husky`) with hooks for at minimum: formatter, linter, secret scan, and (where applicable) type-check. Agents MUST NOT pass `--no-verify` or `core.hooksPath=/dev/null`; on any hook failure they MUST diagnose the failure, fix the offending change, re-stage the file, and re-run the commit.</statement>
+      <rationale>The hook is the cheapest deterministic gate (sub-second on a diff) and runs before the commit object exists, so a bypassed hook silently disables every downstream check that trusts the local history. Agents that learn `--no-verify` as a recovery strategy regress the entire team's quality floor; the rule is structural, not stylistic.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# agent run after a hook failure
+$ git commit -m "feat: add user import"
+ruff.....................................................................Failed
+- hook id: ruff
+- exit code: 1
+src/users.py:12:1: F401 unused import
+$ ruff check --fix src/users.py
+$ git add src/users.py
+$ git commit -m "feat: add user import"
+      ]]></code>
+      <note>Agent reads the failure, runs the autofixer, re-stages, and commits — the hook is the contract.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+$ git commit -m "feat: add user import" --no-verify
+[main abc1234] feat: add user import
+      ]]></code>
+      <note>Bypass succeeds locally but pushes a broken file into the chain; CI may catch it but the local gate is now untrusted.</note>
+    </example>
+
+    <antipattern>
+      <description>Treating the hook as advisory and adding it only on the developer's machine, not in the pinned config in the repository.</description>
+      <reason>A hook that is not in `.pre-commit-config.yaml` (or `lefthook.yml`) is invisible to teammates and to agents — the contract collapses to a single human's habits.</reason>
+    </antipattern>
+
+    <reference path="templates/.pre-commit-config.yaml">Polyglot pre-commit config with ruff, gitleaks, prettier and mypy stages.</reference>
+    <reference href="https://pre-commit.com">pre-commit.com — the canonical polyglot pre-commit framework.</reference>
+    <reference href="https://github.com/evilmartians/lefthook">lefthook — parallel Go-based hook runner.</reference>
+  </section>
+</text>

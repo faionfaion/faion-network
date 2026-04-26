@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ci-only-rule" title="CI-Only Umbrella, Native Tools At The Hook">
+  <summary>MegaLinter runs in CI to give the agent a unified SARIF feed across 100+ linters; pre-commit hooks stay on lean per-language tools so the local commit lifecycle stays sub-second.</summary>
+
+  <section title="One umbrella in CI, native tools at the hook">
+    <p>Each linter inside MegaLinter is the same binary you would run locally — there is no benefit to running MegaLinter at the hook because it adds container start-up time without changing the rules. The umbrella's value is the SARIF aggregation step, which only matters once code reaches CI.</p>
+
+    <rule testable="true">
+      <statement>Polyglot repositories MUST configure MegaLinter as a CI job (`oxsecurity/megalinter@v8` or pinned SHA) that runs on `pull_request` and `push` and uploads SARIF via `github/codeql-action/upload-sarif`. The same repository MUST NOT register MegaLinter inside `.pre-commit-config.yaml`, `lefthook.yml`, or `.husky/pre-commit`; pre-commit hooks MUST stay on the per-language native binaries (ruff, biome, hadolint, terraform fmt) so the local commit completes in under one second.</statement>
+      <rationale>MegaLinter ships as a multi-gigabyte container and takes tens of seconds to start; running it on every commit makes humans use `--no-verify` and trains agents to do the same. Native tools at the hook give the same coverage on the staged diff in milliseconds, while the CI MegaLinter run ratchets up the gate with rules that need cross-file context (markdownlint, link-check, vale, gitleaks history scan).</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/megalinter.yml
+name: MegaLinter
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: oxsecurity/megalinter/flavors/cupcake@v8
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          SARIF_REPORTER: true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: megalinter-reports/megalinter-report.sarifv1.sarif }
+      ]]></code>
+      <note>One CI job, SARIF feed lands in Code Scanning, agent reads it through `gh api`.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml — DO NOT do this
+repos:
+  - repo: https://github.com/oxsecurity/megalinter
+    rev: v8.0.0
+    hooks:
+      - id: megalinter
+      ]]></code>
+      <note>Adds 30+ seconds to every commit; humans bypass with --no-verify and the local gate dies.</note>
+    </example>
+
+    <antipattern>
+      <description>Running both MegaLinter and the underlying native tool (e.g., ruff) twice in the same CI workflow because "the agent fixes faster from the SARIF".</description>
+      <reason>MegaLinter already runs ruff inside; the duplicate run wastes CI minutes and produces two reports the agent has to reconcile. Use the SARIF feed only.</reason>
+    </antipattern>
+
+    <reference path="templates/megalinter-action.yml">GitHub Actions workflow with SARIF upload.</reference>
+    <reference href="https://megalinter.io/">MegaLinter documentation.</reference>
+    <reference href="https://github.com/oxsecurity/megalinter">MegaLinter repository.</reference>
+  </section>
+</text>
