@@ -16,6 +16,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
+- sdlc-ai-methodologies: pool-batch +2 test- (8/52) — test-mutation-feedback-loop, test-property-based-llm-invariants (NEW shape: AGENTS.md + content/*.xml + templates/).
 - sdlc-ai-methodologies: pool-batch +2 lang- (6/52) — lang-go-tygo-frontend-contract, lang-php-phpstan9-psalm-taint (NEW shape: AGENTS.md + content/*.xml + templates/).
 - sdlc-ai-methodologies: pool-batch +4 lang- (4/52) — uv-lockfile-floor, pyproject-single-source, ts-strict-isolated, pnpm-catalogs (NEW shape: AGENTS.md + content/*.xml + templates/).
 - agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).

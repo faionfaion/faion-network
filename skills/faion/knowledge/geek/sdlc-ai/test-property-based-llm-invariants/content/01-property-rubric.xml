@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-property-rubric" title="Closed Property Rubric">
+  <summary>The agent picks from five property classes only; anything else is rejected.</summary>
+
+  <section title="Five property classes, no improvisation">
+    <p>An open prompt ("write properties for this function") yields generic invariants the runner cannot shrink usefully. A closed rubric forces the agent to map the function to one of five named patterns — each with a known shape, easy to read, easy to review.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST classify each proposed property under exactly one of: `round-trip` (`f(g(x)) == x`), `idempotence` (`f(f(x)) == f(x)`), `oracle-equivalence` (`f(x) == oracle(x)`), `metamorphic` (`f(t(x))` relates to `f(x)` by some `R`), or `invariant-on-output` (`P(f(x))` holds for all valid `x`). Any property the agent cannot label MUST be rejected and not committed.</statement>
+      <rationale>A closed rubric (a) makes review tractable, (b) forces the agent to think about the function's algebraic structure rather than its current implementation, (c) matches the categories Hypothesis/fast-check/proptest already shrink against well.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# class: round-trip
+@given(st.text())
+def test_quote_roundtrip(s):
+    assert unquote(quote(s)) == s
+
+# class: idempotence
+@given(st.text())
+def test_normalize_email_idempotent(e):
+    assert normalize(normalize(e)) == normalize(e)
+
+# class: invariant-on-output
+@given(st.lists(st.integers()))
+def test_sort_output_sorted(xs):
+    out = sort(xs)
+    assert all(out[i] <= out[i + 1] for i in range(len(out) - 1))
+      ]]></code>
+      <note>Each test names its class; reviewer sees the shape immediately.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# class: ??? (agent improvised)
+@given(st.text())
+def test_quote_works(s):
+    assert quote(s) is not None
+      ]]></code>
+      <note>Not a property — only checks the runner returns *something*.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent emits a "property" that asserts the same thing as an example test on random data.</description>
+      <reason>Without an algebraic relationship, random inputs add runtime cost without finding edge cases.</reason>
+    </antipattern>
+
+    <reference path="templates/property-rubric.txt">Prompt fragment with the closed rubric.</reference>
+    <reference path="templates/hypothesis-skeleton.py">Skeleton with all 5 classes wired.</reference>
+    <reference href="https://red.anthropic.com/2026/property-based-testing/">Anthropic on property-based testing with LLMs.</reference>
+    <reference href="https://hypothesis.readthedocs.io/en/latest/ghostwriter.html">Hypothesis ghostwriter (LLM-style auto-property generation).</reference>
+  </section>
+</text>

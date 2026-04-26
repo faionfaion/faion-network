@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-changed-file-gate" title="Mutation Score on Changed Files Only">
+  <summary>Scope mutation testing to the diff and break the CI when the score falls under the threshold.</summary>
+
+  <section title="Run mutation only on the diff">
+    <p>Full-suite mutation runs are too slow for per-PR CI. Configure the runner (Stryker, mutmut, PIT) with incremental mode and feed it only the files that changed in the PR. The CI fails when the score on the diff falls below the break threshold, regardless of overall project score.</p>
+
+    <rule testable="true">
+      <statement>CI MUST run mutation testing scoped to changed files on every agent-authored PR with `break: 70`, `low: 60`, `high: 80` thresholds. The job MUST fail (non-zero exit) when the diff mutation score falls below `break`. Coverage percent alone MUST NOT be used as the merge gate when an LLM authored or modified the tests.</statement>
+      <rationale>Coverage measures execution; mutation measures detection. AI-written tests routinely show high coverage with low mutation score because assertions are weak ("not None", "len > 0"). Mutation surfaces every weak assertion as a concrete surviving mutant.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Stryker scoped to changed JS/TS files
+{ git diff --name-only -z origin/main -- 'src/**/*.ts' ;
+  git ls-files --others --exclude-standard -z -- 'src/**/*.ts' ; } \
+  | xargs -0 -I {} npx stryker run --mutate {}
+      ]]></code>
+      <note>Only changed files mutated; CI cost stays bounded.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Coverage-only gate; AI agents cheat through it
+- run: pytest --cov=src --cov-fail-under=90
+      ]]></code>
+      <note>90% coverage with weak assertions still passes; mutants survive.</note>
+    </example>
+
+    <antipattern>
+      <description>Lowering the break threshold whenever a PR fails it.</description>
+      <reason>The threshold ratchet is the gate; relaxing it on red converts mutation testing into theatre.</reason>
+    </antipattern>
+
+    <reference path="templates/stryker.conf.json">Stryker config with break/high thresholds.</reference>
+    <reference href="https://testdouble.com/insights/keep-your-coding-agent-on-task-with-mutation-testing">Mutation testing keeps coding agents honest.</reference>
+    <reference href="https://stryker-mutator.io/docs/stryker-js/configuration/">Stryker configuration reference.</reference>
+  </section>
+</text>
