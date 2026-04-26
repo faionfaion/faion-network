@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-invocation-shape" title="Canonical Headless Invocation Shape">
+  <summary>The `claude -p` invocation pattern that orchestrators should standardise on for non-interactive runs.</summary>
+
+  <section title="Required flags for headless">
+    <p>A subprocess that disables the TUI, allowlists tools, caps turns, and emits structured events is the only safe shape for production.</p>
+
+    <rule testable="true">
+      <statement>Headless invocations MUST set `-p`/`--print`, an explicit `--allowedTools` list, `--max-turns`, and `--output-format stream-json --verbose` so the orchestrator can parse events line-by-line.</statement>
+      <rationale>Without `-p` the binary opens a TUI; without `--allowedTools` the agent stalls on permission prompts; without `--max-turns` a runaway loop can drain budget; without stream-json the orchestrator only sees the final blob.</rationale>
+    </rule>
+
+    <reference path="templates/run-headless.sh">Reference wrapper that wires every required flag and budget logic.</reference>
+    <reference href="https://code.claude.com/docs/en/headless">Headless mode flag reference.</reference>
+  </section>
+
+  <section title="Good vs bad invocation">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+claude -p "Fix failing test in tests/test_auth.py" \
+  --output-format stream-json --verbose \
+  --allowedTools "Read,Edit,Bash(pytest:*)" \
+  --max-turns 20 \
+  < /dev/null
+      ]]></code>
+      <note>Explicit allowlist, capped turns, closed stdin, stream-json output for orchestrator events.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+claude --dangerously-skip-permissions "$TASK"
+      ]]></code>
+      <note>No allowlist, no turn cap, no stream-json — the orchestrator cannot react to mid-run events and tool access is unbounded.</note>
+    </example>
+
+    <antipattern>
+      <description>Treating `claude -p` like a one-shot text generator and parsing only the final stdout blob.</description>
+      <reason>Loses the cost/tool/event stream needed for budget enforcement, mid-run hand-off, and safety vetoes — see the stream-json-orchestration methodology.</reason>
+    </antipattern>
+
+    <see-also>
+      <link path="../stream-json-orchestration/AGENTS.md">How to drive an orchestrator state-machine off stream-json events.</link>
+    </see-also>
+  </section>
+</text>

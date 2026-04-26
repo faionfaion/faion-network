@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-cli-vs-sdk-decision" title="CLI vs SDK — Default to CLI, Switch on Concrete Trigger">
+  <summary>Pick the Claude Code CLI as the default agent runtime; only drop to the Agent SDK when one of four concrete triggers fires.</summary>
+
+  <section title="The default rule">
+    <p>The Claude Code CLI bundles the full agent harness (filesystem, bash, git, MCP, plan mode, sub-agents, hooks, skills, compaction). Re-implementing this in a custom SDK loop is almost always overkill for coding/devops/research work.</p>
+
+    <rule testable="true">
+      <statement>For any new agent that runs a coding, devops, or research task on a machine with a shell, the first implementation MUST be a `claude -p` subprocess invocation. A custom Agent SDK loop is allowed only after the CLI has been demonstrated to fail one of the four switch-triggers below.</statement>
+      <rationale>The CLI harness encodes battle-tested decisions (retry, compaction, tool gating) maintained by Anthropic. Building a custom SDK loop first re-pays that cost without measurable benefit.</rationale>
+    </rule>
+
+    <reference href="https://code.claude.com/docs/en/headless">Anthropic — Claude Code headless mode docs.</reference>
+    <reference href="https://platform.claude.com/docs/en/agent-sdk/overview">Anthropic — Agent SDK overview (the alternative).</reference>
+  </section>
+
+  <section title="The four switch-triggers">
+    <p>Drop to the Agent SDK only when ONE of these is true. Document which trigger fired in the agent's design doc.</p>
+
+    <list>
+      <item>Non-coding domain that does not benefit from filesystem + git + bash (e.g. claims processing, sales triage).</item>
+      <item>Custom tools that cannot be expressed as an MCP server.</item>
+      <item>Programmatic control of the inner loop (branch conversation tree, intercept every tool call, custom replay).</item>
+      <item>Embedding inside a SaaS product whose host process cannot fork subprocesses.</item>
+    </list>
+
+    <antipattern>
+      <description>Picking the Agent SDK first because "it's the API" or "the CLI looks like a CLI tool, not a runtime."</description>
+      <reason>Re-implements months of harness work; loses MCP/plan-mode/hooks/compaction; adds maintenance burden every time Anthropic ships a CLI improvement.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Decision quickcheck">
+    <example type="good">
+      <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Domain? coding ✓
+Triggers? none ✓
+→ use `claude -p` (CLI default)
+      ]]></code>
+      <note>Coding task, no SDK trigger fired — CLI is correct.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+Task: "fix flaky test in tests/test_auth.py"
+Decision: write a 400-line Python loop using anthropic.Anthropic()
+calling tools manually.
+      ]]></code>
+      <note>Re-implements file/edit/bash/git tools that the CLI already ships. No SDK trigger justifies this.</note>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-failure-modes" title="Failure Modes — What Each Missing Guard Causes">
+  <summary>One concrete failure for each missing guard, so the rule's cost is obvious.</summary>
+
+  <section title="Missing print/headless flag">
+    <rule testable="true">
+      <statement>Headless runs MUST disable the TUI explicitly (`-p` for Claude Code, `codex exec` for Codex, headless flag for others). Never rely on the binary auto-detecting non-TTY environments.</statement>
+      <rationale>Auto-detection is unreliable across container runtimes and CI shells; an unwanted TUI emits terminal control sequences that block on stdout.</rationale>
+    </rule>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+claude "$TASK"   # no -p, no flags
+      ]]></code>
+      <note>In a CI runner, the binary may attempt to start the TUI and the job hangs until job-level timeout.</note>
+    </example>
+  </section>
+
+  <section title="Missing allowlist">
+    <rule testable="true">
+      <statement>Production headless runs MUST pass `--allowedTools` with the smallest viable allowlist; permission prompts in headless mode block forever.</statement>
+      <rationale>Without an allowlist the agent stalls on the first permission prompt (no human to answer) or — if `--dangerously-skip-permissions` was used — it executes arbitrary shell with no upper bound.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+--allowedTools "Read,Edit,Bash(pytest:*),Bash(git:status)"
+      ]]></code>
+      <note>Narrow, explicit, auditable.</note>
+    </example>
+  </section>
+
+  <section title="Missing max-turns">
+    <rule testable="true">
+      <statement>Every headless run MUST cap turns to a value tied to the task length; the absence of a cap is a budget bug, not a feature.</statement>
+      <rationale>Loop bugs (model decides to "try one more thing" indefinitely) drain Anthropic/OpenAI budget within minutes if the cap is open.</rationale>
+    </rule>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+claude -p "$TASK" --allowedTools "..." < /dev/null
+# missing --max-turns
+      ]]></code>
+      <note>One agent stuck in a tool-call loop can burn the daily budget cap before any human notices.</note>
+    </example>
+  </section>
+
+  <section title="Open stdin">
+    <rule testable="true">
+      <statement>Always redirect `&lt; /dev/null` on stdin for headless runs.</statement>
+      <rationale>Without it, the agent's stdin inherits whatever the parent shell forwards (closed pipe, garbage from another process, or interactive TTY) and behaviour becomes non-deterministic — the documented mode is closed stdin.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+claude -p "$TASK" --allowedTools "..." --max-turns 20 < /dev/null
+      ]]></code>
+      <note>Closed stdin guarantees the agent never blocks on a phantom read.</note>
+    </example>
+
+    <antipattern>
+      <description>Running the headless command inside a function that pipes JSON into stdin "just in case the agent reads it."</description>
+      <reason>The CLI does not consume stdin in `-p` mode; piping unexpected content can change the harness's behaviour and is not part of the supported contract.</reason>
+    </antipattern>
+
+    <see-also>
+      <link path="../stream-json-orchestration/AGENTS.md">Pair with stream-json-orchestration to enforce budget mid-run, not only via max-turns.</link>
+      <link path="../claude-code-headless-default/AGENTS.md">Why CLI-first is the right starting point.</link>
+    </see-also>
+  </section>
+</text>
