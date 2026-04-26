@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-issue-prioritization" title="Issue Prioritization and CI Integration">
+  <summary>Priority rubric for a11y issues, CI integration patterns, false-positive management, and the agentic testing pipeline.</summary>
+
+  <section title="Priority Rubric">
+    <rule>
+      <statement>Assign every issue one of four priority levels based on whether it blocks access completely, creates a significant barrier, creates difficulty, or is an enhancement.</statement>
+      <rationale>Without explicit triage, all issues compete equally and critical ones are delayed. Priority drives fix timeline, not just backlog ordering.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Priority  | Definition                                      | Fix Target
+Critical  | Blocks access completely (no workaround)         | Immediately / hotfix
+High      | Major barrier; workaround is difficult           | Current sprint
+Medium    | Creates difficulty; workaround available         | Next sprint
+Low       | Enhancement; not blocking any task              | Backlog
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="CI Integration">
+    <rule>
+      <statement>Run axe + Pa11y on every PR against a known URL; snapshot axe JSON per release and diff against the previous release to detect regressions.</statement>
+      <rationale>Without a CI gate, a11y regressions accumulate silently between releases. Diffing JSON identifies whether a new release introduced new violations.</rationale>
+    </rule>
+    <reference path="templates/a11y-scan.sh">Shell script running axe + Pa11y + Lighthouse with JSON output and summary.md</reference>
+    <list>
+      <item>Tag Playwright/Cypress tests with @a11y-critical for PR CI; run full crawl nightly only.</item>
+      <item>For SPA: wait for networkidle AND a route-specific selector before scanning to avoid pre-render snapshots.</item>
+      <item>Maintain an a11y-exemptions.yml with WCAG criterion + justification + expiry date — never silently ignore violations.</item>
+      <item>Dismiss cookie banners/consent overlays before measurement; log which cookie state was used.</item>
+    </list>
+  </section>
+
+  <section title="False Positive Management">
+    <antipattern>
+      <description>Accepting "0 axe violations" as compliance without checking the "incomplete" array.</description>
+      <reason>Items in the axe "incomplete" array are criteria the scanner could not evaluate (not "passed"). Treating incomplete as pass creates systematic blind spots.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running agent "fix until axe passes" loops more than 3 iterations without an AT regression test.</description>
+      <reason>Automated fix loops produce ARIA soup that passes axe but breaks real screen readers. Limit auto-fix iterations and require a human screen reader check after each batch of fixes.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agentic Pipeline">
+    <p>Step 1 (automated) and Step 2 (keyboard via Playwright) and Step 5 (triage and doc generation) are agent-driveable. Steps 3 (screen reader) and 4 (cognitive) require human-in-loop — agent prepares scripts and templates, a tester executes. Pipeline: scanner agent → keyboard-bot → triage agent → report writer.</p>
+    <list>
+      <item>Scanner agent: run axe + Pa11y, parse JSON, group violations by WCAG criterion with fix recommendation.</item>
+      <item>Triage agent: deduplicate by selector+rule across tools, map to WCAG 2.2 AA, assign priority per rubric.</item>
+      <item>Report writer: populate audit-report.md template from triage output; flag untested criteria as "Not Tested", never "Supports".</item>
+    </list>
+  </section>
+</text>
