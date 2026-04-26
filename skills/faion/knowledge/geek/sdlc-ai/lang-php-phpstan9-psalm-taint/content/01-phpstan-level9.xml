@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-phpstan-level9" title="PHPStan Level 9 Type Floor">
+  <summary>Level 9 forbids `mixed`, requires explicit array shapes, and turns the type checker into a hard CI gate.</summary>
+
+  <section title="Forbid mixed, ratchet via baseline">
+    <p>PHPStan level 9 (the strictest non-experimental level) requires every value's type to be known. `mixed` is rejected; arrays must declare their shape (`array&lt;int, User&gt;`, not `array`). The `phpstan-baseline.neon` file captures pre-existing failures so new code is held to the gate without rewriting history first.</p>
+
+    <rule testable="true">
+      <statement>CI MUST run `vendor/bin/phpstan analyse --level=9 --memory-limit=1G` on every PR; failures block merge. Pre-existing errors live in `phpstan-baseline.neon` (committed); new errors NEVER go into the baseline. Agents may not introduce `mixed` parameters, properties, or return types — annotate the actual type or return `never`.</statement>
+      <rationale>Level 9 turns LLM-friendly `mixed` returns (the lowest-effort plausible annotation) into compile-time failures, forcing agent output to converge on the actual type the code uses.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="php"><![CDATA[
+/**
+ * @param array<int, User> $users
+ * @return array<string, int>
+ */
+function indexByEmail(array $users): array
+{
+    $out = [];
+    foreach ($users as $u) {
+        $out[$u->email] = $u->id;
+    }
+    return $out;
+}
+      ]]></code>
+      <note>Array shapes declared; level 9 accepts.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="php"><![CDATA[
+/**
+ * @param mixed $users
+ * @return mixed
+ */
+function indexByEmail(mixed $users): mixed { /* ... */ }
+      ]]></code>
+      <note>Level 9 fails: every `mixed` is a missing type declaration.</note>
+    </example>
+
+    <antipattern>
+      <description>Developer fixes a level 9 failure by appending the new error to `phpstan-baseline.neon`.</description>
+      <reason>The baseline is for grandfathered code only; using it as an escape hatch for new errors converts the gate into a no-op within weeks.</reason>
+    </antipattern>
+
+    <reference path="templates/phpstan.neon">Reference config used by this rule.</reference>
+    <reference href="https://phpstan.org/config-reference">PHPStan config reference.</reference>
+    <reference href="https://phpstan.org/user-guide/rule-levels">PHPStan rule levels.</reference>
+  </section>
+</text>
