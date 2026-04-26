@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-pitfalls" title="Antipatterns when modelling polymorphic output">
+  <summary>Common ways teams break discriminated unions: dropping the discriminator, putting it last, and over-using unions when branches are nearly identical.</summary>
+
+  <section title="Bare Union without discriminator">
+    <antipattern>
+      <description>Declaring `action: SearchAction | FetchAction | FinishAction` without `Field(discriminator="kind")`.</description>
+      <reason>Pydantic falls back to smart union mode and the JSON schema emits `anyOf` without a `discriminator` keyword. OpenAI strict mode then has to try every branch; with overlapping fields this either fails to compile or accepts cross-branch data.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Discriminator placed last in a branch">
+    <antipattern>
+      <description>Defining a branch as `class SearchAction(BaseModel): query: str; kind: Literal["search"] = "search"` — discriminator at the bottom.</description>
+      <reason>Order matters in autoregressive generation. With the literal at the end, the model must commit to `query` before it has chosen the branch, which defeats the grammar-locking benefit. Always declare the discriminator first.</reason>
+    </antipattern>
+
+    <rule testable="true">
+      <statement>The discriminator field must be the first field of every branch model.</statement>
+      <rationale>Constrained decoding only locks the schema branch once the discriminator literal is emitted; placing it first means subsequent fields are constrained from the very next token onwards.</rationale>
+    </rule>
+  </section>
+
+  <section title="Union when branches are 90 percent identical">
+    <antipattern>
+      <description>Modelling `EmailMessage` vs `SmsMessage` as a discriminated union when both share recipient, body, sent_at, and only differ by one channel-specific field.</description>
+      <reason>Two near-identical branches double the schema size, double the prompt-cache footprint, and force the model to learn two shapes for one concept. Use a single model with a `channel: Literal["email","sms"]` discriminator and channel-specific optional fields instead.</reason>
+    </antipattern>
+
+    <rule testable="true">
+      <statement>If two branches share more than ~90 percent of their fields, collapse them into one model with a literal `kind` field and channel-specific optional fields, not into a discriminated union.</statement>
+      <rationale>The grammar advantage of unions is paid for by schema size; when the branches barely differ, the cost outweighs the benefit and the model picks the union arm at random.</rationale>
+    </rule>
+
+    <reference href="https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions">Pydantic guidance on when to use discriminated unions.</reference>
+  </section>
+</text>

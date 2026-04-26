@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strict-mode-rule" title="Required-everything plus additionalProperties:false">
+  <summary>In OpenAI/Azure strict mode, every property must be required and every object must forbid additional properties; this is a grammar invariant, not a style choice.</summary>
+
+  <section title="The rule">
+    <p>Strict-mode structured outputs compile the JSON Schema into a finite-state grammar. The compiler rejects any schema where the set of required properties is not equal to the set of declared properties, or where `additionalProperties` is missing or `true`. Optional semantics are encoded by making a field nullable, not by removing it from `required`.</p>
+
+    <rule testable="true">
+      <statement>For every object schema submitted with `strict: true`, set `additionalProperties: false`, and list every declared property in `required`. To express "this field may be absent", use a nullable type (`{"type": ["string", "null"]}` or Pydantic `str | None`) — never omit the field from `required`.</statement>
+      <rationale>The strict-mode compiler builds a regular grammar; optional fields would introduce branch non-determinism (skip token vs read token), and unrestricted additional properties would force the grammar to accept arbitrary tokens between every key. The OpenAI error `400: Invalid schema for response_format ... additionalProperties must be false` is the compiler refusing the schema.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel, ConfigDict
+
+class User(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # -> additionalProperties: false
+    name: str
+    email: str
+    middle_name: str | None = None             # nullable, NOT optional
+      ]]></code>
+      <note>`extra="forbid"` makes Pydantic emit `additionalProperties: false`. `str | None` becomes `{"type": ["string","null"]}` and stays in `required`.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "type": "object",
+  "properties": {
+    "name":  {"type": "string"},
+    "email": {"type": "string"},
+    "middle_name": {"type": "string"}
+  },
+  "required": ["name", "email"]
+}
+      ]]></code>
+      <note>`middle_name` is declared but not required, and `additionalProperties` is missing. OpenAI strict mode returns 400 on submission.</note>
+    </example>
+
+    <reference path="templates/strict_pydantic.py">Pydantic model wired for strict mode.</reference>
+    <reference path="templates/strict.schema.json">Hand-written JSON Schema that passes strict-mode compilation.</reference>
+    <reference href="https://platform.openai.com/docs/guides/structured-outputs">OpenAI structured outputs guide — strict-mode constraints.</reference>
+    <reference href="https://community.openai.com/t/schema-additionalproperties-must-be-false-when-strict-is-true/929996">OpenAI community thread documenting the 400 error.</reference>
+  </section>
+</text>

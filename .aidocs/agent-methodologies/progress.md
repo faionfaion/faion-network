@@ -10,3 +10,4 @@
 [2026-04-26 03:30] pool-batch agents:pl-:1 — promoted auto-evict-tool-results → 16/50. NEW shape (CLAUDE.md + AGENTS.md + content/*.xml + templates/evict-middleware.py).
 [2026-04-26 03:32] pool-batch agents:cli-:2 — promoted claude-code-headless-default, headless-cli-four-guards → 18/50 (cli- 3/3 done)
 [2026-04-26 04:05] pool-batch agents:lp-:4 — promoted max-turns-circuit-breaker, posttool-hook-self-correction, generator-critic-bounded-loop, map-reduce-send-fanout → 22/50. lp- category filled (5/5).
+[2026-04-26 04:10] pool-batch agents:so-:2 — promoted discriminated-union-output, strict-mode-required-fields → 24/50 (so- 6/10)

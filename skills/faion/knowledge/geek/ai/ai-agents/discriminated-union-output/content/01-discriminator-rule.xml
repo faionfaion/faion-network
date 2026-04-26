@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-discriminator-rule" title="Tagged unions with a literal discriminator">
+  <summary>Use a Pydantic discriminated union (or JSON-Schema oneOf+discriminator) whenever the model must choose between distinct shapes; the discriminator generated first locks the rest of the branch.</summary>
+
+  <section title="The rule">
+    <p>A discriminated union pairs each branch with a unique literal value of one shared field (commonly named `kind`, `type`, or `action`). Constrained decoders compile this into a finite-state grammar: emitting `"kind": "search"` makes only the search branch's fields reachable; the model cannot accidentally produce a `url` while inside a `search` action.</p>
+
+    <rule testable="true">
+      <statement>For every output where the model picks one of N distinct shapes, define each shape with a `Literal[...]` discriminator field, combine them with `Annotated[A | B | C, Field(discriminator="kind")]`, and place the discriminator first in each branch model.</statement>
+      <rationale>Pydantic v2 emits `oneOf` + `discriminator` in the JSON schema; OpenAI strict mode and Outlines compile this into a grammar that prevents cross-branch field bleed, and parsers can switch on a single key.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import Annotated, Literal
+from pydantic import BaseModel, Field
+
+class SearchAction(BaseModel):
+    kind: Literal["search"] = "search"
+    query: str
+
+class FetchAction(BaseModel):
+    kind: Literal["fetch"] = "fetch"
+    url: str
+
+class FinishAction(BaseModel):
+    kind: Literal["finish"] = "finish"
+    summary: str
+
+class AgentTurn(BaseModel):
+    reasoning: str
+    action: Annotated[
+        SearchAction | FetchAction | FinishAction,
+        Field(discriminator="kind"),
+    ]
+      ]]></code>
+      <note>The `kind` literal is the only field shared across branches; once the model writes it, the rest of the action is locked to one shape.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+class AgentTurn(BaseModel):
+    reasoning: str
+    action_type: str           # free text — no grammar constraint
+    query: str | None = None   # field bleed
+    url: str | None = None     # field bleed
+    summary: str | None = None # field bleed
+      ]]></code>
+      <note>The model can emit any subset of optional fields. There is no guarantee that `url` is present when `action_type == "fetch"`, and `query`+`url` may co-occur.</note>
+    </example>
+
+    <reference path="templates/agent_action_union.py">Working Pydantic discriminated union for an agent action selector.</reference>
+    <reference path="templates/agent_action.schema.json">Equivalent JSON-Schema 2020-12 with `oneOf` + `discriminator`.</reference>
+    <reference href="https://docs.pydantic.dev/latest/concepts/unions/">Pydantic unions and discriminated unions.</reference>
+    <reference href="https://endjin.com/blog/json-schema-patterns-dotnet-pattern-matching-and-discriminated-unions">JSON-Schema patterns: discriminated unions and pattern matching.</reference>
+  </section>
+</text>
