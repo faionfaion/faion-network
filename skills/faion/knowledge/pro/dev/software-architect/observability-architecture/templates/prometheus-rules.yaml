@@ -1,0 +1,89 @@
+# Prometheus alerting rules: multi-burn-rate SLO alerts
+# Based on the Google SRE workbook chapter 5 approach.
+#
+# Two-window approach: fast (1h) detects acute incidents,
+# slow (6h) detects slow burns. Both windows must fire simultaneously
+# to avoid false positives from transient spikes.
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: payments-api-slo
+  namespace: monitoring
+  labels:
+    app: payments-api
+spec:
+  groups:
+    - name: slo.payments-api.availability
+      interval: 30s
+      rules:
+        # Error rate recording rules (used by burn-rate alerts)
+        - record: job:http_requests_total:rate1h
+          expr: sum(rate(http_requests_total[1h])) by (job)
+
+        - record: job:http_errors_total:rate1h
+          expr: sum(rate(http_requests_total{code=~"5.."}[1h])) by (job)
+
+        - record: job:http_requests_total:rate6h
+          expr: sum(rate(http_requests_total[6h])) by (job)
+
+        - record: job:http_errors_total:rate6h
+          expr: sum(rate(http_requests_total{code=~"5.."}[6h])) by (job)
+
+        # --- Fast burn alert (14.4x burn rate over 1h) ---
+        # Fires when the service is consuming its monthly error budget at
+        # 14.4x the allowed rate — exhausts 30d budget in ~2 hours.
+        - alert: PaymentsAPIHighErrorBudgetBurn
+          expr: |
+            (
+              job:http_errors_total:rate1h{job="payments-api"}
+              / job:http_requests_total:rate1h{job="payments-api"}
+            ) > (14.4 * (1 - 0.999))
+          for: 2m
+          labels:
+            severity: critical
+            team: platform
+          annotations:
+            summary: "Payments API burning error budget at 14.4x rate"
+            description: >
+              Error rate {{ $value | humanizePercentage }} is burning the
+              monthly error budget 14.4x faster than allowed. At this rate
+              the entire budget is exhausted in ~2h.
+            runbook_url: "https://runbooks.company.com/payments-api/high-error-rate"
+
+        # --- Slow burn alert (6x burn rate over 6h) ---
+        # Fires when the service is consuming its monthly error budget at
+        # 6x the allowed rate — exhausts 30d budget in ~5 hours.
+        - alert: PaymentsAPISlowErrorBudgetBurn
+          expr: |
+            (
+              job:http_errors_total:rate6h{job="payments-api"}
+              / job:http_requests_total:rate6h{job="payments-api"}
+            ) > (6 * (1 - 0.999))
+          for: 15m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Payments API burning error budget at 6x rate"
+            description: >
+              Error rate {{ $value | humanizePercentage }} is burning the
+              monthly error budget 6x faster than allowed.
+            runbook_url: "https://runbooks.company.com/payments-api/high-error-rate"
+
+    - name: slo.payments-api.latency
+      rules:
+        - alert: PaymentsAPIHighP99Latency
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(http_request_duration_seconds_bucket{job="payments-api"}[5m]))
+              by (le)
+            ) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            team: platform
+          annotations:
+            summary: "Payments API p99 latency exceeds 500ms"
+            description: "p99 latency is {{ $value | humanizeDuration }}"
+            runbook_url: "https://runbooks.company.com/payments-api/high-latency"

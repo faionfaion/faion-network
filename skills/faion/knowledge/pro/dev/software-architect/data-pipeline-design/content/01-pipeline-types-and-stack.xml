@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-types-and-stack" title="Pipeline Types and Modern Data Stack">
+  <summary>Batch vs streaming vs Lambda/Kappa trade-offs, ETL vs ELT decision, medallion architecture (Bronze/Silver/Gold), and the modern data stack component map.</summary>
+
+  <section title="Pipeline Type Selection">
+    <rule>
+      <statement>Choose streaming only when the use case genuinely requires sub-second latency; default to batch for all other analytical workloads.</statement>
+      <rationale>Streaming is significantly more complex to operate (exactly-once semantics, schema evolution, consumer lag monitoring). Batch pipelines are easier to debug, backfill, and test. Reserve streaming for fraud detection, real-time dashboards, and monitoring pipelines.</rationale>
+    </rule>
+    <list>
+      <item>Batch: minutes-to-hours latency, Spark/Airflow/dbt. Use for ML training, reporting, historical analysis.</item>
+      <item>Streaming: milliseconds-to-seconds, Kafka/Flink/Spark Streaming. Use for fraud detection, real-time analytics, CDC replication.</item>
+      <item>Lambda: batch layer for accuracy + speed layer for freshness. Higher complexity; consider Kappa first.</item>
+      <item>Kappa: streaming-only with event replay. Simpler than Lambda; use when all historical reprocessing can be done via stream replay.</item>
+    </list>
+  </section>
+
+  <section title="ETL vs ELT Decision">
+    <rule>
+      <statement>Prefer ELT over ETL for cloud warehouse environments (Snowflake, BigQuery, Databricks) where warehouse compute is elastic.</statement>
+      <rationale>ELT preserves raw source data in the bronze layer, enabling re-transformation when business rules change without re-ingesting from source. ETL discards raw data after transformation.</rationale>
+    </rule>
+    <list>
+      <item>Use ETL when: strict compliance requires data anonymisation before storage (HIPAA/GDPR), legacy target systems have limited compute, small data volume with complex transforms.</item>
+      <item>Use ELT when: cloud-native warehouse available, large volumes needing distributed compute, need raw data preservation for future use cases.</item>
+    </list>
+  </section>
+
+  <section title="Medallion Architecture">
+    <rule>
+      <statement>Implement Bronze/Silver/Gold medallion layers where each layer has an explicit owner, quality contract, and materialisation strategy.</statement>
+      <rationale>Without explicit layer contracts, data quality issues propagate silently from ingestion to analytics. 68% of cloud-first enterprises use this pattern (2025) precisely because it enforces quality gates at each transformation boundary.</rationale>
+    </rule>
+    <list>
+      <item>Bronze: raw ingestion, unprocessed as-is from source, append-only, never delete</item>
+      <item>Silver: standardised schema, deduplicated, type-enforced, no business logic</item>
+      <item>Gold: aggregated, enriched, business-ready, optimised for query patterns</item>
+    </list>
+  </section>
+
+  <section title="Modern Data Stack">
+    <p>Component map by function: Ingestion (Airbyte, Fivetran, Debezium), Storage (S3/GCS/ADLS), Warehouse (Snowflake/BigQuery/Databricks), Transformation (dbt/Spark), Orchestration (Airflow/Dagster/Prefect), Quality (Great Expectations/Soda/dbt tests), Catalog (Atlan/Alation).</p>
+  </section>
+</text>

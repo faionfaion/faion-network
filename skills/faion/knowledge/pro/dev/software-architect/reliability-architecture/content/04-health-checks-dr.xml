@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-health-checks-dr" title="Health Checks, Disaster Recovery, and Chaos Engineering">
+  <summary>Kubernetes probe design, DR strategy selection by RTO/RPO, 3-2-1 backup rule, and the chaos engineering maturity model for validating reliability assumptions.</summary>
+
+  <section title="Kubernetes Health Probes">
+    <rule>
+      <statement>Liveness probe must check only the process itself (no external deps); readiness probe must check all critical dependencies.</statement>
+      <rationale>If liveness checks the database and the database is slow, Kubernetes kills and restarts the pod — which does not fix the database. Liveness should only detect deadlocks and infinite loops. Readiness correctly removes the pod from load balancer rotation when deps are unavailable.</rationale>
+    </rule>
+    <rule>
+      <statement>Use a startup probe for slow-starting applications with failureThreshold * periodSeconds greater than the maximum startup time.</statement>
+      <rationale>Without startup probe, liveness begins immediately and kills the pod before it finishes initialising — causing a restart loop.</rationale>
+    </rule>
+    <list>
+      <item>GET /health/live → liveness: 200 OK if process running, no external checks</item>
+      <item>GET /health/ready → readiness: checks DB, cache, critical external APIs; returns 503 if any critical dependency unhealthy</item>
+      <item>GET /health/startup → startup: verifies essential initialisation complete</item>
+      <item>GET /health/detailed → internal only (not exposed publicly); full dependency status with latencies</item>
+    </list>
+    <reference path="templates/health-endpoint.py">FastAPI liveness/readiness/startup endpoints with concurrent dependency checks</reference>
+  </section>
+
+  <section title="Disaster Recovery Strategies">
+    <rule>
+      <statement>Select a DR strategy based on explicit RTO and RPO requirements, not by default to the cheapest option.</statement>
+      <rationale>Backup/Restore is cheap but has hours of RTO — unacceptable for a payment API with a 15-minute SLA. Matching strategy to requirement avoids both over-spending and under-protecting.</rationale>
+    </rule>
+    <list>
+      <item>Backup/Restore: RTO hours, RPO hours, cost $. Use for non-critical workloads.</item>
+      <item>Pilot Light: RTO 10-30 min, RPO minutes, cost $$. Core services warm, scale on failure.</item>
+      <item>Warm Standby: RTO minutes, RPO seconds, cost $$$. Scaled-down copy always running.</item>
+      <item>Hot Standby / Multi-Active: RTO seconds/zero, RPO near-zero, cost $$$$. Mission-critical only.</item>
+    </list>
+    <rule>
+      <statement>Apply the 3-2-1 backup rule: 3 copies, 2 different storage media types, 1 offsite location.</statement>
+      <rationale>A single backup in the same region as production is destroyed by the same event (region outage, ransomware) that caused the original failure.</rationale>
+    </rule>
+  </section>
+
+  <section title="Chaos Engineering">
+    <rule>
+      <statement>Define steady-state hypothesis before each chaos experiment; abort if SLO is breached during the experiment.</statement>
+      <rationale>Without a hypothesis, chaos is destructive testing not learning. Aborting on SLO breach limits blast radius and preserves the error budget.</rationale>
+    </rule>
+    <p>Maturity levels: 1=Manual failover game days, 2=Automated chaos in staging, 3=Production chaos at low traffic, 4=Continuous always-on chaos. Progress sequentially — never start at level 3 without level 2 confidence.</p>
+    <list>
+      <item>Instance termination: tests auto-scaling and failover</item>
+      <item>Network latency injection (200ms): tests timeout and retry behaviour</item>
+      <item>Network partition: tests split-brain handling</item>
+      <item>CPU/memory stress: tests autoscaling and throttling</item>
+      <item>Zone/region failure: tests multi-zone/multi-region resilience</item>
+    </list>
+  </section>
+</text>

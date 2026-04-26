@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-communication-patterns" title="Communication Patterns and Data Management">
+  <summary>REST vs gRPC vs GraphQL synchronous communication trade-offs, asynchronous messaging options (message queues vs event streaming vs pub/sub), the communication decision tree, and database-per-service rationale.</summary>
+
+  <section title="Synchronous Communication">
+    <list>
+      <item>REST (HTTP/JSON): universal, easy to debug, suitable for external APIs and simple CRUD. Cons: tight coupling, cascading failures when downstream is slow.</item>
+      <item>gRPC (HTTP/2 + Protobuf): fast, type-safe, supports streaming, suitable for internal service-to-service high-throughput calls. Cons: more complex tooling, harder to debug without specialised tools.</item>
+      <item>GraphQL: flexible queries, reduces over-fetching, suitable for Backend-for-Frontend (BFF) and aggregation layers. Cons: complex caching, N+1 query risk if not implemented with data loaders.</item>
+    </list>
+    <rule>
+      <statement>Prefer gRPC for internal service-to-service calls with high throughput or strict schema requirements; use REST only for external APIs or when client diversity demands broad compatibility.</statement>
+      <rationale>gRPC's Protobuf encoding is 3-10x smaller than JSON and enforces schema compatibility between client and server. Internal services benefit from this contract. External APIs need REST because clients (browsers, mobile apps, third parties) cannot depend on Protobuf tooling.</rationale>
+    </rule>
+  </section>
+
+  <section title="Asynchronous Communication">
+    <list>
+      <item>Message queues (RabbitMQ, SQS): task distribution, work queues. Pros: decoupled producer/consumer, reliable delivery, backpressure. Cons: message ordering not guaranteed across queue instances.</item>
+      <item>Event streaming (Kafka, Kinesis): event sourcing, audit logs, analytics. Pros: ordered partitions, replay, high throughput. Cons: operational complexity, consumer offset management.</item>
+      <item>Pub/Sub (SNS, Google Pub/Sub): notifications, fan-out to multiple consumers. Pros: simple, scalable. Cons: no replay, at-most-once delivery without additional durability layer.</item>
+    </list>
+    <rule>
+      <statement>Default to asynchronous communication for cross-service calls that do not require an immediate response; use synchronous only when the caller must act on the response before proceeding.</statement>
+      <rationale>Synchronous calls couple availability: if Service B is slow or down, Service A is degraded. Async decouples availability and provides natural backpressure. Most inter-service operations (create order, send notification, update inventory) do not require a synchronous response.</rationale>
+    </rule>
+    <p>Communication decision tree: need immediate response? → Yes: synchronous (internal high-throughput → gRPC; external API → REST; mobile/web aggregation → GraphQL). → No: asynchronous (need ordering → Kafka; need replay → Kafka; simple task queue → RabbitMQ/SQS).</p>
+  </section>
+
+  <section title="Database per Service">
+    <rule>
+      <statement>Each service must own its database exclusively; no other service may read from or write to it directly — data sharing goes through APIs or events.</statement>
+      <rationale>A shared database couples services at the schema level: one service's schema change can break another's queries. Database-per-service allows independent schema evolution, technology choice (relational vs document vs time-series), and independent scaling. It forces explicit API contracts for data access.</rationale>
+    </rule>
+    <antipattern>
+      <description>Two services sharing the same database or the same schema tables.</description>
+      <reason>Schema coupling makes independent deployment impossible. A migration in Service A's table breaks Service B's queries. This produces a distributed monolith with all operational costs but no deployment independence.</reason>
+    </antipattern>
+  </section>
+</text>

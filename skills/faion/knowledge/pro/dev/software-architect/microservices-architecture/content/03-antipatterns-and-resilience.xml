@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns-and-resilience" title="Anti-Patterns and Resilience Patterns">
+  <summary>Distributed monolith, shared database, chatty communication, sync-everywhere, and no-API-versioning anti-patterns; Circuit Breaker, Retry with jitter, Bulkhead, and Timeout resilience patterns applied at the service level.</summary>
+
+  <section title="Microservices Anti-Patterns">
+    <antipattern>
+      <description>Distributed monolith: services that must be deployed together because they share libraries, schemas, or runtime state.</description>
+      <reason>All the operational complexity of microservices (network calls, distributed tracing, multiple deployments) with none of the benefits (independent release cadence, independent scaling). The root cause is missing domain boundaries at design time.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Shared database: multiple services reading from or writing to the same database tables.</description>
+      <reason>Schema coupling prevents independent migration and deployment. A column rename in one service breaks another's queries silently. Forces coordinated releases, undermining service autonomy.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Too-small services (nanoservices): services so fine-grained that network overhead, deployment complexity, and distributed coordination dominate over business logic.</description>
+      <reason>Each service boundary introduces network latency, serialisation cost, and deployment overhead. Services sized below a bounded context create chatty communication and force distributed transactions for simple operations.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Synchronous communication everywhere: every inter-service call is synchronous HTTP, even for operations that do not require an immediate response.</description>
+      <reason>Cascading failures: if Service C is slow, Service B waits, and Service A waits. Async decoupling isolates availability. Synchronous calls should be the exception, reserved for cases where the caller must act on the response before proceeding.</reason>
+    </antipattern>
+    <antipattern>
+      <description>No API versioning: services expose a single unversioned API endpoint, breaking clients on any schema change.</description>
+      <reason>In microservices, services are deployed independently. Without versioning, a schema change in one service forces coordinated upgrades of all consumers — reintroducing deployment coupling that microservices exist to eliminate.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Chatty communication: service A makes N+1 calls to service B for a list of N items (one call per item).</description>
+      <reason>N+1 calls across a network are orders of magnitude slower than N+1 calls within a process. Aggregation, BFF (Backend for Frontend) pattern, or batch APIs reduce inter-service round trips.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Resilience Patterns">
+    <rule>
+      <statement>Apply Circuit Breaker + Retry with jitter + Bulkhead + Timeout as a combined stack on every synchronous inter-service call; do not apply them independently.</statement>
+      <rationale>Each pattern addresses a different failure mode. Timeout alone causes thread exhaustion. Retry alone causes thundering herd. Circuit Breaker alone does not prevent thread pool saturation during open state. Bulkhead isolates the failure to one dependency's pool. Together they prevent cascading failure.</rationale>
+    </rule>
+    <list>
+      <item>Circuit Breaker: closed (pass-through) → failures exceed threshold → open (fast fail, no downstream calls) → half-open after timeout (test with one request) → closed on success. Failure threshold: 5-10 failures in a rolling 60s window for low-traffic services (use absolute count, not percentage).</item>
+      <item>Retry with jitter: use decorrelated jitter (next_wait = min(cap, random(base, prev_wait * 3))) to break thundering herd. Never retry non-idempotent writes without an idempotency key.</item>
+      <item>Bulkhead: use thread-pool isolation when timeout control is required; semaphore isolation when calling thread blocking is acceptable and overhead must be minimal.</item>
+      <item>Timeout: always set explicit timeouts on all external calls. Propagate deadline (request deadline - elapsed_time) to downstream calls rather than setting independent per-hop timeouts, to enforce end-to-end budget.</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,79 @@
+# Linkerd SMI TrafficSplit for weighted canary deployment.
+#
+# Requires:
+# - Linkerd installed in the cluster
+# - SMI CRDs installed (kubectl apply -f https://raw.githubusercontent.com/servicemeshinterface/smi-spec/...)
+# - Two Kubernetes Services: <SERVICE_NAME> (root) and <SERVICE_NAME>-canary
+#
+# Workflow:
+# 1. Deploy new version alongside old version
+# 2. Create <SERVICE_NAME>-canary Service pointing to v2 pods
+# 3. Apply this TrafficSplit: start at 5% canary
+# 4. Monitor error rate and latency in Linkerd dashboard / Prometheus
+# 5. Increment weight: 5 → 25 → 50 → 75 → 100
+# 6. Delete TrafficSplit and old deployment when canary is 100%
+#
+# Replace: <SERVICE_NAME>, <NAMESPACE>
+
+apiVersion: split.smi-spec.io/v1alpha2
+kind: TrafficSplit
+metadata:
+  name: <SERVICE_NAME>-canary
+  namespace: <NAMESPACE>
+spec:
+  # The root service: this is what clients call
+  service: <SERVICE_NAME>
+  backends:
+    - service: <SERVICE_NAME>        # stable (v1)
+      weight: 950m                   # 95% — weights in milliunits (1000m = 100%)
+    - service: <SERVICE_NAME>-canary # canary (v2)
+      weight: 50m                    # 5%
+
+---
+# The canary Service (add this alongside your root Service)
+# It selects only v2 pods via the version label.
+apiVersion: v1
+kind: Service
+metadata:
+  name: <SERVICE_NAME>-canary
+  namespace: <NAMESPACE>
+spec:
+  selector:
+    app: <SERVICE_NAME>
+    version: v2              # only routes to v2 pods
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# Automated canary with Flagger (optional — replaces manual weight adjustment)
+# Flagger watches metrics and advances/rolls back the canary automatically.
+#
+# apiVersion: flagger.app/v1beta1
+# kind: Canary
+# metadata:
+#   name: <SERVICE_NAME>
+#   namespace: <NAMESPACE>
+# spec:
+#   provider: linkerd
+#   targetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: <SERVICE_NAME>
+#   service:
+#     port: 80
+#   analysis:
+#     interval: 1m
+#     threshold: 5              # rollback after 5 failed checks
+#     maxWeight: 50             # max canary weight: 50%
+#     stepWeight: 5             # increment by 5% per interval
+#     metrics:
+#       - name: request-success-rate
+#         thresholdRange:
+#           min: 99             # rollback if success rate drops below 99%
+#         interval: 1m
+#       - name: request-duration
+#         thresholdRange:
+#           max: 500            # rollback if p99 latency exceeds 500ms
+#         interval: 1m

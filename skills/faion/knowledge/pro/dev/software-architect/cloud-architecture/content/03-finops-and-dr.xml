@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-finops-and-dr" title="FinOps, Disaster Recovery, and Landing Zones">
+  <summary>FinOps three-phase cycle (Inform/Optimize/Operate), cost optimisation strategies with savings ranges, mandatory tagging taxonomy, DR strategy comparison (RTO/RPO/cost), and landing zone component checklist.</summary>
+
+  <section title="FinOps">
+    <rule>
+      <statement>Implement a mandatory tagging policy enforced at the account/project level before deploying any resources; untagged resources cannot be cost-allocated and create FinOps blind spots.</statement>
+      <rationale>Cloud bills aggregate by service, not by business unit, team, or project. Without tags, it is impossible to know which product or team is responsible for a cost anomaly. Enforcing tags at creation time (via AWS Tag Policy, GCP Organisation Policy, Azure Policy) prevents the accumulation of unattributed spend that becomes impossible to retroactively clean up.</rationale>
+    </rule>
+    <p>FinOps operates through three phases: Inform (cost visibility, allocation, tagging, showback/chargeback to teams); Optimize (right-sizing, reserved instances, spot/preemptible, waste elimination, scheduling non-prod environments); Operate (governance, automation, continuous improvement, anomaly detection).</p>
+    <list>
+      <item>Right-sizing: 20-40% savings. Identify over-provisioned instances (CPU/memory &lt;20% utilisation). Use VPA recommendations for K8s workloads. Apply to all stateless compute first.</item>
+      <item>Reserved Instances / Committed Use: 30-70% savings. Use for steady, predictable workloads (databases, always-on services). 1-year term is the best balance of savings vs commitment flexibility.</item>
+      <item>Spot / Preemptible instances: 60-90% savings. Use for fault-tolerant batch jobs, CI/CD workers, ML training. Requires application to handle interruption gracefully (checkpoint, retry).</item>
+      <item>Savings Plans (AWS): 20-40% savings. Flexible commitment by compute spend rather than specific instance type. Covers EC2, Fargate, Lambda.</item>
+      <item>Auto-scaling: variable savings. Ensure scale-down aggressiveness is tuned; many teams configure scale-up well but under-configure scale-down, leaving excess capacity running overnight.</item>
+      <item>Scheduling: up to 75% savings for non-production environments. Automatically stop dev/staging at end of business day and on weekends.</item>
+      <item>Storage tiering: 50-80% savings. Move objects not accessed in 30d to infrequent access tier; move objects not accessed in 90d to archive (Glacier, Nearline, Cool).</item>
+    </list>
+    <p>Mandatory tagging taxonomy: Environment (prod/staging/dev), Team (cost allocation unit), Project (feature or product), CostCenter (finance tracking code), Owner (team email), Lifecycle (temporary/permanent). Enforce via policy — reject resource creation without mandatory tags.</p>
+  </section>
+
+  <section title="Disaster Recovery">
+    <rule>
+      <statement>Define explicit RTO and RPO targets before selecting a DR strategy; never choose a DR tier based on architecture preference alone.</statement>
+      <rationale>DR strategies have a direct cost/availability trade-off. Active-Active costs 2x infrastructure for zero RPO/RTO. Backup and Restore costs near-zero but accepts hours of downtime. The correct choice is determined by the business's acceptable downtime and data loss, not by engineering preference. Over-provisioning DR wastes significant budget; under-provisioning causes unacceptable business impact.</rationale>
+    </rule>
+    <list>
+      <item>Backup and Restore: RTO hours, RPO hours, lowest cost. Restore from snapshots/backups when disaster occurs. Use for non-critical workloads (internal tools, dev environments).</item>
+      <item>Pilot Light: RTO minutes, RPO minutes, medium cost. Core data replicated, minimal services running (databases warm, compute off). Start compute on failover. Use for core systems that need fast recovery but not instant.</item>
+      <item>Warm Standby: RTO seconds, RPO seconds, high cost. Scaled-down version of production running in standby region. Scale up on failover. Use for critical applications where minutes of downtime is unacceptable.</item>
+      <item>Active-Active (Multi-site): RTO zero, RPO zero, highest cost. All regions serve traffic, data synchronised. No failover needed — traffic automatically routes around failure. Use for mission-critical systems (payments, core APIs).</item>
+    </list>
+  </section>
+
+  <section title="Landing Zone Components">
+    <p>A landing zone is a well-architected, secure cloud foundation that provides the baseline for all workload deployments. Required components: Identity and Access (centralised IAM, federation, MFA, SSO, SCIM provisioning); Network topology (hub-and-spoke or shared VPC, Transit Gateway, firewall); Security controls (guardrails via AWS Control Tower/Azure Policy/GCP OrgPolicy, compliance automation); Logging and monitoring (centralised CloudTrail/Cloud Audit Logs, SIEM integration, anomaly detection); Cost management (budgets with alerts, tagging policy, showback dashboards); Resource organisation (account/subscription/project structure per environment and team); Automation (IaC templates for account vending, CI/CD pipelines); Governance (policies, standards, approval workflows for new services).</p>
+    <note>Provider landing zone solutions: AWS Control Tower (multi-account, guardrails, Account Factory Terraform), Azure Cloud Adoption Framework (enterprise-scale landing zones, blueprints), GCP Cloud Foundation Toolkit (organisation, folder structure, security blueprint). Use provider-native solutions as a starting point rather than building from scratch.</note>
+  </section>
+</text>

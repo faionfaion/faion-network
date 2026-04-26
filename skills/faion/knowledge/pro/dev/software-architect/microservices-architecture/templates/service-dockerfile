@@ -1,0 +1,47 @@
+# Multi-stage Dockerfile for a Python microservice.
+# Goals: minimal image size, non-root user, no shell in final layer.
+# Adapt PYTHON_VERSION, APP_MODULE, and PORT for your service.
+
+ARG PYTHON_VERSION=3.12
+ARG APP_MODULE=app.main:app
+ARG PORT=8000
+
+# ---- Build stage: install dependencies ----
+FROM python:${PYTHON_VERSION}-slim AS builder
+
+WORKDIR /build
+
+# Install build deps separately to leverage Docker layer cache.
+# requirements.txt must be committed to the repo (not generated at build time).
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ---- Runtime stage: minimal final image ----
+FROM python:${PYTHON_VERSION}-slim AS runtime
+
+# Create non-root user and group (principle of least privilege)
+RUN groupadd --gid 1001 appgroup && \
+    useradd --uid 1001 --gid appgroup --no-create-home --shell /bin/false appuser
+
+WORKDIR /app
+
+# Copy installed packages from builder
+COPY --from=builder /install /usr/local
+
+# Copy application code
+COPY --chown=appuser:appgroup . .
+
+# Drop to non-root user for all subsequent instructions
+USER appuser
+
+# Expose port (informational — does not publish the port)
+EXPOSE ${PORT}
+
+# Health check: Kubernetes probes replace this for K8s deployments,
+# but keep it for Docker Compose and local testing.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/health/live')"
+
+# Use exec form to receive signals correctly (not shell form which wraps in sh -c)
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

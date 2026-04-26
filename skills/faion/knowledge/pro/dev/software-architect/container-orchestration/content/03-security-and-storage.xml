@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-security-and-storage" title="Security, RBAC, and Persistent Storage">
+  <summary>RBAC least-privilege, network policies, pod security standards (Privileged/Baseline/Restricted), 2025 security practices (distroless images, eBPF runtime security, External Secrets Operator), persistent storage access modes, and CSI driver best practices.</summary>
+
+  <section title="RBAC and Network Security">
+    <rule>
+      <statement>Create a dedicated ServiceAccount per workload and bind only the minimum required verbs and resources; never use the default ServiceAccount for application pods.</statement>
+      <rationale>The default ServiceAccount is shared across all pods in a namespace. If one pod is compromised, its token allows access to every API resource the default SA can reach. Dedicated per-workload SAs limit blast radius: compromising one pod's SA grants access only to that workload's API permissions.</rationale>
+    </rule>
+    <list>
+      <item>RBAC design: use Role (namespace-scoped) for workload-specific access; ClusterRole only when cross-namespace or cluster-wide access is genuinely required. Audit ClusterRoleBindings regularly — they are the highest-risk RBAC objects.</item>
+      <item>Network policies: default Kubernetes allows all pod-to-pod communication. Apply deny-all ingress/egress as the baseline, then allowlist specific pod-to-pod flows. Require a CNI that enforces NetworkPolicy (Calico, Cilium, WeaveNet).</item>
+      <item>Pod security standards: Privileged (unrestricted, avoid in production), Baseline (minimal restrictions, prevents known privilege escalation), Restricted (hardened, requires non-root, drops all capabilities, read-only root filesystem). Apply Restricted for all new workloads.</item>
+    </list>
+    <rule>
+      <statement>Use distroless or minimal base images; never use root as the container user in production workloads.</statement>
+      <rationale>Distroless images contain only the application binary and runtime libraries — no shell, no package manager, no debugging tools. This eliminates the entire class of container breakout attacks that rely on shell access and reduces the CVE surface by removing unused OS packages.</rationale>
+    </rule>
+  </section>
+
+  <section title="Secrets Management">
+    <list>
+      <item>External Secrets Operator: sync secrets from AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault, or Azure Key Vault into Kubernetes Secrets. Rotation is automatic when the upstream secret changes.</item>
+      <item>Sealed Secrets: encrypt Kubernetes Secret manifests with a cluster-specific key, safe to commit to Git. Useful for GitOps workflows where all resources are stored in version control.</item>
+      <item>HashiCorp Vault with Vault Agent sidecar or CSI driver: dynamic secrets, fine-grained lease management, audit log of every secret access. Best for high-compliance environments.</item>
+      <item>Never commit raw secrets to Git. Enable etcd encryption at rest. Rotate secrets regularly.</item>
+    </list>
+    <p>2025 security practices: scan images with Trivy or Grype in CI pipeline; sign images with cosign/Sigstore and enforce signature verification at admission; generate and publish SBOM per image; use eBPF-based runtime security (Falco, Tetragon) for kernel-level syscall monitoring; implement zero-trust with service mesh mTLS for all pod-to-pod traffic.</p>
+  </section>
+
+  <section title="Persistent Storage">
+    <rule>
+      <statement>Use CSI (Container Storage Interface) drivers for all persistent volume provisioning; do not use deprecated in-tree volume plugins or FlexVolume.</statement>
+      <rationale>In-tree volume plugins are deprecated and being removed from Kubernetes. CSI provides a stable interface for cloud storage (AWS EBS, GCP Persistent Disk, Azure Disk) and enables volume snapshots, expansion, and cloning without cluster-level changes.</rationale>
+    </rule>
+    <list>
+      <item>ReadWriteOnce (RWO): single node read-write. Suitable for databases and stateful apps where only one pod writes at a time.</item>
+      <item>ReadOnlyMany (ROX): multiple nodes read-only. Suitable for shared configuration or reference data volumes.</item>
+      <item>ReadWriteMany (RWX): multiple nodes read-write. Requires NFS-compatible storage (EFS, Filestore, Azure Files). Adds latency and complexity — avoid unless shared writes are a genuine requirement.</item>
+      <item>ReadWriteOncePod (RWOP, K8s 1.27+): single pod read-write. Stronger guarantee than RWO: prevents two pods on the same node sharing the volume.</item>
+    </list>
+    <p>Storage best practices: use dynamic provisioning over static PersistentVolumes; set volumeBindingMode: WaitForFirstConsumer for multi-zone clusters to avoid cross-zone volume attachment; enable allowVolumeExpansion on StorageClass; use VolumeSnapshots for backup; use Velero for disaster recovery of persistent volumes.</p>
+  </section>
+</text>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-transformation-and-quality" title="dbt Transformation Conventions and Data Quality">
+  <summary>dbt model naming, materialisation choices, data quality tool selection (Great Expectations/Soda/dbt tests), data contracts, and error handling (DLQ, idempotency, retry strategies).</summary>
+
+  <section title="dbt Model Conventions">
+    <rule>
+      <statement>Follow the stg_ / int_ / fct_ / dim_ naming convention and never reference raw source tables directly from intermediate or mart models.</statement>
+      <rationale>Bypassing staging models means business logic depends on raw source schema — any upstream schema change breaks downstream models. Staging models create a stable abstraction layer.</rationale>
+    </rule>
+    <list>
+      <item>stg_&lt;source&gt;__&lt;entity&gt;.sql: one model per source table, light transforms only (rename, cast, dedupe). Materialise as view or ephemeral.</item>
+      <item>int_&lt;verb&gt;_&lt;entity&gt;.sql: business logic groupings. Use verbs: int_orders_joined, int_users_aggregated. Materialise as view or ephemeral.</item>
+      <item>fct_&lt;entity&gt;.sql: fact tables, append-only events. Materialise as table or incremental.</item>
+      <item>dim_&lt;entity&gt;.sql: dimension tables, frequently accessed. Materialise as table.</item>
+    </list>
+    <rule>
+      <statement>Use incremental materialisation for large fact tables; always define the unique_key and on_schema_change strategy.</statement>
+      <rationale>Full-table refresh of a 1B-row fact table takes hours and wastes warehouse compute. Incremental processes only new/changed rows. Without unique_key, incremental runs can produce duplicates.</rationale>
+    </rule>
+    <reference path="templates/dbt-model-staging.sql">Canonical staging model with source() reference, type casting, and row_number() deduplication</reference>
+  </section>
+
+  <section title="Data Quality Tool Selection">
+    <rule>
+      <statement>Apply dbt tests at the transformation layer for structural integrity (not_null, unique, relationships); use Great Expectations or Soda for business rule validation at ingestion boundaries.</statement>
+      <rationale>dbt tests run after transformation and catch model logic errors. Great Expectations / Soda run at ingestion and catch upstream source quality issues before they reach the warehouse.</rationale>
+    </rule>
+    <list>
+      <item>dbt tests: not_null/unique on keys, accepted_values for enums, relationships for foreign keys. Integrated with dbt run.</item>
+      <item>Great Expectations: Python-first, 300+ expectations, data docs generation, complex compliance validation.</item>
+      <item>Soda: YAML-first (SodaCL), accessible for non-engineers, continuous monitoring with anomaly detection alerts.</item>
+    </list>
+  </section>
+
+  <section title="Error Handling Patterns">
+    <rule>
+      <statement>Route failed records to a Dead Letter Queue (DLQ) rather than discarding them or halting the pipeline.</statement>
+      <rationale>Discarding failed records causes silent data loss. Halting the pipeline blocks all downstream consumers. DLQ preserves the failed records for manual review and reprocessing without blocking the healthy path.</rationale>
+    </rule>
+    <list>
+      <item>DLQ message: include original topic, partition, offset, timestamp, original key/value, error time, retry count.</item>
+      <item>Retry strategy: exponential backoff for transient failures (network, API limits); fixed delay for known recovery times; circuit breaker for cascade prevention.</item>
+      <item>Idempotency check: before processing, check if record_id was already successfully processed; skip duplicates.</item>
+    </list>
+    <antipattern>
+      <description>Silently dropping records that fail schema validation or business rule checks.</description>
+      <reason>Silent drops make data quality failures invisible. The pipeline reports 100% success while data completeness degrades, which only surfaces when a report is wrong.</reason>
+    </antipattern>
+  </section>
+</text>

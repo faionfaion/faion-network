@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-alerting-and-cost" title="Alerting Design and Cost Optimisation">
+  <summary>Multi-burn-rate alert design, runbook requirements, alert routing by severity, data retention tiers, cardinality limits, and cost reduction strategies.</summary>
+
+  <section title="Multi-Burn-Rate Alerts">
+    <rule>
+      <statement>Alert on burn rate at two windows (short 5m/1h for fast burn; long 30m/6h for slow burn) rather than on raw error rate thresholds.</statement>
+      <rationale>A raw 1% error rate alert fires regardless of budget impact. A 14.4x burn rate alert (consuming 1 month of budget in 2 hours) fires only when the situation is urgent. Two-window approach reduces false positives from transient spikes.</rationale>
+    </rule>
+    <example type="good">
+      <note>Critical: 14.4x burn rate sustained over 5m AND 1h (page immediately). Warning: 6x burn rate sustained over 30m AND 6h (review within hours). Both windows must fire to avoid false positives.</note>
+    </example>
+    <rule>
+      <statement>Every alert must have a runbook URL in its annotation and a unique, human-readable summary.</statement>
+      <rationale>Alerts without runbooks require on-call engineers to diagnose from scratch under pressure. Runbook link reduces MTTR by providing diagnosis and mitigation steps immediately.</rationale>
+    </rule>
+    <reference path="templates/prometheus-rules.yaml">Multi-burn-rate SLO alert rules with runbook_url annotations</reference>
+  </section>
+
+  <section title="Alert Severity and Routing">
+    <list>
+      <item>Critical: page immediately (any time) → PagerDuty. Example: service down, SLO breached.</item>
+      <item>Warning: review within hours → Slack. Example: elevated error rate, disk filling.</item>
+      <item>Info: check during business hours → email/ticket. Example: unusual pattern, approaching limit.</item>
+    </list>
+    <rule>
+      <statement>Configure alert inhibition so that a critical alert suppresses related warning alerts on the same service.</statement>
+      <rationale>When a service is down (critical), related warning alerts for the same service create noise that distracts the responder from the root issue.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cost Optimisation">
+    <rule>
+      <statement>Limit metric label cardinality to fewer than 10 unique values per label to prevent series explosion.</statement>
+      <rationale>A label with user_id as value on a high-traffic service creates millions of unique time series, causing storage and query performance to collapse. Use bucketed or categorical labels only.</rationale>
+    </rule>
+    <p>Cost reduction strategies: tail sampling (70-90% trace volume reduction), log aggregation at collector (30-50% storage), cardinality limits on high-volume metrics (40-60% series reduction), tiered retention (50-70% storage reduction).</p>
+    <list>
+      <item>Hot tier (7-14 days): active debugging, fast queries</item>
+      <item>Warm tier (30-90 days): recent incident analysis</item>
+      <item>Cold tier (1-2 years): compliance, audits, object storage</item>
+      <item>Archive (3+ years): legal requirements, cheapest storage class</item>
+    </list>
+    <antipattern>
+      <description>Storing all traces at 100% sample rate without tail sampling or retention tiers.</description>
+      <reason>At 10k req/s, 100% trace storage can cost 10-50x more than a 5% probabilistic + error-always strategy, with no diagnostic benefit for the 95% of successful traces.</reason>
+    </antipattern>
+  </section>
+</text>

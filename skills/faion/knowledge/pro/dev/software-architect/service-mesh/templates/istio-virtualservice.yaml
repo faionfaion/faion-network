@@ -1,0 +1,110 @@
+# Istio VirtualService + DestinationRule for canary traffic splitting
+# with header-based routing for internal testing.
+#
+# Pattern:
+# - Header x-canary: true → 100% to v2 (for internal QA)
+# - All other traffic → 95% v1, 5% v2 (canary rollout)
+#
+# Replace: <SERVICE_NAME>, <NAMESPACE>
+# Adjust weights as the canary progresses: 5% → 25% → 50% → 100%
+
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: <SERVICE_NAME>
+  namespace: <NAMESPACE>
+spec:
+  hosts:
+    - <SERVICE_NAME>
+  http:
+    # Route 1: header-based routing for internal canary testing
+    - name: canary-header
+      match:
+        - headers:
+            x-canary:
+              exact: "true"
+      route:
+        - destination:
+            host: <SERVICE_NAME>
+            subset: v2
+          weight: 100
+
+    # Route 2: weighted canary split for all other traffic
+    - name: canary-weight
+      route:
+        - destination:
+            host: <SERVICE_NAME>
+            subset: v1
+          weight: 95
+        - destination:
+            host: <SERVICE_NAME>
+            subset: v2
+          weight: 5
+
+      # Retry policy: retry on gateway errors, not on 4xx
+      retries:
+        attempts: 3
+        perTryTimeout: 2s
+        retryOn: gateway-error,connect-failure,retriable-4xx
+
+      # Timeout: fail fast if the service is slow
+      timeout: 10s
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: <SERVICE_NAME>
+  namespace: <NAMESPACE>
+spec:
+  host: <SERVICE_NAME>
+
+  # Traffic policy: circuit breaker + connection pool limits
+  trafficPolicy:
+    # Connection pool: limit concurrent HTTP requests per pod
+    connectionPool:
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+
+    # Outlier detection: circuit breaker based on 5xx error rate
+    # Eject a pod for 30s after 5 consecutive 5xx errors within 1 minute.
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 1m
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50    # never eject more than 50% of pods simultaneously
+
+    # mTLS: enforce strict mutual TLS (requires PeerAuthentication in strict mode)
+    tls:
+      mode: ISTIO_MUTUAL
+
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2
+
+---
+# Traffic mirroring example (shadow traffic to v2 without affecting production responses)
+# apiVersion: networking.istio.io/v1beta1
+# kind: VirtualService
+# metadata:
+#   name: <SERVICE_NAME>-mirror
+# spec:
+#   hosts:
+#     - <SERVICE_NAME>
+#   http:
+#     - route:
+#         - destination:
+#             host: <SERVICE_NAME>
+#             subset: v1
+#           weight: 100
+#       mirror:
+#         host: <SERVICE_NAME>
+#         subset: v2
+#       mirrorPercentage:
+#         value: 100.0    # mirror 100% of traffic (responses discarded)

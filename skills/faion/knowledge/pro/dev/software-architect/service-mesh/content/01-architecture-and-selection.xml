@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture-and-selection" title="Service Mesh Architecture and Selection">
+  <summary>Data plane approaches (sidecar vs per-node vs eBPF), 2025 performance benchmarks, Istio vs Linkerd vs Cilium feature comparison, and the decision framework for mesh selection.</summary>
+
+  <section title="Architecture Approaches">
+    <p>A service mesh is an infrastructure layer that handles service-to-service communication: service discovery, load balancing, mTLS encryption, observability (metrics/tracing/logs), traffic management (routing, retries, circuit breaking), and access control — without requiring application code changes.</p>
+    <p>Components: Data Plane (proxies alongside or shared between services) and Control Plane (centralized management: configuration distribution, certificate management, policy enforcement, telemetry aggregation).</p>
+    <list>
+      <item>Sidecar model (traditional): proxy container per pod (Envoy for Istio, Linkerd-proxy for Linkerd). Full L7 features, complete isolation between pods. Higher resource overhead: 50-70 MB per pod (Istio) or 20-30 MB (Linkerd). Latency overhead: +166% for Istio sidecar, +33% for Linkerd at 3200 RPS.</item>
+      <item>Sidecarless — Istio Ambient: ztunnel (L4, per node) + waypoint proxy (L7, per namespace). Lower overhead: ~12 MB shared per node for ztunnel, ~0.06 vCPU per 1000 RPS. Latency overhead: +8% at 3200 RPS. Simpler operations: no per-pod sidecar injection.</item>
+      <item>Sidecarless — Cilium eBPF: network policies and basic mesh in Linux kernel via eBPF, optional Envoy for L7. Minimal per-pod memory (per-node only), kernel-level CPU usage. Best for network-heavy workloads and environments where CNI and mesh should be the same tool.</item>
+    </list>
+    <rule>
+      <statement>Prefer sidecarless architectures (Istio Ambient or Cilium) for new deployments in 2025; use traditional Envoy sidecars only when full per-pod L7 isolation is a hard requirement.</statement>
+      <rationale>Ambient mode reduces latency overhead from +166% to +8% and eliminates per-pod sidecar memory. For most production use cases (mTLS, canary routing, basic observability), the ztunnel + waypoint architecture delivers equivalent security and functionality with significantly lower resource cost.</rationale>
+    </rule>
+  </section>
+
+  <section title="Mesh Selection">
+    <list>
+      <item>Istio: full features, enterprise-grade, advanced traffic management (header-based routing, fault injection, traffic mirroring), multi-cluster, full Gateway API support. High learning curve. Best for complex enterprise deployments requiring all L7 features.</item>
+      <item>Linkerd: simplicity, low latency (+33%), Rust-based proxy with low memory (~20 MB), mTLS on by default, good observability. Limited multi-cluster (paid). Best for teams prioritising simplicity and operational ease over advanced features.</item>
+      <item>Cilium: eBPF-based, combines CNI and service mesh, best performance for network-heavy workloads, strong network policy support. Requires kernel 5.4+. Best for platforms where CNI consolidation is desirable and eBPF expertise exists.</item>
+      <item>Istio Ambient: minimal overhead (ztunnel per node), mTLS only at L4, optional L7 via waypoint proxies. Best for mTLS-only use cases or large clusters where per-pod sidecar memory cost is prohibitive.</item>
+    </list>
+    <p>Decision framework: need mTLS only → Istio Ambient or cert-manager + manual config. Need advanced L7 (traffic mirroring, fault injection) → Istio or Linkerd. Resource-constrained → Linkerd or Istio Ambient. Need multi-cluster → Istio or Cilium. Value simplicity → Linkerd. eBPF / network policy consolidation → Cilium.</p>
+  </section>
+</text>

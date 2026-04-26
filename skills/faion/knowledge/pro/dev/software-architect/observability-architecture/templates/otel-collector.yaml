@@ -1,0 +1,93 @@
+# OpenTelemetry Collector configuration
+# Vendor-neutral pipeline: receives OTLP from services, exports to LGTM stack.
+# Deploy as DaemonSet (per-node) or sidecar (per-pod) depending on volume.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  # Prometheus scrape for services that expose /metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: kubernetes-pods
+          kubernetes_sd_configs:
+            - role: pod
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+              action: keep
+              regex: "true"
+
+processors:
+  # Batch to reduce export calls; tune send_batch_size for your volume
+  batch:
+    send_batch_size: 512
+    timeout: 5s
+
+  # Resource detection: add k8s node, pod, namespace to all telemetry
+  resourcedetection:
+    detectors: [env, k8snode]
+    timeout: 5s
+
+  # Tail sampling: keep 100% of error/slow traces, sample healthy traffic
+  # Deploy as a separate collector tier (Collector → Sampling Collector → Backend)
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+      - name: always-sample-errors
+        type: status_code
+        status_code: { status_codes: [ERROR] }
+      - name: always-sample-slow
+        type: latency
+        latency: { threshold_ms: 2000 }
+      - name: drop-health-checks
+        type: string_attribute
+        string_attribute:
+          key: http.url
+          values: ["/health/live", "/health/ready"]
+          enabled_regex_matching: false
+          invert_match: true
+      - name: probabilistic-5pct
+        type: probabilistic
+        probabilistic: { sampling_percentage: 5 }
+
+  # Cardinality guard: drop high-cardinality label values
+  # Prevents label explosion that crashes Prometheus TSDB
+  # metricstransform:
+  #   transforms:
+  #     - include: http_requests_total
+  #       action: update
+  #       operations:
+  #         - action: delete_label_value
+  #           label: user_id
+
+exporters:
+  # Grafana LGTM stack
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
+
+  prometheusremotewrite:
+    endpoint: http://mimir:9009/api/v1/push
+
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, resourcedetection, tail_sampling]
+      exporters: [otlphttp/tempo]
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [batch, resourcedetection]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [batch, resourcedetection]
+      exporters: [loki]

@@ -1,0 +1,62 @@
+# KEDA ScaledObject: scale a Kafka consumer Deployment based on consumer lag.
+# Supports scale-to-zero when the queue is empty.
+# Replace: <APP_NAME>, <TOPIC>, <CONSUMER_GROUP>, <KAFKA_BROKERS>
+#
+# Install KEDA: https://keda.sh/docs/latest/deploy/
+# Requires: keda-operator running in the cluster.
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: <APP_NAME>-kafka-scaler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: <APP_NAME>
+
+  # Scale to zero when lag = 0 (no messages to process)
+  minReplicaCount: 0
+  maxReplicaCount: 20
+
+  # Wait for lag to sustain before scaling up/down (avoid flapping)
+  cooldownPeriod: 60        # seconds before scaling down to zero
+  pollingInterval: 15       # seconds between lag checks
+
+  triggers:
+    - type: kafka
+      metadata:
+        # Bootstrap servers (comma-separated)
+        bootstrapServers: <KAFKA_BROKERS>
+        consumerGroup: <CONSUMER_GROUP>
+        topic: <TOPIC>
+        # Target: number of messages per replica (lag / replicas = target)
+        # 100 messages per replica = at 1000 lag, scale to 10 replicas
+        lagThreshold: "100"
+        # offsetResetPolicy: earliest or latest (used when consumer group has no offset)
+        offsetResetPolicy: latest
+      # If Kafka uses SASL/TLS, reference a K8s Secret:
+      # authenticationRef:
+      #   name: kafka-auth-secret
+
+---
+# Example: KEDA with SQS queue trigger (alternative to Kafka)
+# apiVersion: keda.sh/v1alpha1
+# kind: ScaledObject
+# metadata:
+#   name: <APP_NAME>-sqs-scaler
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: <APP_NAME>
+#   minReplicaCount: 0
+#   maxReplicaCount: 10
+#   triggers:
+#     - type: aws-sqs-queue
+#       metadata:
+#         queueURL: https://sqs.us-east-1.amazonaws.com/123456789/my-queue
+#         queueLength: "50"       # messages per replica
+#         awsRegion: us-east-1
+#       authenticationRef:
+#         name: keda-aws-secret

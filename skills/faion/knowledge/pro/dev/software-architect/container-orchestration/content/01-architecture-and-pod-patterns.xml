@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-architecture-and-pod-patterns" title="Kubernetes Architecture and Pod Design Patterns">
+  <summary>Kubernetes control plane and worker node components, resource hierarchy (cluster → namespace → pod → container), and the four pod design patterns: sidecar, ambassador, adapter, and init container.</summary>
+
+  <section title="Kubernetes Architecture">
+    <p>Control plane components: API Server (front door for all cluster operations, validates and processes requests), etcd (distributed key-value store for cluster state), Scheduler (assigns pods to nodes based on resources, affinity, taints), Controller Manager (runs replication/node/endpoint/service-account controllers), Cloud Controller (integrates with cloud provider APIs).</p>
+    <p>Worker node components: kubelet (agent ensuring containers run in pods), kube-proxy (network proxy maintaining network rules), container runtime (containerd or other CRI-compliant runtime).</p>
+    <p>Resource hierarchy: Cluster → Namespace (isolation boundary) → Deployment/StatefulSet/DaemonSet → ReplicaSet → Pod → Container(s).</p>
+    <rule>
+      <statement>Always set both resource requests and resource limits on every container; never deploy to production with only limits or only requests.</statement>
+      <rationale>Requests determine scheduling: without them, the scheduler cannot place pods correctly, leading to node overcommit and OOM kills. Limits prevent noisy-neighbour CPU starvation and memory exhaustion. Missing either half breaks the Guaranteed or Burstable QoS contract the pod needs.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pod Design Patterns">
+    <list>
+      <item>Sidecar: deploy helper container alongside main application in the same pod. Shares localhost and pod volumes. Use for: log collection (Fluentd/Fluent Bit), service mesh proxy (Envoy/Linkerd-proxy), secrets injection (Vault Agent), file sync (git-sync). K8s 1.33+: init containers with restartPolicy: Always are native sidecars that start before main containers and terminate after them.</item>
+      <item>Ambassador: proxy container that hides external service complexity from the main container. Use for: database connection pooling, API gateway to external services, protocol translation, rate limiting to external APIs.</item>
+      <item>Adapter: standardises the output format of the main container for the rest of the cluster. Use for: log format normalisation (different apps to unified JSON), metrics conversion (custom format to Prometheus exposition format), protocol adaptation.</item>
+      <item>Init container: runs to completion before app containers start; if it fails, pod restart policy applies. Use for: database schema migration, configuration file generation, waiting for dependencies (pg_isready), downloading startup assets.</item>
+    </list>
+    <rule>
+      <statement>Use init containers for startup dependencies (database readiness, config download) rather than sleep loops or liveness probe workarounds in the main container.</statement>
+      <rationale>Sleep loops in main containers make startup time variable and unreliable. Init containers model the dependency explicitly: the pod does not start until every init container exits 0. This is visible in pod status and does not require custom logic in the application.</rationale>
+    </rule>
+  </section>
+</text>

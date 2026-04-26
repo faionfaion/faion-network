@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-deployments-and-autoscaling" title="Deployment Strategies and Autoscaling">
+  <summary>Rolling update parameters, blue-green vs canary trade-offs, HPA vs KEDA vs VPA selection, QoS classes (Guaranteed/Burstable/BestEffort), and resource quota configuration.</summary>
+
+  <section title="Deployment Strategies">
+    <list>
+      <item>Rolling update (default): gradual replacement of old pods. Parameters: maxSurge (extra pods during update, absolute or %) and maxUnavailable (pods that can be offline). Best for standard deployments with minimal resource overhead.</item>
+      <item>Blue-green: two identical environments, instant traffic switch. Pros: instant rollback, no mixed versions, full pre-switch testing. Cons: double infrastructure cost during deployment, database schema changes need careful handling. Best for critical applications requiring zero-risk instant rollback.</item>
+      <item>Canary: gradual traffic shift to new version (2% → 25% → 75% → 100%). Pros: lowest risk, real production testing, metrics-based progression. Cons: requires sophisticated traffic management (Argo Rollouts, Flagger, Istio, Linkerd), application must tolerate multiple live versions. Best for risk-sensitive applications.</item>
+      <item>Recreate: terminate all pods, then create new. Best for development environments, non-critical workloads, and cases where old and new versions cannot coexist (incompatible schema).</item>
+    </list>
+    <rule>
+      <statement>Use canary deployment for any production change with high risk; validate success metrics (error rate, p99 latency) before advancing each traffic step.</statement>
+      <rationale>Canary limits blast radius to the percentage of traffic on the new version. If the new version degrades error rate above SLO, the rollback affects only that slice of traffic and can be automated via Flagger's metric analysis.</rationale>
+    </rule>
+  </section>
+
+  <section title="Autoscaling Selection">
+    <rule>
+      <statement>Use KEDA for queue-backed or event-driven workloads that need scale-to-zero; use HPA for CPU/memory-driven scaling of always-on services.</statement>
+      <rationale>HPA requires a minimum of 1 replica and cannot scale to zero. KEDA's 60+ scalers (Kafka, RabbitMQ, SQS, PostgreSQL, Prometheus) allow precise scaling to consumer demand, including zero when queues are empty. For always-on HTTP services where CPU utilisation is the primary signal, HPA is simpler and sufficient.</rationale>
+    </rule>
+    <list>
+      <item>HPA: scale based on CPU, memory, or custom metrics. Requires metrics-server. Minimum replica count: 1. Best for HTTP services scaling on CPU/memory.</item>
+      <item>KEDA: scale based on external events (queue depth, Kafka consumer lag, HTTP requests). Scale to zero supported. 60+ scalers. Cron-based scaling. Best for batch, event-driven, and queue-consumer workloads.</item>
+      <item>VPA: automatically adjust resource requests/limits. Modes: Off (recommendations only), Initial (set at pod creation), Auto (update running pods, requires restart). Best for right-sizing workloads with unpredictable resource profiles.</item>
+    </list>
+    <p>QoS classes determine eviction priority under node pressure: Guaranteed (requests = limits for all containers) — evicted last; Burstable (requests &lt; limits) — medium priority; BestEffort (no requests or limits set) — evicted first. Production workloads should target Guaranteed or Burstable.</p>
+  </section>
+</text>

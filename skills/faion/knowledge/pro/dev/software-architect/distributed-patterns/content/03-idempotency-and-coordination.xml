@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-idempotency-and-coordination" title="Idempotency, Leader Election, Rate Limiting, and Pattern Combinations">
+  <summary>Idempotency implementation strategies, HTTP method idempotency, Leader Election algorithms, Rate Limiting algorithm selection, and common pattern combinations for production scenarios.</summary>
+
+  <section title="Idempotency">
+    <rule>
+      <statement>Store the idempotency record and its response after the transaction commits, not before, using the idempotency key as the primary key.</statement>
+      <rationale>Storing before the transaction means a commit failure leaves a stale "already processed" record with no result — subsequent retries are silently dropped. Storing after ensures the record exists only when the operation actually succeeded.</rationale>
+    </rule>
+    <list>
+      <item>Idempotency Key: client-generated UUID per operation, stored in cache/DB with TTL. Return same response for same key.</item>
+      <item>Natural Key: business identifier (account_id + amount + reference_id). Hash to create deterministic key. No client cooperation required.</item>
+      <item>ETag / Version: optimistic concurrency control. Client includes If-Match header; server rejects if version mismatch.</item>
+      <item>Message Deduplication: queue-level dedup window (SQS: 5min; Kafka: enable.idempotence = true).</item>
+    </list>
+    <rule>
+      <statement>Set an expiration time on idempotency keys (typically 24h-7d) to prevent indefinite storage growth.</statement>
+      <rationale>Without expiration, idempotency records accumulate indefinitely. After the safe retry window (client's retry policy maximum), old keys are no longer needed.</rationale>
+    </rule>
+  </section>
+
+  <section title="Leader Election">
+    <p>Common approaches by context:</p>
+    <list>
+      <item>etcd / Consul: consensus-based (Raft algorithm), production-grade, use for distributed coordination (Kubernetes, Kafka KRaft).</item>
+      <item>Redis SETNX + TTL (Redlock): simpler, sufficient for single-datacenter; not safe across multiple independent Redis instances.</item>
+      <item>Database row lock + heartbeat: suitable when a database is already available; leader holds a lock row and renews on interval.</item>
+    </list>
+    <rule>
+      <statement>Always set a TTL on leader locks; the leader must renew the lock before expiry, not after re-election.</statement>
+      <rationale>A leader that pauses (GC, network partition) without TTL holds the lock indefinitely, blocking all other candidates. TTL ensures automatic failover within a bounded time window.</rationale>
+    </rule>
+  </section>
+
+  <section title="Rate Limiting Algorithms">
+    <list>
+      <item>Token Bucket: allows controlled bursts up to bucket size, smooth average rate. Best for API rate limiting where occasional bursts are acceptable.</item>
+      <item>Leaky Bucket: fixed output rate regardless of input burst. Best for traffic shaping to downstream with fixed capacity.</item>
+      <item>Fixed Window: simple, but allows 2x rate at window boundaries. Use only for rough limiting.</item>
+      <item>Sliding Window: accurate, no boundary spikes. Best for precise per-client rate control.</item>
+    </list>
+  </section>
+
+  <section title="Pattern Combination Matrix">
+    <p>Common production combinations:</p>
+    <list>
+      <item>E-commerce order: Saga + Outbox + Idempotency Key</item>
+      <item>Real-time analytics: CQRS + Event Sourcing</item>
+      <item>Payment processing: 2PC (core ledger) + Saga (auxiliary steps)</item>
+      <item>API resilience: Circuit Breaker + Bulkhead + Retry with jitter</item>
+      <item>Event streaming: Event Sourcing + CQRS + Outbox</item>
+    </list>
+  </section>
+</text>

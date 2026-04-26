@@ -1,0 +1,143 @@
+# Production Deployment manifest with:
+# - liveness / readiness / startup probes
+# - resource limits and requests
+# - non-root security context
+# - graceful shutdown
+# Replace: <APP_NAME>, <IMAGE>, <PORT>
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: <APP_NAME>
+  labels:
+    app: <APP_NAME>
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: <APP_NAME>
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0    # zero downtime rolling update
+  template:
+    metadata:
+      labels:
+        app: <APP_NAME>
+      annotations:
+        # Enable Prometheus scraping via service discovery
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "<PORT>"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: <APP_NAME>-sa
+      automountServiceAccountToken: false
+
+      # Pod-level security: non-root, runtime seccomp profile
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Init container: wait for database to be ready before starting app
+      initContainers:
+        - name: wait-for-db
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h $DB_HOST -p 5432; do
+                echo "waiting for postgres..."
+                sleep 2
+              done
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: <APP_NAME>-config
+                  key: db_host
+
+      containers:
+        - name: <APP_NAME>
+          image: <IMAGE>:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: <PORT>
+
+          # Container-level security: drop all capabilities, immutable filesystem
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # Startup probe: disable liveness until startup is complete
+          # Max startup time: failureThreshold * periodSeconds = 2 minutes
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+            timeoutSeconds: 3
+
+          # Liveness: restart on deadlock / unrecoverable state
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          # Readiness: remove from Service endpoints when not ready
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+            timeoutSeconds: 3
+
+          envFrom:
+            - configMapRef:
+                name: <APP_NAME>-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: <APP_NAME>-secrets
+                  key: db_password
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+      # Allow graceful shutdown of in-flight requests
+      terminationGracePeriodSeconds: 30
+
+      # Topology spread: prefer different nodes for availability
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: <APP_NAME>

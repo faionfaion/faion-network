@@ -1,0 +1,48 @@
+# SLO Definition Template
+# One SLI/SLO block per user-facing interaction.
+# All values must be validated against real baseline metrics before setting.
+
+service: payments-api
+owner: platform-team@company.com
+
+slos:
+  - name: availability
+    description: Fraction of requests that return non-5xx responses
+    sli:
+      type: request_based
+      good_requests: http_requests_total{code!~"5.."}
+      total_requests: http_requests_total
+    objective: 99.9  # percent; 43.8 min/month budget
+    window: 30d
+    alerting:
+      # Multi-burn-rate: fast window (1h) detects acute incidents,
+      # slow window (6h) detects slow burns.
+      - severity: critical
+        burn_rate: 14.4  # exhausts 30d budget in 2h
+        window: 1h
+        channel: pagerduty
+      - severity: warning
+        burn_rate: 6     # exhausts 30d budget in 5h
+        window: 6h
+        channel: slack
+
+  - name: latency_p99
+    description: 99th percentile request latency under 500ms
+    sli:
+      type: request_based
+      good_requests: http_request_duration_seconds_bucket{le="0.5"}
+      total_requests: http_requests_total
+    objective: 99.0  # 99% of requests under 500ms
+    window: 30d
+
+error_budget_policy:
+  # At 50% remaining: no new features, only reliability work
+  # At 25% remaining: freeze non-critical changes
+  # At 0% (exhausted): incident review + freeze all changes
+  thresholds:
+    - remaining_percent: 50
+      action: "Redirect 50% of engineering capacity to reliability"
+    - remaining_percent: 25
+      action: "Freeze non-critical feature releases"
+    - remaining_percent: 0
+      action: "Incident review required; freeze all non-emergency changes"

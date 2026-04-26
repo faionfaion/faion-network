@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-mtls-and-traffic-management" title="mTLS and Traffic Management Patterns">
+  <summary>mTLS permissive-to-strict migration, SPIFFE identity standard, certificate rotation best practices, and traffic management patterns: canary, blue-green, A/B testing, traffic mirroring, circuit breaking, retries, and timeouts.</summary>
+
+  <section title="mTLS Configuration">
+    <rule>
+      <statement>Start mTLS in permissive mode to establish baseline metrics, then migrate to strict mode namespace-by-namespace after validating all service-to-service paths are covered by certificates.</statement>
+      <rationale>Switching to strict mode without permissive validation silently breaks services that are not enrolled in the mesh (external services, legacy apps, services with annotation exceptions). Permissive mode allows both plaintext and mTLS, making it safe to verify coverage before enforcing.</rationale>
+    </rule>
+    <list>
+      <item>SPIFFE (Secure Production Identity Framework for Everyone): standard identity format for workloads, encoded in X.509 certificates as SPIFFE IDs (spiffe://trust-domain/path). Enables cross-cluster and cross-mesh identity without shared CA.</item>
+      <item>Certificate rotation: use short-lived certificates (24h or less) with automatic rotation. Long-lived certs increase the window for credential theft. Mesh control planes (Istiod, Linkerd) rotate certificates automatically; configure the rotation period explicitly.</item>
+      <item>Certificate authority: do not use self-signed CA roots in production. Use an intermediate CA signed by your organisation's PKI, or an external CA (cert-manager with Let's Encrypt or Vault PKI). This ensures revocation and audit trail.</item>
+      <item>Multi-cluster identity: use SPIFFE/SPIRE for cross-cluster certificate federation. Without it, each cluster's trust domain is isolated and inter-cluster mTLS requires manual trust bundle exchange.</item>
+    </list>
+    <p>mTLS best practice checklist: permissive → strict migration per namespace; certificate TTL ≤ 24h; organisation-signed CA (not self-signed); monitor certificate expiry as a service-level metric; SPIFFE IDs for service identity verification in audit logs.</p>
+  </section>
+
+  <section title="Traffic Management Patterns">
+    <list>
+      <item>Canary: route a percentage of traffic to the new version (1% → 10% → 50% → 100%). Progress based on SLO metrics (error rate, p99 latency). Rollback by shifting weight back to stable version. Tools: Argo Rollouts, Flagger, Istio VirtualService weights.</item>
+      <item>Blue-green: two identical environments (stable and new). Instant switch via traffic weight (0/100 → 100/0). Instant rollback available. Requires double compute during deployment window.</item>
+      <item>A/B testing: route by request headers, cookies, or user identity. Use for feature flag validation with specific user segments. Requires stateful routing or consistent hashing.</item>
+      <item>Traffic mirroring (shadow traffic): send a copy of production requests to the new version without affecting production responses. The mirrored traffic responses are discarded. Use for load testing new versions with real traffic before canary starts.</item>
+      <item>Circuit breaking: configure outlier detection (consecutive 5xx errors) to eject unhealthy upstream endpoints from the load balancing pool for a defined interval. Meshes implement this at the proxy layer without application code changes.</item>
+      <item>Retries: configure per-route retry policy (retryOn: gateway-error,connect-failure,retriable-4xx; numRetries: 3; perTryTimeout: 2s). Set retryOn carefully — 503 is retryable, 400 is not (client error, retry is wasteful).</item>
+      <item>Timeouts: configure per-route timeout independent of application-level timeouts. Mesh-level timeouts enforce end-to-end limits even when application timeout configuration is inconsistent across services.</item>
+    </list>
+    <rule>
+      <statement>Configure outlier detection on all service VirtualDestinations; eject endpoints that return consecutive 5xx errors for a minimum ejection period of 30s before re-admitting.</statement>
+      <rationale>Without outlier detection, a degraded upstream pod that returns 5xx for every request continues to receive traffic proportional to its weight. The mesh's outlier detection passively monitors health based on response codes and temporarily removes unhealthy endpoints without requiring explicit health check infrastructure.</rationale>
+    </rule>
+  </section>
+</text>

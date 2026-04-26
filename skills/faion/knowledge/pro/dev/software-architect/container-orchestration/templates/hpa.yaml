@@ -1,0 +1,57 @@
+# HorizontalPodAutoscaler with CPU + custom metric (requests_per_second).
+# Requires metrics-server for Resource metrics.
+# Requires Prometheus adapter or KEDA for custom/external metrics.
+# Replace: <APP_NAME>
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: <APP_NAME>
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: <APP_NAME>
+  minReplicas: 2
+  maxReplicas: 20
+
+  metrics:
+    # Scale on CPU utilisation (most common for HTTP services)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70   # scale up when avg CPU > 70%
+
+    # Scale on custom metric from Prometheus (requests per second per pod)
+    # Requires prometheus-adapter configured with this metric name.
+    - type: Pods
+      pods:
+        metric:
+          name: http_requests_per_second
+        target:
+          type: AverageValue
+          averageValue: "1000"     # target 1000 RPS per pod
+
+  behavior:
+    scaleUp:
+      # Scale up quickly: no stabilisation, allow up to 4 pods per 60s
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+      selectPolicy: Max              # use the policy that allows more pods
+
+    scaleDown:
+      # Scale down slowly: wait 5min to avoid flapping
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60         # remove at most 1 pod per minute
+      selectPolicy: Min             # use the policy that removes fewer pods
