@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: risk-register, pm-framework-focus-areas, team-development, six-core-principles, schedule-development, performance-domains-overview, pm-certification-changes-2026, cost-estimation)
+
 ### Added
 - agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).
 - **feature-044 pool infrastructure (`.aidocs/feature-044-pool/`):** `/faion-poll-agents` pool=10 (Opus) for filling the new geek-tier knowledge content (35 agent-methodologies + 52 sdlc-ai-methodologies = 87 slots). Files: `BRIEF.md` (subagent instructions: full research → discovery → write loop in NEW shape AGENTS.md+content/*.xml), `TICK.md` (orchestration rules), `QUEUE.txt` (29 batch lines `<domain>:<category>:<count>`, gitignored), `DONE.txt` (gitignored). BRIEF mandates pre-flight Read of `docs/skill-authoring.md` + `rules/skill-authoring.md` + `tag-glossary.xml`. Concurrent merges serialized via `flock /tmp/faion-network-merge.lock`.
