@@ -11,3 +11,4 @@
 [2026-04-26 03:32] pool-batch agents:cli-:2 — promoted claude-code-headless-default, headless-cli-four-guards → 18/50 (cli- 3/3 done)
 [2026-04-26 04:05] pool-batch agents:lp-:4 — promoted max-turns-circuit-breaker, posttool-hook-self-correction, generator-critic-bounded-loop, map-reduce-send-fanout → 22/50. lp- category filled (5/5).
 [2026-04-26 04:10] pool-batch agents:so-:2 — promoted discriminated-union-output, strict-mode-required-fields → 24/50 (so- 6/10)
+[2026-04-26 04:35] pool-batch agents:mm-:4 — promoted preference-trained-router, role-specialized-models, rerank-before-reasoning, gateway-fallback-chain → 28/50. mm- category fully filled (6/6).

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-router-architecture" title="Router architecture and the cost-quality knob">
+  <summary>How a preference-trained router actually works, the four model families that dominate the literature, and the single knob you ship to production.</summary>
+
+  <section title="What the router learns">
+    <p>The router is a tiny model that maps a prompt to a routing score in [0,1]. Score above the operating threshold means "use the strong model"; below means "use the weak model". It is trained on triples (prompt, weak_output, strong_output) labelled by which output a human or a judge LLM preferred.</p>
+
+    <rule testable="true">
+      <statement>Train the router on at least 10k preference triples sampled from your real traffic (or augment with Chatbot Arena pairs covering the same task families); split 80/10/10 train/val/test and tune the operating threshold on val.</statement>
+      <rationale>RouteLLM reports the matrix-factorization router needs roughly 80k Arena pairs to hit 95% GPT-4 quality at 26% strong-model traffic. Below ~10k the router learns noise and falls behind random.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from routellm.controller import Controller
+client = Controller(
+    routers=["mf"],                 # matrix factorization
+    strong_model="claude-opus-4",
+    weak_model="claude-haiku-4-5",
+)
+resp = client.chat.completions.create(
+    model="router-mf-0.11593",       # 0.11593 is the cost-quality knob
+    messages=[{"role": "user", "content": prompt}],
+)
+      ]]></code>
+      <note>Single call, one route, no cascade. The threshold (0.11593) was selected on the val set to hit 95% strong-model quality.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# heuristic "router" — keyword on the prompt
+if any(w in prompt.lower() for w in ["explain", "code", "long"]):
+    model = STRONG
+else:
+    model = WEAK
+      ]]></code>
+      <note>Brittle and unrouted: keyword rules do not generalize, miss easy hard-looking prompts and route trivial questions to Opus.</note>
+    </example>
+
+    <reference href="https://arxiv.org/abs/2406.18665">RouteLLM: Learning to Route LLMs with Preference Data — Ong et al. 2024 (ICLR 2025).</reference>
+    <reference href="https://github.com/lm-sys/RouteLLM">Reference implementation (LMSYS).</reference>
+  </section>
+
+  <section title="Four router families">
+    <list>
+      <item>Matrix factorization on (prompt-id, model-id, preference) — cheapest to train, strongest in the paper.</item>
+      <item>BERT classifier on prompt embedding → strong/weak — robust, ~2 ms per call.</item>
+      <item>Similarity ranker (kNN over labelled pairs) — works with very small datasets, no training step.</item>
+      <item>LLM-judge router (Haiku-as-judge picks weak vs strong from prompt only) — cheap baseline; lower quality than learned routers.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>Pick the cheapest router family that hits your quality target on the val set; do not assume the largest router wins.</statement>
+      <rationale>RouteLLM ablations show matrix factorization beats BERT and LLM-judge on the public benchmark while being orders of magnitude cheaper to serve.</rationale>
+    </rule>
+  </section>
+
+  <section title="The cost-quality knob">
+    <p>Every preference router exposes one scalar threshold. Sweep it on the val set to produce a Pareto curve (strong-model fraction vs preserved quality) and ship the operating point your business wants.</p>
+
+    <rule testable="true">
+      <statement>Ship the threshold that preserves at least 95% of strong-only quality on the val set, then verify on the held-out test set before rollout.</statement>
+      <rationale>Tuning on test inflates measured quality; per ICLR-2025 reproductions, 5-10 pp regressions are routine when teams skip the held-out check.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>One universal threshold across very different traffic slices (B2B chat vs internal code agents).</description>
+      <reason>Optimal threshold differs per slice; one global threshold under-routes one and over-routes another.</reason>
+    </antipattern>
+
+    <reference path="templates/router_client.py">Minimal Controller wrapper that wires the threshold into a per-call route.</reference>
+  </section>
+
+  <see-also>
+    <link path="02-deployment-and-drift.xml">How to keep the router honest after rollout.</link>
+  </see-also>
+</text>

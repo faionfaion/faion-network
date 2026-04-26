@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-handoff-rules" title="Hand-off rules between role-pinned models">
+  <summary>How to pass state across model boundaries without losing the signal that justified the split.</summary>
+
+  <section title="Hand-off as artifact, not chat">
+    <p>The hand-off between roles is a structured artifact (plan, file list, criteria checklist) — not a copy of the conversation. The cheaper model receives only what it needs to do its narrow job; the stronger model rereads the artifact when it returns to review.</p>
+
+    <rule testable="true">
+      <statement>Each role hand-off must be a structured artifact (JSON plan, list of file paths, list of acceptance criteria) — never a verbatim copy of the prior conversation; the next role consumes the artifact, not the chat.</statement>
+      <rationale>Conversation history pollutes the cheaper model with strong-model reasoning it cannot reproduce, and it bloats the stronger model when it returns to review. Artifacts keep each role's input minimal and its output verifiable.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "plan_id": "F-117-step-3",
+  "intent": "wire RouteLLM client into chat handler",
+  "files": ["src/chat/handler.py", "tests/test_handler.py"],
+  "acceptance": [
+    "tests/test_handler.py passes",
+    "no new ruff E/F violations",
+    "router cost per call recorded in telemetry"
+  ]
+}
+      ]]></code>
+      <note>Implementer (mid model) gets a closed envelope. Reviewer (strong model) compares result to the same envelope.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+# implementer prompt
+"Here is everything Opus said so far. Continue."
+      ]]></code>
+      <note>Floods Sonnet with reasoning it cannot reproduce; budget is wasted re-reading instead of editing.</note>
+    </example>
+  </section>
+
+  <section title="Verification at boundaries">
+    <p>Each role transition is also a verification gate. The stronger model returns to check that the cheaper model did the narrow job correctly; if not, request changes — do not silently repair.</p>
+
+    <rule testable="true">
+      <statement>After every transition from a stronger to a weaker model, the stronger model must verify the artifact returned by the weaker one against the original acceptance criteria before any further action.</statement>
+      <rationale>Without an explicit gate, errors compound across roles: a misclassified file path in the small model corrupts the entire execution step. The verification is cheap (the strong model only reads a small artifact) and prevents expensive cascades.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Letting the weakest model both classify AND execute when classification confidence is low.</description>
+      <reason>The cheap model masks its own uncertainty; without a verification gate, low-confidence classifications silently propagate into execution.</reason>
+    </antipattern>
+
+    <reference href="https://docs.anthropic.com/en/docs/claude-code/sub-agents">Claude Code sub-agents — pinning model per agent.</reference>
+    <reference href="https://www.anthropic.com/news/claude-3-5-sonnet">Anthropic — model selection guidance for multi-step agents.</reference>
+  </section>
+</text>

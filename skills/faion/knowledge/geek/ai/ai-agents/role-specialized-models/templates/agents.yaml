@@ -1,0 +1,44 @@
+# Claude Code subagent definitions — role-specialized models.
+# Drop into .claude/agents/<feature>.yaml.
+# Cognitive role drives the model assignment; review is paired with planning.
+
+planner:
+  model: opus
+  description: Decomposes a feature into a numbered plan with explicit acceptance criteria.
+  tools:
+    - Read
+    - Glob
+    - Grep
+  outputs:
+    artifact: plan.json
+
+implementer:
+  model: sonnet
+  description: Edits files, runs tests, iterates on failures within the plan envelope.
+  inputs:
+    artifact: plan.json
+  tools:
+    - Read
+    - Edit
+    - Write
+    - Bash
+
+classifier:
+  model: haiku
+  description: Maps plan steps to file paths and labels test names; returns a strict JSON payload.
+  inputs:
+    artifact: plan.json
+  tools:
+    - Glob
+    - Grep
+  outputs:
+    artifact: file-map.json
+
+reviewer:
+  model: opus
+  description: Verifies the implementer's diff against acceptance criteria; approves or returns a structured change request.
+  inputs:
+    artifact: plan.json
+    diff: HEAD~1..HEAD
+  outputs:
+    artifact: review.json

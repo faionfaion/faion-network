@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-reranker-choice" title="Choosing and evaluating a reranker">
+  <summary>Which reranker fits which workload, the eval harness that justifies the pick, and the refresh cadence that keeps it honest.</summary>
+
+  <section title="Reranker families">
+    <list>
+      <item>Hosted API (Cohere Rerank 3, Voyage rerank-2.5) — strongest out of the box, opaque pricing, vendor lock-in. ~50-150 ms per 100 candidates.</item>
+      <item>Open weights, small (BGE-reranker-base, jina-reranker-v2-base) — self-hostable on CPU; ~5-15 pp behind hosted on hard suites; cheapest at scale.</item>
+      <item>Open weights, large (BGE-reranker-large, e5-mistral-instruct) — closes the gap to hosted on most suites; needs a GPU or strong CPU.</item>
+      <item>LLM-as-reranker (Haiku scoring relevance) — flexible, no infra; expensive at high throughput; useful as a baseline to evaluate cheaper rerankers.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>Pick a reranker by running an eval suite drawn from your real traffic, not by reading a public leaderboard alone; public benchmarks systematically over-rank hosted rerankers on academic corpora that do not match enterprise traffic.</statement>
+      <rationale>ZeroEntropy 2025 reports rank flips between BGE-large and Cohere Rerank 3 across domains; per-domain eval is the only reliable signal.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Eval harness — run all four candidate rerankers on the same labelled set
+for r in [cohere_v3, bge_large, voyage_2_5, jina_v2]:
+    score = ndcg_at_10(r.rank(queries, candidates), labels)
+    cost  = r.price_per_call * len(queries)
+    log({"reranker": r.name, "ndcg@10": score, "cost_usd": cost})
+      ]]></code>
+      <note>Plot quality vs cost; pick the Pareto-front reranker for your latency budget.</note>
+    </example>
+
+    <reference href="https://docs.cohere.com/docs/rerank-overview">Cohere Rerank 3 documentation.</reference>
+    <reference href="https://huggingface.co/BAAI/bge-reranker-large">BGE reranker model card.</reference>
+    <reference href="https://docs.voyageai.com/docs/reranker">Voyage rerank-2.5 documentation.</reference>
+  </section>
+
+  <section title="Refresh cadence">
+    <p>Reranker quality drifts with corpus drift, not with model age. Re-evaluate on a freshly labelled suite when the corpus has shifted significantly or when a new reranker version ships.</p>
+
+    <rule testable="true">
+      <statement>Re-run the reranker eval whenever (a) the corpus has rotated more than 20% of chunks, (b) the embedding model is retrained, or (c) the reranker vendor ships a new version; do not re-evaluate on a fixed cadence.</statement>
+      <rationale>Calendar-based evals waste effort during stable periods and miss real shifts; corpus-rotation triggers track the actual signal.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Bolting a hosted reranker onto a single-stage pipeline without an eval harness.</description>
+      <reason>Without measurement, the reranker may be making things worse on your data — public-benchmark leaders sometimes lose on niche corpora.</reason>
+    </antipattern>
+
+    <reference href="https://www.anthropic.com/news/contextual-retrieval">Anthropic Contextual Retrieval — reranker as the precision layer.</reference>
+  </section>
+</text>

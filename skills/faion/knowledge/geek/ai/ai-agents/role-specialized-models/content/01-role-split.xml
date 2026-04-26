@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-role-split" title="Role split — plan strong, execute mid, classify small">
+  <summary>The three-tier cognitive split, why it dominates the cost-per-feature metric, and how to spot mis-assignments.</summary>
+
+  <section title="The three roles">
+    <list>
+      <item>Plan / review — strongest model. Decomposes the task, audits the result, decides whether to redo. ~5% of tokens, ~70% of the quality.</item>
+      <item>Execute / generate — mid model. Writes the code, drafts the document, runs the tool calls. ~80% of tokens.</item>
+      <item>Classify / extract / format — smallest model. Picks file paths, labels, normalizes formats, fills schemas. ~15% of tokens.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>Pin the strongest model to planning and final review; pin the mid model to execution; pin the smallest model to classification, slot-filling, and reformatting.</statement>
+      <rationale>Anthropic's "advisor strategy" and Claude Code subagent guides report ~3x cost reduction at unchanged quality on long-running coding tasks; the small token share of planning means the strong-model premium is paid on a small slice while preserving its leverage.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .claude/agents/feature-impl.yaml
+planner:
+  model: opus
+  role: "decompose feature, list acceptance criteria, write per-step plan"
+implementer:
+  model: sonnet
+  role: "edit files, run tests, iterate on errors"
+classifier:
+  model: haiku
+  role: "given plan + repo tree, return list of files each step touches"
+reviewer:
+  model: opus
+  role: "approve or request changes per acceptance criterion"
+      ]]></code>
+      <note>Roles are wired to models, not steps. The plan/review boundary is where the strong model earns its premium.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# uniform Opus everywhere
+default_model: opus
+      ]]></code>
+      <note>Pays the strong-model premium on every formatting and classification step. Typical 3-5x cost overrun with no quality gain.</note>
+    </example>
+
+    <reference href="https://www.mindstudio.ai/blog/claude-code-advisor-strategy-opus-sonnet-haiku">Claude Code advisor strategy — Opus/Sonnet/Haiku role split.</reference>
+    <reference href="https://claude.com/resources/tutorials/choosing-the-right-claude-model">Anthropic — Choosing the right Claude model.</reference>
+  </section>
+
+  <section title="Detecting mis-assignment">
+    <p>Two diagnostics catch wrong-role assignments faster than human review.</p>
+
+    <rule testable="true">
+      <statement>For each role, run a 30-prompt eval against the next-cheaper model and the next-stronger model; promote down a tier if quality holds within 1 pp, promote up a tier if quality falls more than 3 pp.</statement>
+      <rationale>The Pareto sweet spot drifts as model versions ship; locking a role to a model on launch leaves cost on the table within months. Periodic ablation keeps the assignment honest.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Splitting by step rather than role: "step-1 = haiku, step-2 = sonnet, step-3 = opus".</description>
+      <reason>Steps with the same cognitive role get different models, breaking the leverage. A long execution step does not need Opus just because it is the last step.</reason>
+    </antipattern>
+
+    <reference path="templates/agents.yaml">Reference Claude Code subagent definitions for the three roles.</reference>
+  </section>
+
+  <see-also>
+    <link path="02-handoff-rules.xml">How to keep context coherent across model boundaries.</link>
+  </see-also>
+</text>
