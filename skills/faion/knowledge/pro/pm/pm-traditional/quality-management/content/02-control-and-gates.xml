@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-control-and-gates" title="Quality Gates, Defect Triage, and Antipatterns">
+  <summary>Rules for deterministic quality gate execution, structured defect triage, and avoiding quality control antipatterns.</summary>
+
+  <section title="Quality Gate Rules">
+    <rule>
+      <statement>Quality gate decisions (release / hold / abort) require human approval. The gate script computes PASS/FAIL from thresholds; the agent emits a recommendation with evidence; a named human approves the release decision.</statement>
+      <rationale>Automated quality gate execution is appropriate for blocking merges; releasing to production requires human accountability that no automated system can substitute.</rationale>
+    </rule>
+    <rule>
+      <statement>Every gate run must produce an immutable artifact with timestamp, inputs (CI run IDs, tool versions, threshold file version), and output (PASS/FAIL per criterion with evidence URLs). Audit evidence must be traceable, not curated post-hoc.</statement>
+      <rationale>Regulated programs (ISO, SOC 2, FDA) require evidence that the gate was run correctly at the time of release. Post-hoc evidence curation creates regulatory liability.</rationale>
+    </rule>
+    <reference path="templates/quality-gate.py">Gate script: reads quality-plan.yaml thresholds and CI JSON, exits non-zero on failure</reference>
+  </section>
+
+  <section title="Defect Triage">
+    <rule>
+      <statement>Every defect must be triaged against one severity rubric defined in quality-plan.yaml. Reject severity assignments made without reference to the rubric. Auto-close of duplicates requires human review — the agent recommends, the human merges.</statement>
+      <rationale>Agents inflate severity to be "safe" (everything S2/S3) or deflate to avoid escalation. A calibrated rubric with examples for each severity level is the only reliable anchor.</rationale>
+    </rule>
+    <rule>
+      <statement>Defect reports must include steps-to-reproduce grounded on actual logs or traces. Agents must refuse to fabricate reproduction steps from description alone.</statement>
+      <rationale>Invented repro steps cannot be executed, blocking triage and fix verification. Grounding on actual artefacts (logs, traces, screenshots) is a non-negotiable quality gate on the defect report itself.</rationale>
+    </rule>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Process metric becomes a gaming target (Goodhart's Law): teams hit the coverage percentage by testing trivial code paths while leaving critical paths untested.</description>
+      <reason>Rotate which metrics gate vs. which inform; a metric used as a gate for more than two cycles is at risk of being gamed. Supplement coverage percentage with mutation testing or branch coverage.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent writing "evidence" for a DoD item without a traceable artefact source.</description>
+      <reason>Fabricated evidence creates audit liability. Every pass assertion must point to an immutable artefact URL (CI run, report file, scan SARIF). Refuse to pass any criterion without a concrete source.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Defect logs sent to a third-party LLM without PII scrubbing.</description>
+      <reason>Defect logs routinely contain user IDs, email addresses, payment data, and health information. Scrub before sending to any external model.</reason>
+    </antipattern>
+  </section>
+</text>
