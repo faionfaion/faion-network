@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 ux methodologies migrated to new shape (batch: flexibility-efficiency, help-documentation, voice-ui-basics, design-tokens-fundamentals, wireframing, tailwind-design-tokens, spatial-ux-fundamentals, prototyping)
 - refactor: 8/8 backend-enterprise methodologies migrated to new shape (batch: csharp-background-services, java-spring, php-eloquent, decomposition-laravel, csharp-aspnet-core, ruby-activerecord, decomposition-rails, csharp-dotnet-patterns)
 - sdlc-ai-methodologies: pool-batch +2 lint- (52/52) — lint-shellcheck-hadolint-iac-floor, lint-staged-only-not-whole-tree (NEW shape: AGENTS.md + content/*.xml + templates/). lint- category complete (6/6). OVERALL TARGET MET (52/52). Original picks lint-precommit-floor and lint-ruff-and-biome-as-default rejected as duplicates of upstream S-039/S-040; replaced via AGENT-99 pool-extension discovery. IDs S-051..S-052.
 - refactor: 8/8 hr-recruiter methodologies migrated to new shape (batch: recruitment-funnel-optimization, onboarding, recruiting-process, structured-interview-design, star-interview-framework, retention-compliance, 30-60-90-day-plan, onboarding-60-90-day)
