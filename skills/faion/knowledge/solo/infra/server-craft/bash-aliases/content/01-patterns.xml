@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="alias-patterns">
+    <summary>Alias design principles: simple vs function aliases, naming conventions, safety aliases, and tab completion wiring.</summary>
+
+    <rule>
+      <statement>Use simple aliases for flag additions and substitutions; use shell functions when you need parameters, conditionals, or multi-step operations.</statement>
+      <rationale>Aliases cannot accept positional parameters. Attempting to do so leads to brittle workarounds. Functions handle parameters natively and are easier to debug.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always add safety confirmation flags to destructive commands: rm -i, mv -i, cp -i.</statement>
+      <rationale>A single absent confirmation on rm -rf on a production server has no undo. The interactive flag adds one extra keystroke in exchange for a meaningful safety net.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Gate modern-tool aliases behind command existence checks so the file loads without errors on systems where those tools are not installed.</statement>
+      <rationale>The same ~/.bash_aliases is often shared across machines via dotfiles. A missing bat or eza causes a hard error on every new shell if not gated with command -v.</rationale>
+    </rule>
+
+    <section name="simple-vs-function">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Simple alias: flag additions and substitutions
+alias gs="git status -sb"
+alias ll="ls -alF --color=auto"
+alias grep="grep --color=auto"
+
+# Function alias: needs a parameter
+mkcd() { mkdir -p "$1" && cd "$1"; }
+
+# Function alias: multi-step
+port() { sudo lsof -i ":${1}" 2>/dev/null || echo "Nothing on port $1"; }
+
+# Function alias: needs conditional logic
+extract() {
+    [ -f "$1" ] || { echo "'$1' is not a file"; return 1; }
+    case "$1" in
+        *.tar.gz)  tar xzf "$1" ;;
+        *.tar.bz2) tar xjf "$1" ;;
+        *.zip)     unzip "$1" ;;
+        *.gz)      gunzip "$1" ;;
+        *)         echo "Unknown archive format: $1" ;;
+    esac
+}
+        ]]></code>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Wrong: complex logic in alias — use a function instead
+alias mything="cmd1; cmd2; if [[ $? -eq 0 ]]; then cmd3; fi"
+
+# Wrong: no existence check, fails on minimal systems
+alias cat="bat --paging=never"
+alias ls="eza --color=always"
+        ]]></code>
+        <note>Aliases are not functions. Any branching, parameters, or multi-step logic belongs in a shell function.</note>
+      </example>
+    </section>
+
+    <section name="naming-conventions">
+      <list>
+        <item>Single-letter abbreviations (g=git, dk=docker) — only for the most frequently used commands</item>
+        <item>Prefix+action pattern (dk-ps, sc-restart) — for grouped command families</item>
+        <item>Descriptive verb-noun (nero-status, show-ports) — for infrequently used but memorable shortcuts</item>
+        <item>Avoid shadowing common system commands unless the alias adds universal improvements (grep, diff)</item>
+      </list>
+    </section>
+
+    <section name="modern-tool-gating">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Gate eza aliases behind existence check
+if command -v eza &>/dev/null; then
+    alias ls="eza --color=always --group-directories-first"
+    alias ll="eza -la --color=always --group-directories-first --git"
+    alias lt="eza --tree --level=2 --color=always"
+else
+    alias ll="ls -alF --color=auto"
+    alias la="ls -A --color=auto"
+fi
+
+# Gate bat alias
+if command -v bat &>/dev/null; then
+    alias cat="bat --paging=never"
+fi
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="completion-wiring">
+      <rule>
+        <statement>Wire tab completion for short aliases using complete -F so git, docker, and systemctl completions work with single-letter aliases.</statement>
+        <rationale>Without completion wiring, `g sta&lt;Tab&gt;` does not complete to `g status`. Re-wiring completions is a one-time setup that multiplies the value of short aliases.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Preserve git completion for g alias
+alias g="git"
+if declare -F __git_complete &>/dev/null; then
+    __git_complete g git
+fi
+
+# After defining: source ~/.bash_aliases to activate
+        ]]></code>
+      </example>
+    </section>
+  </section>
+</text>

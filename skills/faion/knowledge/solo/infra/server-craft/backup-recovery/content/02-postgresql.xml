@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="postgresql-backup">
+    <summary>PostgreSQL backup and restore using pg_dump, with Docker exec pattern and dump integrity verification.</summary>
+
+    <rule>
+      <statement>Always use the custom format (-Fc) for pg_dump; it is compressed, supports parallel restore, and enables selective table restore.</statement>
+      <rationale>Plain SQL dumps are large, uncompressed, and cannot restore individual tables. Custom format is smaller, faster to restore, and more flexible for targeted recovery.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Verify every dump immediately after creation with pg_restore --list; a corrupt dump discovered during a restore doubles the disaster.</statement>
+      <rationale>pg_dump can succeed (exit 0) but produce a truncated file if disk space runs out mid-write. --list reads the dump catalog without restoring data and fails on corruption.</rationale>
+    </rule>
+
+    <section name="dump-commands">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Custom format: compressed, selective restore, preferred choice
+docker exec -t nero-postgres pg_dump -U nero -Fc nero_db > nero_db_$(date +%Y%m%d).dump
+
+# Verify dump integrity immediately
+pg_restore --list nero_db_$(date +%Y%m%d).dump > /dev/null && echo "OK" || echo "CORRUPT"
+
+# All databases (for full server backup)
+docker exec -t nero-postgres pg_dumpall -U nero > all_databases_$(date +%Y%m%d).sql
+
+# Specific tables only
+docker exec -t nero-postgres pg_dump -U nero -Fc -t conversations -t messages nero_db > tables.dump
+        ]]></code>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Wrong: no verification; corrupt dumps discovered only at restore time
+docker exec -t nero-postgres pg_dump -U nero nero_db > backup.sql
+
+# Wrong: plain SQL is large and cannot restore individual tables
+pg_dump -h localhost -U nero nero_db > backup.sql
+        ]]></code>
+        <note>Always verify. Always use -Fc unless you specifically need human-readable SQL for auditing purposes.</note>
+      </example>
+    </section>
+
+    <section name="restore-commands">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Restore custom format (clean = drop+recreate existing objects)
+docker exec -i nero-postgres pg_restore -U nero -d nero_db \
+    --clean --if-exists < nero_db.dump
+
+# Restore specific table only
+docker exec -i nero-postgres pg_restore -U nero -d nero_db \
+    -t conversations nero_db.dump
+
+# Restore plain SQL
+docker exec -i nero-postgres psql -U nero -d nero_db < backup.sql
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Restoring into a running production database without --clean and without --if-exists.</description>
+        <reason>Without --clean, existing tables accumulate duplicate data. Without --if-exists, restore fails on the first table that does not yet exist, leaving the database in a partial state.</reason>
+      </antipattern>
+    </section>
+
+    <section name="format-reference">
+      <list>
+        <item>-Fc (custom): compressed, selective restore, recommended default</item>
+        <item>-Fd (directory): splits into files per table, suitable for parallel restore of very large databases</item>
+        <item>-Ft (tar): no compression, archive-compatible, supports selective restore</item>
+        <item>default (plain SQL): uncompressed, human-readable, no selective restore, largest output</item>
+      </list>
+    </section>
+  </section>
+</text>

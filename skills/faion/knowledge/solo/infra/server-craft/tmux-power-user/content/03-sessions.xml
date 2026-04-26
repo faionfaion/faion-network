@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="session-management">
+    <summary>tmux session lifecycle commands, named-session conventions, session templates for project layouts, nested tmux pattern, and agent control via send-keys/capture-pane.</summary>
+
+    <section name="session-commands">
+      <list>
+        <item>tmux new-session -d -s &lt;name&gt; — create detached named session</item>
+        <item>tmux attach -t &lt;name&gt; — attach; creates session if it does not exist (with -d)</item>
+        <item>tmux has-session -t &lt;name&gt; — check existence (use in scripts before attach)</item>
+        <item>tmux kill-session -t &lt;name&gt; — destroy session and all its windows/panes</item>
+        <item>tmux ls — list all sessions with window counts and activity times</item>
+        <item>prefix + s — interactive session picker (fzf-powered with tmux-fzf plugin)</item>
+        <item>prefix + d — detach from current session (session stays alive)</item>
+      </list>
+    </section>
+
+    <section name="create-or-attach-pattern">
+      <rule>
+        <statement>Always use has-session before creating a named session; re-running a session-creation script should attach to the existing session, not fail or create duplicates.</statement>
+        <rationale>Session scripts are often called from aliases, shell startup, or agents. If the session already exists, recreating it destroys ongoing work.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# Create-or-attach pattern (safe to call repeatedly)
+SESSION="${1:-dev}"
+DIR="${2:-$(pwd)}"
+
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+    tmux attach -t "$SESSION"
+    exit 0
+fi
+
+# Create new session with layout
+tmux new-session -d -s "$SESSION" -c "$DIR"
+tmux rename-window -t "$SESSION:1" "edit"
+tmux new-window -t "$SESSION" -n "term" -c "$DIR"
+tmux new-window -t "$SESSION" -n "run" -c "$DIR"
+tmux split-window -h -t "$SESSION:run" -c "$DIR"
+tmux select-window -t "$SESSION:1"
+tmux attach -t "$SESSION"
+        ]]></code>
+      </example>
+
+      <reference path="templates/tmux-session.sh">Generic create-or-attach session launcher</reference>
+    </section>
+
+    <section name="nested-tmux">
+      <rule>
+        <statement>Use different prefix keys for local and remote tmux to avoid double-prefix confusion: Ctrl+A locally, Ctrl+B remotely (or vice versa).</statement>
+        <rationale>When inside a local tmux session and SSH'd into a remote tmux, every prefix command requires sending the prefix twice (once for local tmux to ignore, once for the remote). Different prefixes eliminate this ambiguity.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Local ~/.tmux.conf: Ctrl+A
+set -g prefix C-a
+
+# Remote ~/.tmux.conf (on server): keep default Ctrl+B
+# OR: bind a distinct key like Ctrl+B on the remote
+
+# To send a prefix to the inner (remote) tmux:
+# Press your local prefix (Ctrl+A), then Ctrl+A again to pass through
+bind C-a send-prefix
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="agent-control">
+      <summary>Controlling background processes from scripts or agents via tmux send-keys and capture-pane.</summary>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Send a command to a specific pane (non-interactively from a script)
+tmux send-keys -t "nero:logs.0" "journalctl --user -f -u nero-core" Enter
+
+# Capture current pane content for programmatic inspection
+tmux capture-pane -t "nero:monitor.0" -p
+
+# Check if a specific string is visible in a pane
+tmux capture-pane -t "nero:monitor.0" -p | grep -q "All OK"
+
+# Send a key sequence to a pane (e.g., Ctrl+C to stop a process)
+tmux send-keys -t "nero:run.0" C-c
+tmux send-keys -t "nero:run.0" "q" Enter
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Sending commands to tmux panes as a substitute for proper systemd service management.</description>
+        <reason>tmux panes are ephemeral user-space processes. Commands sent via send-keys do not survive server reboots. Use systemd user services for persistent processes and tmux only for interactive monitoring.</reason>
+      </antipattern>
+    </section>
+  </section>
+</text>

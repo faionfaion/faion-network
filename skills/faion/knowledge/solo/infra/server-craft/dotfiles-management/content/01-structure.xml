@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="dotfiles-structure">
+    <summary>Git dotfiles repository layout, GNU stow symlink mechanism, per-category packages, and machine-specific override pattern.</summary>
+
+    <rule>
+      <statement>Organize dotfiles as per-category stow packages (bash/, git/, tmux/, vim/, ssh/) so individual packages can be installed on any machine independently.</statement>
+      <rationale>A VPS needs bash, git, tmux, and ssh config but not vim GUI plugins or workstation browser bookmarks. Package isolation lets bootstrap pick only what is relevant to the machine type.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Mirror the $HOME directory structure inside each stow package; stow creates symlinks at $HOME that point into the package directory.</statement>
+      <rationale>stow uses the directory tree under each package as a template for $HOME. A file at dotfiles/bash/.bash_aliases creates ~/.bash_aliases as a symlink. This is stow's core design — match the target directory tree.</rationale>
+    </rule>
+
+    <section name="directory-layout">
+      <list>
+        <item>bash/ — .bashrc, .bash_profile, .bash_aliases, .bashrc.d/*.sh</item>
+        <item>git/ — .gitconfig, .gitignore_global</item>
+        <item>tmux/ — .tmux.conf</item>
+        <item>vim/ — .vimrc</item>
+        <item>ssh/ — .ssh/config (never keys)</item>
+        <item>scripts/ — .local/bin/* (personal scripts in PATH)</item>
+        <item>machine-server/ — server-specific .bashrc.d/server.sh</item>
+        <item>machine-workstation/ — workstation-specific .bashrc.d/workstation.sh</item>
+      </list>
+    </section>
+
+    <section name="stow-commands">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Install stow
+sudo apt install -y stow
+
+# From the dotfiles root, stow individual packages
+cd ~/dotfiles
+stow bash          # Creates ~/.bashrc, ~/.bash_aliases, etc.
+stow git tmux vim  # Multiple packages at once
+
+# Dry run before stowing (see what will happen)
+stow -n -v bash
+
+# Restow after editing a config (remove + recreate symlinks)
+stow -R tmux
+
+# Unstow (remove symlinks for a package)
+stow -D vim
+
+# Handle an existing file: backup first, then stow
+mv ~/.bashrc ~/.bashrc.backup
+stow bash
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using stow --adopt to absorb existing files into the package without reviewing the result.</description>
+        <reason>--adopt moves the existing file into the stow package, potentially overwriting your dotfiles repo version. Always review git diff after --adopt to confirm the absorbed content is what you want to keep.</reason>
+      </antipattern>
+    </section>
+
+    <section name="machine-specific-pattern">
+      <rule>
+        <statement>Keep machine-specific config in separate stow packages (machine-server/, machine-workstation/) rather than branching the git repo per machine.</statement>
+        <rationale>Branches require merging and diverge over time. Separate stow packages on the same branch can coexist on any machine; only the relevant one is stowed at bootstrap time. The repo stays in sync across all machines.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# machine-server/.bashrc.d/server.sh — loaded only on servers
+export EDITOR=vim
+alias services='systemctl --user list-units --type=service'
+alias health='bash /srv/nero/health-check.sh'
+
+# machine-workstation/.bashrc.d/workstation.sh — loaded only on workstations
+export EDITOR=code
+alias open='xdg-open'
+
+# bootstrap.sh: detect machine type and stow the right package
+MACHINE_TYPE="server"  # or detect from hostname, GUI presence, etc.
+stow "machine-$MACHINE_TYPE"
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="modular-bashrc">
+      <rule>
+        <statement>Use a .bashrc.d/ directory pattern sourced by .bashrc so machine-specific files, tool integrations, and aliases can be added/removed without editing the main .bashrc.</statement>
+        <rationale>A monolithic .bashrc becomes hard to maintain across machines. .bashrc.d/ enables modular addition: each stow package can add its own .bashrc.d/*.sh file without conflicting with others.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# ~/.bashrc — sources all .bashrc.d/ files
+if [ -d "$HOME/.bashrc.d" ]; then
+    for f in "$HOME/.bashrc.d"/*.sh; do
+        [ -r "$f" ] && source "$f"
+    done
+    unset f
+fi
+        ]]></code>
+      </example>
+
+      <reference path="templates/bootstrap.sh">Full bootstrap script: clone dotfiles, install stow, backup conflicts, stow packages, detect machine type</reference>
+    </section>
+  </section>
+</text>

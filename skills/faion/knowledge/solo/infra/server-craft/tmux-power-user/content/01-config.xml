@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="core-configuration">
+    <summary>Essential tmux.conf settings: prefix key, mouse support, vi copy-mode, pane/window navigation bindings, and status bar setup.</summary>
+
+    <rule>
+      <statement>Use Ctrl+A as the prefix key rather than the default Ctrl+B; it is more ergonomic and consistent with GNU screen muscle memory.</statement>
+      <rationale>Ctrl+B requires moving the left hand off the home row. Ctrl+A is reachable without moving the hand, reducing friction across hundreds of daily prefix-chord invocations.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Set base-index 1 and pane-base-index 1; the default zero-indexing makes Alt+1 select window 0, which feels counter-intuitive.</statement>
+      <rationale>With base-index 1, Alt+1 through Alt+9 map directly to the visual position of windows in the status bar.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always set escape-time to 10ms or less; the default 500ms causes a noticeable delay in vim when pressing Escape.</statement>
+      <rationale>Vim and other editors rely on fast Escape detection. The default 500ms makes modal editing feel sluggish over SSH.</rationale>
+    </rule>
+
+    <section name="prefix-and-basics">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Prefix: Ctrl+A (ergonomic, screen-compatible muscle memory)
+set -g prefix C-a
+unbind C-b
+bind C-a send-prefix
+
+# Enable full mouse (scroll, click panes, resize, select text)
+set -g mouse on
+
+# Vi mode for copy (Escape-free text selection in scroll buffer)
+setw -g mode-keys vi
+bind -T copy-mode-vi v send-keys -X begin-selection
+bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+
+# 1-based indexing for intuitive Alt+number window switching
+set -g base-index 1
+setw -g pane-base-index 1
+set -g renumber-windows on
+
+# Faster escape for vim
+set -sg escape-time 10
+set -g focus-events on
+
+# Large scrollback
+set -g history-limit 50000
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="splits-and-navigation">
+      <rule>
+        <statement>Use | and - for splits; the defaults " and % are not mnemonic. Open splits in the current pane's working directory.</statement>
+        <rationale>| visually represents a vertical divider (horizontal split). - represents a horizontal line (vertical split). Both are immediately memorable. Current-path inheritance eliminates the need to cd after each split.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Intuitive splits that inherit the current directory
+bind | split-window -h -c "#{pane_current_path}"
+bind - split-window -v -c "#{pane_current_path}"
+unbind '"'
+unbind %
+
+# New window in current directory
+bind c new-window -c "#{pane_current_path}"
+
+# Pane navigation without prefix (Ctrl+arrows)
+bind -n C-Up    select-pane -U
+bind -n C-Down  select-pane -D
+bind -n C-Left  select-pane -L
+bind -n C-Right select-pane -R
+
+# Pane resize with prefix + H/J/K/L (vi directions)
+bind -r H resize-pane -L 5
+bind -r J resize-pane -D 5
+bind -r K resize-pane -U 5
+bind -r L resize-pane -R 5
+
+# Window switching with Alt+number (no prefix needed)
+bind -n M-1 select-window -t 1
+bind -n M-2 select-window -t 2
+bind -n M-3 select-window -t 3
+bind -n M-4 select-window -t 4
+bind -n M-5 select-window -t 5
+
+# Reload config without restarting tmux
+bind r source-file ~/.tmux.conf \; display "Config reloaded"
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="status-bar">
+      <rule>
+        <statement>Run the status bar script with a 5-second refresh interval; 1-second intervals cause noticeable CPU overhead on low-power VPS instances.</statement>
+        <rationale>A status bar that refreshes every second calls shell scripts 60 times per minute. At 5 seconds, the overhead drops to 12 calls per minute with no perceptible staleness for CPU/memory metrics.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+set -g status-position bottom
+set -g status-style "bg=colour235,fg=colour248"
+set -g status-interval 5
+
+# Left: session name with color accent
+set -g status-left-length 30
+set -g status-left "#[fg=colour0,bg=colour4,bold] #S #[fg=colour4,bg=colour235,nobold] "
+
+# Right: system metrics script + time
+set -g status-right-length 120
+set -g status-right '#(~/.tmux-system.sh) #[fg=colour240]| #[fg=colour248]%H:%M '
+
+# Pane border colors (dim inactive, bright active)
+set -g pane-border-style "fg=colour240"
+set -g pane-active-border-style "fg=colour4"
+
+# Terminal true-color support
+set -g default-terminal "screen-256color"
+set -ga terminal-overrides ",xterm-256color:RGB"
+        ]]></code>
+      </example>
+
+      <reference path="templates/tmux-system.sh">Status bar script: CPU/memory/disk with color-coded thresholds</reference>
+    </section>
+  </section>
+</text>

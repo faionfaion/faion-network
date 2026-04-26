@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="nginx-multi-domain">
+    <summary>Multi-domain nginx server block pattern, shared snippets, Cloudflare origin certificate setup, and enable/test/reload workflow.</summary>
+
+    <rule>
+      <statement>Use shared snippets (/etc/nginx/snippets/) for proxy-params, security headers, and SSL params; never copy-paste these blocks into each site config.</statement>
+      <rationale>Copied blocks diverge over time. When a security header needs updating across 5 sites, a single snippets/security-headers.conf edit covers all of them in one nginx reload.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always run nginx -t before reload; a config syntax error stops the reload and leaves nginx serving stale config without error feedback.</statement>
+      <rationale>nginx reload only takes effect if the new config parses successfully. Without testing first, a typo in a new site block causes a silent failure where the intended site config never loads.</rationale>
+    </rule>
+
+    <section name="server-block-pattern">
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# /etc/nginx/sites-available/example.com
+# Enable: sudo ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/
+# Test:   sudo nginx -t
+# Reload: sudo systemctl reload nginx
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com www.example.com;
+
+    ssl_certificate /etc/ssl/example.com/cert.pem;
+    ssl_certificate_key /etc/ssl/example.com/key.pem;
+
+    include snippets/security-headers.conf;
+
+    access_log /var/log/nginx/example.com.access.log;
+    error_log  /var/log/nginx/example.com.error.log;
+
+    location /api/ {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8200;
+    }
+
+    location /ws {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8200;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
+    }
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8201;
+    }
+}
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="shared-snippets">
+      <example type="good">
+        <code lang="nginx"><![CDATA[
+# /etc/nginx/snippets/proxy-params.conf
+proxy_set_header Host $host;
+proxy_set_header X-Real-IP $remote_addr;
+proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_http_version 1.1;
+proxy_connect_timeout 60s;
+proxy_send_timeout 60s;
+proxy_read_timeout 60s;
+proxy_buffering off;
+
+# /etc/nginx/snippets/security-headers.conf
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="cloudflare-ssl">
+      <rule>
+        <statement>Use Cloudflare Origin Certificates with Full (Strict) SSL mode; origin certs are free, have 15-year validity, and require no renewal automation.</statement>
+        <rationale>Let's Encrypt certs require renewal every 90 days and a certbot cron job. With Cloudflare acting as the termination point, origin certs only need to be trusted by Cloudflare — no public CA required.</rationale>
+      </rule>
+
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Install a Cloudflare origin certificate for a domain
+sudo mkdir -p /etc/ssl/example.com
+# Paste cert from Cloudflare dashboard → SSL/TLS → Origin Server → Create Certificate
+sudo nano /etc/ssl/example.com/cert.pem
+sudo nano /etc/ssl/example.com/key.pem
+sudo chmod 600 /etc/ssl/example.com/key.pem
+sudo chmod 644 /etc/ssl/example.com/cert.pem
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="enable-workflow">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Standard workflow to enable a new site
+sudo ln -s /etc/nginx/sites-available/example.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+
+# Verify site is active
+curl -I https://example.com
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Editing site configs directly in sites-enabled/ instead of sites-available/.</description>
+        <reason>sites-enabled/ should contain only symlinks. Editing files directly in sites-enabled/ breaks the sites-available/ as the authoritative config location and complicates backup and version control.</reason>
+      </antipattern>
+    </section>
+
+    <reference path="templates/nginx-site.conf">Generic nginx server block template with HTTP redirect, SSL, proxy, WebSocket</reference>
+  </section>
+</text>

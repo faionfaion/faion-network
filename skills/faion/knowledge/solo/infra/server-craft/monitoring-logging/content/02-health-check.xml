@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="health-check-structure">
+    <summary>Health-check script structure, coverage requirements, resource thresholds, and exit code conventions for solo-developer VPS platforms.</summary>
+
+    <rule>
+      <statement>A health-check script must cover all four layers: infrastructure (Docker), application (systemd), endpoints (HTTP), and system resources.</statement>
+      <rationale>A service can be "active" in systemd but returning 500s; an endpoint check catches what systemd status misses. Resource checks catch slow degradation before hard failures.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use exit codes: 0 = healthy, 1 = warnings, 2 = errors. Never exit 0 when checks fail.</statement>
+      <rationale>Cron jobs and monitoring wrappers test exit codes to decide whether to send alerts. A silent non-zero exit from a health check defeats its purpose.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Print OK/WARN/FAIL prefix on every check line so output is machine-parseable without regex.</statement>
+      <rationale>Downstream scripts and log scanners can grep for FAIL without parsing natural language sentences.</rationale>
+    </rule>
+
+    <section name="coverage-layers">
+      <list>
+        <item>Infrastructure: Docker daemon active, each container running (postgres, redis, rabbitmq)</item>
+        <item>Application: each systemd user service active (nero-core, channel-web, channel-tg, web, beat)</item>
+        <item>Endpoints: HTTP health endpoint returns 2xx, frontend returns 2xx</item>
+        <item>Resources: disk percent, memory percent, CPU load vs. core count, swap usage</item>
+      </list>
+    </section>
+
+    <section name="thresholds">
+      <list>
+        <item>Disk: warn above 80%, fail above 90%</item>
+        <item>Memory: warn above 85%, fail above 95%</item>
+        <item>CPU load: warn when load/cores > 90%</item>
+        <item>Swap: warn when more than 50% of swap is used</item>
+        <item>HTTP endpoint timeout: 5 seconds max</item>
+      </list>
+    </section>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+#!/bin/bash
+# Minimal health-check pattern
+set -euo pipefail
+
+ERRORS=0
+WARNINGS=0
+
+ok()   { echo "OK   $1"; }
+warn() { echo "WARN $1"; WARNINGS=$((WARNINGS + 1)); }
+fail() { echo "FAIL $1"; ERRORS=$((ERRORS + 1)); }
+
+check_service() {
+    local name="$1" cmd="$2"
+    if eval "$cmd" > /dev/null 2>&1; then ok "$name"; else fail "$name"; fi
+}
+
+# Infrastructure
+check_service "Docker" "systemctl is-active docker"
+check_service "PostgreSQL" "docker exec nero-postgres pg_isready -U nero -q"
+check_service "Redis" "docker exec nero-redis redis-cli ping"
+
+# Application
+check_service "nero-core" "systemctl --user is-active --quiet nero-core"
+
+# Endpoints
+check_service "API /health" "curl -sf --max-time 5 http://127.0.0.1:8100/health"
+
+# Resources
+DISK_PCT=$(df / --output=pcent | tail -1 | tr -d ' %')
+if [ "$DISK_PCT" -gt 90 ]; then fail "Disk: ${DISK_PCT}%"
+elif [ "$DISK_PCT" -gt 80 ]; then warn "Disk: ${DISK_PCT}%"
+else ok "Disk: ${DISK_PCT}%"; fi
+
+# Exit code
+[ "$ERRORS" -gt 0 ] && exit 2
+[ "$WARNINGS" -gt 0 ] && exit 1
+exit 0
+      ]]></code>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Wrong: always exits 0, alert wrappers never trigger
+./health-check.sh || true
+
+# Wrong: no resource checks, disk fills silently
+check_service "Docker" "systemctl is-active docker"
+echo "Done"
+exit 0
+      ]]></code>
+      <note>Health checks that always exit 0 are worse than no health check — they create false confidence.</note>
+    </example>
+
+    <reference path="templates/health-check.sh">Comprehensive health-check covering Docker, systemd user services, HTTP endpoints, disk/memory/CPU/swap</reference>
+  </section>
+
+  <section name="cron-integration">
+    <summary>How to wire health-check scripts into cron for automated alerting.</summary>
+
+    <rule>
+      <statement>Run health checks with an alert-on-failure wrapper in cron, not by piping directly to Telegram inside the check script.</statement>
+      <rationale>Separating health-check logic from alerting logic lets you run the same check manually without triggering alerts.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="cron"><![CDATA[
+# Run health check every 5 minutes; alert if non-zero exit
+*/5 * * * * /usr/local/bin/health-check.sh || /usr/local/bin/notify-telegram.sh "Health check FAILED on $(hostname)"
+
+# FLOW hourly monitor (alert-only, no noise on success)
+0 * * * * /home/nero/workspace/scripts/flow-hourly.sh >> /var/log/nero-flow.log 2>&1
+      ]]></code>
+    </example>
+  </section>
+</text>

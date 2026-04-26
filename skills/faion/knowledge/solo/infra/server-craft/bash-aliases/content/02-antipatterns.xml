@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text>
+  <section name="alias-antipatterns">
+    <summary>Common bash alias mistakes that break shells, cause subtle bugs, or reduce maintainability.</summary>
+
+    <antipattern>
+      <description>Aliasing a command to itself with different flags, creating an infinite recursion loop.</description>
+      <reason>alias rm="rm -rf" calls rm which calls rm again infinitely until the process limit is hit, making rm unusable. Use a different name or a function with \rm to bypass the alias.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Missing quotes around alias values containing spaces or special characters.</description>
+      <reason>alias ll=ls -la (unquoted) only aliases ll to ls; the -la is parsed as a separate token and ignored. The alias silently misbehaves rather than throwing an error.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Putting complex logic (if/else, loops, subshells) directly in alias values.</description>
+      <reason>Bash aliases do not support compound commands. They appear to work in simple cases but break in subtle ways with quoting, piping, and argument expansion. Use functions for any logic.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Forgetting to source ~/.bash_aliases after making changes and wondering why new aliases do not work.</description>
+      <reason>Aliases are loaded at shell startup. Editing the file does not update the running shell. Use `source ~/.bash_aliases` or a reload alias defined early in the file.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Adding aliases to ~/.bashrc instead of ~/.bash_aliases.</description>
+      <reason>Mixing aliases into .bashrc makes the file harder to manage, harder to sync via dotfiles, and prevents isolated reload with a single source command.</reason>
+    </antipattern>
+
+    <section name="safe-patterns">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Correct: quoted value, safe shadow of rm
+alias rm="rm -i"
+# To call original rm without confirmation: \rm file or command rm file
+
+# Correct: reload alias defined early in the file so it is available
+alias reload="source ~/.bash_aliases && source ~/.bashrc"
+alias ea="vim ~/.bash_aliases && source ~/.bash_aliases"
+
+# Correct: function for any multi-step logic
+sysinfo() {
+    echo "Uptime: $(uptime -p)"
+    echo "Memory: $(free -h | awk '/Mem:/{print $3 "/" $2}')"
+    echo "Disk:   $(df -h / | awk 'NR==2{print $3 "/" $2 " (" $5 ")"}')"
+}
+        ]]></code>
+      </example>
+
+      <example type="bad">
+        <code lang="bash"><![CDATA[
+# Wrong: circular alias — infinite recursion
+alias rm="rm -rf"
+
+# Wrong: unquoted, the flags are dropped silently
+alias ll=ls -la
+
+# Wrong: complex logic in alias, breaks with pipes
+alias deploy="cd /srv/app && git pull && make install && systemctl restart app"
+# Correct version: define as a function
+deploy() { cd /srv/app && git pull && make install && systemctl restart app; }
+
+# Wrong: aliases scattered in .bashrc between unrelated config
+export PATH="$HOME/bin:$PATH"
+alias gs="git status"    # Don't put this here
+export NVM_DIR="$HOME/.nvm"
+        ]]></code>
+      </example>
+    </section>
+  </section>
+</text>
