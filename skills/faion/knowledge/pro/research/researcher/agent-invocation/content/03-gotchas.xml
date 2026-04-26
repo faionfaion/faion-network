@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-gotchas" title="Agent Invocation Gotchas">
+  <summary>Critical failure modes when invoking research agents: routing mismatches, hallucinated URLs, context overflow, and human-in-the-loop checkpoints.</summary>
+
+  <section title="Routing Gotchas">
+    <antipattern>
+      <description>Using subagent_type="faion-research-agent (mode: market)" expecting it to dispatch to a market-specific agent.</description>
+      <reason>Claude Code resolves subagent_type against the literal name field in agent frontmatter. The parenthetical is ignored or causes a lookup failure. Pass mode in the prompt.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Launching 9 parallel Task calls for all research modes simultaneously.</description>
+      <reason>Nothing prevents parallel launch in code. The result is shared WebSearch quota exhaustion, HTTP 429 errors, partial outputs, and corrupted .aidocs/product_docs/ state. Use sequential execution enforced by the orchestrator.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Data Quality Gotchas">
+    <antipattern>
+      <description>Accepting G2, Capterra, or Trustpilot URLs without WebFetch verification.</description>
+      <reason>Models invent plausible-looking slugs (g2.com/products/plausible-name) that return 404. Require a WebFetch round-trip for every URL before it appears in output.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Running pricing mode without specifying geography.</description>
+      <reason>Without geography the agent returns US-default pricing; EU/UA markets differ by ~30%. Always pass geography explicitly.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Creating personas from pains mode output that has no source cap.</description>
+      <reason>Without a cap (e.g. "top 10 pains, 3+ sources each") agents return 40+ pains with thin sourcing. Cap in the prompt; gate personas on pains existing first.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Context and Cost Gotchas">
+    <antipattern>
+      <description>Reading all 9 mode output files into one executive-summary prompt.</description>
+      <reason>Nine verbose deep-run files total 60-100k tokens. Summarize each file to 2k tokens first, then synthesize the summaries.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using WebSearch alone for competitors or market modes.</description>
+      <reason>WebSearch returns snippets; modes like competitors need full pricing pages. Include WebFetch in the allowed-tools list alongside WebSearch.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Stale Data">
+    <rule>
+      <statement>Treat pricing and competitor mode outputs as stale after 3-6 months. Never trust an output older than the last release of any cited competitor.</statement>
+      <rationale>Competitor pricing, feature flags, and traction change faster than LLM training data. Stale competitive intelligence leads to wrong positioning decisions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Human-in-the-Loop Checkpoints">
+    <list>
+      <item>After names mode output: human reviews trademark status before any domain purchase. USPTO TESS scraping is brittle; false negatives cost real money.</item>
+      <item>After personas mode: human reviews transcript citations. Any persona trait without a [transcript:line] citation is fiction.</item>
+      <item>Before merging executive summary into roadmap: human signs off on framing; this shapes roadmap conversations.</item>
+    </list>
+  </section>
+</text>

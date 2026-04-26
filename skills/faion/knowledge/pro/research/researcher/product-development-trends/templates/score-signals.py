@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""
+score-signals.py — score trend signals on recency, evidence, applicability; filter weak ones.
+
+Usage: python score-signals.py signals.jsonl [threshold]
+
+Input JSONL fields (per line):
+  trend: str
+  source: str (URL)
+  published: str (YYYY-MM-DD)
+  primary_source: bool
+  citations: int
+  applicability: int (0-3, set by human reviewer before running)
+
+Output: markdown table sorted by score desc; signals below threshold omitted.
+Default threshold: 5 (max possible: 9)
+"""
+import json
+import sys
+import datetime as dt
+
+THRESHOLD = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+TODAY = dt.date.today()
+
+
+def score(sig: dict) -> dict:
+    published_str = sig.get("published", "")
+    try:
+        age_days = (TODAY - dt.date.fromisoformat(published_str[:10])).days
+    except ValueError:
+        age_days = 999
+    recency = 3 if age_days <= 30 else 2 if age_days <= 90 else 1 if age_days <= 180 else 0
+    primary = bool(sig.get("primary_source", False))
+    citations = int(sig.get("citations", 0))
+    evidence = 3 if primary else 2 if citations >= 3 else 1
+    applicability = min(3, max(0, int(sig.get("applicability", 0))))
+    total = recency + evidence + applicability
+    return {**sig, "score": total, "recency": recency, "evidence_score": evidence}
+
+
+def main(path: str) -> None:
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    rows.append(score(json.loads(line)))
+                except json.JSONDecodeError as exc:
+                    print(f"SKIP malformed line: {exc}", file=sys.stderr)
+
+    kept = [r for r in rows if r["score"] >= THRESHOLD]
+    kept.sort(key=lambda r: r["score"], reverse=True)
+
+    print(f"# Trend signals — kept {len(kept)}/{len(rows)} (threshold={THRESHOLD})\n")
+    print("| Score | Trend | Source | Published |")
+    print("|-------|-------|--------|-----------|")
+    for r in kept:
+        trend = r.get("trend", r.get("axis", "—"))[:60]
+        source = r.get("source", r.get("url", "—"))
+        print(f"| {r['score']} | {trend} | {source} | {r.get('published', '—')[:10]} |")
+
+    if not kept:
+        print("\n*(No signals met threshold — lower threshold or collect more signals)*")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(f"Usage: {sys.argv[0]} <signals.jsonl> [threshold]", file=sys.stderr)
+        sys.exit(1)
+    main(sys.argv[1])
