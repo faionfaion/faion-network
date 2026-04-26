@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-resources" title="Async Resource Lifecycle">
+  <summary>App-scoped clients, async context managers, background task tracking, and CPU offload patterns.</summary>
+
+  <section title="App-scoped Clients">
+    <rule>
+      <statement>Create httpx.AsyncClient, DB pools, and Redis clients once at application startup; never instantiate them per request or inside loops.</statement>
+      <rationale>Creating a client per request leaks sockets, breaks HTTP/2 connection reuse, and exhausts file descriptors under load.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# FastAPI app-scoped client
+from contextlib import asynccontextmanager
+import httpx
+
+@asynccontextmanager
+async def lifespan(app):
+    app.state.http = httpx.AsyncClient(timeout=30.0)
+    yield
+    await app.state.http.aclose()
+
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/proxy")
+async def proxy(request: Request):
+    r = await request.app.state.http.get("https://upstream.example.com/data")
+    return r.json()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Async Context Managers">
+    <rule>
+      <statement>Implement resource cleanup via async context managers (asynccontextmanager or __aenter__/__aexit__); never rely on garbage collection for async resources.</statement>
+      <rationale>GC does not call async close() methods; connections and file handles leak silently without explicit context management.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def get_db_session():
+    session = await create_session()
+    try:
+        yield session
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Background Task Tracking">
+    <rule>
+      <statement>Store all fire-and-forget tasks in a set and register a done callback to remove them; never discard the task reference immediately after create_task().</statement>
+      <rationale>Unreferenced tasks may be garbage-collected before completion; exceptions are silently swallowed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class BackgroundTasks:
+    def __init__(self):
+        self.tasks: set[asyncio.Task] = set()
+
+    def add(self, coro, *, name: str | None = None) -> asyncio.Task:
+        task = asyncio.create_task(coro, name=name)
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+        return task
+
+    async def shutdown(self, timeout: float = 5.0):
+        for task in self.tasks:
+            task.cancel()
+        if self.tasks:
+            await asyncio.wait(self.tasks, timeout=timeout)
+]]></code>
+    </example>
+  </section>
+
+  <section title="CPU Offload">
+    <rule>
+      <statement>Run CPU-bound operations in loop.run_in_executor(None, fn) for tasks under ~50ms; use ProcessPoolExecutor for longer tasks.</statement>
+      <rationale>A CPU-bound synchronous call inside async def blocks the event loop for all concurrent tasks for its full duration.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from concurrent.futures import ProcessPoolExecutor
+
+_pool = ProcessPoolExecutor(max_workers=4)
+
+async def process_image(data: bytes) -> bytes:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_pool, cpu_transform, data)
+]]></code>
+    </example>
+  </section>
+</text>

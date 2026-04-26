@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concurrency" title="Python Async Concurrency Primitives">
+  <summary>TaskGroup, gather, Semaphore, timeouts, and async generators — when and how to use each.</summary>
+
+  <section title="TaskGroup (Python 3.11+)">
+    <rule>
+      <statement>Use asyncio.TaskGroup for any set of concurrent coroutines; prefer it over gather for new code on Python 3.11+.</statement>
+      <rationale>TaskGroup propagates cancellation automatically — if one task raises, all siblings are cancelled, preventing zombie tasks that gather leaves running.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def process_all(items: list[str]) -> list[str]:
+    results = []
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(process_item(item)) for item in items]
+    # All tasks completed here; any exception cancels siblings
+    return [t.result() for t in tasks]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Semaphore for Fan-out">
+    <rule>
+      <statement>Wrap every external-call fan-out with asyncio.Semaphore; derive the limit from downstream capacity, not an arbitrary number.</statement>
+      <rationale>Unbounded gather over a queue can spawn 100k tasks, consuming all RAM and crushing downstream services.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def fetch_all(urls: list[str], max_concurrent: int = 10) -> list[dict]:
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def fetch_one(url: str) -> dict | None:
+        async with semaphore:
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=30.0)
+                r.raise_for_status()
+                return r.json()
+
+    results = await asyncio.gather(*[fetch_one(u) for u in urls], return_exceptions=True)
+    return [r for r in results if not isinstance(r, Exception)]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Timeouts">
+    <rule>
+      <statement>Pair every await with a timeout using asyncio.timeout() (3.11+) or asyncio.wait_for(); never await without a deadline.</statement>
+      <rationale>Awaiting without a timeout means a stalled downstream silently hangs the event loop task indefinitely.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+async def with_timeout():
+    try:
+        async with asyncio.timeout(2.0):
+            result = await slow_operation()
+            return result
+    except asyncio.TimeoutError:
+        return None
+]]></code>
+    </example>
+  </section>
+
+  <section title="Async Generators">
+    <rule>
+      <statement>Use async generators for paginated data streams to avoid loading all pages into memory.</statement>
+      <rationale>Loading all pages first wastes memory and delays first-item processing; generators yield items as they arrive.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from typing import AsyncIterator
+
+async def fetch_pages(base_url: str) -> AsyncIterator[dict]:
+    page = 1
+    async with httpx.AsyncClient() as client:
+        while True:
+            r = await client.get(f"{base_url}?page={page}")
+            data = r.json()
+            if not data["items"]:
+                break
+            for item in data["items"]:
+                yield item
+            page += 1
+
+async def process_stream():
+    async for item in fetch_pages("https://api.example.com/items"):
+        await handle(item)
+]]></code>
+    </example>
+  </section>
+</text>

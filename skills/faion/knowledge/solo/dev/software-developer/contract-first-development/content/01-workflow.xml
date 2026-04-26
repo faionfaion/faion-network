@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-workflow" title="Contract-First Development Workflow">
+  <summary>Design → lint → codegen → implement → validate lifecycle with mandatory gates at each stage.</summary>
+
+  <section title="Core Rule">
+    <rule>
+      <statement>Write the OpenAPI spec before any server code; no implementation file is created until the spec passes spectral lint and human review.</statement>
+      <rationale>Code-first leads to inconsistent APIs and integration delays. A committed spec lets FE start against a Prism mock immediately and gives the LLM a constraint it cannot drift from.</rationale>
+    </rule>
+  </section>
+
+  <section title="Design Phase">
+    <rule>
+      <statement>Define all request/response schemas using $ref to shared components; never inline schema definitions in path operations.</statement>
+      <rationale>Inlined schemas duplicate across endpoints, diverge over time, and break codegen that expects named schemas.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+openapi: 3.1.0
+paths:
+  /payments:
+    post:
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+]]></code>
+    </example>
+  </section>
+
+  <section title="Code Generation">
+    <rule>
+      <statement>Run openapi-generator after every spec change; never hand-edit generated stubs — mark them read-only via .openapi-generator-ignore for service classes.</statement>
+      <rationale>Hand-editing generated code causes spec-vs-implementation drift; the next regen overwrites changes silently.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Generate Python FastAPI server stubs
+openapi-generator generate \
+  -i openapi.yaml \
+  -g python-fastapi \
+  -o ./generated \
+  --additional-properties=packageName=payment_api
+
+# Generate TypeScript client
+openapi-generator generate \
+  -i openapi.yaml \
+  -g typescript-axios \
+  -o ./client
+]]></code>
+    </example>
+  </section>
+
+  <section title="Validation Gate">
+    <rule>
+      <statement>Run schemathesis or openapi-core response validation in CI to verify that every real response shape matches the spec, not just that the spec is syntactically valid.</statement>
+      <rationale>Spec linters verify structure; they cannot detect semantic errors (correct shape, wrong status code, wrong pagination semantics).</rationale>
+    </rule>
+    <reference path="templates/check-spec-drift.sh">CI script: lint + codegen + diff + oasdiff breaking check</reference>
+    <reference path="templates/openapi-scaffold.yaml">Minimal OpenAPI 3.1 scaffold with reusable components</reference>
+  </section>
+</text>

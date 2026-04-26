@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-playwright" title="Playwright Patterns">
+  <summary>Launch, auto-waiting, locators, form handling, network interception, and auth state persistence.</summary>
+
+  <section title="Locator Strategy">
+    <rule>
+      <statement>Use role= and text= locators before CSS selectors; never use CSS class-based selectors in automation scripts.</statement>
+      <rationale>CSS class selectors break on every UI refactor, especially with Tailwind JIT; accessibility role and text selectors are refactor-stable.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// Preferred: role and text selectors
+await page.click('role=button[name="Submit"]');
+await page.click('text=Sign in');
+
+// Acceptable: stable semantic CSS
+await page.click('button[type="submit"]');
+
+// Avoid: Tailwind utility class selectors
+// await page.click('.bg-blue-600');  -- breaks on every refactor
+]]></code>
+    </example>
+  </section>
+
+  <section title="Auto-waiting">
+    <rule>
+      <statement>Never use page.waitForTimeout(N); always use condition-based waits (waitForSelector, waitForResponse, waitForURL, expect.poll).</statement>
+      <rationale>Fixed timeouts are either too short (flaky) or too long (slow); condition-based waits complete as soon as the condition is met.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// Playwright auto-waits for element to be actionable
+await page.click('#button');      // waits for element, enabled, stable
+await page.fill('#input', 'text'); // waits for editable
+
+// Explicit condition wait when needed
+await page.waitForSelector('#dynamic-element');
+await page.waitForLoadState('networkidle');
+await page.waitForURL('**/dashboard');
+]]></code>
+    </example>
+  </section>
+
+  <section title="Auth State Persistence">
+    <rule>
+      <statement>Persist auth state via context.storageState({ path }) and reuse it across test sessions; never re-run the login flow in every test.</statement>
+      <rationale>Login flows are fragile and slow; running them per-test multiplies flakiness and execution time.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+// Save auth state once
+await context.storageState({ path: 'auth.json' });
+
+// Reuse in subsequent runs
+const context = await browser.newContext({ storageState: 'auth.json' });
+]]></code>
+    </example>
+  </section>
+
+  <section title="Network Interception">
+    <rule>
+      <statement>Block images, fonts, and analytics scripts on all scraping runs; they add latency and bandwidth without data value.</statement>
+      <rationale>Blocking non-essential resources reduces page load time by 3-5x and drops bandwidth ~80%.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+await page.route('**/*.{png,jpg,jpeg,svg,woff2,gif}', route => route.abort());
+await page.route('**/(analytics|gtm|hotjar)**', route => route.abort());
+
+// Mock API for isolated testing
+await page.route('**/api/users', route => {
+  route.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify([{ id: 1, name: 'Test User' }]) });
+});
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/page-object.js">Page Object Model class scaffold</reference>
+  <reference path="templates/extract.js">Playwright extractor with Zod schema validation</reference>
+</text>

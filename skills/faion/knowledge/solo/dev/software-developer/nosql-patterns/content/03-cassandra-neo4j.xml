@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-cassandra-neo4j" title="Cassandra and Neo4j Patterns">
+  <summary>Cassandra partition key design and time-bucketed tables; Neo4j Cypher patterns and index rules.</summary>
+
+  <section title="Cassandra Partition Design">
+    <rule>
+      <statement>Design one table per access pattern in Cassandra; partition key selection determines scalability and cannot be changed without a full table copy.</statement>
+      <rationale>Cassandra has no JOINs and no secondary indexes without performance penalty; the partition key must match the primary query pattern exactly.</rationale>
+    </rule>
+    <rule>
+      <statement>Use (entity_id, time_bucket) as the partition key for time-series data to prevent hot partitions on single-entity keys under high write load.</statement>
+      <rationale>A single partition key (sensor_id alone) concentrates all writes to one node; time-bucketing distributes writes across nodes.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="cql"><![CDATA[
+-- Time-series with composite partition key
+CREATE TABLE sensor_readings (
+    sensor_id text,
+    date date,
+    timestamp timestamp,
+    value double,
+    PRIMARY KEY ((sensor_id, date), timestamp)
+) WITH CLUSTERING ORDER BY (timestamp DESC);
+
+-- User activity with monthly time buckets
+CREATE TABLE user_activity (
+    user_id uuid,
+    year_month text,
+    activity_time timestamp,
+    activity_type text,
+    PRIMARY KEY ((user_id, year_month), activity_time)
+) WITH CLUSTERING ORDER BY (activity_time DESC);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Neo4j Graph Patterns">
+    <rule>
+      <statement>Index every node property used in MATCH predicates; missing indexes cause full graph scans.</statement>
+      <rationale>Neo4j traversal is fast, but initial node lookup without an index requires scanning all nodes of a label.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="cypher"><![CDATA[
+// Recommendation: products purchased by user's friends
+MATCH (user:User {id: '123'})-[:FRIEND]->(friend:User)-[:PURCHASED]->(product:Product)
+WHERE NOT (user)-[:PURCHASED]->(product)
+RETURN DISTINCT product.name, COUNT(friend) AS friend_count
+ORDER BY friend_count DESC LIMIT 10
+
+// Shortest path between users
+MATCH path = shortestPath(
+    (a:User {id: '123'})-[:FRIEND*..6]-(b:User {id: '456'})
+)
+RETURN path
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-headers-and-responses" title="Rate Limit Headers and 429 Responses">
+  <summary>IETF header names, 429 response shape, Retry-After semantics, and tiered limit examples.</summary>
+
+  <section title="Required Headers">
+    <rule>
+      <statement>Every rate-limited response (including 200s) must include RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, and Retry-After on 429 responses per the IETF draft.</statement>
+      <rationale>Well-behaved clients (Stripe SDK, axios-retry) auto-honor these headers and back off; without them clients hammer in tight retry loops.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="http"><![CDATA[
+HTTP/1.1 200 OK
+RateLimit-Limit: 100
+RateLimit-Remaining: 95
+RateLimit-Reset: 1735689600
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="http"><![CDATA[
+HTTP/1.1 429 Too Many Requests
+Retry-After: 60
+RateLimit-Limit: 100
+RateLimit-Remaining: 0
+RateLimit-Reset: 1735689600
+Content-Type: application/json
+
+{"error": {"code": "RATE_LIMIT_EXCEEDED", "message": "Too many requests", "retryAfter": 60, "limit": 100, "window": "1h"}}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Tiered Limits">
+    <rule>
+      <statement>Tier limit values are business decisions; agents must not finalize them — surface as a question to the human before implementing.</statement>
+      <rationale>Limit values affect pricing, conversion, and abuse surface. Wrong limits damage revenue or allow DoS.</rationale>
+    </rule>
+    <p>Example tiered limit table (values are illustrative, not defaults):</p>
+    <list>
+      <item>Free: 100 req/hour, burst 10</item>
+      <item>Plus: 1000 req/hour, burst 50</item>
+      <item>Pro: 10000 req/hour, burst 200</item>
+      <item>Enterprise: negotiated / unlimited</item>
+    </list>
+  </section>
+
+  <section title="Endpoint-Specific Limits">
+    <rule>
+      <statement>Apply stricter limits to expensive endpoints (search, export, AI calls, OAuth mint) than to cheap read endpoints; document per-endpoint limits in the OpenAPI spec via x-rate-limit extensions.</statement>
+      <rationale>A single export call may consume 100x the resources of a status check; uniform limits either over-restrict cheap endpoints or under-protect expensive ones.</rationale>
+    </rule>
+    <rule>
+      <statement>Whitelist monitoring and health-check IPs/keys; otherwise Pingdom and your own synthetic monitors will trip rate limits.</statement>
+      <rationale>Monitoring traffic is trusted and predictable; rate-limiting it causes false alerts and disguises real attacks.</rationale>
+    </rule>
+  </section>
+</text>

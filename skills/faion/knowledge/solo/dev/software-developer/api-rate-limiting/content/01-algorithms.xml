@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-algorithms" title="Rate Limiting Algorithms">
+  <summary>Fixed-window, sliding-window, and token-bucket algorithms — when to pick each and Python implementations.</summary>
+
+  <section title="Algorithm Selection">
+    <rule>
+      <statement>Use sliding-window for most API endpoints; use token-bucket for burst-tolerant endpoints (uploads, batch APIs); use fixed-window only for billing/quota where exact counts matter.</statement>
+      <rationale>Fixed-window allows 2x burst at window boundary (199 req at 10:59:59 + 100 at 11:00:00). Sliding-window distributes requests fairly. Token-bucket absorbs legitimate bursts.</rationale>
+    </rule>
+    <rule>
+      <statement>Use a shared store (Redis/Valkey) for all rate-limit counters; in-process counters (dict, lru_cache) are forbidden for any deployment with more than one replica.</statement>
+      <rationale>In-process counters diverge across replicas: each server independently allows the full limit, multiplying effective throughput by the replica count.</rationale>
+    </rule>
+  </section>
+
+  <section title="Sliding Window (Redis)">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time
+import redis.asyncio as redis
+
+class SlidingWindowRateLimiter:
+    def __init__(self, limit: int, window_seconds: int, redis_client):
+        self.limit = limit
+        self.window = window_seconds
+        self.redis = redis_client
+
+    async def is_allowed(self, key: str) -> bool:
+        now = time.time()
+        pipe = self.redis.pipeline()
+        pipe.zremrangebyscore(key, 0, now - self.window)
+        pipe.zadd(key, {str(now): now})
+        pipe.zcard(key)
+        pipe.expire(key, self.window)
+        _, _, count, _ = await pipe.execute()
+        return count <= self.limit
+]]></code>
+    </example>
+    <reference path="templates/sliding_window.py">Full FastAPI middleware using Redis sliding window</reference>
+  </section>
+
+  <section title="Token Bucket">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TokenBucketRateLimiter:
+    def __init__(self, bucket_size: int, refill_rate: float):
+        self.bucket_size = bucket_size
+        self.refill_rate = refill_rate  # tokens per second
+        self.buckets: dict = {}
+
+    def is_allowed(self, key: str, tokens: int = 1) -> bool:
+        now = time.time()
+        bucket = self.buckets.get(key, {"tokens": self.bucket_size, "last_refill": now})
+        elapsed = now - bucket["last_refill"]
+        bucket["tokens"] = min(self.bucket_size, bucket["tokens"] + elapsed * self.refill_rate)
+        bucket["last_refill"] = now
+        if bucket["tokens"] >= tokens:
+            bucket["tokens"] -= tokens
+            self.buckets[key] = bucket
+            return True
+        return False
+]]></code>
+    </example>
+  </section>
+
+  <section title="Key Selection">
+    <rule>
+      <statement>Key on the most expensive identity available: api_key &gt; user_id &gt; session &gt; device_id &gt; ip. Never key solely on IP.</statement>
+      <rationale>IP-based limiting punishes mobile carriers and corporate NATs sharing a single egress IP; api_key or user_id provides per-account fairness.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Redis TIME command (not time.time()) for the sliding-window timestamp to avoid clock skew between app servers.</statement>
+      <rationale>App servers' clocks can diverge by seconds; using a central Redis timestamp ensures consistent window boundaries.</rationale>
+    </rule>
+  </section>
+</text>
