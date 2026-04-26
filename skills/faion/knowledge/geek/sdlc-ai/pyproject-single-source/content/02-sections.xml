@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-sections" title="Canonical pyproject.toml sections">
+  <summary>The set of TOML tables every modern Python project should use, and what each one replaces.</summary>
+
+  <section title="Standard sections">
+    <list>
+      <item>`[build-system]` — PEP 518 build backend (hatchling, setuptools, flit, etc.).</item>
+      <item>`[project]` — PEP 621 metadata: name, version, requires-python, dependencies, optional-dependencies.</item>
+      <item>`[tool.uv]` — uv-specific config: dev-dependencies, sources, indexes.</item>
+      <item>`[tool.ruff]` and `[tool.ruff.lint]` / `[tool.ruff.format]` — replaces flake8 + isort + black + pyupgrade.</item>
+      <item>`[tool.ty]` (or `[tool.mypy]` / `[tool.pyright]`) — type-checker config; pick exactly one.</item>
+      <item>`[tool.pytest.ini_options]` — replaces pytest.ini and tox.ini test sections.</item>
+      <item>`[tool.coverage.run]` and `[tool.coverage.report]` — replaces .coveragerc.</item>
+      <item>`[tool.bandit]`, `[tool.mutmut]` — security and mutation testing.</item>
+    </list>
+
+    <rule testable="true">
+      <statement>When a repo uses pytest + ruff + coverage + a type checker, `pyproject.toml` MUST contain `[tool.pytest.ini_options]`, `[tool.ruff]`, `[tool.coverage.run]`, and exactly one of `[tool.ty]` / `[tool.mypy]` / `[tool.pyright]`. Missing sections mean the tool is reading either defaults or a legacy file.</statement>
+      <rationale>If a tool runs without its TOML section present, it is either using global defaults (silent risk) or an undeclared config file (drift). Both are caught by checking the table is present.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="toml"><![CDATA[
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-svc"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = ["fastapi>=0.115"]
+
+[project.optional-dependencies]
+dev = ["pytest>=9", "ruff>=0.15", "ty"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "T20"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.ty.environment]
+python-version = "3.12"
+      ]]></code>
+      <note>Every relevant tool has its table. No setup.cfg, no .flake8, no pytest.ini.</note>
+    </example>
+
+    <antipattern>
+      <description>Configuring `ruff` in pyproject.toml AND keeping `.flake8` for "the parts ruff doesn't cover yet".</description>
+      <reason>Ruff covers all flake8 plugins as `--select` codes; if a rule is missing, request it upstream or use a single dedicated tool. Two parallel lint configs guarantee the agent edits one and breaks the other.</reason>
+    </antipattern>
+
+    <reference path="templates/pyproject.toml">Reference template with all canonical sections.</reference>
+    <reference href="https://docs.astral.sh/ruff/configuration/">Ruff configuration reference (pyproject.toml schema).</reference>
+    <reference href="https://docs.pytest.org/en/stable/reference/customize.html">pytest configuration in pyproject.toml.</reference>
+  </section>
+</text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Use uv with a committed lockfile">
+  <summary>Every Python project commits uv.lock and routes all tool calls through `uv run` so the env can never silently drift.</summary>
+
+  <section title="Lockfile floor">
+    <p>uv produces a deterministic resolution in `uv.lock` from `pyproject.toml`. The lockfile is committed; CI installs with `--frozen` so a missing dep or a hash mismatch fails the build.</p>
+
+    <rule testable="true">
+      <statement>Commit uv.lock to the repo. Run installs with `uv sync --frozen` in CI and `uv sync` locally; mutate dependencies only via `uv add` / `uv remove` / `uv lock --upgrade`.</statement>
+      <rationale>Reproducible installs require both the manifest (pyproject.toml) and the resolved transitive set (uv.lock). Committing the lock is the only way two agents on two machines compute the same env.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>Never invoke `pytest`, `python`, `mypy`, `ruff`, or any other project tool bare. Always wrap in `uv run &lt;cmd&gt;`; for global tooling, use `uv tool install` / `uv tool run`.</statement>
+      <rationale>uv re-verifies the lockfile against pyproject.toml on every `uv run`. A bare `pytest` may pick up a stale system-Python interpreter and report a false green.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+uv init my-pkg --package
+uv add fastapi pydantic
+uv add --dev pytest ruff hypothesis
+uv lock                      # writes uv.lock
+uv run pytest -x             # always via uv run
+uv tool install ty@latest    # global tool, isolated
+      ]]></code>
+      <note>Lockfile is generated, env is implicit, every command runs in the project venv.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+pip install -r requirements.txt
+pytest                       # which Python? which venv?
+pip install some-helper      # not in any lockfile
+      ]]></code>
+      <note>No lockfile, no env contract. The next agent on a different machine gets a different result.</note>
+    </example>
+
+    <antipattern>
+      <description>Hand-editing `uv.lock` to "fix" a resolution conflict.</description>
+      <reason>The lock is hash-verified; a hand edit either fails the next sync or — worse — installs an unsigned set. Use `uv lock --upgrade-package &lt;name&gt;` or adjust constraints in pyproject.toml and re-lock.</reason>
+    </antipattern>
+
+    <reference path="templates/pyproject.toml">Skeleton pyproject.toml with uv + ruff + pytest groups.</reference>
+    <reference href="https://docs.astral.sh/uv/">uv official documentation.</reference>
+    <reference href="https://github.com/astral-sh/uv">uv source and release notes.</reference>
+  </section>
+</text>

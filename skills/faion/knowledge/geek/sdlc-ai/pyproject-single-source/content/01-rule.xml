@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Single-file configuration in pyproject.toml">
+  <summary>One pyproject.toml per package; zero legacy config files. CI verifies the absence list on every PR.</summary>
+
+  <section title="The rule and its enforcement">
+    <p>Every Python tool that supports pyproject.toml must be configured there. Legacy alternatives are deleted, not co-existed-with. A one-line shell check fails the build if any forbidden file reappears.</p>
+
+    <rule testable="true">
+      <statement>The repo contains zero of: `setup.py` (unless required for native build steps), `setup.cfg`, `.flake8`, `pytest.ini`, `tox.ini`, `mypy.ini`, `requirements.txt` (for first-party deps). All replaced by sections inside `pyproject.toml`.</statement>
+      <rationale>PEP 621 provides the standard metadata table; PEP 518 provides the build-system table. Every modern Python tool reads `pyproject.toml`. Multiple config files create silent conflicts an agent will miss when editing one and forgetting another.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# in CI: fail if any forbidden file exists
+test ! -f setup.cfg && \
+test ! -f tox.ini && \
+test ! -f .flake8 && \
+test ! -f pytest.ini && \
+test ! -f mypy.ini && \
+test ! -f requirements.txt
+      ]]></code>
+      <note>One liner blocks the legacy files from sneaking back in via copy-paste.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="text"><![CDATA[
+.
+├── pyproject.toml      # has [tool.ruff]
+├── setup.cfg           # ALSO has [flake8] section
+├── .flake8             # AND a third copy of lint rules
+├── tox.ini             # AND test config diverging from pytest
+└── requirements-dev.txt  # deps not in pyproject.toml
+      ]]></code>
+      <note>Four config files, four sources of truth, every agent edit drifts one of them.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding a new tool's config to a fresh `.toolnamerc` file because "the README said to".</description>
+      <reason>If the tool reads `pyproject.toml` (it almost certainly does in 2026), use `[tool.&lt;name&gt;]`. The dotfile reintroduces the same drift problem the rule is preventing.</reason>
+    </antipattern>
+
+    <reference path="templates/check-no-legacy.sh">CI script that fails on any forbidden legacy config file.</reference>
+    <reference href="https://peps.python.org/pep-0621/">PEP 621 — project metadata in pyproject.toml.</reference>
+    <reference href="https://packaging.python.org/en/latest/specifications/pyproject-toml/">Authoritative pyproject.toml specification.</reference>
+  </section>
+</text>

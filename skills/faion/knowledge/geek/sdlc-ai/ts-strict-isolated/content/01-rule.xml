@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Required strict flags for TypeScript">
+  <summary>Five compiler flags every tsconfig.json in a serious TS project must turn on, and what each one catches.</summary>
+
+  <section title="The required flag set">
+    <p>The minimal strict configuration is a tight set: `strict` is the umbrella, plus three extras that catch the failure modes LLMs most often introduce, plus `isolatedDeclarations` for libraries.</p>
+
+    <rule testable="true">
+      <statement>Every tsconfig.json sets `compilerOptions.strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`. Library tsconfigs additionally set `isolatedDeclarations: true` and `composite: true`.</statement>
+      <rationale>`strict` enables noImplicitAny, strictNullChecks, strictFunctionTypes, etc. — the baseline. `noUncheckedIndexedAccess` forces narrowing on `arr[i]` and `obj[key]`, the #1 LLM blind spot. `exactOptionalPropertyTypes` separates "missing key" from "key set to undefined", killing partial-update bugs. `isolatedDeclarations` requires explicit return types on every export so non-tsc tools can emit `.d.ts`.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="jsonc"><![CDATA[
+// tsconfig.base.json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023"
+  }
+}
+      ]]></code>
+      <note>One base config; per-package configs extend this and add `composite` / `isolatedDeclarations` if they are libraries.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="jsonc"><![CDATA[
+{
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true
+  }
+}
+      ]]></code>
+      <note>Implicit any everywhere; unchecked array access never narrows; LLM diffs compile but crash at runtime.</note>
+    </example>
+
+    <antipattern>
+      <description>Disabling strict for one file via `// @ts-nocheck` instead of fixing the type error.</description>
+      <reason>The escape hatch turns an entire file into untyped JS. Use `// @ts-expect-error: &lt;ticket&gt;` on the single line, or fix the type properly. Agents will copy `@ts-nocheck` patterns once they see one example.</reason>
+    </antipattern>
+
+    <reference path="templates/tsconfig.base.json">Reference base tsconfig with all required flags.</reference>
+    <reference href="https://www.typescriptlang.org/tsconfig/strict.html">TypeScript strict mode reference.</reference>
+    <reference href="https://www.typescriptlang.org/tsconfig/noUncheckedIndexedAccess.html">noUncheckedIndexedAccess reference.</reference>
+    <reference href="https://www.typescriptlang.org/tsconfig/isolatedDeclarations.html">isolatedDeclarations reference.</reference>
+  </section>
+</text>

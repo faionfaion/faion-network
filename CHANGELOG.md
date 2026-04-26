@@ -14,6 +14,7 @@
 - refactor: 8/8 methodologies migrated to new shape (batch: predictive-analytics-pm, gitlab-boards, stakeholder-engagement, project-integration, pm-tool-selection, quality-management, resource-management, value-stream-management)
 
 ### Added
+- sdlc-ai-methodologies: pool-batch +4 lang- (4/52) — uv-lockfile-floor, pyproject-single-source, ts-strict-isolated, pnpm-catalogs (NEW shape: AGENTS.md + content/*.xml + templates/).
 - agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).
 - agent-methodologies: pool-batch +2 cli- (18/50) — claude-code-headless-default, headless-cli-four-guards (cli- now 3/3 complete).
 - agent-methodologies: pool-batch +4 lp- (22/50) — max-turns-circuit-breaker, posttool-hook-self-correction, generator-critic-bounded-loop, map-reduce-send-fanout (lp- now 5/5 complete).

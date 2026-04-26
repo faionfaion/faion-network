@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow" title="uv command workflow for agents">
+  <summary>Concrete command set agents must use for init, add, sync, run, lock-upgrade, and tool install.</summary>
+
+  <section title="Daily commands">
+    <list>
+      <item>`uv sync` — install or update the env from pyproject.toml + uv.lock at session start.</item>
+      <item>`uv add &lt;pkg&gt;` / `uv add --dev &lt;pkg&gt;` — add a runtime / dev dependency; mutates pyproject.toml AND uv.lock atomically.</item>
+      <item>`uv remove &lt;pkg&gt;` — remove a dep; both files are updated.</item>
+      <item>`uv lock --upgrade` — refresh the entire lockfile to latest compatible versions.</item>
+      <item>`uv lock --upgrade-package &lt;name&gt;` — bump only one package, preserving the rest.</item>
+      <item>`uv run &lt;cmd&gt;` — run any command inside the project env; uv re-syncs first.</item>
+      <item>`uv tool install &lt;name&gt;` / `uv tool run &lt;name&gt;` — global tool isolated from project (ruff, ty, mutmut, pre-commit).</item>
+    </list>
+
+    <rule testable="true">
+      <statement>In CI, install with `uv sync --frozen --no-dev` (or `--all-extras` per matrix), never `uv sync --upgrade`.</statement>
+      <rationale>`--frozen` fails the build if pyproject.toml and uv.lock disagree. Without it, CI quietly relocks and you lose the auditability of the committed lockfile.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/ci.yml (excerpt)
+- uses: astral-sh/setup-uv@v6
+  with: { enable-cache: true }
+- run: uv sync --frozen --all-extras
+- run: uv run ruff check
+- run: uv run pytest -x --cov=src
+      ]]></code>
+      <note>Frozen sync + uv run = same env locally and in CI; no drift.</note>
+    </example>
+
+    <antipattern>
+      <description>Mixing `pip install` calls inside a uv-managed project.</description>
+      <reason>pip writes to the same venv but does not touch uv.lock. The next `uv sync` removes the package and breaks the build. Pick one tool per project.</reason>
+    </antipattern>
+
+    <reference path="templates/agents-md-snippet.md">AGENTS.md block telling agents to use uv exclusively.</reference>
+    <reference href="https://docs.astral.sh/uv/concepts/projects/sync/">uv sync semantics, including --frozen.</reference>
+  </section>
+</text>

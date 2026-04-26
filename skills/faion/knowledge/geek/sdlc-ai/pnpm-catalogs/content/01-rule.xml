@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rule" title="Catalog protocol for shared deps">
+  <summary>Declare every cross-package external dependency once in pnpm-workspace.yaml; consume via "catalog:". Internal packages use "workspace:*".</summary>
+
+  <section title="The protocol">
+    <p>The pnpm catalog is a central version registry for the workspace. A `package.json` referencing `"react": "catalog:"` resolves to whatever version is declared at the workspace root. Default catalog entries use the bare `catalog:` literal; named catalogs use `catalog:&lt;name&gt;` for variants (e.g., a "next" catalog for canary versions).</p>
+
+    <rule testable="true">
+      <statement>External dependencies that appear in two or more workspace packages MUST be declared once under `catalog:` (or a named catalog) in `pnpm-workspace.yaml` and referenced with `"&lt;pkg&gt;": "catalog:"` in every package.json. Internal workspace packages MUST be referenced as `"&lt;pkg&gt;": "workspace:*"`. Hard-coded versions (e.g., `"react": "^19.0.0"`) for shared deps are forbidden.</statement>
+      <rationale>Catalogs make version drift impossible by construction: there is exactly one place a version is defined. Without catalogs, agents adding the same dep in two packages will pick whatever range is current that day, producing duplicate trees and subtle compatibility breakages.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# pnpm-workspace.yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+catalog:
+  react: ^19.0.0
+  react-dom: ^19.0.0
+  typescript: ^5.7.0
+  vitest: ^3.0.0
+catalogs:
+  next:
+    react: 19.1.0-canary
+      ]]></code>
+      <code lang="jsonc"><![CDATA[
+// packages/web/package.json
+{
+  "dependencies": {
+    "react": "catalog:",
+    "@org/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
+      ]]></code>
+      <note>Bumping React = single line change in pnpm-workspace.yaml; every workspace updates atomically on `pnpm install`.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="jsonc"><![CDATA[
+// packages/web/package.json
+{ "dependencies": { "react": "^19.0.0", "../shared": "file:../shared" } }
+// packages/admin/package.json
+{ "dependencies": { "react": "^19.1.2" } }     // drift
+      ]]></code>
+      <note>Two React versions, two trees, runtime breakage when shared components cross the boundary.</note>
+    </example>
+
+    <antipattern>
+      <description>Adding a new shared dep via `pnpm add react -F web@^19.1.2` without updating the catalog.</description>
+      <reason>Bypasses the catalog and reintroduces drift. Add deps via `pnpm add react -F web` (it picks up the catalog default) or update the catalog first if a new version is needed.</reason>
+    </antipattern>
+
+    <reference path="templates/pnpm-workspace.yaml">Reference workspace + catalog file.</reference>
+    <reference href="https://pnpm.io/catalogs">pnpm catalogs reference.</reference>
+    <reference href="https://pnpm.io/workspaces">pnpm workspaces reference.</reference>
+  </section>
+</text>
