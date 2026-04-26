@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-layer-rules" title="Laravel Patterns: Layer Boundary Rules">
+  <summary>Concrete rules for each layer in the Controller → Service → Resource architecture, covering what belongs where and what is forbidden.</summary>
+
+  <section title="Controller Rules">
+    <rule>
+      <statement>Controllers must contain only HTTP-layer logic: receive a Request (or FormRequest), call a single Service method, return a Resource or JsonResponse. No Eloquent calls, no business rules, no validation logic inside controller methods.</statement>
+      <rationale>Controllers that contain business logic cannot be tested without booting the HTTP kernel. Service-level logic is testable in unit tests without HTTP overhead.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use FormRequest classes (StoreXRequest, UpdateXRequest) for all writes. Never call $request->all(), $request->validate(), or Validator::make() inside a controller method.</statement>
+      <rationale>FormRequests are the single source of validation and authorization. Inline validation duplicates rules across methods and makes them untestable in isolation.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="php"><![CDATA[
+public function store(StoreUserRequest $request): JsonResponse
+{
+    $user = $this->userService->create($request->validated());
+    return (new UserResource($user))
+        ->response()
+        ->setStatusCode(Response::HTTP_CREATED);
+}
+      ]]></code>
+      <note>Controller receives validated data only — no raw $request->all(). Returns a Resource, not an array or the Eloquent model directly.</note>
+    </example>
+  </section>
+
+  <section title="Service Rules">
+    <rule>
+      <statement>Services own all business logic, DB::transaction boundaries, and event dispatch. Services must not read from the request (no request() helper, no Auth::user() facade) — receive all inputs as explicit method arguments.</statement>
+      <rationale>Services called from queue jobs or CLI commands have no HTTP request context. request() inside a service silently returns null outside HTTP and crashes.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Inject contracts (Mailer, CacheRepository, Dispatcher) via constructor — do not call Cache::, Mail::, Notification:: facades directly inside services.</statement>
+      <rationale>Facades in services cannot be mocked without facade swap magic. Injected contracts swap cleanly in unit tests.</rationale>
+    </rule>
+
+    <rule>
+      <statement>DB::transaction must wrap only DB writes. External HTTP calls (Stripe, SES, Slack) go before or after the transaction with idempotency keys — never inside.</statement>
+      <rationale>A DB lock held across a network call creates a deadlock window proportional to the external service's latency. Stripe timeouts with an open transaction can lock rows for seconds.</rationale>
+    </rule>
+  </section>
+
+  <section title="Resource Rules">
+    <rule>
+      <statement>Every API endpoint must return an API Resource or ResourceCollection — never a raw array or the Eloquent model directly. List resources via ResourceCollection (not Resource::collection on a paginator) to preserve pagination meta.</statement>
+      <rationale>Eloquent models expose hidden fields (password, remember_token) and dates in inconsistent formats. Resources produce explicit, versioned contracts. Resource::collection on a paginator silently drops links/meta.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Resources must not access relations that were not eager-loaded by the calling controller or service. Every relation accessed in toArray() must be listed in a with() or load() call upstream.</statement>
+      <rationale>Lazy relation access inside toArray() produces one query per model in a list — N+1. Telescope flags it in development; it silently degrades production.</rationale>
+    </rule>
+  </section>
+
+  <section title="Policy Rules">
+    <rule>
+      <statement>Create a Policy for every Eloquent model used in a controller. FormRequest's authorize() must delegate to the appropriate Policy method. Never return true from authorize() as a placeholder.</statement>
+      <rationale>Missing policies allow unauthorized access silently. Placeholder authorize() true bypasses authorization entirely without a visible failure.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/controller.php">Thin CRUD controller with constructor-injected service</reference>
+  <reference path="templates/service.php">Service with transaction, event dispatch, and explicit arg signature</reference>
+</text>

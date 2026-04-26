@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-background-services" title="ASP.NET Core: BackgroundService Patterns">
+  <summary>BackgroundService + Channel&lt;T&gt; for in-process queued work, and PeriodicTimer for scheduled cleanup tasks in ASP.NET Core.</summary>
+
+  <section title="Channel-Based Queue">
+    <rule>
+      <statement>Use BackgroundService + Channel&lt;T&gt; for in-process background work. Inject the Channel as a Singleton; create a scoped IServiceProvider scope inside ExecuteAsync for each work item to avoid capturing a scoped DbContext in a singleton lifetime.</statement>
+      <rationale>DbContext is Scoped by default. Injecting it directly into a Singleton (the BackgroundService) captures a Scoped dependency in a longer-lived object — EF Core will throw at runtime on the second request.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class BackgroundOrderProcessor : BackgroundService
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<BackgroundOrderProcessor> _logger;
+    private readonly Channel<int> _channel;
+
+    public BackgroundOrderProcessor(IServiceProvider sp,
+        ILogger<BackgroundOrderProcessor> logger, Channel<int> channel)
+    {
+        _sp = sp; _logger = logger; _channel = channel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await foreach (var orderId in _channel.Reader.ReadAllAsync(ct))
+        {
+            try { await ProcessAsync(orderId, ct); }
+            catch (Exception ex)
+            { _logger.LogError(ex, "Error processing order {OrderId}", orderId); }
+        }
+    }
+
+    private async Task ProcessAsync(int orderId, CancellationToken ct)
+    {
+        using var scope = _sp.CreateScope();
+        var svc = scope.ServiceProvider.GetRequiredService<IOrderService>();
+        await svc.ProcessAsync(orderId, ct);
+    }
+}
+      ]]></code>
+      <note>Register Channel&lt;int&gt; as Singleton and IOrderQueue (the writer facade) as Singleton in Program.cs. The BackgroundService is auto-discovered by AddHostedService&lt;T&gt;.</note>
+    </example>
+  </section>
+
+  <section title="Scheduled Cleanup">
+    <rule>
+      <statement>Use PeriodicTimer inside BackgroundService for periodic scheduled tasks. Never use Thread.Sleep or Task.Delay in a loop — PeriodicTimer handles scheduling and respects CancellationToken.</statement>
+      <rationale>PeriodicTimer.WaitForNextTickAsync() fires at the correct wall-clock interval even if a tick was slow, does not accumulate drift, and returns false when the token is cancelled — enabling clean shutdown without extra coordination.</rationale>
+    </rule>
+  </section>
+</text>

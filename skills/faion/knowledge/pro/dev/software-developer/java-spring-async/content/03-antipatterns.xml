@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Spring Async: Anti-Patterns">
+  <summary>Concrete failure modes that agents introduce when adding @Async; each has a detectable symptom and a required fix.</summary>
+
+  <antipattern>
+    <description>Self-invocation: calling this.asyncMethod() inside the same @Service class.</description>
+    <reason>Spring's @Async proxy is not engaged for internal method calls. The method runs synchronously on the caller's thread with no pooling, no error routing, no context propagation. The bug is silent — no exception is thrown, the method just blocks.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Bare @Async without a named executor: @Async with no argument or @Async("").</description>
+    <reason>Falls back to SimpleAsyncTaskExecutor, which creates a new OS thread per invocation. Under sustained load, thread count grows without bound until the JVM or OS kills the process. No backpressure, no metrics, no pool reuse.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>void-returning @Async method with no AsyncUncaughtExceptionHandler registered in AsyncConfig.</description>
+    <reason>Exceptions thrown by void @Async methods are silently discarded. Failures (email send errors, webhook rejections) produce no log, no metric, no alert. Operators have no visibility.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>@Transactional and @Async on the same method, expecting the caller's transaction to propagate.</description>
+    <reason>The async thread is a different OS thread. Spring cannot propagate a JDBC connection (bound to a ThreadLocal) across threads. The async method reads uncommitted data or opens its own unrelated transaction.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>ThreadPoolTaskExecutor without setWaitForTasksToCompleteOnShutdown(true).</description>
+    <reason>On JVM shutdown (during deploys), in-flight async tasks are killed immediately. Email sends, webhook deliveries, and audit log writes are silently dropped. Durable work must use a queue, but at minimum the shutdown hook must drain the in-flight pool.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Thread.sleep() in tests waiting for async completion.</description>
+    <reason>Produces flaky tests: too short on slow CI, too long on fast hardware. Use Awaitility's await().atMost().untilAsserted() which polls until the condition is met or times out.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Using @Async for work that requires durability: charging cards, sending invoices, triggering external state transitions.</description>
+    <reason>@Async tasks live in JVM memory. A JVM restart (crash, OOM, deploy) permanently loses in-flight tasks. Durable work requires a persistent queue (SQS, RabbitMQ, Kafka) with at-least-once delivery.</reason>
+  </antipattern>
+
+  <reference path="scripts/spring-async-audit.sh">Shell auditor that flags self-invocation, missing executor names, void without handler, tx+async, and Thread.sleep in tests</reference>
+</text>

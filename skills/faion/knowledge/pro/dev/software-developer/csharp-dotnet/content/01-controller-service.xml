@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-controller-service" title="ASP.NET Core: Controller and Service Layer">
+  <summary>Rules for [ApiController] controllers, ActionResult&lt;T&gt; responses, typed service interfaces, and constructor DI patterns in ASP.NET Core.</summary>
+
+  <section title="Controller Rules">
+    <rule>
+      <statement>Use [ApiController] + [Route("api/v1/[controller]")] on every controller. Return ActionResult&lt;T&gt; from endpoints that may return NotFound or other non-200 codes. Return IActionResult only when the response type varies at runtime.</statement>
+      <rationale>[ApiController] enables automatic model validation binding and ProblemDetails error responses. ActionResult&lt;T&gt; allows Swagger to infer the success schema without requiring explicit ProducesResponseType attributes.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Constructor-inject only interfaces, never concrete implementations. The controller may inject at most 4-5 dependencies; beyond that, refactor to a mediator or handler pattern.</statement>
+      <rationale>Injecting concrete classes couples the controller to specific implementations, preventing test doubles. More than 5 constructor dependencies is a god-class signal — split responsibilities.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<UserDto>> GetUser(int id)
+    {
+        var user = await _userService.GetByIdAsync(id);
+        if (user == null)
+            return NotFound();
+        return Ok(user);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
+    {
+        var user = await _userService.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+      ]]></code>
+      <note>CreatedAtAction returns 201 with a Location header pointing to the new resource. Always use it for POST endpoints that create a resource.</note>
+    </example>
+  </section>
+
+  <section title="Service Layer Rules">
+    <rule>
+      <statement>Define a service interface (IUserService) and register it as Scoped in Program.cs. Implement the interface in a concrete class. Never inject the concrete class directly.</statement>
+      <rationale>Interface injection enables test doubles (Mock&lt;IUserService&gt;) without a running DB. Scoped lifetime ensures the service shares the DbContext scope within a single request.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use record types for DTOs. Never return Entity Framework entities directly from service methods — always map to DTOs before crossing the service boundary.</statement>
+      <rationale>Entity classes carry EF tracking state and navigation proxies. Returning them from services leaks persistence concerns into the controller layer and causes infinite recursion in JSON serialization when navigation properties are loaded.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/program-cs.cs">Program.cs with DI registration, EF, AutoMapper, FluentValidation</reference>
+</text>

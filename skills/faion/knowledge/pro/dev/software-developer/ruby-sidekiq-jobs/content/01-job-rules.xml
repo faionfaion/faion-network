@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-job-rules" title="Sidekiq Jobs: Structure and Retry Rules">
+  <summary>Rules for Sidekiq job class structure: sidekiq_options, idempotency, primitive arguments, retry backoff, error handling, and queue registration.</summary>
+
+  <section title="Required Job Structure">
+    <rule>
+      <statement>Every job must include Sidekiq::Job, declare explicit sidekiq_options (queue:, retry:, dead:), and check idempotency as the first line of perform: return early if the work is already done.</statement>
+      <rationale>Sidekiq delivers at-least-once. Redis network blips cause re-delivery after the job has already completed. An idempotency check prevents double-sends, double-charges, and double-inserts.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Pass only primitive IDs (Integer, String, UUID) into perform. Inside perform, reload ActiveRecord objects with Order.find(order_id) and return early if the record is not found (rescue ActiveRecord::RecordNotFound).</statement>
+      <rationale>GlobalID serialization re-fetches the AR record at run time. If the record was deleted between enqueue and execution, GlobalID raises before your idempotency check runs. Primitive IDs give you control over the not-found path.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use sidekiq_retry_in for custom backoff. Rescue specific error classes to control whether the job retries with linear, exponential, or no backoff. Always re-raise after capturing to an error tracker so the retry fires.</statement>
+      <rationale>Generic rescue StandardError without re-raise absorbs the exception — the job appears to succeed, moves to Done, and no retry is scheduled. Sidekiq retries only jobs that raise.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :default, retry: 3, dead: true
+
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when PaymentGatewayError then (count + 1) * 60
+    else (count ** 4) + 15
+    end
+  end
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    return if order.processed?
+
+    OrderProcessor.new(order).process!
+    NotifyCustomerJob.perform_async(order_id)
+  rescue ActiveRecord::RecordNotFound
+    Sidekiq.logger.warn "Order #{order_id} not found — skipping"
+  rescue PaymentGatewayError => e
+    raise # retry with custom backoff
+  rescue StandardError => e
+    ErrorTracker.capture(e, order_id: order_id)
+    raise
+  end
+end
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Queue Registration">
+    <rule>
+      <statement>Register every new queue name in config/sidekiq.yml under :queues. Queues not in the config file are never processed by the worker — jobs sit silently in Redis with no error.</statement>
+      <rationale>Sidekiq workers only poll queues listed in their configuration. An unregistered queue name causes the job to remain in Redis indefinitely, appearing to the application as if it was dispatched successfully.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Never dispatch a job from inside an ActiveRecord transaction. Use after_commit callback or call perform_later after the transaction block completes.</statement>
+      <rationale>The worker picks up the job before the transaction commits. AR.find(id) returns nil or raises because the row does not exist yet. The job fails on a row that will exist 10ms later.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/job.rb">ProcessOrderJob with idempotency, retry backoff, error handling</reference>
+  <reference path="templates/sidekiq.yml">Queue priorities and concurrency configuration</reference>
+</text>

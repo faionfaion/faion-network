@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-antipatterns" title="ASP.NET Core: Anti-Patterns">
+  <summary>Common .NET anti-patterns that produce unobserved exceptions, runtime DI errors, test compilation failures, and security gaps.</summary>
+
+  <antipattern>
+    <description>async void methods outside of event handlers: public async void ProcessAsync() { ... }</description>
+    <reason>Exceptions thrown inside async void are unobserved — they are posted to the thread pool's unhandled exception handler and crash the process or are silently swallowed, depending on runtime version. Only async Task or async ValueTask are awaitable.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Registering a DbContext-holding service as Singleton: builder.Services.AddSingleton&lt;IUserService, UserService&gt;().</description>
+    <reason>DbContext is Scoped by default (one per request). A Singleton that captures a Scoped DbContext holds the same context for the lifetime of the process. EF Core throws InvalidOperationException on the second concurrent request because DbContext is not thread-safe.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Missing public partial class Program; at the bottom of Program.cs in projects that have xUnit integration tests using WebApplicationFactory&lt;Program&gt;.</description>
+    <reason>WebApplicationFactory&lt;Program&gt; requires Program to be a visible type in the application assembly. Without the partial class declaration, the test project cannot reference Program and compilation fails with "Cannot find type Program".</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Injecting IServiceProvider into a controller or service and calling GetService&lt;T&gt;() inside methods (service locator pattern).</description>
+    <reason>Service locator hides dependencies — they are not visible in the constructor signature, cannot be mocked in unit tests, and are not validated by the DI container at startup. Use constructor injection exclusively.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Connection strings or API secrets in appsettings.json committed to source control.</description>
+    <reason>All secrets in appsettings.json are committed to version control and distributed to every developer machine and CI environment. Use dotnet user-secrets locally and Azure Key Vault / environment variables in production.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Adding [AllowAnonymous] or overly broad CORS policies as a workaround for authentication errors during development.</description>
+    <reason>[AllowAnonymous] on a controller disables authorization globally for that controller, including production builds. CORS wildcard (*) allows any origin to make credentialed requests. Both are security regressions that survive code review if not explicitly flagged.</reason>
+  </antipattern>
+</text>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="Laravel Patterns: Anti-Patterns">
+  <summary>Common layer-violation anti-patterns with concrete symptoms and reasons each fails in production or under test.</summary>
+
+  <antipattern>
+    <description>Eloquent calls inside Controller methods: User::where(...)->get(), Order::find($id), $model->save() directly in a controller action.</description>
+    <reason>Business logic in the controller cannot be tested without the HTTP kernel. When the query logic changes, it must be found and changed in every controller that duplicates it.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Validation via $request->validate() or Validator::make() inside a controller method instead of a FormRequest class.</description>
+    <reason>Inline validation duplicates rules across methods, makes authorize() logic invisible, and cannot be unit-tested without a real Request object.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>UserRepository wrapping Eloquent::query() without a second backing implementation (e.g., no ElasticSearch or Redis projection).</description>
+    <reason>Eloquent is already a repository. A wrapper class that delegates to User::query() adds a layer of indirection with no benefit and confuses schema changes (two classes must change instead of one).</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>request() helper inside Service classes.</description>
+    <reason>Services called from queue workers or CLI commands have no HTTP request context. request() returns null or a partial request and the service crashes silently.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Magic facades (Cache::, Mail::, Notification::) inside Service classes.</description>
+    <reason>Facades are hard to mock without facade swap boilerplate. Injected contracts (Mailer, CacheRepository) swap cleanly in unit tests and express the dependency explicitly.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>DB::transaction wrapping external HTTP calls (Stripe::charge, Http::post, Mail::send).</description>
+    <reason>Locks are held for the full duration of the network call. A Stripe timeout at 5s holds a DB row locked for 5s, potentially deadlocking concurrent requests on the same row.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>firstOrCreate / updateOrCreate without explicit lockForUpdate under concurrent load.</description>
+    <reason>Two concurrent requests both miss the existing row, both attempt insert, and the second hits a unique constraint violation. Use upsert() or wrap in DB::transaction + lockForUpdate().</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Resource accessing relations not eager-loaded by the caller: $this->profile->name inside toArray() without with('profile') in the controller.</description>
+    <reason>Lazy-loads one query per model item in a paginated list. A page of 20 users triggers 20 additional queries. Telescope flags it; CI passes because tests run with a single model.</reason>
+  </antipattern>
+
+  <reference path="scripts/laravel-anti-pattern-lint.sh">Shell auditor for all banned patterns listed above</reference>
+</text>

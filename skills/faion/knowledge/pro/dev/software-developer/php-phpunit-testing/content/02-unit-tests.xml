@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-unit-tests" title="PHPUnit Testing: Service Unit Tests">
+  <summary>Service-layer unit test patterns: mocking repositories, asserting password hashing, testing event dispatch, and avoiding DB dependency in unit tests.</summary>
+
+  <section title="Service Unit Test Structure">
+    <rule>
+      <statement>Unit tests for service classes must use RefreshDatabase only when the test exercises a real DB operation. For pure business-rule tests (password hashing, event dispatch, transformation logic), use a concrete repository with an in-memory SQLite DB or mock the repository via Mockery.</statement>
+      <rationale>RefreshDatabase runs all migrations per test class. For unit tests that only verify logic (not persistence), this is unnecessary overhead. Mockery lets you verify service behavior without any DB at all.</rationale>
+    </rule>
+
+    <rule>
+      <statement>To verify password hashing: assert that $user->password is not equal to the plaintext input AND that Hash::check($plaintext, $user->password) returns true. Do not assert a specific bcrypt hash string — it changes per invocation.</statement>
+      <rationale>bcrypt output is non-deterministic (random salt per call). assertNotEquals + Hash::check verifies the invariant (the plaintext was hashed correctly) without coupling to a specific hash value.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Test event dispatch with Event::fake() before the action, then Event::assertDispatched(UserCreated::class). Do not assert event count unless the exact number of dispatches is a business rule.</statement>
+      <rationale>assertDispatched checks that the event was dispatched at least once with matching criteria. Count assertions are fragile — internal implementation changes that dispatch an event twice for optimization break the count without breaking the business rule.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="php"><![CDATA[
+class UserServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private UserService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = new UserService(new UserRepository(new User()));
+    }
+
+    public function test_create_hashes_password(): void
+    {
+        $user = $this->service->create([
+            'name' => 'John',
+            'email' => 'john@example.com',
+            'password' => 'plaintext',
+        ]);
+
+        $this->assertNotEquals('plaintext', $user->password);
+        $this->assertTrue(Hash::check('plaintext', $user->password));
+    }
+
+    public function test_create_fires_event(): void
+    {
+        Event::fake();
+
+        $this->service->create([
+            'name' => 'John',
+            'email' => 'john@example.com',
+            'password' => 'password',
+        ]);
+
+        Event::assertDispatched(UserCreated::class,
+            fn($e) => $e->user->email === 'john@example.com');
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-testing" title="ASP.NET Core: xUnit Testing Patterns">
+  <summary>xUnit unit tests with Mock&lt;T&gt; and WebApplicationFactory integration tests; required Program partial class; test structure conventions.</summary>
+
+  <section title="Unit Tests">
+    <rule>
+      <statement>Mock service interfaces with Moq (Mock&lt;IUserService&gt;). Pass mock.Object to the controller constructor. Assert with Assert.IsType&lt;T&gt; to verify ActionResult shape, then cast and assert the inner value.</statement>
+      <rationale>Mocking the interface isolates the controller test from the DB and service logic. The test verifies HTTP-layer behavior: correct status code, correct ActionResult type, correct DTO shape.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UsersControllerTests
+{
+    private readonly Mock<IUserService> _mockService;
+    private readonly UsersController _controller;
+
+    public UsersControllerTests()
+    {
+        _mockService = new Mock<IUserService>();
+        _controller = new UsersController(
+            _mockService.Object,
+            Mock.Of<ILogger<UsersController>>());
+    }
+
+    [Fact]
+    public async Task GetUser_WhenExists_ReturnsOk()
+    {
+        var dto = new UserDto { Id = 1, Name = "John", Email = "j@example.com" };
+        _mockService.Setup(s => s.GetByIdAsync(1)).ReturnsAsync(dto);
+
+        var result = await _controller.GetUser(1);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var returned = Assert.IsType<UserDto>(ok.Value);
+        Assert.Equal(1, returned.Id);
+    }
+
+    [Fact]
+    public async Task GetUser_WhenNotFound_ReturnsNotFound()
+    {
+        _mockService.Setup(s => s.GetByIdAsync(999)).ReturnsAsync((UserDto?)null);
+        var result = await _controller.GetUser(999);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Integration Tests">
+    <rule>
+      <statement>Add public partial class Program; at the bottom of Program.cs. Without it, WebApplicationFactory&lt;Program&gt; cannot find the entry point and throws a compile-time error in the test project.</statement>
+      <rationale>WebApplicationFactory uses Program as a generic type argument to access the application configuration. The partial class declaration makes Program visible to the test assembly.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt; for integration tests that share a single test server instance. Create HttpClient via factory.CreateClient() — never create bare HttpClient pointing at localhost.</statement>
+      <rationale>WebApplicationFactory starts an in-process test server. CreateClient() creates an HttpClient pre-configured to route through that server without a real network socket, making tests deterministic and fast.</rationale>
+    </rule>
+  </section>
+</text>

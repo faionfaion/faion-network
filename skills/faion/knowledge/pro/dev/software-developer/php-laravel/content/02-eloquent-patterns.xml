@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-eloquent-patterns" title="PHP Laravel: Eloquent Model Patterns">
+  <summary>Eloquent model definition patterns: fillable, casts, relationships, scopes, accessors, and the repository pattern for data access.</summary>
+
+  <section title="Model Definition">
+    <rule>
+      <statement>Always define $fillable explicitly — never use $guarded = []. Define $casts for all non-string attributes (datetime, boolean, array/JSON). Hide $hidden fields (password, remember_token) at the model level.</statement>
+      <rationale>$guarded = [] allows any column to be mass-assigned. Explicit $fillable and $casts are the first defense against property injection and datetime format inconsistencies.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Define Eloquent scopes for reusable query constraints (scopeActive, scopeSearch, scopeWithRole). Call scopes from the repository, not from controllers or services directly.</statement>
+      <rationale>Scopes encapsulate query logic with the model. Repeating WHERE clauses across service methods produces inconsistent behavior when the business rule changes.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="php"><![CDATA[
+class User extends Authenticatable
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = ['name', 'email', 'password'];
+    protected $hidden = ['password', 'remember_token'];
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'settings' => 'array',
+    ];
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps();
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeSearch(Builder $query, ?string $term): Builder
+    {
+        return $term
+            ? $query->where(fn($q) => $q
+                ->where('name', 'LIKE', "%{$term}%")
+                ->orWhere('email', 'LIKE', "%{$term}%"))
+            : $query;
+    }
+}
+      ]]></code>
+      <note>Accessor/mutator for email: use Attribute::make(set: fn($v) => strtolower($v)) to normalize on write, not on read.</note>
+    </example>
+  </section>
+
+  <section title="Repository Pattern">
+    <rule>
+      <statement>Add a Repository class only when there is a real second backing implementation (e.g., Postgres primary + ElasticSearch search). A UserRepository that delegates all calls to User::query() adds indirection with no value — Eloquent is already a repository.</statement>
+      <rationale>An unnecessary repository layer means two places to change for every schema update: the model and the repository. Agents emit it by default from older tutorials.</rationale>
+    </rule>
+
+    <rule>
+      <statement>When a repository exists, eager-load all relations needed by the caller: $this->model->with(['roles', 'orders'])->findOrFail($id). Never rely on lazy loading from inside a Resource.</statement>
+      <rationale>Resources that lazy-load relations produce N+1 queries on list endpoints. The query count scales with page size.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/model.php">User model with fillable, casts, relationships, scopes</reference>
+  <reference path="templates/repository.php">UserRepository with eager loading and pagination</reference>
+</text>

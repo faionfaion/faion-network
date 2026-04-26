@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-batch-processing" title="Sidekiq Jobs: Batch Export Pattern">
+  <summary>Batch export job pattern: find_each for memory-safe enumeration, status tracking on the Export model, error recovery, and completion notification.</summary>
+
+  <section title="Batch Export Rules">
+    <rule>
+      <statement>For jobs processing large datasets, use find_each(batch_size: 1000) instead of all.each. Update a status column on the associated model (processing → completed / failed) so the UI reflects current state.</statement>
+      <rationale>all.each loads all records into memory. A 100k-row export loads all 100k AR objects simultaneously, triggering GC pressure and potential OOM. find_each processes in batches of 1000, keeping memory bounded regardless of dataset size.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Wrap the job body in rescue StandardError: update the model to status :failed with error_message, then re-raise so Sidekiq records the failure and retries.</statement>
+      <rationale>Without rescue, a partial export leaves the model in status :processing indefinitely. The UI shows "processing" forever. The rescue ensures failed state is persisted before the retry or dead-job transition.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class BatchExportJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :exports, retry: 1
+
+  def perform(export_id)
+    export = Export.find(export_id)
+    export.update!(status: :processing)
+
+    CSV.open(export.file_path, 'wb') do |csv|
+      csv << export.headers
+      export.query_records.find_each(batch_size: 1000) do |record|
+        csv << export.row_for(record)
+      end
+    end
+
+    export.update!(status: :completed, completed_at: Time.current)
+    ExportMailer.ready(export).deliver_later
+  rescue StandardError => e
+    export&.update!(status: :failed, error_message: e.message)
+    raise
+  end
+end
+      ]]></code>
+      <note>deliver_later (not deliver_now) inside the job enqueues the mailer as a separate Sidekiq job — if the mailer fails, only the mail retries, not the entire export.</note>
+    </example>
+  </section>
+</text>

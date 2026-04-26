@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-async-service" title="Spring Async: Service Methods and CompletableFuture Patterns">
+  <summary>Rules for annotating async methods, returning CompletableFuture for error observability, and composing fan-out calls.</summary>
+
+  <section title="Method Annotation Rules">
+    <rule>
+      <statement>The @Async method must live in a different Spring bean than the caller. If the caller and the target are in the same class, extract the async method to a dedicated @Service (e.g., AsyncEmailService).</statement>
+      <rationale>@Async works via a Spring proxy. Calling this.asyncMethod() inside the same bean bypasses the proxy — the method runs synchronously and silently. This is the #1 cause of @Async "not working" bug reports.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Return CompletableFuture&lt;Void&gt; (or CompletableFuture&lt;T&gt;) from @Async methods where errors must be observable. For true fire-and-forget, wire an AsyncUncaughtExceptionHandler in AsyncConfig that logs the error and increments a Prometheus counter.</statement>
+      <rationale>void @Async methods drop exceptions silently unless an AsyncUncaughtExceptionHandler is registered. Lost exceptions mean lost operational visibility.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Do not place @Transactional and @Async on the same method. An async method runs in a separate thread, so the caller's transaction is not propagated. Either the caller opens no transaction, or the async method opens its own.</statement>
+      <rationale>@Transactional binds a connection to the calling thread. The async thread is a different thread — it gets no connection from the caller's tx. The code compiles and appears to work in tests (synchronous by default) but fails in production.</rationale>
+    </rule>
+  </section>
+
+  <section title="Fan-Out Pattern">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final EmailService emailService;
+    private final SmsService smsService;
+
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendOrderConfirmation(Order order) {
+        try {
+            emailService.send(order.getUser().getEmail(),
+                "Order Confirmation", buildBody(order));
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation for {}", order.getId(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<Void> sendWelcomeNotifications(User user) {
+        CompletableFuture<Void> email = CompletableFuture.runAsync(() ->
+            emailService.send(user.getEmail(), "Welcome!", buildWelcome(user)));
+        CompletableFuture<Void> sms = CompletableFuture.runAsync(() ->
+            smsService.send(user.getPhone(), "Welcome to our service!"));
+        return CompletableFuture.allOf(email, sms)
+            .exceptionally(ex -> { log.error("Welcome notifications failed", ex); return null; });
+    }
+}
+      ]]></code>
+      <note>NotificationService is a separate bean from any controller that calls it — proxy interception works correctly.</note>
+    </example>
+  </section>
+
+  <section title="Testing Async Methods">
+    <rule>
+      <statement>Test @Async methods with Awaitility (await().atMost(2, SECONDS).untilAsserted(...)). Never use Thread.sleep.</statement>
+      <rationale>Thread.sleep is a fixed wait that produces flaky tests: too short on slow CI, too long for developer feedback. Awaitility polls until the condition is true or the timeout expires.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/async-service.java">NotificationService with CompletableFuture and fan-out</reference>
+</text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-full-slice" title="PHP Laravel: Full Slice Structure">
+  <summary>The canonical Controller → FormRequest → Service → Repository → Eloquent → Resource slice structure with boundary rules for each layer.</summary>
+
+  <section title="Slice Layers">
+    <rule>
+      <statement>Each new resource requires exactly: Eloquent model + migration, FormRequest (store + update), Service, Controller, API Resource + ResourceCollection, Policy, and a feature test. Omitting any layer creates a gap that agents will fill incorrectly on the next iteration.</statement>
+      <rationale>Partial slices accumulate technical debt faster than full-slice creation. A missing Policy is an authorization hole; a missing FormRequest exposes validation gaps; a missing Resource leaks internal model fields.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use constructor injection with typed parameters (private readonly UserService $userService) in controllers and services. Never instantiate dependencies with new inside class methods.</statement>
+      <rationale>Typed constructor injection makes dependencies visible to the container, enables mocking in tests, and prevents service-locator antipattern (App::make inside methods).</rationale>
+    </rule>
+
+    <rule>
+      <statement>Wrap all multi-step writes in DB::transaction(fn () => ...). Place queue dispatch and external calls after the transaction with ->afterCommit() or equivalent. Never put external HTTP inside a transaction.</statement>
+      <rationale>DB transactions hold locks. External HTTP calls inside a transaction can lock rows for the duration of a network timeout, causing deadlocks across concurrent requests on the same rows.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use FormRequest::validated() as the sole source of data for creates and updates. Never pass $request->all() or $request->input() raw into service methods or model creates.</statement>
+      <rationale>$request->all() includes all request keys including those not in $fillable, enabling mass-assignment of protected fields. validated() returns only keys defined in rules().</rationale>
+    </rule>
+  </section>
+
+  <section title="Route Configuration">
+    <rule>
+      <statement>Register all API routes under Route::apiResource() with versioned namespaces (Api\V1\) and explicit middleware: auth:sanctum and throttle. Never add routes to the CSRF except list for API endpoints — use token authentication exclusively.</statement>
+      <rationale>Routes without auth middleware are publicly accessible. CSRF exceptions for API routes are never needed when token auth is the only entry point.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <code lang="php"><![CDATA[
+// routes/api.php
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api'])
+    ->namespace('App\Http\Controllers\Api\V1')
+    ->group(function () {
+        Route::apiResource('users', UserController::class);
+    });
+    ]]></code>
+    <note>apiResource registers index, store, show, update, destroy automatically. Add ->only() or ->except() to restrict.</note>
+  </example>
+
+  <reference path="templates/controller.php">Full CRUD controller with Resource returns</reference>
+  <reference path="templates/service.php">Service with paginate, create, update, delete</reference>
+</text>

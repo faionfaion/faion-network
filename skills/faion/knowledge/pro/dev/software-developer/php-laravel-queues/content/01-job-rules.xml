@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-job-rules" title="Laravel Queues: Job Structure Rules">
+  <summary>Rules for structuring Laravel job classes: ShouldQueue, idempotency, primitive arguments, retry configuration, and failed() implementation.</summary>
+
+  <section title="Required Job Structure">
+    <rule>
+      <statement>Every job class must implement ShouldQueue. Without this interface, dispatch() runs the job synchronously on the current thread regardless of the queue driver.</statement>
+      <rationale>The missing ShouldQueue interface is the #1 silent queue failure: tests pass (synchronous execution), production blocks the HTTP thread.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Pass only primitive IDs (int, string, UUID) into job constructors. Reload Eloquent models inside handle() using findOrFail() or find() with an early-return guard.</statement>
+      <rationale>SerializesModels re-fetches models at run time. If the model was deleted between enqueue and execution, the job throws a ModelNotFoundException on deserialization — before handle() is called, bypassing the early-return guard.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Add an idempotency check as the first line of handle(): if ($this->order->isProcessed()) { return; }. Every job must survive re-execution without duplicating side effects.</statement>
+      <rationale>Queue drivers deliver at-least-once. Network blips during acknowledgment cause re-delivery. Idempotent jobs tolerate this without double-charging, double-emailing, or corrupting state.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Set $tries, $backoff, and $timeout on every job class. Provide retryUntil() for jobs with a hard deadline. Implement failed(Throwable $exception) to update model state and log the error.</statement>
+      <rationale>Without failed(), the job silently enters the failed_jobs table with no application-level record. Operators and users have no visibility that processing failed.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="php"><![CDATA[
+class ProcessOrderJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+    public int $backoff = 60;
+    public int $timeout = 120;
+
+    public function __construct(public readonly Order $order) {}
+
+    public function middleware(): array
+    {
+        return [new WithoutOverlapping($this->order->id)];
+    }
+
+    public function handle(OrderProcessor $processor): void
+    {
+        if ($this->order->isProcessed()) {
+            return;
+        }
+        $processor->process($this->order);
+        NotifyCustomerJob::dispatch($this->order)->onQueue('notifications');
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $this->order->update(['status' => 'failed']);
+        Log::error('Order processing failed', [
+            'order_id' => $this->order->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
+    public function retryUntil(): \DateTime
+    {
+        return now()->addHours(24);
+    }
+}
+      ]]></code>
+      <note>WithoutOverlapping requires a Redis or database cache backend — file/array cache silently breaks it.</note>
+    </example>
+  </section>
+
+  <section title="Dispatch Rules">
+    <rule>
+      <statement>Never dispatch a job inside a DB::transaction. The worker picks it up before the transaction commits and finds no row. Use dispatch()->afterCommit() or set after_commit => true in config/queue.php.</statement>
+      <rationale>The job is placed in the queue before the wrapping transaction is committed. The worker executes and calls Order::find($id) — the row does not exist yet — and the job fails.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Run php artisan queue:failed-table &amp;&amp; php artisan migrate when adding queue support to a project. The failed_jobs migration is not scaffolded by make:job.</statement>
+      <rationale>Without the failed_jobs table, Laravel throws a DB error when a job exceeds its retry limit and cannot be stored. The job is silently discarded.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/job.php">ProcessOrderJob with all required fields and failed() implementation</reference>
+</text>
