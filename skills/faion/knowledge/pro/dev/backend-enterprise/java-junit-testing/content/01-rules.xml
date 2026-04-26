@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rules" title="JUnit Testing Rules">
+  <summary>Concrete rules for naming, structure, layer assignment, and coverage thresholds in Spring Boot JUnit 5 tests.</summary>
+
+  <section title="Naming">
+    <rule>
+      <statement>Name every test method as methodUnderTest_state_expectedBehavior.</statement>
+      <rationale>Self-documenting failure output in CI without reading the test body. Example: findById_whenUserNotExists_throwsException.</rationale>
+    </rule>
+    <rule>
+      <statement>One test class per SUT: UserService maps to UserServiceTest in the same package.</statement>
+      <rationale>Agents searching for tests for UserManager named UserManagerTests waste cycles; package-private access requires matching package.</rationale>
+    </rule>
+  </section>
+
+  <section title="Structure">
+    <rule>
+      <statement>Every test method must have visible Arrange / Act / Assert sections separated by blank lines.</statement>
+      <rationale>Agents emit clean tests when prompted with structure; reviewers spot assertion-free tests immediately.</rationale>
+    </rule>
+    <rule>
+      <statement>Use AssertJ for all non-trivial assertions; never use JUnit assertEquals for collections or extracted fields.</statement>
+      <rationale>assertThat(list).extracting(User::getEmail).containsExactly(...) beats hand-rolled loops and produces clear diff on failure.</rationale>
+    </rule>
+  </section>
+
+  <section title="Layer Assignment">
+    <rule>
+      <statement>Controller tests use @WebMvcTest(SUT.class) with @MockBean on the service; never boot @SpringBootTest for controller-only tests.</statement>
+      <rationale>@WebMvcTest slices load only the web layer; @SpringBootTest loads the full context — 5-10x slower for no benefit at this boundary.</rationale>
+    </rule>
+    <rule>
+      <statement>Service tests use @ExtendWith(MockitoExtension.class) with @InjectMocks and @Mock; no Spring context.</statement>
+      <rationale>Spring context is irrelevant for plain service logic; plain Mockito is 100x faster and does not pollute the context cache.</rationale>
+    </rule>
+    <rule>
+      <statement>Repository tests use @DataJpaTest with Testcontainers; never use H2 for behavior parity with Postgres.</statement>
+      <rationale>H2 dialect diverges from Postgres on JSON columns, locking behavior, and function availability; tests pass on H2 and fail in prod.</rationale>
+    </rule>
+    <rule>
+      <statement>Use exactly one @SpringBootTest per test module for full-stack integration; do not scatter it across suites.</statement>
+      <rationale>Each distinct @MockBean set invalidates Spring's context cache; spreading @SpringBootTest multiplies boot cost.</rationale>
+    </rule>
+  </section>
+
+  <section title="Coverage">
+    <rule>
+      <statement>Enforce line >= 70% and branch >= 60% via Jacoco in CI; fail the build when thresholds drop.</statement>
+      <rationale>Coverage without a gate is advisory only; agents skip uncovered paths unless the build blocks.</rationale>
+    </rule>
+    <rule>
+      <statement>Run mutation tests (Pitest) on payment, auth, and billing paths; coverage alone hides assertion-free tests.</statement>
+      <rationale>A test that calls service.foo() and verifies nothing still counts toward coverage; Pitest finds surviving mutations.</rationale>
+    </rule>
+  </section>
+
+  <section title="Async and Time">
+    <rule>
+      <statement>Never use Thread.sleep in tests; use Awaitility.await().atMost(...) for async assertions.</statement>
+      <rationale>Thread.sleep is flaky under load; Awaitility polls with configurable interval and timeout, failing fast on success.</rationale>
+    </rule>
+    <rule>
+      <statement>Inject a Clock bean and assert exact equality; never use assertThat(ts).isCloseTo(now(), within(1, SECONDS)).</statement>
+      <rationale>Time window assertions flake under CI load; injectable Clock makes time deterministic in tests.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/jacoco-gate.sh">CI script to parse jacoco.xml and enforce line/branch thresholds</reference>
+</text>

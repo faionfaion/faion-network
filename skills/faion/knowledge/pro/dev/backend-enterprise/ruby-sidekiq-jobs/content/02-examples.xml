@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Sidekiq Jobs Examples">
+  <summary>ProcessOrderJob with per-exception retry curve, BatchExportJob with find_each chunking, spec with Sidekiq::Testing.</summary>
+
+  <section title="Standard Job">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :default, retry: 3, dead: true
+
+  sidekiq_retry_in do |count, exception|
+    case exception
+    when PaymentGatewayError
+      (count + 1) * 60     # linear: 60s, 120s, 180s
+    else
+      (count ** 4) + 15    # exponential: 16s, 31s, 96s
+    end
+  end
+
+  def perform(order_id)
+    order = Order.find(order_id)
+    return if order.processed?          # idempotency guard
+
+    OrderProcessor.new(order).process!
+    NotifyCustomerJob.perform_async(order_id)
+  rescue ActiveRecord::RecordNotFound
+    Sidekiq.logger.warn "Order #{order_id} not found — skipping"
+  rescue PaymentGatewayError
+    raise  # let Sidekiq retry with custom backoff
+  rescue StandardError => e
+    ErrorTracker.capture(e, order_id: order_id)
+    raise  # re-raise to trigger retry
+  end
+end
+      ]]></code>
+      <note>ID-only arg. Idempotency check. Per-exception retry curve. RecordNotFound handled gracefully. All others re-raised.</note>
+    </example>
+    <example type="bad">
+      <code lang="ruby"><![CDATA[
+class ProcessOrderJob
+  include Sidekiq::Job
+  # no sidekiq_options — defaults to 25 retries
+
+  def perform(order) # ActiveRecord object — fails in strict mode
+    begin
+      OrderProcessor.new(order).process!
+    rescue StandardError => e
+      # swallowed — retry never fires
+      Rails.logger.error e.message
+    end
+  end
+end
+      ]]></code>
+      <note>ActiveRecord arg, swallowed exception, default retry count.</note>
+    </example>
+  </section>
+
+  <section title="Batch Export Job">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class BatchExportJob
+  include Sidekiq::Job
+
+  sidekiq_options queue: :exports, retry: 1
+
+  def perform(export_id)
+    export = Export.find(export_id)
+    export.update!(status: :processing)
+
+    CSV.open(export.file_path, 'wb') do |csv|
+      csv << export.headers
+      export.query_records.find_each(batch_size: 1000) do |record|
+        csv << export.row_for(record)
+      end
+    end
+
+    export.update!(status: :completed, completed_at: Time.current)
+    ExportMailer.ready(export).deliver_later
+  rescue StandardError => e
+    export&.update!(status: :failed, error_message: e.message)
+    raise
+  end
+end
+      ]]></code>
+      <note>find_each(batch_size: 1000) avoids loading all records into memory. Status updated on success and failure. Exception re-raised.</note>
+    </example>
+  </section>
+
+  <section title="Spec with Sidekiq Testing">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+RSpec.describe ProcessOrderJob do
+  describe '#perform' do
+    let(:order) { create(:order) }
+
+    context 'with a valid unprocessed order' do
+      it 'processes the order and enqueues notification' do
+        Sidekiq::Testing.inline! do
+          expect { described_class.perform_async(order.id) }
+            .to change { order.reload.status }.to('processed')
+        end
+      end
+    end
+
+    context 'when order is already processed' do
+      before { order.update!(status: 'processed') }
+
+      it 'returns without reprocessing' do
+        expect(OrderProcessor).not_to receive(:new)
+        described_class.new.perform(order.id)
+      end
+    end
+  end
+end
+      ]]></code>
+      <note>Sidekiq::Testing.inline! for integration path. Plain perform() for unit path. No perform_now (that is ActiveJob API).</note>
+    </example>
+  </section>
+</text>

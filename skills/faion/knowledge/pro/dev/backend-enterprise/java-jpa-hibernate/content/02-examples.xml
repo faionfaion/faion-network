@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="JPA / Hibernate Examples">
+  <summary>User entity with correct associations, repository with JOIN FETCH and search query, @DataJpaTest slice.</summary>
+
+  <section title="Entity">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Entity
+@Table(name = "users", indexes = {
+    @Index(name = "idx_users_email", columnList = "email")
+})
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Version
+    private Long version;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User u)) return false;
+        return email != null && email.equalsIgnoreCase(u.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return email != null ? email.toLowerCase().hashCode() : 0;
+    }
+}
+      ]]></code>
+      <note>Business-key equals on email. LAZY fetch. @Version. Explicit @Column. Index declared on entity.</note>
+    </example>
+  </section>
+
+  <section title="Repository">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+    Page<User> search(
+        @Param("name") String name,
+        @Param("isActive") Boolean isActive,
+        Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt < :cutoff")
+    int deactivateInactiveUsers(@Param("cutoff") LocalDateTime cutoff);
+}
+      ]]></code>
+      <note>JOIN FETCH only where needed. @Modifying with clearAutomatically. Pageable search with nullable filters.</note>
+    </example>
+  </section>
+
+  <section title="DataJpaTest Slice">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = NONE) // use Testcontainers Postgres, not H2
+class UserRepositoryTest {
+
+    @Autowired private UserRepository repository;
+
+    @Test
+    void findByIdWithRoles_loadsBothUserAndRoles_inOneQuery() {
+        // Arrange
+        User user = repository.save(userWithRoles("admin", "user"));
+
+        // Act
+        Optional<User> found = repository.findByIdWithRoles(user.getId());
+
+        // Assert
+        assertThat(found).isPresent();
+        assertThat(found.get().getRoles()).hasSize(2);
+    }
+}
+      ]]></code>
+      <note>@DataJpaTest slices to JPA layer. replace = NONE forces Testcontainers instead of in-memory H2.</note>
+    </example>
+  </section>
+</text>

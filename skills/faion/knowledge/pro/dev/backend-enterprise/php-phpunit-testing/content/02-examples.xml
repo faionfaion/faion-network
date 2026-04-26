@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="PHPUnit Testing Examples">
+  <summary>Feature test covering CRUD endpoints with assertJsonPath; Unit test with Event::fake() and Mockery.</summary>
+
+  <section title="Feature Test">
+    <example type="good">
+      <code lang="php"><![CDATA[
+class UserControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_authenticated_user_can_create_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson('/api/v1/users', [
+            'name'     => 'John Doe',
+            'email'    => 'john@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'John Doe')
+            ->assertJsonPath('data.email', 'john@example.com');
+
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+    }
+
+    public function test_create_user_fails_with_invalid_email(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->postJson('/api/v1/users', [
+            'name'     => 'John Doe',
+            'email'    => 'not-an-email',
+            'password' => 'password123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_can_soft_delete_user(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $user  = User::factory()->create();
+
+        $this->actingAs($admin)->deleteJson("/api/v1/users/{$user->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+    }
+}
+      ]]></code>
+      <note>actingAs for auth. assertJsonPath not assertJsonStructure. assertSoftDeleted for delete. One behavior per method.</note>
+    </example>
+  </section>
+
+  <section title="Unit Test">
+    <example type="good">
+      <code lang="php"><![CDATA[
+class UserServiceTest extends TestCase
+{
+    private UserService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $repository    = Mockery::mock(UserRepository::class);
+        $this->service = new UserService($repository);
+
+        $repository->shouldReceive('create')
+            ->andReturn(User::factory()->make());
+    }
+
+    public function test_create_dispatches_user_created_event(): void
+    {
+        Event::fake(); // BEFORE the action
+
+        $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'password',
+        ]);
+
+        Event::assertDispatched(UserCreated::class);
+    }
+
+    public function test_create_hashes_password(): void
+    {
+        $user = $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'plaintext',
+        ]);
+
+        $this->assertNotEquals('plaintext', $user->password);
+        $this->assertTrue(Hash::check('plaintext', $user->password));
+    }
+}
+      ]]></code>
+      <note>No RefreshDatabase. Event::fake() before action. Mockery for repository. Two separate behaviors in two methods.</note>
+    </example>
+    <example type="bad">
+      <code lang="php"><![CDATA[
+public function test_create_user(): void
+{
+    $this->service->create([...]); // action BEFORE fake
+    Event::fake();                 // too late — real event already fired
+    Event::assertDispatched(UserCreated::class); // always passes (nothing captured)
+}
+      ]]></code>
+      <note>fake() after action: the assertion sees an empty fake and passes regardless of event dispatch.</note>
+    </example>
+  </section>
+</text>

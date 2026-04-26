@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="JUnit Testing Examples">
+  <summary>Controller slice test with MockMvc, service unit test with Mockito, and async assertion with Awaitility.</summary>
+
+  <section title="Controller Slice Test">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+
+    @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @MockBean  private UserService userService;
+
+    @Test
+    void createUser_WithValidData_ReturnsCreated() throws Exception {
+        // Arrange
+        CreateUserRequest req = new CreateUserRequest("John Doe", "john@example.com", "password123");
+        UserResponse resp = new UserResponse(1L, "John Doe", "john@example.com");
+        when(userService.create(any(CreateUserRequest.class))).thenReturn(resp);
+
+        // Act + Assert
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("John Doe"))
+                .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    void createUser_WithInvalidEmail_ReturnsBadRequest() throws Exception {
+        // Arrange
+        CreateUserRequest req = new CreateUserRequest("John Doe", "invalid-email", "password123");
+
+        // Act + Assert — no service stub needed; validation fires before service
+        mockMvc.perform(post("/api/v1/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.email").exists());
+    }
+}
+      ]]></code>
+      <note>@WebMvcTest loads only the web layer. @MockBean on UserService — the service is mocked, not real.</note>
+    </example>
+  </section>
+
+  <section title="Service Unit Test">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock private UserRepository userRepository;
+    @Mock private UserMapper userMapper;
+    @Mock private PasswordEncoder passwordEncoder;
+    @InjectMocks private UserService userService;
+
+    @Test
+    void findById_WhenUserNotExists_ThrowsException() {
+        // Arrange
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act + Assert
+        assertThatThrownBy(() -> userService.findById(999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("User");
+    }
+
+    @Test
+    void create_EncodesPassword() {
+        // Arrange
+        CreateUserRequest request = new CreateUserRequest("John", "john@example.com", "plaintext");
+        User user = User.builder().id(1L).name("John").email("john@example.com").password("encoded").build();
+        when(passwordEncoder.encode("plaintext")).thenReturn("encoded");
+        when(userMapper.toEntity(request)).thenReturn(user);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+        when(userMapper.toResponse(user)).thenReturn(new UserResponse(1L, "John", "john@example.com"));
+
+        // Act
+        userService.create(request);
+
+        // Assert
+        verify(passwordEncoder).encode("plaintext");
+    }
+}
+      ]]></code>
+      <note>No Spring context. @ExtendWith(MockitoExtension.class) only. @InjectMocks constructs the real service.</note>
+    </example>
+  </section>
+
+  <section title="Async Assertion">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@SpringBootTest
+class NotificationServiceIntegrationTest {
+
+    @Autowired private NotificationService notificationService;
+    @Autowired private MessageCaptor messageCaptor; // test double that records sent messages
+
+    @Test
+    void sendOrderConfirmation_CompletesWithoutError() {
+        // Arrange
+        Order order = testOrderFixture();
+
+        // Act
+        CompletableFuture<Void> future = notificationService.sendOrderConfirmation(order);
+
+        // Assert
+        await().atMost(5, SECONDS).until(future::isDone);
+        assertThat(future).isCompletedWithoutException();
+        assertThat(messageCaptor.getEmails()).hasSize(1);
+    }
+}
+      ]]></code>
+      <note>Awaitility replaces Thread.sleep. future::isDone is a Callable; Awaitility polls it.</note>
+    </example>
+    <example type="bad">
+      <code lang="java"><![CDATA[
+Thread.sleep(2000); // flaky under CI load
+assertThat(future.isDone()).isTrue();
+      ]]></code>
+      <note>Thread.sleep is a fixed wait; the async task may complete in 200ms or 3000ms depending on load.</note>
+    </example>
+  </section>
+</text>

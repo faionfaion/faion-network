@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="RSpec Testing Examples">
+  <summary>Model spec with shoulda-matchers, service spec with factory_bot and AAA structure, request spec outline.</summary>
+
+  <section title="Model Spec">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+RSpec.describe User, type: :model do
+  describe 'validations' do
+    it { is_expected.to validate_presence_of(:email) }
+    it { is_expected.to validate_uniqueness_of(:email).case_insensitive }
+    it { is_expected.to validate_length_of(:name).is_at_least(2).is_at_most(100) }
+  end
+
+  describe 'associations' do
+    it { is_expected.to have_one(:profile).dependent(:destroy) }
+    it { is_expected.to have_many(:orders).dependent(:nullify) }
+  end
+
+  describe '.active' do
+    let!(:active_user)   { create(:user, active: true) }
+    let!(:inactive_user) { create(:user, active: false) }
+
+    it 'returns only active users' do
+      expect(User.active).to contain_exactly(active_user)
+    end
+  end
+
+  describe '#full_name' do
+    let(:user) { build(:user, first_name: 'John', last_name: 'Doe') }
+
+    it 'returns combined first and last name' do
+      expect(user.full_name).to eq('John Doe')
+    end
+  end
+end
+      ]]></code>
+      <note>build(:user) not create(:user) for the full_name test — no DB write needed.</note>
+    </example>
+  </section>
+
+  <section title="Service Spec">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+RSpec.describe Users::CreateService do
+  describe '#call' do
+    subject(:service) { described_class.new(params: params) }
+
+    context 'with valid params' do
+      let(:params) { { name: 'John', email: 'john@example.com', password: 'secret123' } }
+
+      it 'creates a user' do
+        expect { service.call }.to change(User, :count).by(1)
+      end
+
+      it 'returns a success result' do
+        result = service.call
+        expect(result).to be_success
+        expect(result.data).to be_a(User)
+      end
+
+      it 'enqueues the welcome email' do
+        expect { service.call }.to have_enqueued_mail(UserMailer, :welcome)
+      end
+    end
+
+    context 'with invalid params' do
+      let(:params) { { name: '', email: 'not-an-email' } }
+
+      it 'does not create a user' do
+        expect { service.call }.not_to change(User, :count)
+      end
+
+      it 'returns a failure result with errors' do
+        result = service.call
+        expect(result).to be_failure
+        expect(result.errors).to include(/Email/)
+      end
+    end
+  end
+end
+      ]]></code>
+      <note>named subject, explicit contexts, one assertion per it block.</note>
+    </example>
+  </section>
+
+  <section title="Request Spec Outline">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+RSpec.describe 'POST /api/v1/users', type: :request do
+  let(:valid_params) { { name: 'Alice', email: 'alice@example.com', password: 'secret' } }
+
+  context 'with valid params' do
+    it 'creates the user and returns 201' do
+      post '/api/v1/users', params: valid_params, as: :json
+      expect(response).to have_http_status(:created)
+      expect(json_body.dig('data', 'email')).to eq('alice@example.com')
+    end
+  end
+
+  context 'with invalid email' do
+    it 'returns 422 with validation errors' do
+      post '/api/v1/users', params: valid_params.merge(email: 'bad'), as: :json
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(json_body.dig('errors', 'email')).to be_present
+    end
+  end
+end
+      ]]></code>
+      <note>type: :request uses Rack::Test — no browser; fast HTTP-layer tests.</note>
+    </example>
+  </section>
+</text>
