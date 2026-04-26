@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-platform-execution" title="Platform Execution: Meta Experiments, Google Ads, Bayesian Verdict, Agent Gotchas">
+  <summary>How to run tests on Meta and Google Ads platforms, when to use Bayesian vs. frequentist significance, and agent-specific failure modes.</summary>
+
+  <section title="Meta Experiments">
+    <p>Meta's Experiments tool (Ads Manager → Experiments → A/B Test) guarantees equal traffic split. Supports testing: audiences, creatives, placements, optimization goals. Minimum $200/variant. Meta declares a winner automatically when significance is reached.</p>
+    <rule>
+      <statement>Use Meta's Experiments tool for all creative tests when budget allows; default ad rotation does not guarantee equal split and will bias results toward the algorithm's early favorite.</statement>
+      <rationale>Meta's algorithm begins optimizing within hours of launch. Without the Experiments tool, the platform reallocates spend toward whichever variant performs better early, breaking the equal-split assumption that makes frequentist analysis valid.</rationale>
+    </rule>
+  </section>
+
+  <section title="Google Ads Experiments">
+    <p>Google Ads Experiments (Campaigns → Experiments → Ad Variations): create a variation, set traffic split percentage (50/50 for clean test), set duration, monitor, apply winner. For search ads: test one ad element at a time within an ad group. Review after statistical significance is reached in platform reporting.</p>
+  </section>
+
+  <section title="Bayesian Verdict">
+    <p>For off-platform analysis, use Bayesian Beta-binomial testing: P(variant &gt; control) &gt; 0.95 = winner; &lt; 0.05 = control wins; between 0.05 and 0.95 = inconclusive, extend the test or accept the uncertainty.</p>
+    <reference path="templates/bayesian-ab.py">Bayesian Beta-binomial verdict function — p_variant_better, expected lift, winner classification</reference>
+    <antipattern>
+      <description>Mixing significance methods — using Meta's platform significance for some tests and scipy.stats.ttest_ind for others.</description>
+      <reason>Different statistical engines compute significance differently. Mixing methods makes tests incomparable and can produce contradictory verdicts on the same data.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agent Constraints">
+    <rule>
+      <statement>Never auto-promote a variant to winner without human sign-off, even when the significance threshold is reached.</statement>
+      <rationale>A variant may win on CTR while losing on CPA. The agent's job is to compute and report the verdict; the human decides whether to apply it and which metric matters most for the business decision.</rationale>
+    </rule>
+    <list>
+      <item>Require sample size computation before launching any test; refuse to verdict until threshold is met.</item>
+      <item>When variant outperforms by more than 50%, check for data leakage (audience overlap, tracking gap) before reporting as a winner.</item>
+      <item>Inconclusive tests must extend, not restart — restarting resets the sample and wastes the data already collected.</item>
+      <item>Cross-currency or cross-region tests need revenue normalized to a base currency before computing ROAS lift.</item>
+      <item>Running 5+ concurrent tests on the same audience inflates false positive rate — apply Bonferroni correction or limit concurrent tests to 3 per audience.</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/01-test-design.xml"/>
+    <link path="templates/bayesian-ab.py"/>
+    <link path="templates/testing-roadmap.md"/>
+  </see-also>
+</text>
