@@ -5,6 +5,7 @@
 ### Changed
 - refactor: 8/8 product-manager methodologies migrated to new shape (batch: user-story-mapping, backlog-management, spec-writing, continuous-discovery, product-discovery, feature-prioritization-rice, product-launch, outcome-based-roadmaps-advanced)
 - refactor: 8/8 product-planning methodologies migrated to new shape (batch: mvp-scoping, roadmap-design, user-story-mapping, spec-writing, continuous-discovery, product-discovery, product-launch, outcome-based-roadmaps-advanced)
+- refactor: 8/8 methodologies migrated to new shape (batch: growth-app-store-optimization, ops-pricing-strategy, growth-cold-outreach, growth-hacker-news-launch, growth-indiehackers-strategy, ops-subscription-models, growth-webinar-delivery, growth-reddit-marketing)
 - refactor: 8/8 ml-ops methodologies migrated to new shape (batch: evaluation-framework, fine-tuning-openai-basics, evaluation-benchmarks, cost-reduction-strategies, finetuning-basics, finetuning-datasets, fine-tuning-lora, fine-tuning-openai-production)
 - refactor: 8/8 multimodal-ai methodologies migrated to new shape (batch: vision-applications, voice-basics, speech-to-text-basics, video-gen-basics, video-gen-tools, img-gen-tools, img-gen-basics, voice-implementation)
 - refactor: 8/8 product methodologies migrated to new shape (batch: mlp-planning, minimum-product-frameworks, release-planning, micro-mvps, okr-setting, outcome-based-roadmaps, mvp-scoping, roadmap-design)
