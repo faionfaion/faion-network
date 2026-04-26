@@ -5,6 +5,7 @@
 ### Changed
 - refactor: 8/8 methodologies migrated to new shape (batch: active-listening, selling-ideas, feedback, business-storytelling, ideation-methods, negotiation, growth-linkedin-strategy, growth-community-building)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-onboarding-emails, growth-youtube-strategy, search-everywhere-optimization, growth-customer-testimonials, plausible-analytics, ops-dashboard-setup, ops-automation-workflow, seo-techniques)
+- refactor: 8/8 methodologies migrated to new shape (batch: growth-tiktok-basics, growth-webinar-planning, growth-podcast-strategy, growth-content-marketing, growth-tiktok-strategies, growth-email-marketing, growth-newsletter-growth, growth-copywriting-fundamentals)
 - refactor: 8/8 methodologies migrated to new shape (batch: seo, growth-seo-link-building, seo-basics, topical-authority, growth-seo-fundamentals, zero-click-search-adaptation, sdd/ai-assisted-specification-writing, sdd-planning/ai-assisted-specification-writing)
 - refactor: 8/8 server-craft methodologies migrated to new shape (batch: monitoring-logging, tmux-power-user, backup-recovery, bash-aliases, secrets-management, dotfiles-management, shell-productivity, multi-project-hosting)
 - refactor: 8/8 server-craft methodologies migrated to new shape (batch: devops-engineer/docker-compose, git-server-workflow, deploy-scripts, kernel-tuning, swap-memory-management, agent-dev-tuning, systemd-user-services, docker-compose-patterns)
