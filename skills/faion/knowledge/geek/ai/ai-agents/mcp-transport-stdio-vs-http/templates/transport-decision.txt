@@ -1,0 +1,34 @@
+MCP Transport Decision (paste into design doc)
+================================================
+
+Q1. Does the server run as a subprocess of a single client on the same machine?
+    YES → stdio
+          - lifecycle: tied to parent process
+          - auth:      delegated to host OS user
+          - logging:   stderr only; stdout is the MCP wire
+          - scaling:   N/A (one process per session)
+          - launch:    mcp.run(transport="stdio")
+
+    NO  → go to Q2.
+
+Q2. Does the server need to serve more than one concurrent client OR be reached over a network?
+    YES → streamable-http
+          - endpoint:      single /mcp accepting POST + SSE upgrade
+          - auth:          OAuth 2.1 with PKCE (mandatory)
+          - session store: Redis / Valkey / DB (NOT in-process)
+          - resumability:  required (idempotent request handling)
+          - replicas:      stateless behind LB, healthcheck /healthz
+          - launch:        mcp.run(transport="streamable-http", port=8080)
+
+    NO  → reread Q1; if neither fits you do not need MCP.
+
+Q3. Do you have a named legacy client pinned to pre-2026-03-26 protocol?
+    YES → ship Streamable HTTP as primary; expose SSE behind a `legacy_sse: true`
+          feature flag with a documented sunset date in the changelog.
+    NO  → never ship SSE in greenfield code.
+
+Forbidden combinations
+----------------------
+- stdio + TCP bridge wrapper           → use streamable-http natively
+- streamable-http + in-process state   → use Redis/DB session store
+- SSE in 2026 greenfield               → spec deprecated this transport

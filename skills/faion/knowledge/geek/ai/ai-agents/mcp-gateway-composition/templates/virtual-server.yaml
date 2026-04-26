@@ -1,0 +1,54 @@
+# Virtual server config — ContextForge / Lunar / MCPJungle compatible shape.
+# Bundles 3 upstream MCP servers as one logical surface for the agent,
+# with curation, deny rules, namespacing, and per-client visibility.
+
+virtual_servers:
+  - name: dev_workspace
+    description: >
+      Curated dev tools for engineering agents. Read-write for engineers,
+      read-only for support agents.
+    upstreams:
+      - github
+      - linear
+      - sentry
+
+    expose:
+      # GitHub — issues + code search only; no destructive verbs.
+      - upstream: github
+        tool: search_issues
+        as: github_search_issues
+      - upstream: github
+        tool: create_issue
+        as: github_create_issue
+      - upstream: github
+        tool: search_code
+        as: github_search_code
+
+      # Linear — tickets only; no archive / delete.
+      - upstream: linear
+        tool: create_ticket
+        as: linear_create_ticket
+      - upstream: linear
+        tool: search_tickets
+        as: linear_search_tickets
+
+      # Sentry — read-only.
+      - upstream: sentry
+        tool: search_events
+        as: sentry_search_events
+
+    deny:
+      - "github.delete_*"
+      - "github.merge_pr"
+      - "linear.archive_*"
+      - "linear.delete_*"
+
+    visibility:
+      - role: engineer
+        allow: ["github_*", "linear_*", "sentry_*"]
+      - role: support
+        allow: ["sentry_*", "linear_search_tickets", "github_search_issues"]
+
+    audit:
+      sink: stdout
+      include: [tool_call, tool_result_summary, denied_call]

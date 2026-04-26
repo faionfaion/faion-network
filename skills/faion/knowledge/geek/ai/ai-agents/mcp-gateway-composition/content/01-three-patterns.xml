@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-three-patterns" title="MCP Gateway — Three Composition Patterns">
+  <summary>Pick virtual server for tool curation, federation for tree-structured org topology, per-client visibility for role-based filtering.</summary>
+
+  <section title="The three patterns">
+    <rule testable="true">
+      <statement>When you put an MCP gateway in front of multiple servers, pick exactly one composition pattern per agent: (a) virtual server — gateway exposes a curated subset of upstream tools as one logical server; (b) federation — gateways consume other gateways in a tree (used for org-wide rollouts); (c) per-client visibility — gateway filters the tool list by user/role/scope. Mixing patterns inside one gateway instance creates tool-list cycles and ambiguous deny rules.</statement>
+      <rationale>Each pattern has a different failure mode if applied to the wrong shape: virtual server breaks for hierarchical orgs (no nesting), federation breaks for end-user filtering (no per-call identity), per-client visibility breaks for static catalogs (overhead with no benefit). One pattern per gateway keeps deny rules unambiguous.</rationale>
+    </rule>
+
+    <reference href="https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/">2026 MCP roadmap — gateway/composition primitives.</reference>
+    <reference href="https://www.heyitworks.tech/blog/mcp-aggregation-gateway-proxy-tools-q1-2026">Q1 2026 MCP aggregation/gateway/proxy tools roundup.</reference>
+    <reference href="https://www.lunar.dev/post/the-best-open-source-mcp-gateways-in-2026">Lunar — best open-source MCP gateways in 2026.</reference>
+  </section>
+
+  <section title="Pattern fit">
+    <list>
+      <item>Virtual server: bundle GitHub + Linear + Sentry as `dev_workspace`; agent sees one server, ~12 curated tools.</item>
+      <item>Federation: org-level gateway federates per-team gateways; team additions do not require central reconfig.</item>
+      <item>Per-client visibility: same gateway exposes `read_*` to support agents and `write_*` only to engineers.</item>
+    </list>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# Virtual server — one logical surface, curated tools, deny destructive verbs
+virtual_servers:
+  - name: dev_workspace
+    expose:
+      - github.create_issue
+      - github.search_issues
+      - linear.create_ticket
+      - sentry.search_events
+    deny: ["github.delete_*", "linear.archive_*"]
+      ]]></code>
+      <note>Agent sees 4 tools, namespaced; gateway enforces deny list before the call hits upstream.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# Anti-shape: passthrough proxy (no curation, no deny rules, no namespacing)
+proxy:
+  upstreams: [github, linear, sentry, jira, gitlab, slack, notion]
+  expose: "*"
+      ]]></code>
+      <note>Tool list explodes (60+ schemas), namespace collisions on `search`, no audit trail. Just push servers directly to the agent and skip the broken gateway.</note>
+    </example>
+  </section>
+
+  <section title="Failure modes">
+    <antipattern>
+      <description>Mixing virtual-server curation with per-client visibility in one config block (filter rules apply to a tool that has been renamed by curation).</description>
+      <reason>Deny rules become ambiguous — the renamed tool may match neither the original nor the new name, silently leaking access.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Federation gateway that re-exposes downstream tools without re-namespacing.</description>
+      <reason>Two team gateways both named `search` collide at the org level. Agent picks at random.</reason>
+    </antipattern>
+
+    <reference path="templates/virtual-server.yaml">Reference virtual-server config with curation + deny.</reference>
+  </section>
+</text>

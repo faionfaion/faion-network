@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-deployment-shapes" title="What Each Transport Implies for Auth, Scaling, and Lifecycle">
+  <summary>stdio = one process per session, no network auth; streamable-http = LB + OAuth 2.1 + resumable streams; mismatched shape blocks production.</summary>
+
+  <section title="stdio — local subprocess shape">
+    <rule testable="true">
+      <statement>If you choose stdio, document that the server is single-user, in-process-tree, and auth is delegated to the host OS user. Do NOT add OAuth, do NOT bind to a port, do NOT log to a shared file — assume the parent process owns lifecycle and stdout/stderr.</statement>
+      <rationale>stdio servers inherit the client's identity. Adding network auth on top of stdio is wasted work; binding to a port turns a local subprocess into a quasi-network surface that bypasses the client's sandboxing.</rationale>
+    </rule>
+  </section>
+
+  <section title="streamable-http — remote scalable shape">
+    <rule testable="true">
+      <statement>If you choose Streamable HTTP, you MUST implement: (1) OAuth 2.1 with PKCE for client auth, (2) idempotent request handling so a resumed SSE stream does not double-execute side effects, (3) a single `/mcp` endpoint that accepts POST and upgrades to SSE per request, (4) horizontal-scale-safe session state (Redis or DB, not in-process).</statement>
+      <rationale>The Streamable HTTP transport is designed to support multi-tenant hosted deployments. Skipping OAuth opens the server to anyone; in-process session state makes the deployment a single point of failure.</rationale>
+    </rule>
+
+    <reference href="https://modelcontextprotocol.io/specification/2025-11-25">MCP spec 2025-11-25 — transport, auth, lifecycle.</reference>
+    <reference href="https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/">2026 MCP roadmap — Streamable HTTP as the default remote transport.</reference>
+  </section>
+
+  <section title="Common mismatch failures">
+    <antipattern>
+      <description>Server uses stdio but is wrapped by a TCP-to-stdio bridge to "make it remote".</description>
+      <reason>The bridge becomes a single-point bottleneck with no auth, no resumability, and no per-tenant isolation. Use Streamable HTTP natively instead.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Streamable HTTP server keeps session state in a Python dict (in-process).</description>
+      <reason>Two replicas behind an LB cannot see each other's sessions; the next request hits the wrong replica and the agent loses context mid-loop.</reason>
+    </antipattern>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# Production-shape Streamable HTTP MCP service
+service:
+  transport: streamable-http
+  endpoint: /mcp
+  auth: oauth2.1-pkce
+  session_store: redis://valkey:6379/0
+  replicas: 3
+  health: /healthz
+      ]]></code>
+      <note>Stateless replicas + shared session store + OAuth — the minimum production shape.</note>
+    </example>
+  </section>
+</text>
