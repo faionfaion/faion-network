@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-wave-analysis" title="Wave Analysis and Parallelization">
+  <summary>How to build the dependency graph, compute waves, define checkpoints, and calculate parallelization speedup.</summary>
+
+  <section title="Wave Algorithm">
+    <rule>
+      <statement>Group all tasks with no unmet dependencies into Wave 1; tasks depending only on Wave 1 go into Wave 2; continue until all tasks are assigned.</statement>
+      <rationale>This topological layering ensures maximum parallelization without violating any dependency. Agents that assign all tasks to Wave 1 and Wave 2 are underestimating dependency depth — validate with tsort.</rationale>
+    </rule>
+    <list>
+      <item>Wave 1: tasks with no dependencies at all — run in parallel</item>
+      <item>Wave 2: tasks where all dependencies are in Wave 1 — run in parallel after Wave 1 checkpoint</item>
+      <item>Wave N: tasks where all dependencies are in earlier waves</item>
+      <item>Typical speedup: 1.8x-3.5x (actual speedup = 30-50% of theoretical due to coordination cost)</item>
+    </list>
+  </section>
+
+  <section title="Checkpoint Types">
+    <list>
+      <item>Merge: after parallel wave — combine outputs, resolve conflicts between parallel implementations</item>
+      <item>Verify: at critical dependency — run tests, check contract compliance</item>
+      <item>Review: complex integration — human review before continuing (cannot be automated)</item>
+      <item>Sync: state-dependent tasks — ensure consistent shared state before next wave</item>
+    </list>
+  </section>
+
+  <section title="Implicit Dependencies">
+    <rule>
+      <statement>Detect implicit dependencies from shared file modifications — two tasks that modify the same file must be sequential even if no explicit dependency is declared.</statement>
+      <rationale>Agents updating the same file in parallel produce merge conflicts or overwrite each other's changes. File-level implicit dependencies are the most common source of wave analysis errors.</rationale>
+    </rule>
+    <list>
+      <item>Same file modified: sequential (file conflict)</item>
+      <item>Module imports: TASK producing a module before TASK importing it</item>
+      <item>Database schema: migration tasks before data-access tasks</item>
+      <item>API producer before consumer: endpoint must exist before client code is written</item>
+    </list>
+    <reference path="scripts/extract-waves.py">Extract actual wave assignments from a completed plan</reference>
+  </section>
+
+  <section title="Critical Path">
+    <p>The critical path is the longest dependency chain by token estimate. Tasks on the critical path cannot be delayed without delaying the overall feature. Mark them in the plan to help human reviewers prioritize risk assessment.</p>
+    <list>
+      <item>Identify longest chain: sum token estimates along each dependency path</item>
+      <item>Mark critical path tasks explicitly in the plan</item>
+      <item>Apply highest contingency buffer to critical path tasks</item>
+      <item>Non-critical tasks have slack — can absorb delays without affecting overall completion</item>
+    </list>
+  </section>
+</text>

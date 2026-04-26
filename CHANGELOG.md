@@ -5,6 +5,7 @@
 ### Changed
 - refactor: 8/8 sdd methodologies migrated to new shape (batch: yaml-frontmatter, mistake-memory, reflexion-learning, living-documentation, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans, spec-advanced-guidelines)
 - refactor: 8/8 sdd-planning methodologies migrated to new shape (batch: templates, spec-examples-basic, spec-structure, impl-plan-task-format, impl-plan-100k-rule, backlog-grooming-roadmapping, architecture-decision-records, writing-implementation-plans)
+- refactor: 8/8 sdd-planning methodologies migrated to new shape (batch: api-first-development, spec-example-ecommerce-cart, workflows, design-doc-structure, impl-plan-components, task-creation-template-guide, workflow-design-phase, workflow-spec-phase)
 - refactor: 8/8 methodologies migrated to new shape (batch: active-listening, selling-ideas, feedback, business-storytelling, ideation-methods, negotiation, growth-linkedin-strategy, growth-community-building)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-onboarding-emails, growth-youtube-strategy, search-everywhere-optimization, growth-customer-testimonials, plausible-analytics, ops-dashboard-setup, ops-automation-workflow, seo-techniques)
 - refactor: 8/8 methodologies migrated to new shape (batch: growth-tiktok-basics, growth-webinar-planning, growth-podcast-strategy, growth-content-marketing, growth-tiktok-strategies, growth-email-marketing, growth-newsletter-growth, growth-copywriting-fundamentals)

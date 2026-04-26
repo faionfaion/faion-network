@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-context-budget" title="100k Token Budget and Dependency Tree">
+  <summary>How the 100k token budget is allocated across task phases and why the dependency tree is the most critical section for executor agent consistency.</summary>
+
+  <section title="Token Budget Allocation">
+    <rule>
+      <statement>Keep every task within 100k total token budget: SDD docs 15% (~15k), dependency tree 10% (~10k), research 25% (~25k), implementation 40% (~40k), testing 10% (~10k).</statement>
+      <rationale>Claude's effective code generation quality degrades above ~80k context tokens. The 100k budget with component-level breakdown prevents executor agents from loading too much context before starting to code, which produces truncated or incoherent implementations.</rationale>
+    </rule>
+    <list>
+      <item>SDD Docs (15%): constitution.md relevant sections + spec FR-X + design AD-X + contracts.md if API</item>
+      <item>Dependency Tree (10%): completed task summaries + key code snippets from prior tasks</item>
+      <item>Research (25%): reading similar existing code patterns in the codebase</item>
+      <item>Implementation (40%): actual coding — the primary value-producing phase</item>
+      <item>Testing (10%): writing and running tests, verification</item>
+    </list>
+  </section>
+
+  <section title="Why Dependency Tree is Critical">
+    <rule>
+      <statement>Include a dependency tree in every task that builds on completed prior tasks; without it, agents re-discover patterns, produce inconsistent implementations, and contradict earlier decisions.</statement>
+      <rationale>The dependency tree is the mechanism by which patterns established in TASK-001 propagate to TASK-005. Without it, the executor in TASK-005 invents its own approach, breaking consistency with existing code. With it, 30-40% of context budget is freed because research is replaced by targeted pattern reuse.</rationale>
+    </rule>
+    <list>
+      <item>Without dependency tree: agent re-discovers patterns (wastes research budget), inconsistent code style, may contradict earlier decisions, duplicates work</item>
+      <item>With dependency tree: reuses established patterns, consistent code, builds on prior decisions, context focused on implementation</item>
+    </list>
+  </section>
+
+  <section title="Dependency Tree Content">
+    <list>
+      <item>Summary: one sentence — what was done in the dependency task</item>
+      <item>Files: exact paths created or modified</item>
+      <item>Patterns: reusable conventions discovered (BaseModel inheritance, email validator, etc.)</item>
+      <item>Key code: critical code snippet (class definition, key function) — anchors executor's style</item>
+      <item>Decisions: implementation decisions made (e.g., UUID for PK instead of auto-increment)</item>
+    </list>
+    <rule>
+      <statement>Keep each task's "Files to Change" table to 8 or fewer files; if more, split the task.</statement>
+      <rationale>More than 8 files means the task is doing too many things. Beyond 8 files, the token budget is consumed by file-reading context, leaving insufficient budget for implementation. Split on logical boundaries: one task per layer (model, service, handler, tests).</rationale>
+    </rule>
+  </section>
+
+  <reference path="scripts/estimate-tokens.py">Estimate token budget for task context components before writing the task</reference>
+</text>
