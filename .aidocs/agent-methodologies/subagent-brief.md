@@ -17,24 +17,31 @@ You are a Task subagent. The orchestrator (main thread) has selected N=3-5 candi
 | `categories` | Map `slug → category prefix` (one of `so- mm- tu- pl- lp- mem- cli- eval- cost- mcp-`) |
 | `cycle` | Current cycle number (post-increment after write) |
 
+## MANDATORY pre-flight (before ANY file write)
+
+Before creating or editing a single methodology file, you MUST `Read`:
+
+1. `docs/skill-authoring.md` — full structure spec (folder shape, `AGENTS.md` strict shape, anti-patterns)
+2. `skills/faion/knowledge/geek/ai/llm-integration/semantic-xml-content/templates/tag-glossary.xml` — closed tag vocabulary for `content/*.xml`
+
+Skipping these is the #1 cause of rejected ticks. The conventions are non-obvious (semantic XML, no `README.md` inside subfolders, role-bearing tag names) and cannot be inferred from existing 5-file methodologies.
+
 ## Methodology format (canonical)
 
-**Source of truth:** `docs/skill-authoring.md`. Read it before writing if you have not. Summary:
+**Source of truth:** `docs/skill-authoring.md` (which you just read).
 
 ```
 skills/faion/knowledge/geek/ai/ai-agents/<slug>/
 ├── CLAUDE.md          # one line: @AGENTS.md
-├── AGENTS.md          # routing doc, <80 lines, strict shape
-├── texts/
-│   ├── README.md      # one-line index per text file
-│   ├── 01-<topic>.md  # 30-80 lines, one concept per file
-│   └── ...            # add more only if value is real
-└── templates/
-    ├── README.md      # one-line index per template
-    └── <real-file>    # at least one reusable artifact (under 60 lines)
+├── AGENTS.md          # routing doc, Markdown, <80 lines, strict shape
+├── content/           # semantic XML, one concept per file
+│   ├── 01-<topic>.xml
+│   └── 02-<topic>.xml
+└── templates/         # OPTIONAL: real reusable artifacts (Pydantic, JSON, prompt, etc.)
+    └── <name>.<ext>
 ```
 
-`scripts/` is OPTIONAL — include only when a verifier/applier/generator carries real value. Do NOT create empty folders.
+`scripts/` is also OPTIONAL — include only when a verifier/applier/generator carries real value. **NO `README.md` inside `content/`, `templates/`, or `scripts/`** — every subfolder file is indexed in the methodology `AGENTS.md` (single source of truth). Empty folders are forbidden — omit them.
 
 ### `AGENTS.md` strict shape
 
@@ -59,22 +66,56 @@ skills/faion/knowledge/geek/ai/ai-agents/<slug>/
 - <anti-case 1, with one-line reason>
 - <anti-case 2, with one-line reason>
 
-## Texts
+## Content
 
 | File | What's inside |
 |------|---------------|
-| `texts/01-foo.md` | one-liner |
-| `texts/02-bar.md` | one-liner |
+| `content/01-foo.xml` | one-liner |
+| `content/02-bar.xml` | one-liner |
 
-## Templates / Scripts
+## Templates
 
-- `templates/<file>` — short purpose
+| File | Purpose |
+|------|---------|
+| `templates/<file>` | one-liner |
 ```
+
+(Add `## Scripts` table only if `scripts/` exists.)
 
 Hard caps (`docs/skill-authoring.md` § "Token budget"):
 - `AGENTS.md` ≤ 120 lines (target 50-80)
-- Each text ≤ 150 lines (target 30-80)
+- Each `content/*.xml` ≤ 150 lines (target 30-80)
 - Each template ≤ 80 lines (target 20-50)
+
+### Semantic XML for `content/`
+
+Closed tag vocabulary (from `skills/faion/knowledge/geek/ai/llm-integration/semantic-xml-content/templates/tag-glossary.xml`). Tags describe ROLE, not appearance. Skeleton:
+
+```xml
+<text id="01-rule" title="The Rule">
+  <summary>One-sentence summary.</summary>
+
+  <rule>State the testable rule here.</rule>
+
+  <example>
+    <code lang="python"><![CDATA[
+def example(): ...
+    ]]></code>
+  </example>
+
+  <antipattern>
+    <code lang="python"><![CDATA[
+def bad_example(): ...
+    ]]></code>
+    <why>Explain why this fails.</why>
+  </antipattern>
+
+  <reference path="templates/schema.py">Pydantic shape used by this rule</reference>
+  <reference href="https://...">External source</reference>
+</text>
+```
+
+NO formatting tags (`<bold>`, `<heading>`, `<br>`). NO Markdown bodies under `content/`.
 
 ## Per-slug procedure
 
@@ -85,12 +126,10 @@ For each slug in `slugs`:
 3. Create `skills/faion/knowledge/geek/ai/ai-agents/<slug>/`
 4. Write `CLAUDE.md` containing the single line: `@AGENTS.md`
 5. Write `AGENTS.md` per the strict shape above
-6. Create `texts/`:
-   - `texts/README.md` with one-line index
-   - 1-3 short text files (`01-*.md`, `02-*.md`) covering the rule deeply
-7. Create `templates/`:
-   - `templates/README.md` with one-line index
-   - At least one real reusable file (Python schema / JSON / prompt template / config snippet)
+6. Create `content/`:
+   - 1-3 short XML files (`01-*.xml`, `02-*.xml`) covering the rule deeply
+   - Each file uses the closed tag vocabulary from the tag glossary
+7. Create `templates/` only if a real reusable artifact exists (Python schema, JSON, prompt, config snippet)
 8. Append a JSONL row to `.aidocs/agent-methodologies/methodologies.jsonl`:
    ```json
    {"id":"M-NNN","slug":"<slug>","category":"<prefix>","source":"<source-file-stem>","accepted_at":"YYYY-MM-DD","title":"<title>","one_liner":"<10-25 word summary>","cycle":<N>}
@@ -123,11 +162,13 @@ For each slug in `slugs`:
 ## Quality gates (REJECT a slug if any fail)
 
 - [ ] Concrete, testable rule (not "use good practices")
-- [ ] Cited source (URL or project path) in `AGENTS.md` references or in a text
+- [ ] Cited source (URL or project path) inside `AGENTS.md` or in a content file via `<reference href="...">`
 - [ ] BOTH `When To Use` AND `When NOT To Use` non-empty
 - [ ] Not a near-duplicate of an accepted methodology (search `methodologies.jsonl`)
 - [ ] Maps to exactly one category prefix
-- [ ] At least one reusable file in `templates/`
+- [ ] At least one `content/*.xml` file using the closed tag vocabulary
+- [ ] No `README.md` inside `content/`, `templates/`, or `scripts/`
+- [ ] No formatting tags (`<bold>`, `<heading>`, `<br>`) inside XML
 
 If a slug fails: skip it, log the rejection in `progress.md`, continue with the rest. Do NOT lower N — orchestrator picks more next tick.
 
@@ -148,8 +189,11 @@ REJECTED: <count>
 
 ## Anti-patterns (do NOT do)
 
-- Single 200-line README — split into `texts/`
-- Empty `templates/` or `scripts/` — omit folder
+- Single 200-line `README.md` — split into `content/`
+- `README.md` inside `content/`, `templates/`, or `scripts/` — forbidden
+- Markdown bodies under `content/` — must be semantic XML
+- Formatting tags in XML (`<bold>`, `<heading>`, `<br>`) — describe role, not appearance
+- Empty `templates/` or `scripts/` folder — omit
 - 5-file rigid pattern (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) — RETIRED
 - Skip `When NOT To Use` — agent cannot reject the methodology safely
 - Inline templates as fenced code blocks longer than ~30 lines — move to `templates/`
