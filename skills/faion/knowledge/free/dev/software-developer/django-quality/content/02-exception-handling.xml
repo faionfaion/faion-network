@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-exception-handling" title="Django Exception Handling Rules">
+  <summary>Rules for specific exception handling in Django code: bare except antipatterns and correct patterns for ORM, HTTP, and validation errors.</summary>
+
+  <section title="Exception Rules">
+    <rule>
+      <statement>Never use bare except: or except Exception:. Catch the most specific exception type available for the operation being wrapped.</statement>
+      <rationale>Bare except swallows every error including KeyboardInterrupt and SystemExit. Broad Exception hides bugs by silencing unexpected failures. Both make debugging impossible.</rationale>
+    </rule>
+
+    <rule>
+      <statement>For Django ORM lookups, catch Model.DoesNotExist, not a generic exception. Raise a domain error (NotFoundError) immediately so the caller gets a typed exception.</statement>
+      <rationale>DoesNotExist is the only expected failure from .get(). Catching Exception here hides schema errors, connection failures, and programming mistakes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Correct Patterns">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Django ORM
+try:
+    obj = MyModel.objects.get(pk=pk)
+except MyModel.DoesNotExist:
+    raise NotFoundError(f"Object {pk} not found")
+
+# Multiple specific exceptions
+try:
+    validate_data(data)
+except (ValidationError, ValueError) as e:
+    return Response({'error': str(e)}, status=400)
+
+# HTTP requests
+import requests
+
+try:
+    response = requests.post(url, json=data, timeout=30)
+    response.raise_for_status()
+except requests.Timeout:
+    raise ServiceTimeoutError("External service timeout")
+except requests.HTTPError as e:
+    raise ExternalServiceError(f"Service returned {e.response.status_code}")
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Exception Antipatterns">
+    <antipattern>
+      <description>Bare except: or except Exception: without re-raising or logging with full context.</description>
+      <reason>Hides all errors including bugs, KeyboardInterrupt, and SystemExit. The ruff S110 and B001 rules flag these; fix rather than suppress.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Silent swallow: except SomeError: pass</description>
+      <reason>No logging, no re-raise. Failures become invisible. At minimum log with logger.error("...", exc_info=True) before pass.</reason>
+    </antipattern>
+  </section>
+</text>

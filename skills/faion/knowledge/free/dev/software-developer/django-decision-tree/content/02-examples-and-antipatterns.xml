@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples-and-antipatterns" title="Django Placement Examples and Antipatterns">
+  <summary>Correct service, utils, and integration patterns with code examples; three critical placement antipatterns.</summary>
+
+  <section title="Correct Patterns">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# services/orders.py — DB writes with transaction
+from django.db import transaction
+
+@transaction.atomic
+def create_order(user, items, *, shipping_address):
+    order = Order.objects.create(
+        user=user,
+        shipping_address=shipping_address,
+        status=OrderStatus.PENDING,
+    )
+    for item in items:
+        inventory_services.reserve_stock(item['product_id'], item['quantity'])
+        order.items.create(**item)
+    order.calculate_total()
+    return order
+      ]]></code>
+      <note>Service owns the transaction boundary and calls other services. No HTTP context, no request object.</note>
+    </example>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# utils/pricing.py — pure function, no DB, no side effects
+from decimal import Decimal
+
+def calculate_discount(subtotal, discount_percent, *, max_discount=None):
+    discount = subtotal * Decimal(discount_percent) / 100
+    if max_discount is not None:
+        discount = min(discount, max_discount)
+    return discount.quantize(Decimal('0.01'))
+      ]]></code>
+      <note>Pure function: same input always produces same output. Trivial to unit test.</note>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Database query in utils/ (e.g., User.objects.filter() inside a utils function).</description>
+      <reason>utils/ functions have no DB dependency by convention. Adding ORM calls makes them non-pure, breaks unit testability, and blurs the service/util boundary. Move to services/.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Business logic in views/ (conditional rules, calculations, multi-step DB operations directly in the view method).</description>
+      <reason>Business logic in views is untestable without an HTTP context. The view becomes a 200-line method that is impossible to reuse or test in isolation. Delegate to services/.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Circular imports between apps (apps/orders/services.py importing from apps/users/services.py when users already imports orders).</description>
+      <reason>Circular imports cause ImportError at startup. Use Django signals, Celery tasks, or pass data by value to break cycles. Never import circularly — restructure the dependency.</reason>
+    </antipattern>
+  </section>
+</text>

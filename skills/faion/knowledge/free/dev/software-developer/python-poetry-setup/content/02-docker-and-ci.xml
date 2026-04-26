@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-docker-and-ci" title="Docker and CI Integration">
+  <summary>Docker multi-stage build pattern for Poetry projects and GitHub Actions CI workflow with caching.</summary>
+
+  <section title="Docker Multi-Stage Pattern">
+    <rule>
+      <statement>In Docker builds, use a builder stage to run poetry export, then a final stage with pip install -r requirements.txt. Never run poetry install in the final production stage — it brings the Poetry runtime into the image.</statement>
+      <rationale>Poetry adds ~100MB to the image and is not needed at runtime. The export + pip pattern produces minimal images.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="dockerfile"><![CDATA[
+FROM python:3.11-slim AS builder
+WORKDIR /app
+RUN pip install poetry==1.8.5
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes
+
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY src/ ./src/
+CMD ["python", "-m", "my_project.main"]
+      ]]></code>
+      <note>Pin the poetry version in the builder stage. poetry shell is removed in Poetry 2.0 — never call it in Dockerfiles.</note>
+    </example>
+
+    <reference path="templates/Dockerfile">Full multi-stage Dockerfile for Poetry projects</reference>
+  </section>
+
+  <section title="GitHub Actions CI">
+    <rule>
+      <statement>Use snok/install-poetry@v1 in CI and cache the .venv directory keyed by OS + Python version + poetry.lock hash. This reduces install time from minutes to seconds on cache hit.</statement>
+      <rationale>Poetry's dependency resolution is the slowest CI step. Caching the resolved environment avoids re-running the solver on every push.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+- name: Install Poetry
+  uses: snok/install-poetry@v1
+  with:
+    version: 1.8.5
+    virtualenvs-create: true
+    virtualenvs-in-project: true
+
+- name: Load cached venv
+  uses: actions/cache@v4
+  with:
+    path: .venv
+    key: venv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+- name: Install dependencies
+  run: poetry install --no-interaction --sync
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Publishing to PyPI">
+    <rule>
+      <statement>Use the POETRY_PYPI_TOKEN_PYPI environment variable in CI, not poetry config pypi-token.pypi $TOKEN. The env var is process-scoped; the config command writes to ~/.config/pypoetry/auth.toml which persists across runs in shared sandboxes.</statement>
+      <rationale>Token written to auth.toml in a shared CI environment is accessible to other jobs. Process-scoped env var leaks nothing beyond the current step.</rationale>
+    </rule>
+  </section>
+</text>

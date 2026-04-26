@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 software-developer methodologies migrated to new shape (batch: language-framework-guide, integration-testing, django-quality, python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling)
 - refactor: 8/8 code-quality methodologies migrated to new shape (batch: refactoring-patterns, pair-programming, code-quality-trends, code-decomposition-principles, tech-debt-basics, code-review-basics, code-coverage, mob-programming)
 - refactor: 8/8 methodologies migrated to new shape (batch: methodologies, best-practices-2026, django-testing, go-concurrency, django-coding-standards, tdd-workflow, storybook-setup, documentation)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: tailwind, bun-runtime, typescript-strict-mode, go-backend, files-reference, django-models, refactoring-patterns, pair-programming)

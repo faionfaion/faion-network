@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-jest-vitest-patterns" title="Jest and Vitest Patterns">
+  <summary>Configuration, matchers, function and module mocks, async test patterns, and snapshot testing for JavaScript/TypeScript.</summary>
+
+  <section title="Vitest vs Jest">
+    <rule>
+      <statement>Prefer Vitest for new projects. It is API-compatible with Jest, faster (Vite-native), and supports ESM without configuration. Use Jest only if the project has an existing Jest setup not worth migrating.</statement>
+      <rationale>Vitest's Vite-based transform is 3-10x faster than Jest's Babel/ts-jest pipeline for TypeScript projects.</rationale>
+    </rule>
+  </section>
+
+  <section title="Test Structure">
+    <rule>
+      <statement>Follow Arrange-Act-Assert inside each test. Use describe blocks for grouping by unit and nested describe for scenarios. Never nest more than two describe levels.</statement>
+      <rationale>Flat, readable test structures reduce cognitive load. Deep nesting obscures which condition is being tested.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => { service = new UserService(); });
+
+  describe('createUser', () => {
+    it('should create user with valid data', () => {
+      const user = service.createUser({ name: 'John', email: 'john@example.com' });
+      expect(user.id).toBeDefined();
+      expect(user.name).toBe('John');
+    });
+
+    it('should throw for invalid email', () => {
+      expect(() => service.createUser({ name: 'John', email: 'invalid' }))
+        .toThrow('Invalid email');
+    });
+  });
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Module Mocking">
+    <rule>
+      <statement>Mock entire modules with vi.mock() at the top of the file. Use vi.spyOn() for partial module mocks. Reset mocks between tests with clearMocks: true in config.</statement>
+      <rationale>Module-level mocks are hoisted by Vitest/Jest. Not resetting between tests causes state leakage across test cases.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+vi.mock('@/services/api', () => ({
+  fetchData: vi.fn().mockResolvedValue({ data: 'mocked' }),
+}));
+
+// Partial mock preserving original implementation
+vi.mock('@/utils/helpers', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, formatDate: vi.fn().mockReturnValue('2024-01-01') };
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Async Testing">
+    <rule>
+      <statement>Use async/await for all async tests. Avoid the callback done pattern except for legacy callback APIs. Use vi.useFakeTimers() to test timeout and interval logic without real waits.</statement>
+      <rationale>Callback-style async tests are prone to missing the done() call, which produces false passes. async/await makes failures explicit.</rationale>
+    </rule>
+  </section>
+</text>
