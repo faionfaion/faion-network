@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="OpenAI API Production Rules and Gotchas">
+  <summary>Production rules for error handling, cost control, security, and agentic loop-specific failure modes.</summary>
+
+  <section title="Production Rules">
+    <rule>
+      <statement>Set `max_tokens` on every API call. Unbounded output generation runs up costs and stalls agents waiting for a response that never completes.</statement>
+      <rationale>Without max_tokens, a stuck generation can produce thousands of tokens. In agentic loops, this blocks all downstream steps. `finish_reason: "length"` signals truncation — check for it.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Implement exponential backoff for 429 (rate limit) and 5xx errors: start at 1s, cap at 60s, max 6 retries. Use `time.sleep(min(2**attempt, 60))` pattern.</statement>
+      <rationale>Rate limits are transient. Immediate retry hammers the quota further. Exponential backoff distributes retries over time and recovers from temporary limits gracefully.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use service account keys (`sk-svcacct-*`) for automated systems — never user keys. Keep all API keys server-side; never expose them in client code.</statement>
+      <rationale>User keys have access to all projects in an account. Service account keys are scoped to a single project, limiting blast radius if compromised.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Enable prompt caching by placing static system prompts first and never modifying their prefix. Track cache hits via `response.usage` to verify caching is active.</statement>
+      <rationale>OpenAI's prompt cache activates on prefix matches. Even a single character change in a cached prefix invalidates it. Static system prompts placed first (before any dynamic content) maximize cache hit rate.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agentic Loop Gotchas">
+    <antipattern>
+      <description>Tool call response missing `tool_call_id` matching the request.</description>
+      <reason>OpenAI requires each tool result to reference the exact `tool_call_id` from the request. Mismatches cause HTTP 400 errors. Always map results back to the call ID.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Mixing Responses API and Chat Completions in the same conversation flow.</description>
+      <reason>The two APIs manage conversation history differently. Responses API stores history server-side; Chat Completions requires developer-managed history. Mixing them produces inconsistent context.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Submitting a Batch API job and then waiting synchronously for results.</description>
+      <reason>Batch API results arrive asynchronously (up to 24h). Synchronous waiting will time out. Use a separate completion-handler agent or poll the batch status endpoint.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using `finish_reason: "length"` response downstream without checking truncation.</description>
+      <reason>A truncated response means the model was cut off mid-output. Passing incomplete data downstream silently corrupts all dependent states. Always check finish_reason.</reason>
+    </antipattern>
+  </section>
+</text>

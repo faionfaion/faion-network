@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strategies" title="Chunking Strategy Types">
+  <summary>Eight chunking strategies for RAG ingestion, with selection criteria, parameters, and a decision framework.</summary>
+
+  <section title="Strategy Overview">
+    <rule>
+      <statement>Apply this decision framework: document &lt; 1000 tokens → no chunking; is code → code-aware; is structured (MD/HTML) → structure-based; context-critical (legal/medical) → semantic or agentic; variable content → agentic; default → recursive with 15% overlap.</statement>
+      <rationale>Each strategy has a distinct cost/quality/speed profile. Using the wrong one (e.g., fixed-size on legal text) causes mid-sentence splits that break retrieval for entire clauses.</rationale>
+    </rule>
+  </section>
+
+  <section title="Strategies">
+    <rule>
+      <statement>Fixed-size chunking: 512 tokens, 15% overlap. Use only for uniform plain-text where speed is critical or as a baseline.</statement>
+      <rationale>Fast and predictable but ignores semantic boundaries. A sentence split across two chunks means neither retrieves well for that concept.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Recursive chunking: split by paragraph → line → sentence → word (in order). This is the default for general documents. Use 512-token chunks with 77-token overlap (15%).</statement>
+      <rationale>Respects natural text boundaries without requiring an embedding API. The best default for articles, blog posts, and mixed documentation.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Semantic chunking: embed each sentence, split where cosine similarity drops below 0.75-0.85. Use for multi-topic documents, legal, medical, or technical content where topical coherence is critical.</statement>
+      <rationale>Preserves topic coherence within chunks, improving retrieval precision. Costs one embedding API call per sentence — only justified when quality matters more than ingestion cost.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Code-aware chunking: split at function/class boundaries using AST or treesitter. Never split code at fixed token counts.</statement>
+      <rationale>A function split across two chunks is nearly impossible to retrieve correctly. Code retrieval depends on the function being a complete unit.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Late chunking (Jina jina-embeddings-v3): embed the full document first, then pool per-span. Use when document fits in model context and pronoun/reference resolution matters.</statement>
+      <rationale>Chunk embeddings carry document-level context ("the city" knows it means Berlin). Outperforms all rule-based strategies for contextual coherence but requires a specific long-context model.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Agentic chunking: LLM decides strategy per document section and enriches chunks with metadata (titles, summaries). Use only when quality &gt;&gt; cost — one LLM call per document section.</statement>
+      <rationale>Highest quality, adaptive, adds rich metadata. Costs 10-50x more than rule-based approaches. Reserve for legal contracts, medical reports, financial filings.</rationale>
+    </rule>
+  </section>
+
+  <section title="Quick Reference">
+    <list>
+      <item>FAQs / product descriptions: no chunking (document-level)</item>
+      <item>Technical manuals: recursive + overlap</item>
+      <item>Legal documents: semantic or agentic</item>
+      <item>Code files: code-aware (AST/treesitter)</item>
+      <item>Research papers: hierarchical (section → paragraph)</item>
+      <item>Mixed content PDFs: agentic</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-methods" title="Structured Output Methods by Provider">
+  <summary>Provider comparison for structured output, JSON mode vs schema enforcement, and Pydantic integration patterns.</summary>
+
+  <section title="JSON Mode vs Structured Output">
+    <rule>
+      <statement>Never use raw JSON mode for production. JSON mode guarantees valid JSON syntax only — fields can be missing, wrong types, or extra. Use native structured output (OpenAI, Gemini) or tool-calling with instructor (Claude).</statement>
+      <rationale>JSON mode failures are silent: the response parses as JSON but fails schema validation downstream. Native structured output enforces schema at the model level, making violations impossible.</rationale>
+    </rule>
+  </section>
+
+  <section title="OpenAI">
+    <rule>
+      <statement>Use `client.beta.chat.completions.parse(response_format=MyModel)` for native structured output. Pass a Pydantic model class directly — the SDK handles JSON Schema generation and parsing.</statement>
+      <rationale>Native structured output guarantees schema compliance at the API level. The response's `.choices[0].message.parsed` is a typed Python object, not a string.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+from pydantic import BaseModel
+
+class ExtractionResult(BaseModel):
+    entities: list[str]
+    summary: str
+    confidence: float
+
+client = OpenAI()
+response = client.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[{"role": "user", "content": "Extract from: ..."}],
+    response_format=ExtractionResult,
+)
+result: ExtractionResult = response.choices[0].message.parsed
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Claude (Anthropic)">
+    <rule>
+      <statement>For Claude, use `instructor.from_anthropic(anthropic.Anthropic())` for automatic retry and Pydantic validation. Claude has no native `response_format` parameter — tool-calling is the mechanism.</statement>
+      <rationale>Instructor wraps Claude's tool-calling API to produce typed Pydantic objects with automatic retry on ValidationError. It adds 50-200 extra prompt tokens but eliminates parsing glue code.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+import anthropic
+import instructor
+from pydantic import BaseModel
+
+client = instructor.from_anthropic(anthropic.Anthropic())
+
+class Summary(BaseModel):
+    points: list[str]
+    verdict: str
+
+result = client.messages.create(
+    model="claude-opus-4-5",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Summarize: ..."}],
+    response_model=Summary,
+)
+# result is a typed Summary object
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Schema Design Rules">
+    <rule>
+      <statement>Add `Field(description="...")` on every field. Use `str` enums for controlled vocabularies. Mark uncertain data as `Optional[str] = None`. Keep required fields minimal.</statement>
+      <rationale>Models read field descriptions, not just type names. Without descriptions, the model guesses field semantics from the name alone, producing wrong values. Enums prevent the model from inventing values outside the allowed set.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Keep Pydantic models under 20 fields. Split large schemas into sub-models. Nesting beyond 3 levels significantly increases hallucinated field values.</statement>
+      <rationale>Large schemas with deep nesting exceed the model's working context for schema compliance. Flat or shallow schemas with sub-models are more reliable and easier to debug.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/entity-extraction.py">Entity extraction Pydantic schema</reference>
+  <reference path="templates/safe-parse.py">Safe extraction with retry</reference>
+</text>

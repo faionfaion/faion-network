@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Cost Optimization Rules and Failure Modes">
+  <summary>Concrete budget control rules, monitoring requirements, caching failure modes, and production gotchas.</summary>
+
+  <section title="Budget Control Rules">
+    <rule>
+      <statement>Set separate budget caps for non-critical (news summarization) vs. critical (user-facing answers) pipelines. Alert at 80% daily budget; disable non-critical calls at 100%. Never disable critical pipelines automatically.</statement>
+      <rationale>A single runaway non-critical pipeline should not take down user-facing features. Separate caps prevent cascade failures where one pipeline exhausts the shared budget.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Review the top-10 most expensive agent calls weekly and redesign them. Cost concentrates in a few high-frequency or high-output patterns.</statement>
+      <rationale>Pareto principle applies: 20% of call patterns generate 80% of cost. Weekly review makes cost optimization an ongoing practice rather than a one-time event.</rationale>
+    </rule>
+  </section>
+
+  <section title="Monitoring Rules">
+    <rule>
+      <statement>Track cost per pipeline stage from day 1 — not total cost. Use `response.usage` (OpenAI) or `response.usage` (Claude) to record input/output tokens per agent step.</statement>
+      <rationale>Total cost is unactionable. Stage-level attribution tells you which steps to optimize. Cost dashboards lag 15-60 minutes — real-time caps require client-side token counting, not API usage data.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Separately track prompt caching metrics and semantic caching metrics. They have different failure modes and different optimization levers.</statement>
+      <rationale>Prompt caching fails silently when the prefix changes. Semantic caching fails with false positives. Mixing them in a single "cache hit rate" metric obscures which layer is failing.</rationale>
+    </rule>
+  </section>
+
+  <section title="Failure Modes">
+    <antipattern>
+      <description>Semantic cache false positives: "what is the capital of France?" and "what is the capital of Germany?" may have cosine similarity &gt;0.95 and return the wrong cached answer.</description>
+      <reason>Semantic caching threshold tuning requires offline evaluation on your actual query distribution. A threshold of 0.95 is often too aggressive — test with 0.98+ for factual queries.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Routing classifier overhead exceeds savings on short tasks.</description>
+      <reason>If the classifier takes 200 tokens to route a 50-token task, the overhead can exceed the savings from cheaper model selection. Only route when task token count significantly exceeds classification overhead.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Prompt caching invalidated by a single space change in the system prompt.</description>
+      <reason>OpenAI and Claude require exact byte-for-byte prefix matches. Dynamic content injected into the static system prompt prefix (e.g., current date, user name) invalidates the cache on every call.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Human-in-loop checkpoint: when daily budget hits 80%, alerting after the automatic shutdown has already corrupted pipeline state.</description>
+      <reason>Alert at 80% to allow human intervention before shutdown. Shutdown mid-pipeline corrupts in-flight state. Design graceful shutdown: complete current steps, then pause new intake.</reason>
+    </antipattern>
+  </section>
+</text>

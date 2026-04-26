@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-api-overview" title="OpenAI API Endpoints and Model Selection">
+  <summary>Key endpoints, model selection matrix, Responses API vs Chat Completions, and rate limit tiers.</summary>
+
+  <section title="Key Endpoints">
+    <list>
+      <item>Chat Completions (/v1/chat/completions): text generation, conversation, vision, function calling</item>
+      <item>Responses API (/v1/responses): stateful API (2025+); manages conversation history server-side via previous_response_id</item>
+      <item>Embeddings (/v1/embeddings): text-embedding-3-large for RAG, semantic search</item>
+      <item>Batch (/v1/batches): 50% cost discount, 24h completion window, JSONL input</item>
+      <item>Audio (/v1/audio/transcriptions, /v1/audio/speech): Whisper for STT, TTS models</item>
+      <item>Images (/v1/images/generations): DALL-E 3 for image generation</item>
+    </list>
+  </section>
+
+  <section title="Model Selection">
+    <rule>
+      <statement>Default model: gpt-4o for quality-sensitive tasks; gpt-4o-mini for classification, routing, and formatting (90% cheaper). Use o3-mini for complex reasoning. Always pin exact version: `gpt-4o-2024-08-06` not `gpt-4o`.</statement>
+      <rationale>Non-pinned model aliases change behavior on OpenAI's update schedule without warning. A silent model upgrade can break prompt-sensitive production systems.</rationale>
+    </rule>
+  </section>
+
+  <section title="Responses API vs Chat Completions">
+    <rule>
+      <statement>For new projects, use the Responses API over Chat Completions. Use `previous_response_id` for multi-turn conversations — it eliminates manual history management and reduces payload size.</statement>
+      <rationale>Chat Completions requires the developer to send the full conversation history on every call. The Responses API manages history server-side, reducing payload size and developer surface area. OpenAI is actively developing the Responses API; Chat Completions is in maintenance mode.</rationale>
+    </rule>
+  </section>
+
+  <section title="Structured Outputs">
+    <rule>
+      <statement>Use `client.beta.chat.completions.parse(response_format=MyModel)` instead of JSON mode. Structured Outputs guarantee schema compliance; JSON mode only guarantees valid JSON syntax.</statement>
+      <rationale>JSON mode failures are silent: valid JSON with missing or wrong-typed fields passes JSON parsing but fails downstream. Native Structured Outputs enforce the schema at the model level.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from openai import OpenAI
+
+class Response(BaseModel):
+    answer: str
+    confidence: float
+
+client = OpenAI()
+result = client.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[{"role": "user", "content": "..."}],
+    response_format=Response,
+)
+typed_result: Response = result.choices[0].message.parsed
+      ]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/backoff.py">Exponential backoff for rate limit errors</reference>
+  <reference path="templates/agent-loop.py">Function-calling agent loop</reference>
+  <reference path="templates/batch-submit.py">Batch API submission</reference>
+</text>

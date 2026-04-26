@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-fusion-methods" title="Hybrid Search Fusion Methods">
+  <summary>RRF vs linear combination, query-adaptive alpha selection, reranking pipeline, and vector DB native hybrid support.</summary>
+
+  <section title="Fusion Methods">
+    <rule>
+      <statement>Use Reciprocal Rank Fusion (RRF) as the default. Formula: RRF_score(d) = SUM(1 / (k + rank_i(d))), k=60. No score normalization needed; works across different score scales.</statement>
+      <rationale>RRF ignores actual score magnitudes and only uses rank positions. This makes it robust when BM25 and vector scores are on completely different scales, which is always the case without normalization.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use linear combination (hybrid_score = alpha * vector + (1-alpha) * bm25) only when RRF is measurably worse on your query set and you have the capacity to normalize and tune. Default alpha=0.7 (semantic-leaning).</statement>
+      <rationale>Linear combination provides fine-grained control but requires min-max or z-score normalization of both signals. Without normalization, BM25's unbounded scores dominate entirely.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Apply query-adaptive alpha: quoted phrases → 0.2; product/ref codes → 0.3; short queries → 0.5; natural language → 0.7.</statement>
+      <rationale>A fixed alpha is suboptimal for mixed query distributions. A lightweight classifier adds negligible overhead but significantly improves precision across query types.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+def get_alpha(query: str) -> float:
+    if '"' in query:
+        return 0.2   # Exact phrase — strong keyword preference
+    elif any(c.isdigit() for c in query):
+        return 0.3   # Product/ref codes — keyword preference
+    elif len(query.split()) <= 3:
+        return 0.5   # Short query — balanced
+    else:
+        return 0.7   # Natural language — semantic preference
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Reranking">
+    <rule>
+      <statement>Rerank top-100 candidates (not top-10). Fetch 2-3x the final k for fusion, rerank the pool, then return top-10. A reranker given too few candidates cannot recover good results that ranked poorly in either retriever.</statement>
+      <rationale>Reranking adds ~50-100ms and 5x cost compared to retrieval alone. Only worth enabling when precision matters more than latency. Common rerankers: Cohere Rerank (API), bge-reranker-v2-m3 (self-hosted).</rationale>
+    </rule>
+  </section>
+
+  <section title="Vector DB Support">
+    <list>
+      <item>Weaviate: native hybrid (built-in BM25 + vector, alpha parameter)</item>
+      <item>Qdrant: native hybrid (sparse + dense prefetch + FusionQuery RRF)</item>
+      <item>Pinecone: native sparse-dense (separate sparse index)</item>
+      <item>Elasticsearch: native (kNN + BM25) — good for existing ES infrastructure</item>
+      <item>pgvector: manual (combine with pg_trgm) — PostgreSQL projects only</item>
+    </list>
+
+    <rule>
+      <statement>Use native hybrid search endpoints (Weaviate alpha, Qdrant FusionQuery) over manual two-call fusion. Native: lower latency, fewer failure modes, less code.</statement>
+      <rationale>Manual fusion requires two separate network calls, two failure modes, and custom RRF implementation. Native endpoints do all of this in a single API call.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/rrf.py">Reciprocal Rank Fusion implementation</reference>
+  <reference path="templates/qdrant-hybrid.py">Qdrant native hybrid search</reference>
+</text>

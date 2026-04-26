@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-strategies" title="LLM Cost Reduction Strategies">
+  <summary>Five primary cost reduction strategies: model routing, prompt caching, response caching, token reduction, and batch processing.</summary>
+
+  <section title="Model Routing">
+    <rule>
+      <statement>Route tasks by complexity: nano/Haiku for classification and routing, mini/Sonnet for standard queries, frontier model (gpt-4o/Opus) only for complex reasoning. Use a cheap classifier to route — even 5% misclassification is acceptable.</statement>
+      <rationale>Typical savings: 50-75%. The classifier itself costs tokens — ensure routing overhead is less than savings. At gpt-4o-mini ($0.15/M) vs gpt-4o ($2.50/M), routing 80% of traffic to mini saves ~$1.88 per 1M input tokens.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Caching">
+    <rule>
+      <statement>Enable prompt caching for system prompts &gt;1024 tokens (OpenAI) or &gt;2048 tokens (Claude). Place static content first, dynamic content last. The prefix must match byte-for-byte — even a space invalidates the cache.</statement>
+      <rationale>Typical savings: 80-90% on input tokens for cached prefixes. Second and subsequent calls with the same system prompt pay only for cache read (much cheaper) not full input. Savings compound on high-volume pipelines.</rationale>
+    </rule>
+  </section>
+
+  <section title="Response Caching">
+    <rule>
+      <statement>Cache deterministic responses (temperature=0) at exact match: cache key = hash(model + system_prompt + user_message). TTL 24h for most content, shorter for time-sensitive data. Never cache temperature &gt;0 responses.</statement>
+      <rationale>Typical savings: 70-95% for repeated queries. Users often ask the same question. Exact-match caching with Redis has &lt;1ms lookup overhead vs 500ms+ API calls. Temperature &gt;0 caching returns stale creative outputs users notice.</rationale>
+    </rule>
+  </section>
+
+  <section title="Token Reduction">
+    <rule>
+      <statement>Set `max_tokens` on every call as both a cost cap and a quality signal — if output truncates, the task is too broad and needs redesign. Remove verbose phrases from prompts but test that removal doesn't degrade output quality.</statement>
+      <rationale>Output tokens cost 3-5x more than input tokens. A hard max_tokens prevents runaway generation. "Please kindly" adds 3 tokens with no value — but aggressive removal of instructions can break models trained on verbose prompting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Batch Processing">
+    <rule>
+      <statement>Use Batch API (OpenAI, Anthropic, Google) for workloads tolerant of &gt;1h latency: 50% discount, no rate limit pressure, JSONL input. Do NOT wait synchronously for batch results — use async polling or a completion-handler agent.</statement>
+      <rationale>Batch API submits jobs for background processing. The 50% discount applies to both input and output tokens with no quality difference. Ideal for: bulk classification, content generation, nightly analysis pipelines.</rationale>
+    </rule>
+  </section>
+
+  <section title="Savings Summary">
+    <list>
+      <item>Model routing: 50-75% cost reduction, low implementation complexity</item>
+      <item>Prompt caching: 80-90% on repeated system prompts, medium complexity</item>
+      <item>Response caching: 70-95% for deterministic queries, medium complexity</item>
+      <item>Token reduction: 20-40%, low complexity</item>
+      <item>Batch API: 50% for async workloads, medium complexity</item>
+      <item>Combined: 60-90% total reduction</item>
+    </list>
+  </section>
+
+  <reference path="templates/model-router.py">Complexity-based model router</reference>
+  <reference path="templates/token-budget.py">Token cost tracking with daily budget</reference>
+  <reference path="templates/prompt-cache-claude.py">Claude prompt caching implementation</reference>
+</text>

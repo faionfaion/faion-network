@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Agentic RAG Rules and Failure Modes">
+  <summary>Concrete operational rules, decision thresholds, production gotchas, and failure modes for agentic RAG systems.</summary>
+
+  <section title="Decision Thresholds">
+    <rule>
+      <statement>Use these default thresholds: relevance grade &gt;= 0.7 → include document; max rewrite attempts = 2; max retrieval iterations = 3-5; verification score &gt;= 0.8 → output; below threshold → regenerate or caveat.</statement>
+      <rationale>Beyond 2 rewrites, query drift from original intent exceeds any retrieval gain. Beyond 5 iterations, token cost grows without bound.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Implement parallel retrieval for independent sub-queries — fan out, collect all results, then aggregate. Reduces total latency by 50-70%.</statement>
+      <rationale>Sequential sub-query retrieval accumulates round-trip latencies. Independent sub-queries have no data dependency so parallelization is safe.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Set a hard token budget per agentic loop (e.g., 50K tokens). If cumulative tokens exceed the cap, abort and return a partial answer rather than running indefinitely.</statement>
+      <rationale>Without a cap, a stuck rewriter loop can generate thousands of tokens per query at unbounded cost.</rationale>
+    </rule>
+  </section>
+
+  <section title="Failure Modes">
+    <antipattern>
+      <description>Infinite rewrite loop: poorly graded relevance causes the agent to retry indefinitely without converging.</description>
+      <reason>Each rewrite degrades from original intent; after 3+ rewrites, the agent may search for something unrelated to the user's question.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Grader LLM hallucination: the relevance grader marks a document relevant because it shares topic vocabulary, not because it answers the query.</description>
+      <reason>LLM-based graders have the same hallucination risks as generation models. A document about "Python async" may score relevant for "Python async error" even if it contains no error information.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>State corruption in multi-agent coordination: if one agent crashes mid-loop and state is not persisted, the orchestrator restarts with partial context.</description>
+      <reason>In-memory state is lost on crash. Production pipelines must checkpoint agent state to durable storage (PostgreSQL, Redis) between hops.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Response verifier treated as a guarantee: verifier LLM itself can fail to detect hallucinations if the hallucinated content is plausibly worded.</description>
+      <reason>Treat verifier output as a probabilistic signal, not a fact-check. For high-stakes domains, add a human review checkpoint before returning the final answer.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Production Rules">
+    <rule>
+      <statement>Log every agent turn with: query, retrieved chunks, grading decision, and rewrite reason. This is mandatory for debugging where the pipeline diverges.</statement>
+      <rationale>Without per-turn logs, diagnosing a bad final answer requires reconstructing the full pipeline state from scratch.</rationale>
+    </rule>
+
+    <rule>
+      <statement>For high-stakes domains (legal, medical), insert a human-in-loop checkpoint before the final synthesized answer is returned — surface top-3 candidate answers for expert selection.</statement>
+      <rationale>No automated pipeline achieves 100% accuracy. Expert review of candidates is cheaper than the cost of acting on a wrong answer.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/prompt-router.txt">Query router prompt templates (basic, multi-source, complexity-aware)</reference>
+  <reference path="templates/prompt-grader.txt">Document relevance grader prompt templates</reference>
+</text>
