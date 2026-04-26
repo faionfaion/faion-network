@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-container-apps" title="Azure Compute: Container Apps Rules">
+  <summary>Scale-to-zero rules, KEDA scalers, Dapr integration, revision traffic splitting patterns.</summary>
+
+  <section title="Scaling Rules">
+    <rule>
+      <statement>Set `min_replicas: 0` for batch and background workloads to enable scale-to-zero; set `min_replicas: 1` or higher for latency-sensitive APIs to avoid cold-start latency on first request.</statement>
+      <rationale>Scale-to-zero eliminates idle compute cost. However, a cold start from zero replicas adds 1–5 seconds latency depending on image size. APIs with SLA requirements on first-request latency must maintain at least one warm replica.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure KEDA scale rules for event-driven sources (Azure Service Bus, Storage Queue, Event Hub) to scale containers based on queue depth rather than CPU/memory metrics.</statement>
+      <rationale>CPU/memory-based scaling reacts to load after it has already arrived. Queue-depth scaling is proactive: containers are provisioned as messages accumulate, before processing falls behind.</rationale>
+    </rule>
+  </section>
+
+  <section title="Revisions and Traffic Splitting">
+    <rule>
+      <statement>Use `revision_mode: Multiple` with named revision labels to implement blue-green or canary deployments via traffic weight splitting — never delete the old revision before verifying the new one is healthy.</statement>
+      <rationale>Traffic splitting in Multiple mode allows incremental rollout (e.g., 10% → 50% → 100%) and instant rollback by shifting 100% traffic back to the previous revision. Single revision mode requires a full cutover with no gradual validation.</rationale>
+    </rule>
+  </section>
+
+  <section title="Dapr Integration">
+    <rule>
+      <statement>Enable Dapr sidecar for service-to-service communication and state management in microservices — use Dapr component scopes to limit which containers can access each component.</statement>
+      <rationale>Dapr component scopes enforce least-privilege: a payment service can access the payments state store but not the orders state store, even though both run in the same environment. Without scopes, any app can read/write any Dapr component.</rationale>
+    </rule>
+  </section>
+
+  <section title="Limitations">
+    <list>
+      <item>No Windows container support — use AKS or App Service for Windows workloads.</item>
+      <item>No ARM64 support as of 2026 — use AKS with ARM64 node pools if needed.</item>
+      <item>Consumption plan has a 4 vCPU / 8 GiB per replica limit — use Dedicated plan for memory-heavy containers.</item>
+    </list>
+  </section>
+
+  <example type="good">
+    <note>Container App with HTTP scaling, Dapr enabled, and Key Vault secret reference.</note>
+    <code lang="yaml"><![CDATA[
+# Bicep-equivalent ARM properties for reference
+properties:
+  template:
+    containers:
+      - name: api
+        image: myregistry.azurecr.io/api:v2
+        resources:
+          cpu: 0.5
+          memory: 1Gi
+        env:
+          - name: DB_PASSWORD
+            secretRef: db-password
+    scale:
+      minReplicas: 1
+      maxReplicas: 20
+      rules:
+        - name: http-scaling
+          http:
+            metadata:
+              concurrentRequests: "100"
+  dapr:
+    enabled: true
+    appId: api
+    appPort: 8080
+    appProtocol: http
+  secrets:
+    - name: db-password
+      keyVaultUrl: https://my-vault.vault.azure.net/secrets/db-password
+      identity: /subscriptions/.../userAssignedIdentities/api-identity
+]]></code>
+  </example>
+</text>

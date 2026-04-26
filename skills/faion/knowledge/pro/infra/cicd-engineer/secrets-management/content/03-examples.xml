@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="Secrets Management: Examples">
+  <summary>Vault Kubernetes auth setup, ESO ExternalSecret, SOPS encryption workflow, AWS Secrets Manager rotation.</summary>
+
+  <section title="Vault Kubernetes Authentication">
+    <example type="good">
+      <note>Configure Vault Kubernetes auth method so pods authenticate using their ServiceAccount JWT.</note>
+      <code lang="bash"><![CDATA[
+# Enable Kubernetes auth method
+vault auth enable kubernetes
+
+# Configure it with the cluster's API server and CA
+vault write auth/kubernetes/config \
+  kubernetes_host="https://kubernetes.default.svc" \
+  kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+  token_reviewer_jwt=@/var/run/secrets/kubernetes.io/serviceaccount/token
+
+# Create a policy for the application
+vault policy write myapp-policy - <<EOF
+path "secret/data/production/myapp/*" {
+  capabilities = ["read"]
+}
+path "database/creds/myapp-readonly" {
+  capabilities = ["read"]
+}
+EOF
+
+# Bind the policy to a Kubernetes ServiceAccount
+vault write auth/kubernetes/role/myapp \
+  bound_service_account_names=myapp \
+  bound_service_account_namespaces=production \
+  policies=myapp-policy \
+  ttl=1h
+]]></code>
+    </example>
+  </section>
+
+  <section title="External Secrets Operator">
+    <example type="good">
+      <note>ESO ExternalSecret syncing a Vault secret to a Kubernetes Secret with field remapping.</note>
+      <code lang="yaml"><![CDATA[
+# SecretStore (namespace-scoped, preferred over ClusterSecretStore)
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: vault-backend
+  namespace: production
+spec:
+  provider:
+    vault:
+      server: https://vault.example.com:8200
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: myapp
+          serviceAccountRef:
+            name: myapp
+---
+# ExternalSecret: syncs every hour, creates a K8s Secret
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: myapp-db-creds
+  namespace: production
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: SecretStore
+  target:
+    name: myapp-db-creds
+    creationPolicy: Owner
+  data:
+    - secretKey: username
+      remoteRef:
+        key: production/myapp/database
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: production/myapp/database
+        property: password
+]]></code>
+    </example>
+  </section>
+
+  <section title="SOPS Encryption Workflow">
+    <example type="good">
+      <note>Encrypt a secrets file with SOPS using AWS KMS, then decrypt in a GitOps pipeline.</note>
+      <code lang="bash"><![CDATA[
+# Install SOPS
+curl -Lo sops https://github.com/getsops/sops/releases/download/v3.9.0/sops-v3.9.0.linux.amd64
+chmod +x sops && sudo mv sops /usr/local/bin/
+
+# .sops.yaml (checked into Git, no secrets)
+# creation_rules:
+#   - path_regex: secrets/.*\.yaml
+#     kms: arn:aws:kms:us-east-1:123456789:key/xxxxxxxx
+
+# Encrypt a secrets file (values are encrypted, keys remain readable)
+sops --encrypt secrets/production/myapp.yaml > secrets/production/myapp.enc.yaml
+
+# Decrypt for local use
+sops --decrypt secrets/production/myapp.enc.yaml
+
+# ArgoCD: install SOPS plugin or use helm-secrets
+# FluxCD: configure decryption provider in Kustomization
+# flux create kustomization myapp \
+#   --source=GitRepository/myapp \
+#   --path=./k8s \
+#   --decryption-provider=sops \
+#   --decryption-secret=sops-age
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/external-secret.yaml">ESO ExternalSecret manifest for Vault or AWS SM</reference>
+  <reference path="templates/sops-config.yaml">.sops.yaml with per-environment KMS key routing</reference>
+  <reference path="templates/vault-policy.hcl">Vault least-privilege policy for a K8s workload</reference>
+</text>

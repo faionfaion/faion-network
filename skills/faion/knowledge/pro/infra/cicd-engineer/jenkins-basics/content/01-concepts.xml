@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts" title="Jenkins Basics: Pipeline Types, Agent Types, and JCasC">
+  <summary>Pipeline type comparison (Declarative vs Scripted), agent types, essential plugins, and JCasC requirement.</summary>
+
+  <section title="Pipeline Types">
+    <rule>
+      <statement>Use Declarative Pipeline syntax for all new Jenkinsfiles; use Scripted only when Declarative cannot express the required logic (rare).</statement>
+      <rationale>Declarative pipelines support syntax validation at load time, restart-from-stage, and the `post` section for structured cleanup. Scripted pipelines offer more flexibility but provide no static validation — errors appear only at runtime, making debugging harder.</rationale>
+    </rule>
+
+    <example type="good">
+      <note>Minimal Declarative pipeline skeleton with required sections.</note>
+      <code lang="groovy"><![CDATA[
+pipeline {
+    agent { label 'linux' }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make build'
+            }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            slackSend channel: '#ci', color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+        }
+    }
+}
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Using Scripted Pipeline for a standard build-test-deploy workflow.</description>
+      <reason>Declarative covers 95% of use cases with better tooling support. Scripted pipelines are harder to read, have no syntax validation, and cannot restart from a failed stage.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Agent Types">
+    <rule>
+      <statement>Never run builds on the Jenkins controller node; set controller executors to 0 and run all material work (clone, build, test) on agents.</statement>
+      <rationale>Builds on the controller consume resources needed for scheduling and plugin processing, causing job queue delays and potential OOM kills of Jenkins itself. Security-wise, builds should never have direct access to the controller filesystem where credentials are stored.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Kubernetes agents for dynamic, ephemeral build environments; they scale to zero when idle and provide isolation via pod-level resource limits.</statement>
+      <rationale>Kubernetes agents are created on demand and destroyed after the build, eliminating the stale-state problem of long-lived agents. Each build gets a clean environment with no pollution from previous builds.</rationale>
+    </rule>
+  </section>
+
+  <section title="Configuration as Code">
+    <rule>
+      <statement>Manage all Jenkins configuration (security realm, authorization, node definitions, shared libraries, credentials) via the JCasC plugin from a YAML file stored in source control.</statement>
+      <rationale>Manual Jenkins configuration is not reproducible. After a disaster recovery restore, JCasC re-applies the entire configuration from YAML, restoring Jenkins to its exact state in minutes. Without JCasC, rebuilding a Jenkins controller requires hours of manual UI configuration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Essential Plugins">
+    <list>
+      <item>Pipeline — core pipeline functionality</item>
+      <item>Kubernetes — dynamic K8s agents</item>
+      <item>Configuration as Code (JCasC) — reproducible Jenkins configuration</item>
+      <item>Credentials Binding — secure credential injection without echoing to logs</item>
+      <item>Git + GitHub Branch Source — SCM integration and multibranch pipeline</item>
+      <item>Prometheus Metrics — metrics export for Grafana dashboards</item>
+      <item>Pipeline Utility Steps — JSON/YAML parsing, file operations in pipelines</item>
+    </list>
+  </section>
+</text>

@@ -1,0 +1,59 @@
+# provisioning/datasources/datasources.yaml
+# Grafana datasource provisioning for Prometheus, Loki, Tempo, PostgreSQL.
+# Inject credentials via environment variables — never hardcode.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: ${PROMETHEUS_URL}
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: ${LOKI_URL}
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: "traceID=(\\w+)"
+          matcherType: regex
+          name: TraceID
+          url: "${__value.raw}"
+          urlDisplayLabel: "View Trace"
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: ${TEMPO_URL}
+    editable: false
+    jsonData:
+      httpMethod: GET
+      tracesToLogs:
+        datasourceUid: loki
+        tags: ['job', 'pod', 'namespace']
+        filterByTraceID: true
+
+  - name: PostgreSQL
+    type: postgres
+    url: ${PG_HOST}:${PG_PORT}
+    database: ${PG_DATABASE}
+    user: ${PG_USER}
+    editable: false
+    secureJsonData:
+      password: ${PG_PASSWORD}
+    jsonData:
+      sslmode: require
+      maxOpenConns: 25
+      maxIdleConns: 10
+      connMaxLifetime: 14400

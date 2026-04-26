@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-instrumentation" title="Prometheus: Application Instrumentation Patterns">
+  <summary>RED method instrumentation in Python, Node.js, and Go with concrete metric definitions and middleware patterns.</summary>
+
+  <section title="RED Method">
+    <p>Instrument every HTTP service with three metrics (RED method): Rate (requests per second), Errors (failed requests per second), Duration (request latency histogram). These three metrics answer all operational questions about a service.</p>
+  </section>
+
+  <section title="Python/FastAPI">
+    <example type="good">
+      <note>FastAPI instrumentation: Counter for request count, Histogram for latency, Gauge for in-progress, /metrics endpoint.</note>
+      <code lang="python"><![CDATA[
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from fastapi import FastAPI, Response
+import time
+
+REQUEST_COUNT = Counter(
+    'http_requests_total', 'Total HTTP requests',
+    ['method', 'endpoint', 'status']
+)
+REQUEST_LATENCY = Histogram(
+    'http_request_duration_seconds', 'HTTP request latency',
+    ['method', 'endpoint'],
+    buckets=[.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10]
+)
+IN_PROGRESS = Gauge('http_requests_in_progress', 'Requests in progress', ['method', 'endpoint'])
+
+app = FastAPI()
+
+@app.get("/metrics")
+def metrics():
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Node.js/Express">
+    <example type="good">
+      <note>Express middleware for automatic request tracking with prom-client.</note>
+      <code lang="javascript"><![CDATA[
+const promClient = require('prom-client');
+promClient.collectDefaultMetrics({ prefix: 'nodejs_' });
+
+const httpRequestsTotal = new promClient.Counter({
+  name: 'http_requests_total',
+  help: 'Total HTTP requests',
+  labelNames: ['method', 'route', 'status'],
+});
+const httpRequestDuration = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'HTTP request duration',
+  labelNames: ['method', 'route'],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+});
+
+const metricsMiddleware = (req, res, next) => {
+  const start = Date.now();
+  const route = req.route?.path || req.path;
+  res.on('finish', () => {
+    httpRequestsTotal.labels(req.method, route, res.statusCode).inc();
+    httpRequestDuration.labels(req.method, route).observe((Date.now() - start) / 1000);
+  });
+  next();
+};
+]]></code>
+    </example>
+  </section>
+
+  <section title="Go">
+    <example type="good">
+      <note>Go HTTP middleware using promauto for automatic registration.</note>
+      <code lang="go"><![CDATA[
+var (
+    httpRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+        Name: "http_requests_total",
+        Help: "Total HTTP requests",
+    }, []string{"method", "path", "status"})
+
+    httpRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+        Name:    "http_request_duration_seconds",
+        Help:    "HTTP request duration",
+        Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+    }, []string{"method", "path"})
+)
+
+func metricsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        timer := prometheus.NewTimer(httpRequestDuration.WithLabelValues(r.Method, r.URL.Path))
+        rw := &responseWriter{ResponseWriter: w, statusCode: 200}
+        next.ServeHTTP(rw, r)
+        timer.ObserveDuration()
+        httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, fmt.Sprintf("%d", rw.statusCode)).Inc()
+    })
+}
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="DORA Metrics: Implementation Rules and Tooling">
+  <summary>Rules for setting up DORA metric collection, tool integrations, and dashboard requirements.</summary>
+
+  <section title="Data Collection Rules">
+    <rule>
+      <statement>Automate metric collection from CI/CD pipelines — never rely on manual reporting.</statement>
+      <rationale>Manual reporting introduces lag and bias; teams under pressure stop updating it. Automated collection from deployment events is the only reliable baseline.</rationale>
+    </rule>
+    <rule>
+      <statement>Define "production deployment" precisely before collecting data: successful deploy to prod environment, not staging.</statement>
+      <rationale>Ambiguous definition inflates DF when staging deployments are counted. The signal must reflect real user impact.</rationale>
+    </rule>
+    <rule>
+      <statement>Mark deployments as rollback or hotfix at emit time, not retroactively, so CFR is accurate.</statement>
+      <rationale>Retroactive classification is inconsistent across team members; the CI/CD pipeline knows at deploy time whether the trigger was a hotfix branch or rollback workflow.</rationale>
+    </rule>
+    <rule>
+      <statement>Link incident records to the deployment that caused them; MTTR without deployment linkage cannot distinguish release-caused incidents from infrastructure failures.</statement>
+      <rationale>Only release-caused incidents contribute to Change Failure Rate. Infrastructure-only incidents belong in reliability/SLO tracking, not CFR.</rationale>
+    </rule>
+  </section>
+
+  <section title="Tool Integrations">
+    <p>Recommended tooling by maturity:</p>
+    <list>
+      <item>GitLab native: enable DORA analytics (Premium/Ultimate tier) — zero additional tooling</item>
+      <item>GitHub + any incident tool: Google Four Keys (open source, GCP-native event pipeline)</item>
+      <item>Multi-platform enterprise: Sleuth, LinearB, or Jellyfish for aggregation</item>
+      <item>Custom stack: Prometheus + PostgreSQL schema + Grafana dashboard (templates in this methodology)</item>
+    </list>
+    <rule>
+      <statement>Export deployment events to a Prometheus-compatible endpoint or PostgreSQL from every CI/CD pipeline immediately after each successful deploy.</statement>
+      <rationale>Post-hoc scraping of CI/CD logs is fragile; emit events at the point of deployment where all metadata (commit SHA, timestamp, is_rollback) is available.</rationale>
+    </rule>
+  </section>
+
+  <section title="Process Integration">
+    <rule>
+      <statement>Review DORA metrics in team retrospectives, never in performance reviews of individual engineers.</statement>
+      <rationale>Using DORA metrics to evaluate individuals causes gaming (smaller commits, avoided deployments, suppressed incident reports) that destroys the signal.</rationale>
+    </rule>
+    <rule>
+      <statement>Set weekly automated reports; alert on degradation (not on absolute low values) during the first 90 days of collection.</statement>
+      <rationale>First 90 days establishes baseline. Early alerting on low absolute values discourages teams before the baseline is known.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="templates/deploy-event.yml">GitHub Actions deployment event emission</link>
+    <link path="templates/prometheus-rules.yml">Prometheus recording rules and alerts</link>
+    <link path="templates/schema.sql">PostgreSQL schema for deployments and incidents</link>
+  </see-also>
+</text>

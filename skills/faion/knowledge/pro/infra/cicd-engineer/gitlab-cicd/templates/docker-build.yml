@@ -1,0 +1,53 @@
+# Docker build with BuildKit layer caching, Trivy vulnerability scan,
+# and GitLab Container Registry push.
+# Requires: $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD (auto-provided by GitLab).
+
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  IMAGE_LATEST: $CI_REGISTRY_IMAGE:latest
+  DOCKER_BUILDKIT: "1"
+
+.docker-base:
+  image: docker:24
+  services:
+    - docker:24-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+docker-build:
+  extends: .docker-base
+  stage: build
+  script:
+    - docker build
+        --cache-from $IMAGE_LATEST
+        --build-arg BUILDKIT_INLINE_CACHE=1
+        --tag $IMAGE_TAG
+        --tag $IMAGE_LATEST
+        .
+    - docker push $IMAGE_TAG
+    - docker push $IMAGE_LATEST
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID
+
+trivy-scan:
+  stage: scan
+  image:
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  needs: [docker-build]
+  script:
+    # Report all HIGH+CRITICAL (informational, non-blocking)
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL
+        --format template --template "@/contrib/gitlab.tpl"
+        --output gl-container-scanning-report.json
+        $IMAGE_TAG
+    # Block on CRITICAL findings
+    - trivy image --exit-code 1 --severity CRITICAL $IMAGE_TAG
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_MERGE_REQUEST_IID

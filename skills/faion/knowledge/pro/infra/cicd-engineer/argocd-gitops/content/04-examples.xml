@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-examples" title="ArgoCD GitOps: Examples">
+  <summary>Application manifest, AppProject with RBAC, ApplicationSet for multi-env, sync hook patterns.</summary>
+
+  <section title="Application with Automated Sync">
+    <example type="good">
+      <note>Production Application with self-heal, prune, server-side apply, retry policy, and sync window compliance.</note>
+      <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp-production
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "#deployments"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: "#alerts"
+spec:
+  project: myapp
+
+  source:
+    repoURL: https://github.com/myorg/gitops-config
+    targetRevision: main
+    path: apps/myapp/overlays/production
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: myapp-production
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  revisionHistoryLimit: 10
+]]></code>
+    </example>
+  </section>
+
+  <section title="AppProject with RBAC">
+    <example type="good">
+      <note>AppProject restricting source repos, destination namespaces, and defining developer vs admin roles.</note>
+      <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: myapp
+  namespace: argocd
+spec:
+  description: MyApp team project
+
+  sourceRepos:
+    - https://github.com/myorg/gitops-config
+    - https://charts.myorg.example.com
+
+  destinations:
+    - namespace: myapp-staging
+      server: https://kubernetes.default.svc
+    - namespace: myapp-production
+      server: https://kubernetes.default.svc
+
+  # Allow Namespace creation (needed for CreateNamespace sync option)
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+
+  roles:
+    - name: developer
+      policies:
+        - p, proj:myapp:developer, applications, get, myapp/*, allow
+        - p, proj:myapp:developer, applications, sync, myapp/myapp-staging, allow
+      groups:
+        - myapp-developers
+
+    - name: release-manager
+      policies:
+        - p, proj:myapp:release-manager, applications, *, myapp/*, allow
+      groups:
+        - myapp-release-managers
+
+  # Block production deployments on weekends
+  syncWindows:
+    - kind: deny
+      schedule: '0 0 * * 6,0'
+      duration: 48h
+      applications:
+        - '*-production'
+      manualSync: false   # even manual sync is blocked
+]]></code>
+    </example>
+  </section>
+
+  <section title="Sync Hook: Database Migration">
+    <example type="good">
+      <note>PreSync Job runs database migrations before the application Deployment is updated; hook is deleted on success.</note>
+      <code lang="yaml"><![CDATA[
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: myapp-migration
+  namespace: myapp-production
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrate
+          image: myregistry.io/myapp:$IMAGE_TAG
+          command: ['python', 'manage.py', 'migrate', '--noinput']
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secrets
+                  key: DATABASE_URL
+      restartPolicy: Never
+  backoffLimit: 3
+  activeDeadlineSeconds: 300
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/application.yaml">ArgoCD Application with automated sync, self-heal, prune</reference>
+  <reference path="templates/appproject.yaml">AppProject with source allowlist, destination namespaces, RBAC</reference>
+  <reference path="templates/applicationset-envs.yaml">ApplicationSet using List generator for staging/production</reference>
+</text>

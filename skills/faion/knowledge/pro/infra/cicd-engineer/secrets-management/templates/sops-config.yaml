@@ -1,0 +1,40 @@
+# .sops.yaml
+# SOPS configuration with per-environment KMS key routing.
+# Place at the root of your GitOps repository.
+# Replace: ACCOUNT_ID, KEY_ID_* with actual AWS KMS ARNs.
+
+creation_rules:
+  # Production: multi-region KMS for redundancy
+  - path_regex: ^secrets/production/.*\.ya?ml$
+    kms: >-
+      arn:aws:kms:us-east-1:ACCOUNT_ID:key/PROD_KEY_ID_1,
+      arn:aws:kms:us-west-2:ACCOUNT_ID:key/PROD_KEY_ID_2
+    encrypted_regex: ^(password|secret|api_key|token|private_key|credentials|key)$
+
+  # Staging: single-region KMS
+  - path_regex: ^secrets/staging/.*\.ya?ml$
+    kms: arn:aws:kms:us-east-1:ACCOUNT_ID:key/STAGING_KEY_ID
+    encrypted_regex: ^(password|secret|api_key|token|private_key|credentials|key)$
+
+  # Development: age key (no cloud dependency for local dev)
+  # Generate: age-keygen -o ~/.config/sops/age/keys.txt
+  - path_regex: ^secrets/development/.*\.ya?ml$
+    age: age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+    encrypted_regex: ^(password|secret|api_key|token|private_key|credentials|key)$
+
+  # GCP environments
+  - path_regex: ^secrets/gcp/.*\.ya?ml$
+    gcp_kms: projects/GCP_PROJECT_ID/locations/global/keyRings/KEYRING/cryptoKeys/KEY_NAME
+    encrypted_regex: ^(password|secret|api_key|token|private_key|credentials|key)$
+
+# Usage:
+#   sops --encrypt secrets/production/myapp.yaml > secrets/production/myapp.enc.yaml
+#   sops --decrypt secrets/production/myapp.enc.yaml
+#   sops secrets/production/myapp.enc.yaml   # opens in $EDITOR, re-encrypts on save
+#
+# FluxCD decryption:
+#   flux create kustomization myapp \
+#     --decryption-provider=sops \
+#     --decryption-secret=sops-age
+#
+# ArgoCD: use helm-secrets plugin or argocd-vault-plugin

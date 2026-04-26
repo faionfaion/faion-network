@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="Jenkins Basics: Pipeline Examples">
+  <summary>Declarative pipeline skeleton, Kubernetes agent example, Shared Library definition, parallel test execution.</summary>
+
+  <section title="Declarative Pipeline with Docker Agent">
+    <example type="good">
+      <note>Node.js Declarative pipeline using Docker agent with parallel lint and test stages.</note>
+      <code lang="groovy"><![CDATA[
+pipeline {
+    agent {
+        docker {
+            image 'node:20-alpine'
+            args '-v $HOME/.npm:/root/.npm'
+        }
+    }
+
+    environment {
+        CI = 'true'
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Install') {
+            steps { sh 'npm ci' }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps { sh 'npm run lint' }
+                }
+                stage('Type Check') {
+                    steps { sh 'npm run typecheck' }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps { sh 'npm test -- --coverage' }
+            post {
+                always { junit 'junit.xml' }
+            }
+        }
+
+        stage('Build') {
+            steps { sh 'npm run build' }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when { branch 'main' }
+            input { message 'Deploy to production?'; ok 'Deploy' }
+            steps { sh './scripts/deploy.sh production' }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            slackSend channel: '#ci', color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+        }
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Kubernetes Agent">
+    <example type="good">
+      <note>Kubernetes pod template with separate containers for build and deployment tools.</note>
+      <code lang="groovy"><![CDATA[
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: node
+    image: node:20-alpine
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "1",    memory: "1Gi"  }
+  - name: helm
+    image: alpine/helm:3.14
+    command: [cat]
+    tty: true
+'''
+        }
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                container('node') {
+                    sh 'npm ci && npm run build'
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                        sh 'helm upgrade --install myapp ./charts/myapp --wait --timeout 5m'
+                    }
+                }
+            }
+        }
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Shared Library Definition">
+    <example type="good">
+      <note>Shared Library var definition (vars/standardPipeline.groovy) encapsulating common pipeline logic.</note>
+      <code lang="groovy"><![CDATA[
+// vars/standardPipeline.groovy
+def call(Map config) {
+    pipeline {
+        agent { docker { image config.get('image', 'node:20-alpine') } }
+
+        options {
+            timeout(time: config.get('timeout', 30), unit: 'MINUTES')
+            buildDiscarder(logRotator(numToKeepStr: '10'))
+        }
+
+        stages {
+            stage('Install') {
+                steps { sh config.get('installCmd', 'npm ci') }
+            }
+            stage('Test') {
+                steps { sh config.get('testCmd', 'npm test') }
+            }
+            stage('Build') {
+                steps { sh config.get('buildCmd', 'npm run build') }
+            }
+            stage('Deploy') {
+                when { branch config.get('deployBranch', 'main') }
+                steps { sh config.get('deployCmd', 'echo No deploy configured') }
+            }
+        }
+
+        post {
+            always { cleanWs() }
+            failure {
+                script {
+                    if (config.slackChannel) {
+                        slackSend channel: config.slackChannel, color: 'danger',
+                            message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    }
+                }
+            }
+        }
+    }
+}
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/Jenkinsfile">Declarative pipeline template with build/test/deploy stages</reference>
+  <reference path="templates/kubernetes-agent.groovy">Kubernetes pod template for dynamic Jenkins agents</reference>
+</text>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-cost-security" title="Azure Compute: Cost Optimization and Security Rules">
+  <summary>Spot Priority Mix calculation, Reserved Instances, Managed Identity pattern, private endpoints.</summary>
+
+  <section title="Cost Optimization">
+    <rule>
+      <statement>Use Spot Priority Mix on VMSS to maintain a minimum on-demand baseline while running the remainder as Spot VMs; calculate the split using `baseRegularPriorityCount` + `regularPriorityPercentageAboveBase`.</statement>
+      <rationale>Pure Spot is unreliable for production — eviction rates can exceed 20% during peak Azure demand. Spot Priority Mix guarantees a minimum on-demand baseline (e.g., 2 VMs) while saving up to 90% on the remaining capacity, making it safe for production stateless workloads.</rationale>
+    </rule>
+    <rule>
+      <statement>Purchase Reserved Instances for stable baseline workloads (VMs, AKS system nodes, App Service plans) with 1-year commitments; use Savings Plans for flexible cross-service commitments.</statement>
+      <rationale>Reserved Instances provide up to 72% savings over pay-as-you-go for predictable workloads. Savings Plans offer similar savings but apply across compute services, useful when the mix of VMs vs containers changes over time.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Dev/Test pricing for all non-production environments and scale down or stop non-prod resources outside business hours.</statement>
+      <rationale>Dev/Test pricing removes the Windows Server license fee from eligible VMs and App Service plans, reducing cost by up to 55%. Stopping non-prod VMs overnight (16h/day off) reduces compute cost by ~67% compared to always-on.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security">
+    <rule>
+      <statement>Use Managed Identity for all Azure resource access from VMs, AKS, Container Apps, and App Service — never store service principal credentials in code, environment variables, or Kubernetes Secrets.</statement>
+      <rationale>Managed Identities are issued and rotated by Azure AD automatically. A stored service principal credential is a permanent secret that can be exfiltrated; a Managed Identity credential expires with the VM/pod and cannot be used outside its assigned resource.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure private endpoints for all PaaS services accessed by compute resources (Azure SQL, Storage, Key Vault, Container Registry) to route traffic over the Azure backbone instead of the public internet.</statement>
+      <rationale>Private endpoints bind a PaaS service to a private VNet IP. Traffic stays on Microsoft's backbone and is not exposed to internet routing, DDoS, or man-in-the-middle risks. NSG rules can then block all outbound internet from compute nodes.</rationale>
+    </rule>
+    <rule>
+      <statement>Enable Microsoft Defender for Containers (AKS) and Defender for VMs for threat detection; enforce Azure Policy assignments to prevent non-compliant resource configurations from being deployed.</statement>
+      <rationale>Defender for Containers scans running images, detects privilege escalation attempts, and alerts on anomalous network activity. Azure Policy prevents teams from deploying resources without required tags, encryption, or network restrictions, shifting security left before deployment.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <note>VMSS Spot Priority Mix: 2 on-demand baseline + 25% on-demand above base = mostly Spot at scale.</note>
+    <code lang="json"><![CDATA[
+{
+  "priorityMixPolicy": {
+    "baseRegularPriorityCount": 2,
+    "regularPriorityPercentageAboveBase": 25
+  }
+}
+# At 10 VMs: 2 + ceil(8 * 0.25) = 4 on-demand, 6 Spot
+# At 20 VMs: 2 + ceil(18 * 0.25) = 7 on-demand, 13 Spot
+# At 50 VMs: 2 + ceil(48 * 0.25) = 14 on-demand, 36 Spot
+]]></code>
+  </example>
+</text>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-rules" title="Prometheus: Recording Rules, Alert Quality, and Alertmanager Routing">
+  <summary>Rules for naming recording rules, writing high-quality alert rules, and routing alerts via Alertmanager.</summary>
+
+  <section title="Recording Rules">
+    <rule>
+      <statement>Name recording rules using the pattern `level:metric:operations` (e.g., `service:request_rate:5m`).</statement>
+      <rationale>The naming convention identifies the aggregation level, the base metric, and the operations applied, making rules self-documenting and discoverable in PromQL autocomplete.</rationale>
+    </rule>
+    <rule>
+      <statement>Create recording rules for any PromQL expression used in more than one dashboard panel or alert.</statement>
+      <rationale>Pre-computing expensive aggregations with recording rules reduces query latency from seconds to milliseconds for dashboard loading. Prometheus evaluates recording rules on a schedule, not per query.</rationale>
+    </rule>
+  </section>
+
+  <section title="Alert Quality Rules">
+    <rule>
+      <statement>Every alert must include a `for` clause of at least 5 minutes; use 10–15 minutes for infrastructure alerts.</statement>
+      <rationale>Without `for`, a single spike triggers the alert. With `for: 5m`, the condition must persist for 5 minutes before firing, eliminating most transient false positives.</rationale>
+    </rule>
+    <rule>
+      <statement>Every alert must include `runbook_url` in annotations linking to the remediation procedure.</statement>
+      <rationale>On-call engineers receiving an alert at 3am need immediate context. An alert without a runbook link forces them to search before they can act, increasing MTTR.</rationale>
+    </rule>
+    <rule>
+      <statement>Alert on symptoms (user-facing impact) not causes (CPU high). Prefer error rate and latency alerts over resource saturation alerts.</statement>
+      <rationale>High CPU does not mean users are affected. A high error rate always means users are affected. Symptom-based alerts have fewer false positives and clearer remediation paths.</rationale>
+    </rule>
+  </section>
+
+  <section title="Alertmanager Routing">
+    <rule>
+      <statement>Route `severity: critical` alerts to PagerDuty and Slack; `severity: warning` to Slack only; use inhibition rules to suppress warnings when critical is firing for the same alertname + namespace.</statement>
+      <rationale>Without inhibition, a single outage generates dozens of redundant warning alerts alongside the critical. Inhibition reduces noise so on-call engineers focus on the critical root cause.</rationale>
+    </rule>
+  </section>
+
+  <antipattern>
+    <description>Alert without `for` clause on a rate() expression.</description>
+    <reason>rate() over short windows is noisy. Without `for`, every brief spike fires and resolves the alert, causing alert fatigue where engineers stop responding.</reason>
+  </antipattern>
+
+  <reference path="templates/prometheusrule.yaml">PrometheusRule template with recording rules and alerts</reference>
+  <reference path="templates/alertmanager-config.yaml">Alertmanager routing config template</reference>
+</text>

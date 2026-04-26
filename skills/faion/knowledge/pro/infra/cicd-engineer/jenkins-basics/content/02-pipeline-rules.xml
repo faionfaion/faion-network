@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-pipeline-rules" title="Jenkins Basics: Pipeline Authoring Rules">
+  <summary>Declarative syntax rules, Shared Library structure, parallel stage patterns, credentials binding.</summary>
+
+  <section title="Jenkinsfile Rules">
+    <rule>
+      <statement>Store the Jenkinsfile in the root of the repository with exact case (`Jenkinsfile`) and define pipeline timeouts and build discarder in the `options` section.</statement>
+      <rationale>Pipelines without timeouts can hang indefinitely on stuck processes, consuming executor slots. Build discarder limits disk usage from accumulated build artifacts and logs. Without these, Jenkins can run out of disk and memory on busy controllers.</rationale>
+    </rule>
+    <rule>
+      <statement>Never hardcode credentials in Jenkinsfiles; always use the Credentials plugin with `withCredentials` or `credentials()` binding.</statement>
+      <rationale>Hardcoded credentials are committed to Git and visible in build logs. The Credentials plugin stores credentials encrypted in Jenkins and injects them as environment variables at runtime without printing to logs.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `parallel` stages for independent tasks (lint, unit tests, security scan) to reduce total pipeline duration.</statement>
+      <rationale>Sequential stages run each task after the previous one completes. Parallel stages run simultaneously, reducing pipeline duration from the sum of all tasks to the duration of the slowest task.</rationale>
+    </rule>
+  </section>
+
+  <section title="Shared Libraries">
+    <rule>
+      <statement>Extract common pipeline logic (notification, Docker build, Helm deploy) into a Shared Library stored in a dedicated repository; version with Git tags and reference specific tags in Jenkinsfiles.</statement>
+      <rationale>Code duplicated across dozens of Jenkinsfiles requires coordinated updates when requirements change. A Shared Library centralizes the logic — fixing a deployment bug or adding a security check propagates to all pipelines that use the library.</rationale>
+    </rule>
+
+    <example type="good">
+      <note>Shared Library call from a Jenkinsfile using a pinned version tag.</note>
+      <code lang="groovy"><![CDATA[
+@Library('my-shared-library@v2.3.1') _
+
+standardPipeline(
+    dockerImage: 'node:20-alpine',
+    testCommand: 'npm run test:coverage',
+    deployBranch: 'main',
+    slackChannel: '#deployments'
+)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Multibranch Pipelines">
+    <rule>
+      <statement>Use Organization Folders for GitHub or GitLab organizations to auto-discover all repositories with Jenkinsfiles; use Multibranch Pipelines for single repositories with multiple branches.</statement>
+      <rationale>Organization Folders scan the entire organization periodically, automatically creating pipeline jobs for new repositories and removing jobs for deleted ones. This eliminates the manual work of registering each new project in Jenkins.</rationale>
+    </rule>
+    <rule>
+      <statement>Prefer webhooks over SCM polling for triggering builds; polling adds latency and wastes Jenkins CPU scanning repositories every N minutes.</statement>
+      <rationale>Webhooks push change events from GitHub/GitLab to Jenkins immediately on push. Polling checks all repositories on a fixed schedule, consuming bandwidth and CPU even when nothing changed, and adding up to N minutes of trigger latency.</rationale>
+    </rule>
+  </section>
+</text>

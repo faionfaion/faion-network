@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts" title="Secrets Management: Concepts, Tool Comparison, and Architecture Patterns">
+  <summary>Secret lifecycle, tool comparison (Vault/AWS SM/SOPS/ESO), five architecture patterns for 2025–2026.</summary>
+
+  <section title="Secret Lifecycle">
+    <rule>
+      <statement>Prefer dynamic short-lived credentials (Vault database engine, AWS STS temporary creds) over static long-lived credentials for all database, cloud API, and service-to-service access.</statement>
+      <rationale>A leaked static credential is valid until manually rotated — often days or weeks. A leaked dynamic credential is already expired (TTL typically 1–15 minutes), making it useless to an attacker. The blast radius of a credential compromise shrinks to the TTL window.</rationale>
+    </rule>
+    <rule>
+      <statement>Use workload identity federation (K8s ServiceAccount OIDC → cloud IAM) to eliminate stored credentials entirely for cloud-native workloads.</statement>
+      <rationale>Workload identity eliminates the credential management problem: the workload proves its identity via a signed JWT that the cloud provider verifies. There is no stored secret to rotate, audit, or accidentally expose.</rationale>
+    </rule>
+  </section>
+
+  <section title="Tool Selection Rules">
+    <rule>
+      <statement>Choose HashiCorp Vault for multi-cloud or regulated environments requiring dynamic secrets, complex RBAC policies, and a dedicated platform team to operate it.</statement>
+      <rationale>Vault's database engine, PKI, and cloud credential engines generate short-lived credentials on demand. This dynamic model requires a running Vault cluster with operational expertise. Without a platform team, the operational burden outweighs the benefits.</rationale>
+    </rule>
+    <rule>
+      <statement>Choose AWS Secrets Manager for AWS-only workloads where zero operational overhead is the priority; it integrates natively with RDS, Lambda, and ECS rotation.</statement>
+      <rationale>AWS Secrets Manager is fully managed: no cluster to operate, no HA configuration, no unseal ceremonies. Its per-secret pricing is predictable and often lower than the total cost of operating Vault for small teams.</rationale>
+    </rule>
+    <rule>
+      <statement>Use SOPS for GitOps workflows (FluxCD, ArgoCD) where encrypted secrets must live in Git repositories alongside Kubernetes manifests.</statement>
+      <rationale>SOPS encrypts secret values at the field level, leaving YAML structure readable for code review. The encryption key is a KMS ARN, not a passphrase — key access is controlled by IAM, not distributed secrets.</rationale>
+    </rule>
+    <rule>
+      <statement>Use External Secrets Operator (ESO) as the Kubernetes-native bridge between any central backend (Vault, AWS SM, GCP SM) and Kubernetes Secrets; prefer namespace-scoped SecretStores over ClusterSecretStore for workload isolation.</statement>
+      <rationale>ESO syncs secrets into K8s Secrets automatically and refreshes them on a configurable interval. Namespace-scoped SecretStores enforce workload isolation — a compromised service account in namespace A cannot read secrets configured for namespace B.</rationale>
+    </rule>
+  </section>
+
+  <section title="Architecture Patterns">
+    <list>
+      <item>AWS-native: Application → AWS SDK → AWS Secrets Manager (+ rotation Lambda)</item>
+      <item>Multi-cloud Vault: Application → Vault Agent sidecar → HashiCorp Vault (dynamic secrets engines)</item>
+      <item>GitOps SOPS: Git repo (SOPS-encrypted files) → FluxCD/ArgoCD decryption → K8s Secrets</item>
+      <item>K8s ESO: ExternalSecret CR → ESO controller → backend (Vault/AWS SM/GCP SM) → K8s Secret</item>
+      <item>Hybrid 2026: Central store (Vault/AWS SM) + ESO for K8s production + SOPS for GitOps configs</item>
+    </list>
+  </section>
+</text>

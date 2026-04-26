@@ -1,0 +1,65 @@
+# prometheus/dora-rules.yml
+# Prometheus recording rules and alerts for all four DORA metrics.
+# Assumes counters: deployments_total, deployments_failed_total,
+# deployment_lead_time_seconds (histogram), incident_resolution_time_seconds
+
+groups:
+  - name: dora_metrics
+    interval: 5m
+    rules:
+      - record: dora:deployment_frequency:7d
+        expr: |
+          sum(increase(deployments_total{environment="production"}[7d])) by (service) / 7
+        labels:
+          metric_type: dora
+
+      - record: dora:lead_time_hours:avg
+        expr: |
+          avg(deployment_lead_time_seconds) by (service) / 3600
+        labels:
+          metric_type: dora
+
+      - record: dora:change_failure_rate:percent
+        expr: |
+          (
+            sum(increase(deployments_failed_total{environment="production"}[30d])) by (service)
+            /
+            sum(increase(deployments_total{environment="production"}[30d])) by (service)
+          ) * 100
+        labels:
+          metric_type: dora
+
+      - record: dora:mttr_minutes:avg
+        expr: |
+          avg(incident_resolution_time_seconds) by (service) / 60
+        labels:
+          metric_type: dora
+
+  - name: dora_alerts
+    rules:
+      - alert: DORADeploymentFrequencyLow
+        expr: dora:deployment_frequency:7d < 0.14
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low deployment frequency for {{ $labels.service }}"
+          description: "Deployment frequency is below weekly threshold"
+
+      - alert: DORAChangeFailureRateHigh
+        expr: dora:change_failure_rate:percent > 30
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CFR for {{ $labels.service }}"
+          description: "Change failure rate is {{ $value | humanize }}% (>30%)"
+
+      - alert: DORAMTTRHigh
+        expr: dora:mttr_minutes:avg > 1440
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "High MTTR for {{ $labels.service }}"
+          description: "Mean time to restore exceeds 1 day"

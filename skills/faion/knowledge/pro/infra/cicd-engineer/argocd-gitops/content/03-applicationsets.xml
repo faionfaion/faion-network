@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-applicationsets" title="ArgoCD GitOps: ApplicationSets and Generators">
+  <summary>List, Git directory, Pull Request, and Cluster generators with use cases and rules.</summary>
+
+  <section title="Generator Selection Rules">
+    <rule>
+      <statement>Use List generator for a fixed set of known environments (staging, production); use Git Directory generator for auto-discovery of microservices from directory structure; use Pull Request generator for ephemeral preview environments.</statement>
+      <rationale>List generator is deterministic and easy to audit — the environments are explicitly enumerated in the ApplicationSet manifest. Git Directory generator scales to many services without manual registration. Pull Request generator creates and cleans up preview environments automatically, preventing orphaned namespaces.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Matrix generator to combine generators (e.g., List of environments × Git Directory of services) to create N×M applications without manual enumeration.</statement>
+      <rationale>Without Matrix generator, deploying 5 microservices to 3 environments requires 15 separate Application manifests. With Matrix, one ApplicationSet generates all 15 applications from two generators, and adding a new service or environment automatically creates the missing applications.</rationale>
+    </rule>
+  </section>
+
+  <example type="good">
+    <note>List generator ApplicationSet creating staging and production applications from a single template.</note>
+    <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: myapp
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: staging
+            namespace: myapp-staging
+            autoSync: "true"
+          - env: production
+            namespace: myapp-production
+            autoSync: "false"   # production: manual sync only
+  template:
+    metadata:
+      name: 'myapp-{{env}}'
+      annotations:
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts-{{env}}"
+    spec:
+      project: myapp
+      source:
+        repoURL: https://github.com/myorg/gitops-config
+        targetRevision: main
+        path: 'apps/myapp/overlays/{{env}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: '{{autoSync}}'
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 3
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 1m
+]]></code>
+  </example>
+
+  <example type="good">
+    <note>Pull Request generator for ephemeral preview environments — creates one Application per PR with label `preview`.</note>
+    <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: myapp-preview
+  namespace: argocd
+spec:
+  generators:
+    - pullRequest:
+        github:
+          owner: myorg
+          repo: myapp
+          tokenRef:
+            secretName: github-token
+            key: token
+          labels:
+            - preview
+        requeueAfterSeconds: 60
+  template:
+    metadata:
+      name: 'preview-{{number}}'
+    spec:
+      project: previews
+      source:
+        repoURL: https://github.com/myorg/gitops-config
+        targetRevision: main
+        path: apps/myapp/overlays/preview
+        kustomize:
+          nameSuffix: '-pr{{number}}'
+          images:
+            - myapp=myregistry.io/myapp:pr-{{number}}
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'preview-{{number}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+]]></code>
+  </example>
+</text>

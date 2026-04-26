@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts" title="ArgoCD GitOps: Core Concepts and Anti-Patterns">
+  <summary>Core components, GitOps flow, anti-patterns table (raw YAML, kubectl in prod, branches for envs).</summary>
+
+  <section title="Core Components">
+    <list>
+      <item>argocd-server — API and UI server; scale to 2–5 replicas for HA</item>
+      <item>argocd-repo-server — fetches and renders Git manifests; scale to 2–5 replicas for load</item>
+      <item>argocd-application-controller — reconciliation loop comparing Git vs cluster state; 1 replica (HA: sharding mode)</item>
+      <item>argocd-applicationset-controller — generates Applications from templates; 2 replicas</item>
+      <item>argocd-notifications — sends alerts on sync/health events; 1 replica</item>
+    </list>
+  </section>
+
+  <section title="GitOps Flow">
+    <rule>
+      <statement>The GitOps flow is one-directional: CI pipeline pushes to the GitOps config repo; ArgoCD detects the change and applies it to the cluster. CI must never run `kubectl apply` or `helm upgrade` directly against production clusters.</statement>
+      <rationale>Direct `kubectl` or `helm` commands from CI bypass GitOps audit trail, disable self-healing (ArgoCD would immediately revert them), and create a split-brain where Git state and cluster state diverge. All cluster changes must flow through Git to maintain a single source of truth.</rationale>
+    </rule>
+  </section>
+
+  <section title="Anti-Patterns">
+    <antipattern>
+      <description>Managing raw YAML manifests directly in ArgoCD without Helm or Kustomize.</description>
+      <reason>Raw YAML duplicates configuration across environments. Updating an image tag requires editing the same value in every environment's YAML directory. Kustomize patches and Helm values files centralize shared config and allow per-env overrides without duplication.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Git branches for environment promotion (e.g., a `staging` branch and a `production` branch for the same app).</description>
+      <reason>Branch-per-environment causes merge conflicts and forces manual cherry-pick workflows. When the staging branch diverges from production, it is unclear what is actually deployed. Folder-per-environment (apps/myapp/overlays/staging vs overlays/production) keeps all environments in the same branch for easy comparison.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Storing application source code and Kubernetes manifests in the same repository.</description>
+      <reason>A code commit triggers CI, which would push to the same repo, triggering ArgoCD, which triggers CI again — an infinite loop. Separate repos break this cycle: code repo triggers CI, CI updates the GitOps config repo, ArgoCD watches the config repo only.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Placing plain Kubernetes Secrets (base64-encoded) in the GitOps repository.</description>
+      <reason>Base64 is not encryption. Any repository reader can decode the values. Use External Secrets Operator, Sealed Secrets, or SOPS to encrypt secret values before committing to Git.</reason>
+    </antipattern>
+  </section>
+</text>

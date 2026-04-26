@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-examples" title="DORA Metrics: Code Examples">
+  <summary>Concrete examples of deployment event emission, PromQL queries for DORA metrics, and lead time calculation in Python.</summary>
+
+  <section title="Deployment Event Emission">
+    <example type="good">
+      <note>GitHub Actions step emitting a deployment event after successful deploy.</note>
+      <code lang="yaml"><![CDATA[
+- name: Record Deployment Event
+  if: success()
+  run: |
+    curl -X POST "$METRICS_ENDPOINT/events/deployment" \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.DORA_API_KEY }}" \
+      -d '{
+        "service": "${{ github.repository }}",
+        "environment": "production",
+        "commit_sha": "${{ github.sha }}",
+        "commit_timestamp": "${{ github.event.head_commit.timestamp }}",
+        "deployed_at": "'$(date -Iseconds)'",
+        "is_rollback": false,
+        "is_hotfix": false
+      }'
+]]></code>
+    </example>
+
+    <example type="bad">
+      <note>Recording deployment at pipeline start — will emit even if deploy fails, inflating DF.</note>
+      <code lang="yaml"><![CDATA[
+- name: Record Deployment (wrong placement)
+  run: |
+    curl -X POST "$METRICS_ENDPOINT/events/deployment" ...
+    ./deploy.sh  # deploy happens AFTER recording — wrong
+]]></code>
+    </example>
+  </section>
+
+  <section title="PromQL Queries">
+    <example type="good">
+      <note>Deployment Frequency: deployments per day over last 7 days.</note>
+      <code lang="promql"><![CDATA[
+sum(increase(deployments_total{environment="production"}[7d])) by (service) / 7
+]]></code>
+    </example>
+
+    <example type="good">
+      <note>Change Failure Rate as percentage over 30 days.</note>
+      <code lang="promql"><![CDATA[
+(
+  sum(increase(deployments_failed_total{environment="production"}[30d])) by (service)
+  /
+  sum(increase(deployments_total{environment="production"}[30d])) by (service)
+) * 100
+]]></code>
+    </example>
+
+    <example type="good">
+      <note>MTTR in minutes (average incident resolution time).</note>
+      <code lang="promql"><![CDATA[
+avg(incident_resolution_time_seconds) by (service) / 60
+]]></code>
+    </example>
+  </section>
+
+  <section title="Lead Time Calculation">
+    <example type="good">
+      <note>Python function computing lead time statistics from deployment records.</note>
+      <code lang="python"><![CDATA[
+from datetime import datetime
+from typing import List, Dict
+import statistics
+
+def calculate_lead_time(deployments: List[Dict]) -> Dict:
+    lead_times = []
+    for deploy in deployments:
+        commit_time = datetime.fromisoformat(deploy['commit_timestamp'])
+        deploy_time = datetime.fromisoformat(deploy['deployment_timestamp'])
+        lead_times.append((deploy_time - commit_time).total_seconds() / 3600)
+
+    if not lead_times:
+        return {"error": "No deployments"}
+
+    return {
+        "mean_hours": statistics.mean(lead_times),
+        "median_hours": statistics.median(lead_times),
+        "p95_hours": statistics.quantiles(lead_times, n=20)[18] if len(lead_times) >= 20 else max(lead_times),
+        "sample_size": len(lead_times),
+    }
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/deploy-event.yml">Complete GitHub Actions workflow with deployment event emission</reference>
+  <reference path="templates/prometheus-rules.yml">Prometheus recording rules and alerting rules for all four metrics</reference>
+  <reference path="templates/schema.sql">PostgreSQL schema with materialized view for daily DORA aggregation</reference>
+</text>

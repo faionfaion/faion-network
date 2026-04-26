@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-security" title="GitLab CI/CD: Security and Secrets Rules">
+  <summary>Rules for protected variables, security template inclusion, container scanning, and secret detection in GitLab CI pipelines.</summary>
+
+  <section title="Secret Handling Rules">
+    <rule>
+      <statement>Mark all secret CI/CD variables as Protected (available only on protected branches) and Masked (hidden in job logs).</statement>
+      <rationale>Unprotected variables are accessible in any branch pipeline, including attacker-controlled branches. Unmasked variables appear in job logs visible to all project members.</rationale>
+    </rule>
+    <rule>
+      <statement>Never echo or print secret variables in pipeline scripts; use `--silent` flags with curl and avoid `set -x` in scripts that handle secrets.</statement>
+      <rationale>Shell debug mode (`set -x`) prints every command with expanded variable values to the job log, exposing secrets to anyone with log access.</rationale>
+    </rule>
+    <rule>
+      <statement>Use file-type CI/CD variables for certificates, kubeconfig, and private keys — they are written to a temp file and the path is the variable value.</statement>
+      <rationale>Multiline secrets in string variables are fragile across shells. File-type variables handle encoding correctly and are automatically cleaned up after the job.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security Scanning Templates">
+    <rule>
+      <statement>Include GitLab security templates via `include:` rather than installing scanners manually — they receive automatic updates from GitLab.</statement>
+      <rationale>Manually maintained scanner installations drift in version and configuration over time. GitLab's managed templates stay current with the scanner vendor's latest recommendations.</rationale>
+    </rule>
+    <example type="good">
+      <note>Include all four GitLab security scanning templates.</note>
+      <code lang="yaml"><![CDATA[
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+]]></code>
+    </example>
+  </section>
+
+  <antipattern>
+    <description>Hardcoding credentials or API keys in `.gitlab-ci.yml`.</description>
+    <reason>`.gitlab-ci.yml` is committed to Git. Even if the repository is private, any team member or compromised account can read the file and extract credentials.</reason>
+  </antipattern>
+</text>

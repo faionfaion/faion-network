@@ -1,0 +1,82 @@
+# provisioning/alerting/alerting.yaml
+# Grafana Unified Alerting provisioning: rules, contact points, policies, mute timings.
+# Requires [unified_alerting] enabled = true in grafana.ini.
+
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: infrastructure
+    folder: Infrastructure Alerts
+    interval: 1m
+    rules:
+      - uid: high-cpu
+        title: High CPU Usage
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: {from: 300, to: 0}
+            datasourceUid: prometheus
+            model:
+              expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model: {type: reduce, expression: A, reducer: mean, refId: B}
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions: [{evaluator: {type: gt, params: [80]}}]
+              refId: C
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ $labels.instance }}"
+          runbook_url: "https://runbooks.example.com/cpu-high"
+
+contactPoints:
+  - orgId: 1
+    name: slack-general
+    receivers:
+      - uid: slack-general-1
+        type: slack
+        settings:
+          url: ${SLACK_WEBHOOK_URL}
+          recipient: "#alerts-general"
+          username: "Grafana Alert"
+
+  - orgId: 1
+    name: pagerduty
+    receivers:
+      - uid: pagerduty-1
+        type: pagerduty
+        settings:
+          integrationKey: ${PAGERDUTY_INTEGRATION_KEY}
+          severity: critical
+
+policies:
+  - orgId: 1
+    receiver: slack-general
+    group_by: [alertname, team]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h
+    routes:
+      - receiver: pagerduty
+        matchers: [severity = critical]
+        continue: true
+      - receiver: slack-general
+        matchers: [severity =~ "warning|info"]
+
+muteTimings:
+  - orgId: 1
+    name: maintenance-window
+    time_intervals:
+      - times: [{start_time: "02:00", end_time: "04:00"}]
+        weekdays: ["sunday"]
+        location: UTC

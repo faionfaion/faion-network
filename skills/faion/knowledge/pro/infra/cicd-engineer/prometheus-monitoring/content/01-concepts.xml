@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-concepts" title="Prometheus Monitoring: Core Concepts and Metric Types">
+  <summary>Prometheus pull model, metric types, label best practices, and CI/CD tool integration matrix.</summary>
+
+  <section title="Metric Types">
+    <p>Counter: monotonically increasing value; reset on restart. Use for request count, error count, build count.</p>
+    <p>Gauge: value that goes up and down. Use for queue size, active connections, temperature, memory usage.</p>
+    <p>Histogram: samples observations in configurable buckets; exposes _count, _sum, _bucket. Use for request duration, build time. Enables quantile calculation via histogram_quantile().</p>
+    <p>Summary: pre-calculates quantiles client-side over a sliding window. Use only when histogram bucket boundaries cannot be predicted; histograms are preferred.</p>
+  </section>
+
+  <section title="Label Best Practices">
+    <rule>
+      <statement>Never use unbounded label values (user_id, request_id, UUID) — each unique label value creates a new time series and can exhaust Prometheus memory.</statement>
+      <rationale>A metric with 1M unique user_id values creates 1M time series. Prometheus stores all active time series in memory. 10k time series is fine; 10M crashes Prometheus.</rationale>
+    </rule>
+    <rule>
+      <statement>Use consistent label names across all services: `namespace`, `service`, `pod`, `env`. Document the label schema.</statement>
+      <rationale>Inconsistent labels prevent cross-service aggregation in dashboards and alerts. Standardizing on Kubernetes metadata labels (from relabeling) ensures consistency automatically.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI/CD Tool Integration">
+    <p>Jenkins: install Prometheus Metrics Plugin; scrape `/prometheus` endpoint.</p>
+    <p>GitLab CI: deploy `gitlab-ci-pipelines-exporter`; configure with GitLab API token.</p>
+    <p>GitHub Actions: no native endpoint; push metrics to Pushgateway after each workflow run.</p>
+    <p>ArgoCD: native Prometheus metrics on port 8082; use ServiceMonitor.</p>
+    <p>Tekton: built-in metrics endpoint on port 9090.</p>
+  </section>
+
+  <section title="Pushgateway for CI/CD">
+    <rule>
+      <statement>Use Pushgateway only for short-lived jobs (CI/CD pipelines, batch jobs) that cannot be scraped; never use it as a general metrics proxy for long-running services.</statement>
+      <rationale>Long-running services should expose a `/metrics` endpoint for Prometheus to scrape. Pushgateway holds the last pushed value indefinitely — a failed long-running service would still show its last metrics as if healthy.</rationale>
+    </rule>
+  </section>
+</text>

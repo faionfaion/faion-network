@@ -1,0 +1,65 @@
+# applicationset-envs.yaml
+# ApplicationSet using List generator to deploy APP_NAME to staging and production.
+# Replace: APP_NAME, PROJECT_NAME, REPO_URL, ORG_NAME.
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: APP_NAME
+  namespace: argocd
+spec:
+  # Prevent multiple simultaneous Application updates (safe default)
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+
+  generators:
+    - list:
+        elements:
+          - env: staging
+            namespace: APP_NAME-staging
+            cluster: https://kubernetes.default.svc
+            autoSync: "true"
+            selfHeal: "true"
+          - env: production
+            namespace: APP_NAME-production
+            cluster: https://kubernetes.default.svc
+            autoSync: "true"
+            selfHeal: "true"
+
+  template:
+    metadata:
+      name: 'APP_NAME-{{env}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      annotations:
+        notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts-{{env}}"
+        notifications.argoproj.io/subscribe.on-health-degraded.slack: "#alerts-{{env}}"
+    spec:
+      project: PROJECT_NAME
+
+      source:
+        repoURL: REPO_URL
+        targetRevision: main
+        path: 'apps/APP_NAME/overlays/{{env}}'
+
+      destination:
+        server: '{{cluster}}'
+        namespace: '{{namespace}}'
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: '{{selfHeal}}'
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - ApplyOutOfSyncOnly=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+
+      revisionHistoryLimit: 10

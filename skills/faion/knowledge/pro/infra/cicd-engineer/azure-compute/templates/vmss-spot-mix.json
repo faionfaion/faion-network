@@ -1,0 +1,138 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmssName": { "type": "string" },
+    "location": { "type": "string", "defaultValue": "[resourceGroup().location]" },
+    "vmSize": { "type": "string", "defaultValue": "Standard_D4s_v5" },
+    "adminUsername": { "type": "string", "defaultValue": "azureadmin" },
+    "sshPublicKey": { "type": "securestring" },
+    "subnetId": { "type": "string" },
+    "baseOnDemandCount": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": { "description": "Minimum number of on-demand VMs regardless of total scale." }
+    },
+    "onDemandPercentageAboveBase": {
+      "type": "int",
+      "defaultValue": 25,
+      "metadata": { "description": "% of VMs above base count that are on-demand. Rest are Spot." }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "apiVersion": "2023-09-01",
+      "name": "[parameters('vmssName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[parameters('vmSize')]",
+        "capacity": 4
+      },
+      "properties": {
+        "orchestrationMode": "Flexible",
+        "platformFaultDomainCount": 1,
+        "zoneBalance": false,
+        "singlePlacementGroup": false,
+        "scaleInPolicy": {
+          "rules": ["OldestVM"],
+          "forceDeletion": false
+        },
+        "priorityMixPolicy": {
+          "baseRegularPriorityCount": "[parameters('baseOnDemandCount')]",
+          "regularPriorityPercentageAboveBase": "[parameters('onDemandPercentageAboveBase')]"
+        },
+        "virtualMachineProfile": {
+          "priority": "Spot",
+          "evictionPolicy": "Deallocate",
+          "billingProfile": {
+            "maxPrice": -1
+          },
+          "storageProfile": {
+            "osDisk": {
+              "createOption": "FromImage",
+              "managedDisk": {
+                "storageAccountType": "Premium_LRS"
+              },
+              "caching": "ReadWrite"
+            },
+            "imageReference": {
+              "publisher": "Canonical",
+              "offer": "0001-com-ubuntu-server-jammy",
+              "sku": "22_04-lts-gen2",
+              "version": "latest"
+            }
+          },
+          "osProfile": {
+            "computerNamePrefix": "[parameters('vmssName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "linuxConfiguration": {
+              "disablePasswordAuthentication": true,
+              "ssh": {
+                "publicKeys": [
+                  {
+                    "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                    "keyData": "[parameters('sshPublicKey')]"
+                  }
+                ]
+              }
+            }
+          },
+          "networkProfile": {
+            "networkApiVersion": "2020-11-01",
+            "networkInterfaceConfigurations": [
+              {
+                "name": "nic",
+                "properties": {
+                  "primary": true,
+                  "ipConfigurations": [
+                    {
+                      "name": "ipconfig",
+                      "properties": {
+                        "subnet": {
+                          "id": "[parameters('subnetId')]"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "extensionProfile": {
+            "extensions": [
+              {
+                "name": "HealthExtension",
+                "properties": {
+                  "autoUpgradeMinorVersion": true,
+                  "publisher": "Microsoft.ManagedServices",
+                  "type": "ApplicationHealthLinux",
+                  "typeHandlerVersion": "1.0",
+                  "settings": {
+                    "protocol": "http",
+                    "port": 80,
+                    "requestPath": "/health"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "automaticRepairsPolicy": {
+          "enabled": true,
+          "gracePeriod": "PT30M"
+        },
+        "upgradePolicy": {
+          "mode": "Rolling",
+          "rollingUpgradePolicy": {
+            "maxBatchInstancePercent": 20,
+            "maxUnhealthyInstancePercent": 20,
+            "maxUnhealthyUpgradedInstancePercent": 20,
+            "pauseTimeBetweenBatches": "PT5S"
+          }
+        }
+      },
+      "zones": ["1", "2", "3"]
+    }
+  ]
+}

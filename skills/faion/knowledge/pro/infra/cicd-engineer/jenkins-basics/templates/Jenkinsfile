@@ -1,0 +1,119 @@
+// Jenkinsfile - Declarative pipeline template
+// Replace: DOCKER_IMAGE, DEPLOY_CMD, SLACK_CHANNEL, branch names
+
+pipeline {
+    agent {
+        docker {
+            image 'node:20-alpine'
+            args '-v $HOME/.npm:/root/.npm'
+        }
+    }
+
+    environment {
+        CI = 'true'
+        // Add credentials here, e.g.:
+        // DEPLOY_KEY = credentials('deploy-ssh-key')
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                sh 'npm ci --cache .npm --prefer-offline'
+            }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps { sh 'npm run lint' }
+                }
+                stage('Type Check') {
+                    steps { sh 'npm run typecheck' }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'npm test -- --coverage'
+            }
+            post {
+                always {
+                    junit testResults: 'junit.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'npm run build'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy Staging') {
+            when {
+                branch 'develop'
+                not { changeRequest() }
+            }
+            steps {
+                sh './scripts/deploy.sh staging'
+            }
+            post {
+                success {
+                    echo "Deployed to staging: https://staging.example.com"
+                }
+            }
+        }
+
+        stage('Deploy Production') {
+            when {
+                branch 'main'
+                not { changeRequest() }
+            }
+            input {
+                message 'Deploy to production?'
+                ok 'Deploy'
+                submitter 'release-team'
+            }
+            steps {
+                sh './scripts/deploy.sh production'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        failure {
+            slackSend(
+                channel: '#ci-alerts',
+                color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        success {
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    slackSend(
+                        channel: '#deployments',
+                        color: 'good',
+                        message: "DEPLOYED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    )
+                }
+            }
+        }
+    }
+}

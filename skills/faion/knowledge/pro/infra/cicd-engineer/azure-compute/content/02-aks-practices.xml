@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-aks-practices" title="Azure Compute: AKS Best Practices">
+  <summary>Node pool strategy, Workload Identity setup, KEDA integration, upgrade policy, networking rules.</summary>
+
+  <section title="Identity">
+    <rule>
+      <statement>Use Workload Identity (OIDC federation) for pod-level Azure resource access — never use the deprecated AAD Pod Identity or store service principal credentials in Secrets.</statement>
+      <rationale>Workload Identity uses Kubernetes ServiceAccount token projection with Azure AD OIDC federation. It requires no secret management: the cluster issues a signed JWT that Azure AD verifies directly. Pod Identity is deprecated and will be removed.</rationale>
+    </rule>
+    <rule>
+      <statement>Enable the OIDC issuer and Workload Identity add-on before enabling KEDA — KEDA's TriggerAuthentication uses Workload Identity to access Azure queues, Service Bus, and Event Hub without credentials.</statement>
+      <rationale>KEDA's Azure scalers authenticate to Azure via Workload Identity when the cluster has OIDC issuer enabled. Installing KEDA before OIDC/Workload Identity leaves scalers unable to authenticate to Azure backends.</rationale>
+    </rule>
+
+    <example type="good">
+      <note>Enable Workload Identity and KEDA in the correct order on a new AKS cluster.</note>
+      <code lang="bash"><![CDATA[
+az aks create \
+  --name my-cluster \
+  --resource-group my-rg \
+  --enable-oidc-issuer \
+  --enable-workload-identity \
+  --enable-keda \
+  --node-count 2 \
+  --generate-ssh-keys
+]]></code>
+    </example>
+  </section>
+
+  <section title="Node Pool Strategy">
+    <rule>
+      <statement>Create a system node pool with small VMs (D2s_v5), taints to prevent user workloads, and a dedicated user node pool with autoscaling across all three availability zones.</statement>
+      <rationale>System node pools run CoreDNS and kube-proxy. Mixing user workloads onto system nodes risks evicting critical cluster components under memory pressure. Separation ensures stable cluster operations regardless of workload load spikes.</rationale>
+    </rule>
+    <rule>
+      <statement>Add a Spot node pool (priority=Spot, min=0, max=N) for batch and interruptible workloads to reduce compute costs by up to 90%; add tolerations to workloads that run on Spot nodes.</statement>
+      <rationale>Spot VMs are evicted with 30 seconds notice. Applications that handle preemption gracefully (batch jobs, stateless workers) run correctly on Spot. Applications requiring persistent connections (databases, session-sensitive APIs) must never run on Spot pools.</rationale>
+    </rule>
+    <rule>
+      <statement>Set `max_surge` to 33% for all node pool upgrade settings to control rolling upgrade speed while maintaining capacity during upgrades.</statement>
+      <rationale>33% surge allows one-third of nodes to be upgraded at a time. Lower values slow upgrades unnecessarily; higher values risk under-capacity if surge nodes are slow to provision.</rationale>
+    </rule>
+  </section>
+
+  <section title="Networking">
+    <rule>
+      <statement>Use Azure CNI Overlay networking for large clusters (hundreds of nodes) to avoid exhausting subnet IP space; use standard Azure CNI for clusters where pod IPs must be directly routable in the VNet.</statement>
+      <rationale>Standard Azure CNI assigns a VNet IP to every pod, consuming IPs rapidly at scale. Overlay mode assigns pod IPs from a private CIDR that is NAT'd at the node level, decoupling pod count from VNet IP consumption.</rationale>
+    </rule>
+  </section>
+
+  <section title="Upgrades">
+    <rule>
+      <statement>Enable `automatic_channel_upgrade: patch` with a maintenance window on off-peak hours to receive automatic patch version upgrades without manual intervention.</statement>
+      <rationale>Unpatched K8s clusters accumulate CVEs. Automatic patch upgrades within the maintenance window keep clusters current without disrupting business hours. Minor version upgrades still require manual approval for testing.</rationale>
+    </rule>
+  </section>
+</text>

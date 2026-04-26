@@ -1,0 +1,59 @@
+# appproject.yaml
+# AppProject with source repo allowlist, destination namespace restrictions, and RBAC roles.
+# Replace: TEAM_NAME, ORG_NAME, CHART_REPO_URL.
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: TEAM_NAME
+  namespace: argocd
+spec:
+  description: TEAM_NAME applications
+
+  # Only allow deployments from these repos
+  sourceRepos:
+    - https://github.com/ORG_NAME/TEAM_NAME-*
+    - CHART_REPO_URL
+
+  # Only allow deployment to these namespaces/clusters
+  destinations:
+    - namespace: TEAM_NAME-staging
+      server: https://kubernetes.default.svc
+    - namespace: TEAM_NAME-production
+      server: https://kubernetes.default.svc
+
+  # Allow Namespace creation (for CreateNamespace sync option)
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+
+  # Namespace-scoped resource allowlist
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  roles:
+    - name: developer
+      description: Can view all apps and sync to staging
+      policies:
+        - p, proj:TEAM_NAME:developer, applications, get, TEAM_NAME/*, allow
+        - p, proj:TEAM_NAME:developer, applications, sync, TEAM_NAME/*-staging, allow
+        - p, proj:TEAM_NAME:developer, applications, override, TEAM_NAME/*-staging, allow
+      groups:
+        - TEAM_NAME-developers
+
+    - name: release-manager
+      description: Can manage all apps and trigger production deployments
+      policies:
+        - p, proj:TEAM_NAME:release-manager, applications, *, TEAM_NAME/*, allow
+      groups:
+        - TEAM_NAME-release-managers
+
+  # Block production deployments on weekends; manualSync: false blocks even manual sync
+  syncWindows:
+    - kind: deny
+      schedule: '0 0 * * 6,0'
+      duration: 48h
+      applications:
+        - '*-production'
+      manualSync: false

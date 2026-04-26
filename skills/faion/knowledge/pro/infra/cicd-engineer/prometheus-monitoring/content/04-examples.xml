@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-examples" title="Prometheus: PromQL Queries for RED, Kubernetes, and CI/CD">
+  <summary>Common PromQL queries for HTTP service metrics, Kubernetes resource metrics, and CI/CD pipeline metrics.</summary>
+
+  <section title="RED Method Queries">
+    <example type="good">
+      <note>Request rate, error rate, and latency percentiles.</note>
+      <code lang="promql"><![CDATA[
+# Request rate (per second over 5m)
+sum(rate(http_requests_total[5m])) by (service, method)
+
+# Error rate percentage
+sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+/ sum(rate(http_requests_total[5m])) by (service) * 100
+
+# P50, P90, P99 latency
+histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Kubernetes Resource Metrics">
+    <example type="good">
+      <note>CPU usage, memory percentage, pod restarts, available replicas.</note>
+      <code lang="promql"><![CDATA[
+# CPU usage percentage vs limit
+sum(rate(container_cpu_usage_seconds_total{namespace="production"}[5m])) by (pod)
+/ sum(container_spec_cpu_quota / container_spec_cpu_period) by (pod) * 100
+
+# Memory usage percentage vs limit
+container_memory_working_set_bytes{namespace="production"}
+/ container_spec_memory_limit_bytes{namespace="production"} * 100
+
+# Pod restarts in last hour
+increase(kube_pod_container_status_restarts_total[1h])
+
+# Available replicas
+kube_deployment_status_replicas_available{namespace="production"}
+]]></code>
+    </example>
+  </section>
+
+  <section title="CI/CD Pipeline Metrics">
+    <example type="good">
+      <note>Jenkins build success rate, GitLab CI pipeline duration, ArgoCD sync status.</note>
+      <code lang="promql"><![CDATA[
+# Jenkins build success rate (24h)
+sum(rate(jenkins_builds_success_total[24h])) by (job_name)
+/ sum(rate(jenkins_builds_total[24h])) by (job_name) * 100
+
+# GitLab CI average pipeline duration by project
+avg(gitlab_ci_pipeline_duration_seconds) by (project, ref)
+
+# ArgoCD apps out of sync
+argocd_app_info{sync_status!="Synced"}
+
+# ArgoCD deployment frequency (DORA)
+count(increase(argocd_app_sync_total{phase="Succeeded"}[7d])) by (name)
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/servicemonitor.yaml">ServiceMonitor CRD for Kubernetes service discovery</reference>
+  <reference path="templates/prometheusrule.yaml">PrometheusRule with recording rules and alerts</reference>
+  <reference path="templates/pushgateway-job.sh">Shell script for pushing CI/CD metrics</reference>
+</text>

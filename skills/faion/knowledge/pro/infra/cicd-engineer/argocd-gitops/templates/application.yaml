@@ -1,0 +1,64 @@
+# application.yaml
+# ArgoCD Application with automated sync, self-heal, prune, and retry policy.
+# Replace: APP_NAME, PROJECT_NAME, REPO_URL, ENV, NAMESPACE.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: APP_NAME-ENV
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "#deployments"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts"
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: "#alerts"
+spec:
+  project: PROJECT_NAME
+
+  source:
+    repoURL: REPO_URL
+    targetRevision: main
+    path: apps/APP_NAME/overlays/ENV
+
+    # For Kustomize (uncomment if needed):
+    # kustomize:
+    #   images:
+    #     - APP_NAME=myregistry.io/APP_NAME:VERSION
+
+    # For Helm (use instead of path + kustomize):
+    # chart: CHART_NAME
+    # helm:
+    #   releaseName: APP_NAME
+    #   valueFiles:
+    #     - values.yaml
+    #     - values-ENV.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: NAMESPACE
+
+  syncPolicy:
+    automated:
+      prune: true          # delete resources removed from Git
+      selfHeal: true       # revert manual cluster changes
+      allowEmpty: false    # never sync an empty application
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  revisionHistoryLimit: 10
+
+  # Ignore specific fields that change at runtime (e.g., HPA replica counts)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

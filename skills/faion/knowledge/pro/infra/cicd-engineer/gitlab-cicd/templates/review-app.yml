@@ -1,0 +1,32 @@
+# Review app lifecycle: deploy per MR, auto-stop after 1 week,
+# manual early cleanup via review-stop job.
+# Requires: kubectl configured, k8s/review/deployment.yaml with envsubst vars.
+
+review-deploy:
+  stage: deploy
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    url: https://$CI_MERGE_REQUEST_IID.review.example.com
+    on_stop: review-stop
+    auto_stop_in: 1 week
+  script:
+    - kubectl create namespace review-$CI_MERGE_REQUEST_IID
+        --dry-run=client -o yaml | kubectl apply -f -
+    - envsubst < k8s/review/deployment.yaml | kubectl apply -f -
+    - kubectl rollout status deployment/app
+        -n review-$CI_MERGE_REQUEST_IID --timeout=5m
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+
+review-stop:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  environment:
+    name: review/$CI_MERGE_REQUEST_IID
+    action: stop
+  script:
+    - kubectl delete namespace review-$CI_MERGE_REQUEST_IID --ignore-not-found
+  when: manual
+  rules:
+    - if: $CI_MERGE_REQUEST_IID

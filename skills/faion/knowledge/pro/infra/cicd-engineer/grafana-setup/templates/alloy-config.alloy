@@ -1,0 +1,85 @@
+// config.alloy - Grafana Alloy for Kubernetes metrics and log collection.
+// Replaces Grafana Agent (EOL November 1, 2025).
+
+// Kubernetes pod discovery
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+discovery.kubernetes "nodes" {
+  role = "node"
+}
+
+// Scrape pods with prometheus.io/scrape=true annotation
+prometheus.scrape "pods" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [prometheus.relabel.pods.receiver]
+  scrape_interval = "30s"
+}
+
+prometheus.relabel "pods" {
+  forward_to = [prometheus.remote_write.default.receiver]
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+    action        = "keep"
+    regex         = "true"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+}
+
+prometheus.scrape "node_exporter" {
+  targets    = discovery.kubernetes.nodes.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  job_name   = "node-exporter"
+  scrape_interval = "30s"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = env("PROMETHEUS_REMOTE_WRITE_URL")
+    basic_auth {
+      username = env("REMOTE_WRITE_USERNAME")
+      password = env("REMOTE_WRITE_PASSWORD")
+    }
+  }
+  external_labels = {
+    cluster = env("CLUSTER_NAME"),
+    env     = env("ENVIRONMENT"),
+  }
+}
+
+// Pod log collection
+loki.source.kubernetes "pods" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [loki.process.default.receiver]
+}
+
+loki.process "default" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.json {
+    expressions = {level = "level", message = "msg"}
+  }
+  stage.labels {
+    values = {level = ""}
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = env("LOKI_URL")
+    basic_auth {
+      username = env("LOKI_USERNAME")
+      password = env("LOKI_PASSWORD")
+    }
+  }
+  external_labels = {cluster = env("CLUSTER_NAME")}
+}
