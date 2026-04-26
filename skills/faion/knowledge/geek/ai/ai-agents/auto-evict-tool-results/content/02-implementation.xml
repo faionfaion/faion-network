@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-implementation" title="Implementing the Eviction Middleware">
+  <summary>Wire eviction as a tool-runtime decorator that token-counts every result, persists oversized ones, and exposes a read_file tool so the agent can recover slices.</summary>
+
+  <section title="Middleware shape">
+    <p>The eviction policy is a thin layer between tool dispatch and message append. It needs three pieces: a token counter, a persistent scratch path, and a recovery tool. None of the three involve the model.</p>
+
+    <rule testable="true">
+      <statement>Implement eviction as a runtime decorator with three components: (1) tokeniser-based size check on every tool return value, (2) deterministic write to a scratch directory keyed by tool-call-id, (3) a paired `read_file(path, lines)` tool the agent can call to recover slices on demand.</statement>
+      <rationale>Splitting these concerns mirrors LangChain Deep Agents' `filesystemMiddleware` and Manus's context-engineering write-up: the decision (evict or not) is deterministic, the storage is recoverable, and the agent only ever sees pointers — so the same architecture works whether the storage backend is local disk, S3, or an in-process content store.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Pseudocode of the wrapper applied to every tool
+def run_tool_with_eviction(tool, args, *, threshold=20_000, scratch="/tmp/agent"):
+    raw = tool(**args)
+    n = count_tokens(raw)
+    if n <= threshold:
+        return raw                       # small — pass through
+    path = f"{scratch}/{tool.__name__}_{uuid4().hex}.txt"
+    Path(path).write_text(raw)
+    return {
+        "path": path,
+        "preview": raw[:400],
+        "total_tokens": n,
+        "evicted": True,
+    }
+      ]]></code>
+      <note>Threshold and scratch directory are config — knob lives in the runtime, not in the prompt.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# Eviction performed by the agent inside its own reasoning
+system_prompt = "If a tool result is huge, save it and remember the path."
+# The model still receives the full payload first, then decides.
+      ]]></code>
+      <note>Defeats the purpose — context damage occurs before the LLM can act.</note>
+    </example>
+
+    <antipattern>
+      <description>Hard-coding the threshold equal to the model's max context window.</description>
+      <reason>Effective context (where accuracy holds) is far smaller than advertised — see the MECW paper. Set the threshold to a fraction of the working budget per step (e.g. 10–20% of the per-turn budget), not the model's nominal limit.</reason>
+    </antipattern>
+
+    <reference path="templates/evict-middleware.py">Minimal Python middleware showing the wrapper, scratch layout, and recovery tool.</reference>
+    <reference href="https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus">Manus — Context Engineering for AI Agents (filesystem-as-memory in production).</reference>
+    <reference href="https://arxiv.org/abs/2509.21361">"Context Is What You Need" — empirical Maximum Effective Context Window measurements.</reference>
+  </section>
+</text>

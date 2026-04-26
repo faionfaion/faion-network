@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- agent-methodologies: pool-batch +1 pl- (16/50) — auto-evict-tool-results methodology in NEW shape (AGENTS.md + 3 content/*.xml + evict-middleware.py).
 - **feature-044 pool infrastructure (`.aidocs/feature-044-pool/`):** `/faion-poll-agents` pool=10 (Opus) for filling the new geek-tier knowledge content (35 agent-methodologies + 52 sdlc-ai-methodologies = 87 slots). Files: `BRIEF.md` (subagent instructions: full research → discovery → write loop in NEW shape AGENTS.md+content/*.xml), `TICK.md` (orchestration rules), `QUEUE.txt` (29 batch lines `<domain>:<category>:<count>`, gitignored), `DONE.txt` (gitignored). BRIEF mandates pre-flight Read of `docs/skill-authoring.md` + `rules/skill-authoring.md` + `tag-glossary.xml`. Concurrent merges serialized via `flock /tmp/faion-network-merge.lock`.
 - **`semantic-xml-content` methodology** under `skills/faion/knowledge/geek/ai/llm-integration/`: closed tag vocabulary and conventions for `content/*.xml` in faion-network methodologies. Files: `AGENTS.md` (routing), `content/01-principles.xml` (semantic vs formatting tags, four guarantees), `content/02-tag-design.xml` (naming, attributes, nesting, code-block CDATA, references), `content/03-anti-patterns.xml` (formatting masquerade, inconsistent vocabulary, over-wrapping, CDATA leaks), `templates/methodology-text.xml` (skeleton), `templates/tag-glossary.xml` (closed list of allowed tags with role descriptions).
 
