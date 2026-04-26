@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-custom-audiences" title="Custom Audience Creation">
+  <summary>API calls for website pixel audiences, CRM customer list uploads, engagement audiences, and app activity audiences.</summary>
+
+  <section title="Website Custom Audiences">
+    <rule>
+      <statement>Build website custom audiences (WCA) from pixel events, not just from all-page-visitors — event-based audiences produce 3-5x better retargeting conversion rates.</statement>
+      <rationale>All-visitor audiences include low-intent traffic (bots, accidental clicks). Event-based audiences (product viewers, cart abandoners) signal actual purchase intent.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "Product Viewers 30 Days",
+    "subtype": "WEBSITE",
+    "rule": {
+      "inclusions": {
+        "operator": "or",
+        "rules": [{
+          "event_sources": [{"id": "{pixel-id}", "type": "pixel"}],
+          "retention_seconds": 2592000,
+          "filter": {
+            "operator": "and",
+            "filters": [
+              {"field": "url", "operator": "i_contains", "value": "/products"}
+            ]
+          }
+        }]
+      }
+    }
+  }'
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="CRM Customer List Upload">
+    <rule>
+      <statement>Hash all PII fields (email, phone, name) with SHA256 before uploading — never send plaintext PII to the API.</statement>
+      <rationale>Meta's API requires hashed data; plaintext PII in transit violates GDPR/CCPA and Meta's data policy, risking account suspension.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/{audience-id}/users" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "payload": {
+      "schema": ["EMAIL", "FN", "LN", "PHONE", "CT", "ST", "ZIP", "COUNTRY"],
+      "data": [["sha256(email)", "sha256(firstname)", "sha256(lastname)",
+                "sha256(phone)", "sha256(city)", "sha256(state)",
+                "sha256(zip)", "sha256(country)"]]
+    }
+  }'
+      ]]></code>
+      <note>More schema fields = higher match rate (target 50-80%). Minimum 100 matched users to activate.</note>
+    </example>
+  </section>
+
+  <section title="Engagement Audiences">
+    <p>Create audiences from Facebook Page engagers, Instagram Business Profile engagers, video viewers (by watch percentage), and lead form openers.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+curl -X POST "https://graph.facebook.com/v20.0/act_{ad-account-id}/customaudiences" \
+  -H "Authorization: Bearer {access-token}" \
+  -d '{
+    "name": "FB Page Engagers 365 Days",
+    "subtype": "ENGAGEMENT",
+    "rule": {
+      "inclusions": {
+        "operator": "or",
+        "rules": [{
+          "event_sources": [{"id": "{page-id}", "type": "page"}],
+          "retention_seconds": 31536000,
+          "filter": {
+            "operator": "or",
+            "filters": [{"operator": "engaged"}, {"operator": "visited"}]
+          }
+        }]
+      }
+    }
+  }'
+      ]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-conversions" title="Conversion Action Setup and Offline Upload">
+  <summary>Conversion action types, creation with counting/attribution settings, tag retrieval, and offline conversion upload via gclid.</summary>
+
+  <section title="Conversion Action Types">
+    <list>
+      <item>WEBSITE — website purchases, signups, page views</item>
+      <item>APP_INSTALL — mobile app installs</item>
+      <item>APP_IN_APP_PURCHASE — in-app purchases</item>
+      <item>CALL_FROM_ADS — calls directly from ads</item>
+      <item>STORE_VISIT — physical store visits</item>
+      <item>UPLOAD — offline conversions matched by gclid</item>
+    </list>
+    <rule>
+      <statement>Set counting_type to ONE_PER_CLICK for leads and ONE_PER_CONVERSION for purchases — never use ONE_PER_CONVERSION for lead forms, which inflates conversion counts when users submit multiple times.</statement>
+      <rationale>Incorrect counting inflates conversion volume metrics, causing the bidding algorithm to perceive higher performance than actual and over-bid.</rationale>
+    </rule>
+  </section>
+
+  <section title="Create Conversion Action">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def create_conversion_action(client, customer_id, name, category, value=None):
+    """
+    category: PURCHASE, SIGNUP, LEAD, PAGE_VIEW
+    value: default conversion value (None = use dynamic value)
+    """
+    service = client.get_service("ConversionActionService")
+    operation = client.get_type("ConversionActionOperation")
+    action = operation.create
+    action.name = name
+    action.category = getattr(
+        client.enums.ConversionActionCategoryEnum, category.upper()
+    )
+    action.type_ = client.enums.ConversionActionTypeEnum.WEBPAGE
+    action.status = client.enums.ConversionActionStatusEnum.ENABLED
+    action.counting_type = (
+        client.enums.ConversionActionCountingTypeEnum.ONE_PER_CLICK
+    )
+    action.attribution_model_settings.attribution_model = (
+        client.enums.AttributionModelEnum.GOOGLE_ADS_LAST_CLICK
+    )
+    action.click_through_lookback_window_days = 30
+    if value:
+        action.value_settings.default_value = value
+        action.value_settings.always_use_default_value = False
+    response = service.mutate_conversion_actions(
+        customer_id=customer_id, operations=[operation]
+    )
+    return response.results[0].resource_name
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Offline Conversion Upload">
+    <rule>
+      <statement>Upload offline conversions within 90 days of the original click — Google rejects gclid-matched events older than 90 days.</statement>
+      <rationale>The 90-day gclid validity window is a hard API constraint; delayed uploads silently drop and the bidding algorithm never receives the conversion signal.</rationale>
+    </rule>
+    <reference path="templates/upload-offline-conversions.py">Python function: batch upload offline conversions by gclid</reference>
+  </section>
+</text>

@@ -3,13 +3,11 @@
 ## [Unreleased]
 
 ### Changed
-- refactor: 8/8 python-developer methodologies migrated to new shape (batch: django-api, python-basics, python-typing, python-type-hints, python-modern-2026, python-async, django-imports, django-testing)
+- refactor: 8/8 ppc-manager methodologies migrated to new shape (batch: instagram-ads, meta-audience-targeting, ads-budget-optimization, google-ads-optimization, ads-meta-campaign-setup, ads-conversion-tracking, ads-google-creative, ads-twitter-ads)
+- refactor: 8/8 conversion-optimizer methodologies migrated to new shape (batch: growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization, plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide)
 - refactor: 8/8 methodologies migrated to new shape (batch: agentic-ai-product-development, agents, ai-native-product-development, ba/business-analyst/ai-enabled-business-analysis, ba/ba-core/ai-enabled-business-analysis, threads-basics, instagram-basics, plg-metrics)
 - refactor: 8/8 testing-developer methodologies migrated to new shape (batch: e2e-testing, testing-pytest, test-fixtures, mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript)
 - refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)
-- refactor: 8/8 conversion-optimizer methodologies migrated to new shape (batch: growth-conversion-optimization, onboarding-flows, growth-free-trial-optimization, plg-optimization-tactics, community-led-growth, plg-basics, funnel-tactics-basics, plg-implementation-guide)
-- refactor: 8/8 software-developer methodologies migrated to new shape (batch: mocking-strategies, javascript, python-fastapi, python, django-api, go-error-handling, python-type-hints, code-coverage)
-- refactor: 8/8 javascript-developer + testing-developer methodologies migrated to new shape (batch: typescript-patterns, react-patterns, typescript-strict-mode, javascript-modern, bun-runtime-simple, react-hooks, testing-patterns, integration-testing)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: language-framework-guide, integration-testing, django-quality, python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling)
 - refactor: 8/8 code-quality methodologies migrated to new shape (batch: refactoring-patterns, pair-programming, code-quality-trends, code-decomposition-principles, tech-debt-basics, code-review-basics, code-coverage, mob-programming)
 - refactor: 8/8 methodologies migrated to new shape (batch: methodologies, best-practices-2026, django-testing, go-concurrency, django-coding-standards, tdd-workflow, storybook-setup, documentation)

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-ga4-integration" title="GA4 Integration and Conversion Querying">
+  <summary>GA4 conversion import flow and querying imported conversion data by campaign via Google Ads API.</summary>
+
+  <section title="GA4 Conversion Import Flow">
+    <rule>
+      <statement>Import GA4 conversions to Google Ads via the UI (Tools → Conversions → Import → Google Analytics 4 properties) rather than the API — the API cannot initiate new GA4 links.</statement>
+      <rationale>GA4-to-Google Ads linking requires OAuth consent from the GA4 account; this cannot be programmatically initiated via the Google Ads API alone and requires the UI flow.</rationale>
+    </rule>
+    <list>
+      <item>In GA4: mark the events as conversions in Admin → Events</item>
+      <item>In Google Ads: Tools → Conversions → New → Import → Google Analytics 4 properties</item>
+      <item>Select which GA4 conversion events to import</item>
+      <item>Imported conversions appear in reports within 24 hours</item>
+    </list>
+  </section>
+
+  <section title="Query Imported Conversions">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def get_analytics_conversions(client, customer_id, date_range):
+    """date_range: tuple of ('YYYY-MM-DD', 'YYYY-MM-DD')"""
+    ga_service = client.get_service("GoogleAdsService")
+    query = f"""
+        SELECT
+            campaign.name,
+            segments.conversion_action,
+            segments.conversion_action_category,
+            metrics.conversions,
+            metrics.conversions_value
+        FROM campaign
+        WHERE segments.date BETWEEN '{date_range[0]}' AND '{date_range[1]}'
+        AND metrics.conversions > 0
+    """
+    response = ga_service.search(customer_id=customer_id, query=query)
+    conversions = []
+    for row in response:
+        conversions.append({
+            "campaign": row.campaign.name,
+            "action": row.segments.conversion_action,
+            "category": row.segments.conversion_action_category.name,
+            "conversions": row.metrics.conversions,
+            "value": row.metrics.conversions_value,
+        })
+    return conversions
+      ]]></code>
+      <note>Filter results by conversion_action_category to isolate GA4-imported events from native Google Ads conversions.</note>
+    </example>
+  </section>
+</text>

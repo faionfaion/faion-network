@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-server-side" title="Server-Side Tracking (CAPI and Offline Upload)">
+  <summary>Meta Conversions API Node.js implementation, deduplication with browser events, and Google offline conversion flow.</summary>
+
+  <section title="Why Server-Side">
+    <rule>
+      <statement>Always implement server-side tracking alongside browser pixels — never rely on browser pixels alone.</statement>
+      <rationale>Ad blockers, iOS App Tracking Transparency, and browser privacy features block 20-40% of browser pixel events. Server-side events pass directly from your server, bypassing all browser restrictions, and can include richer user data for better match rates.</rationale>
+    </rule>
+  </section>
+
+  <section title="Meta CAPI — Node.js">
+    <example type="good">
+      <code lang="javascript"><![CDATA[
+const bizSdk = require('facebook-nodejs-business-sdk');
+const { EventRequest, UserData, ServerEvent } = bizSdk;
+
+async function sendPurchaseEvent(pixelId, accessToken, userData, purchaseData) {
+  const user = (new UserData())
+    .setEmail(userData.email_sha256)
+    .setPhone(userData.phone_sha256)
+    .setClientIpAddress(userData.ip)
+    .setClientUserAgent(userData.user_agent);
+
+  const event = (new ServerEvent())
+    .setEventName('Purchase')
+    .setEventTime(Math.floor(Date.now() / 1000))
+    .setEventId(purchaseData.event_id)  // for deduplication with browser pixel
+    .setUserData(user)
+    .setCustomData({
+      value: purchaseData.value,
+      currency: purchaseData.currency,
+      order_id: purchaseData.order_id
+    })
+    .setEventSourceUrl(purchaseData.page_url);
+
+  const request = (new EventRequest(accessToken, pixelId))
+    .setEvents([event]);
+
+  return request.execute();
+}
+      ]]></code>
+      <note>event_id must match the browser pixel's eventID parameter to enable Meta's deduplication — same event_id from browser + server = counted once.</note>
+    </example>
+  </section>
+
+  <section title="Deduplication Rule">
+    <rule>
+      <statement>Set matching event_id values in both the browser fbq() call and the CAPI server event — mismatched IDs cause double-counting, inflating reported conversions by up to 2x.</statement>
+      <rationale>Meta deduplicates events within a 48-hour window when event_id matches; without this, the algorithm sees twice the conversions and bids accordingly, wasting budget.</rationale>
+    </rule>
+  </section>
+</text>
