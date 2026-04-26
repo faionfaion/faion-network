@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="RFC 7807 Error Handling Antipatterns">
+  <summary>Failure modes when implementing Problem Details error responses.</summary>
+
+  <antipattern>
+    <description>Interpolating exception messages, stack traces, SQL text, or internal paths into the detail field for 5xx errors.</description>
+    <reason>Exposes implementation details, internal hostnames, and sometimes credentials to external clients. Use a static detail string and provide traceId for internal lookup.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Returning Content-Type: application/json instead of application/problem+json.</description>
+    <reason>Clients that detect the +json media type suffix (e.g., Spring ProblemDetail) fall back to generic parsing. RFC 7807 mandates the problem+json type; the methodolgy's consistency guarantee depends on it.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>HTTP status code on the response does not match the status field in the body.</description>
+    <reason>RFC 7807 requires both to match. Mismatch appears when wrapping downstream errors: the HTTP envelope says 502 while the body says 400, confusing clients and monitoring tools.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Using errors[] for non-validation error types (401, 403, 404, 429).</description>
+    <reason>errors[] is a field-level extension for validation failures. Single-cause errors carry all necessary information in detail. Adding an empty errors[] array confuses clients expecting the spec shape.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>type field contains a non-URI string such as "validation" or "not_found".</description>
+    <reason>RFC 7807 requires type to be a URI. Non-URI values are technically non-conforming. More importantly, they cannot link to documentation pages that explain the error, recovery steps, and errors[] shape.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Skipping traceId on successful error handling (only populating it on 500).</description>
+    <reason>Tracing 400-class errors is equally important for debugging client-integration issues. Always populate traceId from W3C traceparent or generate a UUID.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>errors[].code contains a translated or localized string.</description>
+    <reason>code is machine-readable and must be stable. Translate errors[].message for users, but keep code as an invariant slug (email_invalid, not "Email invalide").</reason>
+  </antipattern>
+</text>

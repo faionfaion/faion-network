@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Unit Testing Examples">
+  <summary>Worked examples: AAA pattern, parametrize, exceptions, fixtures, async, and test doubles in Python/TypeScript.</summary>
+
+  <section title="AAA Pattern (Python)">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TestPriceCalculator:
+    def test_calculate_total_with_tax(self):
+        # Arrange
+        calculator = PriceCalculator(tax_rate=Decimal("0.10"))
+        # Act
+        result = calculator.calculate_total(price=Decimal("100.00"), quantity=1)
+        # Assert
+        assert result == Decimal("110.00")
+
+    def test_calculate_total_with_zero_quantity_returns_zero(self):
+        calculator = PriceCalculator(tax_rate=Decimal("0.10"))
+        result = calculator.calculate_total(price=Decimal("50.00"), quantity=0)
+        assert result == Decimal("0.00")
+]]></code>
+      <note>Blank lines between AAA phases. Each test covers one behavior.</note>
+    </example>
+  </section>
+
+  <section title="Parametrized Tests">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.parametrize("email,is_valid", [
+    ("user@example.com", True),
+    ("user.name@domain.co.uk", True),
+    ("invalid", False),
+    ("@no-local.com", False),
+    ("user@", False),
+])
+def test_email_validation(email, is_valid):
+    assert validate_email(email) == is_valid
+
+@pytest.mark.parametrize("a,b,expected", [
+    pytest.param(1, 2, 3, id="positive"),
+    pytest.param(-1, 1, 0, id="mixed"),
+    pytest.param(0, 0, 0, id="zeros"),
+])
+def test_addition(a, b, expected):
+    assert add(a, b) == expected
+]]></code>
+      <note>pytest.param with id= produces readable failure messages. Named IDs beat positional indexes.</note>
+    </example>
+  </section>
+
+  <section title="Exception Testing">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_withdraw_more_than_balance_raises_error():
+    account = BankAccount(balance=Decimal("100.00"))
+
+    with pytest.raises(InsufficientFundsError) as exc_info:
+        account.withdraw(Decimal("150.00"))
+
+    assert exc_info.value.balance == Decimal("100.00")
+    assert exc_info.value.amount == Decimal("150.00")
+]]></code>
+      <note>Use specific exception class, never bare pytest.raises(Exception). Assert exception attributes when they carry information.</note>
+    </example>
+  </section>
+
+  <section title="Fixtures">
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.fixture
+def sample_user():
+    return User(id="user-123", email="test@example.com", name="Test User")
+
+@pytest.fixture
+def user_service(sample_user):
+    repo = InMemoryUserRepository()
+    repo.add(sample_user)
+    return UserService(repo)
+
+class TestUserService:
+    def test_find_user_by_id(self, user_service, sample_user):
+        result = user_service.find_by_id(sample_user.id)
+        assert result == sample_user
+
+    def test_find_nonexistent_user_returns_none(self, user_service):
+        assert user_service.find_by_id("nonexistent") is None
+]]></code>
+      <note>Fixtures compose: user_service depends on sample_user. InMemoryUserRepository is a fake, not a MagicMock.</note>
+    </example>
+  </section>
+
+  <section title="Test Doubles">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Fake: working in-memory implementation
+class FakeUserRepository:
+    def __init__(self):
+        self.users = {}
+
+    def save(self, user):
+        self.users[user.id] = user
+        return user
+
+    def find_by_id(self, user_id):
+        return self.users.get(user_id)
+
+# Mock: verify interactions at a process boundary
+def test_sends_notification_after_order_complete():
+    notifier = Mock()
+    service = OrderService(notifier=notifier)
+
+    service.complete_order("order-123")
+
+    notifier.send_notification.assert_called_once_with("order-123", "Order completed")
+]]></code>
+      <note>Fakes for repositories; mocks for process boundaries (email, HTTP, clock). Never mock collaborators that have testable contracts.</note>
+    </example>
+  </section>
+
+  <section title="TypeScript Jest Example">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+describe('OrderService', () => {
+  let service: OrderService;
+  let mockRepo: jest.Mocked<OrderRepository>;
+  let mockPayment: jest.Mocked<PaymentGateway>;
+
+  beforeEach(() => {
+    mockRepo = { save: jest.fn(), findById: jest.fn() };
+    mockPayment = { charge: jest.fn() };
+    service = new OrderService(mockRepo, mockPayment);
+  });
+
+  it('should save order and process payment', async () => {
+    mockRepo.save.mockResolvedValue({ id: 'order-1' });
+    mockPayment.charge.mockResolvedValue({ id: 'payment-1' });
+
+    const result = await service.placeOrder({ items: [], total: 100 });
+
+    expect(result.orderId).toBe('order-1');
+    expect(mockPayment.charge).toHaveBeenCalledWith(100);
+  });
+});
+]]></code>
+      <note>beforeEach recreates mocks; no shared mutable state between tests.</note>
+    </example>
+  </section>
+</text>

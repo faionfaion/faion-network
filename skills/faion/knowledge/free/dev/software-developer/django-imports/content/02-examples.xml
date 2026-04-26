@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Django Import Examples">
+  <summary>Correct and incorrect import patterns for Django multi-app projects.</summary>
+
+  <section title="Canonical Import Block">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from django.db import models
+from rest_framework import serializers
+
+from apps.orders import models as order_models
+from apps.users import models as user_models
+from apps.catalog import models as catalog_models
+from apps.orders import services as order_services
+from apps.orders import constants as order_constants
+
+from .models import MyModel
+from . import constants
+
+if TYPE_CHECKING:
+    from apps.payments import models as payment_models
+]]></code>
+      <note>Five tiers in order. Cross-app aliased in tier 4. TYPE_CHECKING-only imports in a separate block at the bottom.</note>
+    </example>
+  </section>
+
+  <section title="Direct Import (Avoid)">
+    <example type="bad">
+      <code lang="python"><![CDATA[
+from apps.users.models import User       # avoid: direct symbol import
+from apps.orders.models import Order     # avoid: direct symbol import
+from apps.users.models import *          # NEVER: wildcard
+]]></code>
+      <note>Direct imports cause name collisions and break alias-based tooling. Wildcard imports are unconditionally banned.</note>
+    </example>
+  </section>
+
+  <section title="TYPE_CHECKING for Circular Dependency">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.billing import models as billing_models
+
+def get_invoice_total(user: billing_models.Invoice) -> Decimal:
+    """Works in Python 3.9+ with __future__ annotations."""
+    ...
+]]></code>
+      <note>__future__ annotations defers evaluation so billing_models.Invoice is never resolved at runtime. No circular import.</note>
+    </example>
+  </section>
+
+  <section title="Python 3.10+ Modern Syntax">
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Python 3.10+ — no typing import needed for union
+def get_item(uid: str) -> order_models.Order | None:
+    return order_models.Order.objects.filter(pk=uid).first()
+
+# Built-in generics — no List import
+def get_orders(user: user_models.User) -> list[order_models.Order]:
+    return list(order_models.Order.objects.filter(user=user))
+]]></code>
+      <note>Use built-in generics (list[], dict[], tuple[]) and | for union types in Python 3.10+. Still use cross-app aliases.</note>
+    </example>
+  </section>
+
+  <reference path="templates/django_import_lint.py">AST linter: flags cross-app imports without alias and wildcard imports</reference>
+</text>

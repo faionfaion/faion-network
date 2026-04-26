@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Express / Fastify Antipatterns">
+  <summary>Common mistakes in Node.js HTTP service implementation that create bugs, security holes, or reliability failures.</summary>
+
+  <antipattern>
+    <description>Callback-based async handler in Express: User.findById(id, (err, user) => {...}).</description>
+    <reason>Callback-based code cannot use try/catch for error propagation. Errors require explicit res.status(500) calls in every callback, creating inconsistent shapes and missed error paths. Use async/await with next(err) in catch.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Async Express handler without try/catch and next(err): async (req, res) => { const u = await find(); res.json(u); }.</description>
+    <reason>Express 4 does not catch rejected promises from async handlers. If find() rejects, the response hangs indefinitely. Wrap in try/catch and call next(err), or use Express 5 / express-async-errors.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Route handler without a schema in Fastify or validate() middleware in Express.</description>
+    <reason>Unvalidated request bodies reach business logic and databases with arbitrary shapes. Schema validation is the only reliable defense against malformed input.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>CORS configured with origin: '*' and credentials: true.</description>
+    <reason>This combination is invalid per the CORS spec and causes a browser error at runtime. Browsers block credentialed cross-origin requests when the server responds with a wildcard origin.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Hardcoded port, JWT secret, or database URL as string literals in application code.</description>
+    <reason>Secrets committed to source or bundled into images are leaked to anyone with repository or container access. Use process.env and validate at startup; reject missing required config.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Fastify auth decorator registered in a plain plugin (not wrapped with fastify-plugin).</description>
+    <reason>Fastify's encapsulation isolates decorators to the plugin's scope. Routes outside the plugin cannot call app.authenticate. The failure is silent — the decorator simply does not exist on the outer instance.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Logging raw req.body or req.headers without redacting authorization, cookie, and password fields.</description>
+    <reason>Production logs containing credentials create audit failures and enable credential theft via log aggregation systems. Use pino's redact option to strip sensitive fields before logging.</reason>
+  </antipattern>
+</text>

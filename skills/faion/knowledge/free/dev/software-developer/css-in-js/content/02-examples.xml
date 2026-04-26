@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="CSS-in-JS Examples">
+  <summary>styled-components Button with variants, theme setup with TypeScript augmentation, and Emotion css prop.</summary>
+
+  <section title="Typed Button with Variants (styled-components)">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// At module scope — NEVER inside a component
+interface ButtonProps {
+  $variant?: 'primary' | 'secondary' | 'outline';
+  $size?: 'sm' | 'md' | 'lg';
+}
+
+const Button = styled.button<ButtonProps>`
+  display: inline-flex;
+  align-items: center;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  cursor: pointer;
+
+  ${({ $size = 'md' }) => ({
+    sm: 'padding: 0.375rem 0.75rem; font-size: 0.875rem;',
+    md: 'padding: 0.5rem 1rem; font-size: 1rem;',
+    lg: 'padding: 0.75rem 1.5rem; font-size: 1.125rem;',
+  }[$size])}
+
+  ${({ $variant = 'primary', theme }) => $variant === 'primary' && css`
+    background: ${theme.colors.primary};
+    color: ${theme.colors.primaryForeground};
+  `}
+
+  &:focus-visible { outline: 2px solid ${({ theme }) => theme.colors.focus}; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+`;
+]]></code>
+      <note>$variant and $size use $ prefix (transient). Component defined at module scope.</note>
+    </example>
+  </section>
+
+  <section title="Theme with TypeScript Augmentation">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// theme/theme.ts
+export const lightTheme = {
+  colors: {
+    primary: '#3b82f6',
+    primaryForeground: '#ffffff',
+    background: '#ffffff',
+    foreground: '#111827',
+    focus: '#3b82f6',
+  },
+} as const;
+
+export type Theme = typeof lightTheme;
+
+// theme/styled.d.ts — MANDATORY for typed theme access
+import 'styled-components';
+declare module 'styled-components' {
+  export interface DefaultTheme extends Theme {}
+}
+]]></code>
+      <note>The styled.d.ts augmentation is mandatory. Without it, theme properties are typed as any and typos are undetected.</note>
+    </example>
+  </section>
+
+  <section title="Emotion css Prop">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+/** @jsxImportSource @emotion/react */
+import { css, useTheme } from '@emotion/react';
+
+function Card({ children, elevated = false }) {
+  const theme = useTheme();
+  return (
+    <div css={css`
+      padding: ${theme.spacing.md};
+      border-radius: ${theme.radii.lg};
+      background: ${theme.colors.background};
+      border: 1px solid ${theme.colors.border};
+      ${elevated && `box-shadow: ${theme.shadows.md}; border: none;`}
+    `}>
+      {children}
+    </div>
+  );
+}
+]]></code>
+      <note>@jsxImportSource pragma enables the css prop without Babel config. Emotion reads theme from ThemeContext via useTheme.</note>
+    </example>
+  </section>
+
+  <reference path="templates/css-in-js-detect.sh">Detects RSC/RN/Vite context and recommends or rejects CSS-in-JS lib</reference>
+</text>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Go HTTP Handler Antipatterns">
+  <summary>Common Go HTTP handler mistakes: middleware order, context misuse, goroutine leaks, and security holes.</summary>
+
+  <antipattern>
+    <description>Using gin.Default() and then adding r.Use(middleware.Logger()) again.</description>
+    <reason>gin.Default() already registers Logger and Recovery. Adding Logger a second time doubles every log entry and makes the middleware stack invisible to readers. Use gin.New() with explicit middleware registration.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Creating context.Background() inside a handler to pass to a service or DB call.</description>
+    <reason>context.Background() is never cancelled and has no deadline. The downstream call outlives the request, keeps connections open, and prevents graceful shutdown from completing. Always use c.Request.Context().</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Spawning go func() inside a handler that captures c.Request.Context().</description>
+    <reason>When the handler returns, the context is cancelled. The goroutine's next DB or HTTP call returns context.Canceled. Without a recover() inside the goroutine, the panic kills the process. Use a derived context with explicit timeout from context.Background() for fire-and-forget work.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Returning raw gin.H{"error": err.Error()} which leaks struct field names and binding tag details.</description>
+    <reason>gin's validator returns messages like "Field validation for 'Email' failed on the 'email' tag". These expose internal model field names and validation rules to external clients. Wrap in a translator or return a generic error message.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>CORS configured with AllowOrigins: ["*"] and AllowCredentials: true.</description>
+    <reason>This combination is invalid per the CORS spec. Modern browsers reject credentialed cross-origin requests when the response contains a wildcard origin. Specify origins explicitly.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>JWT signing key shorter than 32 bytes or hardcoded as a string literal.</description>
+    <reason>Short HS256 keys are brute-forceable. Hardcoded keys are committed to source control. Use a minimum 32-byte key loaded from an environment variable or secrets manager, or switch to RS256 with a managed key pair.</reason>
+  </antipattern>
+
+  <antipattern>
+    <description>Graceful shutdown: calling srv.Shutdown(ctx) but not waiting for server.close before exiting.</description>
+    <reason>srv.Shutdown is asynchronous relative to the process exit. Without waiting for the server.close callback, the process exits mid-request. Use the server.Run wrapper that blocks until Shutdown completes.</reason>
+  </antipattern>
+</text>

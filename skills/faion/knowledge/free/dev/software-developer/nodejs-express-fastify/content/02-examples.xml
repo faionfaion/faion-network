@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Express / Fastify Examples">
+  <summary>Application setup, router organization, Fastify TypeBox routes, and JWT auth middleware for both frameworks.</summary>
+
+  <section title="Express Application Setup">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+export function createApp(): Express {
+  const app = express();
+  app.set('trust proxy', 1);
+  app.use(helmet());
+  app.use(cors({ origin: config.corsOrigins, credentials: true }));
+  app.use(compression());
+  app.use(express.json({ limit: '10kb' }));
+  app.use(pinoHttp({ logger: config.logger }));
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100, standardHeaders: true }));
+  app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use('/api/v1', router);
+  app.use(notFoundHandler);
+  app.use(errorHandler);  // must be last
+  return app;
+}
+]]></code>
+      <note>Middleware order is explicit. errorHandler registered last. Rate-limit after logging.</note>
+    </example>
+  </section>
+
+  <section title="Express Graceful Shutdown">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+function shutdown(signal: string) {
+  logger.info(`${signal} received`);
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 30000);
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT',  () => shutdown('SIGINT'));
+]]></code>
+      <note>Forced exit after 30 seconds prevents hanging if connections don't drain.</note>
+    </example>
+  </section>
+
+  <section title="Fastify TypeBox Route">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const CreateUserSchema = Type.Object({
+  email: Type.String({ format: 'email' }),
+  name: Type.String({ minLength: 1, maxLength: 100 }),
+  password: Type.String({ minLength: 8 }),
+});
+
+export const userRoutes: FastifyPluginAsync = async (app) => {
+  app.post<{ Body: Static<typeof CreateUserSchema> }>(
+    '/',
+    {
+      schema: {
+        body: CreateUserSchema,
+        response: { 201: Type.Object({ data: UserSchema }) },
+      },
+    },
+    async (request, reply) => {
+      const user = await app.userService.createUser(request.body);
+      reply.status(201);
+      return { data: user };
+    }
+  );
+};
+]]></code>
+      <note>TypeBox schema is the source of truth for both runtime validation and TypeScript types. Handler is thin: bind → service → return.</note>
+    </example>
+  </section>
+
+  <section title="Fastify Auth Plugin">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// plugins/auth.ts — must use fastify-plugin to escape encapsulation
+import fp from 'fastify-plugin';
+
+const authPlugin: FastifyPluginAsync = async (app) => {
+  app.decorate('authenticate', async (request: FastifyRequest) => {
+    const header = request.headers.authorization;
+    if (!header?.startsWith('Bearer '))
+      throw app.httpErrors.unauthorized('Missing authorization');
+    try {
+      const payload = jwt.verify(header.slice(7), app.config.jwtSecret);
+      request.user = payload as { userId: string; email: string };
+    } catch {
+      throw app.httpErrors.unauthorized('Invalid token');
+    }
+  });
+};
+export default fp(authPlugin, { name: 'auth' });
+]]></code>
+      <note>fp() wrapper is mandatory for the decorator to be visible to routes registered in sibling plugins.</note>
+    </example>
+  </section>
+
+  <reference path="templates/audit-routes.sh">Script to flag route handlers missing schema, auth, or error wiring</reference>
+</text>

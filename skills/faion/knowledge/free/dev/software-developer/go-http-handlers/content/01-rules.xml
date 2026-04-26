@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rules" title="Go HTTP Handler Rules">
+  <summary>Rules for middleware order, context propagation, thin handlers, and graceful shutdown in Gin/Echo services.</summary>
+
+  <section title="Middleware Order">
+    <rule>
+      <statement>Register middleware in this order: Recovery first, Logger second, RequestID third, then auth and domain-specific middleware.</statement>
+      <rationale>Recovery must be outermost so panics in all subsequent middleware and handlers are caught. Logger before RequestID means panic logs would lack the request ID. The specific order is not obvious from the APIs and is a frequent source of silent breakage.</rationale>
+    </rule>
+    <rule>
+      <statement>Use gin.New() instead of gin.Default(). Explicitly register each middleware.</statement>
+      <rationale>gin.Default() registers Logger and Recovery automatically. Adding r.Use(middleware.Logger()) again doubles every log entry and makes the middleware stack implicit. gin.New() with explicit registration is the only self-documenting approach.</rationale>
+    </rule>
+  </section>
+
+  <section title="Context Propagation">
+    <rule>
+      <statement>Use c.Request.Context() everywhere. Pass it to every service, repository, and database call.</statement>
+      <rationale>c.Request.Context() is cancelled when the client disconnects. Propagating it to DB calls frees goroutines and connections immediately on disconnect, preventing goroutine leaks under load.</rationale>
+    </rule>
+    <rule>
+      <statement>Never create context.Background() inside a handler. context.Background() is for main() and test setup only.</statement>
+      <rationale>A handler that creates context.Background() spawns work that lives beyond the request lifetime, bypassing cancellation and timeout propagation. Lint for context.Background() outside main and tests.</rationale>
+    </rule>
+    <rule>
+      <statement>Do not spawn goroutines inside a handler that use c.Request.Context(). The context is cancelled when the handler returns, causing panics in goroutines that then try to use it.</statement>
+      <rationale>The goroutine outlives the request. When the request completes, c.Request.Context() is cancelled and the goroutine's next DB or HTTP call returns context.Canceled, often panicking the goroutine without a Recovery wrapper.</rationale>
+    </rule>
+  </section>
+
+  <section title="Thin Handlers">
+    <rule>
+      <statement>Keep handlers to: bind request → validate → call one service method → translate to HTTP. No business logic in handler files.</statement>
+      <rationale>Business logic in handlers is untestable without spinning up a full HTTP server. Thin handlers allow service logic to be unit-tested independently of HTTP concerns.</rationale>
+    </rule>
+    <rule>
+      <statement>Validate in the request struct via binding tags, not in the handler body. Use binding:"required,email,gte=0" in Gin; centralized validator in Echo.</statement>
+      <rationale>Inline validation (if req.Email == "") scatters logic, misses edge cases, and produces inconsistent error messages. Tag-based validation runs before the handler body and returns structured errors automatically.</rationale>
+    </rule>
+  </section>
+
+  <section title="Server Timeouts">
+    <rule>
+      <statement>Always set ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout on http.Server. Never leave default zero values.</statement>
+      <rationale>Zero timeouts leave the server open to slow-loris attacks and unbounded goroutine accumulation from idle connections. Set conservative values (e.g., ReadHeaderTimeout: 5s, WriteTimeout: 30s).</rationale>
+    </rule>
+  </section>
+</text>
