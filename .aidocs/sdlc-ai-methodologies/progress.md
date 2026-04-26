@@ -8,3 +8,4 @@
 [2026-04-26 13:15] pool-batch sdlc:lang-:4 — promoted lang-ruby-sorbet-strict-floor, lang-csharp-roslyn-analyzer-errors, lang-swift-harmonize-arch-tests, lang-jvm-jreleaser-tag-release → 12/52 (lang- 10/10 complete).
 [2026-04-26 13:20] pool-batch sdlc:test-:4 — promoted test-tdd-red-green-split-agents, test-self-healing-locators-audited → 14/52 (test- 4/6). Initial picks test-property-based-hypothesis and test-mutation-score-agent-feedback rejected after rebase as near-duplicates of upstream-merged test-property-based-llm-invariants and test-mutation-feedback-loop.
 [2026-04-26 13:35] pool-batch sdlc:task-:1 — promoted task-agent-drafts-spec-before-coding → 15/52 (task- 1/5).
+[2026-04-26 13:40] pool-batch sdlc:mr-:1 — promoted mr-error-tracker-draft-pr → 16/52 (mr- 1/5).

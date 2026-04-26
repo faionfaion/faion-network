@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-draft-bot-identity-gate" title="Draft Mode + Bot Identity + CODEOWNERS Gate">
+  <summary>Auto-opened PRs from an error tracker MUST be drafts authored by a dedicated bot identity (GitHub App or `*-bot` user), labelled `agent:&lt;tracker&gt;`, and merge-blocked until at least one CODEOWNERS-listed human approves.</summary>
+
+  <section title="Three-layer merge gate">
+    <p>Each layer is necessary on its own: draft state stops accidental clicks during triage; the dedicated bot identity makes audit logs filterable and lets branch-protection target bot-authored commits specifically; the CODEOWNERS rule forces human accountability on every patch. None of the three on its own is enough — bots have shipped self-approved PRs whenever any layer is missing.</p>
+
+    <rule testable="true">
+      <statement>The agent MUST open the PR with `draft: true`. The author MUST be a dedicated identity (GitHub App preferred over PAT, or `seer-by-sentry[bot]` / `bugsink-bot` / equivalent) — never the human who installed the integration. The PR MUST carry the label `agent:&lt;tracker&gt;` (e.g., `agent:seer`, `agent:rollbar`). Branch protection MUST require at least one approving review from a CODEOWNERS-listed human on agent-authored commits, with `Require approval of the most recent reviewable push` enabled so any new commit by the agent re-triggers review. A merge by the bot identity MUST be denied by repository policy.</statement>
+      <rationale>GitHub does not provide first-class "bot-only path" branch protection; the combination of bypass-list (NOT containing the bot), `Require approval of most recent push`, and a label-aware policy bot (palantir/policy-bot or label-based-pr-policy-action) is the documented workaround. Microsoft's Azure governance pattern and igotasite4that's coding-agent security write-up converge on this exact triad.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# .github/policy-bot.yml
+policy:
+  approval:
+    - or:
+        - human review on agent PR
+rules:
+  - name: human review on agent PR
+    if:
+      has_author_in:
+        users: ["seer-by-sentry[bot]", "bugsink-bot", "rollbar-app[bot]"]
+      has_labels: ["agent:seer", "agent:bugsink", "agent:rollbar"]
+    requires:
+      count: 1
+      teams: ["acme/maintainers"]
+      ]]></code>
+      <note>Label + bot author + CODEOWNERS team form the deny-by-default gate.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# branch-protection: only required_approving_review_count: 1
+# (no bot detection, no label, no "most recent push" rule)
+required_approving_review_count: 1
+      ]]></code>
+      <note>Bot can be on the bypass list, or the agent's own +1 from a teammate counts.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent opens the PR as ready-for-review with `auto_merge: true` and "we trust CI to catch problems".</description>
+      <reason>CI confirms tests pass; it cannot judge whether the patch addresses the right alert or introduces a security regression. The draft state plus human review is the only place that judgement lives.</reason>
+    </antipattern>
+
+    <reference path="templates/seer-org-config.yml">Org config showing `pr_mode: draft` and required label.</reference>
+    <reference href="https://github.com/palantir/policy-bot">palantir/policy-bot — label-aware merge policy.</reference>
+    <reference href="https://github.com/marketplace/actions/label-based-pr-policy-action">Label-based PR policy GitHub Action.</reference>
+    <reference href="https://github.com/orgs/community/discussions/172019">GitHub community discussion: Copilot agent + n+1 approvals.</reference>
+    <reference href="https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ai-agents/governance-security-across-organization">Microsoft Cloud Adoption Framework — AI agent governance.</reference>
+    <reference href="https://igotasite4that.com/blog/securing-ai-coding-agent-workflows/">Securing AI coding agent workflows (sandbox + review gates).</reference>
+  </section>
+</text>

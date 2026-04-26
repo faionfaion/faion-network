@@ -1,0 +1,52 @@
+# Sentry Seer / Autofix — org-level config
+# Applies the two-gate threshold + draft-only PR pattern.
+# Drop into Seer SCM Settings (or equivalent for Bugsink/Rollbar/Starsling).
+
+seer:
+  autofix:
+    # Gate 1: volume signal — only repeating exceptions.
+    # Gate 2: LLM-rated patchability — only errors with a clear call-site.
+    auto_run_threshold:
+      min_events: 10
+      min_fixability: 0.7
+
+    # Repos Seer is allowed to open PRs against.
+    repos:
+      - github.com/acme/api
+      - github.com/acme/web
+      - github.com/acme/worker
+
+    # PR opens as draft; never auto-merge regardless of CI status.
+    pr_mode: draft
+    auto_merge: false
+
+    # Bot identity that authors the PR.
+    pr_author: seer-by-sentry[bot]
+    pr_labels:
+      - agent:seer
+      - needs-human-review
+
+    # PR body template (Jinja-ish). All four sections required by policy.
+    pr_body_template: |
+      ## Sentry alert
+      {alert_url}
+
+      ## Root cause (LLM-generated)
+      {root_cause}
+
+      ## Test added
+      {test_path}
+
+      ## Reviewer checklist
+      - [ ] I have validated the patch addresses the alert
+      - [ ] CI is green on the regression test
+
+    # Manual override — humans can force a run below thresholds.
+    manual_trigger:
+      slash_command: "/autofix"
+      requires_human: true
+
+    # Re-trigger guard — once a PR is open, suppress until merged or closed.
+    rerun_guard:
+      label_to_freeze: do-not-rerun
+      max_attempts_per_alert: 3
