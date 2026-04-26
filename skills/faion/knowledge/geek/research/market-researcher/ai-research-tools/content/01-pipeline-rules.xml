@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-rules" title="Market Research Pipeline Rules">
+  <summary>Two-layer orchestrator rules, stage assignment policy, schema normalization requirement, and credential verification before pipeline start.</summary>
+
+  <section title="Two-Layer Architecture">
+    <rule>
+      <statement>Use a two-layer agent structure: a Sonnet orchestrator that selects tools and generates stage queries, plus stage-specific tool calls (Perplexity, SerpAPI, Google Trends, Dovetail export). Never have the orchestrator make tool calls directly.</statement>
+      <rationale>Mixing selection logic and tool dispatch in one agent creates a monolithic prompt that is hard to debug when one stage fails. Separation allows stage-level retry without re-running the entire pipeline.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Assign exactly one primary tool per research stage. Do not allow the same tool to cover multiple stages.</statement>
+      <rationale>Using one tool for multiple stages hides coverage gaps. If Perplexity is used for both exploration and competitor intel, the competitor result will be citation-shallow because Perplexity is not optimized for tracking product and pricing changes.</rationale>
+    </rule>
+
+    <section title="Default Stage-to-Tool Map">
+      <list>
+        <item>exploration → Perplexity</item>
+        <item>competitor-intel → SerpAPI</item>
+        <item>trend → Google Trends (pytrends)</item>
+        <item>interview-analysis → Dovetail (export)</item>
+        <item>synthesis → Claude Sonnet</item>
+      </list>
+    </section>
+  </section>
+
+  <section title="Normalization Rule">
+    <rule>
+      <statement>Before merging stage outputs in the synthesis step, normalize schemas: Perplexity returns citation URLs, SerpAPI returns structured JSON, Google Trends returns DataFrames. The orchestrator must convert all outputs to a common format before synthesis.</statement>
+      <rationale>Without normalization, the synthesis agent receives heterogeneous schemas and either truncates the unusual formats or produces inconsistent citations, breaking the source registry.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Verify tool credentials and rate limits at the start of each pipeline run. Failed tool calls silently missing from results is a common failure mode.</statement>
+      <rationale>A stage that fails due to an expired API key produces no output. Without explicit verification, the orchestrator treats missing output as "no data found" and continues, producing a synthesis with invisible gaps.</rationale>
+    </rule>
+  </section>
+
+  <section title="Best Practices">
+    <rule>
+      <statement>Run the tool stack on a known-answer test case before live research to validate API reliability.</statement>
+      <rationale>Validate tool behavior against a question with a known, stable answer (e.g., "What is the Anthropic API base URL?") before committing to a multi-stage research run. This catches misconfiguration before it contaminates real research.</rationale>
+    </rule>
+
+    <antipattern>
+      <description>Agents default to Claude or ChatGPT for all stages when not given explicit tool assignments.</description>
+      <reason>General-purpose LLMs produce citation-poor results for competitive and market data stages. Stage-to-tool assignments must be explicit in the orchestrator prompt, not inferred.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Rate limit errors from one tool propagate silently unless the orchestrator handles exceptions per tool.</description>
+      <reason>Without per-tool exception handling, a rate-limited stage produces empty output that looks like "no data", corrupting the synthesis and producing gaps invisible to the human reviewer.</reason>
+    </antipattern>
+  </section>
+</text>

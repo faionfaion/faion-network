@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-patterns" title="Agentic Market Sizing Patterns">
+  <summary>Orchestrator prompt, CLI/SaaS table, gotchas, and best practices for AI-driven market sizing pipelines.</summary>
+
+  <section title="Orchestrator Pattern">
+    <rule>
+      <statement>A Claude Sonnet agent handles the full sizing loop: receive market definition, generate separate top-down and bottom-up queries, dispatch to Perplexity or web-search, collect results, output structured estimate with confidence ranges and assumption log.</statement>
+      <rationale>The structured loop prevents the most common failure: mixing data from both paths before triangulation. Explicit instruction to keep paths independent is required in the system prompt, not assumed.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="xml"><![CDATA[
+<market_sizing_task>
+  <market>Cloud-based AI research tools for knowledge workers, global, 2026</market>
+  <approach>Run top-down and bottom-up independently. Do not share intermediate results between paths.</approach>
+  <top_down>Find total knowledge-worker software market → isolate AI tools segment → apply addressable fraction</top_down>
+  <bottom_up>Estimate target companies × seats × annual price</bottom_up>
+  <output>
+    - TAM, SAM, SOM with confidence range (low/mid/high)
+    - Assumption log (one line per assumption)
+    - Source list with access date
+  </output>
+</market_sizing_task>
+      ]]></code>
+      <note>Explicitly separates the two paths and requires assumption logging. Human reviews assumption log before estimate enters any deliverable.</note>
+    </example>
+
+    <reference path="templates/triangulate.py">Claude SDK triangulator that runs two paths and flags divergence &gt;2x</reference>
+    <reference path="templates/market-sizing-prompt.txt">Full XML prompt template for market sizing tasks</reference>
+  </section>
+
+  <section title="CLI and SaaS Reference">
+    <list>
+      <item>pytrends — Google Trends demand signal proxy (pip install pytrends)</item>
+      <item>serpapi — Structured search for market reports (pip install google-search-results)</item>
+      <item>pandas — Tabulate and triangulate estimates (pip install pandas)</item>
+      <item>anthropic SDK — Drive Claude for synthesis and calculation (pip install anthropic)</item>
+    </list>
+
+    <list>
+      <item>Statista — export only, agent must parse downloaded PDFs</item>
+      <item>CB Insights — CSV export, company counts, funding data for bottom-up</item>
+      <item>Perplexity Pro — REST API, best for synthesizing analyst commentary</item>
+      <item>AlphaSense — partial API, strong for public-company disclosures</item>
+      <item>Exploding Topics — REST API, demand signal for emerging markets</item>
+      <item>Google Trends — free, pytrends, proxy for consumer demand (not reliable for B2B)</item>
+    </list>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Agents conflate TAM and SAM without explicit definitions in the system prompt.</description>
+      <reason>Both definitions must be injected in the system prompt on every run; they are not preserved across sessions.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>LLMs anchor heavily on the first data point encountered; collecting all sources before synthesizing is not the default behavior.</description>
+      <reason>Anchoring bias from early data inflates confidence; instruct the agent to collect all sources before producing any number.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Models omit confidence ranges unless explicitly required in the output schema.</description>
+      <reason>Point estimates invite false precision; confidence ranges must be a required field in the output schema, not an optional addition.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Statista and CB Insights data lags 6-18 months; AI-synthesized estimates inherit that lag without disclosure.</description>
+      <reason>Source recency must be verified by the agent and reported alongside the estimate; stale sources must be flagged explicitly.</reason>
+    </antipattern>
+  </section>
+</text>

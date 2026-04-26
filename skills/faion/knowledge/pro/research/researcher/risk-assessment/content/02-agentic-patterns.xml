@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-patterns" title="Risk Assessment Agentic Patterns">
+  <summary>Multi-pass agent pipeline, enumeration and pre-mortem prompt patterns, gotchas, and best practices for automated risk assessment.</summary>
+
+  <section title="Multi-Pass Pipeline">
+    <rule>
+      <statement>Drive risk assessment as a 4-pass pipeline: (1) researcher agent enumerates candidate risks; (2) red-team agent runs pre-mortem; (3) scorer agent applies prob x impact with citations; (4) human owner reviews and assigns mitigations.</statement>
+      <rationale>A single-pass enumeration produces a list anchored on the agent's prior knowledge. A separate red-team agent with a different system prompt (assume failure) surfaces black-swan and tail risks that the enumeration agent's optimism heuristic drops.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Never let an agent autonomously execute an "Avoid" decision. Avoid means killing a feature or market — always require a human-in-the-loop gate before executing.</statement>
+      <rationale>Avoiding a risk terminates a product direction. An agent making this call autonomously can invalidate weeks of work. The gate must be explicit and logged.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="text"><![CDATA[
+Enumeration pass prompt:
+You are a risk analyst. Given the product brief in <brief>, enumerate
+risks across 5 categories: market, product, team, financial, operational.
+For each risk: one-sentence statement, evidence (URL or doc ref),
+probability (H/M/L), impact (H/M/L). Minimum 3 risks per category.
+Cite sources inline.
+
+Pre-mortem pass prompt:
+It is 12 months from today. The launch in <brief> failed. Write a
+500-word post-mortem explaining what went wrong. Then convert each
+failure mode into a risk row. Be specific: no "lack of focus" —
+name the channel, the hire, the assumption.
+      ]]></code>
+      <note>Enumeration and pre-mortem use different system prompts and different agent instances. Merging them into one pass produces a list biased toward known risks.</note>
+    </example>
+
+    <reference path="scripts/riskreg.sh">Bash script that sorts register by score and lints missing fields</reference>
+  </section>
+
+  <section title="Best Practices">
+    <rule>
+      <statement>Require evidence per row. Reject any risk without a URL, conversation reference, or internal metric.</statement>
+      <rationale>Risks without evidence are vibes-based register entries. A URL or document reference forces the agent to ground the risk in observable reality, not inference.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Track mitigation cost vs. expected loss. If a mitigation costs more than prob x impact in dollars, accept the risk instead.</statement>
+      <rationale>Teams systematically over-spend on low-EV risks (compliance theater) and under-spend on high-EV risks (channel concentration). The cost comparison provides a decision rule.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Diff the risk register across monthly reviews. The delta — new risks, retired risks, score changes — is the actual signal.</statement>
+      <rationale>The absolute register is a point-in-time snapshot. The diff reveals whether identified risks are materializing, being mitigated, or being silently ignored.</rationale>
+    </rule>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>LLMs assign H/M/L confidently with no basis. Ungrounded probability scores inflate register quality perception.</description>
+      <reason>Force the agent to cite a source or comparable case for any score. Reject rows where the probability is not grounded in evidence or a base rate.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Risk register drift on re-runs: re-running the enumeration agent yields a different ID set every time.</description>
+      <reason>Use stable hashes (slug of risk statement) instead of sequential IDs, or have the agent diff-merge instead of regenerate, to preserve register continuity across runs.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Pre-mortems need divergent perspectives; a solo agent run collapses to one viewpoint.</description>
+      <reason>Use 3+ agents with different system prompts (skeptic, customer, competitor) and consolidate. A single-agent pre-mortem produces a list skewed by the single prompt's optimism level.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Risk statements often contain customer names, vendor terms, or unlaunched plans — confidentiality leak risk before external sharing.</description>
+      <reason>Run a scrubber agent before sharing the register externally or piping it into a third-party SaaS.</reason>
+    </antipattern>
+  </section>
+</text>

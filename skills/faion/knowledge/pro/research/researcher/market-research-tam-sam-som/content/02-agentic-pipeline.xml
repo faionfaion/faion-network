@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agentic-pipeline" title="Agentic Market Sizing Pipeline">
+  <summary>7-step agent pipeline, ICP lock rule, prompt patterns, triangulation requirement, and agent gotchas.</summary>
+
+  <section title="Pipeline Steps">
+    <rule>
+      <statement>Lock the ICP definition in one sentence and wait for explicit confirmation before fetching any number. "All SMBs" is not an ICP.</statement>
+      <rationale>Agents computing TAM/SAM/SOM without a locked ICP will scope to different customer segments across the three methods, making triangulation impossible and producing numbers that cannot be compared.</rationale>
+    </rule>
+
+    <list>
+      <item>Step 1 — ICP lock: restate ICP in one sentence, await confirmation</item>
+      <item>Step 2 — Top-down fetch: WebSearch for "{industry} market size {year}", capture top 3 sources, prefer government/Statista/Gartner; archive each via Wayback</item>
+      <item>Step 3 — Bottom-up build: count target companies via Census/Eurostat/Apollo, multiply by realistic ARPU</item>
+      <item>Step 4 — Competitor sweep: pull Crunchbase + SimilarWeb for top 5 competitors, sum + extrapolate long tail (1.5x named players)</item>
+      <item>Step 5 — Triangulate: run tam-triangulate.sh; write median to report only when spread is 2x or less</item>
+      <item>Step 6 — Confidence tagging: tag every cell H/M/L based on source primacy and recency (12 months or less = H)</item>
+      <item>Step 7 — Validation pass: secondary agent re-reads report and returns a delta list</item>
+    </list>
+
+    <example type="good">
+      <code lang="text"><![CDATA[
+Sizing prompt:
+You are a market sizer. Compute TAM, SAM, SOM for: <niche>.
+Constraints: <geo, segment, ICP>. Horizon: 3 years.
+Run THREE methods (top-down, bottom-up, competitor) in parallel.
+For every number cite the source URL + retrieval date.
+If methods diverge >2x, do NOT average — return both and flag.
+Output: markdown matching the Market Sizing Report template.
+
+Validation prompt:
+Validate this sizing: <numbers + assumptions>.
+Check: (1) does TAM cite a primary source? (2) is SAM constraint stack independent?
+(3) is SOM share within Year-N guidelines? Return a delta list, not a rewrite.
+      ]]></code>
+      <note>Sizing and validation are separate agent calls with separate prompts. The validator reads the sizing output; it does not regenerate.</note>
+    </example>
+
+    <reference path="templates/market-sizing-report.md">Full market sizing report template</reference>
+    <reference path="templates/quick-market-check.md">15-minute rough market check template</reference>
+    <reference path="scripts/tam-triangulate.sh">Triangulation script that flags divergence &gt;2x</reference>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>LLMs hallucinate market-size numbers fluently; they require a URL for every figure.</description>
+      <reason>Reject any line without a source URL. LLMs generate plausible-sounding numbers (e.g. "$4.2B by 2027") that have no factual basis. The URL is the only enforcement mechanism.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Confirmation bias: if the user hints at a target market size, the agent will reverse-engineer to that number.</description>
+      <reason>Pre-commit the methodology and share the ICP definition before revealing the hypothesis. The agent must compute the number before seeing the founder's expectation.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Currency drift: agents mix USD, EUR, GBP within one report.</description>
+      <reason>Normalize to USD with a dated FX rate in the report preamble. Require the agent to convert all figures before synthesizing.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Confusing GMV with revenue: marketplaces report GMV; SaaS reports ARR. Adding them is invalid.</description>
+      <reason>The agent must identify the revenue metric type for each competitor before including it in the competitor-based sizing. Mixed metrics produce incorrect TAM estimates.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Stale training data: the model "knows" 2023 market sizes and uses them unless forced to fetch.</description>
+      <reason>Force a fresh web fetch for any post-2024 market number. Add an explicit instruction: "Do not use training data for market size figures; always fetch from a cited source."</reason>
+    </antipattern>
+  </section>
+</text>
