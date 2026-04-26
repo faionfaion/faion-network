@@ -3,6 +3,13 @@
 ## [Unreleased]
 
 ### Added
+- **feature-044 pool infrastructure (`.aidocs/feature-044-pool/`):** `/faion-poll-agents` pool=10 (Opus) for filling the new geek-tier knowledge content (35 agent-methodologies + 52 sdlc-ai-methodologies = 87 slots). Files: `BRIEF.md` (subagent instructions: full research → discovery → write loop in NEW shape AGENTS.md+content/*.xml), `TICK.md` (orchestration rules), `QUEUE.txt` (29 batch lines `<domain>:<category>:<count>`, gitignored), `DONE.txt` (gitignored). BRIEF mandates pre-flight Read of `docs/skill-authoring.md` + `rules/skill-authoring.md` + `tag-glossary.xml`. Concurrent merges serialized via `flock /tmp/faion-network-merge.lock`.
+- **`semantic-xml-content` methodology** under `skills/faion/knowledge/geek/ai/llm-integration/`: closed tag vocabulary and conventions for `content/*.xml` in faion-network methodologies. Files: `AGENTS.md` (routing), `content/01-principles.xml` (semantic vs formatting tags, four guarantees), `content/02-tag-design.xml` (naming, attributes, nesting, code-block CDATA, references), `content/03-anti-patterns.xml` (formatting masquerade, inconsistent vocabulary, over-wrapping, CDATA leaks), `templates/methodology-text.xml` (skeleton), `templates/tag-glossary.xml` (closed list of allowed tags with role descriptions).
+
+### Changed
+- **`.aidocs/{agent,sdlc-ai}-methodologies/loop-prompt.md`:** added MANDATORY pre-flight Read of `docs/skill-authoring.md` + `tag-glossary.xml`; verify checklist updated to require `content/*.xml` (not `texts/`) and forbid `README.md` in subfolders.
+
+### Added
 - **Methodology refactor pool (`skills/faion/.refactor/`):** infrastructure for a `faion-poll-agents` background pool that converts the OLD 5-file methodologies (`README.md` + `checklist.md` + `templates.md` + `examples.md` + `llm-prompts.md`) to the canonical NEW shape (`CLAUDE.md` → `AGENTS.md` → `content/*.xml` semantic XML + optional `templates/` + `scripts/`). Pool=10 sonnet, batch=8, tick `/loop 5m`. State files: `BRIEF.md` + `TICK.md` (tracked), `QUEUE.txt` + `DONE.txt` (gitignored). Initial QUEUE = 1245 paths (excludes `geek/ai/ai-agents/*` per migration carve-out for the 15 agent-builder methodologies that stay in the OLD shape).
 
 ### Changed

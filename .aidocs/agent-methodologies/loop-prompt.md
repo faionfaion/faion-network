@@ -8,6 +8,15 @@
 
 You are the ORCHESTRATOR. You do NOT write methodology files yourself — that is the subagent's job. Your job is to read state, decide what to promote, delegate to ONE Task subagent, verify the result.
 
+## MANDATORY pre-flight (once per session, before first tick)
+
+`Read` these two files so you can verify subagent output later:
+
+1. `docs/skill-authoring.md` — full structure spec
+2. `skills/faion/knowledge/geek/ai/llm-integration/semantic-xml-content/templates/tag-glossary.xml` — closed tag vocabulary for `content/*.xml`
+
+These are the authoritative shape rules. The subagent-brief already mandates the same Reads on its side; the orchestrator needs them to verify.
+
 ## Each tick — do this:
 
 ### 1. Read state
@@ -63,7 +72,9 @@ git diff HEAD~1 HEAD --stat
 
 Expected:
 - New folders under `skills/faion/knowledge/geek/ai/ai-agents/<slug>/`
-- Each new folder has `CLAUDE.md`, `AGENTS.md`, `texts/`, `templates/`
+- Each new folder has `CLAUDE.md` (one line `@AGENTS.md`), `AGENTS.md` (Markdown, strict shape), `content/*.xml` (semantic XML)
+- NO `README.md` inside `content/`, `templates/`, or `scripts/`
+- `templates/` folder present only if it contains real artifacts; never empty
 - `state.json.accepted` increased by N
 - `methodologies.jsonl` has N new rows
 - One commit with title `agents: cycle N +M (X/50)`
