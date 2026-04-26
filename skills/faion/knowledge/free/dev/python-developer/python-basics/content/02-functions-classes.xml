@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-functions-classes" title="Functions, Classes, and OOP Patterns">
+  <summary>Idiomatic Python function design, decorators, dataclasses, Protocol-based duck typing, and context managers.</summary>
+
+  <section title="Function Design">
+    <rule>
+      <statement>Annotate all public function signatures with type hints including the return type. Use `-> None` for procedures that have no return value.</statement>
+      <rationale>Without return-type annotations, mypy skips the function body in its inferred-return analysis. Explicit annotations make the contract clear and improve LLM code generation accuracy.</rationale>
+    </rule>
+    <rule>
+      <statement>Never use mutable objects as default argument values. Use `None` as the default and initialize inside the body.</statement>
+      <rationale>Default argument values are evaluated once at function definition time, not per call. A mutable default like `def f(items=[])` shares the same list across all calls — a classic Python footgun.</rationale>
+    </rule>
+    <rule>
+      <statement>Use keyword-only arguments (`def f(*, name: str)`) for clarity when a function has more than two positional parameters or when argument names carry intent.</statement>
+      <rationale>Keyword-only arguments prevent positional ordering mistakes at call sites. They also make function signatures self-documenting and resistant to refactoring breaks when argument order changes.</rationale>
+    </rule>
+    <example type="bad">
+      <note>Mutable default argument — the classic Python bug</note>
+      <code lang="python"><![CDATA[
+def add_tag(tag: str, tags: list[str] = []) -> list[str]:  # Bug: shared list!
+    tags.append(tag)
+    return tags
+]]></code>
+    </example>
+    <example type="good">
+      <note>Correct: None default, keyword-only, type hints</note>
+      <code lang="python"><![CDATA[
+def add_tag(tag: str, *, tags: list[str] | None = None) -> list[str]:
+    result = tags if tags is not None else []
+    result.append(tag)
+    return result
+]]></code>
+    </example>
+  </section>
+
+  <section title="Decorators">
+    <rule>
+      <statement>Always apply `@functools.wraps(func)` in decorator wrappers to preserve the wrapped function's `__name__`, `__doc__`, and signature.</statement>
+      <rationale>Without `functools.wraps`, introspection tools (help(), Sphinx, FastAPI's OpenAPI) see the wrapper's metadata instead of the original function's. This breaks auto-generated docs and tracebacks.</rationale>
+    </rule>
+    <example type="good">
+      <note>Decorator preserving wrapped function metadata</note>
+      <code lang="python"><![CDATA[
+import functools
+from collections.abc import Callable
+from typing import Any
+
+def log_call[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        result = func(*args, **kwargs)
+        return result
+    return wrapper
+]]></code>
+    </example>
+  </section>
+
+  <section title="Dataclasses">
+    <rule>
+      <statement>Use `@dataclass` for data containers with typed fields instead of bare `__init__` methods or named tuples with many fields.</statement>
+      <rationale>Dataclasses auto-generate `__init__`, `__repr__`, and `__eq__` from field declarations. `@dataclass(frozen=True)` produces an immutable, hashable value object without manual `__hash__`.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `field(default_factory=list)` for mutable defaults in dataclasses — never assign `[]` or `{}` directly as a field default.</statement>
+      <rationale>Dataclass field defaults are shared the same way function argument defaults are. The `default_factory` creates a fresh instance per object. A bare `[]` default raises `ValueError` at class definition time in modern Python.</rationale>
+    </rule>
+    <example type="good">
+      <note>Dataclass with mutable field and frozen variant</note>
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import ClassVar
+
+@dataclass
+class ShoppingCart:
+    user_id: int
+    items: list[str] = field(default_factory=list)
+    _total_carts: ClassVar[int] = 0  # Class variable, not an instance field
+
+    def add(self, item: str) -> None:
+        self.items.append(item)
+
+@dataclass(frozen=True)
+class Point:
+    x: float
+    y: float
+
+    def distance_to(self, other: "Point") -> float:
+        return ((self.x - other.x) ** 2 + (self.y - other.y) ** 2) ** 0.5
+]]></code>
+    </example>
+  </section>
+
+  <section title="Protocol for Duck Typing">
+    <rule>
+      <statement>Use `Protocol` for structural duck-typing contracts between modules instead of ABC inheritance. Add `@runtime_checkable` only when `isinstance()` checks at runtime are actually needed.</statement>
+      <rationale>Protocol satisfies the Open/Closed principle: a class satisfies a Protocol without importing it. ABC requires explicit inheritance, creating import coupling. `@runtime_checkable` adds per-call overhead — omit it for hot paths.</rationale>
+    </rule>
+    <example type="good">
+      <note>Protocol contract for notification backends — no inheritance coupling</note>
+      <code lang="python"><![CDATA[
+from typing import Protocol
+
+class Notifiable(Protocol):
+    def send(self, recipient: str, message: str) -> bool: ...
+
+class EmailBackend:
+    def send(self, recipient: str, message: str) -> bool:
+        # Send via SMTP
+        return True
+
+class SMSBackend:
+    def send(self, recipient: str, message: str) -> bool:
+        # Send via SMS gateway
+        return True
+
+def notify_all(backends: list[Notifiable], recipient: str, msg: str) -> None:
+    for backend in backends:
+        backend.send(recipient, msg)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Context Managers">
+    <rule>
+      <statement>Implement resource cleanup as a context manager via `@contextmanager` or `__enter__`/`__exit__`. Never require callers to call `.close()` or `.cleanup()` manually.</statement>
+      <rationale>Context managers guarantee cleanup even when exceptions occur. Manual `.close()` calls are forgotten under exception branches. `with` blocks make intent obvious and resource lifetimes explicit.</rationale>
+    </rule>
+    <example type="good">
+      <note>Context manager via @contextmanager for managed resources</note>
+      <code lang="python"><![CDATA[
+from contextlib import contextmanager
+from collections.abc import Generator
+
+@contextmanager
+def temporary_directory() -> Generator[str, None, None]:
+    import tempfile, shutil
+    path = tempfile.mkdtemp()
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path, ignore_errors=True)
+
+# Usage: cleanup is guaranteed
+with temporary_directory() as tmp:
+    process_files(tmp)
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-serializers-schemas" title="Serializer and Schema Design">
+  <summary>Rules for DRF serializer separation and Ninja schema design that prevent security leaks and testing friction.</summary>
+
+  <section title="DRF Serializer Rules">
+    <rule>
+      <statement>Use separate input serializers (validation) and output serializers (representation) — never one serializer for both.</statement>
+      <rationale>A single serializer that handles both input and output forces compromises: write-only fields mix with read-only fields, and changing one breaks the other. Separate serializers also make permission-based field differences explicit.</rationale>
+    </rule>
+    <rule>
+      <statement>Never use Meta.fields = "__all__" on any user-facing serializer.</statement>
+      <rationale>New columns added to the model are automatically exposed to API consumers. This has caused accidental password hash, token, and internal ID leaks in production systems.</rationale>
+    </rule>
+    <rule>
+      <statement>List fields explicitly in Meta.fields and declare read_only_fields for computed and auto-set fields.</statement>
+      <rationale>An allowlist prevents new columns from leaking. read_only_fields ensures id, uid, created_at, updated_at cannot be set via PATCH/PUT.</rationale>
+    </rule>
+    <example type="bad">
+      <note>Single serializer with __all__ — exposes every field including internal ones</note>
+      <code lang="python"><![CDATA[
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'  # Security risk: exposes password_hash, tokens, etc.
+]]></code>
+    </example>
+    <example type="good">
+      <note>Separate input and output serializers with explicit field lists</note>
+      <code lang="python"><![CDATA[
+class CreateUserSerializer(serializers.Serializer):
+    """Input: validate registration data."""
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    first_name = serializers.CharField(max_length=100)
+
+    def validate_email(self, value: str) -> str:
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Email already registered")
+        return value.lower()
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    """Output: minimal fields for list views."""
+    class Meta:
+        model = User
+        fields = ['id', 'uid', 'email', 'first_name', 'last_name']
+        read_only_fields = fields
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    """Output: full fields for detail views."""
+    organization = OrganizationSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'uid', 'email', 'first_name', 'last_name',
+                  'organization', 'role', 'created_at']
+        read_only_fields = fields
+]]></code>
+    </example>
+  </section>
+
+  <section title="Ninja Schema Rules">
+    <rule>
+      <statement>Use ModelSchema for output; use Schema (Pydantic) for input with explicit validators.</statement>
+      <rationale>ModelSchema auto-generates fields from the Django model for output, which is safe for read paths. Input schemas need explicit Pydantic validators to enforce business rules.</rationale>
+    </rule>
+    <example type="good">
+      <note>Ninja: separate Create schema (input) and ModelSchema (output)</note>
+      <code lang="python"><![CDATA[
+from ninja import Schema, ModelSchema
+from pydantic import Field, field_validator
+
+class CreateOrderSchema(Schema):
+    amount: Decimal = Field(..., ge=0)
+    item_id: int
+
+    @field_validator('amount')
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be positive")
+        return v
+
+class OrderSchema(ModelSchema):
+    class Meta:
+        model = Order
+        fields = ['id', 'uid', 'amount', 'status', 'created_at']
+]]></code>
+    </example>
+  </section>
+</text>

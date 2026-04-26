@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-api-testing" title="DRF API Testing">
+  <summary>APIClient usage, force_authenticate, DRF response assertions, and permission matrix parametrization.</summary>
+
+  <section title="APIClient Setup">
+    <rule>
+      <statement>Use DRF's `APIClient` for all REST endpoint tests. Create `api_client` and `authed_client` fixtures in `conftest.py`. Never instantiate `APIClient()` inside individual test functions.</statement>
+      <rationale>Centralizing `APIClient` creation in fixtures ensures consistent configuration (format, auth headers) across the test suite. Instantiating per-test hides the client setup and makes it harder to change authentication globally.</rationale>
+    </rule>
+    <example type="good">
+      <note>api_client and authed_client fixtures in conftest.py</note>
+      <code lang="python"><![CDATA[
+import pytest
+from rest_framework.test import APIClient
+
+@pytest.fixture
+def api_client() -> APIClient:
+    return APIClient()
+
+@pytest.fixture
+def authed_client(user) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def staff_client(user_factory) -> APIClient:
+    staff_user = user_factory(is_staff=True)
+    client = APIClient()
+    client.force_authenticate(user=staff_user)
+    return client
+]]></code>
+    </example>
+    <reference path="templates/conftest.py">Full conftest.py with all client fixtures and factory registrations</reference>
+  </section>
+
+  <section title="force_authenticate">
+    <rule>
+      <statement>Use `client.force_authenticate(user=user)` in tests — not `client.credentials(HTTP_AUTHORIZATION='Token ...')`. `force_authenticate` bypasses token validation and tests the view logic, not the token verification.</statement>
+      <rationale>Token verification is tested once in auth tests. Every other test that needs an authenticated user should bypass token parsing with `force_authenticate`. This decouples view tests from the auth backend implementation — changing from JWT to OAuth2 does not break view tests.</rationale>
+    </rule>
+  </section>
+
+  <section title="Response Assertions">
+    <rule>
+      <statement>Assert status code first, then assert on `response.data` fields individually. Never assert only on `response.status_code == 200` — verify the response shape is correct.</statement>
+      <rationale>A 200 with an empty body or missing fields is a bug. Asserting on `response.data['field']` catches serializer field omissions and field name renames. Verifying `'password' not in response.data` prevents accidental credential leaks from serializer changes.</rationale>
+    </rule>
+    <example type="good">
+      <note>Complete response assertion pattern</note>
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_create_user(api_client, organization):
+    payload = {
+        "email": "alice@example.com",
+        "password": "SecurePass123!",
+        "first_name": "Alice",
+    }
+    response = api_client.post("/api/v1/users/", payload, format="json")
+
+    assert response.status_code == 201
+    assert response.data["email"] == "alice@example.com"
+    assert response.data["first_name"] == "Alice"
+    assert "password" not in response.data     # Never leak passwords
+    assert "id" in response.data               # ID assigned
+]]></code>
+    </example>
+  </section>
+
+  <section title="Permission Matrix Parametrization">
+    <rule>
+      <statement>Use `@pytest.mark.parametrize` to test permission matrices: which roles/states produce which HTTP status codes. One parametrized test is better than N separate tests with identical structure.</statement>
+      <rationale>Permission logic is combinatorial — a ViewSet with 4 HTTP methods and 3 user roles requires 12 test cases. Parametrization makes the matrix explicit and readable. Adding a new role only requires a new tuple in the `parametrize` list, not a new test function.</rationale>
+    </rule>
+    <example type="good">
+      <note>Permission matrix with parametrize</note>
+      <code lang="python"><![CDATA[
+import pytest
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("client_fixture,expected_status", [
+    ("api_client", 401),         # Unauthenticated
+    ("authed_client", 200),      # Authenticated member
+    ("staff_client", 200),       # Staff member
+])
+def test_order_list_permissions(request, client_fixture, expected_status):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get("/api/v1/orders/")
+    assert response.status_code == expected_status
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("client_fixture,expected_status", [
+    ("api_client", 401),
+    ("authed_client", 403),      # Authed but not owner — forbidden
+    ("staff_client", 200),       # Staff can access any order
+])
+def test_order_detail_permissions(
+    request, client_fixture, expected_status, order
+):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get(f"/api/v1/orders/{order.id}/")
+    assert response.status_code == expected_status
+]]></code>
+    </example>
+  </section>
+</text>

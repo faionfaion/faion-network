@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="Django API Anti-Patterns">
+  <summary>Concrete failure modes that agents and developers consistently introduce into Django REST APIs.</summary>
+
+  <section title="View and Service Layer">
+    <antipattern>
+      <description>Fat view: business logic (DB queries, balance checks, email sending) written directly in the view's post() method.</description>
+      <reason>Fat views cannot be unit-tested without an HTTP request. Business logic in views is also unreachable from management commands, Celery tasks, or other entry points.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Business logic placed in serializer validate_* methods instead of a service function.</description>
+      <reason>Serializers should validate shape and type only. Logic in validate_* is hard to test in isolation and creates hidden coupling between validation and business rules.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Serializer Mistakes">
+    <antipattern>
+      <description>Using Meta.fields = "__all__" on a user-facing serializer.</description>
+      <reason>New model fields (passwords, tokens, internal IDs) are automatically exposed when the model changes. An explicit allowlist is the only safe approach.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Serializer(data=request.data, partial=True) for PATCH without a separate UpdateSerializer.</description>
+      <reason>Reusing the create serializer with partial=True allows required fields to be cleared — violating invariants. A separate Update serializer makes all fields optional explicitly.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Configuration and Security">
+    <antipattern>
+      <description>Enabling BrowsableAPIRenderer in production.</description>
+      <reason>The browsable API changes content negotiation behavior (returns HTML when Accept: */* is sent), turns CSRF into a surprise vector, and leaks API structure to unauthenticated users.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Writing async def methods in plain DRF views without adrf — the method runs synchronously.</description>
+      <reason>DRF's dispatch pipeline is synchronous. An async def view handler is called in a sync context; it appears to work but blocks the event loop in ASGI deployments.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Adding URLPathVersioning to REST_FRAMEWORK settings without adding &lt;version&gt; to the URL pattern.</description>
+      <reason>The versioning class is applied but request.version is None — no error, silent failure. Tests must assert request.version is populated, not just that the endpoint responds.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-syntax-by-version" title="Type Hint Syntax by Python Version">
+  <summary>Feature/version matrix, PEP 695 generic syntax (3.12+), type alias statement, and TypedDict evolution.</summary>
+
+  <section title="Version Feature Matrix">
+    <rule>
+      <statement>Before using a typing feature, verify the Python version floor of the repo matches or exceeds the feature's introduction version. Use `from __future__ import annotations` only as a temporary bridge for pre-3.10 syntax on 3.9 codebases.</statement>
+      <rationale>Using `X | Y` syntax without `from __future__ import annotations` on Python 3.9 causes `TypeError` at import time. The feature matrix prevents silent syntax breaks in CI or production.</rationale>
+    </rule>
+    <list>
+      <item>3.9: `list[int]`, `dict[K, V]`, `set[T]`, `tuple[T, ...]` (PEP 585)</item>
+      <item>3.10: `X | Y` union syntax (PEP 604), `ParamSpec`, `TypeAlias`</item>
+      <item>3.11: `Self`, `LiteralString`, `TypeVarTuple`, `Required`/`NotRequired`</item>
+      <item>3.12: PEP 695 `class Box[T]:`, `def first[T]():`, `type Alias = ...`</item>
+      <item>3.13: `TypeIs` (PEP 742, bidirectional narrowing), `TypeVar` defaults, `ReadOnly` in TypedDict</item>
+      <item>3.14: Deferred annotation evaluation by default (PEP 649)</item>
+    </list>
+  </section>
+
+  <section title="PEP 695 Type Parameter Syntax">
+    <rule>
+      <statement>Use PEP 695 syntax on 3.12+ floor: `class Foo[T]:`, `def func[T](x: T) -> T:`, `type Alias = ...`. Migrate legacy `TypeVar`/`Generic` to this form when touching a file.</statement>
+      <rationale>PEP 695 eliminates `T = TypeVar('T')` declarations and the `Generic[T]` base class. It co-locates the type parameter with the class/function definition, making the scope unambiguous and removing a common source of TypeVar naming collisions.</rationale>
+    </rule>
+    <example type="good">
+      <note>PEP 695 generics — class, function, constrained, and alias</note>
+      <code lang="python"><![CDATA[
+# Generic class
+class Stack[T]:
+    def __init__(self) -> None:
+        self._items: list[T] = []
+
+    def push(self, item: T) -> None:
+        self._items.append(item)
+
+    def pop(self) -> T:
+        return self._items.pop()
+
+# Generic function
+def first[T](items: list[T]) -> T | None:
+    return items[0] if items else None
+
+# Constrained TypeVar
+class NumberBox[T: (int, float)]:
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+# Type alias (PEP 695)
+type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+]]></code>
+    </example>
+  </section>
+
+  <section title="TypeIs vs TypeGuard">
+    <rule>
+      <statement>Use `TypeIs[T]` (Python 3.13+) instead of `TypeGuard[T]` for narrowing functions when the False branch should also narrow. `TypeGuard` only narrows in the True branch.</statement>
+      <rationale>`TypeIs` enables bidirectional narrowing: in `if is_str(x)`, x is `str`; in `else`, x is narrowed to whatever remains after removing `str` from the union. `TypeGuard` leaves the else branch unnarrowed, requiring extra isinstance guards.</rationale>
+    </rule>
+    <example type="good">
+      <note>TypeIs bidirectional narrowing vs TypeGuard one-sided</note>
+      <code lang="python"><![CDATA[
+from typing import TypeIs
+
+def is_str(x: object) -> TypeIs[str]:
+    return isinstance(x, str)
+
+def process(x: int | str) -> None:
+    if is_str(x):
+        print(x.upper())  # x: str
+    else:
+        print(x + 1)      # x: int — narrowed by TypeIs, not narrowed by TypeGuard
+]]></code>
+    </example>
+  </section>
+
+  <section title="TypedDict Evolution">
+    <rule>
+      <statement>Use class-based TypedDict syntax. Use `NotRequired[T]` for optional fields (Python 3.11+) instead of `total=False` on the whole dict. Use `ReadOnly[T]` (Python 3.13+) for immutable fields.</statement>
+      <rationale>`total=False` makes all fields optional, which is too broad. `NotRequired` is field-granular and makes the schema self-documenting. `ReadOnly` expresses intent without needing a frozen dataclass.</rationale>
+    </rule>
+    <example type="good">
+      <note>TypedDict with granular Required/NotRequired</note>
+      <code lang="python"><![CDATA[
+from typing import TypedDict, NotRequired, ReadOnly
+
+class UserProfile(TypedDict):
+    id: ReadOnly[int]       # Cannot be modified after creation
+    email: str              # Always required, mutable
+    bio: NotRequired[str]   # Optional field
+    avatar_url: NotRequired[str | None]
+]]></code>
+    </example>
+  </section>
+</text>

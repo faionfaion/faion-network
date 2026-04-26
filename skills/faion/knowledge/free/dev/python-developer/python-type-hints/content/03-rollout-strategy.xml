@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-rollout-strategy" title="Incremental Type Annotation Rollout">
+  <summary>File-by-file mypy adoption strategy, incremental CI gate, and error-class priority order for annotating legacy codebases.</summary>
+
+  <section title="Rollout Approach">
+    <rule>
+      <statement>Annotate boundary modules first (HTTP handlers, queue consumers, service entry points), then propagate inward to services and selectors, then internals. Never attempt repo-wide strict mode on an unannotated codebase.</statement>
+      <rationale>Boundary modules catch the most impactful shape mismatches — wrong payload types crossing API or queue boundaries. Starting at boundaries maximizes the bug-finding value per annotation effort. Attempting repo-wide strict mode generates hundreds of errors and freezes progress.</rationale>
+    </rule>
+    <rule>
+      <statement>Maintain a per-module mypy allowlist in `[[tool.mypy.overrides]]`. When a module passes `mypy --strict`, move it to the strict list. Never lower strictness on a module that already passes — only raise it.</statement>
+      <rationale>The allowlist prevents regression: a future commit cannot silently break type coverage on already-annotated modules. Moving modules to strict one by one creates a visible progress metric.</rationale>
+    </rule>
+  </section>
+
+  <section title="Error Class Priority">
+    <rule>
+      <statement>Fix mypy errors in this priority order: (1) `no-untyped-def` (add annotations), (2) `attr-defined` (real runtime AttributeErrors), (3) `arg-type`/`return-value` (shape mismatches), (4) `no-any-return` (narrow return types). Fix `misc` last.</statement>
+      <rationale>`no-untyped-def` and `attr-defined` map directly to production bugs. `no-any-return` and `misc` are often noise or third-party stubs issues. Prioritizing by production-bug likelihood maximizes ROI of annotation effort.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI Gate">
+    <rule>
+      <statement>Run mypy only on files changed in the PR (not the full repo) in pre-push hooks. Run the full repo check in CI on the main branch only.</statement>
+      <rationale>Full-repo mypy on a large unannotated codebase can take minutes and block developers. Checking only changed files keeps the feedback loop fast. Main branch CI catches regressions introduced by merging multiple PRs that individually passed.</rationale>
+    </rule>
+    <reference path="templates/typecheck-touched.sh">Pre-push script: strict mypy on changed files only</reference>
+    <reference path="templates/precommit-mypy.yaml">pre-commit hook config for typecheck-touched.sh</reference>
+    <example type="good">
+      <note>pyproject.toml mypy with per-module strict allowlist</note>
+      <code lang="toml"><![CDATA[
+[tool.mypy]
+python_version = "3.12"
+# Default: lenient for unannotated legacy modules
+disallow_untyped_defs = false
+
+# Strict for modules that have been annotated
+[[tool.mypy.overrides]]
+module = [
+    "myapp.services.orders",
+    "myapp.services.users",
+    "myapp.api.views",
+]
+strict = true
+
+# Always exclude
+[[tool.mypy.overrides]]
+module = "myapp.migrations.*"
+ignore_errors = true
+]]></code>
+    </example>
+  </section>
+
+  <section title="Migration Tooling">
+    <rule>
+      <statement>Use `ruff check --select UP --fix` to auto-migrate deprecated typing imports to modern syntax before starting manual annotation work. Use `pyupgrade --py312-plus` for additional upgrades.</statement>
+      <rationale>Auto-migration eliminates the mechanical work of renaming `Optional` → `X | None`, `List` → `list`, etc. Doing it first means all new manual annotations use modern syntax from the start, preventing mixed-style drift.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-circular-deps" title="Circular Dependency Prevention">
+  <summary>Strategy ladder: string FK refs, apps.get_model(), TYPE_CHECKING, function-scoped imports, and core/ extraction.</summary>
+
+  <section title="Strategy Selection">
+    <rule>
+      <statement>Apply circular dependency strategies in this order: (1) string FK references for model fields, (2) `apps.get_model()` for runtime model access in services, (3) `TYPE_CHECKING` guard for type-only imports, (4) function-scoped imports as a last resort, (5) extract shared types to a `core/` app if multiple strategies are needed in the same module.</statement>
+      <rationale>Each strategy has a different scope and cost. String FK references are zero-cost and the standard Django model pattern. `apps.get_model()` is safe but verbose. `TYPE_CHECKING` guards work for types but break runtime isinstance checks. Function-scoped imports add call overhead. `core/` extraction is a structural fix for systemic circular dependency clusters.</rationale>
+    </rule>
+  </section>
+
+  <section title="String FK References">
+    <rule>
+      <statement>Always use string references in ForeignKey and ManyToManyField definitions: `ForeignKey('users.User', ...)` instead of `ForeignKey(User, ...)`. This is the Django standard and makes the model layer circular-import-proof.</statement>
+      <rationale>String references (`'app_label.ModelName'`) are resolved by Django's app registry after all apps have loaded. Direct import references create load-order dependencies between apps that can cause circular import failures depending on INSTALLED_APPS order.</rationale>
+    </rule>
+    <example type="good">
+      <note>String references in model FK and ManyToMany fields</note>
+      <code lang="python"><![CDATA[
+from django.db import models
+
+class Order(models.Model):
+    user = models.ForeignKey(
+        'users.User',        # String reference — no import needed
+        on_delete=models.CASCADE,
+        related_name='orders',
+    )
+    products = models.ManyToManyField(
+        'catalog.Product',   # String reference
+        through='OrderItem',
+    )
+]]></code>
+    </example>
+  </section>
+
+  <section title="apps.get_model()">
+    <rule>
+      <statement>Use `apps.get_model('app_label', 'ModelName')` in service/selector functions that need model classes at runtime but cannot import them at module level due to circular deps.</statement>
+      <rationale>`apps.get_model()` returns the model class from Django's app registry, which is fully populated after `django.setup()`. It moves the import from module load time to function call time, breaking the circular import chain without coupling the module to a specific import path.</rationale>
+    </rule>
+    <example type="good">
+      <note>apps.get_model() for runtime model access in a service</note>
+      <code lang="python"><![CDATA[
+from django.apps import apps
+
+def get_user_orders(user_id: int) -> list:
+    Order = apps.get_model('orders', 'Order')
+    return list(Order.objects.filter(user_id=user_id).select_related('items'))
+]]></code>
+    </example>
+  </section>
+
+  <section title="TYPE_CHECKING Guard">
+    <rule>
+      <statement>Move imports needed only for type hints into `if TYPE_CHECKING:` blocks. Combine with `from __future__ import annotations` to avoid evaluating the annotation strings at runtime.</statement>
+      <rationale>`TYPE_CHECKING` is `False` at runtime — imports inside the block are never executed. Type checkers (mypy, pyright) treat `TYPE_CHECKING` as `True` and follow the imports for analysis. This eliminates circular imports caused by cross-app type annotations.</rationale>
+    </rule>
+    <example type="good">
+      <note>TYPE_CHECKING guard for cross-app type annotations</note>
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.users.models import User
+    from apps.catalog.models import Product
+
+def calculate_discount(user: User, product: Product) -> float:
+    # Type checker knows User and Product types
+    # At runtime, the annotation strings are not evaluated
+    ...
+]]></code>
+    </example>
+  </section>
+
+  <section title="core/ App Extraction">
+    <rule>
+      <statement>When three or more apps have circular import relationships, extract the shared types, constants, or base classes into a `core/` (or `common/`) app. The `core/` app imports from no other app.</statement>
+      <rationale>Circular import clusters indicate shared concepts that belong in a common layer. Moving them to `core/` establishes a dependency direction: all apps can import from `core/`, but `core/` never imports from other apps. This pattern resolves the entire cluster in one structural change.</rationale>
+    </rule>
+  </section>
+</text>

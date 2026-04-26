@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 python-developer methodologies migrated to new shape (batch: django-api, python-basics, python-typing, python-type-hints, python-modern-2026, python-async, django-imports, django-testing)
 - refactor: 8/8 methodologies migrated to new shape (batch: agentic-ai-product-development, agents, ai-native-product-development, ba/business-analyst/ai-enabled-business-analysis, ba/ba-core/ai-enabled-business-analysis, threads-basics, instagram-basics, plg-metrics)
 - refactor: 8/8 testing-developer methodologies migrated to new shape (batch: e2e-testing, testing-pytest, test-fixtures, mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript)
 - refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)

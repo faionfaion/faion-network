@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-tooling" title="Modern Python Tooling">
+  <summary>uv for environment and package management, pyproject.toml structure, ruff for lint and format, mypy strict setup.</summary>
+
+  <section title="uv — Environment and Package Management">
+    <rule>
+      <statement>Use `uv` as the single tool for Python version management, virtual environments, and package installation. Do not use pip, venv, or pyenv alongside uv in new projects.</statement>
+      <rationale>uv is 10-100x faster than pip (warm cache), manages Python versions itself (`uv python install`), and uses a global cache to avoid redundant downloads. One tool eliminates the pip/pip-tools/pyenv/virtualenv coordination complexity.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin the Python version per project with a `.python-version` file (`uv python pin 3.12`). Keep it in sync with `requires-python` in `pyproject.toml`.</statement>
+      <rationale>Without a pinned version, `uv sync` picks the highest available Python. Team members on different minor versions encounter subtle behavior differences (stdlib additions, syntax changes). `.python-version` + `requires-python` provide two layers of enforcement.</rationale>
+    </rule>
+    <example type="good">
+      <note>uv project bootstrap and common commands</note>
+      <code lang="bash"><![CDATA[
+# Bootstrap
+uv init my_project --python 3.12
+cd my_project
+uv python pin 3.12
+
+# Add dependencies
+uv add fastapi pydantic
+uv add --dev pytest ruff mypy pytest-cov
+
+# Run in virtualenv without activating
+uv run python main.py
+uv run pytest
+uv run ruff check . --fix
+
+# Sync lockfile (CI or new clone)
+uv sync
+]]></code>
+    </example>
+    <reference path="templates/bootstrap.sh">One-shot project bootstrap script using uv</reference>
+  </section>
+
+  <section title="pyproject.toml Structure">
+    <rule>
+      <statement>Consolidate all project config in `pyproject.toml`: project metadata, build system (hatchling), ruff, mypy, and pytest settings. Do not use `setup.cfg`, `setup.py`, `.flake8`, or `mypy.ini`.</statement>
+      <rationale>Multiple config files fragment project setup. `pyproject.toml` is the PEP 517/518 standard and all major tools (ruff, mypy, pytest, hatchling, uv) support it. Consolidation reduces cognitive overhead when onboarding.</rationale>
+    </rule>
+    <reference path="templates/pyproject.toml">Complete pyproject.toml template with ruff, mypy, pytest config</reference>
+  </section>
+
+  <section title="Ruff — Lint and Format">
+    <rule>
+      <statement>Use ruff for both linting and formatting (`ruff check` + `ruff format`). Enable rule groups: `E` (errors), `F` (pyflakes), `I` (isort), `B` (bugbear), `UP` (pyupgrade), `C4` (comprehensions), `T20` (no-print).</statement>
+      <rationale>Ruff replaces Flake8 + Black + isort + pyupgrade in a single binary that runs in milliseconds. Rule group `UP` auto-upgrades deprecated typing syntax to modern equivalents. `T20` blocks accidental `print()` in production code.</rationale>
+    </rule>
+    <rule>
+      <statement>Run `ruff check . --fix` before committing to auto-fix all safe-fixable violations. Set `ruff format .` in pre-commit hooks to enforce consistent formatting.</statement>
+      <rationale>Auto-fix eliminates manual correction of mechanical style issues. Pre-commit hooks make formatting non-negotiable — no "I forgot" in code review. CI runs `ruff check` without `--fix` to catch unfixable violations.</rationale>
+    </rule>
+  </section>
+
+  <section title="mypy — Static Type Checking">
+    <rule>
+      <statement>Run mypy with `strict = true` in CI. For new projects, start strict from day one. For legacy codebases, enable strict incrementally per module using `[[tool.mypy.overrides]]`.</statement>
+      <rationale>Strict mode enables `disallow_untyped_defs`, `warn_return_any`, and `no_implicit_optional` — the most impactful flags. Adding strict to an existing codebase all at once generates hundreds of errors; per-module overrides let you clean up incrementally.</rationale>
+    </rule>
+    <rule>
+      <statement>Exclude `migrations/` and `tests/` from strict mode via mypy overrides. Tests use dynamic fixtures; migrations are generated code — both produce false positives under strict.</statement>
+      <rationale>Django migrations use dynamic field references that mypy cannot resolve without django-stubs. Test files use `pytest.fixture` and `conftest` patterns that produce `untyped-def` noise. Excluding them focuses strict mode on production code.</rationale>
+    </rule>
+  </section>
+</text>

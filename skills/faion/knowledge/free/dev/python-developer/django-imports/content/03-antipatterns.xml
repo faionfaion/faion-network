@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Django Import Anti-Patterns">
+  <summary>Unaliased cross-app imports, wildcard imports, from __future__ + DRF introspection, and PEP 810 syntax in 3.12 code.</summary>
+
+  <section title="Unaliased Cross-App Imports">
+    <antipattern>
+      <description>Importing model classes directly from other apps without aliases: `from apps.users.models import User`.</description>
+      <reason>Direct unaliased cross-app imports create circular dependency risks and name collision hazards. When two apps both have a `User` model, the last import wins — silently. Use `from apps.users import models as user_models` and reference `user_models.User` everywhere.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Wildcard Imports">
+    <antipattern>
+      <description>Using `from app.models import *` or `from app.views import *` anywhere in a Django project.</description>
+      <reason>Wildcard imports make it impossible to determine where a name comes from without running the code. They also import private names (`_internal`), pollute the module namespace, and confuse both human readers and type checkers. Django's autoloading already handles `admin.py`, `apps.py`, etc. — wildcards add no value.</reason>
+    </antipattern>
+  </section>
+
+  <section title="from __future__ import annotations with DRF">
+    <antipattern>
+      <description>Adding `from __future__ import annotations` to DRF serializer or view files that use DRF field introspection or `drf-spectacular` schema generation.</description>
+      <reason>DRF uses `get_type_hints()` for serializer field resolution. `from __future__ import annotations` defers all annotations to strings, which breaks DRF's introspection and drf-spectacular's schema generation. The annotations become unparseable strings at the point where DRF expects actual type objects. Verify DRF compatibility before adding `__future__` annotations to serializer files.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Premature PEP 810 Lazy Import Syntax">
+    <antipattern>
+      <description>Using `lazy from heavy_module import HeavyClass` syntax (PEP 810) on Python 3.12 or 3.13 codebases.</description>
+      <reason>PEP 810 lazy import syntax is not available until Python 3.14+. Using it on 3.12/3.13 causes `SyntaxError` at import time — not at the usage site. The current alternative (function-scoped import or `importlib.import_module()`) achieves the same effect without version risk.</reason>
+    </antipattern>
+    <example type="good">
+      <note>Lazy import on Python 3.12/3.13 without PEP 810 syntax</note>
+      <code lang="python"><![CDATA[
+# Python 3.12/3.13 — function-scoped lazy import
+def generate_report(data: list[dict]) -> bytes:
+    from heavy_analytics import ReportGenerator  # Loaded on first call only
+    return ReportGenerator(data).render()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Multi-dot Relative Imports">
+    <antipattern>
+      <description>Using `from ...users.models import User` or other multi-dot relative imports across app boundaries.</description>
+      <reason>Multi-dot relative imports break on any directory restructuring and create fragile coupling to the physical directory layout. They also confuse readers about where the module lives. Replace with absolute cross-app imports: `from apps.users import models as user_models`.</reason>
+    </antipattern>
+  </section>
+</text>

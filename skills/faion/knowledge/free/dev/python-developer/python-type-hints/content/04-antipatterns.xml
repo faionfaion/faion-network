@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="Type Hint Anti-Patterns">
+  <summary>Optional mixing, from __future__ import annotations with Pydantic v1, Generic[T] no-op, and bare type: ignore.</summary>
+
+  <section title="Optional Style Mixing">
+    <antipattern>
+      <description>Mixing `Optional[X]` and `X | None` in the same file or codebase — some imports use the old form, others the new.</description>
+      <reason>Mixed styles confuse `ruff --fix` idempotency, create inconsistent grep results, and make the codebase look unmaintained. Pick one style and enforce it via ruff UP007. Use `ruff check --select UP007 --fix` for a batch migration.</reason>
+    </antipattern>
+  </section>
+
+  <section title="from __future__ import annotations with Pydantic v1">
+    <antipattern>
+      <description>Adding `from __future__ import annotations` to modules that define Pydantic v1 models.</description>
+      <reason>Pydantic v1 evaluates annotations at class definition time using `get_type_hints()`. `from __future__ import annotations` defers evaluation to strings, which Pydantic v1 cannot resolve — field types become strings and validation silently breaks. Pydantic v2 handles this correctly. Verify the Pydantic version before adding future annotations.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Generic[T] No-op">
+    <antipattern>
+      <description>Declaring a class as `Generic[T]` but never using `T` in any method signature or field type.</description>
+      <reason>A `Generic[T]` class that does not use `T` provides no type safety — it is checked as if `T = Any`. The type parameter exists only as noise. Either use `T` in at least one method signature or remove the `Generic[T]` declaration entirely.</reason>
+    </antipattern>
+    <example type="bad">
+      <note>Generic[T] declared but T never used — type safety is absent</note>
+      <code lang="python"><![CDATA[
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class Wrapper(Generic[T]):  # T is declared but never appears below
+    def __init__(self, value: object) -> None:  # Should be T
+        self.value = value
+
+    def get(self) -> object:  # Should be T
+        return self.value
+]]></code>
+    </example>
+  </section>
+
+  <section title="Bare type: ignore">
+    <antipattern>
+      <description>Using `# type: ignore` without an error code instead of `# type: ignore[code]`.</description>
+      <reason>Bare `# type: ignore` silences all future mypy errors on that line, including unrelated ones introduced later. `warn_unused_ignores = true` in mypy config also cannot clean up stale bare ignores properly. Always scope to a specific error code.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Annotating __init__ Parameters Not Used as Fields">
+    <antipattern>
+      <description>Annotating `self` in regular methods with a type other than the implicit `Self` type, or omitting `-> None` on `__init__`.</description>
+      <reason>mypy infers `self` type automatically in regular methods. Annotating `self: MyClass` is valid but redundant. `__init__` must return `None` — omitting `-> None` does not cause an error but inconsistently breaks the rule of annotating all return types.</reason>
+    </antipattern>
+  </section>
+</text>

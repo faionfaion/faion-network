@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-protocols-typeddict" title="Protocols, TypedDict, and Structural Patterns">
+  <summary>Protocol vs ABC selection, @runtime_checkable guidance, TypedDict patterns, Literal + assert_never for exhaustive matching.</summary>
+
+  <section title="Protocol vs ABC">
+    <rule>
+      <statement>Use `Protocol` when the contract is structural (any class with the right methods qualifies). Use `ABC` only when a base class provides shared implementation via `super()` call chains.</statement>
+      <rationale>Protocol is "duck typing with type safety" — it enforces the contract without requiring explicit subclassing. ABC requires every implementor to import and inherit from the base class, creating coupling. Protocols are the standard for inter-module contracts.</rationale>
+    </rule>
+    <rule>
+      <statement>Mark Protocol methods with `...` (ellipsis) bodies, not `pass` or `raise NotImplementedError`. Ellipsis is the conventional body for abstract Protocol methods.</statement>
+      <rationale>`...` is the canonical way to indicate "abstract, no body" in Protocol definitions. `raise NotImplementedError` is an ABC pattern and contradicts Protocol semantics — the Protocol itself never runs the method body.</rationale>
+    </rule>
+    <example type="good">
+      <note>Protocol for storage backend — no inheritance coupling</note>
+      <code lang="python"><![CDATA[
+from typing import Protocol
+
+class StorageBackend(Protocol):
+    def save(self, key: str, data: bytes) -> None: ...
+    def load(self, key: str) -> bytes | None: ...
+    def delete(self, key: str) -> bool: ...
+
+# Both satisfy StorageBackend without importing it
+class S3Backend:
+    def save(self, key: str, data: bytes) -> None: ...
+    def load(self, key: str) -> bytes | None: ...
+    def delete(self, key: str) -> bool: ...
+
+class LocalBackend:
+    def save(self, key: str, data: bytes) -> None: ...
+    def load(self, key: str) -> bytes | None: ...
+    def delete(self, key: str) -> bool: ...
+]]></code>
+    </example>
+  </section>
+
+  <section title="@runtime_checkable">
+    <rule>
+      <statement>Add `@runtime_checkable` only when the Protocol is used in `isinstance()` checks in production code. Omit it when the Protocol is used purely as a type annotation.</statement>
+      <rationale>`@runtime_checkable` checks only method name presence, not argument types or return types — it is weaker than a full type check. Adding it to every Protocol inflates overhead and gives a false sense of runtime safety.</rationale>
+    </rule>
+  </section>
+
+  <section title="TypedDict Best Practices">
+    <rule>
+      <statement>Use TypedDict for cross-boundary dict shapes (JSON API responses, queue payloads, config dicts). Do not add TypedDict to internal dicts that are immediately converted to dataclasses or ORM models.</statement>
+      <rationale>TypedDict annotates existing dict-returning code without requiring migration to dataclasses. Adding TypedDict to a dict that is immediately `.model_validate()`-d into Pydantic creates two schemas for the same shape — one source of truth is enough.</rationale>
+    </rule>
+  </section>
+
+  <section title="Literal and assert_never">
+    <rule>
+      <statement>Use `Literal["a", "b", "c"]` to constrain string parameters to a known set. Use `typing.assert_never()` at exhaustive match/if-elif-else branches to catch missing cases at type-check time.</statement>
+      <rationale>`Literal` lets the type checker verify that callers only pass allowed values. `assert_never()` makes match exhaustiveness a compile-time error — if a new enum variant is added, mypy reports an error at the unhandled branch, not a runtime crash.</rationale>
+    </rule>
+    <example type="good">
+      <note>Literal constraint and assert_never for exhaustive dispatch</note>
+      <code lang="python"><![CDATA[
+from typing import Literal, assert_never
+
+OrderStatus = Literal["pending", "confirmed", "shipped", "cancelled"]
+
+def next_status(current: OrderStatus) -> OrderStatus:
+    match current:
+        case "pending":
+            return "confirmed"
+        case "confirmed":
+            return "shipped"
+        case "shipped":
+            return "shipped"  # Terminal state
+        case "cancelled":
+            return "cancelled"  # Terminal state
+        case _ as unreachable:
+            assert_never(unreachable)  # mypy error if a case is unhandled
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-antipatterns" title="Async Anti-Patterns">
+  <summary>Blocking the event loop, orphan tasks, swallowing CancelledError, sync wrappers inside libraries, asyncio.timeout(None).</summary>
+
+  <section title="Blocking the Event Loop">
+    <antipattern>
+      <description>Calling blocking I/O or CPU-bound operations directly inside `async def`: `requests.get()`, `time.sleep()`, `open()`, sync database drivers, heavy computation.</description>
+      <reason>The asyncio event loop is single-threaded. A blocking call inside `async def` prevents all other coroutines from executing until it returns. Under load, one blocking call can stall the entire server for the duration of the call. Use `httpx.AsyncClient`, `asyncio.sleep`, `aiofiles`, async DB drivers, or `run_in_executor` for sync code.</reason>
+    </antipattern>
+    <example type="bad">
+      <note>Blocking calls inside async def</note>
+      <code lang="python"><![CDATA[
+import requests
+import time
+
+async def bad_handler() -> dict:
+    time.sleep(1)                   # Blocks event loop!
+    resp = requests.get(url)        # Blocks event loop!
+    return resp.json()
+]]></code>
+    </example>
+    <example type="good">
+      <note>Async equivalents — non-blocking</note>
+      <code lang="python"><![CDATA[
+import asyncio
+import httpx
+
+async def good_handler(client: httpx.AsyncClient) -> dict:
+    await asyncio.sleep(1)          # Yields control to event loop
+    resp = await client.get(url)    # Non-blocking HTTP
+    return resp.json()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Orphan Tasks">
+    <antipattern>
+      <description>Creating tasks with `asyncio.create_task()` without storing the reference or awaiting them, allowing them to be garbage-collected before completion.</description>
+      <reason>Python's garbage collector can collect a task object if no reference exists, silently cancelling the task before it finishes. The task disappears without an error or log — a hard-to-debug data loss scenario.</reason>
+    </antipattern>
+    <example type="bad">
+      <note>Fire-and-forget without reference — task may be GC'd</note>
+      <code lang="python"><![CDATA[
+async def handler(event: dict) -> None:
+    asyncio.create_task(background_job(event))  # No reference! May be GC'd
+    return
+]]></code>
+    </example>
+    <example type="good">
+      <note>Store reference or use TaskGroup for lifecycle management</note>
+      <code lang="python"><![CDATA[
+# Option 1: module-level task set
+_background_tasks: set[asyncio.Task] = set()
+
+async def handler(event: dict) -> None:
+    task = asyncio.create_task(background_job(event))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+# Option 2: TaskGroup for scoped fan-out (preferred when caller waits)
+async def handler_batch(events: list[dict]) -> None:
+    async with asyncio.TaskGroup() as tg:
+        for event in events:
+            tg.create_task(background_job(event))
+]]></code>
+    </example>
+  </section>
+
+  <section title="Swallowing CancelledError">
+    <antipattern>
+      <description>Catching `asyncio.CancelledError` (or bare `Exception`) in `except` blocks without re-raising it.</description>
+      <reason>CancelledError is how asyncio implements task cancellation (e.g., from TaskGroup on failure, timeout context exit, or explicit `task.cancel()`). Swallowing it breaks the cancellation chain — parent tasks block forever waiting for a subtask that believes it completed normally.</reason>
+    </antipattern>
+    <example type="good">
+      <note>Correct handling: cleanup then re-raise CancelledError</note>
+      <code lang="python"><![CDATA[
+async def worker() -> None:
+    try:
+        await long_running_operation()
+    except asyncio.CancelledError:
+        await cleanup_resources()   # Cleanup is allowed
+        raise                       # MUST re-raise!
+    except Exception as e:
+        logger.error("Worker error: %s", e)
+        raise
+]]></code>
+    </example>
+  </section>
+
+  <section title="asyncio.timeout(None) Silent No-Op">
+    <antipattern>
+      <description>Calling `asyncio.timeout(None)` believing it disables the timeout. It does disable the timeout, but it also silences the fact that no deadline is set, hiding missing timeout configurations.</description>
+      <reason>A `timeout(None)` context manager is a no-op — no deadline, no cancellation. Code paths that reach external services without a deadline hang indefinitely on network partition or slow responses. Make every external call have an explicit numeric timeout.</reason>
+    </antipattern>
+  </section>
+</text>
