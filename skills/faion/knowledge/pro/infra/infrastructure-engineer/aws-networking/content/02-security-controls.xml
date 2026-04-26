@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-security-controls" title="AWS Network Security Controls">
+  <summary>Security group rules, NACL design, VPC endpoints, Flow Logs, and GuardDuty integration.</summary>
+
+  <section title="Security Groups">
+    <rule>
+      <statement>Use security group references (not CIDR blocks) between application tiers; reference the ALB security group in app tier, and app security group in RDS tier.</statement>
+      <rationale>Security group references dynamically include all instances in the referenced group. CIDR-based rules require updates whenever instance IPs change, creating maintenance burden and potential security gaps.</rationale>
+    </rule>
+    <rule>
+      <statement>Add a description to every security group rule; name security groups with the convention {env}-{app}-{tier}-sg; schedule monthly audits via AWS Config rule vpc-sg-open-only-to-authorized-ports.</statement>
+      <rationale>Descriptions make audit reviews actionable — reviewers can understand intent without reverse-engineering from context. AWS Config automates compliance monitoring and alerts on rule violations.</rationale>
+    </rule>
+  </section>
+
+  <section title="Network ACLs">
+    <rule>
+      <statement>Use the default NACL (allow all) as baseline; create custom NACLs only for additional subnet-level guardrails; always configure ephemeral port ranges (1024-65535) in egress rules for stateless NACLs.</statement>
+      <rationale>NACLs are stateless — return traffic must be explicitly allowed. Missing ephemeral port egress rules block all TCP response traffic. Security groups handle most access control more maintainably.</rationale>
+    </rule>
+  </section>
+
+  <section title="VPC Endpoints">
+    <rule>
+      <statement>Create Gateway endpoints for S3 and DynamoDB in all private route tables; create Interface endpoints for Secrets Manager, SSM (3 endpoints: ssm, ssmmessages, ec2messages), ECR (dkr and api), and CloudWatch Logs.</statement>
+      <rationale>Gateway endpoints are free and eliminate all NAT Gateway charges for S3/DynamoDB traffic. SSM Session Manager requires 3 specific Interface endpoints to work — missing any one prevents connections.</rationale>
+    </rule>
+    <rule>
+      <statement>Attach endpoint policies to Interface endpoints restricting access to specific resources and principals; enable private DNS on all Interface endpoints.</statement>
+      <rationale>Without endpoint policies, any principal in the VPC can use the endpoint to access any resource of that service type. Private DNS ensures existing SDK code automatically routes through the endpoint.</rationale>
+    </rule>
+  </section>
+
+  <section title="Threat Detection">
+    <rule>
+      <statement>Enable GuardDuty in all AWS regions; enable VPC Flow Log analysis in GuardDuty; configure Network Firewall for egress inspection in production environments with sensitive data.</statement>
+      <rationale>GuardDuty uses ML to detect anomalous traffic patterns (e.g., communication with known malicious IPs, unusual port scans). Network Firewall provides layer 7 inspection for C2 callback detection.</rationale>
+    </rule>
+    <antipattern>
+      <description>Security groups with 0.0.0.0/0 ingress on ports other than 80/443 on ALB.</description>
+      <reason>Every open inbound rule is an active attack surface. SSH (22), RDP (3389), databases (5432, 3306), and admin interfaces exposed to the internet are continuously probed by automated scanners.</reason>
+    </antipattern>
+  </section>
+</text>

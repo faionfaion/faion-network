@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-lifecycle-replication" title="S3 Lifecycle Policies and Replication">
+  <summary>Storage class transitions, multipart upload cleanup, versioning, and CRR/SRR setup rules.</summary>
+
+  <section title="Lifecycle Policies">
+    <rule>
+      <statement>Always add a lifecycle rule to abort incomplete multipart uploads after 7 days; add rules to expire non-current object versions and delete expired object delete markers.</statement>
+      <rationale>Incomplete multipart uploads accumulate indefinitely without a cleanup rule, silently adding storage cost. Non-current versions from versioned buckets accumulate without expiration rules — one bucket can grow to 10x the logical object size.</rationale>
+    </rule>
+    <rule>
+      <statement>Transition objects to Standard-IA after 30 days (minimum), Glacier Instant Retrieval after 90 days, and Glacier Deep Archive after 365 days for logs and audit data; respect the 30-day minimum between transitions.</statement>
+      <rationale>Standard-IA costs 58% less than Standard but charges per GB retrieval and has a 30-day minimum storage charge. Transitioning too early (under 30 days) incurs early deletion fees that exceed the savings.</rationale>
+    </rule>
+    <rule>
+      <statement>Enable S3 Intelligent-Tiering for buckets with unknown or unpredictable access patterns; enable the Archive and Deep Archive tiers for additional cost reduction on rarely accessed data.</statement>
+      <rationale>Intelligent-Tiering monitors access patterns and automatically moves objects between tiers with no retrieval charges. It eliminates the need to predict access patterns for lifecycle rules.</rationale>
+    </rule>
+  </section>
+
+  <section title="Versioning">
+    <rule>
+      <statement>Enable versioning on all buckets containing production data or Terraform state; enable MFA Delete for buckets with compliance or financial data to prevent accidental version deletion.</statement>
+      <rationale>Versioning protects against accidental overwrites and deletes. MFA Delete adds a second factor to permanent version deletion — without it, a compromised access key can delete all versions permanently.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cross-Region Replication">
+    <rule>
+      <statement>Enable CRR (Cross-Region Replication) for disaster recovery buckets with Replication Time Control (RTC) when RPO is under 15 minutes; source and destination must both have versioning enabled; configure an IAM replication role with least-privilege.</statement>
+      <rationale>Without RTC, replication time is best-effort (typically under 15 minutes but not guaranteed). RTC provides a 99.99% SLA for 15-minute replication, required for compliance-driven RPO targets.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure delete marker replication only when you need deletes to propagate to the replica; by default, delete markers are not replicated, preserving the replica as an independent backup.</statement>
+      <rationale>By default, CRR does not replicate delete markers — if a source object is deleted, the replica remains intact. This is correct for DR buckets. Enable delete marker replication only for active-active synchronization scenarios.</rationale>
+    </rule>
+    <antipattern>
+      <description>Buckets without a lifecycle rule to abort incomplete multipart uploads.</description>
+      <reason>Multipart uploads that are started but never completed remain as invisible partial uploads charged at standard S3 rates. A single misconfigured client can accumulate thousands of partial uploads in days.</reason>
+    </antipattern>
+  </section>
+</text>

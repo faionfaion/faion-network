@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-checklist" title="AWS S3 Pre-Deployment Checklist">
+  <summary>Security defaults, data management, access patterns, and cost optimization checklists for S3 buckets.</summary>
+
+  <section title="Security Defaults">
+    <rule>
+      <statement>Verify on every new bucket: Block Public Access enabled (4 settings), Object Ownership = BucketOwnerEnforced, default encryption configured (SSE-KMS or SSE-S3), bucket policy with aws:SecureTransport = false deny rule.</statement>
+      <rationale>These four settings are the minimum security baseline for any S3 bucket. Missing any one creates a vulnerability: public access, ACL-based data leaks, unencrypted objects, or plaintext HTTP access.</rationale>
+    </rule>
+    <rule>
+      <statement>For production buckets: enable versioning, enable S3 access logging to a separate audit bucket, enable CloudTrail data events, verify SSE-KMS with customer-managed key and S3 Bucket Keys enabled.</statement>
+      <rationale>Versioning enables point-in-time recovery. Access logging and CloudTrail data events are required for compliance audits (SOC2, PCI) to prove access to specific objects at specific times.</rationale>
+    </rule>
+  </section>
+
+  <section title="Data Management">
+    <rule>
+      <statement>Configure at minimum: abort incomplete multipart uploads after 7 days, transition non-current versions to Standard-IA after 30 days, expire non-current versions after 90 days, delete expired object delete markers.</statement>
+      <rationale>These four lifecycle rules prevent unbounded bucket growth from three common accumulation patterns: aborted uploads, old versions, and orphaned delete markers.</rationale>
+    </rule>
+    <rule>
+      <statement>For SSE-C: verify it is explicitly enabled via PutBucketEncryption after April 2026 for any buckets that require customer-provided keys; audit existing SSE-C buckets before the deadline.</statement>
+      <rationale>AWS disabled SSE-C by default for new buckets starting April 2026. Teams migrating or creating new buckets requiring SSE-C must explicitly opt in — silent failure otherwise.</rationale>
+    </rule>
+  </section>
+
+  <section title="Replication and Access">
+    <rule>
+      <statement>For CRR: confirm versioning on source and destination, IAM replication role with s3:ReplicateObject and s3:ReplicateDelete, destination bucket policy allowing the source role, KMS key sharing if encrypted.</statement>
+      <rationale>CRR silently fails if any prerequisite is missing — there is no blocking error at configuration time. Replication metrics and CloudWatch alarms on replication failures are required to detect misconfiguration.</rationale>
+    </rule>
+    <antipattern>
+      <description>S3 buckets in production without any lifecycle rules configured.</description>
+      <reason>Unmanaged buckets accumulate costs from three sources: incomplete multipart uploads, non-current versions (if versioned), and expired delete markers. A single active application can generate hundreds of GB of orphaned data per month.</reason>
+    </antipattern>
+  </section>
+</text>

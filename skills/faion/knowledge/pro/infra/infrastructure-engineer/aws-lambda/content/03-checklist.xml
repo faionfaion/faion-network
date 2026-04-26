@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-checklist" title="AWS Lambda Pre-Deployment Checklist">
+  <summary>Code structure, security, deployment, layers, event source, monitoring, and cost optimization checklists.</summary>
+
+  <section title="Code Structure">
+    <rule>
+      <statement>Verify: SDK clients outside handler, no blocking in INIT phase, idempotency implemented, graceful error handling with correct HTTP status codes, structured JSON logging with request ID.</statement>
+      <rationale>These are the five most common Lambda implementation errors — each increases cost, reduces reliability, or degrades debuggability.</rationale>
+    </rule>
+    <rule>
+      <statement>Right-size memory using AWS Lambda Power Tuning before production deployment; set timeout with buffer (not at the maximum limit); use ARM64 architecture unless x86-only dependencies exist.</statement>
+      <rationale>Memory over-provisioning wastes GB-second cost. Timeout at limit causes silent hangs instead of fast failures. ARM64 saves 20% per GB-second.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security">
+    <rule>
+      <statement>Execution role must follow least privilege with no wildcard (*) resource ARNs; sensitive environment variables must be encrypted with KMS; no hardcoded credentials in code.</statement>
+      <rationale>Lambda execution roles with wildcard resources allow functions to access all AWS resources of that type. KMS-encrypted env vars are protected even if the function configuration is read by an unauthorized party.</rationale>
+    </rule>
+    <rule>
+      <statement>Store all secrets in Secrets Manager or Parameter Store and fetch at initialization; avoid using VPC unless the function genuinely needs private resource access — VPC adds cold start latency.</statement>
+      <rationale>VPC-attached Lambda functions require ENI allocation, adding 3-10 seconds to cold starts. Use VPC endpoints from non-VPC Lambda for most AWS service access instead.</rationale>
+    </rule>
+  </section>
+
+  <section title="Event Source Configuration">
+    <rule>
+      <statement>For SQS: ReportBatchItemFailures enabled, DLQ configured, visibility timeout ≥ 6× function timeout. For Kinesis/DynamoDB Streams: BisectBatchOnFunctionError enabled, MaximumRetryAttempts set, on-failure destination configured.</statement>
+      <rationale>These settings collectively ensure no messages are silently dropped on failure and that poison records are isolated without blocking the entire stream shard.</rationale>
+    </rule>
+  </section>
+
+  <section title="Deployment and Monitoring">
+    <rule>
+      <statement>Configure Lambda aliases for environment promotion (dev/staging/prod); use CodeDeploy canary or linear deployment strategies with CloudWatch alarms for automatic rollback.</statement>
+      <rationale>Aliases enable blue-green and canary deployments without URL changes. Alarm-based rollback prevents a bad deployment from reaching 100% traffic if error rate spikes.</rationale>
+    </rule>
+    <rule>
+      <statement>Set CloudWatch alarms on: Duration (> 80% timeout), Errors (> 1% rate), Throttles (> 0), ConcurrentExecutions (> 80% limit), IteratorAge for streams (> 60s).</statement>
+      <rationale>Duration near timeout indicates under-provisioned memory or runaway loops. Throttles indicate concurrency limit hit. IteratorAge growth signals stream consumer falling behind.</rationale>
+    </rule>
+    <antipattern>
+      <description>Lambda functions that exceed 15-minute timeout for long-running batch jobs.</description>
+      <reason>Lambda has a hard 15-minute timeout. Jobs that approach this limit should be migrated to ECS Fargate tasks or Step Functions activities which support arbitrary runtimes.</reason>
+    </antipattern>
+  </section>
+</text>

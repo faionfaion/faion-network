@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-checklist" title="Terraform Advanced Pre-Deployment Checklist">
+  <summary>State architecture, module quality, CI/CD pipeline, security hardening, and production deployment checklists.</summary>
+
+  <section title="State Architecture">
+    <rule>
+      <statement>Verify: separate state files per environment AND per component; remote backend with locking and encryption; .terraform.lock.hcl committed; no state files in git; provider versions pinned.</statement>
+      <rationale>These five checks together eliminate the most common Terraform production incidents: state corruption, credential leaks, provider version drift, and blast radius from monolithic state.</rationale>
+    </rule>
+    <rule>
+      <statement>Confirm blast-radius isolation: a destroy in one environment's state cannot affect another environment; component-level states minimize resources affected per apply.</statement>
+      <rationale>Without isolation, terraform destroy on the networking state of prod takes down the entire production network. Component isolation limits each operation's scope.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI/CD Pipeline">
+    <rule>
+      <statement>Verify pipeline has all stages: fmt -check, validate, tflint, tfsec/checkov, plan -out=tfplan, required human approval for prod, apply tfplan (not re-plan), post-apply health checks.</statement>
+      <rationale>Each missing stage is a class of error that reaches production without detection. The saved-plan requirement is the most commonly missing critical control.</rationale>
+    </rule>
+    <rule>
+      <statement>Confirm: OIDC authentication (no static keys), TF_IN_AUTOMATION=true, plan artifact stored for audit, apply output logged, Dependabot/Renovate for controlled provider/module updates.</statement>
+      <rationale>Static keys are a credential leak risk. Plan artifacts provide the audit trail for change management. Automated dependency updates prevent security vulnerabilities from accumulating.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security Hardening">
+    <rule>
+      <statement>Verify: no hardcoded secrets in .tf files, all sensitive variables marked sensitive = true, all storage resources have encryption enabled, no 0.0.0.0/0 security group rules without justification, IAM follows least privilege.</statement>
+      <rationale>Static analysis (tfsec/checkov) catches the common cases, but manual review is needed for business-logic-specific IAM policies that scanners cannot evaluate.</rationale>
+    </rule>
+  </section>
+
+  <section title="Production Deployment">
+    <rule>
+      <statement>Before prod apply: review plan for unexpected destroys or replacements; assess cost impact (Infracost); create change management ticket; document rollback procedure; notify team.</statement>
+      <rationale>Unexpected destroys in plan output are the most common sign of an unintended infrastructure change. A reviewed plan with no surprises is the primary safety control for production Terraform.</rationale>
+    </rule>
+    <rule>
+      <statement>After prod apply: run health checks and smoke tests; verify monitoring alerts are active; run terraform plan again to confirm clean state (no drift).</statement>
+      <rationale>A second clean plan after apply confirms the deployed state matches configuration exactly. Drift between apply runs indicates an out-of-band change or Terraform bug.</rationale>
+    </rule>
+  </section>
+</text>

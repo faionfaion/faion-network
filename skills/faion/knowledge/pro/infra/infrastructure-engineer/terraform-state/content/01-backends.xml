@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-backends" title="Terraform Remote Backends">
+  <summary>Backend options comparison, S3/GCS/Azure/Terraform Cloud configuration rules, and state security requirements.</summary>
+
+  <section title="Backend Selection">
+    <rule>
+      <statement>Always use a remote backend for any team or CI environment; never use local state in production; choose S3+DynamoDB for AWS-centric teams, GCS for GCP-centric teams.</statement>
+      <rationale>Local state blocks collaboration — two engineers running apply concurrently corrupt state. Remote backends with locking serialize operations safely.</rationale>
+    </rule>
+    <note>Backend comparison: S3+DynamoDB (AWS, native locking, SSE-KMS), GCS (GCP, native locking, default encryption), Azure Blob (Azure, AAD auth), Terraform Cloud (multi-cloud, policy enforcement, free tier ended March 2026).</note>
+  </section>
+
+  <section title="AWS S3 Backend">
+    <rule>
+      <statement>Configure S3 backend with encrypt = true, KMS key for compliance workloads, and DynamoDB table for locking; use key path pattern {env}/{component}/terraform.tfstate.</statement>
+      <rationale>KMS encryption satisfies SOC2/PCI compliance requirements. The env/component key path enables state isolation per environment and blast-radius separation per component.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="hcl"><![CDATA[
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "prod/networking/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+    kms_key_id     = "alias/terraform-state"
+  }
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="State Infrastructure">
+    <rule>
+      <statement>Provision state infrastructure (S3 bucket, DynamoDB table, KMS key, IAM policy) as a separate one-time bootstrapped Terraform configuration, not in the main project.</statement>
+      <rationale>State infrastructure must exist before any other Terraform configuration can initialize. Bootstrapping it separately avoids a chicken-and-egg dependency.</rationale>
+    </rule>
+    <rule>
+      <statement>Enable versioning on the S3 state bucket; set a lifecycle rule to expire non-current versions after 90 days; set prevent_destroy on the bucket and DynamoDB table.</statement>
+      <rationale>Versioning enables rollback after state corruption. 90-day retention balances recovery capability with storage cost. prevent_destroy prevents accidental bootstrap teardown.</rationale>
+    </rule>
+  </section>
+
+  <section title="State Security">
+    <rule>
+      <statement>Restrict state bucket access to Terraform CI/CD roles only via IAM; enable access logging on the state bucket; use OIDC authentication in CI rather than static access keys.</statement>
+      <rationale>State files contain passwords, connection strings, and private keys. Broad read access to state is equivalent to broad access to all managed infrastructure.</rationale>
+    </rule>
+    <rule>
+      <statement>Mark sensitive outputs with sensitive = true; use external secret managers (Secrets Manager, HashiCorp Vault) rather than storing secrets in Terraform variables that land in state.</statement>
+      <rationale>Even with KMS encryption, minimizing secrets in state reduces blast radius if the state bucket is compromised.</rationale>
+    </rule>
+    <antipattern>
+      <description>Local tfstate files in git repositories.</description>
+      <reason>State contains plaintext credentials and resource IDs. Once committed, secrets cannot be fully purged from git history.</reason>
+    </antipattern>
+  </section>
+</text>

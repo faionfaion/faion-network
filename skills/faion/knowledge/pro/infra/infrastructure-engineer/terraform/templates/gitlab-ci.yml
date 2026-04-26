@@ -1,0 +1,50 @@
+stages:
+  - validate
+  - security
+  - plan
+  - apply
+
+variables:
+  TF_IN_AUTOMATION: "true"
+  TF_VERSION: "1.6.0"
+
+.terraform_base: &terraform_base
+  image: hashicorp/terraform:${TF_VERSION}
+  before_script:
+    - terraform init
+
+validate:
+  <<: *terraform_base
+  stage: validate
+  script:
+    - terraform fmt -check -recursive
+    - terraform validate
+
+security_scan:
+  stage: security
+  image: aquasec/tfsec:latest
+  script:
+    - tfsec . --no-colour
+  allow_failure: false
+
+plan:
+  <<: *terraform_base
+  stage: plan
+  script:
+    - terraform plan -out=tfplan -no-color
+  artifacts:
+    name: tfplan
+    paths: [tfplan]
+    expire_in: 1 hour
+  only: [merge_requests, main]
+
+apply:
+  <<: *terraform_base
+  stage: apply
+  script:
+    - terraform apply -auto-approve tfplan
+  dependencies: [plan]
+  when: manual
+  only: [main]
+  environment:
+    name: production

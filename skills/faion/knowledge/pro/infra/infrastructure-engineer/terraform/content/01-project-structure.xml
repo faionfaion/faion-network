@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-structure" title="Terraform Project Structure">
+  <summary>Directory layout patterns, file naming conventions, workspace strategies, and their isolation trade-offs.</summary>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Organize Terraform projects as environments/dev|staging|prod (each with its own backend) plus modules/ for reusable components and global/ for account-wide resources (IAM, DNS).</statement>
+      <rationale>Environment directories with separate backends provide full blast-radius isolation — a destroy in dev cannot affect prod state. Shared backend workspaces do not provide this isolation.</rationale>
+    </rule>
+    <rule>
+      <statement>Within each environment directory, further split by component: networking/, compute/, database/. Each component directory has its own backend key and state file.</statement>
+      <rationale>Monolithic per-environment state files mean a change to a single security group requires locking all compute and database resources. Component separation limits apply scope.</rationale>
+    </rule>
+  </section>
+
+  <section title="Workspace Strategy">
+    <rule>
+      <statement>Use directory-per-environment over CLI workspaces for production systems; use workspaces only for lightweight variations of the same infrastructure (e.g., feature branch ephemeral environments).</statement>
+      <rationale>Workspaces share backend configuration and provider credentials. A misconfigured workspace apply can target the wrong environment. Directory isolation uses separate backend keys making cross-env accidents structurally impossible.</rationale>
+    </rule>
+    <note>Workspace limitations: share backend config, share provider configuration, not suitable for system decomposition across components, insufficient blast-radius isolation for critical production systems.</note>
+  </section>
+
+  <section title="File Naming Convention">
+    <rule>
+      <statement>Use the standard file set: versions.tf (version constraints), providers.tf (provider config), main.tf (primary resources), variables.tf, outputs.tf, locals.tf, data.tf, backend.tf.</statement>
+      <rationale>Consistent file layout allows any team member to navigate an unfamiliar module. main.tf is the first place engineers look for resource definitions.</rationale>
+    </rule>
+  </section>
+
+  <section title="Module Design">
+    <rule>
+      <statement>Modules must follow single responsibility — one logical component per module; no hardcoded values; parameterize everything via variables with sensible defaults; version modules with semantic versioning tags.</statement>
+      <rationale>Single-responsibility modules are reusable without modification. Hardcoded values (AMI IDs, CIDR blocks, account IDs) make modules non-portable across environments and regions.</rationale>
+    </rule>
+    <antipattern>
+      <description>Single monolithic Terraform configuration for all environments and components.</description>
+      <reason>A single state file covering all environments means terraform plan locks all environments simultaneously. A single plan error blocks deployments to all environments.</reason>
+    </antipattern>
+  </section>
+</text>

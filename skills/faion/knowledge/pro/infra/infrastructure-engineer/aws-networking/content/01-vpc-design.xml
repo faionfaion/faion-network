@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-vpc-design" title="AWS VPC Design">
+  <summary>3-tier subnet architecture, CIDR planning, multi-AZ rules, and Zero-Trust networking principles.</summary>
+
+  <section title="Subnet Architecture">
+    <rule>
+      <statement>Deploy every production VPC across 3 Availability Zones with three subnet tiers: public (ALB, NAT Gateway), private (application), and data (RDS, ElastiCache); use /24 subnets per tier per AZ.</statement>
+      <rationale>Three tiers enforce network segmentation — data subnets have no route to the internet, only from private subnets. Three AZs survive a single AZ outage with automatic failover.</rationale>
+    </rule>
+    <rule>
+      <statement>Use /16 VPC CIDR for production to allow future growth; plan CIDR ranges to avoid overlap with on-premises networks or peered VPCs; use IPAM for multi-account environments.</statement>
+      <rationale>VPC CIDR cannot be changed after creation without recreation. /16 provides 65,536 addresses. Overlapping CIDRs block VPC peering and Transit Gateway attachment.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep main route table with no routes except local; use explicit subnet associations for public, private, and data route tables; deploy a NAT Gateway per AZ (not shared).</statement>
+      <rationale>A shared NAT Gateway is a single point of failure — if that AZ goes down, all private subnets in other AZs lose internet access. Per-AZ NAT Gateways maintain egress during zone failures.</rationale>
+    </rule>
+  </section>
+
+  <section title="Zero-Trust Principles">
+    <rule>
+      <statement>Allow 0.0.0.0/0 inbound only on ALB ports 80/443; all other security group ingress rules must reference specific CIDRs or security group IDs; audit monthly via AWS Config.</statement>
+      <rationale>Every open inbound rule is an attack surface. Security groups are the primary perimeter control — overly permissive rules are the most common cause of AWS breaches according to AWS security reports.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Gateway VPC endpoints for S3 and DynamoDB (free); use Interface endpoints for Secrets Manager, SSM, ECR, CloudWatch Logs, and STS to keep AWS service traffic on the AWS backbone.</statement>
+      <rationale>Without VPC endpoints, traffic to AWS services leaves the VPC via NAT Gateway, incurring data processing charges ($0.045/GB). Endpoints eliminate this cost and keep traffic private.</rationale>
+    </rule>
+  </section>
+
+  <section title="Flow Logs">
+    <rule>
+      <statement>Enable VPC Flow Logs on all VPCs; send to CloudWatch Logs for real-time query or S3 for cost-optimized long-term storage; configure 30-90 day retention.</statement>
+      <rationale>Flow Logs are the primary forensic tool for network incidents. Without them, there is no record of which IPs communicated with which resources, making incident investigation impossible.</rationale>
+    </rule>
+    <antipattern>
+      <description>Single NAT Gateway shared across multiple AZs to reduce cost.</description>
+      <reason>A shared NAT Gateway creates a single point of failure. If the NAT Gateway's AZ fails, all private subnets in other AZs lose internet egress even though those AZs are still operational.</reason>
+    </antipattern>
+  </section>
+</text>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-event-sources" title="AWS Lambda Event Sources">
+  <summary>SQS, Kinesis, and DynamoDB Streams configuration rules, batch processing with partial failures, and event filtering.</summary>
+
+  <section title="SQS Event Source">
+    <rule>
+      <statement>Enable ReportBatchItemFailures on all SQS event source mappings; return a list of failed messageIds in the response body so only failed messages are retried, not the entire batch.</statement>
+      <rationale>Without ReportBatchItemFailures, a single processing failure causes the entire batch to be retried and eventually sent to the DLQ, multiplying cost and delay by the batch size.</rationale>
+    </rule>
+    <rule>
+      <statement>Set SQS visibility timeout to at least 6x the Lambda function timeout; configure a DLQ on the SQS queue; set batching window to 5-30 seconds for non-latency-critical workloads.</statement>
+      <rationale>If visibility timeout is shorter than function timeout, messages become visible mid-processing and get picked up by other consumers. DLQ captures messages that fail all retries for inspection.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+EventSourceMapping:
+  Type: AWS::Lambda::EventSourceMapping
+  Properties:
+    FunctionName: !Ref ProcessorFunction
+    EventSourceArn: !GetAtt InputQueue.Arn
+    BatchSize: 10
+    MaximumBatchingWindowInSeconds: 5
+    FunctionResponseTypes:
+      - ReportBatchItemFailures
+    DestinationConfig:
+      OnFailure:
+        Destination: !GetAtt DLQ.Arn
+]]></code>
+    </example>
+  </section>
+
+  <section title="Kinesis and DynamoDB Streams">
+    <rule>
+      <statement>Enable BisectBatchOnFunctionError on Kinesis and DynamoDB Streams event source mappings; set MaximumRetryAttempts (10-100) and MaximumRecordAgeInSeconds (3600-86400) to prevent infinite retries on poison messages.</statement>
+      <rationale>Without BisectBatch, a single poison record in a batch causes the entire batch to retry until MaximumRecordAge. Bisect splits the batch in half on error, isolating bad records in O(log n) retries.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure a parallelization factor (1-10) per shard for Kinesis streams when per-shard throughput is insufficient; set starting position to LATEST for new consumers and TRIM_HORIZON only for backfill.</statement>
+      <rationale>Default one concurrent invocation per shard limits throughput to batch size × invocation rate per shard. Parallelization factor multiplies throughput without additional shards.</rationale>
+    </rule>
+  </section>
+
+  <section title="Event Filtering">
+    <rule>
+      <statement>Use event source mapping filter criteria to reduce invocations for SQS, Kinesis, and DynamoDB Streams; apply filters at the Lambda service level to avoid paying for unwanted events.</statement>
+      <rationale>Event filtering at the source is free and eliminates Lambda invocations entirely for filtered events. Application-level filtering inside the handler wastes invocation cost on events that will be discarded.</rationale>
+    </rule>
+    <antipattern>
+      <description>SQS event source mapping without a DLQ configured on the queue.</description>
+      <reason>Messages that exhaust all retries are silently dropped if there is no DLQ. Failed processing leaves no trace for debugging or replay.</reason>
+    </antipattern>
+  </section>
+</text>

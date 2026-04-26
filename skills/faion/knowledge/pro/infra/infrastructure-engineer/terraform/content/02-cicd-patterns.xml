@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-cicd-patterns" title="Terraform CI/CD Patterns">
+  <summary>Pipeline stages, saved plan rule, security scanning, OIDC authentication, and Atlantis configuration.</summary>
+
+  <section title="Pipeline Stages">
+    <rule>
+      <statement>Run the full pipeline in order: terraform fmt -check, terraform validate, tflint, tfsec/checkov, terraform plan -out=tfplan, human review, terraform apply tfplan.</statement>
+      <rationale>Each stage catches a different class of error: fmt catches style, validate catches syntax, tflint catches provider-specific issues, tfsec catches security misconfigurations, and the saved plan ensures apply matches reviewed output.</rationale>
+    </rule>
+    <rule>
+      <statement>Always save the plan to a file with -out=tfplan and apply that exact file; never re-run terraform plan between plan and apply in CI.</statement>
+      <rationale>Re-planning between review and apply allows infrastructure to change state, meaning the applied plan differs from the reviewed plan. This is a common cause of production incidents in automated pipelines.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security Scanning">
+    <rule>
+      <statement>Run tfsec and checkov on every pull request; fail the pipeline on any CRITICAL or HIGH severity finding without an approved exception; run Infracost to surface cost impact on PRs.</statement>
+      <rationale>Security scanners catch default-insecure configurations (unencrypted S3, public RDS, wildcard IAM) before they reach production. Cost estimation prevents unexpected bill increases from infrastructure changes.</rationale>
+    </rule>
+  </section>
+
+  <section title="OIDC Authentication">
+    <rule>
+      <statement>Use OIDC-based authentication for GitHub Actions and GitLab CI to assume cloud provider roles; never store static access keys as CI secrets.</statement>
+      <rationale>OIDC tokens are short-lived (15 minutes), scoped to the specific workflow run, and automatically expire. Static access keys are frequently leaked in CI logs, artifacts, or public repositories.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+permissions:
+  id-token: write
+  contents: read
+
+steps:
+  - uses: aws-actions/configure-aws-credentials@v4
+    with:
+      role-to-assume: arn:aws:iam::ACCOUNT:role/GitHubActionsRole
+      aws-region: us-east-1
+  - run: terraform init
+    env:
+      TF_IN_AUTOMATION: "true"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Atlantis">
+    <rule>
+      <statement>Configure Atlantis with per-project autoplan and apply_requirements: approved, mergeable; use Atlantis for teams that prefer plan-in-PR workflow over separate CI apply stages.</statement>
+      <rationale>Atlantis runs plan automatically on PR creation and posts output as a comment. apply_requirements: approved ensures at least one human review before any apply executes.</rationale>
+    </rule>
+    <antipattern>
+      <description>Applying a re-generated plan (not the saved plan file) in CI after human review.</description>
+      <reason>Infrastructure can change between the plan review and apply. Re-planning may produce a different plan than what was reviewed, allowing unreviewed changes to reach production.</reason>
+    </antipattern>
+  </section>
+</text>

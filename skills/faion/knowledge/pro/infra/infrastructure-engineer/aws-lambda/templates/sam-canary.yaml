@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda canary deployment with CodeDeploy hooks and alarms
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-api'
+      Handler: app.handler
+      Runtime: python3.12
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 30
+      CodeUri: src/
+      AutoPublishAlias: live
+      DeploymentPreference:
+        Type: Canary10Percent5Minutes
+        Alarms:
+          - !Ref ErrorAlarm
+        Hooks:
+          PreTraffic: !Ref PreTrafficHook
+          PostTraffic: !Ref PostTrafficHook
+
+  ErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-errors'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ApiFunction
+        - Name: Resource
+          Value: !Sub '${ApiFunction}:live'
+
+  PreTrafficHook:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'CodeDeployHook_${AWS::StackName}-pre-traffic'
+      Handler: pre_traffic.handler
+      Runtime: python3.12
+      Architectures: [arm64]
+      CodeUri: hooks/
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [codedeploy:PutLifecycleEventHookExecutionStatus]
+              Resource: '*'
+
+  PostTrafficHook:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'CodeDeployHook_${AWS::StackName}-post-traffic'
+      Handler: post_traffic.handler
+      Runtime: python3.12
+      Architectures: [arm64]
+      CodeUri: hooks/
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: [codedeploy:PutLifecycleEventHookExecutionStatus]
+              Resource: '*'

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-checklist" title="Terraform Basics Pre-Deployment Checklist">
+  <summary>Project setup, variables, security, code quality, and CI/CD integration verification rules.</summary>
+
+  <section title="Project Setup">
+    <rule>
+      <statement>Use the standard file layout: versions.tf, providers.tf, variables.tf, main.tf, outputs.tf, locals.tf, data.tf, terraform.tfvars.example; add .terraform/ and *.tfstate* to .gitignore; commit .terraform.lock.hcl.</statement>
+      <rationale>Consistent layout makes code navigable for any team member. .terraform.lock.hcl ensures reproducible provider versions across machines and CI.</rationale>
+    </rule>
+    <rule>
+      <statement>Configure pre-commit hooks to run terraform fmt and terraform validate on every commit.</statement>
+      <rationale>Automated format and validation checks prevent style drift and syntax errors from reaching code review.</rationale>
+    </rule>
+  </section>
+
+  <section title="Variables and Outputs">
+    <rule>
+      <statement>Add description and type to every variable; add validation blocks for constrained inputs; never commit actual terraform.tfvars with secrets.</statement>
+      <rationale>Descriptions serve as self-documentation. Validation catches invalid values at plan time. Committing tfvars leaks credentials to version history.</rationale>
+    </rule>
+    <rule>
+      <statement>Mark sensitive outputs with sensitive = true; add descriptions to all outputs; use consistent snake_case naming.</statement>
+      <rationale>Sensitive outputs are redacted in plan output and logs. Descriptive outputs serve as API contracts for downstream configurations.</rationale>
+    </rule>
+  </section>
+
+  <section title="Security">
+    <rule>
+      <statement>Never store secrets in .tf files or state; use AWS Secrets Manager or HashiCorp Vault as data sources; mark all credential variables with sensitive = true.</statement>
+      <rationale>Terraform state is stored in plaintext in S3 by default. Secrets-Manager data sources ensure secrets are fetched at runtime, not embedded in state.</rationale>
+    </rule>
+    <rule>
+      <statement>Apply least-privilege IAM policies; restrict network access (no 0.0.0.0/0 unless explicitly required for ALB); enable encryption on all storage resources.</statement>
+      <rationale>Overly permissive IAM and open security groups are the two most common causes of AWS breaches. Encryption at rest protects data if access controls fail.</rationale>
+    </rule>
+  </section>
+
+  <section title="Code Quality">
+    <rule>
+      <statement>Run terraform fmt -recursive before committing; run terraform validate to check syntax; use consistent naming {project}-{env}-{resource}.</statement>
+      <rationale>Consistent formatting reduces diff noise. Validate catches syntax errors before CI runs, saving build time.</rationale>
+    </rule>
+    <rule>
+      <statement>Use for_each over count when resources need unique identifiers; use count only for truly identical resources; configure lifecycle.prevent_destroy for critical resources.</statement>
+      <rationale>for_each creates stable resource addresses. count creates index-based addresses that shift on deletion, causing unexpected replacements.</rationale>
+    </rule>
+  </section>
+
+  <section title="CI/CD Integration">
+    <rule>
+      <statement>Run terraform fmt -check, terraform validate, and terraform plan on every pull request; apply only from CI with human approval for production.</statement>
+      <rationale>Running plan on PRs makes infrastructure changes visible before merge. CI-only apply prevents local state divergence and untested manual changes.</rationale>
+    </rule>
+    <antipattern>
+      <description>Provisioners (remote-exec, local-exec) for configuration management.</description>
+      <reason>Provisioners run outside Terraform's state model, have no idempotency guarantees, and fail silently. Use cloud-init or user_data instead.</reason>
+    </antipattern>
+  </section>
+</text>
