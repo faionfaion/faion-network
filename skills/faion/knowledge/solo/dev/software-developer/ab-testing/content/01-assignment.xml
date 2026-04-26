@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-assignment" title="Deterministic Variant Assignment">
+  <summary>Hash-based variant assignment ensuring sticky bucketing across sessions, devices, and processes.</summary>
+
+  <section title="Determinism Rule">
+    <rule>
+      <statement>Use `hash(user_id || experiment_id) mod 100` for variant assignment. Never use `random.choice()` or any non-deterministic method.</statement>
+      <rationale>Non-deterministic assignment gives the same user different variants on repeat page loads, corrupting results. Deterministic hashing ensures the same user always receives the same variant, across processes, servers, and sessions.</rationale>
+    </rule>
+    <rule>
+      <statement>Salt each experiment with a unique experiment ID in the hash input. Successive experiments must not share buckets.</statement>
+      <rationale>Without per-experiment salting, users in variant A of experiment 1 will always be in variant A of experiment 2. This correlation biases results in experiments run on overlapping populations.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import hashlib
+
+def assign_variant(user_id: str, experiment_id: str, weights: dict[str, float]) -> str:
+    """Deterministic assignment. weights = {"control": 0.5, "treatment": 0.5}"""
+    hash_input = f"{user_id}:{experiment_id}".encode()
+    hash_value = int(hashlib.sha256(hash_input).hexdigest(), 16) % 100
+
+    cumulative = 0
+    for variant, weight in weights.items():
+        cumulative += weight * 100
+        if hash_value < cumulative:
+            return variant
+    return list(weights.keys())[-1]  # fallback to last variant
+]]></code>
+    </example>
+  </section>
+
+  <section title="Sample Ratio Mismatch">
+    <rule>
+      <statement>Run a daily SRM check: chi-square test on observed exposure counts versus expected weights. Pause the experiment if `p &lt; 0.001`.</statement>
+      <rationale>SRM (observed 51/49 instead of 50/50) almost always indicates a bucketing bug, redirect asymmetry, or bot filtering that hits one variant more. All results from an SRM experiment are invalid.</rationale>
+    </rule>
+  </section>
+</text>

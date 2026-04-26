@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-scaling" title="WebSocket Scaling with Redis Pub/Sub">
+  <summary>Redis pub/sub fan-out for multi-instance deployments; avoiding self-publish duplicates.</summary>
+
+  <section title="Multi-Instance Architecture">
+    <rule>
+      <statement>For multi-instance deployments, use Redis (or NATS) pub/sub fan-out. Each server instance subscribes to channel patterns and delivers only to its locally connected users.</statement>
+      <rationale>Without a message bus, a broadcast sent to instance A never reaches users connected to instance B. Redis pub/sub propagates the message to all instances; each delivers only to its own subscribers.</rationale>
+    </rule>
+    <rule>
+      <statement>Skip self-publish: when a message originates locally, deliver it directly without publishing to Redis first, or filter by instance ID when consuming.</statement>
+      <rationale>Publishing to Redis and then consuming the same message from Redis produces duplicate delivery for locally subscribed users. Either skip Redis for local delivery or stamp messages with the originating instance ID and skip on re-receipt.</rationale>
+    </rule>
+  </section>
+
+  <section title="Sticky Sessions">
+    <rule>
+      <statement>Configure the load balancer for sticky sessions (IP hash or cookie affinity) when using in-memory subscription maps.</statement>
+      <rationale>Without sticky sessions, two requests from the same user can arrive at different instances. The second instance has no record of the WebSocket connection opened on the first instance.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Distributed connection manager: fan-out via Redis
+async def broadcast_to_channel(self, channel: str, message: WSMessage):
+    """Publish to Redis so all instances deliver to their local subscribers."""
+    await self.redis.publish(
+        f"ws:channel:{channel}",
+        message.to_json()
+    )
+
+async def _listen_to_redis(self):
+    """Consume messages from other instances and deliver locally."""
+    await self.pubsub.psubscribe("ws:channel:*")
+    async for msg in self.pubsub.listen():
+        if msg["type"] != "pmessage":
+            continue
+        channel = msg["channel"].decode().replace("ws:channel:", "")
+        data = json.loads(msg["data"])
+        # Deliver only to users connected on THIS instance
+        await self._local_broadcast(channel, WSMessage(**data))
+]]></code>
+    </example>
+  </section>
+</text>

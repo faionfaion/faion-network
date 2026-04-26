@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="GraphQL API Design Anti-Patterns">
+  <summary>Schema and resolver mistakes: N+1 without DataLoader, missing pagination, throwing instead of returning errors.</summary>
+
+  <section title="Performance Anti-Patterns">
+    <antipattern>
+      <description>Resolver eagerly loads all related entities in the parent query, regardless of whether the client requested them.</description>
+      <reason>Executes DB queries for data the client never uses, degrading performance proportionally to the number of unused relations loaded.</reason>
+    </antipattern>
+    <antipattern>
+      <description>List field returns all items with no pagination: `async def users(self) -> List[User]`.</description>
+      <reason>Returns millions of rows in one request on a large dataset. All list fields that could grow must use cursor-based Connection types with server-enforced size caps.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# BAD — N+1: every user in the list triggers a separate DB query for orders
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self) -> List[Order]:
+        return await db.orders.find_all(user_id=self.id)  # called once per user!
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# GOOD — batched via DataLoader: all users' orders fetched in one query
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self, info: Info) -> List[Order]:
+        return await info.context.loaders.orders_by_user.load(self.id)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Error Handling Anti-Patterns">
+    <antipattern>
+      <description>Mutations raise exceptions for business errors (validation, not found, conflict) instead of returning typed error payloads.</description>
+      <reason>Exceptions become opaque `errors[]` entries with no type information. Clients cannot distinguish "user not found" from "permission denied" without string-matching error messages.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Schema breaking changes (renaming or removing a field) merged without a deprecation cycle and schema diff check in CI.</description>
+      <reason>Clients that query the renamed/removed field receive a GraphQL error. Breaking changes require `@deprecated(reason: "...")`, usage analytics to confirm zero traffic, then removal.</reason>
+    </antipattern>
+  </section>
+</text>

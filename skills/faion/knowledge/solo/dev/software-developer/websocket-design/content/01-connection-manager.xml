@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-connection-manager" title="WebSocket Server Connection Manager">
+  <summary>Server-side connection management: connect/disconnect lifecycle, channel subscriptions, and broadcast patterns.</summary>
+
+  <section title="Authentication">
+    <rule>
+      <statement>Authenticate on the WebSocket upgrade handshake before calling `accept()`. Never accept anonymous connections and authorize later.</statement>
+      <rationale>Once `accept()` is called, the connection is established and consumes a file descriptor. Validating auth before acceptance allows the HTTP layer to return 401/403 with no WS overhead.</rationale>
+    </rule>
+    <rule>
+      <statement>Validate the `Origin` header server-side against an allowlist. Same-origin is not enforced for WebSocket upgrades by browsers.</statement>
+      <rationale>WebSocket upgrade requests bypass the browser's same-origin CSRF protections. An attacker can craft a page that initiates a WS connection to your server from any origin.</rationale>
+    </rule>
+  </section>
+
+  <section title="Connection Lifecycle">
+    <rule>
+      <statement>On disconnect, clean up all channel subscriptions atomically. Stale user IDs in channel subscription maps cause broadcasts to dead connections and memory leaks.</statement>
+      <rationale>A subscription map that retains disconnected users wastes memory and causes errors on send attempts. The disconnect handler must iterate all user channels and remove memberships.</rationale>
+    </rule>
+    <rule>
+      <statement>Check connection state before sending (`ws.client_state == CONNECTED`). Sending to a closed WebSocket raises an exception and must be caught.</statement>
+      <rationale>Disconnect and send can race: the connection drops between the state check and the actual send. Always wrap send in a try/except and disconnect on error.</rationale>
+    </rule>
+  </section>
+
+  <section title="Message Envelope">
+    <rule>
+      <statement>Use a versioned typed message envelope: `{ v, type, channel, data, id }`. The `type` field drives routing; `channel` scopes delivery.</statement>
+      <rationale>Untyped messages require downstream parsing to determine handling. A versioned envelope allows protocol upgrades without breaking existing clients — clients ignore unknown `v` values gracefully.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from enum import Enum
+from dataclasses import dataclass
+from typing import Optional
+import json
+
+class MessageType(str, Enum):
+    PING = "ping"
+    PONG = "pong"
+    SUBSCRIBE = "subscribe"
+    UNSUBSCRIBE = "unsubscribe"
+    MESSAGE = "message"
+    ERROR = "error"
+    ACK = "ack"
+
+@dataclass
+class WSMessage:
+    type: MessageType
+    channel: Optional[str] = None
+    data: Optional[dict] = None
+    id: Optional[str] = None
+
+    def to_json(self) -> str:
+        return json.dumps({k: v for k, v in self.__dict__.items() if v is not None})
+]]></code>
+    </example>
+    <reference path="templates/connection-manager.py">FastAPI ConnectionManager with channel subscriptions and broadcast</reference>
+  </section>
+</text>

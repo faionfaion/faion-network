@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-antipatterns" title="GraphQL Anti-Patterns">
+  <summary>Common GraphQL mistakes: N+1 without DataLoader, missing pagination, forgotten auth on new fields.</summary>
+
+  <section title="Performance Anti-Patterns">
+    <antipattern>
+      <description>Resolver that eagerly loads all relationships on the parent type, regardless of whether the client requested them.</description>
+      <reason>Always-loaded relations execute queries even when the field is not selected, wasting DB resources on every request.</reason>
+    </antipattern>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# BAD — loads orders for every user even when not requested
+@strawberry.type
+class User:
+    @strawberry.field
+    def orders(self) -> List[Order]:
+        return self._orders  # pre-loaded in parent query
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# GOOD — lazy load only when requested, batched via DataLoader
+@strawberry.type
+class User:
+    @strawberry.field
+    async def orders(self, info: Info, first: int = 10) -> List[Order]:
+        loader = info.context.loaders.orders_by_user
+        return await loader.load((self.id, first))
+]]></code>
+    </example>
+    <antipattern>
+      <description>List field that returns all items without pagination: `async def users(self) -> List[User]`.</description>
+      <reason>Could return millions of rows in a single request, causing full table scans and OOM errors. All list fields that could grow must use cursor-based pagination.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Security Anti-Patterns">
+    <antipattern>
+      <description>Adding a new sensitive field (email, apiKey, passwordHash) to a type without field-level authorization checks.</description>
+      <reason>Any client that can query the parent type can retrieve the sensitive field. Auth audits should be automated via a schema lint rule.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Leaving GraphQL introspection enabled in production without authentication.</description>
+      <reason>Introspection exposes the full schema to attackers, enabling targeted injection and DoS attacks. Gate it behind admin auth or disable it entirely.</reason>
+    </antipattern>
+  </section>
+</text>

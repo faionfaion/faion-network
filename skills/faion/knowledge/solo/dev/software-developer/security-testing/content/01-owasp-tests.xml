@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-owasp-tests" title="OWASP Top 10 Security Tests">
+  <summary>Automated pytest-based security tests covering the OWASP Top 10: access control, injection, XSS, authentication failures.</summary>
+
+  <section title="Test Assertion Rule">
+    <rule>
+      <statement>Assert exact HTTP status codes (401/403/400) and assert that sensitive data is absent from the response body. Never assert only that `status_code != 500`.</statement>
+      <rationale>"Not 500" passes even on a 200 OK that returned the victim's data. An access control test must assert the correct denial code AND confirm the resource was not returned.</rationale>
+    </rule>
+  </section>
+
+  <section title="Access Control Tests">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TestAccessControl:
+    def test_user_cannot_access_other_user_data(self, client, user_token, other_user):
+        response = client.get(
+            f"/api/users/{other_user.id}",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert response.status_code == 403  # NOT: != 500
+
+    def test_admin_endpoint_requires_admin_role(self, client, user_token):
+        response = client.get(
+            "/api/admin/users",
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert response.status_code == 403
+]]></code>
+    </example>
+  </section>
+
+  <section title="Injection Tests">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TestInjection:
+    @pytest.mark.parametrize("payload", [
+        "'; DROP TABLE users; --",
+        "1 OR 1=1",
+        "admin'--",
+    ])
+    def test_sql_injection_prevented(self, client, payload):
+        response = client.get(f"/api/users?search={payload}")
+        # Must not return 500 (server error) or return all users (data leak)
+        assert response.status_code in [200, 400]
+        if response.status_code == 200:
+            # Ensure injection didn't return extra rows
+            assert len(response.json()) < 100
+
+    @pytest.mark.parametrize("payload", [
+        "<script>alert('xss')</script>",
+        "<img src=x onerror=alert('xss')>",
+    ])
+    def test_xss_escaped_in_output(self, client, user_token, payload):
+        response = client.post(
+            "/api/comments",
+            json={"content": payload},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        if response.status_code == 201:
+            assert payload not in response.json()["content"]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Authentication Tests">
+    <example type="good">
+      <code lang="python"><![CDATA[
+class TestAuthentication:
+    def test_brute_force_protection(self, client):
+        for _ in range(10):
+            response = client.post("/api/auth/login", json={
+                "email": "user@example.com",
+                "password": "wrongpassword"
+            })
+        assert response.status_code in [429, 423]  # rate limited or locked
+
+    def test_token_invalidated_on_logout(self, client, user_token):
+        client.post("/api/auth/logout",
+                    headers={"Authorization": f"Bearer {user_token}"})
+        response = client.get("/api/me",
+                              headers={"Authorization": f"Bearer {user_token}"})
+        assert response.status_code == 401
+]]></code>
+    </example>
+  </section>
+</text>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-dataloader" title="DataLoader: N+1 Prevention">
+  <summary>DataLoader batches and deduplicates DB calls within a request to eliminate the N+1 query problem.</summary>
+
+  <section title="DataLoader Rules">
+    <rule>
+      <statement>Instantiate DataLoaders per-request in the context object. Never create a global DataLoader shared across requests.</statement>
+      <rationale>A global DataLoader accumulates keys from all concurrent requests, producing incorrect results by mixing data across users. Per-request loaders are isolated and garbage-collected after the response.</rationale>
+    </rule>
+    <rule>
+      <statement>Pair every resolver that loads a related entity by parent ID with a DataLoader. The batch function must return results in the same order as the input keys.</statement>
+      <rationale>If the batch function returns results in DB order rather than input-key order, DataLoader maps results to wrong parents, producing silently incorrect data.</rationale>
+    </rule>
+  </section>
+
+  <section title="TypeScript DataLoader Factory">
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import DataLoader from 'dataloader';
+
+// Per-request factory — call in context setup, not at module level
+export const createLoaders = () => ({
+  userById: new DataLoader<string, User | null>(async (ids) => {
+    const users = await db.users.findMany({ where: { id: { in: [...ids] } } });
+    const map = new Map(users.map(u => [u.id, u]));
+    // CRITICAL: return in same order as input ids
+    return ids.map(id => map.get(id) ?? null);
+  }),
+
+  // 1:N grouping pattern
+  ordersByUserId: new DataLoader<string, Order[]>(async (userIds) => {
+    const orders = await db.orders.findMany({
+      where: { userId: { in: [...userIds] } }
+    });
+    const grouped = new Map<string, Order[]>();
+    for (const order of orders) {
+      const arr = grouped.get(order.userId) ?? [];
+      arr.push(order);
+      grouped.set(order.userId, arr);
+    }
+    return userIds.map(id => grouped.get(id) ?? []);
+  }),
+});
+
+// In resolver
+resolve: (order) => ctx.loaders.userById.load(order.userId)
+]]></code>
+    </example>
+    <reference path="templates/dataloader-factory.ts">TypeScript DataLoader factory with grouping pattern</reference>
+  </section>
+
+  <section title="GraphQL Federation">
+    <p>For federated microservices, use Apollo Federation's `@key` directive. Each service resolves its own entities; the gateway stitches them without N+1.</p>
+    <example type="good">
+      <code lang="graphql"><![CDATA[
+# Users service
+type User @key(fields: "id") {
+  id: ID!
+  name: String!
+  email: String!
+}
+
+# Orders service — extends User without importing it
+extend type User @key(fields: "id") {
+  id: ID! @external
+  orders: [Order!]!
+}
+]]></code>
+    </example>
+  </section>
+</text>

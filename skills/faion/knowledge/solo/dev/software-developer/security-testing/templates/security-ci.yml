@@ -1,0 +1,47 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Bandit (Python SAST)
+        run: |
+          pip install bandit==1.7.7
+          bandit -r src/ -f json -o bandit-report.json || true
+
+      - name: Dependency audit (pip-audit)
+        run: |
+          pip install pip-audit==2.6.1
+          pip-audit --format json > pip-audit-report.json || true
+
+      - name: Semgrep (OWASP Top 10 + secrets)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/owasp-top-ten
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: npm audit
+        run: npm audit --json > npm-audit.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+            npm-audit.json

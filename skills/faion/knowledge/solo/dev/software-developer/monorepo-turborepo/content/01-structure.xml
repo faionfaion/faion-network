@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure" title="Monorepo Workspace Structure">
+  <summary>Turborepo workspace layout with apps/, packages/, and root configuration for JS/TS monorepos.</summary>
+
+  <section title="Workspace Layout">
+    <rule>
+      <statement>Separate apps (runnable services) from packages (shared libraries) at the workspace root.</statement>
+      <rationale>Apps are app-shaped (no exports field); packages are library-shaped (with exports). Mixing them confuses Turborepo's dependency graph and publishing workflows.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+monorepo/
+├── turbo.json
+├── package.json          # root: scripts delegate to turbo
+├── pnpm-workspace.yaml
+├── apps/
+│   ├── web/              # Next.js app — no exports, private: true
+│   └── api/              # Express/Fastify service — no exports
+└── packages/
+    ├── ui/               # shared React components — has exports map
+    ├── config/           # eslint, tsconfig presets — versionless
+    ├── types/            # shared TS types — has exports map
+    └── utils/            # shared utilities — has exports map
+]]></code>
+    </example>
+  </section>
+
+  <section title="Package Manager">
+    <rule>
+      <statement>Use pnpm with a pinned version in the root package.json `packageManager` field and add an `engines.pnpm` constraint.</statement>
+      <rationale>pnpm has the best workspace protocol support (`workspace:*`). Pinning prevents version drift across machines and CI. npm workspace hoisting causes phantom dependency bugs.</rationale>
+    </rule>
+    <reference path="templates/pnpm-workspace.yaml">pnpm workspace glob configuration</reference>
+  </section>
+
+  <section title="Shared Package Conventions">
+    <rule>
+      <statement>Keep config packages (eslint preset, tsconfig) at version 0.0.0 with private: true. Never publish them.</statement>
+      <rationale>Config packages are build-time tools consumed via `workspace:*`. Versioning them creates unnecessary churn; publishing them leaks internal configs.</rationale>
+    </rule>
+    <rule>
+      <statement>Use `workspace:*` for internal dependencies in pnpm. Never use relative paths (`../../packages/ui/src`) — always `@org/ui`.</statement>
+      <rationale>Relative imports cross app/package boundaries and break when packages are moved or published. `@org/ui` via `workspace:*` resolves correctly in all contexts.</rationale>
+    </rule>
+  </section>
+</text>

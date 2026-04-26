@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-input-validation" title="Input Validation Security Tests">
+  <summary>Tests for email/password validation, file upload restrictions, path traversal prevention, and rate limiting.</summary>
+
+  <section title="Validation Tests">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import pytest
+from pydantic import ValidationError
+
+class TestInputValidation:
+    @pytest.mark.parametrize("email", [
+        "not-an-email",
+        "@nodomain.com",
+        "spaces in@email.com",
+        "a" * 256 + "@example.com",
+    ])
+    def test_invalid_email_rejected(self, email):
+        with pytest.raises(ValidationError):
+            UserCreate(email=email, password="ValidPass1")
+
+    @pytest.mark.parametrize("password", [
+        "short",           # too short
+        "nouppercase1",    # no uppercase
+        "NOLOWERCASE1",    # no lowercase
+        "NoDigitsHere",    # no digits
+    ])
+    def test_weak_password_rejected(self, password):
+        with pytest.raises(ValidationError):
+            UserCreate(email="valid@example.com", password=password)
+
+    def test_file_upload_type_blocked(self, client, auth_token):
+        response = client.post(
+            "/api/upload",
+            files={"file": ("malware.exe", b"MZ...", "application/x-msdownload")},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 400
+
+    def test_file_upload_size_limit(self, client, auth_token):
+        large = b"x" * (10 * 1024 * 1024 + 1)  # > 10 MB
+        response = client.post(
+            "/api/upload",
+            files={"file": ("large.txt", large, "text/plain")},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code == 413
+
+    @pytest.mark.parametrize("path", [
+        "../../../etc/passwd",
+        "....//....//....//etc/passwd",
+        "%2e%2e%2f%2e%2e%2fetc/passwd",
+    ])
+    def test_path_traversal_blocked(self, client, auth_token, path):
+        response = client.get(
+            f"/api/files/{path}",
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        assert response.status_code in [400, 404]
+]]></code>
+    </example>
+  </section>
+
+  <section title="Security Headers">
+    <rule>
+      <statement>Assert the presence of required security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options`, and `Strict-Transport-Security`.</statement>
+      <rationale>Missing security headers enable MIME sniffing attacks, clickjacking, and downgrade attacks. These are cheap to set and easy to test; omitting the test allows them to disappear silently.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_security_headers_present(client):
+    response = client.get("/")
+    assert response.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "X-Frame-Options" in response.headers
+    assert "Strict-Transport-Security" in response.headers
+]]></code>
+    </example>
+  </section>
+</text>

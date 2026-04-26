@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-concurrency" title="Tokio Concurrency Patterns">
+  <summary>Semaphore-bounded batch processing, channel selection, graceful shutdown patterns.</summary>
+
+  <section title="Bounded Concurrency">
+    <rule>
+      <statement>Use a `Semaphore` to bound concurrent tasks in batch processors. Unbounded `spawn` floods the runtime and DB connection pool.</statement>
+      <rationale>Spawning 10,000 tasks simultaneously exhausts connection pool limits and system resources. A semaphore enforces a concurrency ceiling while still processing all items.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="rust"><![CDATA[
+use futures::stream::{self, StreamExt};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+
+pub async fn process_batch<T, F, Fut, R, E>(
+    items: Vec<T>,
+    concurrency: usize,
+    processor: F,
+) -> Vec<Result<R, E>>
+where
+    T: Send + 'static,
+    F: Fn(T) -> Fut + Send + Sync + 'static,
+    Fut: std::future::Future<Output = Result<R, E>> + Send,
+    R: Send + 'static,
+    E: Send + 'static,
+{
+    let sem = Arc::new(Semaphore::new(concurrency));
+    let proc = Arc::new(processor);
+    stream::iter(items)
+        .map(|item| {
+            let sem = sem.clone();
+            let proc = proc.clone();
+            async move {
+                let _permit = sem.acquire().await.unwrap();
+                proc(item).await
+            }
+        })
+        .buffer_unordered(concurrency)
+        .collect()
+        .await
+}
+]]></code>
+    </example>
+    <reference path="templates/batch-processor.rs">Semaphore-bounded concurrent batch processor</reference>
+  </section>
+
+  <section title="Channel Patterns">
+    <rule>
+      <statement>Choose the correct channel type for the communication pattern: `mpsc` for work queues, `broadcast` for fan-out events, `watch` for "latest value" (config reload), `oneshot` for request/response.</statement>
+      <rationale>Using `broadcast` for a work queue drops messages when the buffer is full instead of backpressuring. Using `mpsc` for fan-out requires cloning receivers, which is awkward. Each channel type is optimized for its pattern.</rationale>
+    </rule>
+  </section>
+
+  <section title="Mutex Rules">
+    <rule>
+      <statement>Use `parking_lot::Mutex` for short critical sections. Use `tokio::sync::Mutex` only when you must hold the lock across an `.await`. Never hold `std::sync::Mutex` across `.await`.</statement>
+      <rationale>`std::sync::Mutex` is not `Send`-safe across yield points. Holding it across `.await` in a multi-thread runtime deadlocks the task. `parking_lot` is non-poisoning and faster for sync sections.</rationale>
+    </rule>
+  </section>
+</text>

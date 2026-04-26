@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-auth-limits" title="Authorization and Query Limits">
+  <summary>Permission classes for field/mutation auth, query depth limiter, complexity extension, pagination caps.</summary>
+
+  <section title="Field-Level Authorization">
+    <rule>
+      <statement>Apply authorization at the field resolver level using permission classes, not only at the gateway or query root. A field added to a type inherits no auth from its parent.</statement>
+      <rationale>GraphQL composition allows clients to embed any field in any query. A gateway-level auth check on the top-level query does not propagate down to nested fields added later.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from strawberry.permission import BasePermission
+from strawberry.types import Info
+
+class IsAuthenticated(BasePermission):
+    message = "Authentication required"
+    def has_permission(self, source, info: Info, **kwargs) -> bool:
+        return info.context.current_user_id is not None
+
+class IsAdmin(BasePermission):
+    message = "Admin role required"
+    async def has_permission(self, source, info: Info, **kwargs) -> bool:
+        uid = info.context.current_user_id
+        if not uid:
+            return False
+        user = await info.context.services.user.get_by_id(uid)
+        return user and user.role == UserRole.ADMIN
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation(permission_classes=[IsAuthenticated])
+    async def create_order(self, info: Info, input: CreateOrderInput) -> Order:
+        ...
+
+    @strawberry.mutation(permission_classes=[IsAdmin])
+    async def delete_user(self, info: Info, id: strawberry.ID) -> bool:
+        ...
+]]></code>
+    </example>
+  </section>
+
+  <section title="Query Depth and Complexity">
+    <rule>
+      <statement>Add query depth limiting (max 10) and complexity analysis before production. Set a hard max on pagination `first` arguments server-side.</statement>
+      <rationale>A `friends.friends.friends...` query triggers exponential DB calls. Without server-side pagination caps, a client requesting `first: 1000000` bypasses the design and runs a full table scan.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from strawberry.extensions import QueryDepthLimiter
+from strawberry.extensions.query_complexity import QueryComplexityExtension
+
+schema = strawberry.Schema(
+    query=Query,
+    mutation=Mutation,
+    extensions=[
+        QueryDepthLimiter(max_depth=10),
+        QueryComplexityExtension(max_complexity=1000),
+    ],
+)
+
+# Server-side pagination cap in resolver
+@strawberry.field
+async def users(self, info: Info, first: int = 20) -> UserConnection:
+    if first > 100:
+        raise ValueError("Cannot request more than 100 items")
+    ...
+]]></code>
+    </example>
+  </section>
+</text>

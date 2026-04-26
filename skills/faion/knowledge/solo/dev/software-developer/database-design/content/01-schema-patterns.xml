@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-schema-patterns" title="Database Schema Patterns">
+  <summary>E-commerce DDL conventions: UUIDs, CHECK constraints, foreign keys, soft deletes, audit triggers.</summary>
+
+  <section title="Primary Key Rule">
+    <rule>
+      <statement>Use ULID or UUID v7 primary keys, not auto-incrementing integers. Every entity table must have `created_at` and `updated_at` timestamptz columns defaulting to `now()`.</statement>
+      <rationale>Auto-increment integers leak business information (record count, growth rate). UUID v4 has random distribution that fragments B-tree indexes. ULID/UUID v7 are time-ordered, maintaining insert locality while preventing enumeration.</rationale>
+    </rule>
+    <rule>
+      <statement>Every foreign key must have an explicit `ON DELETE` action. Default to `ON DELETE RESTRICT`. Use `CASCADE` only when the child rows are logically part of the parent (e.g., order items when an order is deleted).</statement>
+      <rationale>Implicit `ON DELETE NO ACTION` defers the check but still raises on commit, surprising developers. `RESTRICT` is explicit intent. Accidental CASCADE on a chain of 3+ tables can wipe large portions of the database with a single accidental delete.</rationale>
+    </rule>
+  </section>
+
+  <section title="Core Schema Example">
+    <example type="good">
+      <code lang="sql"><![CDATA[
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'processing', 'shipped', 'delivered', 'cancelled')),
+    total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price NUMERIC(10, 2) NOT NULL CHECK (unit_price >= 0),
+    UNIQUE(order_id, product_id)
+);
+]]></code>
+    </example>
+  </section>
+
+  <section title="Money Column Rule">
+    <rule>
+      <statement>Store monetary values as `NUMERIC(12, 2)` or as BIGINT cents. Never use FLOAT or DOUBLE for money.</statement>
+      <rationale>FLOAT and DOUBLE cannot represent most decimal fractions exactly (e.g., 0.1 in binary). Accumulated rounding errors in financial calculations produce incorrect totals that are invisible until a reconciliation audit.</rationale>
+    </rule>
+  </section>
+
+  <section title="Audit Trail">
+    <p>Use a trigger-based audit log for tables requiring change history. Store old and new data as JSONB for schema-independent capture.</p>
+    <reference path="templates/schema.sql">Reference schema with audit trigger and soft-delete view</reference>
+  </section>
+</text>
