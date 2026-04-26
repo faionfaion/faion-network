@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-reporting" title="Automated Reporting and Delivery">
+  <summary>Scheduled report configurations, Slack Block Kit delivery, report templates, and BI integration patterns.</summary>
+
+  <section title="Report Schedule">
+    <rule>
+      <statement>Run three report cadences: daily standup digest (09:00 weekdays, Slack), weekly status report (Friday 16:00, email to stakeholders), sprint report (on sprint-end event, PDF).</statement>
+      <rationale>Each cadence serves a distinct audience: daily digest for the team, weekly status for stakeholders, sprint report for retrospectives. Mixing cadences produces reports nobody reads.</rationale>
+    </rule>
+    <rule>
+      <statement>Add a 1-hour buffer when querying at sprint boundaries — query the previous closed sprint explicitly rather than relying on "current sprint" logic immediately after sprint close.</statement>
+      <rationale>Sprint transition state is inconsistent for up to 1 hour after close; metrics computed at the boundary may mix old and new sprint data.</rationale>
+    </rule>
+  </section>
+
+  <section title="Data Quality Guard">
+    <rule>
+      <statement>Validate every metric query before rendering: if a required metric returns null or unexpectedly zero results, emit a data quality alert rather than a report showing zeros.</statement>
+      <rationale>A sprint with 0 items in progress is almost always a data quality problem, not reality; misleading zeros cause stakeholders to act on false signals.</rationale>
+    </rule>
+    <antipattern>
+      <description>Silently showing 0% completion when JQL returns no results.</description>
+      <reason>Downstream readers assume 0 means "nothing done" rather than "query returned nothing"; add explicit null checks before rendering.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Slack Delivery">
+    <rule>
+      <statement>Limit Slack Block Kit text blocks to under 3000 characters per block; chunk large tables into multiple messages or link to a full report rather than inlining all rows.</statement>
+      <rationale>Slack enforces a 3001-character limit per text block; exceeding it silently truncates the message without an error to the sender.</rationale>
+    </rule>
+    <reference path="templates/weekly-status-report.md">Weekly status report template</reference>
+    <reference path="templates/sprint-report.md">Sprint delivery summary template</reference>
+  </section>
+
+  <section title="BI Integration">
+    <rule>
+      <statement>Use idempotent upserts when writing to a metrics database; archive every generated report to a persistent store (Notion page, S3, GitHub issue) — Slack channel history disappears.</statement>
+      <rationale>Cron overlap can trigger duplicate runs; idempotent upserts prevent duplicate rows. Slack messages are unreliable as report archives; persistent stores allow audit and replay.</rationale>
+    </rule>
+    <rule>
+      <statement>BI connections: PM tool APIs use tool-specific query syntax — Jira uses status = Done, Linear uses completedAt != null, ClickUp uses status = complete. Never use a generic abstraction layer that hides this.</statement>
+      <rationale>Generic PM wrappers drift out of sync with tool API changes; tool-specific queries remain correct and debuggable.</rationale>
+    </rule>
+    <reference path="templates/jql-queries.sql">JQL query collection for common dashboard metrics</reference>
+  </section>
+</text>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Trello Agent Integration and Gotchas">
+  <summary>Agentic workflow patterns, recommended subagents, API gotchas, and best practices for Claude agents using the Trello REST API.</summary>
+
+  <section title="Agentic Workflow">
+    <rule>
+      <statement>Agents must request customFieldItems=true in card list queries and resolve member IDs to names before producing any human-readable output.</statement>
+      <rationale>Default card responses omit custom fields; member IDs (UUIDs) are meaningless to humans in reports. Both require extra API calls that must be built into the agent pipeline, not added ad-hoc.</rationale>
+    </rule>
+    <rule>
+      <statement>Register webhooks at board level, not per-card; always compare incoming webhook payloads against cached state to determine what changed — Trello sends the full card object on every event, not a diff.</statement>
+      <rationale>Board-level webhooks survive card copies and board recreations; without diff comparison an agent cannot determine whether the label changed, the due date changed, or both.</rationale>
+    </rule>
+    <rule>
+      <statement>Require human approval before bulk label changes or bulk archiving — there is no bulk undo in Trello.</statement>
+      <rationale>Bulk operations without human review are irreversible; a single bad filter can archive hundreds of active cards.</rationale>
+    </rule>
+  </section>
+
+  <section title="Butler Race Condition">
+    <rule>
+      <statement>When an agent creates a card and immediately queries it, add a 2-second delay before the query — Butler rules run asynchronously and the card may not yet reflect applied labels or moves.</statement>
+      <rationale>Butler rule execution is async; the agent's read immediately after write may see the pre-Butler state, producing incorrect validation results.</rationale>
+    </rule>
+  </section>
+
+  <section title="Rate Limits">
+    <rule>
+      <statement>Trello API rate limit is 300 requests per 10 seconds per token. When looping over 500+ cards with custom field fetches, implement batching with a 100ms delay between requests to stay under the limit.</statement>
+      <rationale>Each custom-field fetch is a separate request; 500 cards with custom fields = 1000+ requests. Hitting the limit causes 429 errors that break the pipeline mid-run.</rationale>
+    </rule>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>trello-intake-agent: triggered by board webhook on card creation; validates description completeness, applies labels from title keywords, posts comment with next steps.</item>
+      <item>trello-standup-agent: queries "In Progress" and "Blocked" lists daily; formats standup digest; posts to Slack.</item>
+      <item>trello-archive-agent: weekly job; archives cards in "Done" list older than 7 days.</item>
+    </list>
+    <reference path="templates/prompt-fetch-cards.txt">Prompt for agent to fetch and report in-progress cards</reference>
+  </section>
+</text>

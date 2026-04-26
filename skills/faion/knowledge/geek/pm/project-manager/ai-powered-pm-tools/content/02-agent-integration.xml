@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-integration" title="Claude Agent Integration with PM Tools">
+  <summary>Portable agent patterns for interacting with PM tool APIs, WBS generation prompt, Jira issue creation script, and critical API gotchas.</summary>
+
+  <section title="Portable Agent Pattern">
+    <rule>
+      <statement>Use the agent-as-scribe pattern: agent reads meeting transcripts or project briefs and creates structured issues via REST/GraphQL API. This pattern is portable across all PM tools and does not depend on vendor AI features.</statement>
+      <rationale>Vendor AI features (Jira Rovo, ClickUp Brain) are not portable; agent-as-scribe using standard APIs works regardless of PM tool vendor or pricing tier changes.</rationale>
+    </rule>
+    <rule>
+      <statement>Always use a sandbox project for agent-generated issues before committing to the production board; require human approval before creating issues in production.</statement>
+      <rationale>Agent-generated issue quality varies with brief quality; sandbox review catches incorrect categorization, missing acceptance criteria, or wrong priority assignments before they pollute the production backlog.</rationale>
+    </rule>
+  </section>
+
+  <section title="API Gotchas by Platform">
+    <rule>
+      <statement>Jira description field requires Atlassian Document Format (ADF) JSON, not plain text or Markdown — agents must generate ADF, not plain strings, for rich descriptions.</statement>
+      <rationale>Passing plain text to the Jira description field stores it as an unformatted blob without paragraphs or lists; ADF is required for formatted content.</rationale>
+    </rule>
+    <rule>
+      <statement>Monday.com GraphQL mutations require column IDs, not column names — agents must fetch the board schema before creating items to resolve column IDs.</statement>
+      <rationale>Column names can be renamed by users; column IDs are stable. Using names causes silent failures when columns are renamed.</rationale>
+    </rule>
+    <rule>
+      <statement>Implement exponential backoff with delays when bulk-creating issues across any PM tool API — rate limits are hit quickly during WBS creation (20–50 issues in rapid succession).</statement>
+      <rationale>All PM tool APIs enforce rate limits (Jira: 10 req/sec, ClickUp: 100 req/min, Linear: 1500 req/10min); bulk creation without delays triggers 429 errors mid-run.</rationale>
+    </rule>
+  </section>
+
+  <section title="Jira Issue Creation Script">
+    <reference path="templates/create-jira-issues.sh">Bash script to create Jira issues from a JSON WBS output</reference>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+#!/bin/bash
+# Create Jira issues from JSON work breakdown
+# Requires: JIRA_URL, JIRA_TOKEN, JIRA_PROJECT_KEY env vars
+create_jira_issues() {
+  local issues_json="$1"
+  echo "$issues_json" | jq -c '.[]' | while IFS= read -r issue; do
+    title=$(echo "$issue" | jq -r '.title')
+    desc=$(echo "$issue" | jq -r '.description')
+    curl -s -X POST "$JIRA_URL/rest/api/3/issue" \
+      -H "Authorization: Bearer $JIRA_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{\"fields\":{\"project\":{\"key\":\"$JIRA_PROJECT_KEY\"},
+           \"summary\":\"$title\",
+           \"description\":{\"type\":\"doc\",\"version\":1,
+             \"content\":[{\"type\":\"paragraph\",\"content\":
+               [{\"text\":\"$desc\",\"type\":\"text\"}]}]},
+           \"issuetype\":{\"name\":\"Story\"}}}"
+    sleep 0.15  # 100ms buffer within 10 req/sec Jira limit
+  done
+}
+      ]]></code>
+      <note>ADF format required for description field; 150ms delay keeps under 10 req/sec Jira rate limit.</note>
+    </example>
+  </section>
+
+  <section title="DORA Paradox Monitoring">
+    <rule>
+      <statement>Monitor for the AI productivity paradox: if individual issue velocity improves but deployment frequency stays flat, identify the phase where work accumulates (review, staging, QA, deploy).</statement>
+      <rationale>DORA 2025: AI tools shift bottlenecks downstream; tracking only velocity creates a misleading signal that AI tools are delivering organizational value when they are not.</rationale>
+    </rule>
+    <reference path="templates/prompt-wbs.xml">XML prompt for WBS generation from a project brief</reference>
+  </section>
+</text>

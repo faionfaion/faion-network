@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Dashboard Agent Pipeline and Gotchas">
+  <summary>Multi-tool reporting agent pipeline, subagent patterns, Python reporting script, and cross-tool metric gotchas.</summary>
+
+  <section title="Agent Pipeline Architecture">
+    <rule>
+      <statement>Separate dashboard setup (one-time configuration) from report generation (recurring run); agents must be able to perform both independently without conflating them.</statement>
+      <rationale>Mixing setup and reporting logic means a broken report run can corrupt the dashboard configuration; keeping them separate makes each independently testable.</rationale>
+    </rule>
+    <rule>
+      <statement>Validate data completeness at pipeline start: if any required metric returns null or zero unexpectedly, send a data quality alert to the ops channel rather than delivering a misleading report.</statement>
+      <rationale>A sprint with 0 committed items is almost certainly a JQL error, not reality; false zeroes cause stakeholder responses to non-existent problems.</rationale>
+    </rule>
+  </section>
+
+  <section title="Cross-Tool Joins">
+    <rule>
+      <statement>Cross-tool joins (Jira sprint + GitHub deploys + PagerDuty incidents) require a shared key (issue number or release tag) present in all systems — if the key is missing, joins silently drop rows.</statement>
+      <rationale>Silent row drops produce metrics that appear correct but are systematically undercounted; always validate join coverage before delivering cross-tool reports.</rationale>
+    </rule>
+  </section>
+
+  <section title="Python Reporting Script">
+    <p>Minimal pattern: query Jira, validate results, compute status, post to Slack.</p>
+    <reference path="templates/prompt-render-status.txt">Prompt for agent to compute and render a weekly status report</reference>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import os, requests
+from datetime import date
+
+JIRA_URL  = os.environ["JIRA_URL"]
+JIRA_TOKEN = os.environ["JIRA_TOKEN"]
+SLACK_HOOK = os.environ["SLACK_WEBHOOK"]
+PROJECT    = os.environ["JIRA_PROJECT"]
+
+def jql_count(jql):
+    r = requests.get(
+        f"{JIRA_URL}/rest/api/3/search",
+        headers={"Authorization": f"Bearer {JIRA_TOKEN}"},
+        params={"jql": jql, "maxResults": 0},
+    )
+    data = r.json()
+    if "total" not in data:
+        raise ValueError(f"JQL failed: {data}")
+    return data["total"]
+
+sprint = f"project = {PROJECT} AND sprint in openSprints()"
+total   = jql_count(sprint)
+done    = jql_count(f"{sprint} AND status = Done")
+blocked = jql_count(f"{sprint} AND labels = blocked AND status != Done")
+
+if total == 0:
+    requests.post(SLACK_HOOK, json={"text":
+        "WARNING: Sprint query returned 0 items — check data quality."})
+else:
+    pct    = round(done / total * 100)
+    status = "On Track" if pct >= 85 else ("At Risk" if pct >= 70 else "Off Track")
+    msg = (
+        f"*Sprint Status ({date.today()}): {status}*\n"
+        f"Committed: {total} | Done: {done} ({pct}%) | Blocked: {blocked}"
+    )
+    requests.post(SLACK_HOOK, json={"text": msg})
+      ]]></code>
+      <note>Raises ValueError on bad JQL response; handles zero-total edge case with explicit data quality alert; computes On Track/At Risk/Off Track threshold.</note>
+    </example>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>dashboard-builder-agent: given PM tool config and metric spec, scaffolds dashboard widget layout and outputs setup checklist.</item>
+      <item>multi-tool-reporter: queries Jira + Linear + GitHub on schedule, merges metrics into a unified status table, posts to Slack, archives report.</item>
+      <item>etl-pm-agent: nightly; fetches incremental PM data, validates schema, upserts to Postgres, triggers Metabase/Grafana dataset refresh.</item>
+    </list>
+  </section>
+</text>

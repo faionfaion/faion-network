@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-agent-usage" title="Notion Agent Integration and Gotchas">
+  <summary>Agentic sprint cycle automation, recommended subagents, API rate limits, relation resolution gotchas, and Python sprint assignment script.</summary>
+
+  <section title="Rate Limit Compliance">
+    <rule>
+      <statement>Notion API rate limit is 3 requests per second per integration token; paginate all database queries with start_cursor (max 100 items per request regardless of page_size); add 350ms delay between write requests during bulk operations.</statement>
+      <rationale>3 req/sec limit is hit quickly during sprint planning with 100 tasks; 350ms delay stays safely under the limit; pagination is mandatory — Notion never returns more than 100 items per query regardless of page_size setting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Relation Resolution">
+    <rule>
+      <statement>After writing a relation field, wait 1–2 seconds before querying rollup properties that depend on it — rollups recalculate asynchronously after relation writes.</statement>
+      <rationale>Rollup recalculation is not synchronous with the relation write response; an immediate query returns stale values that do not reflect the newly assigned sprint or project.</rationale>
+    </rule>
+    <rule>
+      <statement>Resolve relation values to human-readable text by fetching related pages via pages.retrieve — the API returns [{id: "page-uuid"}], not page titles.</statement>
+      <rationale>Sprint names, assignee names, and project titles must be resolved from page IDs before producing any human-readable report; UUID arrays are meaningless to report consumers.</rationale>
+    </rule>
+  </section>
+
+  <section title="Sprint Assignment Script">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import os, time
+from notion_client import Client
+
+notion = Client(auth=os.environ["NOTION_TOKEN"])
+SPRINT_PAGE_ID = os.environ["CURRENT_SPRINT_PAGE_ID"]
+
+def assign_to_sprint(task_page_ids: list[str]):
+    """Assign selected backlog tasks to current sprint.
+    Call only after human approval of the sprint plan.
+    """
+    for page_id in task_page_ids:
+        notion.pages.update(
+            page_id=page_id,
+            properties={
+                "Sprint": {
+                    "relation": [{"id": SPRINT_PAGE_ID}]
+                }
+            }
+        )
+        time.sleep(0.35)  # stay under 3 req/sec limit
+      ]]></code>
+      <note>350ms delay between writes keeps under the 3 req/sec Notion rate limit; function is called only after human approval of the sprint plan.</note>
+    </example>
+    <reference path="templates/prompt-sprint-planner.txt">Prompt for agent to select and assign backlog tasks to a sprint</reference>
+  </section>
+
+  <section title="Recommended Subagents">
+    <list>
+      <item>notion-sprint-planner: reads backlog, ranks by priority/estimate, selects tasks fitting capacity, posts plan to Slack for human approval before saving to Notion.</item>
+      <item>notion-standup-agent: daily; queries sprint tasks where Status = In Progress or Blocked; posts structured digest to Slack with Notion page links.</item>
+      <item>notion-sprint-closer: at sprint end; reads Sprint page rollups, fills Metrics table, sets Sprint to Completed, moves incomplete tasks to next sprint.</item>
+    </list>
+  </section>
+</text>
