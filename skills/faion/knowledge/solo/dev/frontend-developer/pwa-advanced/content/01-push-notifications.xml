@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-push-notifications" title="Web Push Notifications">
+  <summary>VAPID-based Web Push: subscribe flow, key encoding, service worker push handler, notificationclick handler, and the critical gotchas that LLMs miss.</summary>
+
+  <section title="Subscribe Flow">
+    <rule>
+      <statement>Gate Notification.requestPermission() behind a user gesture (button click), never on page load. Set userVisibleOnly: true — Chrome rejects false.</statement>
+      <rationale>Browsers apply heuristics to permission requests; calling on page load gets the request silently blocked. userVisibleOnly: false is rejected in Chrome for web push.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+// Called from a click handler, not on mount
+async function handleSubscribeClick() {
+  const reg = await navigator.serviceWorker.ready;
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return null;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub),
+  });
+  return sub;
+}
+      ]]></code>
+    </example>
+    <reference path="templates/vapid-util.ts">VAPID key converter — the most common source of encoding errors</reference>
+  </section>
+
+  <section title="Service Worker Handlers">
+    <rule>
+      <statement>Wrap all async work in push and notificationclick handlers with event.waitUntil(). Call event.notification.close() in notificationclick before opening a window.</statement>
+      <rationale>Without event.waitUntil(), the browser may kill the service worker before async work completes. Without close(), the notification persists after the user clicks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? { title: 'New Notification', body: '' };
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/badge-72x72.png',
+      tag: data.tag,
+      data: data.url,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // required
+  const url = event.notification.data || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((list) => {
+      for (const client of list) {
+        if (client.url === url && 'focus' in client) return client.focus();
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="VAPID Key Storage">
+    <rule>
+      <statement>Store the VAPID private key in a secrets manager. Never commit it. Rotate on team changes. Use web-push (Node) or pywebpush (Python) for server-side sending.</statement>
+      <rationale>Rolling a custom push encryption implementation is a security footgun; the standard libraries handle aes128gcm correctly.</rationale>
+    </rule>
+  </section>
+</text>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-compound-component" title="Compound Component Pattern">
+  <summary>Compound components share state through React context while exposing a readable sub-component API. Export sub-components as named exports as well as via Object.assign to preserve tree-shaking.</summary>
+
+  <section title="Pattern Structure">
+    <rule>
+      <statement>Create a context for shared state, a Root component that provides it, and sub-components that consume it. Export sub-components as both named exports and as Object.assign properties.</statement>
+      <rationale>Object.assign-only export prevents tree-shaking; named exports let bundlers drop unused sub-components.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+const CardContext = createContext<{ variant: 'default' | 'elevated' } | null>(null);
+
+function useCardContext() {
+  const ctx = useContext(CardContext);
+  if (!ctx) throw new Error('Card sub-components must be used inside <Card>');
+  return ctx;
+}
+
+function CardRoot({ children, variant = 'default', className }: CardProps) {
+  return (
+    <CardContext.Provider value={{ variant }}>
+      <article className={clsx(styles.card, styles[variant], className)}>
+        {children}
+      </article>
+    </CardContext.Provider>
+  );
+}
+
+export function CardHeader({ children, className }: SubProps) {
+  return <header className={clsx(styles.header, className)}>{children}</header>;
+}
+
+// Both forms: named export + Object.assign for ergonomic JSX
+export const Card = Object.assign(CardRoot, { Header: CardHeader, Content: CardContent });
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Context Error Boundary">
+    <rule>
+      <statement>Throw a descriptive error from useXContext() when used outside the Provider, not a silent null.</statement>
+      <rationale>Silent nulls from missing context produce cryptic rendering failures; a thrown error with the component name lets the agent diagnose instantly.</rationale>
+    </rule>
+  </section>
+
+  <section title="State Attributes">
+    <rule>
+      <statement>Use data-state="open|closed" attributes instead of conditional class strings for state-driven styling.</statement>
+      <rationale>Radix-style data attributes simplify both CSS selectors and test assertions; conditional class strings scatter state logic across the component.</rationale>
+    </rule>
+  </section>
+</text>

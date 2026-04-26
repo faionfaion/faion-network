@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-vanilla-extract" title="vanilla-extract Zero-Runtime CSS">
+  <summary>vanilla-extract produces plain CSS at build time via recipe(), createVar(), styleVariants(), and Sprinkles. All .css.ts files run in a Node sandbox — no window, process.env, or dynamic imports.</summary>
+
+  <section title="recipe() and createVar()">
+    <rule>
+      <statement>Use createVar() to declare CSS custom properties and recipe() to combine base styles with typed variant maps. Always set defaultVariants.</statement>
+      <rationale>createVar() produces a named CSS variable with TypeScript type; omitting defaultVariants causes runtime errors when the recipe receives undefined for a required variant.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { createVar } from '@vanilla-extract/css';
+import { recipe, RecipeVariants } from '@vanilla-extract/recipes';
+
+const focusColor = createVar();
+
+export const button = recipe({
+  base: {
+    display: 'inline-flex',
+    fontWeight: 500,
+    borderRadius: '0.375rem',
+    cursor: 'pointer',
+    vars: { [focusColor]: '#3b82f6' },
+    ':focus-visible': { outline: `2px solid ${focusColor}`, outlineOffset: '2px' },
+  },
+  variants: {
+    color: {
+      primary: { background: '#3b82f6', color: '#fff', ':hover': { background: '#2563eb' } },
+      secondary: { background: '#f3f4f6', color: '#1f2937' },
+    },
+    size: {
+      sm: { padding: '0.375rem 0.75rem', fontSize: '0.875rem' },
+      md: { padding: '0.5rem 1rem', fontSize: '1rem' },
+    },
+  },
+  defaultVariants: { color: 'primary', size: 'md' },
+});
+
+export type ButtonVariants = RecipeVariants<typeof button>;
+      ]]></code>
+    </example>
+    <reference path="templates/button.css.ts">Complete vanilla-extract recipe example</reference>
+  </section>
+
+  <section title="Sprinkles Budget Rule">
+    <rule>
+      <statement>Treat Sprinkles properties like a public API. Audit generated CSS size in CI. Every added property compiles to N classnames where N = number of values × number of conditions.</statement>
+      <rationale>Over-broad Sprinkles property arrays expand CSS output by 5-10x; the resulting stylesheet causes measurable parse-time LCP regressions on mobile.</rationale>
+    </rule>
+  </section>
+
+  <section title="Build Sandbox Constraints">
+    <rule>
+      <statement>Keep .css.ts files dependency-free of app code. Only import other .css.ts files, types, and literal constants. Never reference window, process.env, or dynamic imports.</statement>
+      <rationale>vanilla-extract runs .css.ts in a restricted Node sandbox at build time; importing app code that references browser globals crashes the build cryptically.</rationale>
+    </rule>
+  </section>
+</text>

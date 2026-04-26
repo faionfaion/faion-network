@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-component-rules" title="Component Authoring Rules">
+  <summary>forwardRef, ARIA wiring, CSS variable theming, and API design rules for UI library primitives.</summary>
+
+  <section title="forwardRef and displayName">
+    <rule>
+      <statement>Wrap every DOM-emitting component in forwardRef. Set displayName explicitly.</statement>
+      <rationale>Without forwardRef, consumers cannot attach refs for focus management. Missing displayName produces "ForwardRef" in DevTools and stack traces.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ variant = 'primary', size = 'md', ...props }, ref) => (
+    <button ref={ref} className={clsx(styles.button, styles[variant], styles[size])} {...props} />
+  )
+);
+Button.displayName = 'Button';
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="ARIA Wiring">
+    <rule>
+      <statement>Input components must generate a unique id via useId(), link label via htmlFor, and wire aria-invalid + aria-describedby for error and helper text.</statement>
+      <rationale>Screen readers cannot associate labels and error messages without explicit id linkage; useId() prevents SSR hydration mismatches.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="tsx"><![CDATA[
+const id = useId();
+const errorId = `${id}-error`;
+return (
+  <div>
+    <label htmlFor={id}>{label}</label>
+    <input
+      id={id}
+      aria-invalid={!!error}
+      aria-describedby={error ? errorId : undefined}
+    />
+    {error && <span id={errorId} role="alert">{error}</span>}
+  </div>
+);
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Theming via CSS Variables">
+    <rule>
+      <statement>Use CSS custom properties for all theme values (colors, radii, spacing). Never use ThemeContext or React-based theming inside the library.</statement>
+      <rationale>CSS variable theming is stack-agnostic; React Context theming locks consumers into the library's React version and context tree.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="css"><![CDATA[
+.button { background: var(--color-primary); color: var(--color-primary-foreground); }
+.button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.button:disabled { opacity: 0.5; cursor: not-allowed; }
+      ]]></code>
+    </example>
+    <example type="bad">
+      <note>Importing a ThemeContext from the library into a styled.button — consumers must then wrap their entire app in the library's ThemeProvider.</note>
+    </example>
+  </section>
+
+  <section title="Variant API with cva()">
+    <rule>
+      <statement>Use class-variance-authority (cva) for variant props. Forbid long inline class strings and dynamic class interpolation.</statement>
+      <rationale>cva produces a typed, exhaustive variant map; inline conditional class strings grow uncontrollably and lose type safety.</rationale>
+    </rule>
+  </section>
+</text>
