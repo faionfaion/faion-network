@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-enterprise-landscape" title="Interface Analysis: Enterprise Landscape and Governance">
+  <summary>Portfolio-level integration landscape register, shadow-IT discovery, four-pass agentic workflow, governance rules, and anti-patterns.</summary>
+
+  <section title="Integration Landscape Register">
+    <rule>
+      <statement>Maintain the landscape register as a text file (Markdown table or CSV) in git; never in a spreadsheet or wiki — agents need to read and diff it, and the diff between versions is the impact analysis.</statement>
+      <rationale>A spreadsheet-based register ages within one quarter without automated updates; text in git enables automated feeds from CMDB and API gateway, and makes register changes auditable via pull request.</rationale>
+    </rule>
+    <rule>
+      <statement>Assign criticality tiers (1-4) with explicit policy: tier-1 interfaces require contract tests, breaking-change review, and 24/7 monitoring; tier-4 needs only a register row. Never let the agent set tier-1 without explicit human sign-off.</statement>
+      <rationale>Criticality is a business judgment with operational and financial consequences; an agent setting tier-1 without authority creates monitoring obligations and review gates that the owning team never agreed to.</rationale>
+    </rule>
+    <reference path="templates/landscape-register.md">Portfolio landscape register table template</reference>
+    <reference path="templates/landscape-merge.sh">Seeds register from CMDB export + gateway dump</reference>
+  </section>
+
+  <section title="Shadow IT Discovery">
+    <rule>
+      <statement>Run a dedicated shadow-IT pass against email/Slack/Workato/Power Automate/Excel-macros in addition to the CMDB and API gateway; shadow integrations are the most common source of audit findings and security incidents.</statement>
+      <rationale>Agents will not find what is not in their inputs; CMDB + gateway only covers governed integrations. Shadow IT — Zapier recipes, manual SFTP scripts on someone's laptop — never makes the official diagram and causes every audit finding.</rationale>
+    </rule>
+    <rule>
+      <statement>Flag any gateway traffic without a matching CMDB entry as a governance violation; flag any register entry with no gateway traffic in 90 days as a retirement candidate.</statement>
+      <rationale>Active-traffic reality checks keep the register honest; without them, the register accumulates phantom interfaces and misses real ones, making it useless for impact analysis.</rationale>
+    </rule>
+  </section>
+
+  <section title="Four-Pass Agentic Workflow">
+    <rule>
+      <statement>Run enterprise interface analysis as four sequential passes: discovery (raw inventory from CMDB + gateway + iPaaS), classification (business capability, criticality, sensitivity, ownership), governance diff (against contract standard), human review before publication.</statement>
+      <rationale>A single-pass agent that discovers, classifies, and governs simultaneously produces outputs without human validation at each stage; errors discovered at publication require re-running all earlier passes.</rationale>
+    </rule>
+    <example type="good">
+      <note>Discovery prompt constrains the agent to inputs only, preserving unknown sensitivity rather than defaulting to "internal".</note>
+      <code lang="text"><![CDATA[You are an enterprise BA producing an integration landscape register.
+Inputs: CMDB export <path>, API gateway access log <path>, iPaaS export <path>.
+For each unique source-target pair produce one row matching the register template.
+Do NOT invent interfaces not present in inputs.
+Mark sensitivity as "unknown" if no data-classification tag is found.
+Output: register rows in Markdown table, plus suspected shadow integrations
+(signals: high traffic, no CMDB entry).]]></code>
+    </example>
+    <example type="good">
+      <note>Governance diff prompt requires standard line number for every finding.</note>
+      <code lang="text"><![CDATA[You are governing API contracts. Diff the register at <path> against the
+enterprise standard at <standards.md>. For each non-compliance return:
+IF-id, rule violated, severity (block/warn/info), minimal remediation.
+Cite the standard line number for every finding.]]></code>
+    </example>
+  </section>
+
+  <section title="AI Gotchas">
+    <antipattern>
+      <description>Agent conflates "interface" with "endpoint" — one IF-ID becomes one URL path.</description>
+      <reason>An interface is a logical contract that may expose many endpoints; collapsing to endpoint granularity produces an unmaintainable register that duplicates governance effort.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent defaults sensitivity to "internal" when data classification is unknown.</description>
+      <reason>"Internal" is a positive classification; unknown data may be Restricted. Defaulting to the lowest sensitivity class creates compliance risk; always emit "unknown" for human classification.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Channel misclassification: async/file/EDI/SWIFT/HL7 channels squashed into "REST".</description>
+      <reason>Protocol family determines error handling, retry logic, security baseline, and SLA requirements; a misclassified protocol produces a specification that is technically wrong for the actual channel.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Compliance Evidence">
+    <rule>
+      <statement>For SOC2, ISO 27001, and GDPR Art. 30, the landscape register must include PII classification per data field, data flow direction, and processing purpose; generate these from the data catalogue, not from agent inference.</statement>
+      <rationale>Field-level PII truth lives in the data catalogue (Purview/Collibra/Atlan); landscape-level inference is structurally lossy and cannot meet the specificity required by Art. 30 records of processing activities.</rationale>
+    </rule>
+  </section>
+</text>

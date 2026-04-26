@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-workflow" title="Business Analysis Planning: Git-Native Workflow and Agent Patterns">
+  <summary>Git-native BA plan management, replan triggers, recommended subagents, two-shot prompt pattern, and AI gotchas.</summary>
+
+  <section title="Git-Native Plan Management">
+    <rule>
+      <statement>Store the BA Approach Document as Markdown with YAML frontmatter (engagement_id, approach, version, approver, last_reviewed) committed to git; diffs become the change log, git blame is the audit trail.</statement>
+      <rationale>A BA plan stored only in a wiki or project management tool cannot be versioned, diffed, or audited; git provides all three for free while keeping the plan colocated with the requirements it governs.</rationale>
+    </rule>
+    <rule>
+      <statement>Enforce a 14-day cadence via cron + ba-plan-check.py; staleness older than 14 days is the leading indicator of plan-reality drift.</statement>
+      <rationale>Plans updated only at the start of engagement and then ignored are the dominant failure mode in BA engagements; automated staleness detection triggers replanning before drift becomes a project risk.</rationale>
+    </rule>
+    <reference path="templates/ba-plan-check.py">Validates BA Approach Document frontmatter and review cadence</reference>
+  </section>
+
+  <section title="Replan Triggers">
+    <rule>
+      <statement>Bake replan triggers into the plan document itself (not agent memory) so they fire deterministically: stakeholder added/removed, scope change merged, two missed elicitation sessions, or last_reviewed older than 14 days.</statement>
+      <rationale>Replanning triggered by human observation misses events that happen between reviews; deterministic triggers wired to git events, stakeholder register diffs, and calendar checks fire without human attention.</rationale>
+    </rule>
+    <rule>
+      <statement>Cap any agent-driven plan update to 5 changes per run and require human review on the diff; a runaway replanner rewriting half the deliverables invalidates in-flight elicitation work.</statement>
+      <rationale>Bulk replanning is dangerous because it can silently invalidate stakeholder commitments and elicitation schedules that were built against the previous plan.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Pattern">
+    <example type="good">
+      <note>Two-shot BA planning prompt: context read then plan draft. Forces approach decision rules and flags gaps as TODO rather than inventing values.</note>
+      <code lang="text"><![CDATA[You are the BA planner. Produce a BA Approach Document v0.1 using the
+template in ba-planning/templates/ba-approach-document.md (sections 1-8).
+Engagement context: {initiative_brief}. Org culture: {formal|informal|mixed}.
+Constraints: {time_budget, stakeholder_availability, regulatory}.
+
+Decision rules:
+- If requirements clarity high AND change frequency low -> Plan-Driven.
+- If clarity low OR continuous discovery active -> Change-Driven.
+- Else Hybrid; declare per-artifact which is baselined vs. living.
+
+Return strict JSON matching the template section keys.
+Do not invent stakeholders not in {stakeholder_seed}.
+Flag every gap as TODO(reason). No time estimates.]]></code>
+    </example>
+  </section>
+
+  <section title="AI Gotchas">
+    <antipattern>
+      <description>LLM defaults to Plan-Driven for all engagements regardless of context flags.</description>
+      <reason>Models anchor on whichever sample plan they last saw; always pass the engagement model and culture flags in the system prompt and validate that the output's approach matches the decision rule output for the given inputs.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent invents plausible-sounding stakeholders ("Director of UX Excellence") not present in the actual org chart.</description>
+      <reason>Hallucinated stakeholders produce engagement plans with no real recipients; constrain to a stakeholder_seed list and flag additions as TODO(reason), not as entries.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent produces time estimates in the plan ("Discovery: 4 weeks").</description>
+      <reason>Per repo policy, no time estimates in SDD docs; strip any time estimate from agent output and replace with complexity tier (S/M/L). Time estimates are inherently unreliable and create false expectations.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent conflates BA Planning with Project Planning, producing Gantt charts for BA activities.</description>
+      <reason>BA Planning covers analysis activities only; schedule integration and resource management belong to the project-manager skill. Mixing them produces a document that satisfies neither purpose.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Human-in-the-Loop Checkpoints">
+    <rule>
+      <statement>Require human approval at four points: plan v1.0 sign-off, every approach change (Plan-Driven / Change-Driven / Hybrid), every change request touching governance, every replan that adds or removes a stakeholder.</statement>
+      <rationale>These four points are the decisions that determine what BA work happens and who is responsible for it; agent preparation is valuable, but decision authority must remain with a named human.</rationale>
+    </rule>
+  </section>
+</text>

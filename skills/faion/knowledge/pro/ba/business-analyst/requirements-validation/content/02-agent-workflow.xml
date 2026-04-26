@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-workflow" title="Requirements Validation: Agentic Workflow and Gotchas">
+  <summary>Four-stage agentic validation chain, recommended subagents, prompt patterns for quality scorecard and session minutes, and AI-specific failure modes.</summary>
+
+  <section title="Four-Stage Agentic Chain">
+    <rule>
+      <statement>Run validation as four sequential stages: (1) quality scorecard, (2) session preparation, (3) human-led session with agent transcription, (4) resolution gate before baseline.</statement>
+      <rationale>A single-pass validation prompt conflates analysis, planning, decision-making, and recording — tasks with different authority levels. Staged handoffs enforce the separation between agent preparation and human decision-making.</rationale>
+    </rule>
+    <list>
+      <item>Stage 1 — Quality Scorecard: a research subagent loads spec.md, design.md, elicitation notes, and emits a per-requirement grade against all eight attributes with evidence_quote from the source (not the spec itself).</item>
+      <item>Stage 2 — Session Preparation: an agent selects technique, drafts agenda, assigns named reviewers, and distributes pre-read packet.</item>
+      <item>Stage 3 — Human-led session: agent takes minutes, transcribes decisions, writes structured issue log with severity and root-cause class. No agent decisions.</item>
+      <item>Stage 4 — Resolution gate: agent verifies every issue is resolved or explicitly deferred before allowing baseline; faion-feature-executor blocks done/ move if open issues remain.</item>
+    </list>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>Quality scorecard prompt enforces source-evidence discipline and rejects invented requirement IDs.</note>
+      <code lang="xml"><![CDATA[<role>BA validator. Score each requirement against 8 quality attributes.</role>
+<inputs>
+  <spec>{spec_md}</spec>
+  <design>{design_md}</design>
+  <source>{elicitation_notes}</source>
+</inputs>
+<rules>
+  Output JSON array. Per item:
+  {req_id, correct, complete, unambiguous, consistent, testable,
+   traceable, feasible, necessary, severity, evidence_quote, recommendation}
+  - Each attribute: pass|fail|na. severity: high|medium|low.
+  - evidence_quote: exact substring from spec/design/source justifying the call.
+  - No prose outside JSON. No invented req_ids.
+</rules>]]></code>
+    </example>
+    <example type="good">
+      <note>Session minutes prompt requires transcript-grounded resolution evidence.</note>
+      <code lang="xml"><![CDATA[<task>From transcript {transcript_url}, emit a JSON issue log:
+{ac_id, issue, severity, root_cause, owner, resolution, resolution_status}.
+resolution_status in: open|deferred|resolved.
+Refuse to set resolved without an evidence_quote from the transcript.</task>]]></code>
+    </example>
+  </section>
+
+  <section title="AI Gotchas">
+    <antipattern>
+      <description>Agent generates sign-off form with "Approved by: Product Owner" when no human has approved.</description>
+      <reason>Hallucinated approvals create false baselines; any resolved/approved state must link to a verifiable evidence anchor (chat permalink, ticket transition, signed PDF hash).</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent asked "are these requirements OK?" trends toward yes (confirmation-bias scoring).</description>
+      <reason>LLMs are politeness-biased; use adversarial framing — "find at least 3 ways each requirement could be misinterpreted" — before asking it to grade.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent quotes spec.md back to itself as evidence_quote instead of citing the elicitation source.</description>
+      <reason>Self-referential evidence cannot detect requirements that accurately restate an incorrect elicitation; evidence must come from the source document under review, not the artifact being validated.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent proposes new requirements during the validation session ("while we're here, we should also...").</description>
+      <reason>Validation modifies existing requirements; it does not extend scope. Extensions return to elicitation so they can be properly captured, analyzed, and prioritized before being baselined.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent runs tests and labels the result "validation".</description>
+      <reason>Validation = are we building the right thing (pre-development); verification = are we building it right (post-implementation). These are separate gates with different artifacts and authorities.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Human-in-the-Loop Checkpoints">
+    <rule>
+      <statement>Enforce three mandatory human checkpoints: reviewer selection, decision capture during the session, and sign-off. Agents prepare and transcribe; humans decide.</statement>
+      <rationale>An agent does not have authority to sign off requirements; the signature must be from a named human with documented decision authority, auditable against an org chart or RACI.</rationale>
+    </rule>
+  </section>
+</text>
