@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline" title="Cross-Platform Token Distribution Pipeline">
+  <summary>Pipeline stages for distributing design tokens from a Figma/Tokens Studio source to CSS, SCSS, iOS Swift, Android XML, and React Native via Style Dictionary transforms.</summary>
+
+  <section title="Tool Roles">
+    <rule>
+      <statement>Use Style Dictionary as the sole transform engine; never hand-edit platform output files.</statement>
+      <rationale>Hand-editing outputs breaks the pipeline: the next Style Dictionary build overwrites changes and introduces undetected drift.</rationale>
+    </rule>
+    <rule>
+      <statement>Treat Tokens Studio JSON as the single source of truth; all platforms read from it, none write to it.</statement>
+      <rationale>Multiple sources of truth diverge silently; a single authoritative source makes drift detectable via CI diff.</rationale>
+    </rule>
+  </section>
+
+  <section title="Pipeline Stages">
+    <p>Figma Tokens (designer) → Tokens Studio export (JSON) → Style Dictionary build → per-platform outputs committed to repo.</p>
+    <rule>
+      <statement>Commit generated platform outputs (CSS, Swift, XML) to the repo; never resolve tokens at app runtime.</statement>
+      <rationale>Runtime resolution adds a failure point and makes token values invisible to code review and visual regression tools.</rationale>
+    </rule>
+    <rule>
+      <statement>Use one Style Dictionary transformGroup per platform; override individual transforms only when strictly necessary.</statement>
+      <rationale>Over-customizing transforms makes the pipeline fragile and difficult to upgrade when Style Dictionary releases breaking changes.</rationale>
+    </rule>
+  </section>
+
+  <section title="Platform Output Formats">
+    <example type="good">
+      <note>CSS custom properties for web</note>
+      <code lang="css"><![CDATA[
+:root {
+  --color-primary: #3B82F6;
+  --spacing-md: 16px;
+}
+]]></code>
+    </example>
+    <example type="good">
+      <note>iOS Swift struct</note>
+      <code lang="swift"><![CDATA[
+struct Colors {
+  static let primary = UIColor(hex: "#3B82F6")
+}
+]]></code>
+    </example>
+    <example type="good">
+      <note>Android XML resources</note>
+      <code lang="xml"><![CDATA[
+<color name="primary">#3B82F6</color>
+<dimen name="spacing_md">16dp</dimen>
+]]></code>
+    </example>
+  </section>
+
+  <section title="CI Drift Check">
+    <rule>
+      <statement>Run the token build in CI on every PR and block merges when platform output files diverge from the current source.</statement>
+      <rationale>Drift is invisible without automated checking; a stale iOS Swift file ships wrong brand colors to the App Store.</rationale>
+    </rule>
+    <reference path="templates/tokens-drift-check.sh">CI script that fails the build when Style Dictionary outputs are stale.</reference>
+    <reference path="templates/style-dictionary-config.json">Style Dictionary config skeleton covering all five platform targets.</reference>
+  </section>
+
+  <section title="Known Limitations">
+    <antipattern>
+      <description>Using rem values in iOS or dp values in CSS output.</description>
+      <reason>Style Dictionary transforms are unit-and-platform-aware but trip on edge cases; always specify the unit transform explicitly per platform.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Relying on Tokens Studio JSON being W3C-compatible without validation.</description>
+      <reason>Tokens Studio JSON dialect drifts from the W3C draft; round-tripping breaks alias references unless validated on each export.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Semantic token aliasing across platforms expecting one-level resolution.</description>
+      <reason>Android XML resolves only one level deep without custom resolvers; deep alias chains silently produce wrong values.</reason>
+    </antipattern>
+  </section>
+</text>

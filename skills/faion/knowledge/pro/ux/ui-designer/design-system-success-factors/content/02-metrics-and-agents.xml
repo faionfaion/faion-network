@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-metrics-and-agents" title="Adoption Metrics, Audit Loop, and Agent Gotchas">
+  <summary>Adoption KPIs, multi-agent audit loop design, prompt patterns for pillar scoring, and agent-specific pitfalls when automating design system analysis.</summary>
+
+  <section title="Adoption Metrics">
+    <list>
+      <item>Component coverage — percentage of UI using design system components (greenfield and legacy reported separately).</item>
+      <item>Adoption rate — percentage of product teams actively consuming the system in PRs over the last 30 days.</item>
+      <item>Contribution rate — external PRs adding or modifying components from teams outside the core DS team.</item>
+      <item>Bug/issue count — open issues per component per month (quality indicator; rising count signals adoption without confidence).</item>
+      <item>Design-dev parity — Figma token version vs. code package version; gap measured in tokens added/removed since last sync.</item>
+    </list>
+    <rule>
+      <statement>Run "would I use this?" interviews with 5-7 product developers at v0, v1, and v2. Metric numbers confirm trends; a confused developer is the leading signal of impending abandonment.</statement>
+      <rationale>Quantitative metrics lag behavioral change by weeks; developer interviews surface usability problems before they appear in adoption numbers.</rationale>
+    </rule>
+  </section>
+
+  <section title="Multi-Agent Audit Loop">
+    <rule>
+      <statement>Run the audit loop quarterly; persist trend deltas to track the "real adoption" slope, not just the current snapshot.</statement>
+      <rationale>A point-in-time score without trend data cannot distinguish a stagnant system from a growing one; the slope determines whether investment is working.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep humans in the loop on prioritization — agents count accurately but cannot decide what to deprecate without product context.</statement>
+      <rationale>Deprecation decisions require knowing which teams depend on a component and what the migration cost is; agents lack this organizational context by default.</rationale>
+    </rule>
+    <example type="good">
+      <note>Pillar-critic prompt structure</note>
+      <code lang="text"><![CDATA[
+You are ds-pillar-critic. Inputs: <inventory_json>, <metrics_json>, <doc_audit_json>.
+Score each pillar (Ownership, Usability, Documentation, Adoption) 0-4
+with one evidence quote per score from the provided inputs.
+Output 3-5 concrete actions ordered by ROI.
+Format: STRICT JSON {scores:{...}, actions:[{pillar, action, owner_hint, effort:"S"|"M"|"L"}]}.
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>Component-usage scans count JSX element names, missing semantic equivalents (MyButton wrapping the system Button).</description>
+      <reason>Walk the import graph, not just JSX element names; a wrapper that bypasses tokens looks like adoption but defeats the system.</reason>
+    </antipattern>
+    <antipattern>
+      <description>LLM-generated component documentation is generic and does not cite real repo examples.</description>
+      <reason>Force the agent to reference at least one file path from the actual codebase per doc page; generic copy is worse than no doc because it signals the system is maintained but unhelpful.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Critic agent hallucinating "missing" components not in the inventory.</description>
+      <reason>Provide the full inventory file and require the agent to reference items by ID; name-based references hallucinate items that do not exist.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Doc auditor auto-fixes documentation without human review.</description>
+      <reason>Confidently incorrect examples are worse than missing ones; doc fixes always require a human reader who knows correct usage.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/ds-adoption.sh">Shell script that counts design-system vs. raw HTML component usage across TSX files.</reference>
+  <reference path="templates/pillar-critic-prompt.txt">Structured-output prompt for the ds-pillar-critic subagent.</reference>
+</text>

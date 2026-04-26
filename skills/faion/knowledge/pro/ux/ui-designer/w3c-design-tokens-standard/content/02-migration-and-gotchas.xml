@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-migration-and-gotchas" title="Migration Workflow and Agent Pitfalls">
+  <summary>Steps for migrating a legacy token set to W3C draft format, CI validation pattern, and common agent mistakes.</summary>
+
+  <section title="Migration Workflow">
+    <rule>
+      <statement>After migrating, run a rendered-output snapshot diff (CSS, Swift, XML) to verify semantic preservation before shipping.</statement>
+      <rationale>A format migration that changes rendered values is a visual regression; the snapshot diff catches it before users do.</rationale>
+    </rule>
+    <list>
+      <item>Audit current token structure: identify primitive, semantic, and component layers.</item>
+      <item>Align naming to `$type`/`$value`/`$ref` fields; add `$description` to every semantic token.</item>
+      <item>Validate alias graph: every `$ref` must resolve within the file without circular references.</item>
+      <item>Run a CI validator against the pinned draft snapshot date on every PR.</item>
+      <item>Pair migration with a rendered-output snapshot test before promoting to production.</item>
+    </list>
+  </section>
+
+  <section title="CI Validation">
+    <rule>
+      <statement>Gate CI on W3C draft compliance using a schema validator; add a "format date" check to flag when the upstream spec has moved.</statement>
+      <rationale>Without CI gating, non-compliant tokens accumulate; catching them at PR time costs far less than post-migration cleanup.</rationale>
+    </rule>
+    <reference path="templates/w3c-tokens-validate.sh">Shell script that validates a token file against the pinned W3C draft JSON Schema.</reference>
+  </section>
+
+  <section title="Agent Pitfalls">
+    <antipattern>
+      <description>Agent confuses W3C draft format with Tokens Studio JSON dialect.</description>
+      <reason>Both use `$type` but differ on composite type sub-schemas and alias syntax; explicitly specify the target format and version in every prompt.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Generated `$type` values use older names (e.g., `type` instead of `$type`).</description>
+      <reason>The `$`-prefix is required by the draft; validators reject the unprefixed form. Enforce the `$`-prefixed form in a post-generation lint step.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Composite types (shadow, gradient, typography) generated with incorrect sub-schemas.</description>
+      <reason>Composite type sub-schemas have evolved across draft versions; lint each composite against its specific sub-schema after generation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent assumes Style Dictionary v4 syntax without checking the project version.</description>
+      <reason>v3 and v4 have incompatible transform APIs; pin the version explicitly in every agent prompt to avoid silent no-output bugs.</reason>
+    </antipattern>
+  </section>
+</text>

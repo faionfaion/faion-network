@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-application" title="Applying VUI Principles with Agents">
+  <summary>Recommended agentic workflow for applying the three VUI principles: copywriter + critic subagent split, prompt patterns, and agent gotchas.</summary>
+
+  <section title="Subagent Architecture">
+    <rule>
+      <statement>Split VUI generation into a copywriter agent (produces utterances) and a critic agent (scores against the rubric); never merge into one call.</statement>
+      <rationale>A single agent producing and evaluating its own output cannot reliably self-critique; the split enables measurable improvement and independent retraining.</rationale>
+    </rule>
+    <rule>
+      <statement>Co-author every system utterance with a TTS preview; text that reads fine often sounds wrong due to prosody, pacing, or brand-name mispronunciation.</statement>
+      <rationale>Latency between user end-of-speech and first audio matters more for perceived naturalness than utterance length; the TTS preview catches both.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt Patterns">
+    <example type="good">
+      <note>VUI copywriter prompt with bounded constraints</note>
+      <code lang="text"><![CDATA[
+You are vui-copywriter. Rewrite the system response below to satisfy:
+(1) Simplicity — drop redundant phrasing, units, timestamps unless asked.
+(2) Naturalness — sound like a person, offer one helpful follow-up.
+(3) Context — refer back to <last_user_turn> implicitly, do not restate it.
+Max 120 characters. Ban: "I'd be happy to", "Just to confirm", "I have successfully".
+Return JSON: {"utterance": "...", "rationale": "...", "removed_words": N}.
+]]></code>
+    </example>
+    <example type="good">
+      <note>Disambiguation prompt for low-confidence intent</note>
+      <code lang="text"><![CDATA[
+Emit a confidence score for the inferred intent.
+If confidence < 0.7, route to a clarification agent instead of generating a response.
+]]></code>
+    </example>
+  </section>
+
+  <section title="Agent Gotchas">
+    <antipattern>
+      <description>LLM generates verbose, apologetic responses despite instructions.</description>
+      <reason>Add a stop-list to the system prompt and enforce max word count in post-processing — models do not reliably self-edit on tone alone.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Context-awareness regressions are silent — the agent answers but ignores the prior turn.</description>
+      <reason>Always include the last 3-5 turns verbatim in the prompt and assert the response references at least one entity from them in the critic pass.</reason>
+    </antipattern>
+    <antipattern>
+      <description>LLM counts words or characters to enforce length limits.</description>
+      <reason>LLMs are unreliable at counting; enforce length limits in code post-generation, not via model instruction.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Single agent decides both "is auth required?" and "speak the response" for sensitive operations.</description>
+      <reason>Split into a policy agent and a response agent; the executor must never see raw sensitive values. See vui-privacy-security methodology for the full pattern.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/vui-utterance-lint.py">Linter flagging over-long, multi-clause, or filler-filled utterances.</reference>
+  <reference path="templates/vui-copywriter-prompt.txt">System prompt for the VUI copywriter subagent.</reference>
+</text>
