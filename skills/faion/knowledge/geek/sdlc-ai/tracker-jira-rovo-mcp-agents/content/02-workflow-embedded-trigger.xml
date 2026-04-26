@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-workflow-embedded-trigger" title="Embed Agents at Workflow Status Transitions">
+  <summary>Agents are wired into Jira via on_enter handlers on workflow statuses, not via side webhooks; the human gate is encoded as the next transition's approver, not as a Slack reaction.</summary>
+
+  <section title="Workflow as the trigger surface">
+    <p>Putting the trigger inside the Jira workflow keeps automation visible to admins, project leads, and auditors who already read the workflow diagram. Side webhooks hide the agent's involvement and bypass the workflow's transition rules.</p>
+
+    <rule testable="true">
+      <statement>Any agent that runs as part of a Jira ticket lifecycle MUST be wired in as an `on_enter` handler on a specific workflow status (e.g., `In Design`, `Ready for Implementation`). The handler MUST declare `permissions: inherit_from_assignee` so the agent cannot exceed user scope. The next status transition (advancing past the agent's column) MUST require a human approver encoded in the Jira workflow, NOT a Slack reaction or out-of-band ack. Side webhooks that trigger agent work without a workflow handler are forbidden in production projects.</statement>
+      <rationale>Embedding in the workflow makes the agent's role legible to the same people who already maintain the project — admins, project leads, auditors. Routing the human gate through Jira's transition approver list inherits the existing reviewer matrix instead of duplicating it. April 2026 Atlassian docs make this the canonical extension point precisely because side webhooks were the source of audit gaps in pre-Rovo deployments.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# extracted from project workflow editor
+status: "In Design"
+on_enter:
+  agent: rovo.user-onboarding-designer
+  action: "draft end-to-end onboarding flow"
+  permissions: inherit_from_assignee
+  audit: jira_native
+next_transition: "Ready for Implementation"
+approvers:
+  - role: design-lead
+  - role: pm
+require_all: false                   # one approver advances
+      ]]></code>
+      <note>Agent runs in-workflow, inherits scope, cannot self-advance; the design-lead OR PM moves it forward.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/jira-bot.yml
+on:
+  workflow_dispatch:                  # manual runner outside Jira
+jobs:
+  run-agent:
+    secrets: { JIRA_PAT: ${{ secrets.JIRA_PAT }} }   # admin scope
+    steps:
+      - run: agent --transition Done  # agent advances status itself
+      ]]></code>
+      <note>Side webhook, admin PAT, agent self-advances — every part of the Atlassian permission model bypassed.</note>
+    </example>
+
+    <antipattern>
+      <description>Agent posts a Slack message asking for thumbs-up to move the ticket forward.</description>
+      <reason>The approval lives in Slack, not in Jira; the audit log on the issue shows the agent advanced status with no record of who approved. Use Jira's transition approver list instead.</reason>
+    </antipattern>
+
+    <reference path="templates/duo-flow.yaml">Workflow-status embedding example with permission inheritance.</reference>
+    <reference href="https://www.atlassian.com/blog/announcements/ai-agents-in-jira">Atlassian announcement: agents respect Jira workflows and permissions.</reference>
+  </section>
+</text>

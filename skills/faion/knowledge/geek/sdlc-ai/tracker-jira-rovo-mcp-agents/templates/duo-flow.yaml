@@ -1,0 +1,30 @@
+# Jira workflow embedding — agent at "In Design" status, human gate on transition.
+# Drop into the project workflow editor (or the equivalent automation rule).
+
+status: "In Design"
+
+on_enter:
+  agent: rovo.user-onboarding-designer
+  action: "draft end-to-end onboarding flow"
+  permissions: inherit_from_assignee   # agent cannot exceed assignee's scope
+  audit: jira_native                    # writes to issue history, not stdout
+  comment_template: |
+    Drafted onboarding flow per current/desired/plan structure.
+    Open Questions are listed at the bottom; please reply or transition.
+  timeout: 30m                          # if no agent reply, mark stalled
+
+# Transition out of "In Design" requires a human approver.
+next_transition:
+  to: "Ready for Implementation"
+  approvers:
+    - role: design-lead
+    - role: pm
+  require_all: false                    # any one approver advances
+  block_if:
+    - assignee_is_agent: true           # agent cannot advance itself
+
+# Hard rules enforced at the MCP layer, not in side scripts.
+forbidden:
+  - direct_rest_api                     # all writes via Rovo MCP
+  - shared_bot_token                    # use OAuth user grant
+  - cross_project_writes                # respect project configuration

@@ -17,3 +17,4 @@
 [2026-04-26 14:25] pool-batch sdlc:tracker-:1 — promoted tracker-linear-agent-as-assignee → 36/52 (tracker- 1/5).
 [2026-04-26 14:35] pool-batch sdlc:test-:2 — promoted test-consumer-contract-from-spec, test-golden-master-legacy-rewrite → 38/52 (test- 6/6 complete).
 [2026-04-26 14:50] pool-batch sdlc:lint-:4 — promoted lint-precommit-floor, lint-ruff-and-biome-as-default, lint-megalinter-polyglot, lint-autofix-vs-flag-decision-rule → 42/52 (lint- 4/6). IDs S-039..S-042 after rebase on concurrent tracker-/test- batches.
+[2026-04-26 15:00] pool-batch sdlc:tracker-:4 — promoted tracker-jira-rovo-mcp-agents, tracker-github-copilot-workspace, tracker-ai-triage-classify-route, tracker-gitlab-duo-developer-flow → 46/52 (tracker- 5/5 complete). Initial pick tracker-linear-agent-as-assignee rejected after rebase as duplicate of upstream-merged S-036; replaced with tracker-gitlab-duo-developer-flow. IDs S-043..S-046 after rebase on concurrent test-/lint- batches.

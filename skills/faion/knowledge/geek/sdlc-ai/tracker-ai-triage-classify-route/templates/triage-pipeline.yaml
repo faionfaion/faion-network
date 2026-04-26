@@ -1,0 +1,63 @@
+# AI triage pipeline — six fixed steps, blocker gate, single transparency comment.
+# Drop into the tracker automation runner (Linear webhooks, Jira automation, GH Actions).
+
+input:
+  source: tracker.issue.created
+  fields: [title, body, reporter, project]
+
+pipeline:
+  - id: classify
+    model: bert-base-issue-classifier-v3
+    out: type
+    enum: [bug, story, epic, task, spike]
+
+  - id: severity
+    model: severity-scorer-v2
+    out: severity
+    enum: [blocker, critical, major, minor]
+    sla_minutes:
+      blocker: 30
+      critical: 240
+      major: 2880          # 2 days
+      minor: 10080         # 7 days
+
+  - id: dedupe
+    method: cosine_similarity
+    over: title + body
+    window: 1000
+    threshold: 0.92
+    on_match:
+      - close_as_duplicate
+      - link_both_ways
+      - STOP                # short-circuits the rest
+
+  - id: label
+    schemes:
+      - /area/*
+      - /component/*
+      - /lang/*
+
+  - id: route
+    source: CODEOWNERS
+    fallback_team: triage-default
+
+  - id: assign
+    policy: least_loaded
+    measure: open_issues_in_progress
+
+gates:
+  on_severity_blocker:
+    require: human_confirm
+    via: ["/agent confirm-blocker", "oncall_slash_command"]
+    blocks: [severity.arm_sla, assign]
+    timeout: 10m
+    on_timeout: keep_unconfirmed_no_paging
+
+emit:
+  one_comment:
+    template: triage-table         # see content/02-transparency-comment.xml
+    listen_for_reactions: [":x:"]
+    on_reaction:
+      revert_disputed_field: true
+      requeue_step: true
+      edit_in_place: true

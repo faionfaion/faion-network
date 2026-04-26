@@ -1,0 +1,43 @@
+# .gitlab/duo-flows.yaml — canonical Developer + Code Review Flow composition.
+# Drop into project root. Requires GitLab 18.8 or later.
+
+require_gitlab_version: ">=18.8"
+on_unmet_version: error_and_disable_flows
+
+flows:
+  developer:
+    trigger:
+      issue_label_added: "agent:implement"
+    require_human_review: true
+    output: merge_request
+    auto_link_issue: true              # MR body gets "Closes #issue"
+    respect:
+      - protected_branches
+      - codeowners
+      - approval_rules
+    forbid:
+      - direct_rest_api                # all writes via Duo
+      - shared_bot_token               # use OAuth user grant
+    timeout: 30m
+    on_timeout: comment_stalled
+
+  code_review:
+    trigger:
+      merge_request_opened: any
+    standards: [security, perf, style]
+    require_human_approver: true
+    sast:
+      filter_false_positives: true
+      report_to: mr_discussion
+
+  software_development:
+    trigger:
+      issue_label_added: "agent:plan"
+    output: plan_comment_then_merge_request
+    require_plan_approval: true        # human signs off plan before MR opens
+
+  cicd_legacy_conversion:
+    trigger:
+      pipeline_label: "agent:cicd-migrate"
+    output: merge_request
+    standards: [security]

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-rovo-mcp-as-bridge" title="Rovo MCP is the Sole Atlassian Bridge">
+  <summary>Every agent that touches Jira, Confluence, or JSM does it through the Rovo Remote MCP server with the user's OAuth scope; raw REST API tokens and shared bot accounts are forbidden.</summary>
+
+  <section title="One bridge, inherited permissions">
+    <p>Atlassian made permission inheritance the contract: when the agent acts as the assignee, it cannot exceed what the assignee can do. Mixing direct REST tokens with MCP breaks that contract because the token has its own scope independent of the user.</p>
+
+    <rule testable="true">
+      <statement>Every agent action against Jira, Confluence, or JSM MUST pass through the Rovo Remote MCP server using the assignee's OAuth grant. Raw REST API access (`PAT`, `api/2/issue` calls with a bot user's token) is forbidden in production agents. The agent MUST never request a scope wider than the assignee's role; if it must perform a destructive action the assignee lacks (e.g., `issue:delete`), it MUST escalate via JSM approval, not by reading a service-account secret. Audit IDs from MCP responses MUST land in the agent's structured log as the linkable record of "who did what".</statement>
+      <rationale>Atlassian's stated guarantee is that agents inherit the user's permissions, project configurations, workflows, and audit trails. A side-channel REST token defeats every word of that guarantee and is the anti-pattern Rovo MCP was built to retire. Storing audit IDs locally is what makes the inherited audit trail usable for incident review.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# claude-code agent config
+mcp_servers:
+  - name: atlassian
+    transport: sse
+    url: https://mcp.atlassian.com/v1/sse
+    auth: oauth2_user_grant       # assignee's session
+forbidden_tools:
+  - direct_rest_api               # any code path that bypasses MCP
+log_fields:
+  - mcp.audit_id                  # Atlassian-issued, links back to issue history
+      ]]></code>
+      <note>One bridge, scoped to the assignee, audit IDs preserved.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+mcp_servers:
+  - atlassian                     # used for reads only
+auth_secrets:
+  jira_admin_pat: ${JIRA_PAT}     # PAT used for writes
+write_path: rest/api/3/issue      # bypasses MCP and audit
+      ]]></code>
+      <note>The PAT is admin-scoped, the write bypasses MCP, and the audit log shows "system" instead of the assignee.</note>
+    </example>
+
+    <antipattern>
+      <description>One shared service account with `jira-admins` group used by every agent.</description>
+      <reason>Audit log says "service-account did everything"; the agent layer is opaque to compliance, and any compromise of the secret grants admin to whoever holds it.</reason>
+    </antipattern>
+
+    <reference path="templates/duo-flow.yaml">Workflow-status embedding example.</reference>
+    <reference href="https://www.atlassian.com/platform/remote-mcp-server">Rovo Remote MCP server (GA April 2026).</reference>
+    <reference href="https://github.com/atlassian/atlassian-mcp-server">Atlassian MCP server source.</reference>
+  </section>
+</text>

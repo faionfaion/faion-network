@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-snapshot-and-link" title="Workspace Snapshot Link + Closes-N Enforcement">
+  <summary>Every agent-opened PR carries a Workspace snapshot URL and a tracker-closing keyword in the PR body, both verified by a CI check that fails the PR if either is missing.</summary>
+
+  <section title="PR body contract">
+    <p>The PR body is the only place where reviewers and the tracker both see the agent's chain-of-thought. A missing snapshot link forces reviewers back into the diff; a missing `Closes #N` keyword leaves the issue open after merge.</p>
+
+    <rule testable="true">
+      <statement>Every agent-opened PR MUST include in its body (a) a single line matching `^(Closes|Fixes) #[0-9]+` referencing the source issue, and (b) a Workspace snapshot URL on the line `Workspace snapshot: https://github.com/copilot/spaces/<id>`. A repository CI check MUST grep both lines and fail the PR if either is missing. Editing the PR body to remove either line MUST re-trigger the failing check, blocking merge until restored. The agent MUST NOT edit the snapshot URL after open; if the spec or plan changes, it opens a fresh PR.</statement>
+      <rationale>April 2026 saw a documented GitHub bug where Copilot agent stripped the link text from the PR body; the closing keyword's absence left issues open across an entire org. Making both lines required and CI-enforced is the only way to guarantee the round-trip given that any tooling can mutate the body. Snapshot URL stability matters because reviewers cite it in their review comments — overwriting it invalidates that audit trail.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="markdown"><![CDATA[
+Closes #4421
+
+## Summary
+Reject empty `items` on `POST /api/orders` with 422.
+
+## Workspace snapshot
+Workspace snapshot: https://github.com/copilot/spaces/abc123
+      ]]></code>
+      <note>Closing keyword on its own line, snapshot URL preserved, regex passes.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="markdown"><![CDATA[
+## Summary
+Reject empty items on POST /api/orders.
+fixes the bug from issue 4421
+      ]]></code>
+      <note>"fixes the bug from issue 4421" does not match `^(Closes|Fixes) #[0-9]+`; merge leaves the issue open. No snapshot URL — reviewer cannot read the spec/plan.</note>
+    </example>
+
+    <antipattern>
+      <description>Snapshot URL placed inside an HTML comment so it does not render.</description>
+      <reason>Reviewers cannot click it; the audit trail is technically present but unusable, defeating the purpose of mandating the link.</reason>
+    </antipattern>
+
+    <reference path="templates/pr-template.md">PR body template with both required lines.</reference>
+    <reference href="https://github.com/orgs/community/discussions/190731">GitHub discussion of the Copilot agent strip-the-link bug.</reference>
+    <reference href="https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/make-changes-to-an-existing-pr">GitHub Copilot agent PR docs.</reference>
+  </section>
+</text>
