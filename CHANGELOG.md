@@ -3,9 +3,13 @@
 ## [Unreleased]
 
 ### Changed
+<<<<<<< HEAD
 - refactor: 8/8 testing-developer methodologies migrated to new shape (batch: e2e-testing, testing-pytest, test-fixtures, mocking-strategies, unit-testing, testing-go, tdd-workflow, testing-javascript)
 - refactor: 8/8 methodologies migrated to new shape (batch: funnel-basics-framework, funnel-tactics-advanced, funnel-basics-examples, google-ads-basics, facebook-ads, growth-paid-acquisition, google-display-ads, google-search-ads)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: mocking-strategies, javascript, python-fastapi, python, django-api, go-error-handling, python-type-hints, code-coverage)
+=======
+- refactor: 8/8 methodologies migrated to new shape (batch: agentic-ai-product-development, agents, ai-native-product-development, ba/business-analyst/ai-enabled-business-analysis, ba/ba-core/ai-enabled-business-analysis, threads-basics, instagram-basics, plg-metrics)
+>>>>>>> 3069427b (refactor: migrate 8 methodologies to new shape)
 - refactor: 8/8 software-developer methodologies migrated to new shape (batch: language-framework-guide, integration-testing, django-quality, python-poetry-setup, mobile-responsive, testing, django-decision-tree, rust-error-handling)
 - refactor: 8/8 code-quality methodologies migrated to new shape (batch: refactoring-patterns, pair-programming, code-quality-trends, code-decomposition-principles, tech-debt-basics, code-review-basics, code-coverage, mob-programming)
 - refactor: 8/8 methodologies migrated to new shape (batch: methodologies, best-practices-2026, django-testing, go-concurrency, django-coding-standards, tdd-workflow, storybook-setup, documentation)
