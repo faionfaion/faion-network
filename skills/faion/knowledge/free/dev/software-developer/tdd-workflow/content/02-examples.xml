@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="TDD Worked Examples">
+  <summary>Python password validator walked through a full RED-GREEN-REFACTOR cycle; TypeScript email service; bug-fix reproduction pattern.</summary>
+
+  <section title="Python Password Validator (Full Cycle)">
+    <example type="good">
+      <note>RED: Write failing test for minimum length.</note>
+      <code lang="python"><![CDATA[
+def test_password_too_short_is_invalid():
+    validator = PasswordValidator()
+    result = validator.validate("short")
+    assert result.is_valid is False
+    assert "at least 8 characters" in result.errors
+# Run: pytest — FAIL (PasswordValidator does not exist yet)
+]]></code>
+    </example>
+    <example type="good">
+      <note>GREEN: Minimal code to pass the test.</note>
+      <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    errors: list[str] = field(default_factory=list)
+
+class PasswordValidator:
+    def validate(self, password: str) -> ValidationResult:
+        errors = []
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters")
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+# Run: pytest — PASS
+]]></code>
+    </example>
+    <example type="good">
+      <note>REFACTOR: Extract rule list after all requirements are green.</note>
+      <code lang="python"><![CDATA[
+class PasswordValidator:
+    MIN_LENGTH = 8
+
+    def __init__(self):
+        self.rules = [
+            (self._check_length, f"Password must be at least {self.MIN_LENGTH} characters"),
+            (self._check_uppercase, "Password must contain at least one uppercase letter"),
+            (self._check_lowercase, "Password must contain at least one lowercase letter"),
+            (self._check_digit, "Password must contain at least one digit"),
+        ]
+
+    def validate(self, password: str) -> ValidationResult:
+        errors = [msg for check, msg in self.rules if not check(password)]
+        return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+
+    def _check_length(self, p: str) -> bool: return len(p) >= self.MIN_LENGTH
+    def _check_uppercase(self, p: str) -> bool: return any(c.isupper() for c in p)
+    def _check_lowercase(self, p: str) -> bool: return any(c.islower() for c in p)
+    def _check_digit(self, p: str) -> bool: return any(c.isdigit() for c in p)
+# Run: pytest — Still PASS
+]]></code>
+    </example>
+  </section>
+
+  <section title="Bug Fix Reproduction Pattern">
+    <rule>
+      <statement>For bug fixes: write a failing test that reproduces the bug before touching production code. The test docstring must reference the issue ID.</statement>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+def test_discount_with_zero_quantity_does_not_raise():
+    """
+    BUG: ZeroDivisionError when cart contains zero-quantity item.
+    Issue: #1234
+    """
+    calculator = DiscountCalculator()
+    cart = Cart(items=[
+        CartItem(sku="A", quantity=0, price=Decimal("10.00")),
+        CartItem(sku="B", quantity=2, price=Decimal("20.00")),
+    ])
+    result = calculator.apply_percentage_discount(cart, Decimal("10"))
+    assert result.total == Decimal("36.00")
+]]></code>
+    </example>
+  </section>
+</text>

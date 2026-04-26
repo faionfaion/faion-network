@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure-and-imports" title="Django Project Structure and Import Conventions">
+  <summary>Standard Django project layout, aliased cross-app import rules, and settings-split conventions that prevent circular imports and misconfiguration.</summary>
+
+  <section title="Project Layout">
+    <rule>
+      <statement>Organise Django projects as: config/ (settings split), apps/ (domain applications), core/ (shared BaseModel + exceptions), tests/ (conftest.py).</statement>
+      <rationale>Separating config from apps from shared code gives each a single reason to change and makes the project onboardable by agents without reading every file.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+project/
+├── config/
+│   ├── settings/
+│   │   ├── base.py        # secrets-free defaults
+│   │   ├── development.py # overrides only
+│   │   └── production.py  # overrides only
+│   ├── urls.py
+│   └── celery.py
+├── apps/
+│   ├── users/
+│   ├── orders/
+│   └── catalog/
+├── core/
+│   ├── models.py          # BaseModel
+│   └── exceptions.py
+└── tests/
+    └── conftest.py
+]]></code>
+    </example>
+  </section>
+
+  <section title="Import Aliasing Rules">
+    <rule>
+      <statement>Always use module aliases for cross-app imports: from apps.orders import models as order_models. Never import symbols directly from another app's module.</statement>
+      <rationale>Direct cross-app symbol imports create circular import risk as apps grow. Aliased module imports let Django's app loading resolve the graph correctly.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# Cross-app: always use alias
+from apps.orders import models as order_models
+from apps.users import services as user_services
+
+# Own app: relative imports are fine
+from .models import User
+from . import constants
+from .services import create_user
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+# BAD: direct symbol import from another app
+from apps.orders.models import Order
+]]></code>
+      <note>This creates a direct dependency on apps.orders.models at import time. As apps grow, this pattern causes circular import errors that are hard to debug.</note>
+    </example>
+  </section>
+
+  <section title="Settings Split">
+    <rule>
+      <statement>base.py is the only settings file with secrets-free defaults. development.py and production.py only override. Never import the other direction.</statement>
+    </rule>
+    <rule>
+      <statement>Never import from django.contrib.auth.models import User. Always use get_user_model() or settings.AUTH_USER_MODEL.</statement>
+      <rationale>Direct User import breaks custom user model setups silently. get_user_model() respects AUTH_USER_MODEL at runtime.</rationale>
+    </rule>
+  </section>
+</text>

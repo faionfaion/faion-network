@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-react19-nextjs15" title="React 19 and Next.js 15 Patterns">
+  <summary>Server vs Client component boundary rules, Server Actions with Zod validation, and Next.js 15 App Router structure.</summary>
+
+  <section title="Server vs Client Boundary">
+    <rule>
+      <statement>Default to Server Components. Add 'use client' only when the component needs interactivity (useState, useEffect, event handlers). Push interactivity to leaves.</statement>
+      <rationale>Server Components send zero JavaScript to the client and can directly access databases and server-side resources. Overusing 'use client' inflates the bundle and negates RSC benefits.</rationale>
+    </rule>
+    <rule>
+      <statement>Server Components can import Client Components. Client Components cannot import Server Components. Children of Client Components become Client Components.</statement>
+    </rule>
+    <antipattern>
+      <description>Adding 'use client' to a layout component to "just make it work".</description>
+      <reason>This flips the entire subtree client-side. The fix cascades bundle size into every page under that layout.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Server Actions">
+    <rule>
+      <statement>Validate all Server Action input with Zod before touching the database. Return { error } shapes for validation failures; never trust formData directly.</statement>
+      <rationale>Server Actions run on the server but accept untrusted client data. Zod validation is the only reliable guard.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+'use server';
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+export async function createUser(prevState: unknown, formData: FormData) {
+  const result = UserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+  if (!result.success) {
+    return { error: result.error.flatten().fieldErrors };
+  }
+  await db.users.create(result.data);
+  revalidatePath('/users');
+  return { success: true };
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Next.js 15 Route Structure">
+    <rule>
+      <statement>Use route groups (marketing), parallel routes (@analytics), and intercepting routes ((.)photos) for layout composition without URL pollution.</statement>
+    </rule>
+    <rule>
+      <statement>Memoize data fetches shared between generateMetadata and the page component using React cache() to avoid double-fetching.</statement>
+      <rationale>Both generateMetadata and the page component may call the same data-fetching function. Without cache(), the request fires twice per render.</rationale>
+    </rule>
+  </section>
+</text>

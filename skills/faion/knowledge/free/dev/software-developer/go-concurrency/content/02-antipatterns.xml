@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-antipatterns" title="Go Concurrency Antipatterns">
+  <summary>Goroutine leak, data race, WaitGroup misuse, and channel deadlock — with concrete bad/good pairs.</summary>
+
+  <section title="Goroutine Leak">
+    <antipattern>
+      <description>Generator goroutine without a ctx.Done() exit: go func() { for i := 0; ; i++ { ch &lt;- i } }()</description>
+      <reason>If no consumer reads from ch, the goroutine blocks forever. Memory and goroutine count grow unboundedly.</reason>
+    </antipattern>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func safeGenerator(ctx context.Context) <-chan int {
+    ch := make(chan int)
+    go func() {
+        defer close(ch)
+        for i := 0; ; i++ {
+            select {
+            case ch <- i:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }()
+    return ch
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Data Race on Map">
+    <antipattern>
+      <description>Concurrent write to a plain map without a mutex: go func() { cache[key]++ }()</description>
+      <reason>Concurrent map access is undefined behaviour in Go. The race detector catches it, but it may silently corrupt data or panic in production.</reason>
+    </antipattern>
+    <example type="good">
+      <code lang="go"><![CDATA[
+var (
+    cache = make(map[string]int)
+    mu    sync.Mutex
+)
+
+func increment(key string) {
+    mu.Lock()
+    cache[key]++
+    mu.Unlock()
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="WaitGroup Misuse">
+    <antipattern>
+      <description>Calling wg.Add(1) inside the goroutine body: go func() { wg.Add(1); defer wg.Done(); ... }()</description>
+      <reason>The goroutine may not execute before wg.Wait() is called if the scheduler yields, causing premature completion.</reason>
+    </antipattern>
+    <rule>
+      <statement>Always call wg.Add(1) before launching the goroutine, never inside it.</statement>
+    </rule>
+  </section>
+
+  <section title="Race Detector Requirement">
+    <rule>
+      <statement>All tests for concurrency-heavy packages must pass go test -race -count=10 ./... before merge. Never skip the race detector.</statement>
+      <rationale>Concurrency bugs look correct under low load. The race detector and repeated runs surface them reliably.</rationale>
+    </rule>
+    <reference path="templates/ci-race.sh">CI script enforcing race detector and staticcheck</reference>
+  </section>
+</text>

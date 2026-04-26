@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-fixture-patterns" title="Django Test Fixture Patterns">
+  <summary>Rules for model_bakery vs factory_boy selection, mandatory field pinning, and the canonical conftest.py structure.</summary>
+
+  <section title="Fixture Library Selection">
+    <rule>
+      <statement>Use model_bakery.baker.make() as the default fixture strategy. Switch to factory_boy only when sequence-dependent or related-object chains are needed.</statement>
+      <rationale>baker.make() requires no upfront factory definition and auto-fills required fields. factory_boy adds value for complex relationships and deterministic sequences.</rationale>
+    </rule>
+    <rule>
+      <statement>Pin every field that the test assertion reads. Never assert on baker's random defaults.</statement>
+      <rationale>Random data hides value-specific bugs. A test that asserts user.email == user.email (random vs random) always passes but catches nothing.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_activate_item_success(db):
+    user = baker.make('users.User', is_active=True)
+    item = baker.make('inventory.Item', code='ITEM-001', is_active=False, user=None)
+
+    result = services.activate_user_item(user=user, item_code='ITEM-001')
+
+    assert result.is_active is True   # concrete value assertion
+    assert result.user == user        # concrete value assertion
+]]></code>
+    </example>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+def test_user_exists():
+    user = baker.make('users.User')
+    assert user  # truthy — always passes, catches nothing
+]]></code>
+      <note>Truthy assertion on baker output passes regardless of the object's state. Always assert specific field values.</note>
+    </example>
+  </section>
+
+  <section title="Parametrized Tests">
+    <rule>
+      <statement>Use @pytest.mark.parametrize for value/expected pairs instead of duplicating test functions. A 10-line parametrized test beats 10 copy-paste functions.</statement>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@pytest.mark.django_db
+@pytest.mark.parametrize('amount,expected_status', [
+    pytest.param(Decimal('100.00'), 'success', id='valid'),
+    pytest.param(Decimal('0.00'), 'error', id='zero'),
+    pytest.param(Decimal('-10.00'), 'error', id='negative'),
+])
+def test_order_validation(user, amount, expected_status):
+    result = validate_order(user=user, amount=amount)
+    assert result.status == expected_status
+]]></code>
+    </example>
+  </section>
+
+  <section title="conftest.py Skeleton">
+    <reference path="templates/conftest.py">Reusable Django + DRF + baker fixtures</reference>
+    <reference path="templates/pyproject-pytest.toml">pytest.ini_options with reuse-db, coverage 80%, random order</reference>
+  </section>
+</text>

@@ -4,6 +4,7 @@
 
 ### Changed
 - refactor: 8/8 code-quality methodologies migrated to new shape (batch: refactoring-patterns, pair-programming, code-quality-trends, code-decomposition-principles, tech-debt-basics, code-review-basics, code-coverage, mob-programming)
+- refactor: 8/8 methodologies migrated to new shape (batch: methodologies, best-practices-2026, django-testing, go-concurrency, django-coding-standards, tdd-workflow, storybook-setup, documentation)
 - refactor: 8/8 ux methodologies migrated to new shape (batch: flexibility-efficiency, help-documentation, voice-ui-basics, design-tokens-fundamentals, wireframing, tailwind-design-tokens, spatial-ux-fundamentals, prototyping)
 - refactor: 8/8 backend-enterprise methodologies migrated to new shape (batch: csharp-background-services, java-spring, php-eloquent, decomposition-laravel, csharp-aspnet-core, ruby-activerecord, decomposition-rails, csharp-dotnet-patterns)
 - refactor: 8/8 ux-researcher methodologies migrated to new shape (batch: content-audit-process, usability-testing, consistency-standards, card-sorting, error-prevention, journey-mapping, error-recovery, competitive-analysis)

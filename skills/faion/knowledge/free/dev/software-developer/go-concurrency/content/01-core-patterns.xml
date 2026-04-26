@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-patterns" title="Go Concurrency Core Patterns">
+  <summary>Worker pool, rate limiter, semaphore, RWMutex cache, and sync.Once — each with channel-ownership invariant enforced.</summary>
+
+  <section title="Channel Ownership Rule">
+    <rule>
+      <statement>The goroutine that writes to a channel is the one that closes it. No exceptions.</statement>
+      <rationale>Closing a channel from a reader or a different goroutine causes panic. Ownership rule eliminates the entire class of send-on-closed-channel bugs.</rationale>
+    </rule>
+    <rule>
+      <statement>Every goroutine must have an explicit exit condition: ctx.Done(), channel close, or WaitGroup.Done path. Never write bare go func() without a shutdown mechanism.</statement>
+      <rationale>Goroutines without exit conditions leak indefinitely. Under production load this exhausts goroutine stack memory.</rationale>
+    </rule>
+  </section>
+
+  <section title="Worker Pool Pattern">
+    <rule>
+      <statement>Use errgroup.WithContext (golang.org/x/sync) over hand-rolled WaitGroup + errCh for fan-out — it cancels siblings on first error automatically.</statement>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func WorkerPool(ctx context.Context, numWorkers int, jobs <-chan Job) <-chan Result {
+    results := make(chan Result, numWorkers)
+    var wg sync.WaitGroup
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for {
+                select {
+                case job, ok := <-jobs:
+                    if !ok {
+                        return
+                    }
+                    select {
+                    case results <- processJob(job):
+                    case <-ctx.Done():
+                        return
+                    }
+                case <-ctx.Done():
+                    return
+                }
+            }
+        }()
+    }
+    go func() {
+        wg.Wait()
+        close(results) // writer closes
+    }()
+    return results
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Semaphore Pattern">
+    <rule>
+      <statement>Bound concurrency with a buffered semaphore sized to downstream capacity (DB pool size, API rate limit), not to runtime.NumCPU().</statement>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+type Semaphore chan struct{}
+
+func (s Semaphore) Acquire(ctx context.Context) error {
+    select {
+    case s <- struct{}{}:
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+
+func (s Semaphore) Release() { <-s }
+]]></code>
+    </example>
+  </section>
+
+  <section title="RWMutex Cache">
+    <rule>
+      <statement>Use sync.RWMutex for read-heavy caches. Use sync.Map only when keys are write-once and reads dominate overwhelmingly; otherwise RWMutex + map is more predictable.</statement>
+    </rule>
+    <reference path="templates/goleak-test-main.go">TestMain with goleak for leak detection</reference>
+  </section>
+</text>
