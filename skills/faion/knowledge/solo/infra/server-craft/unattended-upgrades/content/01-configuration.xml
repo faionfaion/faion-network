@@ -1,0 +1,87 @@
+<text id="unattended-upgrades-configuration" title="Unattended Upgrades: Configuration">
+
+  <summary>
+    Two config files control unattended-upgrades: 50unattended-upgrades (what to update, blacklist, reboot policy, cleanup) and 20auto-upgrades (schedule). Two systemd timers drive execution: apt-daily (update package lists) and apt-daily-upgrade (install). Override timers for exact scheduling.
+  </summary>
+
+  <section title="Update Origins">
+    <p>Only enable security pockets. This applies CVE patches without installing feature updates that could break production services.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+      ]]></code>
+    </example>
+    <antipattern>
+      <description>Including -updates or -backports in Allowed-Origins</description>
+      <reason>-updates contains non-security bug fixes and minor version bumps. These can change behavior unexpectedly in production without a maintenance window.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Package Blacklist">
+    <rule>
+      <statement>Blacklist Docker CE, database engines, and any package whose upgrade requires manual intervention.</statement>
+      <rationale>Docker CE version changes can break container networking and require daemon restart. Database major versions require migration scripts. Automatic upgrade of these during the night causes silent production outages.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Unattended-Upgrade::Package-Blacklist {
+    "docker-ce";
+    "docker-ce-cli";
+    "containerd.io";
+    "docker-buildx-plugin";
+    "docker-compose-plugin";
+    // "postgresql-16";  // uncomment for DB servers
+};
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Auto-Reboot Settings">
+    <rule>
+      <statement>Enable auto-reboot at an off-peak time. Without auto-reboot, kernel security patches are installed but never applied.</statement>
+      <rationale>Kernel, libc, and systemd patches only take effect after reboot. A server can run with a patched kernel on disk but still be vulnerable via the loaded (old) kernel in memory for weeks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Unattended-Upgrade::Automatic-Reboot          "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time      "04:00";
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Cleanup Directives">
+    <example type="good">
+      <code lang="text"><![CDATA[
+Unattended-Upgrade::Remove-Unused-Dependencies        "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies    "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages     "true";
+Unattended-Upgrade::MinimalSteps                      "true";
+Unattended-Upgrade::AutoFixInterruptedDpkg            "true";
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Schedule (20auto-upgrades)">
+    <example type="good">
+      <code lang="text"><![CDATA[
+APT::Periodic::Update-Package-Lists      "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::Unattended-Upgrade       "1";
+APT::Periodic::AutocleanInterval        "7";
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/50unattended-upgrades.conf">Production config file</link>
+    <link path="templates/20auto-upgrades.conf">Schedule config file</link>
+    <link path="templates/apt-daily-timer-override.conf">Fixed-time timer override (2 AM)</link>
+  </see-also>
+
+</text>

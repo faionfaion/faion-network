@@ -1,0 +1,58 @@
+<text id="direnv-mise-concepts" title="direnv + mise: Concepts">
+
+  <summary>
+    direnv watches directory changes and loads/unloads .envrc. mise manages runtime versions (Python, Node, etc.) per directory via .tool-versions or mise.toml. Together: cd into a project → correct Python version activates + venv loads + .env variables set automatically.
+  </summary>
+
+  <section title="direnv Trust Model">
+    <rule>
+      <statement>Run `direnv allow` once in every directory with a new or modified .envrc before it executes.</statement>
+      <rationale>direnv runs arbitrary shell code from .envrc. Without explicit trust, cloning a repo with a malicious .envrc would execute code on cd. This is the key security mechanism.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+cd ~/workspace/repos/my-project
+direnv allow    # first time, or after any .envrc change
+# direnv: loading .envrc
+# direnv: export +VIRTUAL_ENV ~PATH
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="mise as asdf Replacement">
+    <p>mise replaces pyenv, nvm, and asdf with a single tool. Reads .tool-versions (asdf-compatible) or mise.toml. Integrates with direnv via `use mise` directive in .envrc.</p>
+    <list>
+      <item>`mise install python@3.12.8` — download and compile Python 3.12.8</item>
+      <item>`mise use python@3.12.8` — set version for current directory (writes .tool-versions)</item>
+      <item>`mise use --global python@3.12.8` — set system-wide fallback</item>
+      <item>`mise current` — show active versions in current directory</item>
+    </list>
+  </section>
+
+  <section title="Activation Order in .bashrc">
+    <rule>
+      <statement>mise hook must appear BEFORE direnv hook in .bashrc. direnv must be the LAST hook in .bashrc.</statement>
+      <rationale>direnv re-evaluates the shell environment on every directory change. If mise activates after direnv, the runtime versions set by mise won't be visible to direnv's `use mise` directive.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# ~/.bashrc — correct order
+eval "$(mise activate bash)"    # 1. mise first
+eval "$(direnv hook bash)"      # 2. direnv LAST
+      ]]></code>
+    </example>
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Wrong order — `use mise` in .envrc won't find mise-managed runtimes
+eval "$(direnv hook bash)"
+eval "$(mise activate bash)"
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/02-configuration.xml">.envrc patterns and .tool-versions format</link>
+    <link path="templates/bashrc-integration.sh">Shell integration lines for .bashrc</link>
+  </see-also>
+
+</text>

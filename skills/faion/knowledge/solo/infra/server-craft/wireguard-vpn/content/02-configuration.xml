@@ -1,0 +1,92 @@
+<text id="wireguard-configuration" title="WireGuard VPN: Configuration">
+
+  <summary>
+    Server Interface section (PrivateKey, Address /24, ListenPort, PostUp NAT), Peer section (PublicKey, AllowedIPs, PersistentKeepalive). IP forwarding required on server. Replace eth0 in PostUp with your actual default interface.
+  </summary>
+
+  <section title="Server Interface Section">
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Interface]
+PrivateKey  = <server-private-key>
+Address     = 10.0.0.1/24
+ListenPort  = 51820
+SaveConfig  = false
+
+# NAT — replace eth0 with actual interface (ip route | grep default)
+PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Use Address = x.x.x.1/24 on the server (not /32) so the wg0 interface owns the entire /24 subnet.</statement>
+      <rationale>A /32 on the server means the server only has its own IP. With /24, the kernel knows all 10.0.0.x addresses are reachable via wg0 and routes them correctly.</rationale>
+    </rule>
+  </section>
+
+  <section title="Peer Section">
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# Laptop — split tunnel
+[Peer]
+PublicKey          = <laptop-pubkey>
+PresharedKey       = <laptop-preshared-key>
+AllowedIPs         = 10.0.0.2/32
+
+# Home RPi — site-to-site with LAN access
+[Peer]
+PublicKey          = <rpi-pubkey>
+PresharedKey       = <rpi-preshared-key>
+AllowedIPs         = 10.0.0.3/32, 192.168.1.0/24
+PersistentKeepalive = 25
+
+# Phone — full tunnel
+[Peer]
+PublicKey          = <phone-pubkey>
+PresharedKey       = <phone-preshared-key>
+AllowedIPs         = 10.0.0.4/32
+      ]]></code>
+    </example>
+    <rule>
+      <statement>Set PersistentKeepalive = 25 for peers behind NAT (home RPi, mobile).</statement>
+      <rationale>NAT tables expire idle UDP sessions. Without keepalive, a peer behind NAT will lose its ability to receive packets after ~30 seconds of silence.</rationale>
+    </rule>
+  </section>
+
+  <section title="IP Forwarding">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# /etc/sysctl.d/99-wireguard.conf
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+
+# Apply immediately
+sudo sysctl -p /etc/sysctl.d/99-wireguard.conf
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Site-to-Site Routing">
+    <p>To reach the home LAN (192.168.1.0/24) from any VPN peer: add the LAN subnet to the RPi peer's AllowedIPs on the server, and enable forwarding + NAT on the RPi.</p>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# Server: RPi peer entry
+[Peer]
+PublicKey  = <rpi-pubkey>
+AllowedIPs = 10.0.0.3/32, 192.168.1.0/24
+
+# RPi wg0.conf: forward traffic to/from home LAN
+[Interface]
+PostUp   = iptables -A FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -A FORWARD -i eth0 -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -D FORWARD -i eth0 -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/wg0-server.conf">Production server config</link>
+    <link path="templates/wg0-client-split.conf">Split-tunnel client config</link>
+    <link path="templates/sysctl-wireguard.conf">IP forwarding sysctl settings</link>
+  </see-also>
+
+</text>

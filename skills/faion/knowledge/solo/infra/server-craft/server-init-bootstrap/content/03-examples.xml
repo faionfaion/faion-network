@@ -1,0 +1,68 @@
+<text id="bootstrap-examples" title="Server Init Bootstrap: Examples">
+
+  <summary>
+    NERO nero-prod full bootstrap sequence, post-bootstrap verification output, cloud-init user-data for Hetzner.
+  </summary>
+
+  <section title="Post-Bootstrap Verification">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+echo "=== Hostname ==="  && hostname
+echo "=== Timezone ==="  && timedatectl | grep "Time zone"
+echo "=== Locale ==="    && locale | head -1
+echo "=== UFW ==="       && sudo ufw status | head -5
+echo "=== fail2ban ==="  && sudo fail2ban-client status sshd 2>/dev/null || echo "not running"
+echo "=== SSH ==="       && grep -E "PermitRootLogin|PasswordAuthentication" /etc/ssh/sshd_config
+echo "=== Swap ==="      && swapon --show
+echo "=== Memory ==="    && free -h | head -2
+echo "=== Disk ==="      && df -h / | tail -1
+echo "=== Linger ==="    && loginctl show-user nero 2>/dev/null | grep Linger
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Hetzner cloud-init User-Data">
+    <p>Automate the entire bootstrap on first boot. Paste into Hetzner Cloud: Create server → Cloud config (User data).</p>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+#cloud-config
+users:
+  - name: nero
+    groups: sudo, docker
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3... your_key_here
+
+package_update: true
+package_upgrade: true
+packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - curl
+  - git
+  - tmux
+  - htop
+  - jq
+  - rsync
+
+runcmd:
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw limit 22022/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+  - loginctl enable-linger nero
+  - dpkg-reconfigure -plow unattended-upgrades
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/bootstrap.sh">Interactive full bootstrap script</link>
+    <link path="scripts/server-status.sh">Dashboard: uptime, disk, memory, services</link>
+  </see-also>
+
+</text>

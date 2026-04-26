@@ -1,0 +1,50 @@
+<text id="ssl-concepts" title="SSL/TLS Management: Concepts">
+
+  <summary>
+    Three certificate strategies for a VPS: Let's Encrypt (90-day auto-renew, direct exposure), Cloudflare origin cert (15-year, no renewal, requires Cloudflare proxy), hybrid (both valid). Four Cloudflare SSL modes — always use Full(Strict), never Flexible.
+  </summary>
+
+  <section title="Certificate Types">
+    <p>Choose based on whether the domain uses Cloudflare proxy (orange cloud) or DNS-only (gray cloud).</p>
+    <list>
+      <item>Let's Encrypt — free, 90-day, auto-renewed by certbot systemd timer. Works with or without Cloudflare. Supports OCSP stapling.</item>
+      <item>Cloudflare origin cert — free, 15 years, no renewal needed. Only trusted by Cloudflare edge (not by browsers directly). OCSP stapling not available.</item>
+      <item>Self-signed — never use in production. Cloudflare reports 526 Invalid SSL Certificate.</item>
+    </list>
+  </section>
+
+  <section title="Cloudflare SSL Modes">
+    <rule>
+      <statement>Always use Full(Strict) when behind Cloudflare. Never use Flexible.</statement>
+      <rationale>Flexible mode sends traffic from Cloudflare to your origin over plain HTTP. If nginx also enforces HTTPS redirects (as it should), this creates an infinite redirect loop (ERR_TOO_MANY_REDIRECTS).</rationale>
+    </rule>
+    <list>
+      <item>Off — HTTP everywhere, no encryption. Never use.</item>
+      <item>Flexible — HTTPS browser→CF, HTTP CF→origin. Creates redirect loops + false security sense. Never use.</item>
+      <item>Full — HTTPS CF→origin but accepts any certificate (self-signed OK). Better than Flexible but not recommended.</item>
+      <item>Full(Strict) — HTTPS CF→origin, validates certificate. Use this. Requires a valid cert (origin cert or Let's Encrypt).</item>
+    </list>
+  </section>
+
+  <section title="TLS Versions">
+    <p>Drop TLS 1.0 and 1.1 entirely. Minimum is TLS 1.2. TLS 1.3 is preferred — faster handshake, no cipher selection by server.</p>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+ssl_protocols TLSv1.2 TLSv1.3;
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="OCSP Stapling">
+    <rule>
+      <statement>Only enable OCSP stapling with Let's Encrypt or commercial certificates. Disable for Cloudflare origin certs.</statement>
+      <rationale>Cloudflare origin certs are not issued by a public CA and have no OCSP responder. Enabling ssl_stapling with them causes nginx to log errors and potentially degrade TLS performance.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-nginx-config.xml">nginx SSL configuration directives</link>
+    <link path="templates/site-cloudflare.conf">nginx site with Cloudflare origin cert</link>
+  </see-also>
+
+</text>

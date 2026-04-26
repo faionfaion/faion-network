@@ -1,0 +1,76 @@
+<text id="docker-ufw-security" title="Firewall Management: Docker and UFW Security">
+
+  <summary>
+    Docker bypasses UFW by injecting nftables/iptables rules directly in the DOCKER chain. A container with `-p 5432:5432` is reachable from the internet even if UFW has no rule for port 5432. The fix: always bind Docker services to 127.0.0.1 in the ports section.
+  </summary>
+
+  <section title="Why Docker Bypasses UFW">
+    <p>Docker inserts its own chains (DOCKER, DOCKER-USER) into nftables/iptables at a higher priority than UFW's rules. UFW rules live in the INPUT chain but never see Docker's published ports — they hit DOCKER-FORWARD first.</p>
+    <rule>
+      <statement>Never publish Docker ports to 0.0.0.0 on a production server. Always bind to 127.0.0.1.</statement>
+      <rationale>Binding to 0.0.0.0 publishes the port to all interfaces, bypassing UFW entirely. 127.0.0.1 restricts access to the host loopback — only processes on the same machine can connect.</rationale>
+    </rule>
+  </section>
+
+  <section title="Solution: Bind to 127.0.0.1">
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# docker-compose.yml
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"   # localhost only
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"   # localhost only
+  rabbitmq:
+    ports:
+      - "127.0.0.1:5672:5672"   # AMQP localhost only
+      - "127.0.0.1:15672:15672" # Management UI localhost only
+      ]]></code>
+    </example>
+    <example type="bad">
+      <code lang="yaml"><![CDATA[
+services:
+  postgres:
+    ports:
+      - "5432:5432"  # Expands to 0.0.0.0:5432 — bypasses UFW!
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Verify Exposure">
+    <p>After any Docker Compose change, verify no services accidentally bind to 0.0.0.0.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Show all listening ports with binding address
+sudo ss -tlnp
+
+# Show Docker port mappings
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+
+# Check for exposed 0.0.0.0 ports (should return nothing except 80/443)
+sudo ss -tlnp | grep '0.0.0.0' | grep -v ':80\|:443\|:22'
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="SSH Tunnel for Internal Services">
+    <p>Access services bound to 127.0.0.1 from your local machine via SSH tunnel — no need to expose ports.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Forward local 5432 to server's 127.0.0.1:5432
+ssh -L 5432:127.0.0.1:5432 nero@server-ip -N -f
+
+# Connect locally
+psql -h 127.0.0.1 -p 5432 -U nero
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/docker-compose-secure.yml">Docker Compose with all services bound to 127.0.0.1</link>
+    <link path="scripts/ufw-report.sh">UFW report showing exposed ports</link>
+  </see-also>
+
+</text>

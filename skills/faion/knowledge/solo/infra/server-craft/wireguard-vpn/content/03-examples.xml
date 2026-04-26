@@ -1,0 +1,91 @@
+<text id="wireguard-examples" title="WireGuard VPN: Examples">
+
+  <summary>
+    VPS-to-home RPi tunnel for LAN access, dev machine split tunnel to reach VPS services, mobile full tunnel, restricting SSH access to VPN subnet only.
+  </summary>
+
+  <section title="Dev Machine Split Tunnel">
+    <p>Goal: reach VPS internal services (PostgreSQL, Redis) without routing internet traffic through VPN. AllowedIPs includes only VPN subnet.</p>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+# /etc/wireguard/wg0.conf on dev machine
+[Interface]
+PrivateKey = <dev-private-key>
+Address    = 10.0.0.2/32
+
+[Peer]
+PublicKey          = <server-pubkey>
+PresharedKey       = <preshared-key>
+Endpoint           = SERVER_PUBLIC_IP:51820
+AllowedIPs         = 10.0.0.0/24
+PersistentKeepalive = 25
+      ]]></code>
+      <note>Internet traffic continues via normal gateway. Only 10.0.0.x traffic uses VPN.</note>
+    </example>
+  </section>
+
+  <section title="Mobile Full Tunnel">
+    <p>Route all mobile traffic through VPS for privacy on public Wi-Fi.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Generate mobile config, then create QR code for import
+sudo cat /etc/wireguard/clients/phone.conf | qrencode -t ansiutf8
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="ini"><![CDATA[
+[Interface]
+PrivateKey = <phone-private-key>
+Address    = 10.0.0.4/32
+DNS        = 1.1.1.1
+
+[Peer]
+PublicKey          = <server-pubkey>
+PresharedKey       = <preshared-key>
+Endpoint           = SERVER_PUBLIC_IP:51820
+AllowedIPs         = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Restrict SSH to VPN Subnet Only">
+    <p>After confirming VPN works, restrict SSH access to VPN IPs. This eliminates the SSH attack surface for external scanners.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# /etc/ssh/sshd_config
+AllowUsers nero@10.0.0.0/24
+
+# Or UFW rule (after removing the 0.0.0.0 SSH rule)
+sudo ufw delete allow 22022/tcp
+sudo ufw allow from 10.0.0.0/24 to any port 22022 proto tcp comment 'SSH via VPN'
+sudo ufw reload
+      ]]></code>
+      <note>Test VPN SSH works before applying. Keep a rescue console session open.</note>
+    </example>
+  </section>
+
+  <section title="VPN Status Check">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Show all peers and last handshake time
+sudo wg show
+
+# Check handshake age (stale = no handshake in 3+ min)
+sudo wg show wg0 latest-handshakes
+
+# Data transferred per peer
+sudo wg show wg0 transfer
+
+# Verify IP forwarding
+cat /proc/sys/net/ipv4/ip_forward  # should be 1
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="scripts/wg-status.sh">Peer handshake age and data transfer dashboard</link>
+    <link path="scripts/add-wg-peer.sh">Add a new peer and generate client config</link>
+  </see-also>
+
+</text>

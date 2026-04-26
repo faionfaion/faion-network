@@ -1,0 +1,74 @@
+<text id="unattended-upgrades-examples" title="Unattended Upgrades: Examples">
+
+  <summary>
+    Dry-run output to verify config, kernel update timeline showing the install-but-pending-reboot gap, and handling held-back Docker packages.
+  </summary>
+
+  <section title="Dry-Run Verification">
+    <p>Always verify configuration with --dry-run before relying on automatic execution.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Dry-run: show what would be upgraded
+sudo unattended-upgrade --dry-run --debug 2>&1 | head -40
+
+# Expected output for a clean run:
+# Packages that will be upgraded: libssl3 openssl
+# NOT Unattended-Upgrades-kept-back: docker-ce (blacklisted)
+# Packages that will be removed: (none)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Kernel Update Timeline">
+    <p>Without auto-reboot, a kernel patch is installed but the server continues running the old vulnerable kernel until manual reboot.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+03:00  apt-daily-upgrade runs
+03:01  linux-image-6.8.0-107 installed
+03:01  /var/run/reboot-required created
+03:01  /var/run/reboot-required.pkgs: linux-image-6.8.0-107
+
+04:00  Automatic-Reboot-Time triggers reboot
+04:01  Server boots with new kernel
+04:02  Services restart via Restart=always
+04:03  All services active, new kernel running
+      ]]></code>
+    </example>
+    <rule>
+      <statement>All systemd services must have Restart=always and Docker containers must have restart: unless-stopped so they recover after the automatic 4 AM reboot.</statement>
+      <rationale>Auto-reboot is only safe if services reliably restart. A service without Restart=always stays down after the reboot until someone SSHes in to start it manually.</rationale>
+    </rule>
+  </section>
+
+  <section title="Verifying Docker Packages Are Held Back">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+sudo unattended-upgrade --dry-run --debug 2>&1 | grep -E "Kept|blacklist|docker"
+# Expected:
+# NOT Unattended-Upgrades-kept-back: docker-ce is blacklisted
+# NOT Unattended-Upgrades-kept-back: docker-ce-cli is blacklisted
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Checking Reboot-Required Status">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Quick check
+[ -f /var/run/reboot-required ] && echo "REBOOT NEEDED" || echo "OK"
+
+# Which packages need it
+cat /var/run/reboot-required.pkgs
+
+# Last upgrade timestamp
+sudo stat /var/log/unattended-upgrades/unattended-upgrades.log | grep Modify
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="scripts/check-reboot-required.sh">Reboot-required status report</link>
+    <link path="scripts/upgrade-status.sh">Full upgrade status dashboard</link>
+  </see-also>
+
+</text>

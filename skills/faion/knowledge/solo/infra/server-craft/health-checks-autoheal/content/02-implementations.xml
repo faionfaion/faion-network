@@ -1,0 +1,142 @@
+<text id="health-implementations" title="Health Checks and Auto-Heal: Implementations">
+
+  <summary>
+    FastAPI /health endpoint with parallel dependency checks (asyncio.gather), Python systemd watchdog NOTIFY_SOCKET sender, auto-heal ServiceCheck class with cooldown and max restarts.
+  </summary>
+
+  <section title="FastAPI Health Endpoint">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time, asyncio
+from fastapi import FastAPI, Response
+
+app = FastAPI()
+START_TIME = time.time()
+
+async def check_database():
+    try:
+        start = time.time()
+        async with db_pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        return {"status": "ok", "latency_ms": round((time.time() - start) * 1000, 1)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+async def check_redis():
+    try:
+        start = time.time()
+        await redis_client.ping()
+        return {"status": "ok", "latency_ms": round((time.time() - start) * 1000, 1)}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@app.get("/health")
+async def health(response: Response):
+    checks = {}
+    checks["database"], checks["redis"] = await asyncio.gather(
+        check_database(), check_redis()
+    )
+    all_ok = all(c["status"] == "ok" for c in checks.values())
+    if not all_ok:
+        response.status_code = 503
+    return {
+        "status": "ok" if all_ok else "degraded",
+        "uptime_seconds": round(time.time() - START_TIME),
+        "checks": checks,
+    }
+
+@app.get("/health/live")
+async def health_live():
+    return Response(status_code=200)
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="systemd Watchdog Notify">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import os, socket, asyncio
+
+def notify_watchdog():
+    sock_path = os.environ.get("NOTIFY_SOCKET")
+    if not sock_path:
+        return
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    try:
+        sock.connect(sock_path)
+        sock.send(b"WATCHDOG=1")
+    finally:
+        sock.close()
+
+async def watchdog_loop():
+    while True:
+        notify_watchdog()
+        await asyncio.sleep(15)  # WatchdogSec=30 / 2
+
+@app.on_event("startup")
+async def start_watchdog():
+    asyncio.create_task(watchdog_loop())
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Auto-Heal ServiceCheck Class">
+    <example type="good">
+      <code lang="python"><![CDATA[
+import time, subprocess, logging, urllib.request, json
+
+CHECK_INTERVAL  = 60
+MAX_RESTARTS    = 3
+RESTART_COOLDOWN = 300  # 5 min
+
+class ServiceCheck:
+    def __init__(self, name, check_fn, restart_cmd):
+        self.name = name
+        self.check_fn = check_fn
+        self.restart_cmd = restart_cmd
+        self.restart_count = 0
+        self.last_restart = 0
+
+    def is_healthy(self):
+        try:
+            return self.check_fn()
+        except Exception as e:
+            logging.warning(f"{self.name}: health check error: {e}")
+            return False
+
+    def restart(self):
+        now = time.time()
+        if now - self.last_restart < RESTART_COOLDOWN:
+            logging.warning(f"{self.name}: cooldown active, skipping restart")
+            return
+        if self.restart_count >= MAX_RESTARTS:
+            logging.error(f"{self.name}: max restarts reached, manual intervention needed")
+            return
+        logging.info(f"Restarting {self.name}...")
+        subprocess.run(self.restart_cmd, shell=True, check=True)
+        self.restart_count += 1
+        self.last_restart = now
+
+def check_http(url):
+    def _check():
+        resp = urllib.request.urlopen(url, timeout=5)
+        return json.loads(resp.read()).get("status") in ("ok", "degraded")
+    return _check
+
+def check_systemd(service):
+    def _check():
+        r = subprocess.run(["systemctl", "--user", "is-active", service],
+                           capture_output=True, text=True)
+        return r.stdout.strip() == "active"
+    return _check
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/watcher.py">Complete watcher script</link>
+    <link path="templates/watcher.service">systemd user service for the watcher</link>
+    <link path="templates/docker-compose-healthchecks.yml">Docker HEALTHCHECK blocks</link>
+  </see-also>
+
+</text>

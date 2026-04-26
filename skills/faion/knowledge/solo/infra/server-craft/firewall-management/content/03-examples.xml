@@ -1,0 +1,81 @@
+<text id="firewall-examples" title="Firewall Management: Production Examples">
+
+  <summary>
+    NERO production server UFW rules, multi-domain setup, debugging an exposed Docker port, and emergency lockout recovery via Hetzner Cloud Console.
+  </summary>
+
+  <section title="NERO Production Rules">
+    <p>Ubuntu 24.04, Hetzner CX53. Three external ports only: SSH on 2222, HTTP 80, HTTPS 443. All Docker services bind to 127.0.0.1 — no UFW rules needed for them.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+
+To           Action      From
+--           ------      ----
+2222/tcp     ALLOW IN    Anywhere
+80/tcp       ALLOW IN    Anywhere
+443/tcp      ALLOW IN    Anywhere
+      ]]></code>
+      <note>No per-service rules. All backend ports (8100, 8101, 5432, 6379) bind to 127.0.0.1 and are accessed via nginx or SSH tunnel.</note>
+    </example>
+  </section>
+
+  <section title="Debugging an Exposed Docker Port">
+    <p>Symptom: RabbitMQ Management UI (15672) was reachable from the internet despite no UFW rule.</p>
+    <example type="bad">
+      <code lang="bash"><![CDATA[
+# Before fix — docker-proxy listening on 0.0.0.0
+$ sudo ss -tlnp | grep 15672
+LISTEN 0 4096 0.0.0.0:15672 0.0.0.0:*  users:(("docker-proxy",pid=1234))
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="yaml"><![CDATA[
+# Fix in docker-compose.yml
+services:
+  rabbitmq:
+    ports:
+      - "127.0.0.1:15672:15672"  # was "15672:15672"
+      ]]></code>
+    </example>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# After fix — bound to 127.0.0.1
+$ sudo ss -tlnp | grep 15672
+LISTEN 0 4096 127.0.0.1:15672 0.0.0.0:* users:(("docker-proxy",pid=5678))
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Multi-Domain Setup">
+    <p>Same three UFW rules for all domains. nginx server_name routing handles per-domain logic. No per-project UFW additions needed.</p>
+    <example type="good">
+      <code lang="text"><![CDATA[
+nero.faion.net   → CF → nginx:443 → 127.0.0.1:8100/8101
+meetingtax.io    → CF → nginx:443 → 127.0.0.1:8000/3000
+eulaguard.com    → CF → nginx:443 → 127.0.0.1:8001
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Emergency Lockout Recovery (Hetzner)">
+    <p>If SSH is locked out by a UFW mistake, use the Hetzner Cloud Console VNC session.</p>
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# In Hetzner console VNC session
+sudo ufw disable
+sudo ufw allow 22022/tcp
+sudo ufw enable
+sudo ufw status
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/ufw-setup-webserver.sh">Standard web server setup script</link>
+    <link path="scripts/ufw-report.sh">UFW status report with Docker exposure check</link>
+  </see-also>
+
+</text>

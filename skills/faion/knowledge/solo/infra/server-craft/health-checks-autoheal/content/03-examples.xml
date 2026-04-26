@@ -1,0 +1,81 @@
+<text id="health-examples" title="Health Checks and Auto-Heal: Examples">
+
+  <summary>
+    NERO platform watcher configuration with three service types (HTTP, Celery inspect, systemd), RabbitMQ management API health check, and Telegram alert integration.
+  </summary>
+
+  <section title="NERO Platform Watcher Config">
+    <example type="good">
+      <code lang="python"><![CDATA[
+SERVICES = [
+    ServiceCheck(
+        "nero-core",
+        check_celery("/srv/nero/nero-core/.venv", "nero_core"),
+        "systemctl --user restart nero-core",
+    ),
+    ServiceCheck(
+        "nero-channel-web",
+        check_http("http://127.0.0.1:8100/health"),
+        "systemctl --user restart nero-channel-web",
+    ),
+    ServiceCheck(
+        "nero-channel-tg",
+        check_systemd("nero-channel-tg"),
+        "systemctl --user restart nero-channel-tg",
+    ),
+]
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Celery Health Check">
+    <example type="good">
+      <code lang="python"><![CDATA[
+def check_celery(venv_path, app_name):
+    def _check():
+        result = subprocess.run(
+            [f"{venv_path}/bin/celery", "-A", app_name, "inspect", "ping"],
+            capture_output=True, text=True, timeout=10,
+        )
+        return "pong" in result.stdout.lower()
+    return _check
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="RabbitMQ Management API Check">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+# Node health
+curl -su guest:guest http://localhost:15672/api/healthchecks/node
+
+# Queue depth (alert if > 100 messages backed up)
+depth=$(curl -su guest:guest http://localhost:15672/api/queues/%2F/celery | jq '.messages')
+[ "$depth" -gt 100 ] && echo "WARNING: celery queue depth $depth"
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Telegram Alert Integration">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# alert.sh — Send alert via Telegram bot
+MESSAGE="$1"
+HOSTNAME=$(hostname)
+TIMESTAMP=$(date -u +'%Y-%m-%d %H:%M UTC')
+
+curl -s -X POST \
+    "https://api.telegram.org/bot${TELEGRAM_ALERT_BOT_TOKEN}/sendMessage" \
+    -d "chat_id=${TELEGRAM_ALERT_CHAT_ID}" \
+    -d "text=[${HOSTNAME}] ${TIMESTAMP}%0A${MESSAGE}" >/dev/null
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="scripts/health-report.sh">Poll all services and print summary table</link>
+    <link path="templates/health-endpoint.py">Complete FastAPI health endpoint</link>
+  </see-also>
+
+</text>

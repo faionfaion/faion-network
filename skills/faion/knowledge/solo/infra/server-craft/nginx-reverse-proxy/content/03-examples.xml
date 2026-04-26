@@ -1,0 +1,140 @@
+<text id="nginx-examples" title="nginx Reverse Proxy: Real-World Examples">
+
+  <summary>
+    Production nginx configurations from the NERO platform: multi-service site with API prefix stripping, WebSocket, and X-Accel-Redirect; MeetingTax multi-subdomain setup; adding a new domain in three commands.
+  </summary>
+
+  <section title="NERO Platform (nero.faion.net)">
+    <p>Architecture: Cloudflare → nginx → FastAPI on 8100 (API + WebSocket) + React SPA on 8101. API routes stripped of /api prefix. Attachments served internally via X-Accel-Redirect.</p>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name nero.faion.net;
+
+    ssl_certificate     /etc/nginx/ssl/cloudflare-origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare-origin-key.pem;
+
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Content-Security-Policy "default-src 'self'; connect-src 'self' wss://nero.faion.net; frame-ancestors https://*.telegram.org;" always;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /health {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /ws {
+        include snippets/proxy-params.conf;
+        include snippets/websocket.conf;
+        proxy_pass http://127.0.0.1:8100;
+    }
+
+    location /internal-attachments/ {
+        internal;
+        alias /srv/nero/attachments/;
+    }
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8101;
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Multi-Subdomain Setup (MeetingTax)">
+    <p>Three server blocks: static landing at meetingtax.io, full-stack app at app.meetingtax.io, API direct at api.meetingtax.io.</p>
+    <example type="good">
+      <code lang="nginx"><![CDATA[
+server {
+    listen 80;
+    server_name meetingtax.io www.meetingtax.io;
+    root /var/www/meetingtax;
+    index index.html;
+    location / { try_files $uri $uri/ /index.html; }
+}
+
+server {
+    listen 80;
+    server_name app.meetingtax.io;
+    include snippets/security-headers.conf;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location /ws {
+        include snippets/proxy-params.conf;
+        include snippets/websocket.conf;
+        proxy_pass http://127.0.0.1:8000;
+    }
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:3000;
+    }
+}
+
+server {
+    listen 80;
+    server_name api.meetingtax.io;
+    include snippets/security-headers.conf;
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8000;
+        limit_req zone=api_general burst=20 nodelay;
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Adding a New Domain">
+    <example type="good">
+      <code lang="bash"><![CDATA[
+sudo tee /etc/nginx/sites-available/newsite.example.com << 'NGINX'
+server {
+    listen 80;
+    server_name newsite.example.com;
+    include snippets/security-headers.conf;
+    client_max_body_size 10M;
+
+    location /api/ {
+        rewrite ^/api/(.*) /$1 break;
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:8200;
+    }
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:3200;
+    }
+}
+NGINX
+
+sudo ln -sf /etc/nginx/sites-available/newsite.example.com /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+      ]]></code>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="templates/site-fullstack.conf">Full-stack site template</link>
+    <link path="scripts/nginx-audit.sh">Audit all active sites and headers</link>
+  </see-also>
+
+</text>
