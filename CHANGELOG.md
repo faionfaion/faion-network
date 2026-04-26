@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: continuous-discovery, distribution-channel-research, competitor-analysis, competitive-intelligence-methods, product-development-trends-2026, product-development-trends, product-led-growth, stakeholder-management)
 - refactor: 8/8 researcher methodologies migrated to new shape (batch: competitive-intelligence, trend-analysis, frameworks, opportunity-solution-trees, business-model-research, user-research-at-scale, continuous-discovery, distribution-channel-research)
 - sdlc-ai-methodologies: pool-batch +4 mr- (35/52) — mr-graph-vs-diff-reviewer, mr-codemod-refactor-agent, mr-slash-command-surface, mr-renovate-ai-handoff (NEW shape: AGENTS.md + content/*.xml + templates/). mr- category complete (5/5).
 - refactor-pool: subagent PARK protocol on quota exhaustion. quota-guard.py detects worktree cwd and emits PARK_REQUEST + PARENT_PID + PARENT_SESSION markers; BRIEF.md/TICK.md handle parking to ~/.claude/parked-subagents.json (keyed by parent session) and resume on quota recovery. hooks/quota-guard.py added to repo + global gitignore so it survives worktree/branch ops.
