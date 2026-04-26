@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-patterns" title="Refactoring Pattern Catalog">
+  <summary>Eight structural transformations with before/after examples: Extract Method, Extract Class, Replace Conditional with Polymorphism, Introduce Parameter Object, Replace Magic Numbers, Decompose Conditional, Rename, Move Method.</summary>
+
+  <section title="Extract Method">
+    <rule>
+      <statement>Extract a cohesive block of code into a named function when a method exceeds ~20 lines or contains multiple distinct responsibilities.</statement>
+      <rationale>Named functions communicate intent; extracted functions are independently testable and reusable.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# AFTER extract: each function has one responsibility
+def process_order(order):
+    validate_order(order)
+    totals = calculate_totals(order)
+    process_payment(order.customer, totals.total)
+    send_confirmation(order.customer, totals)
+    return {"order_id": order.id, "total": totals.total}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Extract Class">
+    <rule>
+      <statement>Extract a group of related fields and methods into a new class when a class has more than one cohesive responsibility.</statement>
+      <rationale>Single Responsibility Principle: each class should have one reason to change. Address data belongs in Address, not User.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+@dataclass
+class Address:
+    street: str
+    city: str
+    state: str
+    zip_code: str
+
+    def get_full_address(self) -> str:
+        return f"{self.street}, {self.city}, {self.state} {self.zip_code}"
+
+@dataclass
+class User:
+    name: str
+    email: str
+    address: Address
+]]></code>
+    </example>
+  </section>
+
+  <section title="Replace Conditional with Polymorphism">
+    <rule>
+      <statement>Replace a type-switch or multi-branch if/elif that dispatches behavior by type with a strategy/polymorphism pattern. Apply only when branches &gt; 4 and each branch is non-trivial.</statement>
+      <rationale>Polymorphism extends by adding a new class rather than editing an existing conditional. Reduces cyclomatic complexity at the call site.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class PricingStrategy(ABC):
+    @abstractmethod
+    def calculate_discount(self, product) -> Decimal: ...
+
+class PremiumPricing(PricingStrategy):
+    def calculate_discount(self, product) -> Decimal:
+        return Decimal("0.1")
+
+STRATEGIES = {"premium": PremiumPricing(), "regular": RegularPricing()}
+strategy = STRATEGIES.get(customer_type, RegularPricing())
+]]></code>
+    </example>
+  </section>
+
+  <section title="Introduce Parameter Object">
+    <rule>
+      <statement>Group more than 4 related parameters into a dataclass or NamedTuple. Replace the long parameter list with the new type.</statement>
+      <rationale>Long parameter lists are hard to read at call sites and fragile to extend. Parameter objects are self-documenting and extendable without changing signatures.</rationale>
+    </rule>
+  </section>
+
+  <section title="Replace Magic Numbers">
+    <rule>
+      <statement>Replace every numeric or string literal that encodes a business concept with a named constant or enum.</statement>
+      <rationale>Magic numbers are undocumented contracts that break when business rules change. Named constants are searchable and document intent.</rationale>
+    </rule>
+    <example type="bad">
+      <code lang="python"><![CDATA[
+if order.total > 100:  # What does 100 mean?
+    order.shipping = 0
+]]></code>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+class ShippingConfig:
+    FREE_SHIPPING_THRESHOLD = Decimal("100.00")
+    STANDARD_SHIPPING_COST = Decimal("9.99")
+
+if order.total >= ShippingConfig.FREE_SHIPPING_THRESHOLD:
+    order.shipping = Decimal("0")
+]]></code>
+    </example>
+  </section>
+
+  <section title="Decompose Conditional">
+    <rule>
+      <statement>Extract complex boolean conditions and each branch body into named functions that reveal intent.</statement>
+      <rationale>Nested conditions are hard to reason about. Named predicates and action functions make the structure self-documenting.</rationale>
+    </rule>
+  </section>
+
+  <section title="Rename for Clarity">
+    <rule>
+      <statement>Use IDE/LSP rename refactoring (not text search-replace) for renaming symbols. Rename when the intent of a variable, function, or class is unclear from its current name.</statement>
+      <rationale>LSP rename updates all references including imports. Text replace misses string-based references; grep-check the entire repo for the old name before claiming done.</rationale>
+    </rule>
+  </section>
+
+  <section title="Move Method">
+    <rule>
+      <statement>Move a method to the class it talks to most (Feature Envy smell). A method that only uses data from another class belongs in that class.</statement>
+      <rationale>Feature envy creates tight coupling and prevents the moved method from being reused independently.</rationale>
+    </rule>
+  </section>
+</text>

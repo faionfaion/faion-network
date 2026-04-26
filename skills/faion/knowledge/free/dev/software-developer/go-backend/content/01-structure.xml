@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-structure" title="Go Backend Project Structure">
+  <summary>Standard cmd/ + internal/ layout, interface-at-consumer rule, request DTO separation from domain models.</summary>
+
+  <section title="Directory Layout">
+    <rule>
+      <statement>Use the standard Go layout: cmd/api/main.go for entry point, internal/{handler,service,repository,model,middleware,config} for domain code, pkg/ for public packages, migrations/ for DB migrations.</statement>
+      <rationale>internal/ prevents external imports, enforcing encapsulation. cmd/ supports multiple binaries from one module.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="text"><![CDATA[
+project/
+├── cmd/api/main.go
+├── internal/
+│   ├── handler/
+│   ├── service/
+│   ├── repository/
+│   ├── model/
+│   ├── middleware/
+│   └── config/
+├── pkg/
+├── migrations/
+├── go.mod
+└── go.sum
+]]></code>
+    </example>
+  </section>
+
+  <section title="Interface at Consumer Side">
+    <rule>
+      <statement>Define interfaces in the package that consumes them, not in the package that provides the implementation. service/ defines UserRepository; repository/ provides the implementation.</statement>
+      <rationale>This is the Go idiom. Interfaces at the consumer side break import cycles and make mocking straightforward — the test provides a mock that satisfies the interface without importing the real impl.</rationale>
+    </rule>
+  </section>
+
+  <section title="Request DTOs">
+    <rule>
+      <statement>Use separate *Request structs for HTTP request binding. Never bind directly into domain model structs.</statement>
+      <rationale>Domain models may have fields that must never be set by external input (IDs, timestamps, internal flags). DTO separation enforces this boundary.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name" binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+    Age   int    `json:"age" binding:"gte=0,lte=130"`
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="main.go Discipline">
+    <rule>
+      <statement>Keep cmd/api/main.go thin: only wiring (config → deps → router → server). No business logic.</statement>
+      <rationale>Agents bloat main.go when not constrained. Thin main makes each layer independently testable.</rationale>
+    </rule>
+  </section>
+
+  <section title="context.Context">
+    <rule>
+      <statement>Pass context.Context as the first argument of every exported function that does I/O. Never capture gin.Context inside a goroutine — derive context first.</statement>
+      <rationale>Context carries cancellation, deadlines, and trace IDs. Capturing gin.Context in a goroutine is a data race and causes request-context leaks.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func (h *UserHandler) GetUser(c *gin.Context) {
+    id := c.Param("id")
+    ctx := c.Request.Context() // derive before any goroutine
+    user, err := h.userService.GetByID(ctx, id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(http.StatusOK, user)
+}
+]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/check-layout.sh">CI script verifying required internal/ dirs exist.</reference>
+</text>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-apis" title="Bun Native APIs">
+  <summary>Bun.serve, Bun.file, Bun.env, Bun.password, Bun.spawn, bun:sqlite, and bun:test — when and how to use each.</summary>
+
+  <section title="Bun.serve">
+    <rule>
+      <statement>Use Bun.serve (or a framework like Hono on top of it) for HTTP servers. Do not use node:http when running on Bun.</statement>
+      <rationale>Bun.serve is measurably faster than node:http for I/O-heavy routes due to JavaScriptCore optimizations.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const server = Bun.serve({
+  port: Bun.env.PORT || 3000,
+  fetch(request: Request): Response | Promise<Response> {
+    const url = new URL(request.url)
+    if (url.pathname === "/health") return new Response("ok")
+    return new Response("Not Found", { status: 404 })
+  },
+  error(error: Error): Response {
+    return new Response("Internal Server Error", { status: 500 })
+  },
+})
+]]></code>
+    </example>
+    <reference path="templates/hono-server.ts">Full Hono server with middleware, Zod validation, JWT routes.</reference>
+  </section>
+
+  <section title="Bun.file and Bun.write">
+    <rule>
+      <statement>Use Bun.file() for static reads — it is lazy-loaded and faster than fs.readFileSync.</statement>
+      <rationale>Bun.file returns a lazy Blob; data is only read when text()/json()/arrayBuffer() is called.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const file = Bun.file("data.json")
+const json = await file.json()
+await Bun.write("output.txt", "Hello World")
+const exists = await Bun.file("path.txt").exists()
+]]></code>
+    </example>
+  </section>
+
+  <section title="Bun.env">
+    <rule>
+      <statement>Wrap Bun.env access in a typed validation function using Zod. Never access Bun.env directly in business logic.</statement>
+      <rationale>Bun.env values are strings; Zod coercion handles number/boolean conversion and provides helpful missing-var errors at startup.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+import { z } from "zod"
+
+const EnvSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+  PORT: z.coerce.number().int().positive().default(3000),
+})
+
+export const env = EnvSchema.parse(Bun.env)
+]]></code>
+    </example>
+  </section>
+
+  <section title="Bun.password">
+    <rule>
+      <statement>Use Bun.password.hash / Bun.password.verify for password hashing. Do not import bcrypt.</statement>
+      <rationale>Bun.password uses bcrypt or argon2 natively; no npm dependency needed.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="typescript"><![CDATA[
+const hash = await Bun.password.hash(password)
+const valid = await Bun.password.verify(password, hash)
+]]></code>
+    </example>
+  </section>
+
+  <section title="bun:test">
+    <rule>
+      <statement>Use describe/it/expect from bun:test. Avoid jest.mock — use mock.module() for ESM mocking in Bun.</statement>
+      <rationale>bun:test is Jest-compatible at the describe/it/expect level but ESM module mocking uses a different API.</rationale>
+    </rule>
+  </section>
+
+  <section title="Drizzle + bun:sqlite">
+    <reference path="templates/drizzle-schema.ts">Drizzle ORM schema with bun:sqlite.</reference>
+  </section>
+</text>

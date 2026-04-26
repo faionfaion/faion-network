@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-base-model" title="Django BaseModel Pattern">
+  <summary>Abstract BaseModel with UUID and timestamps, ForeignKey on_delete policies, Meta.indexes, and Django 5 db_default.</summary>
+
+  <section title="BaseModel">
+    <rule>
+      <statement>All domain models must inherit from BaseModel. BaseModel provides integer PK (implicit id), a UUID external identifier (uid), created_at, and updated_at.</statement>
+      <rationale>Consistent base eliminates boilerplate. Integer PK is used for internal joins; uid is the stable external identifier exposed to APIs and clients.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+class Order(BaseModel):
+    user = models.ForeignKey("users.User", on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Order {self.uid}"
+]]></code>
+    </example>
+    <reference path="templates/base-model.py">Standalone BaseModel definition.</reference>
+  </section>
+
+  <section title="ForeignKey on_delete Policies">
+    <rule>
+      <statement>Supply on_delete= explicitly on every ForeignKey. Use PROTECT for data you must not lose, CASCADE only for owned children, SET_NULL for optional references.</statement>
+      <rationale>The default is not safe; omitting on_delete causes a migration error in Django 2.0+ and signals unclear intent in code review.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+# PROTECT — prevent deletion if related exists
+user = models.ForeignKey("users.User", on_delete=models.PROTECT)
+
+# CASCADE — delete together (use carefully!)
+item = models.ForeignKey("Item", on_delete=models.CASCADE)
+
+# SET_NULL — set to NULL on delete
+last_handler = models.ForeignKey(
+    "Handler",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="handled_orders",
+)
+]]></code>
+    </example>
+    <rule>
+      <statement>Add related_name= to every ForeignKey. If the reverse accessor is not needed, use related_name='+'.</statement>
+      <rationale>Without related_name, Django generates a default name that clashes when two models share a parent, causing migration errors.</rationale>
+    </rule>
+  </section>
+
+  <section title="Meta.indexes">
+    <rule>
+      <statement>Define all indexes in Meta.indexes with an explicit name following the pattern appname_model_columns_idx. Do not rely on db_index=True for composite indexes.</statement>
+      <rationale>Named indexes in Meta.indexes are visible in migrations and reviewable. Pair with EXPLAIN against representative data — don't add indexes speculatively.</rationale>
+    </rule>
+    <rule>
+      <statement>Use UniqueConstraint(fields=[...], name="...") instead of deprecated unique_together.</statement>
+      <rationale>unique_together is deprecated and will be removed in a future Django version.</rationale>
+    </rule>
+  </section>
+
+  <section title="Django 5 db_default">
+    <rule>
+      <statement>Use db_default for database-level defaults (computed at INSERT by the DB). Use default= for application-level defaults (computed by Python). Do not mix them.</statement>
+      <rationale>db_default generates different SQL migrations and applies at a different layer. Confusing them produces migrations that fail on older DB versions (requires Postgres 12+ / SQLite 3.38+).</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from django.db.models.functions import Now
+
+class Article(models.Model):
+    created_at = models.DateTimeField(db_default=Now())
+]]></code>
+    </example>
+  </section>
+</text>

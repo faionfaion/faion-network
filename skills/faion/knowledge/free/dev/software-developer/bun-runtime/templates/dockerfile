@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+# Multi-stage Bun Dockerfile — pin version to match package.json packageManager field.
+
+FROM oven/bun:1.1.34-alpine AS deps
+WORKDIR /app
+COPY package.json bun.lockb ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --production
+
+FROM oven/bun:1.1.34-alpine AS build
+WORKDIR /app
+COPY package.json bun.lockb ./
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile
+COPY . .
+RUN bun run typecheck && bun test && \
+    bun build src/index.ts --target=bun --outdir dist --minify
+
+FROM oven/bun:1.1.34-alpine AS run
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
+USER bun
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD bun -e "fetch('http://localhost:3000/health').then(r=>r.ok?process.exit(0):process.exit(1))"
+ENTRYPOINT ["bun", "run", "dist/index.js"]

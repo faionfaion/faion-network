@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-http" title="Go HTTP Routing">
+  <summary>Gin and Echo router setup, middleware composition, request binding with validation tags.</summary>
+
+  <section title="Gin Router">
+    <rule>
+      <statement>Use Gin with small, single-purpose middlewares. Never put business logic in middleware.</statement>
+      <rationale>Small middlewares compose cleanly and are easier for agents to understand and extend.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func SetupRouter(h *handler.UserHandler) *gin.Engine {
+    r := gin.Default()
+    r.Use(middleware.RequestID())
+    r.Use(middleware.Logger())
+    r.Use(middleware.Recovery())
+
+    v1 := r.Group("/api/v1")
+    {
+        users := v1.Group("/users")
+        users.Use(middleware.Auth())
+        {
+            users.GET("", h.ListUsers)
+            users.GET("/:id", h.GetUser)
+            users.POST("", h.CreateUser)
+            users.PUT("/:id", h.UpdateUser)
+            users.DELETE("/:id", h.DeleteUser)
+        }
+    }
+    return r
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Echo Router">
+    <example type="good">
+      <code lang="go"><![CDATA[
+func SetupRouter() *echo.Echo {
+    e := echo.New()
+    e.Use(middleware.Logger())
+    e.Use(middleware.Recover())
+    e.Use(middleware.RequestID())
+
+    api := e.Group("/api/v1")
+    api.Use(middleware.JWT([]byte("secret")))
+
+    api.GET("/users", listUsers)
+    api.GET("/users/:id", getUser)
+    api.POST("/users", createUser)
+    return e
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Request Binding">
+    <rule>
+      <statement>Use ShouldBindJSON for Gin (returns error) instead of BindJSON (aborts on error). Use binding struct tags for validation.</statement>
+      <rationale>ShouldBind lets handlers return custom error responses; BindJSON writes a 400 and aborts, bypassing the ErrorHandler middleware.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="go"><![CDATA[
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    // Process valid request
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Error Handler Middleware">
+    <rule>
+      <statement>Use a single ErrorHandler middleware that maps AppError to HTTP status. Handlers call c.Error(err) and return — never call c.JSON directly for errors.</statement>
+      <rationale>Centralizing error mapping ensures consistent error response shape and avoids duplicating HTTP status logic in every handler.</rationale>
+    </rule>
+    <reference path="templates/app-error.go">AppError struct and ErrorHandler middleware.</reference>
+  </section>
+</text>
