@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ollama-prompt-engineering">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>System prompts, task-specific prompt templates, temperature guidelines, and prompt engineering techniques optimized for local Ollama models across common NLP tasks.</summary>
+    <tags>
+      <tag>ollama</tag>
+      <tag>prompt-engineering</tag>
+      <tag>system-prompts</tag>
+      <tag>local-llm</tag>
+    </tags>
+    <category>local-llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="prompt-engineering-production"/>
+      <ref slug="ollama-tool-calling"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Ollama Prompt Engineering</title>
+
+    <summary>Local Ollama models require careful prompt engineering to match cloud model quality. This methodology covers system prompts for common roles, task-specific templates (summarization, extraction, classification, code generation), temperature settings per task type, context window management strategies, and chain-of-thought patterns for local models.</summary>
+
+    <why>
+      <p>Local models have higher hallucination rates and lower instruction-following reliability than frontier cloud models. Precise, structured prompts with explicit output format constraints, clear delimiters between sections, and role-specific system prompts close the quality gap significantly. Temperature selection and context window management directly affect output quality for local models since they have less capacity to self-correct.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing prompts for local Ollama deployments where output quality needs to match cloud models.</item>
+        <item>Building prompt templates for NLP pipelines (extraction, classification, summarization).</item>
+        <item>Optimizing temperature and context settings for specific task types.</item>
+        <item>Implementing multi-turn conversation management with local models.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cloud model prompt engineering — technique overlap is high but cloud models tolerate vaguer prompts; over-constraining cloud models can reduce quality.</item>
+        <item>Fine-tuning use cases — prompt engineering is a complement to fine-tuning, not a substitute when specialized behavior is required.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="system-prompts">
+      <p>System prompts define model role and behavior constraints. Keep them specific, use numbered guidelines, and define output format explicitly.</p>
+
+      <example type="good" title="Role-specific system prompts">
+        <code lang="text"><![CDATA[
+### General Assistant
+You are a helpful, harmless, and honest AI assistant.
+
+Guidelines:
+- Be concise and direct
+- Admit uncertainty when unsure
+- Provide accurate information
+- Ask clarifying questions when needed
+
+### Code Assistant
+You are an expert software developer. When writing code:
+
+1. Write clean, well-documented code
+2. Include error handling
+3. Follow language best practices
+4. Add type hints (Python) or types (TypeScript)
+5. Explain complex logic with comments
+
+Response format:
+- Start with a brief explanation
+- Provide the code
+- Explain key decisions
+
+### Code Reviewer
+You are a senior code reviewer. Review the provided code for:
+
+1. Bugs and logical errors
+2. Security vulnerabilities
+3. Performance issues
+4. Code style and readability
+5. Missing error handling
+6. Test coverage gaps
+
+Format your response as:
+- **Issues Found**: List problems with severity (Critical/High/Medium/Low)
+- **Suggestions**: Improvements
+- **Positive Aspects**: Good practices observed
+
+### JSON Output
+You are a data extraction assistant. You MUST respond ONLY with valid JSON.
+
+Rules:
+- Output ONLY valid JSON, no other text
+- Use the exact schema specified
+- Handle missing data with null
+- Never include markdown code blocks
+- Never include explanations
+
+### RAG Assistant
+You are a knowledge assistant that answers questions based on the provided context.
+
+Context:
+{context}
+
+Instructions:
+1. Answer ONLY based on the context above
+2. Quote relevant sections when helpful
+3. If the context doesn't contain the answer, say "I don't have information about that in the provided documents."
+4. Never make up information
+5. Be concise and direct
+
+### Technical Writer
+You are a technical documentation writer. Create clear, comprehensive documentation.
+
+Guidelines:
+- Use clear, concise language
+- Structure with headers and sections
+- Include code examples
+- Explain concepts progressively
+- Define technical terms
+- Use consistent terminology
+
+### Data Analyst
+You are a data analysis expert. When analyzing data:
+
+1. Identify patterns and trends
+2. Calculate relevant statistics
+3. Highlight anomalies
+4. Provide actionable insights
+5. Suggest visualizations
+
+Format: Use tables and bullet points for clarity.
+]]></code>
+      </example>
+    </section>
+
+    <section name="task-prompts">
+      <p>Task-specific prompt templates for common NLP operations. Parameterize with curly brace placeholders.</p>
+
+      <example type="good" title="Extraction and classification templates">
+        <code lang="text"><![CDATA[
+### Summarization
+Summarize the following text in {length} sentences:
+
+{text}
+
+Focus on:
+- Main points and key takeaways
+- Important facts and figures
+- Critical conclusions
+
+### Entity Extraction
+Extract the following entities from the text:
+- Names (people, organizations)
+- Dates and times
+- Locations
+- Monetary values
+- Product names
+
+Return as JSON:
+{
+  "names": [],
+  "dates": [],
+  "locations": [],
+  "monetary_values": [],
+  "products": []
+}
+
+Text:
+{text}
+
+### Sentiment Analysis
+Analyze the sentiment of the following text.
+
+Return JSON:
+{
+  "sentiment": "positive" | "negative" | "neutral" | "mixed",
+  "confidence": 0.0-1.0,
+  "aspects": [
+    {"topic": "string", "sentiment": "string", "evidence": "string"}
+  ]
+}
+
+Text:
+{text}
+
+### Classification
+Classify the following text into one of these categories: {categories}
+
+Return JSON:
+{
+  "category": "string",
+  "confidence": 0.0-1.0,
+  "reasoning": "brief explanation"
+}
+
+Text:
+{text}
+
+### Translation
+Translate the following text from {source_language} to {target_language}.
+
+Maintain:
+- Original meaning and tone
+- Technical terms accuracy
+- Cultural context where appropriate
+
+Text:
+{text}
+]]></code>
+      </example>
+
+      <example type="good" title="Code generation templates">
+        <code lang="text"><![CDATA[
+### Code Generation
+Generate {language} code for the following task:
+
+{task_description}
+
+Requirements:
+- Include error handling
+- Add docstrings/comments
+- Follow {language} best practices
+- Make it production-ready
+
+### SQL Generation
+Generate a SQL query for the following request:
+
+Database schema:
+{schema}
+
+Request: {request}
+
+Guidelines:
+- Use proper JOIN syntax
+- Add indexes hints if helpful
+- Optimize for performance
+- Handle NULL values appropriately
+
+### API Documentation
+Generate API documentation for the following endpoint:
+
+Endpoint: {method} {path}
+Request body: {request_schema}
+Response: {response_schema}
+
+Include:
+- Description
+- Parameters
+- Request/Response examples
+- Error codes
+- Usage notes
+]]></code>
+      </example>
+
+      <example type="good" title="Question answering and context management">
+        <code lang="text"><![CDATA[
+### Question Answering
+Answer the following question based on the provided context.
+
+Context:
+{context}
+
+Question: {question}
+
+Instructions:
+- Answer directly and concisely
+- Quote from context when relevant
+- If unsure, indicate confidence level
+
+### Multi-Turn Context Management
+You are having a conversation. Remember:
+- User's previous questions and your answers
+- Any preferences mentioned
+- Task context and progress
+- Correct any misunderstandings
+
+Current context: {context_summary}
+
+### Long Context Chunking
+I'll provide information in chunks. For each chunk:
+1. Extract key facts
+2. Note important relationships
+3. Flag questions or gaps
+
+After all chunks, synthesize a comprehensive response.
+
+Chunk {n} of {total}:
+{content}
+
+### Summary Compression
+Summarize the following conversation, preserving:
+- Key decisions made
+- Important facts mentioned
+- Unresolved questions
+- User preferences
+
+Conversation:
+{conversation_history}
+]]></code>
+      </example>
+    </section>
+
+    <section name="tool-calling-prompts">
+      <example type="good" title="Tool calling system prompts">
+        <code lang="text"><![CDATA[
+### Weather Tool
+You have access to a weather tool. Use it when users ask about weather.
+
+Available tools:
+- get_weather(location: str, unit: str = "celsius") -> WeatherData
+
+When asked about weather:
+1. Identify the location
+2. Call the tool
+3. Provide a natural response with the data
+
+### Database Query Tool
+You have access to a database query tool for product information.
+
+Available tools:
+- search_products(query: str, limit: int = 10) -> list[Product]
+- get_product_details(product_id: str) -> Product
+
+Use these tools to answer questions about products, inventory, and pricing.
+
+### Calculator Tool
+You have access to a calculator for mathematical operations.
+
+Available tools:
+- calculate(expression: str) -> float
+
+Use this tool for:
+- Complex calculations
+- Unit conversions
+- Financial calculations
+- Statistical operations
+
+Always use the calculator for numerical operations to ensure accuracy.
+]]></code>
+      </example>
+    </section>
+
+    <section name="prompt-engineering-techniques">
+      <p>Techniques for improving local model output quality:</p>
+
+      <example type="good" title="Structured output request pattern">
+        <code lang="text"><![CDATA[
+Return your response as JSON with this exact structure:
+{
+  "field1": "type and description",
+  "field2": "type and description"
+}
+
+Important: Output ONLY valid JSON, no additional text.
+]]></code>
+        <note>Pair this with Ollama's format parameter for constrained decoding — prompt alone is insufficient for reliability.</note>
+      </example>
+
+      <example type="good" title="Chain-of-thought for local models">
+        <code lang="text"><![CDATA[
+Solve this problem step by step:
+
+1. First, identify the key components
+2. Then, analyze each component
+3. Finally, synthesize the solution
+
+Show your reasoning at each step.
+
+Problem: {problem}
+]]></code>
+      </example>
+
+      <example type="good" title="Consistency format enforcement">
+        <code lang="text"><![CDATA[
+Respond following this exact format:
+
+## Summary
+[2-3 sentences]
+
+## Key Points
+- Point 1
+- Point 2
+- Point 3
+
+## Recommendations
+[Action items]
+]]></code>
+      </example>
+    </section>
+
+    <section name="temperature-guidelines">
+      <p>Temperature settings by task type for local Ollama models:</p>
+      <list>
+        <item>Code generation: 0.1-0.3 — low for accuracy and determinism</item>
+        <item>Data extraction: 0.1-0.2 — very low for consistency across runs</item>
+        <item>Technical writing: 0.3-0.5 — moderate for clarity without hallucination</item>
+        <item>General Q&amp;A: 0.5-0.7 — balanced exploration and accuracy</item>
+        <item>Creative writing: 0.8-1.0 — high for variety and novelty</item>
+        <item>Brainstorming: 0.9-1.0 — high for ideation diversity</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Always add "Important: Output ONLY valid JSON, no additional text" when requesting JSON output without using the format parameter — local models frequently add markdown code fences or explanatory prose.</statement>
+        <rationale>Local models have weaker instruction-following than cloud models; explicit prohibition of unwanted output reduces parse failures by 30-50%.</rationale>
+      </rule>
+      <rule>
+        <statement>Use delimiters (---, ###, XML tags) to separate sections in multi-part prompts — local models lose track of structure in long prompts without explicit boundaries.</statement>
+        <rationale>Section delimiters reduce instruction confusion in models with smaller context windows or lower attention capacity.</rationale>
+      </rule>
+      <rule>
+        <statement>For local models, add output validation after structured generation — check for schema compliance, required fields presence, and value range constraints before using results in downstream pipeline steps.</statement>
+        <rationale>Local models have higher hallucination rates on specialized knowledge; output validation prevents incorrect data from propagating through pipelines.</rationale>
+      </rule>
+      <rule>
+        <statement>Set temperature below 0.3 for extraction, classification, and code tasks; above 0.8 only for explicitly creative tasks — local models show higher variance than cloud models at the same temperature.</statement>
+        <rationale>Local model temperature sensitivity differs from cloud models; the same temperature setting produces more varied outputs locally.</rationale>
+      </rule>
+    </rules>
+
+    <see-also>
+      <link href="https://ollama.com/blog/structured-outputs"/>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="prompt-engineering-production"/>
+      <ref slug="ollama-tool-calling"/>
+    </see-also>
+  </content>
+</methodology>
