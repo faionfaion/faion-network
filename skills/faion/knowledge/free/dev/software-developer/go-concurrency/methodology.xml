@@ -20,6 +20,8 @@
     <summary>Canonical Go goroutine and concurrency patterns: worker pool, rate limiter, semaphore, RWMutex cache, and sync.Once. The invariant: every goroutine must have an explicit exit condition (context.Done() or channel close), and the goroutine that writes to a channel is the one that closes it. Tests must pass go test -race.</summary>
     <why>
       <p>Agents default to unbounded for { go work() } patterns, producing goroutine leaks invisible until production load. Missing context propagation and WaitGroup.Add-before-go misplacement are the most common silent correctness bugs. The race detector is mandatory but frequently skipped. These patterns encode the channel-ownership rule and leak-prevention idioms explicitly.</p>
+      <p>Go's concurrency primitives (goroutines, channels, sync.WaitGroup) are low-level building blocks. Without structure, they lead to subtle bugs: goroutine leaks that accumulate under load, data races on shared maps, deadlocks in channel selects, and phantom goroutines lingering after cancellation. These patterns are proven solutions tested in production systems at scale. They enforce the invariants (channel ownership, explicit exit conditions, context propagation) that separate correct concurrent code from leaky, racy, deadlock-prone code.</p>
+      <p>The worker pool pattern in particular solves the "how do I run X jobs on N workers" problem that appears in every backend service: batch processing, API fan-out, queue consumers. The semaphore pattern bounds concurrency to database pool size or API rate limit. The race detector is the only tool that catches data races reliably; skipping it is equivalent to not testing at all for concurrency bugs.</p>
     </why>
     <when-to-use>
       <list>
@@ -220,6 +222,28 @@ func (rl *RateLimiter) Allow(ctx context.Context) error {
       <rule>
         <statement>In select statements, always include a ctx.Done() case to ensure graceful cancellation. A select without ctx.Done() can block indefinitely even when the parent context is cancelled.</statement>
         <rationale>Context propagation is the standard Go idiom for cancellation. Every concurrent operation must respect it.</rationale>
+      </rule>
+    </section>
+    <section name="channel-deadlock-antipatterns">
+      <antipattern>
+        <description>Closing a channel from a goroutine other than the writer: producer sends on ch, but a separate cleanup goroutine closes(ch). If the producer is blocked on send, the receiver gets a panic.</description>
+        <reason>Closing a send-on-closed-channel causes panic. Only the sender can close. If cleanup needs to stop the producer, use a separate done channel: close(done), and the producer selects on done to exit.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Unbuffered channel without a receiver: ch := make(chan int); go func() { ch &lt;- 1; ch &lt;- 2 }() (but main never reads from ch). The goroutine blocks forever on the first send.</description>
+        <reason>An unbuffered send blocks until there is a receiver. If no goroutine is receiving, the sender leaks. Use a buffered channel if the producer outpaces consumers, or ensure a receiver drains the channel.</reason>
+      </antipattern>
+    </section>
+    <section name="testing-concurrency">
+      <rule>
+        <statement>Run all concurrency tests with go test -race and -count=10 (or -count=100 for critical code). The race detector is not deterministic; repeated runs surface data races that may not appear on the first run. Never skip -race for concurrency code, even if it "just works" locally.</statement>
+        <rationale>Data races depend on timing and scheduling. A test passes without -race 100 times, then fails in production. The -count flag reruns the test, increasing the chance of race detection. This is the only reliable way to verify concurrent code is correct.</rationale>
+      </rule>
+    </section>
+    <section name="leak-detector-usage">
+      <rule>
+        <statement>For packages with concurrency primitives (channels, goroutines, syncs), add a TestMain that calls goleak.VerifyTestMain(). This detects goroutine leaks at the end of every test run, ensuring no forgotten goroutines linger.</statement>
+        <rationale>Goroutine leaks are invisible in unit tests but compound in production, eventually exhausting memory. goleak catches them early, before they reach production.</rationale>
       </rule>
     </section>
     <templates>
