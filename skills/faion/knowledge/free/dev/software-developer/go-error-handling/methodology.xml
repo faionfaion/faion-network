@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Custom AppError type with Code, Message, HTTPStatus, and wrapped Err fields, plus HTTP middleware that translates *AppError into structured JSON responses. Wrap external errors into AppError at repository boundaries; use errors.As (never type assertions) to unwrap at the HTTP layer.</summary>
+    <summary>Typed AppError with Code, Message, HTTPStatus, Err. HTTP middleware translates to JSON. Wrap at repo boundaries. Use errors.As, never type assertions.</summary>
     <tags>
       <tag>go</tag>
       <tag>error-handling</tag>
@@ -17,7 +17,7 @@
   </metadata>
   <content>
     <title>Go Error Handling</title>
-    <summary>Custom AppError type with Code, Message, HTTPStatus, and wrapped Err fields, plus HTTP middleware that translates *AppError into structured JSON responses. Wrap external errors into AppError at repository boundaries; use errors.As (never type assertions) to unwrap at the HTTP layer.</summary>
+    <summary>Typed AppError with Code, Message, HTTPStatus, Err. HTTP middleware translates to JSON. Wrap at repo boundaries. Use errors.As, never type assertions.</summary>
     <why>
       <p>Go's built-in errors carry no HTTP status, machine-readable code, or structured context. Without a shared error type, each handler invents its own response shape, status mapping, and logging format. A single AppError + middleware pattern enforces consistency and lets errors.Is / errors.As work across wrapping chains.</p>
     </why>
@@ -243,6 +243,24 @@ func Wrap(h Handler) http.HandlerFunc {
       <rule>
         <statement>When wrapping an error at a higher layer, preserve the original AppError's HTTPStatus and Code when present. If an inner error is already a 404, wrapping with additional context should keep it 404, not demote it to 500.</statement>
         <rationale>HTTP status communicates the nature of the problem to clients. A not-found error is still not-found even when wrapped; changing it to 500 hides the actual issue and breaks client retry logic (e.g., 404 should not trigger exponential backoff).</rationale>
+      </rule>
+    </section>
+    <section name="agentic-workflow">
+      <rule>
+        <statement>Drive error-handling work as scaffold (apperror pkg + middleware) → fill (constructors + wrapping rules) → verify (tests that check status codes and error chains). Require agents to test both success and error paths. For external errors (DB, HTTP), explicitly test wrapping and status mapping.</statement>
+        <rationale>Error handling is often skipped in testing. Explicit requirements ensure the agent covers both happy path and failure cases.</rationale>
+      </rule>
+    </section>
+    <section name="testing-errors">
+      <rule>
+        <statement>Test error chains explicitly: verify that errors.Is and errors.As work correctly across wrapped errors. Test that driver errors (sql.ErrNoRows) are mapped to the right AppError. Test that HTTP status codes match the AppError type.</statement>
+        <rationale>Silent failures in error handling go unnoticed until production. Comprehensive error tests catch wrapping and mapping bugs early.</rationale>
+      </rule>
+    </section>
+    <section name="logging-errors">
+      <rule>
+        <statement>Use structured logging (slog, zap, zerolog) with AppError fields. Log the original error (err) for debugging, not just the message. For 5xx errors, always include stack traces or request context for production debugging.</statement>
+        <rationale>Unstructured error logs are hard to parse at scale. Structured logs with AppError fields enable aggregation and alerting. Original errors enable root-cause analysis.</rationale>
       </rule>
     </section>
     <templates>

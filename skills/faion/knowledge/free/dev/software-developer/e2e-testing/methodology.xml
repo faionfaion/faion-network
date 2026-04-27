@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>End-to-end testing with Playwright validates complete user journeys through the full application stack. Use Page Object Model, select via data-testid/ARIA only, seed test data via API, limit critical-path suite to less than 50 tests.</summary>
+    <summary>Playwright E2E validates critical user journeys. Page Object Model, data-testid selectors only, API-based seeding, less than 50 critical tests. Smoke suite gates production deploys.</summary>
     <tags>
       <tag>playwright</tag>
       <tag>e2e</tag>
@@ -205,6 +205,30 @@ await page.route('https://api.stripe.com/**', async (route) => {
         <description>Trace ZIP files committed to git or stored in public CI artifacts without scrubbing.</description>
         <reason>Playwright traces capture network requests including auth tokens. Scrub via `playwright.config.ts` `recordHar` filters or add artifacts to `.gitignore`.</reason>
       </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Decompose E2E into three phases handled by separate subagents: (1) a journey-mapper subagent reads product specs (spec.md, Linear ticket, Jira) and emits a list of user journeys with success criteria; (2) a page-object-author subagent writes/updates page objects in `e2e/pages/` (one POM per route, methods named after user actions); (3) a spec-writer subagent generates `.spec.ts` files using fixtures + POM + API helpers. Run `npx playwright test --reporter=list` and feed failures back to a flake-triage subagent that classifies each failure as: real bug / selector drift / timing / data pollution / infra. Persist artifacts (`test-results/`, traces, videos) for human review on first failure; auto-retry only on infra class.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (quality gate runs `npm run test:e2e` after impl tasks; blocks merge if smoke fails), a purpose-built playwright-trace-agent (consumes `trace.zip`, reports the failing locator + last network call + DOM diff vs prior run), a journey-mapper-agent (converts BA acceptance criteria into a list of `test('...', ...)` stubs and stable `data-testid` proposals), password-scrubber-agent (scrub `.env.test`, `playwright.config.ts`, fixture credentials before commit).</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One POM per route. `LoginPage` → `/login`, `DashboardPage` → `/dashboard`. Methods named after user intent (`login()`, `logout()`), not DOM events (`clickButton()`).</item>
+        <item>`data-testid` is the only stable selector. Discipline at code-review time; agents otherwise default to text matchers that break on i18n.</item>
+        <item>Seed/tear-down via API, never via UI. UI seeding is slow + flaky and tests something other than the SUT.</item>
+        <item>Reuse `storageState` for authenticated tests. Log in once in global setup; saved cookies for the rest. Refresh if 401 leaks.</item>
+        <item>Tag tests (`@smoke`, `@critical`, `@nightly`). Drives deploy gates.</item>
+        <item>Mock third-party calls at the network boundary (`page.route('https://api.stripe.com/**', ...)`); never depend on live SaaS in CI.</item>
+        <item>Trace + video on first retry only. Cheaper CI, still recoverable on failure.</item>
+        <item>Pin browser version in CI (`npx playwright install --with-deps chromium@1.40.0`) to match local snapshot baselines.</item>
+        <item>Fail fast on console errors. Hook `page.on('pageerror', ...)` and `page.on('console', ...)` to surface JS errors as test failures.</item>
+        <item>Limit suite to less than 50 critical-path tests + a separate nightly suite. E2E is for journeys, not coverage.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>npx playwright test — run E2E suite. npx playwright codegen — record interactions → starter spec. npx playwright show-trace — inspect failed test traces. npx playwright install — install browser binaries. Cypress — alt runner; better dev DX, single-tab. WebdriverIO — cross-browser, mobile-friendly. lighthouse-ci — perf E2E gate. axe-playwright — a11y inside E2E. Percy / chromatic — visual regression as a service. BrowserStack / Sauce Labs — real-device cloud. Microsoft Playwright Service — hosted Playwright workers. Cypress Cloud — test recording + parallel orchestration. Allure / ReportPortal — rich reporting + ML-based flaky test detection. Datadog Synthetics — production smoke tests. Checkly — Playwright-as-a-monitor; cron-driven prod E2E.</p>
     </section>
 
     <templates>

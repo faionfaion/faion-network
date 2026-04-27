@@ -174,6 +174,54 @@ func increment(key string) {
       </rule>
       <reference path="templates/ci-race.sh">CI script enforcing race detector and staticcheck</reference>
     </section>
+    <section name="rate-limiter-token-bucket">
+      <rule>
+        <statement>For rate limiting, use a token-bucket pattern with a buffered channel sized to the rate limit. Tokens refill at a fixed interval via a ticker.</statement>
+        <rationale>Token bucket allows bursts up to the buffer size while maintaining a steady-state rate. The ticker ensures fairness across callers.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+type RateLimiter struct {
+    tokens chan struct{}
+    ticker *time.Ticker
+}
+
+func NewRateLimiter(rps int) *RateLimiter {
+    rl := &RateLimiter{
+        tokens: make(chan struct{}, rps),
+        ticker: time.NewTicker(time.Second / time.Duration(rps)),
+    }
+    for i := 0; i < rps; i++ {
+        rl.tokens <- struct{}{}
+    }
+    go func() {
+        for range rl.ticker.C {
+            select {
+            case rl.tokens <- struct{}{}:
+            default:
+            }
+        }
+    }()
+    return rl
+}
+
+func (rl *RateLimiter) Allow(ctx context.Context) error {
+    select {
+    case <-rl.tokens:
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="select-patterns">
+      <rule>
+        <statement>In select statements, always include a ctx.Done() case to ensure graceful cancellation. A select without ctx.Done() can block indefinitely even when the parent context is cancelled.</statement>
+        <rationale>Context propagation is the standard Go idiom for cancellation. Every concurrent operation must respect it.</rationale>
+      </rule>
+    </section>
     <templates>
       <template path="templates/goleak-test-main.go" purpose="TestMain with goleak.VerifyTestMain for leak detection in every concurrency-heavy package."/>
       <template path="templates/ci-race.sh" purpose="CI script: go vet, go test -race -count=3, staticcheck."/>
