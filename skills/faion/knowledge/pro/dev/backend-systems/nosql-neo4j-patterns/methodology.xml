@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nosql-neo4j-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Neo4j graph database patterns: node and relationship modeling, Cypher query patterns for recommendations, social graphs, shortest path, and hop-depth cost management.</summary>
+    <tags>
+      <tag>neo4j</tag>
+      <tag>graph-database</tag>
+      <tag>cypher</tag>
+      <tag>recommendations</tag>
+      <tag>social-graph</tag>
+    </tags>
+    <category>nosql</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>neo4j</framework>
+    </frameworks>
+    <related>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+      <ref slug="database-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Neo4j Graph Database Patterns</title>
+
+    <summary>Neo4j stores data as nodes (entities) and relationships (typed, directed edges with properties). Use graph databases when the query value is in the connections — social networks, recommendation engines, fraud detection, knowledge graphs. Shape queries with LIMIT and hop-depth caps; deep traversals (&gt;5 hops) without cost shaping cause exponential blowup. Use EXPLAIN/PROFILE before deploying any traversal query.</summary>
+
+    <why>
+      <p>Relational databases express relationships as foreign keys and retrieve them with JOINs. At network depth &gt;2 (friends-of-friends-of-friends), the JOIN cost grows exponentially because the database must load and hash-join progressively larger intermediate result sets. Neo4j represents each relationship as a direct pointer between nodes; traversal follows pointers in O(1) per hop rather than scanning join tables. This makes graph databases 10-1000x faster than relational stores for deep traversal queries at the cost of being poor at aggregate analytical queries.</p>
+      <p>The primary failure mode in Neo4j is unbounded traversal: a Cypher query with no hop-depth limit or no LIMIT clause can traverse the entire graph, exhaust JVM heap, and crash the instance. Every traversal query must declare a maximum hop depth (*..N) and a LIMIT clause.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Social network features: friends, followers, mutual connections, degrees of separation.</item>
+        <item>Collaborative filtering: "users who bought X also bought Y" recommendation engines.</item>
+        <item>Fraud detection: connected accounts, shared identifiers, ring patterns across transactions.</item>
+        <item>Knowledge graphs, ontologies, and entity resolution where relationships carry semantic meaning.</item>
+        <item>Path-finding problems: shortest path, all paths, route optimization over a graph topology.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tabular or document-centric data where entities are not connected — MongoDB or PostgreSQL is simpler.</item>
+        <item>High-volume write workloads (millions of writes/second) — Neo4j's write throughput is lower than Cassandra or DynamoDB for simple key-value patterns.</item>
+        <item>Analytical aggregations over large datasets — graph databases are optimized for traversal, not GROUP BY + aggregation at scale; use a warehouse.</item>
+        <item>When traversal depth exceeds 5 hops on a dense graph — query cost grows superlinearly; apply algorithmic pruning or switch to a specialized graph analytics engine (GraphX, Kuzu).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-modeling">
+      <rule testable="true">
+        <statement>Model domain entities as labeled nodes and domain relationships as typed, directed relationships with properties. Node labels (User, Product, Order) are categories. Relationship types (PURCHASED, FRIEND, VIEWED) describe the semantic connection. Properties on relationships (date, quantity, weight) capture the context of the connection. Do NOT store connection data as node properties — it belongs on the relationship.</statement>
+        <rationale>Neo4j traversal efficiency comes from relationship pointers. Storing connection metadata as node properties (e.g., a JSON list of friend IDs on the User node) breaks pointer traversal and reintroduces the join problem. The graph model's power comes from relationships being first-class citizens with their own properties and indexes.</rationale>
+      </rule>
+
+      <example type="good" title="Create nodes and relationships with Cypher">
+        <code lang="cypher"><![CDATA[
+// Create nodes and relationships
+CREATE (u:User {id: '123', name: 'John', email: 'john@example.com'})
+CREATE (p:Product {id: 'prod-1', name: 'Widget', price: 29.99})
+CREATE (u)-[:PURCHASED {date: date('2024-01-15'), quantity: 2}]->(p)
+]]></code>
+        <note>PURCHASED is a directed relationship from User to Product with date and quantity as relationship properties — not stored on either node.</note>
+      </example>
+    </section>
+
+    <section name="traversal-patterns">
+      <rule testable="true">
+        <statement>Every Cypher traversal query MUST specify a maximum hop depth using the *..N syntax (e.g., [:FRIEND*..3]) and MUST include a LIMIT clause on the result. Before deploying any traversal query, run EXPLAIN and then PROFILE on a representative sample of the graph to verify the estimated rows and actual db hits are within acceptable bounds. Queries with db hits &gt; 10x the expected result size need optimization.</statement>
+        <rationale>An unbounded traversal (:FRIEND*) on a graph with high-degree nodes (celebrities, hubs) can expand to millions of paths before the LIMIT is applied — the expansion happens before filtering. The *..N bound prevents the query from following the long tail of the power-law degree distribution. PROFILE measures actual database hits, not estimates.</rationale>
+      </rule>
+
+      <example type="good" title="Bounded traversal: products purchased by friends">
+        <code lang="cypher"><![CDATA[
+// Find products purchased by user's friends (1 hop)
+// NOT purchased by the user themselves
+MATCH (user:User {id: '123'})-[:FRIEND]->(friend:User)-[:PURCHASED]->(product:Product)
+WHERE NOT (user)-[:PURCHASED]->(product)
+RETURN DISTINCT product.name, COUNT(friend) as friend_count
+ORDER BY friend_count DESC
+LIMIT 10
+]]></code>
+        <note>Single hop traversal: user → friend → product. DISTINCT prevents the same product appearing once per friend. LIMIT 10 caps the result. The WHERE NOT clause filters products the user already owns.</note>
+      </example>
+
+      <example type="good" title="Collaborative filtering: co-purchase recommendation">
+        <code lang="cypher"><![CDATA[
+// Recommendation engine: Users who bought X also bought Y
+MATCH (u:User)-[:PURCHASED]->(p1:Product {id: 'prod-1'})
+MATCH (u)-[:PURCHASED]->(p2:Product)
+WHERE p1 <> p2
+RETURN p2.name, COUNT(*) as co_purchases
+ORDER BY co_purchases DESC
+LIMIT 5
+]]></code>
+        <note>Two-hop pattern: product → user → other product. COUNT(*) aggregates how many shared buyers link prod-1 to p2. LIMIT 5 prevents the result from materializing the full co-purchase graph.</note>
+      </example>
+
+      <example type="good" title="Shortest path with hop cap">
+        <code lang="cypher"><![CDATA[
+// Shortest path between two users up to 6 hops (6 degrees of separation)
+MATCH path = shortestPath(
+    (a:User {id: '123'})-[:FRIEND*..6]-(b:User {id: '456'})
+)
+RETURN path
+]]></code>
+        <note>*..6 caps the search at 6 hops. Without the cap, shortestPath on a dense social graph with millions of nodes will time out. shortestPath uses BFS internally and returns the first path found.</note>
+      </example>
+
+      <example type="bad" title="Unbounded traversal — do not do this">
+        <code lang="cypher"><![CDATA[
+// DO NOT run unbounded traversals in production
+MATCH (u:User {id: '123'})-[:FRIEND*]->(other:User)
+RETURN other.name
+-- No hop limit, no LIMIT clause.
+-- On a 1M-node graph with average degree 150,
+-- this can expand to billions of paths before returning.
+]]></code>
+        <note>Unbounded [:FRIEND*] with no hop cap will exhaust Neo4j's JVM heap on any graph with super-connector nodes (high-degree hubs). Always use *..N.</note>
+      </example>
+    </section>
+
+    <section name="indexes-and-constraints">
+      <rule testable="true">
+        <statement>Create node property indexes (CREATE INDEX) on every property used in WHERE clauses that filter by node label and property value. Create uniqueness constraints (CREATE CONSTRAINT) on node properties that must be globally unique (user_id, email, product_id). Without indexes, node lookups by property require full label scans.</statement>
+        <rationale>Neo4j label scans (without an index) iterate over all nodes with a given label. For a User label with 10M nodes, a WHERE u.email = '...' without an index scans all 10M users. Indexes convert this to O(log N) lookup. Uniqueness constraints create an implicit index and prevent duplicate data at the database level.</rationale>
+      </rule>
+
+      <example type="good" title="Index and constraint creation">
+        <code lang="cypher"><![CDATA[
+// Uniqueness constraint (implies an index)
+CREATE CONSTRAINT user_id_unique FOR (u:User) REQUIRE u.id IS UNIQUE;
+CREATE CONSTRAINT product_id_unique FOR (p:Product) REQUIRE p.id IS UNIQUE;
+
+// Regular index for lookup by non-unique property
+CREATE INDEX user_email_index FOR (u:User) ON (u.email);
+
+// Composite index for queries filtering on multiple properties
+CREATE INDEX order_status_date FOR (o:Order) ON (o.status, o.created_date);
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM mistakes when generating Neo4j schemas and Cypher queries:</p>
+      <list>
+        <item>Agents omit hop-depth bounds on MATCH patterns involving variable-length relationships. Add "always specify *..N with a reasonable max depth" to the system prompt and treat any unbounded traversal as a blocking review finding.</item>
+        <item>Agents forget LIMIT clauses on traversal queries. LIMIT must appear before ORDER BY in the RETURN clause to avoid materializing the full result set before sorting.</item>
+        <item>Agents model relationships as node properties (e.g., storing friend_ids as an array on the User node) — this defeats graph traversal and reintroduces join-like scans. Require relationships to be first-class graph edges.</item>
+        <item>Agents use Neo4j for high-write workloads that would be better served by Cassandra or DynamoDB. Graph databases excel at traversal, not sustained high-volume writes.</item>
+        <item>Agents do not run PROFILE on generated queries. Require PROFILE output as part of the deliverable for any non-trivial traversal query before it is merged.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Model entities as labeled nodes and connections as typed, directed relationships with properties.</check>
+      <check>Store connection metadata on relationships, not on node properties.</check>
+      <check>Add uniqueness constraints on globally unique node properties (id, email).</check>
+      <check>Create property indexes on all node properties used in WHERE filters.</check>
+      <check>Every variable-length traversal MUST specify *..N maximum hop depth.</check>
+      <check>Every traversal query MUST include a LIMIT clause.</check>
+      <check>Run EXPLAIN then PROFILE on every traversal query before deploying.</check>
+      <check>Reject any query with db hits &gt; 10x the expected result size without documented justification.</check>
+      <check>Cap deeply connected hub nodes (celebrities) with relationship-type filters to prevent super-connector explosion.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://neo4j.com/docs/getting-started/data-modeling/"/>
+      <link href="https://neo4j.com/docs/cypher-manual/current/introduction/"/>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+    </see-also>
+  </content>
+</methodology>
