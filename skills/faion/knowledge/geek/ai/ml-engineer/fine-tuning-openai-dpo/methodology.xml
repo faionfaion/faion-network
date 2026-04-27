@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-dpo">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Direct Preference Optimization for OpenAI models: preference pairs format, DPO job configuration, beta parameter, alignment use cases, and gotchas.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>openai</tag>
+      <tag>dpo</tag>
+      <tag>alignment</tag>
+      <tag>preference-optimization</tag>
+    </tags>
+    <category>ml</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-data-prep"/>
+      <ref slug="fine-tuning-openai-eval"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>OpenAI Direct Preference Optimization (DPO)</title>
+
+    <summary>Direct Preference Optimization (DPO) trains OpenAI models on preference pairs — a preferred response and a non-preferred response for the same input — to align model behavior to subjective criteria like tone, style, safety, or brand voice. DPO is applied after SFT when the optimization target is subjective rather than a clear correct answer.</summary>
+
+    <why>
+      <p>SFT optimizes toward correct answers, but many real-world tasks have no single correct answer — they require alignment to preferences (tone, formality, verbosity, safety guardrails). DPO directly trains the model to score the preferred response higher than the non-preferred response using a contrastive loss, without requiring a separate reward model as in RLHF.</p>
+      <p>DPO is supported on gpt-4.1, gpt-4.1-mini, and gpt-4.1-nano. The beta parameter controls how far the fine-tuned model can drift from the SFT reference model — lower beta = more drift allowed.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Subjective preferences: tone, formality, brand voice, response style — where no single output is "correct".</item>
+        <item>Safety refinements: teach the model to prefer cautious, policy-compliant responses over direct but unsafe ones.</item>
+        <item>After SFT: DPO is most effective when applied on top of an already SFT-tuned model, not from base.</item>
+        <item>Output quality improvement when human raters reliably prefer one response over another.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Clear correct answers exist — use SFT instead; DPO is for subjective alignment, not factual accuracy.</item>
+        <item>Fewer than 50 quality preference pairs — generating good non-preferred responses is labor-intensive and DPO degrades with noisy pairs.</item>
+        <item>Models other than gpt-4.1/gpt-4.1-mini/gpt-4.1-nano — DPO is not supported on gpt-4o family.</item>
+        <item>Starting from a base model without SFT — DPO on base models produces unstable results; always SFT first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-format">
+      <p>DPO training data is JSONL with three required keys per line: input, preferred_output, non_preferred_output. Each is a list of message objects.</p>
+      <rule>
+        <statement>DPO training examples MUST have three keys: "input" (list of user/system messages), "preferred_output" (list with one assistant message), "non_preferred_output" (list with one assistant message). The non-preferred response MUST be realistic and of reasonable quality — not obviously wrong — so the model learns subtle preference distinctions.</statement>
+        <rationale>DPO loss is contrastive: it requires the model to discriminate between two plausible responses. If non-preferred responses are obviously bad (nonsense, factually wrong), the signal is trivial and the model learns nothing about the target preference dimension. Generate non-preferred responses from the base model rather than manually to ensure realistic negatives.</rationale>
+      </rule>
+      <example type="good" title="DPO JSONL — tone and style alignment">
+        <code lang="jsonl"><![CDATA[{"input": [{"role": "user", "content": "Summarize this article about climate change in 2 sentences."}], "preferred_output": [{"role": "assistant", "content": "Global temperatures rose 1.2C above pre-industrial levels in 2024, driven by record fossil fuel emissions. Scientists warn that without immediate action, irreversible tipping points may be reached within a decade."}], "non_preferred_output": [{"role": "assistant", "content": "Climate change is bad and getting worse. We need to do something about it soon."}]}
+{"input": [{"role": "user", "content": "Write a professional email declining a meeting request."}], "preferred_output": [{"role": "assistant", "content": "Subject: Re: Meeting Request - March 15\n\nHi Sarah,\n\nThank you for thinking of me for this discussion. Unfortunately, I have a conflict on March 15 that I cannot reschedule.\n\nWould any of these alternatives work?\n- March 17, 2-4 PM\n- March 18, 10 AM-12 PM\n\nAlternatively, I'm happy to provide input via email if that would be helpful.\n\nBest regards,\nJohn"}], "non_preferred_output": [{"role": "assistant", "content": "Hi,\n\nCan't make the meeting on the 15th. Maybe another time?\n\nThanks"}]}]]></code>
+      </example>
+      <example type="bad" title="DPO with obviously wrong non-preferred responses">
+        <code lang="jsonl"><![CDATA[{"input": [{"role": "user", "content": "What is 2+2?"}], "preferred_output": [{"role": "assistant", "content": "2 + 2 equals 4."}], "non_preferred_output": [{"role": "assistant", "content": "asdf random garbage"}]}]]></code>
+        <note>The non-preferred response is obviously nonsense. DPO learns nothing useful — use base model outputs as non-preferred, not fabricated garbage.</note>
+      </example>
+    </section>
+
+    <section name="dpo-job-configuration">
+      <p>DPO jobs use the same OpenAI fine-tuning API as SFT, but with a method object specifying type "dpo" and the beta hyperparameter.</p>
+      <rule>
+        <statement>Set DPO beta in the range 0.1-0.5. Use 0.1 as the default starting point. Lower beta allows more drift from the reference model; higher beta constrains drift. Validate that the fine-tuned model has not regressed on SFT-quality tasks before deploying.</statement>
+        <rationale>Beta controls the KL divergence penalty between the fine-tuned and reference model. Too low = model forgets SFT skills while over-optimizing for preferences. Too high = model barely changes. Start at 0.1 and adjust based on eval results.</rationale>
+      </rule>
+      <example type="good" title="Creating a DPO fine-tuning job">
+        <code lang="python"><![CDATA[from openai import OpenAI
+import json
+
+client = OpenAI()
+
+# Step 1: Prepare DPO data
+dpo_data = [
+    {
+        "input": [
+            {"role": "user", "content": "Explain quantum computing simply."}
+        ],
+        "preferred_output": [
+            {"role": "assistant", "content": "Quantum computing uses quantum bits (qubits) that can be 0, 1, or both at once (superposition). This allows quantum computers to process many possibilities simultaneously, making them powerful for specific problems like cryptography and drug discovery. Think of it like checking all paths in a maze at once instead of one at a time."}
+        ],
+        "non_preferred_output": [
+            {"role": "assistant", "content": "Quantum computing is a type of computing that uses quantum mechanics principles like superposition and entanglement to perform calculations. It's very complex and involves qubits instead of regular bits."}
+        ]
+    },
+    # Add more preference pairs...
+]
+
+# Step 2: Save and upload
+with open("dpo_data.jsonl", "w") as f:
+    for example in dpo_data:
+        f.write(json.dumps(example) + "\n")
+
+with open("dpo_data.jsonl", "rb") as f:
+    training_file = client.files.create(file=f, purpose="fine-tune")
+
+# Step 3: Create DPO job
+job = client.fine_tuning.jobs.create(
+    training_file=training_file.id,
+    model="gpt-4.1-mini-2025-04-14",
+    method={
+        "type": "dpo",
+        "dpo": {
+            "hyperparameters": {
+                "beta": 0.1  # Controls drift from reference model (0.1-0.5)
+            }
+        }
+    },
+    suffix="dpo-aligned"
+)
+
+print(f"DPO Job ID: {job.id}")]]></code>
+      </example>
+    </section>
+
+    <section name="dpo-data-generation">
+      <p>Generating high-quality DPO pairs is the primary challenge. The recommended approach is to use the base model (or SFT model) to generate non-preferred responses rather than manually writing them.</p>
+      <list>
+        <item>Collect user queries that represent the target preference dimension (tone, style, safety).</item>
+        <item>Generate "preferred" responses manually or from a reference model with explicit style instructions.</item>
+        <item>Generate "non-preferred" responses from the base model (without style instructions) to get realistic but weaker outputs.</item>
+        <item>Review pairs for contrast — the difference should reflect the preference dimension, not quality level.</item>
+        <item>Aim for 50-200 pairs minimum. DPO data is expensive to produce — prioritize quality over quantity.</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts-dpo">
+      <p>Prompt for generating DPO preference pairs via LLM:</p>
+      <prompt purpose="generate-dpo-pairs"><![CDATA[Generate preference pairs for DPO training on this task.
+
+Task: {task_description}
+
+Style Guidelines:
+{style_guidelines}
+
+For each scenario, generate:
+- A user query
+- A preferred (better) response
+- A non-preferred (worse but not terrible) response
+
+The difference should be in: {preference_dimension}
+(e.g., tone, detail level, format, helpfulness)
+
+Return JSON array:
+[
+  {
+    "user": "User query",
+    "preferred": "Better response",
+    "non_preferred": "Worse response",
+    "difference": "What makes preferred better"
+  },
+  ...
+]]]></prompt>
+    </section>
+
+    <antipattern>
+      <description>Applying DPO directly to a base model without SFT first.</description>
+      <reason>DPO requires a stable reference model. Base models without SFT produce erratic DPO results — the model has no consistent behavioral baseline to drift from. Always SFT first on the task, then apply DPO for preference alignment.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using manually fabricated non-preferred responses that are obviously wrong.</description>
+      <reason>DPO learns from the contrast between preferred and non-preferred. If non-preferred responses are nonsense or factually wrong, the model learns a trivial distinction (coherent vs incoherent) rather than the intended preference dimension. Generate non-preferred from the base model to ensure realistic negatives.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Setting beta too low (below 0.05) without regression testing.</description>
+      <reason>Very low beta allows the DPO model to drift far from the SFT reference. This improves preference metrics but can catastrophically degrade SFT-quality tasks (factual accuracy, format compliance). Always eval on both preference targets and SFT-quality tasks before deploying.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-eval"/>
+      <link href="https://platform.openai.com/docs/guides/direct-preference-optimization"/>
+      <link href="https://cookbook.openai.com/examples/fine_tuning_direct_preference_optimization_guide"/>
+    </see-also>
+  </content>
+</methodology>
