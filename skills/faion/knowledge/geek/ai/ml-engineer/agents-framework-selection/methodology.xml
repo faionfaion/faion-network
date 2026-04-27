@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents-framework-selection">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Select the right Python agent framework (LangGraph, CrewAI, AutoGen, LlamaIndex, DSPy) based on task type, production requirements, and team constraints. Includes observability services.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>langgraph</tag>
+      <tag>crewai</tag>
+      <tag>autogen</tag>
+      <tag>framework-selection</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="agents-react-pattern"/>
+      <ref slug="multi-agent-systems"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>langchain</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Agent Framework Selection — LangGraph, CrewAI, AutoGen, DSPy</title>
+
+    <summary>The 2025-2026 Python agent ecosystem has consolidated around six frameworks. LangGraph is the production default for state-machine workflows with persistence. CrewAI is the fastest path to role-based multi-agent teams. AutoGen handles conversational multi-agent research. DSPy is for teams that need automatic prompt optimization. Framework lock-in is real — LangGraph state schemas and CrewAI role configs are not portable across frameworks; choose deliberately.</summary>
+
+    <why>
+      <p>The AI agents market grew from $5.4B (2024) to $7.6B (2025) and is projected to reach $50.3B by 2030 (45.8% CAGR). Gartner reported a 1,445% surge in multi-agent system inquiries from Q1 2024 to Q2 2025. Framework choice at the start of a project determines debugging ergonomics, vendor lock-in, persistence capabilities, and the effort required to add new patterns. Switching frameworks after 50% implementation is expensive.</p>
+      <p>Framework lock-in is the primary risk: LangGraph state schemas, CrewAI role configs, and AutoGen conversation patterns are not portable. Evaluate based on the target production pattern (state machine vs role-based vs conversational) before writing any agent code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new agent project and needing to select the framework before writing implementation code.</item>
+        <item>Evaluating whether to migrate from an ad-hoc LangChain loop to a structured framework.</item>
+        <item>Adding a multi-agent pattern to an existing single-agent system.</item>
+        <item>Selecting observability tooling for agent debugging and evaluation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Already committed to a framework — switching mid-project is more expensive than finishing.</item>
+        <item>Simple single LLM call with no tools — no framework needed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="framework-comparison">
+      <p>Framework selection decision table based on the primary production use case:</p>
+
+      <list>
+        <item>LangGraph: Production workflows, state machines, persistence. Best for: stateful pipelines, checkpointing, resumable workflows, complex conditional routing. Install: pip install langgraph. Docs: langchain-ai.github.io/langgraph.</item>
+        <item>CrewAI: Role-based multi-agent teams. Best for: tasks naturally mapped to specialist roles (researcher, coder, reviewer), rapid multi-agent prototyping. Install: pip install crewai. Docs: crewai.com.</item>
+        <item>AutoGen: Conversational multi-agent, research workloads. Best for: agents that need to debate, negotiate, or validate each other's outputs through natural conversation. Install: pip install pyautogen. Docs: microsoft.github.io/autogen.</item>
+        <item>LlamaIndex: Data-heavy agents, RAG integration. Best for: agents that need deep integration with document retrieval, knowledge graphs, and structured data. Install: pip install llama-index. Docs: docs.llamaindex.ai.</item>
+        <item>DSPy: Automatic prompt optimization for agents. Best for: teams that want the framework to optimize prompts automatically rather than handcrafting them. Install: pip install dspy-ai. Docs: dspy.ai.</item>
+        <item>smolagents: HuggingFace lightweight agent framework. Best for: minimal-dependency agents, local model integration, research experiments. Install: pip install smolagents. Docs: github.com/huggingface/smolagents.</item>
+        <item>controlflow: Pythonic agent orchestration (Prefect-style). Best for: teams already using Prefect, Python-first workflow definitions. Install: pip install controlflow. Docs: controlflow.ai.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>New production agent systems MUST default to LangGraph unless the primary use case is explicitly role-based multi-agent (CrewAI) or conversational debate/validation (AutoGen). LangGraph's state machine model, persistence layer, and SARIF-compatible tracing are the most mature for production debugging as of 2026.</statement>
+        <rationale>LangGraph provides explicit state schemas (TypedDict), checkpointing for crash recovery, conditional edge routing, and LangSmith tracing out of the box. These properties are hard to retrofit onto simpler frameworks as production requirements grow.</rationale>
+      </rule>
+
+      <example type="good" title="LangGraph Plan-and-Execute skeleton">
+        <code lang="python"><![CDATA[
+from typing import TypedDict, Annotated
+from langgraph.graph import StateGraph, END
+from langgraph.graph.message import add_messages
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage
+
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+    task: str
+    plan: list[str]
+    current_step: int
+    result: str
+
+def create_langgraph_agent():
+    """Create a LangGraph plan-and-execute agent."""
+    llm = ChatOpenAI(model="gpt-4o")
+
+    def planner(state: AgentState) -> AgentState:
+        task = state["task"]
+        response = llm.invoke([
+            HumanMessage(content=f"Create a 3-step plan for: {task}\nReturn each step on a new line, numbered 1-3.")
+        ])
+        plan = [line.strip() for line in response.content.split("\n") if line.strip()]
+        return {**state, "plan": plan, "current_step": 0}
+
+    def executor(state: AgentState) -> AgentState:
+        step = state["plan"][state["current_step"]]
+        response = llm.invoke([HumanMessage(content=f"Execute this step: {step}")])
+        state["messages"].append(AIMessage(content=response.content))
+        return {**state, "current_step": state["current_step"] + 1}
+
+    def should_continue(state: AgentState) -> str:
+        if state["current_step"] >= len(state["plan"]):
+            return "summarize"
+        return "execute"
+
+    def summarizer(state: AgentState) -> AgentState:
+        messages = "\n".join([m.content for m in state["messages"]])
+        response = llm.invoke([
+            HumanMessage(content=f"Summarize these results:\n{messages}\nOriginal task: {state['task']}")
+        ])
+        return {**state, "result": response.content}
+
+    graph = StateGraph(AgentState)
+    graph.add_node("planner", planner)
+    graph.add_node("executor", executor)
+    graph.add_node("summarizer", summarizer)
+    graph.set_entry_point("planner")
+    graph.add_edge("planner", "executor")
+    graph.add_conditional_edges("executor", should_continue, {"execute": "executor", "summarize": "summarizer"})
+    graph.add_edge("summarizer", END)
+    return graph.compile()
+]]></code>
+        <note>LangGraph state machine: explicit TypedDict state, conditional edges for branching, compiled graph for execution. Add recursion_limit=50 to graph.compile() to cap iterations.</note>
+      </example>
+
+      <antipattern>
+        <description>Selecting a framework based on GitHub stars or "trending" status rather than production requirements.</description>
+        <reason>Framework lock-in means a wrong choice requires significant rewrite. Evaluate on: state persistence needs, debugging ergonomics, team familiarity, and whether the framework's primary pattern (state machine / role-based / conversational) matches the target use case.</reason>
+      </antipattern>
+    </section>
+
+    <section name="observability-services">
+      <p>Agent observability is mandatory for debugging non-deterministic failures. The agent loop produces tool calls, LLM calls, and state transitions that must be logged, traced, and replayed. Two primary options in 2025-2026:</p>
+
+      <list>
+        <item>LangSmith (SaaS): Trace agent runs, debug tool calls, eval on replays. Native LangChain/LangGraph integration. Best for teams using LangGraph in production.</item>
+        <item>Langfuse (OSS/SaaS): Self-hosted tracing, agent-submittable spans via SDK. Best for teams with data residency requirements or self-hosted infrastructure.</item>
+        <item>E2B (SaaS): Sandboxed code execution for agents via REST API. Use for any agent that needs to execute generated code.</item>
+        <item>Composio (SaaS): 250+ pre-built tool integrations (GitHub, Slack, Google Workspace). Best for agents that need to integrate with many external services quickly.</item>
+        <item>Temporal (OSS): Durable workflow execution for agent crash recovery. Best for long-running agents where process restarts must not lose progress.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every production agent deployment MUST integrate at least one observability platform (LangSmith or Langfuse) from day one. Logging every tool call and LLM call with arguments and results is not optional — it is the only mechanism for debugging non-deterministic agent failures after the fact.</statement>
+        <rationale>Agent failures are non-deterministic and often occur only in production with real data. Without traces, debugging requires reproducing the exact input sequence, which is often impossible. Traces provide the full tool-call-result-state chain needed to diagnose failures post-hoc.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Framework selected based on production use case (state machine / role-based / conversational), not popularity.</check>
+      <check>Framework lock-in assessed: state schemas and role configs will not port to another framework.</check>
+      <check>LangGraph chosen for production state machines; CrewAI for role-based teams; AutoGen for conversational multi-agent.</check>
+      <check>Observability platform (LangSmith or Langfuse) configured before first production run.</check>
+      <check>Sandboxed code execution (E2B or Docker) configured if agents execute generated code.</check>
+      <check>Recursion limit set on LangGraph graph.compile() to cap iterations.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://langchain-ai.github.io/langgraph/"/>
+      <link href="https://www.crewai.com/"/>
+      <link href="https://microsoft.github.io/autogen/"/>
+      <link href="https://www.lindy.ai/blog/ai-agent-architecture"/>
+      <ref slug="agents-react-pattern"/>
+      <ref slug="multi-agent-systems"/>
+    </see-also>
+  </content>
+</methodology>
