@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="iac-patterns-composition">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Terraform composition patterns (Terramod, Landing Zone, Service Catalog, Hub-Spoke) and environment directory layouts with state isolation per environment and component.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>iac</tag>
+      <tag>composition</tag>
+      <tag>landing-zone</tag>
+      <tag>state-management</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-dry"/>
+      <ref slug="terraform-modules-composition"/>
+      <ref slug="terraform-state"/>
+    </related>
+  </metadata>
+  <content>
+    <title>IaC Composition Patterns</title>
+    <summary>Four composition patterns for structuring Terraform across multiple environments and teams: Terramod (environment definitions compose from modules), Landing Zone (self-service pre-configured environment framework), Service Catalog (vetted patterns for complex deployments), and Hub-Spoke (central shared services with isolated workloads).</summary>
+
+    <why>
+      <p>Composition is the layer above individual modules: it answers "how do environments, teams, and components share modules while remaining independently deployable." Without deliberate composition patterns, teams end up with monolithic root modules that deploy everything at once (high blast radius), or fully duplicated environment directories that drift silently. The four patterns address different organizational structures and blast-radius requirements.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multiple environments (dev/staging/prod) sharing the same module graph — use Terramod or Terragrunt composition.</item>
+        <item>Multiple teams self-provisioning standardized infrastructure — use Landing Zone or Service Catalog.</item>
+        <item>Shared networking/security services consumed by isolated workload accounts — use Hub-Spoke.</item>
+        <item>Designing state isolation boundaries before a new project starts.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-environment projects — composition patterns add directory structure overhead without benefit.</item>
+        <item>Single-team projects with 1-2 modules — direct module composition in a flat root module is simpler.</item>
+        <item>Service Catalog when teams don't have distinct infrastructure needs — standardize in modules instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="composition-patterns-overview">
+      <p>The four composition patterns and their organizational fit:</p>
+      <rule testable="true">
+        <statement>Terramod: environment root modules compose from versioned reusable modules. Each environment directory has its own main.tf that calls shared modules with environment-specific inputs. State is isolated per environment. Use for any multi-environment project.</statement>
+        <rationale>Separating environment state prevents a staging apply from affecting production state; each environment's module composition can differ (e.g., staging has fewer replicas) while sharing the same module logic.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Landing Zone: a pre-configured environment framework providing a complete, opinionated baseline (account structure, networking, IAM, logging, monitoring) that teams deploy into without manual configuration. Use when multiple teams need standardized cloud accounts.</statement>
+        <rationale>A Landing Zone moves the org's security and compliance baseline into code, so every new account starts compliant rather than requiring manual hardening.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Service Catalog: a library of vetted, org-approved Terraform patterns for complex multi-resource deployments (databases, Kubernetes clusters, message queues). Teams select catalog entries rather than authoring raw Terraform. Use when teams have heterogeneous infrastructure needs.</statement>
+        <rationale>The catalog enforces org standards (encryption, tagging, IAM) at the point of infrastructure creation; teams get velocity without compromising security.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Hub-Spoke: a central hub account/VPC provides shared services (DNS, transit gateway, logging, security tools) to spoke workload accounts/VPCs via peering or Transit Gateway. Spokes are isolated from each other. Use in multi-account architectures.</statement>
+        <rationale>Hub-Spoke reduces blast radius (a compromised spoke cannot access other spokes), centralizes shared service costs, and simplifies network routing in large organizations.</rationale>
+      </rule>
+    </section>
+
+    <section name="environment-composition">
+      <p>The standard directory layout for environment composition with state isolation:</p>
+      <example type="good" title="Multi-environment directory layout with state isolation">
+        <code lang="text"><![CDATA[infrastructure/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── backend.tf
+│   │   └── terraform.tfvars
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   ├── networking/
+│   ├── compute/
+│   └── database/
+└── shared/
+    └── providers.tf]]></code>
+      </example>
+      <p>Each environment has its own backend.tf for state isolation:</p>
+      <example type="good" title="backend.tf per environment (AWS S3 + DynamoDB)">
+        <code lang="hcl"><![CDATA[terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "project/environment/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+
+    # Assume role for state access
+    role_arn = "arn:aws:iam::ACCOUNT_ID:role/TerraformStateAccess"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="terraform.tfvars for production environment">
+        <code lang="hcl"><![CDATA[# Environment: production
+project     = "myapp"
+environment = "prod"
+region      = "us-east-1"
+
+# Networking
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+# Compute
+instance_type = "m6i.xlarge"
+min_capacity  = 2
+max_capacity  = 10
+
+# Database
+db_instance_class    = "db.r6g.xlarge"
+db_allocated_storage = 100
+
+# Feature flags
+enable_monitoring = true
+enable_backups    = true
+
+# Tags
+tags = {
+  CostCenter = "engineering"
+  Team       = "platform"
+}]]></code>
+      </example>
+    </section>
+
+    <section name="terragrunt-composition">
+      <p>Terragrunt environment composition using a root terragrunt.hcl with path-derived locals and per-module override files:</p>
+      <example type="good" title="Terragrunt environment composition — prod module call">
+        <code lang="hcl"><![CDATA[# environments/prod/terragrunt.hcl
+
+include "root" {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "${get_repo_root()}/modules/web-application"
+}
+
+inputs = {
+  project     = "myapp"
+  environment = "prod"
+
+  container_image = "myapp:${get_env("IMAGE_TAG", "latest")}"
+  desired_count   = 4
+  cpu             = 1024
+  memory          = 2048
+
+  create_database   = true
+  db_instance_class = "db.r6g.xlarge"
+}]]></code>
+      </example>
+      <example type="good" title="Root terragrunt.hcl with provider and backend generation">
+        <code lang="hcl"><![CDATA[# terragrunt.hcl (root)
+
+locals {
+  account_vars = read_terragrunt_config(find_in_parent_folders("account.hcl"))
+  region_vars  = read_terragrunt_config(find_in_parent_folders("region.hcl"))
+
+  account_id = local.account_vars.locals.account_id
+  aws_region = local.region_vars.locals.aws_region
+}
+
+generate "provider" {
+  path      = "provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<EOF
+provider "aws" {
+  region = "${local.aws_region}"
+
+  default_tags {
+    tags = {
+      ManagedBy = "terragrunt"
+    }
+  }
+}
+EOF
+}
+
+remote_state {
+  backend = "s3"
+  config = {
+    bucket         = "terraform-state-${local.account_id}"
+    key            = "${path_relative_to_include()}/terraform.tfstate"
+    region         = local.aws_region
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="state-management">
+      <p>State isolation rules for composition patterns:</p>
+      <rules>
+        <rule testable="true">
+          <statement>State MUST be isolated per environment. NEVER share a single state file across dev, staging, and prod — a corrupted or accidental apply in dev must not affect prod state.</statement>
+          <rationale>Shared state means a terraform destroy in dev can remove resources that prod depends on via remote_state data sources.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Consider state isolation per component within an environment when components have different change rates. Use terraform_remote_state data sources to share outputs across state files.</statement>
+          <rationale>A monolithic environment state file means all components must be planned together; splitting by component (networking, compute, database) reduces plan time and blast radius of a failed apply.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>State backend MUST enable encryption at rest and locking. For AWS: S3 bucket with SSE-S3 or SSE-KMS, DynamoDB table for locking. State file MUST NEVER be committed to git.</statement>
+          <rationale>State files contain resource IDs, some plaintext secrets, and the full resource graph — committing them to git is a data exposure.</rationale>
+        </rule>
+      </rules>
+      <checklist>
+        <check>Backend configured (S3, GCS, Azure Blob)</check>
+        <check>State locking enabled (DynamoDB, etc.)</check>
+        <check>Encryption at rest enabled</check>
+        <check>Access controls configured</check>
+        <check>State file never committed to git</check>
+        <check>Separate state per environment</check>
+        <check>Separate state per component (where appropriate)</check>
+        <check>Remote state data sources for cross-component dependencies</check>
+        <check>State file naming convention consistent</check>
+        <check>State migration plan documented for refactors</check>
+        <check>Backup before destructive operations</check>
+      </checklist>
+    </section>
+
+    <section name="composition-checklist">
+      <checklist>
+        <check>Dependencies passed as inputs (not hardcoded)</check>
+        <check>Data sources used for existing resources outside this module</check>
+        <check>Module outputs chain to dependent modules</check>
+        <check>Clear separation between base/core/app modules</check>
+        <check>Wrapper modules enforce org-specific defaults</check>
+        <check>Security policies embedded in wrapper modules</check>
+        <check>Compliance requirements baked into wrappers</check>
+        <check>Simplified interface exposed to consumers</check>
+        <check>Complex orchestration hidden behind facade</check>
+        <check>Multiple modules coordinated internally in facade</check>
+        <check>Sensible defaults reduce required facade inputs</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts-composition">
+      <prompt purpose="Design module composition strategy">
+        <![CDATA[Design a module composition strategy for:
+
+Application type: [WEB_APP/API/DATA_PIPELINE/etc.]
+Components needed:
+- [COMPONENT_1]
+- [COMPONENT_2]
+- [COMPONENT_3]
+
+Requirements:
+- Support multiple environments
+- Enable independent component updates
+- Minimize blast radius of changes
+- Follow dependency inversion principle
+
+Provide:
+1. Module hierarchy diagram
+2. Dependency flow
+3. Interface contracts (inputs/outputs between modules)
+4. Example composition in root module]]>
+      </prompt>
+      <prompt purpose="Design state management structure">
+        <![CDATA[Design a state management strategy for:
+
+Project: [PROJECT_NAME]
+Environments: [dev, staging, prod]
+Components: [LIST_COMPONENTS]
+Teams: [TEAM_STRUCTURE]
+
+Consider:
+1. State isolation (per-env, per-component, or both?)
+2. Remote backend configuration
+3. Access control (who can modify what?)
+4. State locking
+5. Blast radius minimization
+
+Provide directory structure and backend configuration.]]>
+      </prompt>
+      <prompt purpose="Plan state migration">
+        <![CDATA[Plan a state migration for:
+
+Current state: [DESCRIBE_CURRENT_STATE_STRUCTURE]
+Target state: [DESCRIBE_TARGET_STATE_STRUCTURE]
+
+Changes:
+- [CHANGE_1]
+- [CHANGE_2]
+
+Provide:
+1. Pre-migration checklist
+2. State manipulation commands needed
+3. Verification steps
+4. Rollback plan
+5. Impact on dependent resources]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-dry"/>
+      <ref slug="iac-patterns-testing"/>
+      <ref slug="terraform-modules-composition"/>
+      <ref slug="terraform-state"/>
+      <link href="https://developer.hashicorp.com/terraform/language/modules/develop/composition"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/recommended-patterns"/>
+      <link href="https://spacelift.io/blog/iac-architecture-patterns-terragrunt"/>
+    </see-also>
+  </content>
+</methodology>
