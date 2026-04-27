@@ -1,0 +1,444 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ollama-deployment">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Deploy Ollama in production: Docker Compose with GPU passthrough, nginx reverse proxy with rate limiting, systemd service, Modelfile custom models, and environment configuration.</summary>
+    <tags>
+      <tag>ollama</tag>
+      <tag>docker</tag>
+      <tag>deployment</tag>
+      <tag>production</tag>
+    </tags>
+    <category>local-llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ollama-setup-models"/>
+      <ref slug="ollama-agent-integration"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Ollama Production Deployment</title>
+
+    <summary>Production Ollama deployment requires Docker Compose with proper GPU passthrough, volume mounts for model persistence, health checks, nginx reverse proxy with rate limiting and streaming support, and a systemd service for bare-metal installs. Modelfiles define custom model variants with specific system prompts and generation parameters.</summary>
+
+    <why>
+      <p>Running Ollama in production without proper infrastructure results in: models reloading from disk on every request (5-30s startup), no rate limiting (single slow request blocks all others), no model persistence across container restarts, GPU not engaged (falling back to CPU at 5-20x slower speed), and no health monitoring. The patterns here prevent these failure modes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying Ollama as a shared service for multiple applications or users.</item>
+        <item>Running Ollama in a containerized environment (Docker, Kubernetes).</item>
+        <item>Bare-metal production server where Ollama runs as a background service.</item>
+        <item>Exposing Ollama through a reverse proxy with authentication and rate limiting.</item>
+        <item>Creating custom model variants with fixed system prompts for specific use cases.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Local development on a single machine — ollama serve directly is simpler.</item>
+        <item>One-off batch jobs — Docker overhead is not justified for temporary use.</item>
+        <item>Environments without GPU access — CPU-only inference is often better handled by cloud APIs at comparable cost.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="docker-compose">
+      <example type="good" title="Basic Docker Compose setup">
+        <code lang="yaml"><![CDATA[
+# docker-compose.yml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama_data:
+]]></code>
+      </example>
+
+      <example type="good" title="Docker Compose with NVIDIA GPU support">
+        <code lang="yaml"><![CDATA[
+# docker-compose.gpu.yml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-gpu
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ollama_data:
+]]></code>
+        <note>Without --gpus all (Docker) or the deploy.resources.reservations block (Compose), inference silently falls back to CPU with no warning.</note>
+      </example>
+
+      <example type="good" title="Multi-model production setup with nginx proxy">
+        <code lang="yaml"><![CDATA[
+# docker-compose.production.yml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "127.0.0.1:11434:11434"  # bind to localhost only
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./modelfiles:/modelfiles:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          memory: 32G
+    environment:
+      - OLLAMA_NUM_PARALLEL=2
+      - OLLAMA_MAX_LOADED_MODELS=2
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:alpine
+    container_name: ollama-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+]]></code>
+      </example>
+
+      <example type="good" title="Ollama with Open WebUI for model testing">
+        <code lang="yaml"><![CDATA[
+# docker-compose.webui.yml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    volumes:
+      - webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  webui_data:
+]]></code>
+      </example>
+    </section>
+
+    <section name="nginx-config">
+      <example type="good" title="Nginx reverse proxy with rate limiting and streaming support">
+        <code lang="nginx"><![CDATA[
+# nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    limit_req_zone $binary_remote_addr zone=ollama:10m rate=10r/s;
+
+    upstream ollama {
+        server ollama:11434;
+    }
+
+    server {
+        listen 80;
+
+        location / {
+            limit_req zone=ollama burst=20 nodelay;
+
+            proxy_pass http://ollama;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            # Required for streaming responses
+            proxy_buffering off;
+            proxy_cache off;
+
+            # Timeouts for large models
+            proxy_connect_timeout 60s;
+            proxy_send_timeout 120s;
+            proxy_read_timeout 120s;
+        }
+
+        # Fast health check endpoint
+        location /health {
+            proxy_pass http://ollama/api/tags;
+            proxy_connect_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+    }
+}
+]]></code>
+        <note>proxy_buffering off is critical for streaming responses — without it nginx buffers the full response before sending, breaking real-time streaming.</note>
+      </example>
+    </section>
+
+    <section name="systemd-service">
+      <example type="good" title="Systemd service for bare-metal deployment">
+        <code lang="ini"><![CDATA[
+# /etc/systemd/system/ollama.service
+[Unit]
+Description=Ollama Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ollama
+Group=ollama
+ExecStart=/usr/local/bin/ollama serve
+Restart=always
+RestartSec=5
+Environment="OLLAMA_HOST=0.0.0.0"
+Environment="OLLAMA_NUM_PARALLEL=2"
+Environment="OLLAMA_MAX_LOADED_MODELS=2"
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=65535
+
+[Install]
+WantedBy=multi-user.target
+]]></code>
+      </example>
+    </section>
+
+    <section name="modelfiles">
+      <p>Modelfiles define custom model variants. Each Modelfile inherits from a base model (FROM) and adds PARAMETER overrides and a SYSTEM prompt. Build with: ollama create &lt;name&gt; -f Modelfile.&lt;variant&gt;</p>
+
+      <example type="good" title="Modelfile variants for common use cases">
+        <code lang="dockerfile"><![CDATA[
+# Modelfile.assistant — general purpose
+FROM llama3.1:8b
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_ctx 4096
+PARAMETER repeat_penalty 1.1
+SYSTEM """You are a helpful, harmless, and honest AI assistant.
+Guidelines:
+- Be concise and direct in responses
+- Admit uncertainty when unsure
+- Provide accurate information
+"""
+
+# Modelfile.coder — code generation
+FROM qwen2.5-coder:7b
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER num_ctx 16384
+PARAMETER repeat_penalty 1.0
+SYSTEM """You are an expert programmer.
+Guidelines:
+- Write clean, well-documented code
+- Include error handling
+- Follow language best practices
+- Explain complex logic with comments
+"""
+
+# Modelfile.tools — tool calling model
+FROM llama3.1:8b
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 32768
+PARAMETER repeat_penalty 1.0
+SYSTEM """You are an AI assistant with access to external tools.
+Tool Usage Guidelines:
+- Only call tools when necessary
+- Provide all required parameters
+- Use tools to get real-time information
+"""
+
+# Modelfile.rag — RAG assistant
+FROM llama3.1:8b
+PARAMETER temperature 0.3
+PARAMETER top_p 0.9
+PARAMETER num_ctx 16384
+SYSTEM """You are a knowledge assistant that answers questions based on provided context.
+Guidelines:
+- Base answers ONLY on the provided context
+- Quote relevant sections when helpful
+- Say "I don't have information about that" if context doesn't contain the answer
+- Never make up information
+"""
+]]></code>
+      </example>
+
+      <example type="good" title="Build all custom models from Modelfiles">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# pull-models.sh - Pull required base models and build custom variants
+
+set -e
+
+MODELS=(
+    "llama3.1:8b"
+    "qwen2.5-coder:7b"
+    "nomic-embed-text"
+    "llava:7b"
+)
+
+echo "Pulling Ollama models..."
+for model in "${MODELS[@]}"; do
+    echo "Pulling $model..."
+    ollama pull "$model"
+done
+
+echo "Building custom models..."
+if [ -d "./modelfiles" ]; then
+    for modelfile in ./modelfiles/Modelfile.*; do
+        if [ -f "$modelfile" ]; then
+            name=$(basename "$modelfile" | sed 's/Modelfile.//')
+            echo "Building $name from $modelfile..."
+            ollama create "$name" -f "$modelfile"
+        fi
+    done
+fi
+
+echo "Available models:"
+ollama list
+]]></code>
+      </example>
+    </section>
+
+    <section name="environment-variables">
+      <example type="good" title="Environment variables for production configuration">
+        <code lang="bash"><![CDATA[
+# .env.ollama
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1:8b
+OLLAMA_TOOL_MODEL=llama3.1:8b
+OLLAMA_EMBED_MODEL=nomic-embed-text
+OLLAMA_VISION_MODEL=llava:7b
+OLLAMA_TIMEOUT=120
+OLLAMA_KEEP_ALIVE=1h
+
+# GPU settings
+CUDA_VISIBLE_DEVICES=0
+OLLAMA_NUM_PARALLEL=2
+OLLAMA_MAX_LOADED_MODELS=2
+]]></code>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Container deployments MUST pass GPU access (--gpus all for Docker run, or deploy.resources.reservations in Compose); without it inference silently falls back to CPU with no warning in logs.</statement>
+        <rationale>Ollama does not emit a warning when GPU is unavailable — it simply uses CPU at 5-20x slower inference speed, which can go undetected in production.</rationale>
+      </rule>
+      <rule>
+        <statement>Bind Ollama to 127.0.0.1:11434 (not 0.0.0.0) in production; expose only through a reverse proxy with authentication and rate limiting.</statement>
+        <rationale>Ollama has no built-in authentication; binding to all interfaces exposes model access to the network without credentials.</rationale>
+      </rule>
+      <rule>
+        <statement>Set proxy_buffering off in nginx for all Ollama location blocks; buffering blocks streaming responses and causes long perceived latency.</statement>
+        <rationale>Without buffering disabled, nginx accumulates the full response before sending, negating the UX benefit of streaming generation.</rationale>
+      </rule>
+      <rule>
+        <statement>Mount ollama_data as a named volume for model persistence; do not rely on container-local storage — models are multi-gigabyte and re-pulling on every container restart is unacceptable.</statement>
+        <rationale>Container restart without volume mount deletes all pulled models; re-pulling a 70B model takes 30+ minutes.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Create Docker Compose configuration with volume for model persistence</check>
+      <check>Configure GPU passthrough (NVIDIA: deploy.resources.reservations)</check>
+      <check>Add health check endpoint to Compose service</check>
+      <check>Implement automatic restarts (restart: unless-stopped)</check>
+      <check>Bind Ollama to localhost only; expose through nginx proxy</check>
+      <check>Add rate limiting to nginx (limit_req_zone)</check>
+      <check>Set proxy_buffering off for streaming support</check>
+      <check>Set OLLAMA_KEEP_ALIVE=1h to avoid cold start latency</check>
+      <check>Create backup strategy for custom Modelfiles</check>
+      <check>Set up monitoring/alerting on /api/tags health endpoint</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://hub.docker.com/r/ollama/ollama"/>
+      <link href="https://github.com/open-webui/open-webui"/>
+      <ref slug="ollama-setup-models"/>
+      <ref slug="ollama-agent-integration"/>
+    </see-also>
+  </content>
+</methodology>
