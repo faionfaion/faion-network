@@ -29,6 +29,7 @@
 - decompose: aws → 5 slugs (aws-cli-setup, aws-ec2-provisioning, aws-iam-practical-patterns, aws-vpc-three-tier, aws-infra-prompt-library)
 - decompose: serverless-architecture → 5 slugs (serverless-foundations, serverless-architecture-patterns, serverless-cold-start-optimization, serverless-cost-optimization, serverless-iac-and-templates)
 - decompose: embeddings → 5 slugs (embeddings-model-selection, embeddings-provider-apis, embeddings-batch-and-cache, embeddings-evaluation, embeddings-production-ops)
+- decompose: video-generation → 4 slugs (video-generation-provider-selection, video-generation-async-api, video-generation-prompt-engineering, video-generation-production-service)
 - decompose: api-gateway-design → 5 slugs (api-gateway-patterns, api-gateway-resilience, api-gateway-security, api-gateway-observability, api-gateway-graphql)
 - decompose: vector-database-setup → 5 slugs (vector-db-setup-dev, vector-db-setup-prod, vector-db-index-tuning, vector-db-security, vector-db-monitoring)
 - decompose: django-quality → 4 slugs (django-quality-linting, django-quality-queries, django-quality-security, django-quality-logging)
