@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-front-door">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Deploy Azure Front Door Premium: global load balancing, CDN, WAF, Private Link to origins. Covers origin groups, routing, WAF policy, custom domains, and chaining with App Gateway.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>front-door</tag>
+      <tag>cdn</tag>
+      <tag>global-load-balancing</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-app-gateway-waf"/>
+      <ref slug="azure-private-link"/>
+      <ref slug="azure-vnet-hub-spoke"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure Front Door Premium (Global LB, CDN, WAF)</title>
+
+    <summary>Azure Front Door Premium is a global Layer 7 load balancer, CDN, and WAF service. It routes traffic to the nearest healthy origin, caches static content at PoPs, and optionally connects to origins via Private Link over the Azure backbone (no public internet between Front Door and backend). Premium tier is required for Private Link and advanced WAF with bot protection. Config propagation takes 5-15 minutes — plan for this in deployment pipelines.</summary>
+
+    <why>
+      <p>Front Door solves global distribution, DDoS mitigation at the edge, and CDN caching in a single SaaS service with no VMs to manage. Without it, multi-region traffic routing requires DNS-based load balancing (slow failover, no health-aware routing) or Traffic Manager (Layer 4 only, no WAF or caching).</p>
+      <p>The Front Door + Application Gateway pattern is the canonical enterprise design: Front Door handles global routing, CDN, and outer WAF; App Gateway handles regional Layer 7 routing and inner WAF. The critical requirement is that App Gateway must be locked to Front Door traffic only (via NSG restricting source to the `AzureFrontDoor.Backend` service tag) — without this, the inner App Gateway is publicly reachable and Front Door's WAF is bypassable.</p>
+      <p>Front Door + App Gateway without Private Link sends traffic over the public internet between them, even though both are Azure services. Private Link is required to keep the connection on the Azure backbone.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Global distribution across multiple regions with health-aware failover.</item>
+        <item>CDN caching for static assets at Azure PoPs close to end users.</item>
+        <item>Outer WAF layer in a Front Door + App Gateway two-tier architecture.</item>
+        <item>When origins must remain private — Front Door Premium with Private Link keeps traffic on Azure backbone.</item>
+        <item>DDoS protection at the edge for high-traffic internet-facing applications.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-region applications with no CDN or global routing needs — App Gateway alone is simpler and cheaper.</item>
+        <item>Dev/test environments where Front Door's 5-15 minute config propagation slows iteration cycles.</item>
+        <item>Standard tier if Private Link to origins is needed — Premium is required for Private Link.</item>
+        <item>Cost-sensitive workloads — Front Door Premium combined with App Gateway v2 can cost hundreds USD/month idle.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="private-link-origins">
+      <rule testable="true">
+        <statement>Front Door Premium origins MUST use Private Link (`private_link` block in `azurerm_cdn_frontdoor_origin`) for production backends. Do NOT mix public and private origins in the same origin group — create separate origin groups for public vs private origins. Private Link connections MUST be approved on the target resource (App Service or App Gateway) before Front Door routes traffic to them.</statement>
+        <rationale>Without Private Link, traffic between Front Door PoP and the backend App Gateway or App Service transits the public internet. The docs imply private chaining but do not enforce it. A public-internet leg defeats the security model of Private Link and means the backend is reachable without Front Door WAF protection.</rationale>
+      </rule>
+    </section>
+
+    <section name="origin-locking">
+      <rule testable="true">
+        <statement>When Front Door is in front of Application Gateway, the App Gateway NSG MUST restrict inbound to the `AzureFrontDoor.Backend` service tag on ports 80 and 443. This prevents direct internet access that bypasses Front Door WAF. Add this NSG rule before pointing DNS at Front Door.</statement>
+        <rationale>If the App Gateway public IP is reachable directly from the internet, attackers bypass Front Door's WAF entirely. The `AzureFrontDoor.Backend` service tag covers all Front Door backend IPs and is maintained by Azure automatically.</rationale>
+      </rule>
+    </section>
+
+    <section name="front-door-terraform">
+      <example type="good" title="Front Door Premium with Private Link to App Service (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_cdn_frontdoor_profile" "main" {
+  name                = "${var.project}-${var.environment}-fd"
+  resource_group_name = azurerm_resource_group.main.name
+  sku_name            = "Premium_AzureFrontDoor"
+  tags                = local.common_tags
+}
+
+resource "azurerm_cdn_frontdoor_origin_group" "main" {
+  name                     = "primary-origin-group"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+
+  load_balancing {
+    sample_size                 = 4
+    successful_samples_required = 3
+  }
+
+  health_probe {
+    path                = "/health"
+    request_type        = "GET"
+    protocol            = "Https"
+    interval_in_seconds = 30
+  }
+}
+
+resource "azurerm_cdn_frontdoor_origin" "main" {
+  name                          = "primary-origin"
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  enabled                       = true
+
+  host_name          = azurerm_linux_web_app.main.default_hostname
+  http_port          = 80
+  https_port         = 443
+  origin_host_header = azurerm_linux_web_app.main.default_hostname
+  priority           = 1
+  weight             = 1000
+
+  private_link {
+    request_message        = "Front Door Private Link"
+    target_type            = "sites"
+    location               = azurerm_resource_group.main.location
+    private_link_target_id = azurerm_linux_web_app.main.id
+  }
+}
+
+resource "azurerm_cdn_frontdoor_endpoint" "main" {
+  name                     = "${var.project}-${var.environment}"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+  tags                     = local.common_tags
+}
+
+resource "azurerm_cdn_frontdoor_custom_domain" "main" {
+  name                     = "custom-domain"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+  host_name                = "app.example.com"
+
+  tls {
+    certificate_type    = "ManagedCertificate"
+    minimum_tls_version = "TLS12"
+  }
+}
+
+resource "azurerm_cdn_frontdoor_route" "main" {
+  name                          = "main-route"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.main.id]
+
+  supported_protocols    = ["Https"]
+  patterns_to_match      = ["/*"]
+  forwarding_protocol    = "HttpsOnly"
+  link_to_default_domain = true
+
+  cdn_frontdoor_custom_domain_ids = [azurerm_cdn_frontdoor_custom_domain.main.id]
+}
+
+resource "azurerm_cdn_frontdoor_firewall_policy" "main" {
+  name                = "${var.project}${var.environment}waf"
+  resource_group_name = azurerm_resource_group.main.name
+  sku_name            = "Premium_AzureFrontDoor"
+  enabled             = true
+  mode                = "Prevention"
+
+  managed_rule {
+    type    = "DefaultRuleSet"
+    version = "2.1"
+    action  = "Block"
+  }
+
+  managed_rule {
+    type    = "Microsoft_BotManagerRuleSet"
+    version = "1.0"
+    action  = "Block"
+  }
+
+  tags = local.common_tags
+}
+
+resource "azurerm_cdn_frontdoor_security_policy" "main" {
+  name                     = "waf-policy"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+
+  security_policies {
+    firewall {
+      cdn_frontdoor_firewall_policy_id = azurerm_cdn_frontdoor_firewall_policy.main.id
+
+      association {
+        domain {
+          cdn_frontdoor_domain_id = azurerm_cdn_frontdoor_endpoint.main.id
+        }
+        patterns_to_match = ["/*"]
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="front-door-checklist">
+      <checklist>
+        <check>Premium tier selected (required for Private Link and advanced WAF).</check>
+        <check>Custom domain configured with managed certificate.</check>
+        <check>Origin groups configured — separate groups for public and private origins.</check>
+        <check>Health probes configured for all origins.</check>
+        <check>Caching rules defined per route.</check>
+        <check>WAF policy enabled with DefaultRuleSet 2.1 and BotManagerRuleSet 1.0.</check>
+        <check>Rate limiting configured for internet-facing endpoints.</check>
+        <check>Private Link enabled for backend origins (Premium only).</check>
+        <check>Private endpoint connections approved on the origin side.</check>
+        <check>App Gateway (or origin) NSG locked to AzureFrontDoor.Backend service tag.</check>
+        <check>Config propagation time (5-15 min) accounted for in deployment pipelines.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>Front Door + App Gateway chained without Private Link sends traffic over the public internet between them — the docs imply but do not enforce private chaining.</description>
+        <reason>Without the `private_link` block on the Front Door origin, the App Gateway public IP is used as the origin. This means traffic is not on the Azure backbone and the App Gateway must remain publicly accessible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Front Door rules engine syntax differs from App Gateway URL Path Map; agents copy routing rules between them and break routing.</description>
+        <reason>Front Door uses `cdn_frontdoor_route` with `patterns_to_match` arrays; App Gateway uses `url_path_map` with `path_rule` blocks. They have different wildcard syntax and matching semantics.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents configure dev/test environments with Front Door and are surprised by 5-15 minute propagation delays after every config change.</description>
+        <reason>Front Door config changes propagate globally to all PoPs. Use App Gateway alone in dev/test for faster iteration. Reserve Front Door for staging and production.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="configure-front-door-premium"><![CDATA[
+Configure Azure Front Door Premium for global load balancing:
+
+Origins:
+- Region 1: {region_1} - {origin_type}
+- Region 2: {region_2} - {origin_type}
+
+Requirements:
+- Private Link to origins (Premium)
+- Global WAF policy with DefaultRuleSet 2.1
+- Caching: {caching_rules}
+- Custom domain: {domain}
+
+Output:
+1. Terraform code for Front Door Premium
+2. Origin group configuration
+3. WAF policy with managed rules
+4. Caching rules configuration
+5. Custom domain and certificate setup
+]]></prompt>
+      <prompt purpose="front-door-app-gateway-integration"><![CDATA[
+Design Front Door + Application Gateway architecture for:
+
+Use case: {global distribution / DR / both}
+Regions: {region_list}
+WAF strategy: {Front Door only / both layers}
+
+Architecture requirements:
+- Lock App Gateway to Front Door traffic only (AzureFrontDoor.Backend service tag)
+- End-to-end TLS
+- Health probes at both layers
+- Failover strategy
+- Private Link between Front Door and App Gateway
+
+Output:
+1. Front Door configuration
+2. App Gateway configuration
+3. NSG rules to restrict traffic to AzureFrontDoor.Backend
+4. Health probe configuration
+5. Private Link setup
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/frontdoor/"/>
+      <link href="https://learn.microsoft.com/azure/frontdoor/standard-premium/overview"/>
+      <ref slug="azure-app-gateway-waf"/>
+      <ref slug="azure-private-link"/>
+    </see-also>
+  </content>
+</methodology>
