@@ -19,10 +19,12 @@ modified session JSONL across all projects.
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import os
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -377,6 +379,29 @@ async def request_clarification(args: dict[str, Any]) -> dict[str, Any]:
 
 # ---- Bundle rendering (XML) ----
 
+def render_methodology_xml(path: Path) -> str | None:
+    """Parse methodology.xml, strip <metadata>, return <faion-methodology slug="...">...</faion-methodology>.
+
+    Returns None if the file is not a valid methodology document — the caller
+    falls back to raw CDATA rendering.
+    """
+    try:
+        tree = ET.parse(path)
+    except ET.ParseError:
+        return None
+    root = tree.getroot()
+    if root.tag != "methodology":
+        return None
+    content = root.find("content")
+    if content is None:
+        return None
+    slug = root.get("slug") or path.parent.name
+    wrapper = copy.deepcopy(content)
+    wrapper.tag = "faion-methodology"
+    wrapper.set("slug", slug)
+    return ET.tostring(wrapper, encoding="unicode")
+
+
 def render_bundle(files: list[dict]) -> str:
     documents: list[dict[str, Any]] = []
     total = 0
@@ -385,7 +410,15 @@ def render_bundle(files: list[dict]) -> str:
         full = (KNOWLEDGE_ROOT / rel).resolve()
         if not full.exists():
             continue
-        content = full.read_text(errors="replace")
+
+        rendered = full.name == "methodology.xml" and render_methodology_xml(full)
+        if rendered:
+            content = rendered
+            inline = True
+        else:
+            content = full.read_text(errors="replace")
+            inline = False
+
         words = len(content.split())
         total += words
         documents.append({
@@ -393,6 +426,7 @@ def render_bundle(files: list[dict]) -> str:
             "reason": (entry.get("reason") or "").strip(),
             "words": words,
             "content": content,
+            "inline": inline,
         })
     return render(
         "bundle.xml.j2",

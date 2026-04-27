@@ -6,6 +6,7 @@
 - docs: methodology XML schema spec, closed tag glossary (~60 tags), reference example
 - feat: validate-methodology-xml.py (closed-vocab + length-parity + path-consistency checks)
 - feat: feature-045 migration pool config (BRIEF + TICK) targeting single-file methodology.xml shape
+- feat: /faion skill renders methodology.xml as `<faion-methodology slug="...">` with `<metadata>` stripped
 
 ### Changed
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-interview-analysis, ai-assisted-persona-building, ai-persona-building, ai-assisted-accessibility, ai-accessibility-automation-2026, ai-spatial-computing, multimodal-vui-design, ai-enhanced-design-systems)

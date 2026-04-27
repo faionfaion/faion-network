@@ -17,7 +17,7 @@ This skill spawns a read-only Agent SDK subagent (Sonnet) that:
    - calls `request_clarification` → returns `<faion_clarification>` with questions for the user
 
 The output below is XML.
-- If `<faion_knowledge>` — read each `<document>` as relevant context.
+- If `<faion_knowledge>` — read each `<document>` as relevant context. Inlined `<faion-methodology slug="...">` blocks are pre-parsed methodology bodies (metadata stripped); treat them as the primary content.
 - If `<faion_clarification>` — follow the `<instruction_to_main_agent>` block: ask the user via AskUserQuestion using the embedded questions, append their answers to the conversation, then re-invoke `/faion`.
 
 ```!
