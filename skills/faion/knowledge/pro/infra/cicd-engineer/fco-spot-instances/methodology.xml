@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fco-spot-instances">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Use preemptible/Spot cloud instances for fault-tolerant workloads to achieve 70-90% cost reduction; requires checkpointing, interruption handling, and instance diversification.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>spot-instances</tag>
+      <tag>preemptible</tag>
+      <tag>cloud-cost</tag>
+      <tag>fault-tolerant</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-commitment-pricing"/>
+      <ref slug="finops-ai-ml-costs"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Spot and Preemptible Instance Strategy</title>
+
+    <summary>Spot instances (AWS), Preemptible VMs (GCP), and Spot VMs (Azure) provide access to unused cloud capacity at 70-90% discounts versus on-demand pricing, subject to 2-minute reclaim notices. Successfully using Spot requires: fault-tolerant architecture, checkpointing for long-running jobs, graceful interruption handling, instance type diversification, and automatic fallback to on-demand when Spot is unavailable.</summary>
+
+    <why>
+      <p>Cloud providers maintain large capacity reserves for on-demand peak demand. This reserved capacity sits idle most of the time. Spot pricing lets workloads run on that idle capacity at steep discounts. The provider reclaims it with a 2-minute warning when on-demand demand increases. This creates a pure FinOps opportunity: workloads that can tolerate interruption (CI/CD, batch processing, ML training, rendering) achieve 70-90% cost reductions with no architectural sacrifice.</p>
+      <p>ML training is the highest-impact Spot use case: a real ML platform achieved $120,000/month → $38,000/month (68% savings) by adding checkpointing infrastructure and running 85% of training on Spot instances. The key enabler was checkpointing every N steps so an interruption meant restarting from the last checkpoint, not from scratch.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>CI/CD pipelines — highest Spot fit; jobs are inherently stateless and retryable.</item>
+        <item>Batch processing, data pipelines, and ETL jobs — can checkpoint and resume.</item>
+        <item>ML training workloads — checkpoint every N steps, resume on interruption.</item>
+        <item>Rendering, transcoding, and simulation jobs — naturally parallelizable and restartable.</item>
+        <item>Dev and test environments — interruption is tolerable outside business hours.</item>
+        <item>Scale-out capacity for stateless microservices behind a load balancer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Production databases — a 2-minute interruption notice is insufficient for safe database shutdown and replication catch-up.</item>
+        <item>Production APIs without graceful degradation — a sudden node loss will cause user-visible errors if the architecture cannot absorb it.</item>
+        <item>Stateful workloads without checkpointing — an 18-hour ML training job without checkpoints restarts from zero on interruption, generating pure waste.</item>
+        <item>Long-running jobs in regions with high Spot interruption rates for the required instance type — check historical interruption frequency first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="spot-fit-categories">
+      <p>Spot fitness categories by workload type:</p>
+      <list>
+        <item>High Spot Fit: CI/CD pipelines, batch processing, rendering, analytics, ML training with checkpointing</item>
+        <item>Medium Spot Fit: dev/test environments, staging, background workers with retry logic</item>
+        <item>Low Spot Fit: production APIs (only if architecture is fully stateless and load-balanced), stateless microservices with circuit breakers</item>
+        <item>Avoid: production databases, stateful session services, legacy monoliths without graceful shutdown</item>
+      </list>
+    </section>
+
+    <section name="architecture-requirements">
+      <rule testable="true">
+        <statement>Any workload running on Spot MUST implement: (1) graceful shutdown handler for the 2-minute interruption notice, (2) application checkpointing for jobs longer than 10 minutes, (3) automatic fallback to on-demand if Spot is unavailable for more than 10 minutes, and (4) instance type diversification across at least 3 instance families and 2 availability zones.</statement>
+        <rationale>A single failure mode breaks all four requirements: if any one is missing, interruptions cause data loss, job restarts, or service unavailability that exceeds the cost savings. Diversification prevents the "no capacity" failure where a single instance type is fully claimed by on-demand demand in all AZs simultaneously.</rationale>
+      </rule>
+
+      <example type="good" title="ML training checkpointing with Spot fallback">
+        <code lang="python"><![CDATA[# Checkpoint every N steps to S3
+def save_checkpoint(model, optimizer, step, s3_path):
+    state = {
+        'step': step,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }
+    torch.save(state, '/tmp/checkpoint.pt')
+    s3_client.upload_file('/tmp/checkpoint.pt', bucket, s3_path)
+
+def load_checkpoint(s3_path):
+    s3_client.download_file(bucket, s3_path, '/tmp/checkpoint.pt')
+    return torch.load('/tmp/checkpoint.pt')
+
+# In training loop
+for step in range(start_step, total_steps):
+    train_step(model, optimizer, step)
+    if step % checkpoint_interval == 0:
+        save_checkpoint(model, optimizer, step, s3_path)
+
+# On Spot interruption signal (SIGTERM)
+# The graceful shutdown handler saves the current checkpoint
+# The next Spot instance picks up from that checkpoint]]></code>
+        <note>This pattern converted $120,000/month GPU spend to $38,000/month with 85% Spot adoption and improved job completion rate from 92% to 96%.</note>
+      </example>
+
+      <example type="bad" title="ML training on Spot without checkpointing">
+        <code lang="text"><![CDATA[# 18-hour training job on Spot instance
+# No checkpointing implemented
+# Spot interrupted at hour 17
+# Full restart required from step 0
+# Cost: 17 hours wasted compute + 18 more hours = 35 hours
+# vs on-demand 18 hours: MORE expensive than on-demand after interruption]]></code>
+        <note>Without checkpointing, a single Spot interruption can make the total cost higher than on-demand. Checkpointing investment is mandatory before enabling Spot for long-running jobs.</note>
+      </example>
+    </section>
+
+    <section name="instance-diversification">
+      <p>Instance diversification is the primary defense against capacity unavailability:</p>
+
+      <rule testable="true">
+        <statement>Configure Spot Fleet or ASG mixed instances policy with at least 3-4 instance types of equivalent vCPU and memory across 2+ availability zones. Never request a single Spot instance type — the combination of high demand + single type creates frequent unavailability.</statement>
+        <rationale>A single instance type (e.g., c5.4xlarge) may have 100% interruption frequency in a region during peak demand. Diversifying across c5.4xlarge, c5a.4xlarge, c6i.4xlarge, and m5.4xlarge means at least one variant will have available capacity.</rationale>
+      </rule>
+
+      <example type="good" title="Spot Fleet diversification (AWS Launch Template)">
+        <code lang="json"><![CDATA[{
+  "LaunchTemplateData": {
+    "InstanceMarketOptions": {
+      "MarketType": "spot",
+      "SpotOptions": {
+        "SpotInstanceType": "persistent",
+        "InstanceInterruptionBehavior": "stop"
+      }
+    }
+  },
+  "Overrides": [
+    {"InstanceType": "c5.4xlarge",  "WeightedCapacity": 1},
+    {"InstanceType": "c5a.4xlarge", "WeightedCapacity": 1},
+    {"InstanceType": "c6i.4xlarge", "WeightedCapacity": 1},
+    {"InstanceType": "m5.4xlarge",  "WeightedCapacity": 1}
+  ],
+  "CapacityRebalance": {
+    "ReplacementStrategy": "launch-before-terminate"
+  }
+}]]></code>
+        <note>CapacityRebalance with launch-before-terminate gives a replacement instance time to warm up before the interrupted instance terminates.</note>
+      </example>
+    </section>
+
+    <section name="provider-discounts">
+      <p>Spot discount levels by provider (2025-2026):</p>
+      <list>
+        <item>AWS Spot Instances: up to 90% off on-demand pricing</item>
+        <item>GCP Preemptible VMs: up to 80% off on-demand pricing</item>
+        <item>Azure Spot VMs: up to 90% off on-demand pricing</item>
+      </list>
+      <p>Actual discount varies by instance family, region, and current demand. Use the Spot price history API to verify current discount before designing cost projections.</p>
+    </section>
+
+    <section name="ci-cd-spot">
+      <p>CI/CD pipelines are the simplest and highest-ROI Spot use case. GitHub Actions self-hosted runners, Jenkins agents, and GitLab runners are inherently stateless — each job starts fresh. Spot interruption during a CI run simply triggers a retry. Most CI systems implement automatic retry natively.</p>
+
+      <example type="good" title="GitHub Actions runner on Spot (AWS)">
+        <code lang="yaml"><![CDATA[# Terraform: EC2 Spot runner for GitHub Actions
+resource "aws_autoscaling_group" "gh_runners" {
+  name = "github-actions-spot-runners"
+
+  mixed_instances_policy {
+    instances_distribution {
+      on_demand_percentage_above_base_capacity = 0
+      spot_allocation_strategy = "capacity-optimized"
+    }
+    launch_template {
+      launch_template_specification {
+        launch_template_id = aws_launch_template.runner.id
+      }
+      override {
+        instance_type = "c5.2xlarge"
+      }
+      override {
+        instance_type = "c5a.2xlarge"
+      }
+      override {
+        instance_type = "c6i.2xlarge"
+      }
+    }
+  }
+}
+# Result: CI costs at 10% of on-demand equivalent]]></code>
+      </example>
+    </section>
+
+    <section name="monitoring">
+      <p>Key Spot monitoring metrics:</p>
+      <list>
+        <item>Interruption rate per instance type (target: below 10% for critical batch jobs)</item>
+        <item>Job failure rate due to interruption (target: below 5% with checkpointing)</item>
+        <item>Fallback to on-demand rate (alert if above 20% — indicates sizing or region issue)</item>
+        <item>Cost per completed unit of work (the true measure of Spot efficiency)</item>
+      </list>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="spot-feasibility"><![CDATA[Evaluate this workload for Spot Instance migration:
+
+Workload: [name]
+Current instance type: [type]
+Current monthly cost: $[amount]
+Characteristics:
+- Runtime pattern: [continuous/batch/scheduled]
+- Statefulness: [stateful/stateless]
+- Interruption tolerance: [high/medium/low]
+- Current auto-scaling: [yes/no]
+- Checkpointing capability: [yes/no/can implement]
+
+Please provide:
+1. Spot fitness score (1-10) with justification
+2. Required architecture changes for Spot adoption
+3. Recommended instance diversification strategy
+4. Estimated savings potential
+5. Implementation risks and mitigations
+6. Step-by-step migration plan]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Identify fault-tolerant workloads suitable for Spot (CI/CD, batch, ML training)</check>
+      <check>Implement application checkpointing for jobs longer than 10 minutes</check>
+      <check>Add SIGTERM handler for graceful shutdown within 2-minute notice window</check>
+      <check>Configure fallback to on-demand when Spot unavailable for 10+ minutes</check>
+      <check>Set up Spot Fleet or ASG mixed instances with 3+ instance types</check>
+      <check>Diversify across 2+ availability zones</check>
+      <check>Monitor Spot interruption rates per instance type by AZ</check>
+      <check>Set alert when job failure rate exceeds 5% due to interruptions</check>
+      <check>Use capacity-optimized allocation strategy (not lowest-price)</check>
+      <check>Enable Spot instance placement scores to select best AZ</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-commitment-pricing"/>
+      <ref slug="finops-ai-ml-costs"/>
+      <link href="https://aws.amazon.com/ec2/spot/"/>
+      <link href="https://cloud.google.com/compute/docs/instances/preemptible"/>
+    </see-also>
+  </content>
+</methodology>
