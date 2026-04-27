@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-monitoring-logging">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Implement structured JSON logging with request IDs, OpenTelemetry trace context, and log-volume sampling for APIs. Covers redaction, log-trace join, and async context propagation.</summary>
+    <tags>
+      <tag>api-monitoring</tag>
+      <tag>structured-logging</tag>
+      <tag>opentelemetry</tag>
+      <tag>observability</tag>
+      <tag>tracing</tag>
+    </tags>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>API Structured Logging with Trace Context</title>
+
+    <summary>Every API request MUST be logged in JSON format with a unique request_id, HTTP metadata, response status and duration. Logs MUST include trace_id and span_id from OpenTelemetry context so logs and traces join in the observability platform. Sensitive fields (passwords, tokens, PAN) MUST be redacted before export.</summary>
+
+    <why>
+      <p>Unstructured log lines cannot be queried reliably at scale. A single log line like "request completed in 234ms" requires grep-based parsing that breaks on format changes. Structured JSON logs let Loki, Elasticsearch, Datadog, and CloudWatch index every field and enable "show me all requests slower than 500ms for user 123" in one query.</p>
+      <p>Trace context in logs is the highest-leverage observability change with the lowest cost. Adding trace_id and span_id to every log line means clicking a latency outlier in Grafana Tempo jumps directly to the logs for that exact request. Without this join, correlating a specific slow trace to its logs requires timestamp range searches that return hundreds of unrelated entries.</p>
+      <p>Log volume cost is a common surprise. At 1000 RPS, one logger.info per request generates 86 million log lines per day. Without structured sampling or log-level gating, log ingestion bills exceed compute bills.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any API shipping to production that needs searchable request history.</item>
+        <item>When migrating from print() or unstructured logger calls to a production logging setup.</item>
+        <item>When instrumenting with OpenTelemetry and wanting logs to join traces.</item>
+        <item>Before onboarding a service into a log aggregation platform (Loki, Datadog, CloudWatch).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-product-fit prototypes — log-to-stdout with print() or basic logger is sufficient; structured logging adds setup cost without proportional value.</item>
+        <item>Internal scripts and one-shot tools — structured logging overhead (JSON serialization, context propagation) is not justified for tools that run for minutes.</item>
+        <item>Compliance contexts (HIPAA, PCI) where log export pipelines are not yet cleared for PHI/PAN — establish redaction and encryption first, then add structured logging.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Every HTTP request log entry MUST include: request_id (UUID, generated at request start), method, path, client_ip, response status, duration_ms, trace_id, span_id. The request_id MUST also be returned to the client as the X-Request-ID response header.</statement>
+        <rationale>The X-Request-ID header lets clients report the exact identifier when filing a bug report, enabling instant log lookup without timestamp guessing. trace_id joins the log line to the distributed trace for the same request.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Logs MUST NEVER contain passwords, tokens, API keys, credit card numbers (PAN), or session secrets. A redaction middleware MUST run before any log export. The redaction MUST cover both request bodies and structured log fields.</statement>
+        <rationale>AI agents wire request logging by calling logger.info(request.json()) — the entire request body, including credentials, goes into the log pipeline. Without a redaction layer, secrets leak into log aggregation platforms and their retention windows. A password-scrubber agent should run before logs are exported.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Async tasks (Celery workers, queue consumers, background jobs) MUST propagate OpenTelemetry trace context from the producer to the consumer. Use W3C traceparent header injection at the producer and extraction at the consumer. Without this, distributed traces appear as disconnected fragments.</statement>
+        <rationale>Sampling hides rare failures but trace context propagation gaps make debugging async work completely blind. A trace showing a request triggering a queue message, then silence, provides no insight into what the worker did. Context propagation turns disconnected fragments into end-to-end traces.</rationale>
+      </rule>
+    </rules>
+
+    <section name="implementation">
+      <example type="good" title="Structured logging middleware with trace context">
+        <code lang="python"><![CDATA[
+import structlog
+import uuid
+import time
+from fastapi import Request
+
+logger = structlog.get_logger()
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # Bind request-scoped fields to logger context
+    log = logger.bind(
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path,
+        client_ip=request.client.host
+    )
+
+    # Bind OTel trace context if available
+    try:
+        from opentelemetry import trace
+        ctx = trace.get_current_span().get_span_context()
+        if ctx.is_valid:
+            log = log.bind(
+                trace_id=format(ctx.trace_id, "032x"),
+                span_id=format(ctx.span_id, "016x")
+            )
+    except Exception:
+        pass
+
+    log.info("request_started")
+    start = time.time()
+
+    try:
+        response = await call_next(request)
+        log.info(
+            "request_completed",
+            status=response.status_code,
+            duration_ms=round((time.time() - start) * 1000, 2)
+        )
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        log.error("request_failed", error=str(e), duration_ms=round((time.time() - start) * 1000, 2))
+        raise
+]]></code>
+        <note>structlog binds all fields to context so every subsequent log call in the request carries request_id, trace_id, span_id automatically. The X-Request-ID header is returned to clients for support lookups.</note>
+      </example>
+
+      <example type="bad" title="Unstructured logging and full request body dump">
+        <code lang="python"><![CDATA[
+# DO NOT DO THIS
+import logging
+logger = logging.getLogger(__name__)
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    body = await request.json()
+    logger.info(f"Request: {request.method} {request.url.path} body={body}")  # dumps full body including passwords
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")  # no duration, no request_id, not queryable
+    return response
+]]></code>
+        <note>f-string logs are not queryable. Dumping request.json() logs passwords, tokens, and card numbers. No duration, no request_id, no trace context. Cannot be joined to traces.</note>
+      </example>
+    </section>
+
+    <section name="otel-instrumentation">
+      <p>OpenTelemetry initialization for FastAPI with OTLP HTTP exporter:</p>
+      <code lang="python"><![CDATA[
+# telemetry.py — initialize once at app startup
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+import os
+
+def init_telemetry(app):
+    resource = Resource.create({
+        "service.name": os.getenv("SERVICE_NAME", "api"),
+        "service.version": os.getenv("SERVICE_VERSION", "unknown"),
+        "deployment.environment": os.getenv("ENVIRONMENT", "production"),
+    })
+
+    provider = TracerProvider(resource=resource)
+    exporter = OTLPSpanExporter(
+        endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+    )
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
+
+    # Auto-instrument FastAPI and outbound HTTP
+    FastAPIInstrumentor.instrument_app(app)
+    HTTPXClientInstrumentor().instrument()
+]]></code>
+      <note>Auto-instrumentation wires spans for every FastAPI route and httpx outbound call. OTEL_EXPORTER_OTLP_ENDPOINT is set via env — vendor swap (Jaeger to Tempo to Datadog) requires only config change, not code change.</note>
+    </section>
+
+    <section name="sampling-strategy">
+      <p>Declare sampling strategy explicitly before deployment. The two most common options:</p>
+      <list>
+        <item>Head sampling: sample 1-10% of all traces at request start. Simple, predictable cost. Set via OTEL_TRACES_SAMPLER=parentbased_traceidratio and OTEL_TRACES_SAMPLER_ARG=0.01 environment variables.</item>
+        <item>Tail sampling: keep all traces where any span has status ERROR or duration above p99 threshold. Drop "boring" successful fast traces. Requires an OTel Collector with tail-sampling processor. Best for debugging; misses capacity issues that appear only in aggregate.</item>
+      </list>
+      <p>Decision: use head sampling for baseline cost control. Add tail sampling at the OTel Collector if you have budget for the Collector and need to always capture errors. Never run without a sampler — production drowns in spans at 1000 RPS.</p>
+    </section>
+
+    <section name="logging-checklist">
+      <checklist>
+        <check>Add request_id (UUID) to all request log entries.</check>
+        <check>Log request start with method, path, client_ip, request_id.</check>
+        <check>Log request completion with status, duration_ms, request_id.</check>
+        <check>Log errors with full exception context and request_id.</check>
+        <check>Use structured logging format (JSON via structlog or python-json-logger).</check>
+        <check>Inject trace_id and span_id from OTel context into every log entry.</check>
+        <check>Return X-Request-ID header to clients on every response.</check>
+        <check>Verify no sensitive data (passwords, tokens, PAN) appears in logs.</check>
+        <check>Configure log level for production (INFO, not DEBUG).</check>
+        <check>Implement redaction middleware before log export.</check>
+        <check>Wire async task producers and consumers with OTel traceparent propagation.</check>
+        <check>Declare sampling strategy (head or tail) and set OTEL_TRACES_SAMPLER.</check>
+        <check>Configure log retention policy in the aggregation platform.</check>
+      </checklist>
+    </section>
+
+    <antipattern>
+      <description>Calling logger.info(request.json()) to log the full request body.</description>
+      <reason>Request bodies routinely contain passwords, tokens, credit card numbers, and PII. Logging them sends secrets into log aggregation platforms with multi-year retention windows. Use field-level redaction; log only safe metadata fields.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Wiring OTel tracing without setting a sampler.</description>
+      <reason>Without a sampler, every request produces a trace. At 1000 RPS, this generates 86 million spans per day. Storage costs explode and Tempo/Jaeger performance degrades. Always set OTEL_TRACES_SAMPLER before deploying.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Forgetting to propagate trace context in Celery / queue workers.</description>
+      <reason>Async tasks that don't extract W3C traceparent from the queue message produce detached trace fragments. The parent request's trace shows a queue publish event but no worker activity. Distributed traces become useless for debugging async workflows.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="api-monitoring-health-checks"/>
+      <ref slug="api-monitoring-metrics"/>
+      <ref slug="api-monitoring-alerting"/>
+      <link href="https://www.structlog.org/"/>
+      <link href="https://opentelemetry.io/docs/specs/otel"/>
+      <link href="https://www.honeycomb.io/oreilly-observability-engineering"/>
+    </see-also>
+  </content>
+</methodology>
