@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-layout-agentic-workflow">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Four-stage agentic pipeline for Go service scaffolding: layout agent, code-gen agent, wiring agent, review agent. Prompt patterns and AI-agent gotchas for the standard layout.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>agentic-workflow</tag>
+      <tag>scaffolding</tag>
+      <tag>llm-prompts</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+    </languages>
+    <related>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Go Standard Layout — Agentic Workflow and Prompts</title>
+
+    <summary>Drive Go service scaffolding as a four-stage pipeline: layout agent generates the skeleton, code-gen agent emits handler/service/repository/model per resource, wiring agent assembles main.go, review agent runs the import-rule checklist. Pair with persistent stack decisions in .aidocs/ to stop agents re-deciding per PR.</summary>
+
+    <why>
+      <p>AI agents working on Go services reliably reproduce the same class of layout violations: pkg/utils from muscle memory, interface in the producer package, gin.Context leaking into services, global DB handles, skipped error wrapping, and context not propagated to goroutines. These mistakes do not fail compilation and are invisible to agents that only check test output. A structured pipeline with explicit prompt contracts and a layout-review stage eliminates the entire class before code reaches review.</p>
+      <p>Persisting stack decisions (chi vs gin vs echo, sqlc vs gorm vs database/sql, slog vs zerolog) in .aidocs/product_docs/go-stack.md prevents every PR from re-litigating tool choice, which is the single biggest source of framework leakage into the service layer.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scaffolding a new Go service with multiple resources (3 or more domain entities) using an AI agent.</item>
+        <item>Multi-agent sessions where different agents handle layout, code-gen, wiring, and review independently.</item>
+        <item>Teams that want a repeatable, auditable agentic workflow instead of a free-form "write me a Go service" prompt.</item>
+        <item>Onboarding agents to an existing Go codebase that already follows the standard layout.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple one-endpoint or one-binary scripts — a four-stage pipeline is overkill; use a single prompt.</item>
+        <item>Agents working on a codebase that does not follow the standard layout — apply only the review-agent stage.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="four-stage-pipeline">
+      <p>The agentic workflow divides scaffolding into four stages, each a separate agent invocation with a bounded scope:</p>
+      <list>
+        <item>Stage 1 — Layout agent: generates cmd/ + internal/ skeleton from the spec (entity inventory + endpoint inventory).</item>
+        <item>Stage 2 — Code-gen agent: emits handler + service + repository + model per resource.</item>
+        <item>Stage 3 — Wiring agent: assembles cmd/api/main.go (config → DB → repos → services → handlers → router → server).</item>
+        <item>Stage 4 — Review agent: runs the import-rule checklist (handler imports service; service imports repository interface; repository implementation imports model + DB driver; no cycles).</item>
+      </list>
+      <p>Persist the layout decision in .aidocs/product_docs/go-stack.md so agents stop re-deciding per PR. Pair with sibling methodologies go-layout-layer-rules, go-error-handling-patterns, go-concurrency-patterns.</p>
+    </section>
+
+    <section name="subagents">
+      <p>Recommended subagents for Go standard layout scaffolding:</p>
+      <list>
+        <item>faion-sdd-executor-agent: one task = one resource (model + repo interface + repo impl + service + handler + tests + wiring). Sonnet is sufficient; Opus only for module boundaries.</item>
+        <item>password-scrubber-agent: internal/config and cmd/*/main.go often pull DSNs/JWT secrets from the env; scrub fixtures and sample configs before commit.</item>
+        <item>go-layout-review-agent (purpose-built): linter that flags handler-to-repository imports skipping service, exported types in internal/ that are unnecessary, pkg/ directories with no external consumers, and interface declarations colocated with implementations.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Layout pass prompt — use for Stage 1:</p>
+      <prompt purpose="layout-pass">
+<![CDATA[
+You are a Go architect. Given the spec in <spec>, produce:
+(a) cmd/ binaries: name, purpose (api/worker/migrate/seed),
+    main responsibilities (5 bullets each).
+(b) internal/ packages: handler, service, repository, model,
+    middleware, config — each with file list + types + interfaces.
+    Interfaces live in the consumer package (service for repo iface).
+(c) pkg/ packages: only if they have a documented external consumer,
+    otherwise leave empty.
+Reject any handler that imports a repository directly. Reject any
+exported type in internal/ that is not used in cmd/.
+]]>
+      </prompt>
+
+      <p>Anti-pattern review prompt — use for Stage 4:</p>
+      <prompt purpose="anti-pattern-review">
+<![CDATA[
+Review a Go layout PR. Flag:
+(1) handler package importing a repository package,
+(2) interface defined in the producer package (e.g., repo iface in
+    internal/repository instead of internal/service),
+(3) cmd/<name> doing business logic instead of wiring,
+(4) pkg/ entry with no external import,
+(5) circular imports across internal/ subpackages,
+(6) global state in any package other than cmd/<name>/main.go,
+(7) _test.go in same package when black-box test would be cleaner.
+Cite file:line. No fixes -- only flags.
+]]>
+      </prompt>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>These are the repeating patterns where agents violate the Go standard layout. Each gotcha has a prevention strategy to embed in your agent prompts or review stage:</p>
+      <antipattern>
+        <description>pkg/ reflex: agents add pkg/utils, pkg/helpers from muscle memory without any external consumer.</description>
+        <reason>Force internal/ first in every prompt. Add the depguard "unused pkg/" check from go-layout-lint.sh to the review stage.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Interface in producer package: agents declare repository.UserRepository interface in internal/repository; consumers import the producer, creating fan-in coupling.</description>
+        <reason>Force consumer-side declaration in the layout-pass prompt: "Interfaces live in the consumer package (service for repo iface)."</reason>
+      </antipattern>
+      <antipattern>
+        <description>gin-gonic leakage into service: agents pass *gin.Context past the handler boundary into service methods.</description>
+        <reason>Force ctx context.Context in every service and repository signature. The depguard rule "service must not depend on web framework" catches it in CI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Global DB handle: agents create var DB *sql.DB at package scope in internal/repository or internal/config.</description>
+        <reason>Force constructor injection from cmd/name/main.go. The review prompt flags global state outside cmd/.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipped error wrapping: agents return err from repository methods; the service layer has no idea where the error came from.</description>
+        <reason>Force %w-wrap on every error crossing a layer boundary. Include this in the code-gen prompt and the review checklist.</reason>
+      </antipattern>
+      <antipattern>
+        <description>init() side effects: agents add init() to register handlers or apply migrations, making test-suite startup order brittle.</description>
+        <reason>Use explicit constructors called from main. Reject any init() that performs I/O or registration in the review prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Context not propagated: agents start goroutines in a service without a derived context, losing cancellation.</description>
+        <reason>Force errgroup.WithContext or named worker pools with a context parameter in the concurrency pattern prompt.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Test on wrong layer: agents test handlers via the real router with a real DB.</description>
+        <reason>Force handler tests with mocked services and repository tests with testcontainers-go. Explicitly forbid wiring the full stack in a handler test.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hallucinated stdlib APIs: agents invent sql.QueryRowContext signatures that do not exist in the pinned Go version.</description>
+        <reason>Pin the Go version in go.mod and include it in the code-gen prompt context. Require agents to cite the stdlib doc section they are using.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human-in-loop skipped for layout changes: agents auto-merge PRs that rename a top-level directory or move a package.</description>
+        <reason>Layout churn is high-impact, low-frequency, and irreversible in git history. Require human review for any commit touching cmd/, internal/, or pkg/ root structure.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Stack decisions (router, ORM, logger) committed to .aidocs/product_docs/go-stack.md before first agent run.</check>
+      <check>Layout-pass prompt output reviewed before code-gen stage begins.</check>
+      <check>All service method signatures include ctx context.Context as first parameter.</check>
+      <check>All errors crossing layer boundaries use fmt.Errorf("...: %w", err).</check>
+      <check>No pkg/ directories added without a documented external consumer.</check>
+      <check>Review agent run after code-gen and wiring stages complete.</check>
+      <check>Human review required for any structural change to cmd/, internal/, or pkg/.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/golang-standards/project-layout"/>
+      <link href="https://dave.cheney.net/practical-go"/>
+      <link href="https://github.com/ardanlabs/service"/>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-toolchain"/>
+    </see-also>
+  </content>
+</methodology>
