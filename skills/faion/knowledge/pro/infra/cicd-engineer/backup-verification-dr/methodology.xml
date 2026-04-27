@@ -1,0 +1,439 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-verification-dr">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement automated backup verification with restore drills, Prometheus alerting for backup age and size anomalies, and DR runbooks. Over 50% of backups fail at restore time without verification.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>disaster-recovery</tag>
+      <tag>monitoring</tag>
+      <tag>prometheus</tag>
+      <tag>restore-drill</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-postgres"/>
+      <ref slug="backup-filesystem-restic"/>
+      <ref slug="backup-kubernetes-velero"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Backup Verification, Monitoring, and Disaster Recovery</title>
+
+    <summary>Implement automated backup verification (restore-to-temp-target + integrity probe), Prometheus alerting rules for backup age, size anomalies, and duration spikes, and DR runbooks with quarterly full DR drills. Without scheduled verification, a backup that has never been restored is undefined behavior — not a backup.</summary>
+
+    <why>
+      <p>More than 50% of "successful" backups fail at restore time. The failure modes include corrupt dump files that pass the write phase (disk full mid-stream, network interruption), repositories with missing index entries (Restic check reveals these), and logical corruption where the backup is technically valid but the restored data does not match expectations (table count mismatch, row count anomaly, schema drift). None of these are detectable by watching the backup job exit code alone.</p>
+      <p>Monitoring backup latency and size delta — not just success/failure — catches operational anomalies early. A sudden 10x size increase means something dumped a wrong path. A sudden near-zero size means the source is empty or the backup command is silently targeting nothing. Neither shows up as a job failure.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production backup pipeline — verification is not optional at this tier.</item>
+        <item>Setting up Prometheus alerting for backup jobs alongside existing infrastructure monitoring.</item>
+        <item>Creating a DR runbook as part of a new service launch or compliance audit.</item>
+        <item>Automating weekly restore drills in an isolated test environment.</item>
+        <item>Replacing a manual "we check the logs" backup monitoring process with an automated alert pipeline.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Verification in the same target database as production — always restore to an isolated database or namespace to avoid overwriting live data.</item>
+        <item>Automated production restore without human approval — restore drills must be isolated; prod restores always require human gate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="backup-verification-scripts">
+      <rule testable="true">
+        <statement>Every backup pipeline MUST include an automated verification step that restores or probes the backup artifact in an isolated environment and checks a quantifiable integrity signal (table count, row count, schema-only diff, file hash, or restic check output). Verification MUST run on a schedule independent of the backup job — a verification failure MUST trigger a page-level alert, not just a log entry.</statement>
+        <rationale>A backup job that exits 0 only proves the write phase succeeded. Corruption, truncation, and logical inconsistency are invisible until restore time. Scheduled verification decouples detection from the crisis moment and gives the ops team a repair window before the backup is actually needed.</rationale>
+      </rule>
+
+      <example type="good" title="PostgreSQL backup verification with restore to temp database">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# verify_postgres_backup.sh - Test backup integrity
+
+set -euo pipefail
+
+BACKUP_PATH="$1"
+VERIFY_DB="backup_verify_$(date +%s)"
+EXPECTED_TABLES=50
+ALERT_EMAIL="ops@example.com"
+
+# Test backup file validity
+if ! pg_restore -l "$BACKUP_PATH" > /dev/null 2>&1; then
+    echo "ERROR: Backup file is corrupted"
+    mail -s "Backup Verification Failed" "$ALERT_EMAIL" <<< "Backup file corrupted: $BACKUP_PATH"
+    exit 1
+fi
+
+# Create test database
+createdb "$VERIFY_DB"
+
+# Restore backup
+pg_restore -d "$VERIFY_DB" "$BACKUP_PATH"
+
+# Verify data integrity
+ACTUAL_TABLES=$(psql -d "$VERIFY_DB" -t -c \
+  "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+
+if [ "$ACTUAL_TABLES" -ge "$EXPECTED_TABLES" ]; then
+    echo "SUCCESS: Data integrity check passed ($ACTUAL_TABLES tables)"
+else
+    echo "ERROR: Table count mismatch (expected: $EXPECTED_TABLES, actual: $ACTUAL_TABLES)"
+    mail -s "Backup Verification Failed" "$ALERT_EMAIL" <<< "Table count mismatch"
+fi
+
+# Cleanup
+dropdb "$VERIFY_DB"
+]]></code>
+      </example>
+
+      <example type="good" title="Restic backup verification script">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# verify_restic.sh - Verify Restic repository integrity
+
+set -euo pipefail
+
+export RESTIC_REPOSITORY="s3:s3.amazonaws.com/backup-bucket/restic"
+export RESTIC_PASSWORD_FILE="/etc/restic/password"
+
+# Check repository integrity (reads 10% of data packs)
+restic check --read-data-subset=10%
+
+# Verify latest snapshot is recent (within 24 hours)
+LATEST=$(restic snapshots --json | jq -r '.[0].time')
+LATEST_EPOCH=$(date -d "$LATEST" +%s)
+NOW_EPOCH=$(date +%s)
+AGE_HOURS=$(( (NOW_EPOCH - LATEST_EPOCH) / 3600 ))
+
+if [ "$AGE_HOURS" -gt 24 ]; then
+    echo "WARNING: Latest backup is $AGE_HOURS hours old"
+    exit 1
+fi
+
+echo "Backup verification passed. Latest backup: $AGE_HOURS hours ago"
+]]></code>
+      </example>
+
+      <example type="bad" title="Verification that only checks exit code">
+        <code lang="bash"><![CDATA[
+# Insufficient verification
+if backup_job.sh; then
+    echo "Backup succeeded"
+fi
+]]></code>
+        <note>Exit code 0 only means the write phase completed. It does not prove the data is readable, consistent, or complete. Always probe the backup artifact itself.</note>
+      </example>
+    </section>
+
+    <section name="prometheus-monitoring">
+      <p>The three critical backup metrics to export and alert on: backup_last_success_timestamp (age), backup_last_status (success/failure boolean), backup_size_bytes (size delta). Monitor latency too — a backup taking 2x longer than the 7-day average signals a data growth problem or infrastructure degradation before it becomes a missed backup window.</p>
+
+      <example type="good" title="Prometheus alerting rules for backup monitoring">
+        <code lang="yaml"><![CDATA[
+# prometheus-backup-rules.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backup-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: backup-alerts
+      rules:
+        - alert: BackupNotRecent
+          expr: time() - backup_last_success_timestamp > 86400
+          for: 1h
+          labels:
+            severity: critical
+          annotations:
+            summary: "Backup is more than 24 hours old"
+            description: "Backup {{ $labels.job }} last succeeded {{ humanizeTimestamp $value }} ago"
+
+        - alert: BackupFailed
+          expr: backup_last_status == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Backup job failed"
+            description: "Backup {{ $labels.job }} has failed"
+
+        - alert: BackupSizeDrop
+          expr: |
+            (backup_size_bytes - backup_size_bytes offset 1d)
+            / backup_size_bytes offset 1d < -0.5
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Backup size dropped by more than 50%"
+            description: "Backup {{ $labels.job }} size decreased significantly"
+
+        - alert: BackupDurationIncreased
+          expr: |
+            backup_duration_seconds >
+            (avg_over_time(backup_duration_seconds[7d]) * 2)
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Backup duration doubled"
+            description: "Backup {{ $labels.job }} taking longer than usual"
+
+        - alert: VeleroBackupFailed
+          expr: |
+            increase(velero_backup_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Velero backup failed"
+            description: "Velero backup in namespace {{ $labels.namespace }} failed"
+
+        - alert: VeleroBackupPartiallyFailed
+          expr: |
+            increase(velero_backup_partial_failure_total[1h]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Velero backup partially failed"
+            description: "Some items in Velero backup failed"
+]]></code>
+      </example>
+
+      <example type="good" title="Generic backup script with Prometheus metrics export">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# backup_template.sh - Generic backup script with Prometheus pushgateway
+
+set -euo pipefail
+
+BACKUP_NAME="${BACKUP_NAME:-mybackup}"
+BACKUP_DIR="${BACKUP_DIR:-/var/backups}"
+RETENTION_DAYS="${RETENTION_DAYS:-30}"
+S3_BUCKET="${S3_BUCKET:-}"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="/var/log/backup/${BACKUP_NAME}.log"
+METRICS_URL="${METRICS_URL:-}"
+JOB_NAME="backup_${BACKUP_NAME}"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+push_metrics() {
+    if [[ -n "$METRICS_URL" ]]; then
+        cat <<EOF | curl --data-binary @- "$METRICS_URL/metrics/job/$JOB_NAME"
+backup_last_status $1
+backup_last_success_timestamp $(date +%s)
+backup_size_bytes $2
+backup_duration_seconds $3
+EOF
+    fi
+}
+
+cleanup_old() {
+    find "$BACKUP_DIR" -name "${BACKUP_NAME}_*.gz" -mtime +$RETENTION_DAYS -delete
+}
+
+main() {
+    local start_time=$(date +%s)
+    local status=0
+    local size=0
+
+    log "Starting backup: $BACKUP_NAME"
+    mkdir -p "$BACKUP_DIR"
+
+    # INSERT backup command here
+    # backup_file="$BACKUP_DIR/${BACKUP_NAME}_${TIMESTAMP}.gz"
+
+    if [[ $? -eq 0 ]]; then
+        status=1
+        log "Backup completed successfully"
+
+        if [[ -n "$S3_BUCKET" ]]; then
+            aws s3 cp "$backup_file" "$S3_BUCKET/"
+            log "Uploaded to S3: $S3_BUCKET"
+        fi
+    else
+        status=0
+        log "ERROR: Backup failed"
+    fi
+
+    cleanup_old
+
+    local end_time=$(date +%s)
+    local duration=$((end_time - start_time))
+
+    push_metrics $status $size $duration
+    log "Duration: ${duration}s"
+
+    exit $((1 - status))
+}
+
+main "$@"
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Core operational rules for backup verification and DR that go beyond the individual tool configurations.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>Schedule a restore-drill at least weekly. A backup that has never been restored is undefined behavior — not a backup. The drill MUST restore to an isolated environment (separate namespace, separate AWS account) and MUST run an integrity probe (row count, schema diff, or file hash).</statement>
+          <rationale>The gap between a successful backup write and a successful restore is where most backup failures live. Regular drills also exercise the restore documentation and confirm the ops team can execute it under pressure.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Monitor backup size delta AND latency, not just success. Alert on: size drop &gt; 50% (source may be empty or wrong path), size increase &gt; 10x (wrong exclusion filter), duration &gt; 2x 7-day average (infrastructure degradation).</statement>
+          <rationale>A backup that succeeds but backs up an empty directory is worse than a failed backup — it creates false confidence. Size and duration signals reveal these failures before a restore is attempted.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Verify backups in the script that emits them, not in a separate downstream job: `pg_dump | gzip | gunzip -t` on the same pipe, `pg_restore -l` before upload. A downstream verification job can be skipped, misconfigured, or outrun by retention purge.</statement>
+          <rationale>In-pipe verification catches corruption at the producer before the corrupt artifact reaches storage. Downstream verification adds latency to detection and creates a window where the corrupt artifact is the "latest backup" in the catalog.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="dr-runbook">
+      <p>Disaster recovery runbooks must be tested, not just written. The quarterly DR drill measures actual RTO/RPO, validates the runbook against the current infrastructure, and updates it based on findings.</p>
+
+      <checklist>
+        <check>Document backup architecture: all sources, tools, schedules, retention, storage locations.</check>
+        <check>Create restore order documentation: which services depend on which databases/files.</check>
+        <check>List emergency contacts and escalation procedures in the runbook.</check>
+        <check>Map every service to its backup location and restore command.</check>
+        <check>Schedule quarterly DR drills — full environment restore to an isolated environment.</check>
+        <check>During drill: measure actual RTO (time to restore) and RPO (data age at restore point).</check>
+        <check>Document lessons learned from every drill and update the runbook before next drill.</check>
+        <check>Schedule weekly restore tests for individual backup artifacts.</check>
+        <check>Document partial restore procedures (single table, single file, single namespace).</check>
+        <check>Test cross-region restores at least quarterly.</check>
+      </checklist>
+    </section>
+
+    <section name="verification-checklist">
+      <checklist>
+        <check>Schedule weekly restore tests — pick a random recent backup and restore to an isolated target.</check>
+        <check>Document restore procedures with exact commands for each backup type (pg_restore, restic restore, velero restore).</check>
+        <check>Measure actual RTO during drills — document if it meets the defined RTO target.</check>
+        <check>Validate data integrity after restore: table count, row count, or file hash comparison.</check>
+        <check>Test partial restores: single table (pg_restore -t), single file (restic restore --include), single namespace (velero restore --namespace-mappings).</check>
+        <check>Test cross-region restores at least quarterly.</check>
+        <check>Implement automated backup verification script with alerting on failure.</check>
+        <check>Check backup file/archive integrity after every run before uploading.</check>
+        <check>Verify expected table or object counts match baseline in post-restore probe.</check>
+        <check>Alert on verification failures to an on-call channel, not just a log file.</check>
+        <check>Export backup metrics (success, age, size, duration) to Prometheus.</check>
+        <check>Alert on backup age exceeding threshold (24h for daily, 7d for weekly).</check>
+        <check>Alert on backup size anomalies — drop &gt;50% or spike &gt;10x from previous run.</check>
+        <check>Create Grafana dashboard showing backup success rate, age, size trend, and duration.</check>
+        <check>Set up notification channels: email/Slack for warnings, PagerDuty for critical (missed backup, verification failed).</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent creates a restore-drill subagent that restores to the production database or namespace because the test environment is "not available".</description>
+        <reason>A faulty drill can overwrite live data. Restore drills must always isolate scratch resources: separate namespace, separate AWS account if possible. If the test environment is not available, block the drill and alert — do not fall back to production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent monitors only backup_last_status (success/failure) and misses silent data corruption, empty backups, and wrong-path dumps.</description>
+        <reason>Monitor backup_last_success_timestamp (age), backup_size_bytes (delta), and backup_duration_seconds (regression). A successful empty backup is a critical failure that shows up only in size monitoring.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent runs `restic forget --prune` autonomously without a dry-run gate or human approval.</description>
+        <reason>Forget/prune is irreversible. Agent may emit `forget --dry-run` only; a human runs the real prune after reviewing the dry-run output. Add a guardrail to any agentic workflow that touches retention operations.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="backup-gap-analysis">
+<![CDATA[
+Review this existing backup configuration and identify gaps:
+
+Current state:
+[Paste existing backup scripts/configs]
+
+Analyze for:
+1. Missing critical data sources
+2. Inadequate retention
+3. Missing encryption
+4. No verification/testing
+5. Single point of failure
+6. Missing monitoring/alerting
+7. Non-compliance with 3-2-1 rule
+8. Performance issues
+
+Provide:
+- List of gaps with severity (critical/high/medium/low)
+- Remediation recommendations
+- Priority order for fixes
+]]>
+      </prompt>
+
+      <prompt purpose="generate-backup-runbook">
+<![CDATA[
+Generate a backup operations runbook for:
+
+System: [description]
+Tools: [list of backup tools]
+Stakeholders: [who needs to be notified]
+
+Include sections:
+1. Daily operations checklist
+2. Backup verification procedures
+3. Restore procedures (step-by-step)
+4. Failure response procedures
+5. Escalation matrix
+6. Contact information
+7. Common issues and solutions
+8. DR drill procedures
+]]>
+      </prompt>
+
+      <prompt purpose="prometheus-backup-alerts">
+<![CDATA[
+Generate Prometheus alerting rules for backup monitoring:
+
+Backup jobs:
+[List of backup jobs with expected frequency]
+
+Alert requirements:
+- Backup age threshold: [hours]
+- Size change threshold: [percentage]
+- Duration threshold: [multiplier of average]
+
+Generate:
+1. PrometheusRule CRD YAML
+2. Alert definitions with proper labels and annotations
+3. Grafana dashboard JSON
+4. Runbook links for each alert
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-postgres"/>
+      <ref slug="backup-filesystem-restic"/>
+      <ref slug="backup-kubernetes-velero"/>
+      <ref slug="backup-cloud-aws"/>
+      <link href="https://www.veeam.com/blog/321-backup-rule.html"/>
+    </see-also>
+  </content>
+</methodology>
