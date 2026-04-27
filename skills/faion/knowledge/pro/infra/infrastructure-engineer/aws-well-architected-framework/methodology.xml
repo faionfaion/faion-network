@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-well-architected-framework">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Apply the AWS Well-Architected Framework 6-pillar review to score workloads and produce prioritized remediation plans with Terraform evidence.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>well-architected</tag>
+      <tag>cloud-architecture</tag>
+      <tag>review</tag>
+      <tag>governance</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-multi-account-landing-zone"/>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-monitoring-observability"/>
+      <ref slug="aws-cost-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Well-Architected Framework Review</title>
+
+    <summary>The AWS Well-Architected Framework defines 6 pillars (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability) for evaluating production workloads. Use it to score existing deployments, identify gaps, and produce a prioritized remediation plan backed by IaC evidence.</summary>
+
+    <why>
+      <p>Free-form architecture reviews produce inconsistent findings and miss cross-pillar interactions. The Well-Architected Framework gives a structured scoring vocabulary understood by AWS Support, auditors, and cross-team reviewers. Scoring each pillar 1–5 with concrete evidence (resource ARNs, policy snippets) forces specificity that vague "best practice" checklists do not.</p>
+      <p>The 6-pillar model also splits concerns cleanly: Cost Optimization and Sustainability findings go to FinOps; Security findings go to the sec team; Reliability findings go to SRE. Each team can own its remediation wave without touching the others.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Before a major release or compliance audit — establish a baseline score per pillar.</item>
+        <item>Quarterly hygiene reviews for production workloads.</item>
+        <item>Pre-migration assessment when moving a workload from on-prem or another cloud to AWS.</item>
+        <item>Post-incident review where the root cause crosses multiple pillars (e.g., Reliability + Operational Excellence gap).</item>
+        <item>When a team inherits an undocumented AWS environment and needs a structured starting point.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-account hobby or prototype projects — overhead of a 6-pillar review outweighs the value.</item>
+        <item>Pure application-layer decisions (DB schema, framework choice) — use dev skills instead.</item>
+        <item>Day-2 incident response — use AIOps / observability runbooks; the WAFR is a planning tool, not an ops tool.</item>
+        <item>Non-AWS clouds — GCP has its own Architecture Framework; use gcp-arch-basics instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="six-pillars">
+      <p>The six pillars and their primary focus areas:</p>
+      <list>
+        <item>Operational Excellence — automation, runbooks, observability, incident review, change management. Key practices: IaC everywhere, automated CI/CD, post-incident review process.</item>
+        <item>Security — IAM, encryption, network security, detection. Key practices: zero trust, least privilege, MFA on all human access, GuardDuty + Security Hub enabled organization-wide.</item>
+        <item>Reliability — fault tolerance, recovery, scaling. Key practices: multi-AZ deployments (minimum 3 AZs), Auto Scaling, defined RTO/RPO per workload, tested DR runbooks.</item>
+        <item>Performance Efficiency — right-sizing, caching, serverless selection. Key practices: compute optimization per workload type, ElastiCache for DB query caching, CloudFront for static assets.</item>
+        <item>Cost Optimization — reserved capacity, spot usage, waste elimination. Key practices: Savings Plans for baseline, Spot for fault-tolerant workloads, S3 lifecycle policies, unused resource cleanup.</item>
+        <item>Sustainability — resource efficiency, managed services preference. Key practices: right-sized resources, Auto Scaling for demand matching, prefer managed services over self-managed to reduce energy overhead.</item>
+      </list>
+    </section>
+
+    <section name="review-methodology">
+      <p>Drive the review as a pipeline: discovery (read-only) → gap analysis → remediation plan → IaC diff → human approve → apply.</p>
+
+      <rule testable="true">
+        <statement>WAFR assessments MUST run under a read-only IAM role. The agent reads Organizations OU tree, IAM Identity Center assignments, CloudTrail org-trail status, Config aggregator state, GuardDuty detector status, and Security Hub enabled standards. It MUST NOT call any mutating API during discovery. All remediation is emitted as Terraform plan or CloudFormation StackSet diff for human review before apply.</statement>
+        <rationale>Running discovery under read-only prevents accidental mutation and keeps the audit trail clean. Emitting IaC diffs instead of imperative CLI calls means every remediation is reviewable, revertable, and tracked in version control.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Each pillar MUST be scored 1–5 with at minimum one concrete evidence item (resource ARN, policy snippet, or Config rule finding) per finding. Findings without evidence are marked UNVERIFIED and do not count toward the score. Output format: JSON array with fields pillar, score, findings (each with severity, evidence, remediation_terraform).</statement>
+        <rationale>Concrete evidence distinguishes real findings from assumptions. A score without evidence is an opinion; a score with an ARN and a policy excerpt is a finding that can be reproduced and closed.</rationale>
+      </rule>
+
+      <example type="good" title="Read-only WAFR signal collection script">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# aws-foundations-audit.sh — read-only WAFR signal collection
+set -euo pipefail
+OUT=${1:-./audit-$(date +%Y%m%d)}
+mkdir -p "$OUT"
+aws organizations describe-organization > "$OUT/org.json"
+aws organizations list-roots --query 'Roots[0].Id' --output text \
+  | xargs -I{} aws organizations list-organizational-units-for-parent --parent-id {} > "$OUT/ous.json"
+aws cloudtrail describe-trails --include-shadow-trails > "$OUT/cloudtrail.json"
+aws configservice describe-configuration-aggregators > "$OUT/config-aggregators.json"
+aws securityhub get-enabled-standards > "$OUT/securityhub-standards.json" || true
+aws guardduty list-detectors > "$OUT/guardduty.json" || true
+aws iam get-account-password-policy > "$OUT/iam-password-policy.json" || true
+aws iam list-account-aliases > "$OUT/iam-aliases.json"
+aws ec2 describe-vpcs --query 'Vpcs[].{Id:VpcId,Cidr:CidrBlock,FlowLogs:Tags}' > "$OUT/vpcs.json"
+aws ec2 describe-flow-logs > "$OUT/flow-logs.json"
+aws s3api list-buckets > "$OUT/s3-buckets.json"
+aws kms list-aliases > "$OUT/kms-aliases.json"
+echo "Audit complete: $OUT"]]></code>
+        <note>Run this with a read-only role. Feed the output directory to the WAFR scoring agent.</note>
+      </example>
+
+      <example type="good" title="Agent prompt for pillar scoring">
+        <code lang="text"><![CDATA[You are an AWS Well-Architected reviewer. Using read-only access via
+`aws sts get-caller-identity` first, dump Organizations OU tree, IAM Identity
+Center assignments, CloudTrail org-trail status, and Config aggregator state.
+Score each of the 6 pillars 1-5 with concrete evidence (resource ARNs, policy
+snippets). Return JSON:
+  {"pillar": "...", "score": N, "findings": [{"severity": "...", "evidence": "...", "remediation_terraform": "..."}]}
+Do not call any mutating API.]]></code>
+      </example>
+    </section>
+
+    <section name="well-architected-checklist">
+      <p>Key checks per pillar for a production workload review:</p>
+
+      <checklist>
+        <check>Operational Excellence: Infrastructure as Code (Terraform or CloudFormation) for all resources.</check>
+        <check>Operational Excellence: Automated deployments via CI/CD pipeline; no manual console changes in prod.</check>
+        <check>Operational Excellence: Runbooks documented for common operations and incidents.</check>
+        <check>Operational Excellence: Post-incident review process defined and followed.</check>
+        <check>Security: IAM Identity Center configured as primary human access point.</check>
+        <check>Security: MFA required for all users; root account MFA enabled and root access disabled for member accounts.</check>
+        <check>Security: SCPs enforcing security baseline at OU level (deny root, require IMDSv2, require encryption).</check>
+        <check>Security: GuardDuty enabled organization-wide; Security Hub aggregating findings.</check>
+        <check>Reliability: Multi-AZ deployment with minimum 3 AZs for production workloads.</check>
+        <check>Reliability: Auto Scaling configured with health checks.</check>
+        <check>Reliability: RTO and RPO defined and documented for each workload tier.</check>
+        <check>Reliability: DR plan tested on schedule (at minimum annually).</check>
+        <check>Performance Efficiency: Instance types right-sized against actual utilization metrics.</check>
+        <check>Performance Efficiency: CloudFront configured for static content delivery.</check>
+        <check>Performance Efficiency: ElastiCache in front of read-heavy database workloads.</check>
+        <check>Cost Optimization: Cost allocation tags defined and enforced via Tag Policy.</check>
+        <check>Cost Optimization: Savings Plans or Reserved Instances covering baseline compute.</check>
+        <check>Cost Optimization: Cost budgets and alerts configured per account and per workload.</check>
+        <check>Sustainability: Auto Scaling prevents over-provisioning during off-peak hours.</check>
+        <check>Sustainability: Managed services (RDS, ECS Fargate, Lambda) preferred over self-managed equivalents.</check>
+      </checklist>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Choose the right model for each WAFR task:</p>
+      <list>
+        <item>Well-Architected pillar assessment: opus — requires deep analysis across multiple dimensions.</item>
+        <item>IAM permission strategy design: sonnet — complex but established patterns.</item>
+        <item>Disaster recovery planning: sonnet — requires trade-off analysis.</item>
+        <item>Cost optimization audit: sonnet — pattern-based analysis.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Known failure modes when using LLM agents for WAFR work:</p>
+      <list>
+        <item>Agents that see "no MFA" on a service account often suggest enabling it — service accounts (programmatic users / roles) should not have MFA; that is only for humans. Sanity-check before applying.</item>
+        <item>Region defaults: agents that omit --region in scripts will silently use the env default and can pollute the wrong region — always require explicit region in generated code.</item>
+        <item>Account ID and ARN leakage: scrub before posting reports anywhere outside the account; use a password-scrubber-agent style filter.</item>
+        <item>LLMs frequently confuse Control Tower guardrails with SCPs — they overlap but are not the same; verify which layer enforces a given control.</item>
+        <item>IAM policies generated by LLMs trend toward permissive Resource: "*" — require an automated tightening pass with iam-policy-simulator or IAM Access Analyzer.</item>
+        <item>Cost Explorer data is delayed up to 24h; agents drawing conclusions from "today's spend" will mislead — anchor on rolling 7- or 30-day windows.</item>
+      </list>
+    </section>
+
+    <section name="recommended-tools">
+      <list>
+        <item>aws CLI v2 — read state, scripted ops. https://docs.aws.amazon.com/cli/</item>
+        <item>Prowler — multi-framework AWS security and WAFR audit. https://github.com/prowler-cloud/prowler</item>
+        <item>Steampipe (aws plugin) — SQL queries over AWS APIs for audits. https://steampipe.io/plugins/turbot/aws</item>
+        <item>cloudquery — AWS state to Postgres for analytics. https://www.cloudquery.io/</item>
+        <item>cloud-custodian (c7n) — policy-as-code remediation, scheduled actions. https://cloudcustodian.io/</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html"/>
+      <link href="https://aws.amazon.com/architecture/well-architected/"/>
+      <link href="https://github.com/prowler-cloud/prowler"/>
+      <ref slug="aws-multi-account-landing-zone"/>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-monitoring-observability"/>
+    </see-also>
+  </content>
+</methodology>
