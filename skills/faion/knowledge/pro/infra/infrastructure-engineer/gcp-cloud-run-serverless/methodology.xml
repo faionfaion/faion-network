@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-cloud-run-serverless">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>GCP Cloud Run and Cloud Functions Gen2 best practices: secure service deployment, VPC connector, blue-green traffic splitting, Secret Manager integration, and Cloud Run security/setup checklists.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>serverless</tag>
+      <tag>cloud-functions</tag>
+      <tag>blue-green</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-compute-gke"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Cloud Run and Serverless</title>
+
+    <summary>Cloud Run and Cloud Functions Gen2 best practices: deploy with a dedicated service account, Secret Manager secrets, VPC connector for private resource access, min-instances for production cold-start elimination, blue-green traffic splitting for safe rollouts, and Binary Authorization for image trust.</summary>
+
+    <why>
+      <p>Cloud Run's default compute service account has broad project-level permissions. Using a dedicated per-service service account limits blast radius. VPC connector is required for private Cloud SQL, Redis, or internal service access — without it, Cloud Run can only reach public endpoints. Blue-green traffic splitting allows canary validation before full cutover without downtime.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying a containerized stateless API or web application on Cloud Run.</item>
+        <item>Setting up Cloud Functions Gen2 for HTTP triggers or Pub/Sub event processing.</item>
+        <item>Configuring blue-green or canary releases for a Cloud Run service.</item>
+        <item>Adding VPC connector to reach private Cloud SQL or internal services.</item>
+        <item>Auditing Cloud Run service security configuration.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Stateful workloads or long-running background jobs — use Compute Engine or GKE.</item>
+        <item>Workloads requiring DaemonSets, host network access, or custom node config — use GKE Standard.</item>
+        <item>VPC and firewall configuration — use gcp-networking-vpc.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cloud-run-deployment">
+      <rule>
+        <statement>Cloud Run services in production MUST use: a dedicated service account (not the default compute SA), Secret Manager for all credentials, VPC connector with --vpc-egress=all-traffic for private resource access, --no-allow-unauthenticated, and --min-instances=1 to eliminate cold starts. Set --execution-environment=gen2.</statement>
+        <rationale>The default compute service account has project-wide Editor-level permissions. Dedicated per-service SAs limit blast radius. VPC egress all-traffic routes all outbound through the VPC, preventing data from bypassing VPC-SC perimeters. Min-instances=1 eliminates the first-request latency spike in production.</rationale>
+      </rule>
+
+      <example type="good" title="Production Cloud Run deployment">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-api \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-api:v1.0.0 \
+    --region=us-central1 \
+    --platform=managed \
+    --service-account=my-api@my-project.iam.gserviceaccount.com \
+    --set-secrets=DATABASE_URL=db-connection:latest,API_KEY=api-key:latest \
+    --vpc-connector=my-connector \
+    --vpc-egress=all-traffic \
+    --cpu=1 \
+    --memory=512Mi \
+    --concurrency=80 \
+    --min-instances=1 \
+    --max-instances=10 \
+    --timeout=60s \
+    --cpu-throttling \
+    --execution-environment=gen2 \
+    --ingress=internal-and-cloud-load-balancing \
+    --no-allow-unauthenticated
+]]></code>
+      </example>
+
+      <example type="good" title="Deploy from source (build automatically)">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-app \
+    --source=. \
+    --region=us-central1 \
+    --service-account=my-app@my-project.iam.gserviceaccount.com \
+    --set-env-vars=LOG_LEVEL=info,ENV=production \
+    --min-instances=1 \
+    --max-instances=5 \
+    --ingress=all \
+    --allow-unauthenticated
+]]></code>
+      </example>
+
+      <example type="good" title="VPC connector for private resource access">
+        <code lang="bash"><![CDATA[
+# Create VPC connector (requires Serverless VPC Access API)
+gcloud compute networks vpc-access connectors create my-connector \
+    --region=us-central1 \
+    --network=my-vpc \
+    --range=10.8.0.0/28 \
+    --min-instances=2 \
+    --max-instances=10
+
+# Deploy with VPC connector
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:latest \
+    --region=us-central1 \
+    --vpc-connector=my-connector \
+    --vpc-egress=all-traffic \
+    --set-env-vars=DB_HOST=10.0.0.5
+]]></code>
+      </example>
+    </section>
+
+    <section name="blue-green-traffic">
+      <example type="good" title="Blue-green deployment with tag-based traffic splitting">
+        <code lang="bash"><![CDATA[
+# Deploy new revision without traffic (tagged green)
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:v2.0.0 \
+    --region=us-central1 \
+    --tag=green \
+    --no-traffic
+
+# Test green deployment via tag URL
+curl https://green---my-app-abc123.run.app/health
+
+# Gradually shift 10% traffic to green
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=green=10
+
+# Full cutover
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=green=100
+
+# Rollback to previous if needed
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-latest
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Use --no-traffic + tagged revisions for all Cloud Run production deployments. Validate the tagged revision before shifting traffic. Keep the previous revision available for immediate rollback via --to-latest.</statement>
+        <rationale>--no-traffic prevents new code from receiving production load until validated. Tags give a stable URL for testing without traffic. --to-latest rollback takes effect in seconds without redeployment.</rationale>
+      </rule>
+    </section>
+
+    <section name="cloud-functions-gen2">
+      <example type="good" title="Cloud Functions Gen2 — HTTP and Pub/Sub triggers">
+        <code lang="bash"><![CDATA[
+# Deploy HTTP function (Gen2 runs on Cloud Run)
+gcloud functions deploy my-function \
+    --gen2 \
+    --runtime=python312 \
+    --region=us-central1 \
+    --source=. \
+    --entry-point=handler \
+    --trigger-http \
+    --service-account=my-function@my-project.iam.gserviceaccount.com \
+    --set-secrets=API_KEY=api-key:latest \
+    --memory=256Mi \
+    --timeout=60s \
+    --min-instances=0 \
+    --max-instances=100 \
+    --no-allow-unauthenticated
+
+# Deploy Pub/Sub triggered function
+gcloud functions deploy process-messages \
+    --gen2 \
+    --runtime=python312 \
+    --region=us-central1 \
+    --source=. \
+    --entry-point=process \
+    --trigger-topic=my-topic \
+    --service-account=processor@my-project.iam.gserviceaccount.com
+]]></code>
+      </example>
+
+      <note>Cloud Functions Gen2 runs on Cloud Run infrastructure. All Cloud Run best practices (dedicated SA, Secret Manager, VPC connector) apply to Gen2 functions.</note>
+    </section>
+
+    <section name="cloud-run-security-checklist">
+      <checklist>
+        <check>Use dedicated service account (not default compute SA).</check>
+        <check>Enable VPC connector for private resource access.</check>
+        <check>Configure IAM for authentication (--no-allow-unauthenticated in prod).</check>
+        <check>Use Secret Manager for sensitive config.</check>
+        <check>Set concurrency and memory limits.</check>
+        <check>Enable Binary Authorization for trusted images.</check>
+        <check>Configure egress settings (all-traffic through VPC).</check>
+        <check>Use custom service accounts with minimal permissions.</check>
+        <check>Enable Cloud Run audit logging.</check>
+        <check>Implement request timeout limits.</check>
+      </checklist>
+    </section>
+
+    <section name="cloud-run-deployment-checklist">
+      <checklist>
+        <check>Container image scanned for vulnerabilities.</check>
+        <check>Health check endpoint implemented.</check>
+        <check>Graceful shutdown configured.</check>
+        <check>Resource limits set (CPU, memory).</check>
+        <check>Concurrency configured appropriately.</check>
+        <check>Service account created (not default).</check>
+        <check>Secrets from Secret Manager.</check>
+        <check>VPC connector for private resources.</check>
+        <check>Traffic management configured.</check>
+        <check>Logging configured (structured).</check>
+        <check>Min instances set for production.</check>
+        <check>Custom domain configured with SSL.</check>
+      </checklist>
+    </section>
+
+    <section name="cloud-run-setup-checklist">
+      <checklist>
+        <check>Create dedicated service accounts.</check>
+        <check>Configure VPC connector.</check>
+        <check>Set up Artifact Registry.</check>
+        <check>Configure build triggers (Cloud Build).</check>
+        <check>Set resource limits (CPU, memory).</check>
+        <check>Configure traffic splitting.</check>
+        <check>Enable Cloud Run audit logs.</check>
+        <check>Set up custom domains.</check>
+        <check>Configure Secret Manager integration.</check>
+        <check>Enable Binary Authorization.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://cloud.google.com/run/docs/best-practices"/>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-compute-gke"/>
+      <ref slug="gcp-terraform-templates"/>
+    </see-also>
+  </content>
+</methodology>
