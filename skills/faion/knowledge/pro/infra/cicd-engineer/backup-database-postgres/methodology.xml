@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-database-postgres">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement PostgreSQL backup pipelines: pg_dump logical backups, pg_basebackup for PITR, pgBackRest for enterprise-grade parallel backup and WAL archiving.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>postgresql</tag>
+      <tag>pitr</tag>
+      <tag>pgbackrest</tag>
+      <tag>database</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-mysql-mongo"/>
+      <ref slug="backup-verification-dr"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>PostgreSQL Backup Implementation</title>
+
+    <summary>Implement PostgreSQL backups using pg_dump for logical snapshots, pg_basebackup for PITR base backups, and pgBackRest for enterprise-grade parallel backup with WAL archiving. Verify every backup with an integrity check before uploading to remote storage.</summary>
+
+    <why>
+      <p>PostgreSQL has two fundamentally different backup surfaces: logical (pg_dump, pg_dumpall) and physical (pg_basebackup, pgBackRest). Logical dumps are portable and row-granular but cannot do PITR. Physical backups preserve the binary cluster state and, when combined with WAL archiving, allow restore to any point in time — the only remedy against logical corruption (an UPDATE without WHERE) that replicates immediately to replicas.</p>
+      <p>More than 50% of "successful" backups fail at restore time because no integrity check was run after creation. Verification in the same script that emits the backup — gunzip -t on the pipe, pg_restore -l before uploading — catches corruption at the producer rather than during a crisis.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up database backup pipelines for PostgreSQL with offsite copy to S3 or similar object storage.</item>
+        <item>Implementing Point-in-Time Recovery (PITR) — requires WAL archiving + base backup.</item>
+        <item>Migrating or copying databases between environments using pg_dump custom format.</item>
+        <item>Compliance requirements mandate regular backup verification and retention documentation.</item>
+        <item>Large databases where parallel dump (-j workers) or incremental backup (pgBackRest) is needed.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fully managed PaaS (RDS, Cloud SQL, AlloyDB) with automated backups already enabled — unless cross-account or cross-cloud copies are needed.</item>
+        <item>Stateless data derived entirely from upstream sources (Git, S3 with versioning) — backing up derived state is waste.</item>
+        <item>Dev-only single-VM environments with no recovery requirements — a simple cron pg_dump to local disk is sufficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pg-dump-logical">
+      <p>pg_dump with custom format (-Fc) produces a binary file that supports parallel restore, selective table restore, and compression. Always verify with pg_restore -l (which reads the table of contents without restoring) before uploading to remote storage.</p>
+
+      <rule testable="true">
+        <statement>Every pg_dump script MUST verify the dump file with `pg_restore -l "$BACKUP_PATH" &gt; /dev/null` before uploading to remote storage. A backup that fails pg_restore -l is corrupt and must trigger an alert — not a silent upload.</statement>
+        <rationale>pg_dump can produce a partial file when the source crashes mid-export or when disk fills. Silent uploads create the illusion of a backup without the substance. The verification adds under one second for most database sizes.</rationale>
+      </rule>
+
+      <example type="good" title="PostgreSQL logical backup with integrity check and S3 upload">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# postgres_backup.sh - PostgreSQL backup with S3 upload
+set -euo pipefail
+
+DB_NAME="${DB_NAME:-mydb}"
+BACKUP_DIR="/var/backups/postgres"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+RETENTION_DAYS=30
+S3_BUCKET="s3://backups-bucket/postgres"
+
+mkdir -p "$BACKUP_DIR"
+
+# Full backup with custom format
+pg_dump -h localhost -U postgres -Fc "$DB_NAME" > \
+  "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}.dump"
+
+# Verify integrity before upload
+if ! pg_restore -l "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}.dump" > /dev/null 2>&1; then
+    echo "ERROR: Backup file is corrupted" >&2
+    exit 1
+fi
+
+# Upload to S3
+aws s3 cp "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}.dump" \
+  "$S3_BUCKET/${DB_NAME}/" \
+  --storage-class STANDARD_IA
+
+# Cleanup old local backups
+find "$BACKUP_DIR" -type f -name "*.dump" -mtime +$RETENTION_DAYS -delete
+
+echo "Backup completed: ${DB_NAME}_${TIMESTAMP}.dump"
+]]></code>
+      </example>
+
+      <example type="good" title="Parallel dump for large databases">
+        <code lang="bash"><![CDATA[
+# pg_dump directory format with 4 parallel workers
+pg_dump -h localhost -U postgres -Fd -j 4 "$DB_NAME" \
+  -f "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}/"
+
+# Restore with parallel workers
+pg_restore -d "$TARGET_DB" -j 4 "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}/"
+]]></code>
+        <note>-Fd (directory format) required for -j parallelism. Cannot stream to a single file.</note>
+      </example>
+
+      <example type="bad" title="Dump without verification">
+        <code lang="bash"><![CDATA[
+pg_dump -U postgres mydb | gzip > backup.sql.gz
+aws s3 cp backup.sql.gz s3://bucket/
+]]></code>
+        <note>No integrity check — a partial dump (from disk full, crash, etc.) uploads silently and fails at restore time.</note>
+      </example>
+    </section>
+
+    <section name="pitr-base-backup">
+      <p>Point-in-Time Recovery requires a physical base backup (pg_basebackup or pgBackRest stanza) plus continuous WAL archiving. The base backup is the starting state; WAL segments replay forward to the target point. WAL archive gaps happen silently when the archive_command fails transiently — monitor pg_stat_archiver explicitly.</p>
+
+      <rule testable="true">
+        <statement>Repositories using WAL archiving for PITR MUST monitor `pg_stat_archiver.failed_count` and alert when it increases. Silently failed WAL segments create invisible gaps that make the PITR chain unrestorable from the point of the first failure forward.</statement>
+        <rationale>archive_command failures are transient (network blip, S3 throttle) and often recover silently in production without any log noise. Without explicit monitoring, the failure is discovered only during a restore attempt — the worst possible moment.</rationale>
+      </rule>
+
+      <example type="good" title="Base backup for PITR with streaming WAL">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# postgres_basebackup.sh - Base backup for Point-in-Time Recovery
+set -euo pipefail
+
+BACKUP_DIR="/var/backups/postgres/base"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Create base backup with streaming WAL
+pg_basebackup \
+  -h localhost \
+  -U replication \
+  -D "$BACKUP_DIR/base_$TIMESTAMP" \
+  -Ft \
+  -z \
+  -P \
+  -X stream
+
+echo "Base backup created: $BACKUP_DIR/base_$TIMESTAMP"
+]]></code>
+      </example>
+
+      <example type="good" title="Nightly Postgres logical backup: dump + verify + Restic push">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+set -euo pipefail
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+DUMP=/var/backups/pg/${PGDATABASE}-${TS}.sql.gz
+mkdir -p "$(dirname "$DUMP")"
+PGPASSWORD="$PGPASSWORD" pg_dump -h "$PGHOST" -U "$PGUSER" "$PGDATABASE" \
+  | gzip -9 > "$DUMP"
+gunzip -t "$DUMP"                 # integrity check
+restic -r "$RESTIC_REPO" backup "$DUMP" --tag "pg,$PGDATABASE,$TS"
+restic -r "$RESTIC_REPO" forget --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --prune
+restic -r "$RESTIC_REPO" check --read-data-subset=5%
+rm -f "$DUMP"
+]]></code>
+        <note>Verify in the script that emits the backup — gunzip -t on the same pipe catches corruption in the producer.</note>
+      </example>
+    </section>
+
+    <section name="setup-checklist">
+      <checklist>
+        <check>Configure pg_hba.conf for backup user with minimal permissions.</check>
+        <check>Create dedicated backup role: GRANT CONNECT, SELECT ON ALL TABLES, pg_read_all_settings.</check>
+        <check>Enable WAL archiving in postgresql.conf: archive_mode=on, archive_command points to S3/NFS.</check>
+        <check>Monitor pg_stat_archiver.failed_count — alert on any increase.</check>
+        <check>Configure pg_dump or pg_basebackup scripts with integrity check before upload.</check>
+        <check>Test parallel dump (-j 4) for databases larger than 50 GB.</check>
+        <check>Verify backup file integrity after every run — pg_restore -l for custom-format dumps.</check>
+        <check>Test restore procedure to a separate temp database at least weekly.</check>
+        <check>Air-gap long-term archive credentials — daily-runner account can write but not delete.</check>
+        <check>Tag every backup with app, env, db_role, created_by for selective restore.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>PostgreSQL-specific pitfalls agents commonly hit when generating backup configurations.</p>
+
+      <antipattern>
+        <description>Agent generates pg_dump script without specifying -Fc (custom format), producing a plain SQL file that cannot be partially restored or used with pg_restore -j for parallel restore.</description>
+        <reason>Plain SQL format is human-readable but cannot do parallel restore or selective table restore. Always use -Fc or -Fd for production backups.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent sets up WAL archiving with archive_command pointing to a path without verifying the archive_status in pg_stat_archiver after enabling.</description>
+        <reason>archive_command failures are silent from the application's perspective; the database continues to run while the PITR chain silently breaks. Verify after every archive_command change.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent commits Restic password or PGPASSWORD into the backup script or repository instead of loading from secrets manager.</description>
+        <reason>Encryption key loss = data loss; credential exposure in Git = security incident. Force pull from secrets manager and add a git pre-commit check: `git diff --staged | grep -E 'RESTIC_PASSWORD|PGPASSWORD'`.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-postgres-backup-script">
+<![CDATA[
+Generate a production-ready PostgreSQL backup script.
+
+Requirements:
+- Database name: [name]
+- Backup location: [local path and/or S3 bucket]
+- Retention: [X days local, Y days remote]
+- PITR support: [Yes/No]
+- Compression: [Yes/No]
+- Encryption: [Yes/No, method]
+- Notification: [email/slack/none]
+
+Include:
+1. Error handling with proper exit codes
+2. Logging with timestamps
+3. Metrics export for Prometheus
+4. Cleanup of old backups
+5. Verification step (pg_restore -l or gunzip -t)
+6. Cloud upload (if applicable)
+
+Output: Complete bash script with inline comments.
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-mysql-mongo"/>
+      <ref slug="backup-verification-dr"/>
+      <link href="https://www.postgresql.org/docs/current/backup.html"/>
+      <link href="https://pgbackrest.org/user-guide.html"/>
+      <link href="https://restic.readthedocs.io/en/stable/"/>
+    </see-also>
+  </content>
+</methodology>
