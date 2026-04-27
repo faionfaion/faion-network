@@ -1,0 +1,576 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-platform-golden-paths">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Design and implement golden paths — opinionated but optional templates that make the right way the easy way, driving 80%+ adoption for new-service creation, database provisioning, and API setup.</summary>
+    <tags>
+      <tag>golden-paths</tag>
+      <tag>platform-engineering</tag>
+      <tag>scaffolding</tag>
+      <tag>developer-experience</tag>
+      <tag>templates</tag>
+    </tags>
+    <category>platform</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-backstage"/>
+      <ref slug="devops-platform-crossplane"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Golden Paths: Opinionated Self-Service Templates for Developer Platforms</title>
+
+    <summary>Golden paths are pre-built, opinionated templates for the most common developer tasks (new service, database provisioning, API gateway). They bundle CI/CD, observability, security scanning, and environment configs into a single form-submit action. Developer effort drops from days to minutes while best practices are enforced by default, not by policy review.</summary>
+
+    <why>
+      <p>The canonical "Golden Path" principle states: make the right way the easy way. Without golden paths, each team solves the same problems independently — inconsistent CI/CD, missing observability, ad-hoc secrets management. Golden paths compress institutional knowledge into a reusable form, ensuring every new service starts with monitoring, security scanning, and documentation pre-wired.</p>
+      <p>Spotify's golden paths drove new-service template adoption to 89% — developers chose them voluntarily because the alternative (manual setup) was slower and more error-prone. Netflix's Wall-E achieved near-100% security compliance for new services by embedding security into the golden path, making it invisible to developers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating a new microservice, API, worker process, or frontend application in a team with established infrastructure patterns.</item>
+        <item>Provisioning a database or cache with standard security, backup, and monitoring requirements.</item>
+        <item>Setting up an API gateway with authentication, rate limiting, and OpenAPI documentation.</item>
+        <item>Any repeated infrastructure setup task performed more than 5 times per month across teams.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off or experimental infrastructure with no future reuse — template overhead exceeds value.</item>
+        <item>Highly customized architectures that deviate from org standards — use the escape hatch and document the deviation.</item>
+        <item>Prototype or throwaway services — use the simplest possible setup; golden paths assume production lifecycle.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="golden-path-anatomy">
+      <p>Every golden path must be designed with a clear contract: what it provides automatically vs what the developer must configure. Ambiguous boundaries are the main cause of developer frustration with golden paths.</p>
+
+      <rule testable="true">
+        <statement>Every golden path MUST explicitly document: (a) what it provides automatically (pre-configured items), (b) what the developer must supply as input parameters, and (c) the escape hatch — how to proceed outside the golden path without platform team involvement. Golden paths without escape hatches create the same bottleneck they replace.</statement>
+        <rationale>Developers only adopt golden paths when they trust they can leave them. Clear escape hatches signal that the platform respects developer autonomy, which drives voluntary adoption above mandatory adoption rates by 30-40% in surveyed orgs.</rationale>
+      </rule>
+
+      <example type="good" title="New Service Golden Path — contract definition">
+        <code lang="text"><![CDATA[
+New Service Golden Path
+========================
+Developer supplies:
+  - Service name (lowercase, hyphens, max 32 chars)
+  - Description
+  - Owner team
+  - Language (python | go | node)
+  - Database dependency (none | postgresql | mongodb)
+  - Optional: Kafka integration, Redis cache
+
+Automatically provided:
+  - Repository with standardized structure
+  - CI/CD pipeline (lint → test → security scan → build → deploy)
+  - Observability (Prometheus metrics, structured logs, distributed tracing)
+  - Security scanning (Trivy, SAST)
+  - Documentation template (TechDocs-compatible)
+  - Environment configurations (dev/staging/prod)
+  - catalog-info.yaml pre-registered in service catalog
+
+Escape hatch:
+  - Add .platform-override: true to catalog-info.yaml
+  - Platform team notified; no approval required
+  - Custom CI/CD replaces generated pipeline
+]]></code>
+      </example>
+
+      <example type="good" title="Database Golden Path — contract definition">
+        <code lang="text"><![CDATA[
+Database Golden Path
+====================
+Developer supplies:
+  - Database name
+  - Size (small | medium | large)
+  - Environment (development | staging | production)
+
+Automatically provided:
+  - Managed database (RDS postgres 15, Cloud SQL)
+  - Connection credentials in secrets manager
+  - Backup configuration (7-day retention, point-in-time recovery)
+  - Monitoring alerts (CPU > 80%, storage > 85%, connection count)
+  - Encryption at rest (AES-256)
+  - Network isolation (private subnet, no public access)
+
+Size mapping:
+  small:  db.t3.micro   / 20GB   / multiAZ: false
+  medium: db.t3.medium  / 100GB  / multiAZ: false
+  large:  db.r5.large   / 500GB  / multiAZ: true (production only)
+]]></code>
+      </example>
+
+      <example type="good" title="API Gateway Golden Path — contract definition">
+        <code lang="text"><![CDATA[
+API Golden Path
+===============
+Developer supplies:
+  - API name
+  - OpenAPI specification file
+
+Automatically provided:
+  - API gateway configuration
+  - Authentication/authorization (OAuth2/JWT)
+  - Rate limiting (configurable, default 1000 req/min)
+  - API documentation (rendered from OpenAPI spec)
+  - Client SDK generation (Python, TypeScript)
+  - Monitoring (latency p50/p95/p99, error rates, throughput)
+]]></code>
+      </example>
+    </section>
+
+    <section name="implementation-phases">
+      <p>Golden path implementation follows a four-phase checklist. Each phase must be completed before the next begins — skipping straight to portal deployment (Phase 3) without stable templates (Phase 2) is the most common implementation mistake.</p>
+
+      <checklist>
+        <check>Phase 2a — Service Catalog: catalog all existing services with ownership metadata before creating new-service templates.</check>
+        <check>Phase 2a — Service Catalog: define service metadata schema (name, description, owner, lifecycle, dependencies, APIs provided).</check>
+        <check>Phase 2a — Service Catalog: implement service ownership tracking — every service has one named owner team.</check>
+        <check>Phase 2a — Service Catalog: create service health dashboards linked from the catalog entry.</check>
+        <check>Phase 2a — Service Catalog: add service dependency mapping (what this service depends on, what depends on it).</check>
+        <check>Phase 2a — Service Catalog: enable service search and discovery across the full org.</check>
+        <check>Phase 2b — New Service Golden Path: create service template (language-specific skeleton for each supported language).</check>
+        <check>Phase 2b — New Service Golden Path: include CI/CD pipeline configuration pre-wired for the golden path.</check>
+        <check>Phase 2b — New Service Golden Path: add observability setup (metrics endpoint, log format, trace headers) by default.</check>
+        <check>Phase 2b — New Service Golden Path: configure security scanning (container scan, SAST) in the pipeline.</check>
+        <check>Phase 2b — New Service Golden Path: set up environment provisioning for dev/staging/prod.</check>
+        <check>Phase 2b — New Service Golden Path: document the golden path — what it provides, what developer configures, escape hatch.</check>
+        <check>Phase 2c — Self-Service Infrastructure: define infrastructure modules (compute, storage, database).</check>
+        <check>Phase 2c — Self-Service Infrastructure: implement request/approval workflows only where legally required; default to automatic.</check>
+        <check>Phase 2c — Self-Service Infrastructure: create self-service forms in portal — form fields map directly to golden path parameters.</check>
+        <check>Phase 2c — Self-Service Infrastructure: set up resource quotas and limits per team/environment.</check>
+        <check>Phase 2c — Self-Service Infrastructure: enable cost visibility per team/service from day one.</check>
+        <check>Phase 2c — Self-Service Infrastructure: implement cleanup policies for ephemeral environments (TTL-based deletion).</check>
+      </checklist>
+    </section>
+
+    <section name="backstage-template-anatomy">
+      <p>The Backstage Scaffolder template (template.yaml) is the canonical golden path implementation format. It collects parameters, renders files from a skeleton, creates the repository, and registers the service in the catalog — all in one form submission.</p>
+
+      <rule testable="true">
+        <statement>Backstage Scaffolder templates MUST include exactly four step types in order: (1) fetch:template — render skeleton files with developer-supplied parameters; (2) publish:github or publish:gitlab — create the repository with correct permissions; (3) catalog:register — automatically register the new service in the Backstage catalog; (4) optional notification step. Missing the catalog:register step means every golden path creates a service invisible to the service catalog, defeating the IDP's discoverability goal.</statement>
+        <rationale>Services not in the catalog cannot be discovered, have no ownership tracking, and cannot be included in dependency maps. Catalog registration must be automated — manual registration has near-zero compliance in practice.</rationale>
+      </rule>
+
+      <example type="good" title="Backstage Scaffolder template for Python microservice">
+        <code lang="yaml"><![CDATA[
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: microservice-python
+  title: Python Microservice
+  description: Create a production-ready Python microservice with FastAPI
+  tags:
+    - python
+    - fastapi
+    - recommended
+spec:
+  owner: platform-team
+  type: service
+
+  parameters:
+    - title: Service Information
+      required:
+        - name
+        - owner
+      properties:
+        name:
+          title: Service Name
+          type: string
+          description: Unique service identifier (lowercase, hyphens)
+          pattern: "^[a-z][a-z0-9-]*$"
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owner
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            allowedKinds:
+              - Group
+
+    - title: Technical Options
+      properties:
+        database:
+          title: Database
+          type: string
+          default: none
+          enum:
+            - none
+            - postgresql
+            - mongodb
+          enumNames:
+            - None
+            - PostgreSQL
+            - MongoDB
+        enableKafka:
+          title: Enable Kafka Integration
+          type: boolean
+          default: false
+        enableRedis:
+          title: Enable Redis Cache
+          type: boolean
+          default: false
+
+    - title: Repository Configuration
+      required:
+        - repoUrl
+      properties:
+        repoUrl:
+          title: Repository Location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts:
+              - github.com
+
+  steps:
+    - id: fetch
+      name: Fetch Template
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          database: ${{ parameters.database }}
+          enableKafka: ${{ parameters.enableKafka }}
+          enableRedis: ${{ parameters.enableRedis }}
+
+    - id: publish
+      name: Publish Repository
+      action: publish:github
+      input:
+        allowedHosts: ["github.com"]
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        defaultBranch: main
+
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Repository
+        url: ${{ steps.publish.output.remoteUrl }}
+      - title: Open in Backstage
+        icon: catalog
+        entityRef: ${{ steps.register.output.entityRef }}
+]]></code>
+        <note>The pattern property enforces naming conventions at the form level, before any infrastructure is provisioned.</note>
+      </example>
+    </section>
+
+    <section name="platform-ci-template">
+      <p>Every golden path for a new service must embed a CI/CD pipeline template. This template is the most important artifact in the golden path — it enforces lint, test, security, and deployment standards for every service created through the path.</p>
+
+      <example type="good" title="Platform CI/CD template embedded in golden path">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/platform-ci.yaml
+name: Platform CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install ruff mypy
+          pip install -r requirements.txt
+      - name: Run Ruff
+        run: ruff check .
+      - name: Run MyPy
+        run: mypy src/
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-test.txt
+      - name: Run tests
+        run: pytest --cov=src --cov-report=xml
+        env:
+          DATABASE_URL: postgresql://postgres:test@localhost:5432/test
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+
+  build:
+    needs: [lint, test, security]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.build.outputs.imageid }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Kubernetes
+        uses: azure/k8s-deploy@v4
+        with:
+          manifests: |
+            k8s/deployment.yaml
+            k8s/service.yaml
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+]]></code>
+      </example>
+    </section>
+
+    <section name="k8s-deployment-template">
+      <p>The Kubernetes deployment manifest embedded in every new-service golden path enforces resource limits, security context, health probes, and Prometheus scraping annotations by default.</p>
+
+      <example type="good" title="Standard service Kubernetes deployment manifest (golden path skeleton)">
+        <code lang="yaml"><![CDATA[
+# k8s/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ service_name }}
+  labels:
+    app: {{ service_name }}
+    team: {{ team }}
+spec:
+  replicas: {{ replicas | default(2) }}
+  selector:
+    matchLabels:
+      app: {{ service_name }}
+  template:
+    metadata:
+      labels:
+        app: {{ service_name }}
+        team: {{ team }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ service_name }}
+      containers:
+        - name: {{ service_name }}
+          image: {{ image }}:{{ tag }}
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ service_name }}-secrets
+                  key: database-url
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ service_name }}
+spec:
+  ports:
+    - port: 80
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ service_name }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ service_name }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: {{ service_name }}
+]]></code>
+        <note>readOnlyRootFilesystem and runAsNonRoot are security baselines embedded in every service by default. Developers must explicitly override them with a documented justification.</note>
+      </example>
+    </section>
+
+    <section name="golden-path-llm-prompts">
+      <p>LLM prompts for golden path design and implementation tasks.</p>
+
+      <prompt purpose="Design a new golden path for a specific service type">
+        <![CDATA[
+Design a golden path for creating new [service type] services.
+
+Service type: [microservice/API/worker/frontend]
+Language: [Python/Go/Node.js/Java]
+Infrastructure: [Kubernetes/serverless]
+
+Golden path should include:
+1. Repository structure template
+2. CI/CD pipeline configuration
+3. Infrastructure provisioning
+4. Observability setup (metrics, logs, traces)
+5. Security baseline (authentication, secrets)
+6. Documentation template
+7. Local development setup
+
+Constraints:
+- [list any organizational constraints]
+
+Output format:
+- Template files with comments
+- Setup instructions
+- What it provides vs what developer configures
+- Escape hatches for non-standard cases
+]]>
+      </prompt>
+
+      <prompt purpose="Define a database golden path with Crossplane or Terraform">
+        <![CDATA[
+Design a golden path for database provisioning.
+
+Database types to support: [PostgreSQL/MySQL/MongoDB/Redis]
+Environment: [AWS/GCP/on-prem Kubernetes]
+
+Golden path should provide:
+1. Self-service request interface (form fields)
+2. Sizing options (small/medium/large with specs)
+3. Security defaults (encryption, network isolation)
+4. Backup configuration
+5. Monitoring alerts
+6. Connection string delivery (secrets management)
+7. Cost estimation
+
+Output:
+- Crossplane/Terraform composition
+- Backstage template (if applicable)
+- Documentation for developers
+]]>
+      </prompt>
+    </section>
+
+    <antipattern>
+      <description>Building golden paths without developer input, then wondering why adoption stays below 20%.</description>
+      <reason>Golden paths that solve the wrong problems are invisible to developers. Interview developers about their top friction points BEFORE building any template. The top-3 friction points become the first 3 golden paths.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Making golden paths mandatory (blocking deviation via policy enforcement).</description>
+      <reason>Mandatory golden paths recreate the operations ticket queue. Developers route around mandatory paths through shadow infrastructure or "exceptions" that grow into permanent workarounds. Opinionated-but-optional with documented escape hatches drives 89% voluntary adoption (Spotify).</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Building 15 golden paths before validating the first one.</description>
+      <reason>Over-engineering before validating value is the primary cause of platform abandonment. Build one golden path, measure adoption, iterate. Spotify took 6 months between catalog launch and the first scaffolder template.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-backstage"/>
+      <ref slug="devops-platform-crossplane"/>
+      <link href="https://www.redhat.com/en/topics/platform-engineering/golden-paths"/>
+      <link href="https://www.pulumi.com/blog/the-guide-platform-engineering-idp-steps-best-practices/"/>
+    </see-also>
+  </content>
+</methodology>
