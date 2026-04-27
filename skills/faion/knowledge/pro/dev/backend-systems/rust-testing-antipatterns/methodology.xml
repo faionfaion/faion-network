@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing-antipatterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Catalogue of AI-agent gotchas and test anti-patterns in Rust: Utc::now in assertions, sleep-driven waits, shared lazy_static state, hardcoded ports, mockall predicate hallucinations.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>testing</tag>
+      <tag>antipatterns</tag>
+      <tag>agent-gotchas</tag>
+      <tag>code-review</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <related>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Rust Testing Anti-Patterns and Agent Gotchas</title>
+
+    <summary>A review checklist and anti-pattern catalogue for Rust test suites, focusing on the failure modes that AI agents introduce most frequently: Utc::now() in assertion paths, sleep-driven async waits, shared global state, hardcoded ports, hallucinated mockall predicates, and flake quarantine misuse.</summary>
+
+    <why>
+      <p>AI agents generating Rust tests reliably reproduce the same failure modes: injecting Utc::now() into both production code and assertions (tests pass at noon, fail at midnight), using tokio::time::sleep to "give a task time" (flaky in CI), binding 127.0.0.1:8080 (port collision under parallelism), and inventing mockall::predicate::eq_ignoring_case (compile error). A repeatable review checklist catches these before merge and a lint script catches them before commit.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Reviewing any Rust test PR authored or modified by an AI agent.</item>
+        <item>Running the anti-pattern lint script (rust-test-lint.sh) in pre-commit or CI.</item>
+        <item>During test suite audits on codebases that have grown without a formal testing standard.</item>
+        <item>When onboarding a new agent that will generate tests for a Rust codebase.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-test production code — these checks are scoped to #[test] and tests/ paths only.</item>
+        <item>Benchmark modules under benches/ — the rules around sleep and Utc::now do not apply there.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agent-gotchas">
+      <p>The following are the most common errors AI agents make when generating Rust tests. Each has a concrete detection method and a fix.</p>
+
+      <antipattern>
+        <description>Utc::now() in assertion paths. Agents inject the current timestamp inside the unit under test and inside the assertion. Tests pass at noon, fail at midnight when the day boundary crosses.</description>
+        <reason>Use an injected clock (a Clock trait with a mock) or tokio::time::pause to control virtual time. Never compare Utc::now() to Utc::now() in a test assertion.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>sleep-driven async waits. Agents write tokio::time::sleep(Duration::from_millis(50)) to "give the task time to complete". Flaky in CI under load.</description>
+        <reason>Use tokio::join!, tokio::time::pause + advance, or a channel/oneshot to wait for completion deterministically. If you need to wait for a spawned task, use a JoinHandle.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>#[tokio::test] flavor mismatch. Default flavor is current_thread. Agents call spawn_blocking or tokio::spawn without specifying flavor = "multi_thread" — the test panics under load because the multi-thread scheduler is not running.</description>
+        <reason>Specify #[tokio::test(flavor = "multi_thread", worker_threads = 2)] when the unit under test spawns tasks or calls spawn_blocking. Run both flavors at least sometimes to surface Send/Sync bugs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Shared lazy_static or once_cell state across test functions without reset. Tests pass locally in isolation, fail under cargo test -- --test-threads=N.</description>
+        <reason>Rust tests run in parallel by default. Global mutable state accumulates across tests. Use a per-test fixture struct or initialize state inside each test function.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hardcoded ports. Integration tests bind 127.0.0.1:8080; CI runs them in parallel and one fails with "address already in use".</description>
+        <reason>Bind to :0 and discover the port with local_addr(). Or use tower::ServiceExt::oneshot which requires no socket at all.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hallucinated mockall::predicate APIs. Agents invent predicates like predicate::eq_ignoring_case, predicate::starts_with, predicate::matches_regex that do not exist in the current crate version.</description>
+        <reason>Pin the mockall version in Cargo.toml and always verify predicate names against docs.rs/mockall for that version. Use predicate::function(|x| ...) as a fallback for custom logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>unwrap() in test assertions making failures unreadable. The next agent or developer cannot determine which operation failed.</description>
+        <reason>Replace .unwrap() with .expect("description of what should have succeeded"). The message surfaces immediately in the test failure output.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-marking flaky tests as #[ignore] without root-cause analysis. Agents flag a flake, mark it ignored, and move on. The hidden bug ships to production.</description>
+        <reason>Never auto-ignore a flake. Quarantine it behind a feature flag or a separate CI job, escalate to a human for triage, and remove the quarantine only after the root cause is fixed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Doctest on private items. Agents add code blocks to private fn rustdoc; they do not run under cargo test --doc.</description>
+        <reason>Promote to a #[test] in the #[cfg(test)] module or to a public example module. Private-item doctests silently provide no coverage.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Rust testing as a four-stage pipeline: (1) a coverage agent reads the crate, lists public functions/methods, and proposes a test inventory categorised as unit, integration, doctest, or property-based; (2) a code-gen agent emits the tests using mockall for traits, proptest for invariants, axum-test / tower::ServiceExt::oneshot for HTTP integration, and testcontainers-rs for DB; (3) a flake agent runs tests under cargo nextest run --partition with seeded randomness and quarantines flakes; (4) a review agent runs the anti-pattern checklist below.</p>
+
+      <p>Persist the test stack (nextest, mockall, proptest, testcontainers, axum-test) in .aidocs/product_docs/rust-test-stack.md so successive agents inherit the decisions without re-deriving them.</p>
+
+      <prompt purpose="test-inventory">
+<![CDATA[
+You are a Rust test architect. For the crate at <path>, list every
+public fn/method and propose tests:
+  type ∈ {unit, integration, doctest, property},
+  fixture (mock|real|testcontainer),
+  async (yes|no, runtime flavor),
+  invariants (for property tests).
+Reject `Utc::now()` or `std::time::*` in assertion paths — propose
+`tokio::time::pause` or injected clock instead.
+]]>
+      </prompt>
+
+      <prompt purpose="anti-pattern-review">
+<![CDATA[
+Review a Rust test PR. Flag:
+(1) .unwrap() / .expect() in non-test code paths,
+(2) std::thread::sleep or tokio::time::sleep used to wait for async,
+(3) Utc::now() compared in an assertion,
+(4) #[tokio::test] missing flavor when it relies on multi-threading,
+(5) shared `lazy_static` state across tests without reset,
+(6) mock for a type with a trivial real (e.g., chrono, serde_json),
+(7) integration test that spawns a real network listener on a fixed
+   port (collision risk),
+(8) doctest on a private item.
+Cite file:line. No fixes — only flags.
+]]>
+      </prompt>
+    </section>
+
+    <section name="lint-script">
+      <p>The following shell script detects the most common anti-patterns statically. Run it in CI or as a pre-commit hook against the repo root.</p>
+
+      <example type="good" title="rust-test-lint.sh — static anti-pattern scanner">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# rust-test-lint.sh — flag common test anti-patterns
+set -euo pipefail
+root="${1:-.}"
+fail=0
+echo "## std::thread::sleep / tokio::time::sleep in tests"
+grep -rEn '#\[(tokio::)?test' "$root/src" "$root/tests" -A 60 \
+  | grep -E '(thread::sleep|tokio::time::sleep)\(' && fail=1 || true
+echo "## Utc::now() in assertion path of a test"
+grep -rEn '#\[(tokio::)?test' "$root/src" "$root/tests" -A 60 \
+  | grep -E 'assert.*Utc::now' && fail=1 || true
+echo "## .unwrap() outside test code"
+grep -rEn '\.unwrap\(\)' "$root/src" \
+  | grep -v -E '#\[cfg\(test\)\]|tests/|//' && fail=1 || true
+echo "## Hardcoded port in integration test"
+grep -rEn 'bind\(' "$root/tests" \
+  | grep -E '127\.0\.0\.1:[0-9]+' && fail=1 || true
+exit "$fail"
+]]></code>
+        <note>Runs on src/ and tests/ only. Wire as a CI step or a pre-commit hook via .pre-commit-config.yaml with language: script.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Positive checklist for a well-tested Rust codebase:</p>
+      <list>
+        <item>#[cfg(test)] mod tests colocated with code. Black-box tests go to tests/ directory at crate root.</item>
+        <item>mockall::mock! for traits with side effects. Do not mock pure types; use the real one.</item>
+        <item>#[tokio::test(flavor = "multi_thread", worker_threads = 2)] when the unit under test spawns tasks. Keep current_thread for cheaper tests.</item>
+        <item>tokio::time::pause for time-sensitive code. Never sleep to wait; advance virtual time.</item>
+        <item>testcontainers-rs for DB integration tests. Per-test Postgres container or shared with per-test schema; never depend on a shared dev DB.</item>
+        <item>tower::ServiceExt::oneshot for axum handler tests — drives the router without binding a port.</item>
+        <item>proptest for invariants of pure functions (parsers, codecs, math). Cheap signal vs hand-written tables.</item>
+        <item>cargo nextest in CI for parallelism + per-test timeout + flake detection (--retries 1).</item>
+        <item>Coverage on PRs, not as a gate by itself. cargo llvm-cov --lcov uploaded to Codecov; reviewers eyeball the diff.</item>
+        <item>Doctest production examples. Top-of-crate //! rustdoc with Examples section that compiles and runs is the cheapest end-to-end test.</item>
+        <item>Snapshot tests with insta. For complex output (rendered emails, AST), insta keeps tests readable and review-friendly.</item>
+        <item>Seeded randomness. proptest and any rand use must accept a seed; record failing seeds in CI and replay locally.</item>
+        <item>Coverage on PRs, not as a gate by itself. cargo llvm-cov --lcov uploaded to Codecov.</item>
+        <item>Skipping cargo deny/cargo audit in CI is an anti-pattern. Agents add a dependency; security advisory ships next week. Wire into CI.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>No Utc::now() in assertion paths — use injected clock or tokio::time::pause.</check>
+      <check>No sleep calls in async tests — use join!/pause/channel.</check>
+      <check>Runtime flavor explicitly specified on every #[tokio::test].</check>
+      <check>No shared lazy_static/once_cell state across test functions.</check>
+      <check>No hardcoded TCP ports — oneshot or bind to :0.</check>
+      <check>All mockall predicates verified against docs.rs for pinned version.</check>
+      <check>All test assertions use expect("message") not unwrap().</check>
+      <check>No #[ignore] without a linked tracking issue and root-cause comment.</check>
+      <check>No doctests on private items.</check>
+      <check>cargo deny and cargo audit wired into CI.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+      <link href="https://docs.rs/mockall"/>
+      <link href="https://docs.rs/tokio/latest/tokio/time/fn.pause.html"/>
+    </see-also>
+  </content>
+</methodology>
