@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-provider-selection">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Select the right Vision Language Model (VLM) provider by task type: Gemini Flash for high-volume OCR, Claude for complex layouts, GPT-4o for general QA, local models for privacy.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>vlm</tag>
+      <tag>model-selection</tag>
+      <tag>multimodal</tag>
+      <tag>provider</tag>
+    </tags>
+    <category>vision</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vision-document-extraction"/>
+      <ref slug="vision-agentic-pipeline"/>
+      <ref slug="vision-classification-moderation"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Vision Language Model Provider Selection</title>
+
+    <summary>Modern Vision Language Models (VLMs) enable image understanding — OCR, document analysis, visual QA, classification, moderation, and accessibility. Provider selection is the first and most cost-impactful decision: task type, volume, latency, and privacy requirements each favour a different model.</summary>
+
+    <why>
+      <p>Each frontier VLM has a distinct architectural strength. Gemini Flash is optimised for high-volume throughput at low cost ($0.16/1M tokens); Claude Sonnet uses hybrid layout-aware OCR reaching 2.1% CER on printed text; GPT-4o provides consistent structured JSON output; Gemini Pro leads on medical and scientific imagery benchmarks. Picking the wrong provider adds 2-10x cost or degrades accuracy below production thresholds.</p>
+      <p>Open-source VLMs (Qwen3-VL-235B, GLM-4.5V) match frontier quality on text-heavy documents while keeping all data in your infrastructure — critical for GDPR/HIPAA regulated workloads.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new vision integration and choosing which VLM API to call first.</item>
+        <item>Evaluating cost/quality trade-offs before committing to a provider for a batch pipeline.</item>
+        <item>Switching providers because accuracy or cost requirements have changed.</item>
+        <item>Selecting a self-hosted model for privacy-sensitive image processing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Barcode/QR decoding — specialised libraries (zxing, python-qrcode) are faster and cheaper than any VLM.</item>
+        <item>Object detection with bounding boxes at scale — fine-tuned YOLO/DETR models beat VLMs on throughput and cost by orders of magnitude.</item>
+        <item>Real-time video frame analysis at &gt;5 FPS — VLM API latency (500 ms–2 s) makes this impractical; use local CV models.</item>
+        <item>FDA/CE-certified medical imaging inference — off-the-shelf VLM APIs are not cleared devices.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="provider-comparison">
+      <p>Provider comparison table (2025-2026):</p>
+      <list>
+        <item>OpenAI GPT-4.1 — 1M context, general vision/charts/OCR, $2.50/1M input tokens</item>
+        <item>OpenAI GPT-4o — 128K context, balanced cost/quality, $2.50/1M input tokens</item>
+        <item>Anthropic Claude 4 Opus — 200K context, long docs/complex reasoning, premium pricing</item>
+        <item>Anthropic Claude 4 Sonnet — 200K context (1M beta), production workloads, mid-tier pricing</item>
+        <item>Google Gemini 3 Pro — 1M context, medical imaging/video, competitive pricing</item>
+        <item>Google Gemini 2.5 Flash — 1M context, high-volume OCR, $0.16/1M input tokens</item>
+        <item>Qwen3-VL-235B (open-source) — 128K context, self-hosted/privacy, compute cost only</item>
+        <item>GLM-4.5V (open-source) — 128K context, document screening, compute cost only</item>
+      </list>
+    </section>
+
+    <section name="capabilities-by-model">
+      <p>OpenAI GPT-4.1 / GPT-4o: native multimodal (text + images), up to 4 images per API request, structured JSON output mode, object counting, visual QA, OCR, chart and diagram analysis.</p>
+      <p>Anthropic Claude 4: 200K context (1M beta on Sonnet 4), hybrid OCR for scanned documents, layout-aware document understanding, 2.1% Character Error Rate on printed text, best-in-class for complex document layouts including multi-column text with footnotes and tables.</p>
+      <p>Google Gemini 3 Pro: native sparse MoE architecture, up to 3,600 images per request (each consuming ~250-750 tokens — real batch size is context-limited), object detection and segmentation, medical/biomedical imagery SOTA, high frame rate video understanding at 10 FPS.</p>
+    </section>
+
+    <section name="decision-framework">
+      <p>Task-to-provider routing:</p>
+      <list>
+        <item>Simple OCR — Gemini Flash 2.0 (cost-effective, ~6000 pages/$1)</item>
+        <item>Complex layouts (multi-column, footnotes, tables) — Claude 4 Sonnet (layout-aware hybrid OCR)</item>
+        <item>Medical/scientific imagery — Gemini 3 Pro (SOTA on medical benchmarks)</item>
+        <item>High-volume batch processing — Fine-tuned smaller model or Gemini Flash</item>
+        <item>Privacy-sensitive images — Qwen3-VL or GLM-4.5V (local/self-hosted deployment)</item>
+        <item>Real-time processing (latency-constrained) — GPT-4o Mini or Gemini Flash</item>
+        <item>Handwritten text — GPT-5 (best handwriting recognition)</item>
+        <item>Multi-image analysis (up to 3,600 images) — Gemini 3</item>
+        <item>General visual QA — GPT-4o</item>
+      </list>
+    </section>
+
+    <rule>
+      <statement>Select provider by task type BEFORE writing any vision integration code. Match: high-volume OCR → Gemini Flash; complex document layout → Claude Sonnet; medical/scientific → Gemini Pro; privacy-sensitive → self-hosted Qwen3-VL; general visual QA → GPT-4o.</statement>
+      <rationale>Provider choice determines both accuracy ceiling and per-request cost. Switching providers after a pipeline is built requires rewriting prompt templates and output parsers; choosing upfront costs nothing.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always compress images to 1024 px on the long edge before sending to any API. Use detail: "high" in GPT-4o only for complex layouts; use "low" for thumbnails and previews — mismatching costs 4x tokens.</statement>
+      <rationale>Image compression reduces token cost by 50-70% with minimal quality loss for OCR tasks. The detail parameter in GPT-4o directly multiplies token consumption.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always send images as base64 for sensitive documents. URL-based images are fetched by the provider's servers and may be logged.</statement>
+      <rationale>Provider-side URL fetching creates a data egress path outside your control; base64 keeps the image in the TLS-encrypted API request body only.</rationale>
+    </rule>
+
+    <example type="good" title="Model selection by task type">
+      <code lang="python"><![CDATA[
+def select_vision_model(task_type: str) -> str:
+    routing = {
+        "ocr_high_volume": "gemini-2.0-flash",
+        "complex_layout": "claude-sonnet-4-5",
+        "medical_imaging": "gemini-2.5-pro",
+        "general_qa": "gpt-4o",
+        "privacy_sensitive": "qwen-vl-local",  # self-hosted
+    }
+    return routing.get(task_type, "claude-sonnet-4-5")
+]]></code>
+      <note>Default to claude-sonnet-4-5 for unknown task types — it has the broadest capability coverage at a reasonable cost.</note>
+    </example>
+
+    <example type="good" title="Quick start: OpenAI Vision">
+      <code lang="python"><![CDATA[
+from openai import OpenAI
+import base64
+
+client = OpenAI()
+
+with open("document.png", "rb") as f:
+    image_data = base64.b64encode(f.read()).decode()
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Extract all text from this document"},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}}
+        ]
+    }]
+)
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Using the most expensive model (Claude Opus or GPT-4.1) for simple bulk OCR without benchmarking cheaper alternatives first.</description>
+      <reason>Gemini Flash 2.0 processes ~6000 pages per dollar vs Claude Opus at ~200 pages per dollar on equivalent plain OCR tasks; the quality difference is negligible for printed text with &gt;100px font size.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Defaulting to URL-based image delivery for all requests because it is simpler to implement.</description>
+      <reason>URL images are fetched by the provider's infrastructure, creating uncontrolled data access logs; for documents containing PII or financial data this is a compliance violation in most jurisdictions.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Define input types (photos, scans, screenshots, documents) before selecting provider.</check>
+      <check>Define output format (text, JSON, structured data) — structured JSON requires response_format or tool-use support.</check>
+      <check>Identify accuracy threshold and measure CER/WER on representative samples from each shortlisted provider.</check>
+      <check>Determine latency requirements — real-time (&lt;500 ms) rules out most VLM APIs.</check>
+      <check>Estimate volume (requests/day) and calculate cost per provider at that volume.</check>
+      <check>Identify privacy/compliance requirements (GDPR, HIPAA) — rules out third-party APIs for regulated images.</check>
+      <check>Verify rate limits against peak throughput requirements.</check>
+      <check>Confirm compliance certifications if required (SOC 2, HIPAA BAA).</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="vision-document-extraction"/>
+      <ref slug="vision-agentic-pipeline"/>
+      <ref slug="vision-classification-moderation"/>
+      <ref slug="vision-accessibility"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+      <link href="https://docs.anthropic.com/en/docs/vision"/>
+      <link href="https://ai.google.dev/gemini-api/docs/image-understanding"/>
+      <link href="https://www.datacamp.com/blog/top-vision-language-models"/>
+    </see-also>
+  </content>
+</methodology>
