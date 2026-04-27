@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-haproxy-production">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Configure HAProxy for production: TLS termination, rate limiting via stick-tables, path-based routing, HA with keepalived, and performance tuning for maxconn and nbthread.</summary>
+    <tags>
+      <tag>haproxy</tag>
+      <tag>load-balancing</tag>
+      <tag>tls</tag>
+      <tag>high-availability</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-nginx-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>HAProxy Production Configuration</title>
+
+    <summary>Production HAProxy setup covers: global performance tuning (maxconn, nbthread, cpu-map), TLS 1.2+/1.3 with strong cipher suites, rate limiting via stick-tables (100 req/10s per IP), path-based ACL routing to separate backends, HTTP health checks with expect directives, and active-passive HA using keepalived for VIP failover.</summary>
+
+    <why>
+      <p>HAProxy's event-driven model gives it 10-15% better raw connection handling than Nginx under TCP-heavy workloads. Its stick-table mechanism provides stateful rate limiting without external state stores. For bare-metal Kubernetes, HAProxy as an L4 TCP load balancer in front of Ingress-NGINX is the canonical HA pattern — MetalLB handles the LoadBalancer Service, HAProxy handles cross-node distribution.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Standing up HAProxy in front of a service fleet on bare metal, VMs, or as a Kubernetes Ingress controller.</item>
+        <item>Implementing rate limiting without an external Redis/Memcached state store (stick-tables are in-process).</item>
+        <item>Routing TCP (database, Redis) alongside HTTP workloads from a single LB process.</item>
+        <item>Setting up active-passive HA with keepalived for a VIP that survives node failure.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple web server + LB combo — Nginx handles this with less configuration overhead.</item>
+        <item>Static content caching — Nginx has a built-in cache layer; HAProxy does not.</item>
+        <item>Managed cloud environments where ALB/NLB is available — operational overhead outweighs control.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-http-config">
+      <example type="good" title="HAProxy basic HTTP load balancing with health checks">
+        <code lang="haproxy"><![CDATA[
+global
+    log /dev/log local0
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000ms
+    timeout client  50000ms
+    timeout server  50000ms
+
+frontend http_front
+    bind *:80
+    default_backend web_servers
+
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    server web1 10.0.0.1:8080 check
+    server web2 10.0.0.2:8080 check
+    server web3 10.0.0.3:8080 check backup
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-ha-config">
+      <example type="good" title="Production HA HAProxy: TLS, rate limiting, path routing, compression">
+        <code lang="haproxy"><![CDATA[
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+    # Default SSL material locations
+    ca-base /etc/ssl/certs
+    crt-base /etc/ssl/private
+
+    # Performance tuning
+    maxconn 50000
+    nbthread 4
+
+    # SSL settings - Mozilla intermediate profile
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+    ssl-default-server-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-server-options ssl-min-ver TLSv1.2 no-tls-tickets
+    tune.ssl.default-dh-param 2048
+
+#---------------------------------------------------------------------
+# Default settings
+#---------------------------------------------------------------------
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  forwardfor
+    option  http-server-close
+
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    timeout http-request 10s
+    timeout http-keep-alive 2s
+    timeout queue 30s
+    timeout tunnel 1h
+
+    errorfile 400 /etc/haproxy/errors/400.http
+    errorfile 403 /etc/haproxy/errors/403.http
+    errorfile 408 /etc/haproxy/errors/408.http
+    errorfile 500 /etc/haproxy/errors/500.http
+    errorfile 502 /etc/haproxy/errors/502.http
+    errorfile 503 /etc/haproxy/errors/503.http
+    errorfile 504 /etc/haproxy/errors/504.http
+
+#---------------------------------------------------------------------
+# Stats page
+#---------------------------------------------------------------------
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+
+#---------------------------------------------------------------------
+# Frontend - HTTP redirect to HTTPS
+#---------------------------------------------------------------------
+frontend http_front
+    bind *:80
+    http-request redirect scheme https unless { ssl_fc }
+
+#---------------------------------------------------------------------
+# Frontend - HTTPS
+#---------------------------------------------------------------------
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/ alpn h2,http/1.1
+
+    # Rate limiting - 100 req/10s per IP
+    stick-table type ip size 100k expire 30s store http_req_rate(10s),conn_cur
+    http-request track-sc0 src
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+
+    # Security headers
+    http-response set-header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    http-response set-header X-Frame-Options "SAMEORIGIN"
+    http-response set-header X-Content-Type-Options "nosniff"
+    http-response set-header X-XSS-Protection "1; mode=block"
+    http-response set-header Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Path-based routing
+    acl is_api path_beg /api
+    acl is_ws path_beg /ws
+
+    use_backend api_backend if is_api
+    use_backend ws_backend if is_ws
+    default_backend web_backend
+
+#---------------------------------------------------------------------
+# Backend - Web
+#---------------------------------------------------------------------
+backend web_backend
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+
+    compression algo gzip
+    compression type text/html text/plain text/css application/json application/javascript
+
+    server web1 10.0.0.1:8080 check weight 100 maxconn 3000
+    server web2 10.0.0.2:8080 check weight 100 maxconn 3000
+    server web3 10.0.0.3:8080 check weight 50 backup
+
+#---------------------------------------------------------------------
+# Backend - API (sticky sessions)
+#---------------------------------------------------------------------
+backend api_backend
+    balance roundrobin
+    option httpchk GET /health/ready
+    http-check expect status 200
+
+    cookie SERVERID insert indirect nocache
+
+    server api1 10.0.1.1:8080 check cookie api1
+    server api2 10.0.1.2:8080 check cookie api2
+
+#---------------------------------------------------------------------
+# Backend - WebSocket
+#---------------------------------------------------------------------
+backend ws_backend
+    balance source
+    option httpchk GET /health
+
+    timeout tunnel 1h
+    timeout server 1h
+
+    server ws1 10.0.2.1:8080 check
+    server ws2 10.0.2.2:8080 check
+]]></code>
+      </example>
+    </section>
+
+    <section name="tcp-load-balancing">
+      <example type="good" title="HAProxy TCP mode: MySQL and Redis health checks">
+        <code lang="haproxy"><![CDATA[
+frontend mysql_front
+    bind *:3306
+    mode tcp
+    option tcplog
+    default_backend mysql_servers
+
+backend mysql_servers
+    mode tcp
+    balance roundrobin
+    option tcp-check
+
+    # MySQL health check
+    tcp-check connect
+    tcp-check send-binary 00000001  # COM_PING
+
+    server mysql1 10.0.2.1:3306 check
+    server mysql2 10.0.2.2:3306 check backup
+
+frontend redis_front
+    bind *:6379
+    mode tcp
+    default_backend redis_servers
+
+backend redis_servers
+    mode tcp
+    balance first  # Always use first available
+    option tcp-check
+
+    tcp-check connect
+    tcp-check send PING\r\n
+    tcp-check expect string +PONG
+
+    server redis1 10.0.3.1:6379 check
+    server redis2 10.0.3.2:6379 check backup
+]]></code>
+        <note>Use balance first for Redis read replicas — always prefer the first healthy server to maximize cache locality.</note>
+      </example>
+    </section>
+
+    <section name="keepalived-ha">
+      <example type="good" title="keepalived.conf — active-passive VIP failover">
+        <code lang="conf"><![CDATA[
+# Primary node
+vrrp_script check_haproxy {
+    script "killall -0 haproxy"
+    interval 2
+    weight 2
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 101
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass secretpass
+    }
+
+    virtual_ipaddress {
+        192.168.1.100/24
+    }
+
+    track_script {
+        check_haproxy
+    }
+}
+]]></code>
+        <note>Set priority 100 on the backup node (lower than 101 on master). keepalived promotes backup to MASTER within 3 seconds of primary failure.</note>
+      </example>
+    </section>
+
+    <section name="preflight-validation">
+      <example type="good" title="lb-preflight.sh — validate config and smoke-test before swap">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# lb-preflight.sh — validate config + smoke-test new backends before swap
+set -euo pipefail
+CFG=${1:?config path}
+HOST=${2:?https host to probe}
+
+case "$CFG" in
+  *.cfg) haproxy -c -f "$CFG" ;;
+  *.conf|*nginx*) nginx -t -c "$CFG" ;;
+  *.yaml|*.yml) kubeconform -strict -summary "$CFG" ;;
+  *) echo "unknown config type"; exit 2 ;;
+esac
+
+testssl.sh --quiet --color 0 --severity HIGH "$HOST" || { echo "TLS hardening failed"; exit 3; }
+oha -n 200 -c 10 -t 30s --no-tui "https://$HOST/healthz" | tee /tmp/oha.txt
+grep -E "Success rate.*100\.00%" /tmp/oha.txt || { echo "healthz failures"; exit 4; }
+echo "preflight OK"
+]]></code>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>HAProxy MUST have admin socket restricted to mode 660 and the stats page protected or disabled in production. Never expose the stats page on a public interface without authentication.</statement>
+        <rationale>The admin socket and stats page expose runtime connection state, server weights, and allow backend enable/disable. An exposed stats page is an information disclosure vulnerability; the admin socket allows arbitrary backend manipulation.</rationale>
+      </rule>
+      <rule>
+        <statement>TLS MUST be configured with ssl-min-ver TLSv1.2 and cipher suites from the Mozilla SSL Configurator intermediate profile. RC4, 3DES, MD5, and no-tls-tickets MUST appear in the ssl-default-bind-options line.</statement>
+        <rationale>HAProxy config review prompt flags: (1) missing option httpchk, (2) balance source on stateless backends, (3) timeout client/server less than 30s for HTTP/2, (4) cipher list including RC4, 3DES, or MD5.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>maxconn set appropriately (default 20000; production 50000).</check>
+      <check>nbproc/nbthread matches CPU cores; cpu-map configured for process affinity.</check>
+      <check>Timeouts tuned: connect/client/server/http-request/http-keep-alive.</check>
+      <check>Logging configured to syslog.</check>
+      <check>Health check endpoint defined; option httpchk configured.</check>
+      <check>Check interval appropriate (10-30s).</check>
+      <check>Healthy/unhealthy thresholds set.</check>
+      <check>Backup servers configured.</check>
+      <check>Rate limiting via stick-tables implemented.</check>
+      <check>SSL certificate path correct; TLS 1.2+ enforced.</check>
+      <check>Admin socket restricted (mode 660); stats page protected or disabled.</check>
+      <check>ACLs for sensitive endpoints defined.</check>
+      <check>Connection reuse enabled (http-server-close).</check>
+      <check>forwardfor header set.</check>
+      <check>keepalived configured on both nodes for VIP failover.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.haproxy.org/"/>
+      <link href="https://www.haproxy.com/documentation/kubernetes-ingress/overview/"/>
+      <link href="https://ssl-config.mozilla.org/"/>
+      <link href="https://www.keepalived.org/"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-monitoring"/>
+    </see-also>
+  </content>
+</methodology>
