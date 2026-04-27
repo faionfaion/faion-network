@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-pytest-async">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>pytest-asyncio enables async Python testing. Covers asyncio_mode auto vs strict, async fixtures via pytest_asyncio.fixture, AsyncMock, timeout handling, FastAPI client, and common async gotchas.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>async</tag>
+      <tag>asyncio</tag>
+      <tag>pytest-asyncio</tag>
+      <tag>fastapi</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>pytest</framework>
+      <framework>fastapi</framework>
+    </frameworks>
+    <related>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-setup"/>
+      <ref slug="python-async"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>pytest Async Testing — pytest-asyncio, Async Fixtures, and FastAPI</title>
+
+    <summary>pytest-asyncio adds an event loop and @pytest.mark.asyncio support so async def test functions run as coroutines. In auto mode every async test and fixture is treated as asyncio automatically. Use pytest_asyncio.fixture for async fixtures and AsyncMock for async callables.</summary>
+
+    <why>
+      <p>Async def test functions are coroutines — pytest cannot run them directly without an event loop. pytest-asyncio wraps each async test in asyncio.run() (or a shared loop for wider scopes) and integrates with the fixture system so async fixtures can yield and clean up like sync fixtures. Without this plugin, await inside a test body raises a SyntaxError or the test returns a coroutine object that is truthy and the test silently passes without executing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Testing FastAPI or any ASGI application with httpx.AsyncClient and ASGITransport.</item>
+        <item>Testing async functions that call async libraries: httpx, asyncpg, aioredis, motor.</item>
+        <item>Testing asyncio.gather, asyncio.TaskGroup, or ExceptionGroup handling.</item>
+        <item>Testing timeout and cancellation behavior with asyncio.wait_for or asyncio.timeout.</item>
+        <item>Any test that contains await expressions.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure sync code — installing pytest-asyncio adds no value and asyncio_mode="auto" silently wraps sync tests in no-op coroutine handling.</item>
+        <item>Mixing sync Django ORM calls directly in async tests — the ORM blocks the event loop and looks like a hang; use sync_to_async or a separate sync test.</item>
+        <item>Tests that only call sync adapters of an otherwise async service — call the sync adapter synchronously.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="asyncio-mode">
+      <p>pytest-asyncio has two modes configurable via asyncio_mode in pyproject.toml:</p>
+      <list>
+        <item>auto: all async def test_ functions and fixtures are treated as asyncio coroutines automatically. No @pytest.mark.asyncio needed.</item>
+        <item>strict (default before 0.21): only functions explicitly marked with @pytest.mark.asyncio are treated as async tests.</item>
+      </list>
+      <rule testable="true">
+        <statement>Set asyncio_mode = "auto" in pyproject.toml [tool.pytest.ini_options] for projects where most tests are async. Do not mix asyncio_mode="auto" with explicit @pytest.mark.asyncio markers — the redundant markers are harmless but add noise. For projects with a small minority of async tests, use strict mode and mark only those tests.</statement>
+        <rationale>Flipping asyncio_mode breaks marker expectations silently — strict mode ignores unmarked async tests (the test body never runs, the test passes). auto mode is the right default for FastAPI projects; strict is appropriate for Django projects where most tests are sync.</rationale>
+      </rule>
+    </section>
+
+    <section name="async-fixtures">
+      <p>Async fixtures use @pytest_asyncio.fixture (not @pytest.fixture). They can yield like sync fixtures, and teardown (after yield) runs in the same event loop as setup.</p>
+      <example type="good" title="Async fixtures for FastAPI client and database">
+        <code lang="python"><![CDATA[
+import pytest_asyncio
+import httpx
+
+@pytest_asyncio.fixture
+async def async_client() -> httpx.AsyncClient:
+    """Async HTTP client for API testing."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        yield client
+
+
+@pytest_asyncio.fixture
+async def app_client(app) -> httpx.AsyncClient:
+    """Async client for FastAPI app via ASGI transport."""
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest_asyncio.fixture(scope="session")
+async def database():
+    """Async database setup — runs once for the session."""
+    from app.database import async_engine, Base
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield async_engine
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture
+async def db_session(database):
+    """Async database session with rollback."""
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    async with AsyncSession(database) as session:
+        async with session.begin():
+            yield session
+            await session.rollback()
+]]></code>
+      </example>
+    </section>
+
+    <section name="basic-async-tests">
+      <example type="good" title="Basic async test and concurrent gather">
+        <code lang="python"><![CDATA[
+import pytest
+import asyncio
+
+
+@pytest.mark.asyncio
+async def test_async_fetch_user():
+    user = await UserRepository.fetch_by_id(1)
+    assert user.email == "user1@example.com"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_operations():
+    # Run multiple async operations concurrently
+    results = await asyncio.gather(
+        fetch_user(1),
+        fetch_user(2),
+        fetch_user(3),
+    )
+    assert len(results) == 3
+    assert all(r is not None for r in results)
+
+
+@pytest.mark.asyncio
+async def test_api_endpoint(app_client, database):
+    response = await app_client.post(
+        "/api/users",
+        json={"email": "test@example.com"},
+    )
+    assert response.status_code == 201
+    assert response.json()["email"] == "test@example.com"
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-mocking">
+      <example type="good" title="AsyncMock for async external service and exception handling">
+        <code lang="python"><![CDATA[
+@pytest.mark.asyncio
+async def test_async_external_service(mocker):
+    mock_fetch = mocker.patch(
+        "app.services.external_api.fetch_data",
+        new_callable=mocker.AsyncMock,
+    )
+    mock_fetch.return_value = {"data": "mocked"}
+
+    result = await process_external_data()
+
+    assert result["data"] == "mocked"
+    mock_fetch.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_async_exception_handling(mocker):
+    mocker.patch(
+        "app.services.external_api.fetch_data",
+        new_callable=mocker.AsyncMock,
+        side_effect=ConnectionError("Service unavailable"),
+    )
+
+    with pytest.raises(ServiceError):
+        await process_external_data()
+]]></code>
+        <note>Use assert_awaited_once() not assert_called_once() — the latter does not verify the coroutine was awaited.</note>
+      </example>
+    </section>
+
+    <section name="timeout-testing">
+      <example type="good" title="Testing timeout and cancellation behavior">
+        <code lang="python"><![CDATA[
+@pytest.mark.asyncio
+@pytest.mark.timeout(5)
+async def test_slow_operation_completes():
+    result = await slow_async_operation()
+    assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_operation_timeout_handling():
+    with pytest.raises(asyncio.TimeoutError):
+        async with asyncio.timeout(1):
+            await very_slow_operation()
+
+
+@pytest.mark.asyncio
+async def test_wait_for_timeout():
+    with pytest.raises(asyncio.TimeoutError):
+        await asyncio.wait_for(very_slow_operation(), timeout=0.1)
+]]></code>
+      </example>
+    </section>
+
+    <section name="fastapi-conftest-template">
+      <p>A minimal conftest.py pattern for FastAPI with SQLAlchemy async:</p>
+      <example type="good" title="FastAPI pytest conftest.py with dependency override">
+        <code lang="python"><![CDATA[
+"""Async pytest configuration for FastAPI."""
+import pytest
+import pytest_asyncio
+import httpx
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+from app.main import app
+from app.database import Base, get_db
+
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+TestSessionLocal = sessionmaker(
+    bind=test_engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
+@pytest_asyncio.fixture(scope="session")
+async def setup_database():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture
+async def db_session(setup_database):
+    async with TestSessionLocal() as session:
+        yield session
+        await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def client(db_session):
+    """Test client with database dependency override."""
+    async def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://test",
+    ) as c:
+        yield c
+
+    app.dependency_overrides.clear()
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-checklist">
+      <checklist>
+        <check>Install pytest-asyncio and set asyncio_mode = "auto" in pyproject.toml for async-heavy projects.</check>
+        <check>Use @pytest_asyncio.fixture for async fixtures, not @pytest.fixture.</check>
+        <check>Use AsyncMock (not Mock) for any async callable being patched.</check>
+        <check>Use assert_awaited_once() to verify an async mock was both called and awaited.</check>
+        <check>Test timeout behavior explicitly with asyncio.wait_for or asyncio.timeout.</check>
+        <check>Avoid mixing sync Django ORM calls in async tests — wrap with sync_to_async.</check>
+        <check>Check event loop lifecycle — session-scoped async fixtures share one loop; function-scoped use a fresh one.</check>
+        <check>Run pytest --collect-only to surface conftest.py import errors early.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Async testing mistakes agents commonly make:</p>
+      <list>
+        <item>Forgotten await in async tests — assertion runs against a coroutine object, evaluates as truthy, passes silently. Ruff ASYNC rules catch some of these.</item>
+        <item>Using @pytest.fixture instead of @pytest_asyncio.fixture for async fixtures — the fixture body never runs as a coroutine.</item>
+        <item>Using Mock() instead of AsyncMock() for async callables — the await expression succeeds but asserts nothing.</item>
+        <item>Mixing asyncio_mode="auto" with explicit @pytest.mark.asyncio — redundant but harmless; avoid adding noise.</item>
+        <item>pytest-asyncio mode (auto vs strict) config drift — flipping breaks marker expectations silently.</item>
+        <item>pytest-django db fixture with async tests — the sync Django ORM blocks the event loop and looks like a timeout; use sync_to_async or pytest-django's async_to_sync_db.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://pytest-asyncio.readthedocs.io/"/>
+      <link href="https://pytest-with-eric.com/pytest-advanced/pytest-asyncio/"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="python-async"/>
+    </see-also>
+  </content>
+</methodology>
