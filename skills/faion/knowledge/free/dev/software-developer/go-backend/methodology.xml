@@ -20,6 +20,8 @@
     <summary>Production-grade Go backend pattern using the standard cmd/ + internal/ project layout with Gin or Echo routers. Key conventions: interfaces defined at the consumer side, context.Context as first arg on all I/O functions, typed AppError mapped to HTTP via middleware, worker-pool concurrency via a Pool struct with channel-based job queue.</summary>
     <why>
       <p>The internal/ boundary prevents circular imports and keeps domain packages isolated. Consumer-side interfaces (service defines UserRepository, repository provides the impl) enable mockable unit tests without reflection-based mocking. Typed errors with Unwrap() let callers use errors.Is / errors.As for clean control flow. Worker pool decouples job submission from execution and supports graceful shutdown via context.Context.</p>
+      <p>This pattern solves three production problems: (1) Circular import hell when packages define the interfaces they implement — avoided by consumer-defined interfaces. (2) Coupled error handling across layers — solved by a typed AppError with HTTP mapping in middleware, not scattered throughout handlers. (3) Unbounded goroutines leaking under production load — prevented by context-aware pools with explicit shutdown semantics.</p>
+      <p>The cmd/ + internal/ split mirrors the Go standard library's own structure and is what the Go community expects. It makes dependency injection trivial: wire the dependencies in main.go, pass them to the handlers, and the handlers are instantly testable by mocking the service. Agents that follow this pattern produce code that passes code review on the first pass; agents that invent their own layout produce code that requires refactoring.</p>
     </why>
     <when-to-use>
       <list>
@@ -249,6 +251,24 @@ func ProcessItems(ctx context.Context, items []Item) []Result {
 }
 ]]></code>
       </example>
+    </section>
+    <section name="common-mistakes-and-antipatterns">
+      <antipattern>
+        <description>Defining interfaces in the impl package (repository defines UserRepository; service uses it). This creates an import cycle: service imports repository, and if repository defines the interface, service must also import repository to import the interface.</description>
+        <reason>Circular imports are forbidden in Go. The import cycle breaks the build. The correct pattern is: service defines the interface, repository implements it. This makes service depend on nothing except its own interfaces, and repository depends on service only for the interface it needs to implement.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Capturing gin.Context or c in a goroutine: go func() { h.userService.Process(c) }(). Then inside Process, using c.Request or c.Param — these are accessed from a different goroutine than the one that owns them.</description>
+        <reason>gin.Context is request-scoped and not thread-safe. Accessing it from a goroutine is a data race. The correct pattern is: derive ctx := c.Request.Context() before spawning the goroutine, then pass ctx and the extracted values (e.g., ID from c.Param("id")) as arguments.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling c.JSON(...) directly in error cases: if err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()}) return }. This bypasses error middleware.</description>
+        <reason>Centralized error middleware (using c.Error(...) + ErrorHandler) ensures all errors are logged, mapped, and formatted consistently. If handlers call c.JSON directly, they sidestep the middleware, leading to inconsistent responses and missing logs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Bloating main.go with business logic: parsing config, database setup, service initialization, and handler registration all in main. The file becomes 200+ lines.</description>
+        <reason>Testing is impossible: main imports internal/*, sets up the database, and runs the server. A test cannot import main and run a subset of the logic. The correct pattern is: main only wires (config → deps → router → server), keeping business logic in handler/service/repository.</reason>
+      </antipattern>
     </section>
     <templates>
       <template path="templates/app-error.go" purpose="AppError struct with sentinel errors and constructors."/>
