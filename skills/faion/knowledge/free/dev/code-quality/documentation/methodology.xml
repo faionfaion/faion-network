@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="documentation">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Create AI-readable AGENTS.md (20-80 lines) for every code directory, paired with CLAUDE.md containing @AGENTS.md. Enables agents to navigate codebases without hallucinating file paths or structure.</summary>
+    <tags>
+      <tag>documentation</tag>
+      <tag>ai-readability</tag>
+      <tag>agents-md</tag>
+      <tag>routing</tag>
+      <tag>code-organization</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Documentation (AGENTS.md and CLAUDE.md)</title>
+    <summary>Create AI-readable documentation pairs for every code directory: CLAUDE.md (one line: @AGENTS.md) and AGENTS.md (20-80 lines describing what the dir is, its files, entry points, and gotchas). Without this pair, agents load no context and scan files blindly, wasting tokens and hallucinating structure.</summary>
+    <why>
+      <p>AI agents entering a codebase cold need a machine-readable routing doc to decide which files to load. Without AGENTS.md, the agent must scan all files to form context, wasting tokens and hallucinating structure. Two-pass generation (discovery → write → verify) keeps docs accurate; a nightly drift check catches stale tables before they mislead agents.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping AI-readable docs in a new repo, sub-package, or refactored directory.</item>
+        <item>After a refactor where the file tree changed and existing AGENTS.md tables are stale.</item>
+        <item>Multi-repo monorepos: each package needs its own AGENTS.md per the project convention.</item>
+        <item>Legacy codebases with only a top-level README — rolling out per-module coverage.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Repos under ~200 lines with one obvious entry point — a README suffices.</item>
+        <item>Generated/derived directories (dist/, build/, node_modules/) — docs just repeat tooling output.</item>
+        <item>Short-lived experiments where the doc rots faster than the code iterates.</item>
+        <item>Public-facing user docs (Docusaurus/Mintlify) — this methodology targets AI readers, not customers.</item>
+      </list>
+    </when-not-to-use>
+    <section name="required-files">
+      <rule>
+        <statement>Every directory containing source code must have both CLAUDE.md and AGENTS.md.</statement>
+        <rationale>CLAUDE.md is the Claude Code entrypoint (contains only @AGENTS.md). AGENTS.md is auto-loaded and provides routing context. Without the pair, agents load no context and scan files blindly.</rationale>
+      </rule>
+      <rule>
+        <statement>CLAUDE.md must contain exactly one line: @AGENTS.md</statement>
+        <rationale>Claude Code's @-include mechanism loads AGENTS.md automatically. Any other content in CLAUDE.md is redundant and wastes tokens.</rationale>
+      </rule>
+    </section>
+    <section name="agents-md-shape">
+      <rule>
+        <statement>AGENTS.md must be 20-80 lines, hard cap 120. If it cannot answer routing questions in 80 lines, split the directory.</statement>
+        <rationale>Auto-loaded context must fit in a small token budget. Long AGENTS.md files delay every agent session and bury key routing signals.</rationale>
+      </rule>
+      <rule>
+        <statement>AGENTS.md must answer: what this dir IS, key files with one-line purpose, entry points, and important gotchas.</statement>
+        <rationale>An agent entering a module cold needs to decide in one read whether to proceed or route elsewhere. All four questions must be answerable without opening any other file.</rationale>
+      </rule>
+      <rule>
+        <statement>Use a file table (Markdown table with Path and Purpose columns) for the structure section. No ASCII art, no box-drawing characters.</statement>
+        <rationale>Tables render on GitHub and in terminal. ASCII art breaks on non-monospace fonts and wastes tokens.</rationale>
+      </rule>
+    </section>
+    <section name="subfolder-coverage">
+      <rule>
+        <statement>Add CLAUDE.md and AGENTS.md to every directory that contains source code — not just the repo root, but also subpackages, feature modules, and test dirs.</statement>
+        <rationale>Agents navigate to the nearest AGENTS.md. Without per-module coverage, agents at deeper paths get no context and must walk up the tree or scan blindly.</rationale>
+      </rule>
+      <rule testable="false">
+        <statement>Skip AGENTS.md only in empty __init__.py-only dirs with no logic.</statement>
+        <rationale>A file that adds no routing signal wastes maintenance effort and is not loaded in practice.</rationale>
+      </rule>
+    </section>
+    <section name="verification">
+      <rule>
+        <statement>Every file path mentioned in a file table must correspond to an actual file, verified by Read before committing the doc.</statement>
+        <rationale>LLMs hallucinate file paths confidently. An AGENTS.md with broken table entries actively misleads agents, causing worse behavior than no doc at all.</rationale>
+      </rule>
+    </section>
+    <section name="generation-pipeline">
+      <rule>
+        <statement>Generate AGENTS.md in two passes: Pass 1 discovers actual files via git ls-files; Pass 2 writes from the outline only — no invention.</statement>
+        <rationale>Single-pass generation produces hallucinated file names and invented exports. Separating discovery from writing forces the writer to use only verified inputs.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass 3 (verification): re-read the produced doc, open every file/path mentioned, report broken references before committing.</statement>
+        <rationale>Broken references in AGENTS.md mislead subsequent agents. Automated verification is cheaper than manual review of every generated doc.</rationale>
+      </rule>
+      <rule>
+        <statement>The methodology already ships a universal CLAUDE.md template plus type-specific sections (Backend / Frontend / Infra / Library). Useful agent companion: a discovery script that builds the JSON outline from git ls-files and tokei.</statement>
+        <rationale>Pre-built templates reduce hallucination surface; per-type sections handle the most common directory shapes in production codebases.</rationale>
+      </rule>
+      <rule>
+        <statement>Cap AGENTS.md at 80 lines and CLAUDE.md at @AGENTS.md only — enforce with markdownlint custom rule.</statement>
+        <rationale>Auto-loaded context that exceeds ~80 lines bloats every agent session. Strict enforcement prevents length creep in collaborative authoring scenarios.</rationale>
+      </rule>
+      <rule>
+        <statement>Always pair AGENTS.md with a verification step that opens every referenced file; LLMs invent paths confidently.</statement>
+        <rationale>Broken references in AGENTS.md actively mislead agents, causing worse behavior than no doc at all.</rationale>
+      </rule>
+      <rule>
+        <statement>Co-locate doc generation with code edits in the same PR; nightly drift jobs are a fallback, not the primary path.</statement>
+        <rationale>Docs committed in the same PR as code changes are accurate at merge. Docs updated only nightly drift within hours of a refactor.</rationale>
+      </rule>
+      <rule>
+        <statement>Use tree-sitter or language-native AST for the API extraction step — regex misses nested classes, decorators, JSX exports.</statement>
+        <rationale>Accurate API surface extraction eliminates a major source of hallucinated exports and stale function lists in the doc.</rationale>
+      </rule>
+      <rule>
+        <statement>Forbid ASCII art and emojis in the prompt; LLMs default to them.</statement>
+        <rationale>ASCII art breaks on non-monospace fonts and wastes tokens; emojis are explicitly forbidden by the project convention.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a "Last verified: commit-hash" footer; if the hash is more than N commits behind HEAD, mark stale in CI.</statement>
+        <rationale>Makes staleness machine-detectable. Agents can skip reading docs flagged as stale without wasting context on outdated guidance.</rationale>
+      </rule>
+      <rule>
+        <statement>For monorepos, generate one AGENTS.md per package and a top-level INDEX.md linking them; the agent reads only what it needs.</statement>
+        <rationale>In monorepos with many packages, a single aggregate AGENTS.md balloons; per-package docs keep each focused and let agents navigate efficiently.</rationale>
+      </rule>
+      <example type="good" title="Generator Prompt">
+        <code lang="text"><![CDATA[Create AGENTS.md for <dir>. Strict rules:
+- Length 20-80 lines.
+- Every entry in the file table must correspond to an actual file (verified by Read).
+- No ASCII art. Tables, lists, arrows (->), directory trees only.
+- English only.
+- If a section has nothing real to say, omit it.
+Input outline (JSON): <outline>
+Output: contents of AGENTS.md only, no commentary.]]></code>
+        <note>Pass JSON outline as the only source of file truth. The writer prompt must not be allowed to add files it "knows about" from training data.</note>
+      </example>
+      <example type="good" title="Verifier Prompt">
+        <code lang="text"><![CDATA[Verify <path>/AGENTS.md against the actual directory.
+For every file/symbol mentioned, Read or grep to confirm existence.
+Output JSON: { "missing_refs": [...], "stale_tables": [...] }.]]></code>
+        <note>Verification prompt. Run after every write; block commit if missing_refs is non-empty.</note>
+      </example>
+    </section>
+    <section name="drift-detection">
+      <rule>
+        <statement>Run a doc-drift check on every PR that touches a module's source files. A nightly job is a fallback, not the primary path.</statement>
+        <rationale>Docs committed in the same PR as code changes are accurate at merge. Docs updated only nightly drift within hours of a refactor.</rationale>
+      </rule>
+      <rule>
+        <statement>Add a "Last verified: commit-hash" footer to generated docs. Mark stale in CI if the hash is more than N commits behind HEAD.</statement>
+        <rationale>Makes staleness machine-detectable. Agents can skip reading docs flagged as stale.</rationale>
+      </rule>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Hallucinated files: agent lists files that do not exist in the directory.</description>
+        <reason>LLMs confidently generate plausible-sounding file names from training data. AGENTS.md with non-existent paths causes downstream agents to issue failing Reads, breaking workflows.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Length creep: agent expands AGENTS.md to 200+ lines with redundant prose and bullet lists.</description>
+        <reason>Auto-loaded context that exceeds ~80 lines bloats every agent session. Enforce a hard 120-line cap; reject and regenerate if exceeded.</reason>
+      </antipattern>
+      <antipattern>
+        <description>ASCII art and box-drawing characters in AGENTS.md.</description>
+        <reason>LLMs trained on README files default to fancy boxes and banners. These break on non-monospace terminals, waste tokens, and are explicitly forbidden by the project convention.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stale tables: file/endpoint/model tables not updated after a refactor.</description>
+        <reason>Tables generated from AST or git ls-files stay accurate; hand-edited tables diverge within days. Regenerate from source, don't hand-edit after initial creation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Self-referential loop: agent reads its own previous draft as source of truth and treats hallucinations as fact.</description>
+        <reason>Each generation pass must start from the raw repository state (git ls-files, actual file reads), never from a previous doc version. Previous docs are hypotheses, not ground truth.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Multi-language confusion: in a monorepo with Python + TS + Go, the agent picks one language and ignores the others.</description>
+        <reason>Pass per-package outlines scoped to each language subdirectory, not a whole-repo outline.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Duplicating parent context: AGENTS.md for a subpackage repeats information already in the parent AGENTS.md.</description>
+        <reason>Each AGENTS.md covers only its own directory. Parents are auto-loaded already; duplication wastes tokens and goes stale independently.</reason>
+      </antipattern>
+    </section>
+    <section name="human-in-loop">
+      <rule>
+        <statement>First-time generation in a directory should always be human-reviewed before committing. Subsequent updates can be agent-merged if drift checks pass.</statement>
+        <rationale>Agents frequently hallucinate on first pass; human review catches these before the bad doc misleads future agents. After initial review, incremental updates are safe to merge automatically.</rationale>
+      </rule>
+    </section>
+    <section name="cli-and-tooling">
+      <p>Common tools for doc generation and verification: tree (file listing), eza (modern tree with gitignore), markdownlint-cli2 (Markdown linting), vale (prose linting), lychee (link checking), cspell (spell-checking), tokei (LOC counting), tree-sitter queries or ts-morph/astroid (API extraction), git ls-files (source of truth for what exists).</p>
+      <p>Services and platforms: GitHub Actions (schedule nightly drift checks), GitHub Copilot Workspace (repo-aware doc updates), Cursor/Zed (inline LLM doc generation), markdownlint GitHub Action (enforce structure rules), Vale with custom style (encode "no ASCII art / no filler" rules).</p>
+    </section>
+    <templates>
+      <template path="templates/agents-md-universal.md" purpose="Universal AGENTS.md skeleton with all required sections."/>
+      <template path="templates/doc-outline.sh" purpose="Discovery script: emits JSON outline from git ls-files and tokei."/>
+    </templates>
+    <see-also>
+      <ref slug="claude-md-creation"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code/memory">Claude Code — CLAUDE.md semantics</link>
+      <link href="https://agents.md">agents.md — community AGENTS.md spec</link>
+      <link href="https://vale.sh">Vale — prose linting</link>
+      <link href="https://github.com/DavidAnson/markdownlint-cli2">markdownlint-cli2 — Markdown structure linting</link>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-review-process">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Standardize code review: PR template, CI workflow, four scenario templates (bug/design/security/performance), and track health metrics (time to first review, cycle time, rework rate).</summary>
+    <tags>
+      <tag>code-review</tag>
+      <tag>pull-requests</tag>
+      <tag>ci-workflow</tag>
+      <tag>review-metrics</tag>
+      <tag>process</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Code Review Process</title>
+    <summary>Standardize PR descriptions, CI checks, and reviewer comment scaffolding so inconsistent review practices don't slow the cycle. Use four canonical scenario templates (bug, design, security, performance) and track five health metrics (time to first review, cycle time, rework rate, comment ratio, defect escape rate) to measure process health.</summary>
+    <why>
+      <p>Inconsistent PR descriptions, missing checklists, and freeform review comments slow the review cycle and obscure what the author must act on. Standardized PR templates propagate cleanly into agent prompts; scenario templates ensure each bug/design/security/performance finding uses the same structure. Tracking rework rate (PRs needing more than one review iteration) is the primary signal that the process is or is not working.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Standardizing PR-description quality: agent fills the template from commit messages, diff, and linked issue.</item>
+        <item>Wiring CI checks so human and agent reviewer see the same signal before commenting.</item>
+        <item>Generating reviewer comment scaffolding for the four canonical scenarios.</item>
+        <item>Tracking weekly review health metrics and producing dashboard reports.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Replacing the human review verdict — process scaffolding only, not approval authority.</item>
+        <item>Greenfield repos without established conventions — process amplifies existing bad habits.</item>
+        <item>Tiny teams (1-2 developers) where overhead exceeds value — use lightweight inline review.</item>
+        <item>Spike or throwaway branches — process overhead does not pay back.</item>
+      </list>
+    </when-not-to-use>
+    <section name="pr-template">
+      <rule>
+        <statement>Every PR must include: description (what and why), related issues, change type (bug/feature/breaking/docs), testing evidence, and self-review confirmation. The agent fills from diff and linked issue; it must not invent test results.</statement>
+        <rationale>Incomplete PR descriptions force reviewers to reconstruct intent from the diff alone. This doubles review time and produces review comments that ask questions the description should have answered.</rationale>
+      </rule>
+      <rule>
+        <statement>The agent may fill: description (from diff + commits + linked issue), related issues (from commit messages and PR title), change type (from diff analysis), changed files summary. The agent must leave unchecked: test results, documentation updates, dependent changes — these require human verification.</statement>
+        <rationale>Agents hallucinate test results and screenshot confirmations plausibly but inaccurately. Polished but incorrect checkboxes mislead reviewers into assuming pre-conditions are met when they are not. Strip these sections from the agent prompt unless they are verifiable from CI artifacts.</rationale>
+      </rule>
+      <antipattern>
+        <description>Agent pre-fills test checkboxes as checked when no test artifacts exist to verify them.</description>
+        <reason>Reviewers see a completed checklist and assume tests were run. A PR approved on the basis of a false checklist reaches production with untested code.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use Conventional Commits format for all commit messages. Agent-generated PR descriptions are substantially more accurate when commit messages follow a consistent schema.</statement>
+        <rationale>Conventional Commits separate type (feat/fix/chore), scope, and description into parseable fields. Agents extracting PR description from "feat(auth): add JWT refresh token rotation" produce far more accurate descriptions than from "WIP auth stuff".</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[feat(auth): add JWT refresh token rotation
+
+Implements sliding-window refresh token rotation to reduce session theft risk.
+Closes #234.]]></code>
+      </example>
+      <example type="bad">
+        <code lang="text"><![CDATA[WIP
+fix stuff
+tweak]]></code>
+        <note>Garbage commit messages produce garbage PR descriptions even from a capable agent.</note>
+      </example>
+    </section>
+    <section name="review-scenarios">
+      <rule>
+        <statement>Classify each finding into exactly one of: bug, design, security, performance, or style. Run classification per finding, not per PR. Emit the matched scenario template format for each finding.</statement>
+        <rationale>Scenario classification forces consistent comment shape. Reviewers scanning comments can immediately identify the finding type and triage priority. Unconstrained comment formats produce inconsistent output that authors and reviewers interpret differently.</rationale>
+      </rule>
+      <example type="bad" title="Bug Scenario">
+        <note>Discount calculation bug: percent treated as decimal produces wrong result.</note>
+        <code lang="python"><![CDATA[# BUG: discount_percent passed as 20 (for 20%) multiplied directly
+def calculate_discount(price, discount_percent):
+    return price - (price * discount_percent)
+# calculate_discount(100, 20) returns -1900 (wrong)]]></code>
+      </example>
+      <example type="good" title="Bug Fix">
+        <note>Correct implementation with explicit contract in docstring.</note>
+        <code lang="python"><![CDATA[def calculate_discount(price: float, discount_percent: float) -> float:
+    """
+    Args:
+        discount_percent: whole number (20 = 20%), not decimal (0.20).
+    """
+    return price - (price * discount_percent / 100)
+# calculate_discount(100, 20) returns 80.0 (correct)]]></code>
+      </example>
+      <example type="bad" title="Design Scenario">
+        <note>God method with too many responsibilities: validation, calculation, payment, email, inventory.</note>
+        <code lang="python"><![CDATA[class OrderProcessor:
+    def process(self, order):
+        if not order.items:
+            raise ValueError("Empty order")
+        total = sum(item.price * item.quantity for item in order.items)
+        if order.user.is_premium:
+            total *= 0.9
+        payment_result = PaymentGateway().charge(order.user.card, total)
+        EmailService().send_order_confirmation(order.user.email, order)
+        for item in order.items:
+            InventoryService().decrease(item.product_id, item.quantity)
+        return payment_result]]></code>
+      </example>
+      <example type="good" title="Design Fix">
+        <note>Single responsibility with dependency injection and async side effects via event bus.</note>
+        <code lang="python"><![CDATA[class OrderProcessor:
+    def __init__(self, payment: PaymentGateway, events: EventBus):
+        self.payment = payment
+        self.events = events
+
+    def process(self, order: Order) -> PaymentResult:
+        self._validate(order)
+        total = self._calculate_total(order)
+        result = self.payment.charge(order.user.card, total)
+        self.events.publish(OrderCompleted(order))  # async: email + inventory
+        return result]]></code>
+      </example>
+      <example type="bad" title="Security Scenario">
+        <note>Endpoint exposes any user's data without authentication or authorization.</note>
+        <code lang="python"><![CDATA[@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    return db.query(User).filter(User.id == user_id).first()]]></code>
+      </example>
+      <example type="good" title="Security Fix">
+        <note>Authentication required; authorization check prevents cross-user data access.</note>
+        <code lang="python"><![CDATA[@app.get("/users/{user_id}")
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.id != user_id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return db.query(User).filter(User.id == user_id).first()]]></code>
+      </example>
+      <example type="bad" title="Performance Scenario">
+        <note>N+1 query: separate query for each order's items produces 102 queries for 100 orders.</note>
+        <code lang="python"><![CDATA[def get_user_orders(user_id: int) -> list[dict]:
+    user = db.query(User).filter(User.id == user_id).first()
+    return [
+        {"id": o.id, "items": [i.name for i in o.items], "total": o.total}
+        for o in user.orders  # N+1: separate query per order's items
+    ]]]></code>
+      </example>
+      <example type="good" title="Performance Fix">
+        <note>Eager loading collapses N+1 into 1 query with JOINs.</note>
+        <code lang="python"><![CDATA[def get_user_orders(user_id: int) -> list[dict]:
+    user = (
+        db.query(User)
+        .options(selectinload(User.orders).selectinload(Order.items))
+        .filter(User.id == user_id)
+        .first()
+    )
+    return [
+        {"id": o.id, "items": [i.name for i in o.items], "total": o.total}
+        for o in user.orders  # items already loaded: no additional queries
+    ]]]></code>
+      </example>
+    </section>
+    <section name="review-metrics">
+      <rule>
+        <statement>Track five review health metrics: time to first review (target under 4 hours), review cycle time (target under 24 hours total), rework rate (target under 20% of PRs needing multiple iterations), comment ratio (comments per 100 lines changed), defect escape rate (production bugs that passed review).</statement>
+        <rationale>These five metrics cover speed (time to first review, cycle time), quality (rework rate, defect escape), and noise (comment ratio). Tracking only speed metrics drives rubber-stamp approvals; tracking only quality metrics misses throughput bottlenecks.</rationale>
+      </rule>
+      <rule>
+        <statement>Measure time from PR "ready for review" event to first substantive comment. Filter out draft-to-ready transitions and bot auto-comments — both inflate the metric without reflecting real review latency.</statement>
+        <rationale>Time to first review is the metric developers feel most directly. Long wait times (over 8 hours) are the primary cause of merge bottlenecks and context-switching cost when developers return to a PR after a day. Bot auto-comments at second 0 create false good numbers while reviewers still haven't looked.</rationale>
+      </rule>
+      <rule>
+        <statement>Rework rate = percentage of PRs requiring more than one review iteration after the first substantive human review. Spikes in rework rate signal unclear specs or weak agent precision, not author incompetence.</statement>
+        <rationale>High rework rate is a system problem, not an individual problem. When rework spikes, investigate: were requirements clear before the PR was opened? Are agent BLOCKING comments reliable? Are reviewers consistent? Optimize the system, not the individuals.</rationale>
+      </rule>
+      <rule>
+        <statement>Track production bugs that were present in reviewed code. Segment by bug class (correctness, security, performance) to identify which review categories have poor coverage.</statement>
+        <rationale>Defect escape rate is the ultimate measure of review quality. High escape rate in security bugs means security review is inadequate. High escape rate in performance bugs means performance checks are missing or unreliable. Use escape rate to direct investment in review improvement.</rationale>
+      </rule>
+      <rule>
+        <statement>Track the ratio of BLOCKING to total comments. A healthy ratio is 15-25% BLOCKING. Below 5% means reviews are not catching real issues. Above 40% means the author is submitting unready PRs or the agent is miscalibrated toward false positives.</statement>
+        <rationale>Comment ratio alone is misleading — 50 nitpicks on a 10-line PR looks like thorough review but is noise. The BLOCKING ratio reveals whether the review is finding real issues or generating noise. Calibrate the agent toward the target blocking ratio by adjusting the review prompt based on precision tracking.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/pr-description.md" purpose="Full PR description template with description, related issues, change type, test checklist."/>
+      <template path="templates/pr-checks.yml" purpose="GitHub Actions CI workflow: lint, test, coverage gate, PR-size warning."/>
+      <template path="templates/pr-size-guard.sh" purpose="Shell script: warns above 400 lines, blocks above 1500 lines, outputs annotations."/>
+    </templates>
+    <see-also>
+      <ref slug="code-review"/>
+      <ref slug="refactoring-patterns"/>
+      <link href="https://google.github.io/eng-practices/review/">Google Engineering Practices — Code Review Developer Guide</link>
+      <link href="https://research.google/pubs/modern-code-review/">Modern Code Review: A Case Study at Google (FSE 2018)</link>
+    </see-also>
+  </content>
+</methodology>

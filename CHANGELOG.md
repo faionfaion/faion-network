@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-review-process, documentation, mob-programming)
+
 ### Added
 - docs: methodology XML schema spec, closed tag glossary (~60 tags), reference example
 - feat: validate-methodology-xml.py (closed-vocab + length-parity + path-consistency checks)
