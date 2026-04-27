@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="iac-patterns-dry">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>DRY patterns for Terraform: locals for derived values, for_each over count, dynamic blocks for repeated nested structures, and Terragrunt for cross-module config deduplication.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>iac</tag>
+      <tag>dry</tag>
+      <tag>terragrunt</tag>
+      <tag>refactoring</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-composition"/>
+      <ref slug="terraform-modules-structure"/>
+    </related>
+  </metadata>
+  <content>
+    <title>IaC DRY Patterns</title>
+    <summary>Four DRY techniques for Terraform that eliminate duplication without sacrificing readability: locals for computed/derived values, for_each (not count) for similar resources, dynamic blocks for repeated nested structures, and Terragrunt for eliminating provider/backend boilerplate across environments.</summary>
+
+    <why>
+      <p>Infrastructure duplication in Terraform manifests as copy-pasted resource blocks, hard-coded tags repeated across every resource, and identical backend/provider blocks across every environment directory. Unlike application code, duplicated Terraform drifts silently — environments diverge when one copy is updated but others are not. The four DRY patterns eliminate each class of duplication at the right abstraction level.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Three or more identical resource blocks differing only in name/tags — use for_each with a map.</item>
+        <item>Repeated nested blocks (ingress rules, lifecycle rules, tag sets) — use dynamic blocks.</item>
+        <item>Values derived from input variables repeated in multiple expressions — use locals.</item>
+        <item>Multiple Terraform environments sharing the same provider/backend config — use Terragrunt.</item>
+        <item>Refactoring review: scanning for copy-pasted patterns before a module extraction.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-resource modules — DRY adds abstraction overhead with no benefit when there's nothing to deduplicate.</item>
+        <item>for_each when resource identity must be positional — use count only when order/index is semantically meaningful (rare).</item>
+        <item>Terragrunt when the project has a single environment — the overhead exceeds the benefit below ~3 environments.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="locals-pattern">
+      <p>Locals compute values from inputs once and reference them everywhere. They eliminate magic strings, repeated expressions, and environment-conditional logic scattered across resource blocks:</p>
+      <rule testable="true">
+        <statement>ALL naming conventions, common tag maps, CIDR derivations, and environment conditionals MUST be defined in locals. Resource blocks reference locals, never raw variables or inline expressions.</statement>
+        <rationale>Centralizing computed values in locals means a naming change requires one edit; scattered inline expressions mean N edits with N opportunities for drift.</rationale>
+      </rule>
+      <example type="good" title="Locals for naming, tags, CIDRs, and environment flags">
+        <code lang="hcl"><![CDATA[locals {
+  # Naming convention
+  name_prefix = "${var.project}-${var.environment}"
+
+  # Common tags applied everywhere
+  common_tags = {
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    CostCenter  = var.cost_center
+  }
+
+  # Computed CIDR blocks
+  public_cidrs   = [for i in range(3) : cidrsubnet(var.vpc_cidr, 4, i)]
+  private_cidrs  = [for i in range(3) : cidrsubnet(var.vpc_cidr, 4, i + 3)]
+  database_cidrs = [for i in range(3) : cidrsubnet(var.vpc_cidr, 4, i + 6)]
+
+  # Environment-specific configuration
+  is_production = var.environment == "prod"
+
+  instance_class = local.is_production ? "db.r6g.xlarge" : "db.t4g.medium"
+  multi_az       = local.is_production ? true : false
+
+  # Merge user-provided values with defaults
+  final_config = merge(local.default_config, var.custom_config)
+}]]></code>
+      </example>
+    </section>
+
+    <section name="for-each-pattern">
+      <p>for_each over a map is the canonical pattern for creating multiple similar resources. Prefer it over count because map keys are stable — adding or removing entries does not shift the index of unrelated resources:</p>
+      <rule testable="true">
+        <statement>Use for_each with a typed map when creating 2+ similar resources. NEVER use count for resources where the set membership can change — count-indexed resources shift when items are inserted or removed, forcing unnecessary destroy/recreate cycles.</statement>
+        <rationale>for_each assigns identity by map key; Terraform can add, remove, or update individual items without touching siblings. count-based addressing breaks on any insertion before the last element.</rationale>
+      </rule>
+      <example type="good" title="for_each over a map — S3 buckets factory">
+        <code lang="hcl"><![CDATA[variable "buckets" {
+  description = "Map of bucket configurations"
+  type = map(object({
+    versioning = optional(bool, true)
+    lifecycle_rules = optional(list(object({
+      id      = string
+      enabled = bool
+      expiration_days = optional(number)
+    })), [])
+  }))
+}
+
+resource "aws_s3_bucket" "buckets" {
+  for_each = var.buckets
+
+  bucket = "${var.name_prefix}-${each.key}"
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-${each.key}"
+  })
+}
+
+resource "aws_s3_bucket_versioning" "buckets" {
+  for_each = var.buckets
+
+  bucket = aws_s3_bucket.buckets[each.key].id
+  versioning_configuration {
+    status = each.value.versioning ? "Enabled" : "Disabled"
+  }
+}]]></code>
+      </example>
+      <antipattern>
+        <description>Using count for resources where the list can change.</description>
+        <reason>count = length(var.items) means items[0] is aws_s3_bucket.main[0]. Removing item 0 makes item 1 become item 0, triggering a destroy/recreate of an unrelated resource.</reason>
+      </antipattern>
+    </section>
+
+    <section name="dynamic-blocks-pattern">
+      <p>Dynamic blocks eliminate repeated nested block structures inside resource definitions — ingress rules, lifecycle rules, tag blocks, and routing rules are the canonical targets:</p>
+      <rule testable="true">
+        <statement>Use dynamic blocks when a resource has N identical nested blocks that differ only in values. Define the block configuration as a list/map variable; the dynamic block iterates over it.</statement>
+        <rationale>Hard-coded repeated nested blocks cannot be parameterized without copy-paste; dynamic blocks make the block set a first-class input to the module.</rationale>
+      </rule>
+      <example type="good" title="Dynamic ingress rules in a security group">
+        <code lang="hcl"><![CDATA[variable "ingress_rules" {
+  description = "List of ingress rules"
+  type = list(object({
+    port        = number
+    protocol    = optional(string, "tcp")
+    cidr_blocks = list(string)
+    description = optional(string, "")
+  }))
+  default = []
+}
+
+resource "aws_security_group" "app" {
+  name_prefix = "${local.name_prefix}-app-"
+  vpc_id      = var.vpc_id
+
+  dynamic "ingress" {
+    for_each = var.ingress_rules
+    content {
+      from_port   = ingress.value.port
+      to_port     = ingress.value.port
+      protocol    = ingress.value.protocol
+      cidr_blocks = ingress.value.cidr_blocks
+      description = ingress.value.description
+    }
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="terragrunt-dry-pattern">
+      <p>Terragrunt DRY eliminates provider blocks, backend configurations, and common inputs from every environment directory. A root terragrunt.hcl generates them automatically from path-derived variables:</p>
+      <rule testable="true">
+        <statement>Use Terragrunt generate blocks to produce provider.tf and backend.tf in every child directory from path-derived locals (environment, region, account_id). NEVER hand-write backend.tf or provider.tf per environment — any difference between environment configs must be explicit in the root terragrunt.hcl, not duplicated in leaf files.</statement>
+        <rationale>A 10-environment project has 10 copies of provider.tf and backend.tf if written manually — the first time an org changes its AWS region or state bucket, 9 of 10 will be forgotten.</rationale>
+      </rule>
+      <example type="good" title="Root terragrunt.hcl generating provider and backend">
+        <code lang="hcl"><![CDATA[# terragrunt.hcl (root)
+
+locals {
+  # Parse the file path to extract environment and region
+  path_parts = split("/", path_relative_to_include())
+
+  environment = try(local.path_parts[0], "dev")
+  region      = try(local.path_parts[1], "us-east-1")
+
+  # Load environment-specific variables
+  env_vars = read_terragrunt_config(find_in_parent_folders("env.hcl", "env.hcl"))
+
+  # Common tags for all resources
+  common_tags = {
+    Environment = local.environment
+    ManagedBy   = "terragrunt"
+    Region      = local.region
+  }
+}
+
+# Generate provider configuration
+generate "provider" {
+  path      = "provider.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<EOF
+provider "aws" {
+  region = "${local.region}"
+
+  default_tags {
+    tags = ${jsonencode(local.common_tags)}
+  }
+}
+EOF
+}
+
+# Remote state configuration
+remote_state {
+  backend = "s3"
+  generate = {
+    path      = "backend.tf"
+    if_exists = "overwrite_terragrunt"
+  }
+  config = {
+    bucket         = "company-terraform-state-${get_aws_account_id()}"
+    key            = "${path_relative_to_include()}/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+# Common inputs for all modules
+inputs = {
+  environment = local.environment
+  region      = local.region
+  tags        = local.common_tags
+}]]></code>
+      </example>
+      <example type="good" title="Module-level terragrunt.hcl — minimal, delegates to root">
+        <code lang="hcl"><![CDATA[# environments/prod/us-east-1/vpc/terragrunt.hcl
+
+include "root" {
+  path = find_in_parent_folders()
+}
+
+terraform {
+  source = "${get_repo_root()}/modules/vpc"
+}
+
+inputs = {
+  name_prefix        = "myapp-prod"
+  vpc_cidr           = "10.0.0.0/16"
+  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+  enable_nat_gateway = true
+  single_nat_gateway = false  # Production: NAT per AZ
+}]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-dry">
+      <prompt purpose="Eliminate duplication in Terraform configuration">
+        <![CDATA[Identify and eliminate duplication in this Terraform configuration:
+
+[PASTE_TF_CODE]
+
+Look for:
+1. Repeated resource blocks that could use for_each
+2. Repeated nested blocks that could use dynamic
+3. Values that should be in locals
+4. Patterns that should be extracted to modules
+5. Common configurations across environments
+
+Provide refactored code with explanations.]]>
+      </prompt>
+      <prompt purpose="Convert similar resources to Factory pattern with for_each">
+        <![CDATA[Convert these similar resources into a factory pattern using for_each:
+
+Current resources:
+[PASTE_SIMILAR_RESOURCES]
+
+Create a module that:
+1. Accepts a map of configuration objects
+2. Creates resources dynamically using for_each
+3. Handles optional/conditional attributes
+4. Outputs a map of created resources]]>
+      </prompt>
+    </section>
+
+    <checklist>
+      <check>No copy-pasted resource blocks — common patterns extracted to modules</check>
+      <check>Locals used for all computed values (name_prefix, common_tags, CIDR derivations)</check>
+      <check>for_each used instead of count for resources where the set can change</check>
+      <check>Dynamic blocks used for repeated nested structures (ingress rules, lifecycle rules)</check>
+      <check>Environment differences parameterized, not duplicated</check>
+      <check>Common tags defined in locals and referenced uniformly</check>
+      <check>Naming conventions use prefix/suffix variables from locals</check>
+      <check>Region/account agnostic where possible</check>
+      <check>Terragrunt generate blocks produce backend.tf and provider.tf (if using Terragrunt)</check>
+      <check>Module versioning in place — consumers pin to version constraints</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-composition"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/recommended-patterns"/>
+      <link href="https://spacelift.io/blog/iac-architecture-patterns-terragrunt"/>
+    </see-also>
+  </content>
+</methodology>
