@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-agent-workflow">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Drive Puppeteer from AI agents: stateless worker-process pattern, prompt templates for script generation, LLM gotchas, performance flags, CLI tools, and managed browser service comparison.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>agent-workflow</tag>
+      <tag>browser-automation</tag>
+      <tag>llm-integration</tag>
+      <tag>nodejs</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+      <ref slug="puppeteer-session-management"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Agentic Workflow, LLM Gotchas &amp; Performance</title>
+
+    <summary>Covers how AI agents should drive Puppeteer (stateless worker-process pattern, not inline in the LLM turn), known LLM-generated code gotchas, performance flags for resource blocking, CLI tools ecosystem, and managed browser services for production scraping.</summary>
+
+    <why>
+      <p>LLMs generate Puppeteer scripts with a consistent set of bugs: deprecated waitForTimeout, networkidle0 on SPAs, missing browser.close(), screenshot-derived selectors. An explicit agentic contract — write script, run with hard timeout, read structured artifacts back — prevents runaway browser processes and unbounded waits while keeping the LLM stateless.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Configuring an AI agent to generate and execute Puppeteer scripts as one-shot tool calls.</item>
+        <item>Building a worker-process daemonised runner the agent talks to over a queue or HTTP.</item>
+        <item>Selecting between self-hosted Puppeteer and managed browser services (Browserless, Apify, etc.).</item>
+        <item>Auditing LLM-generated Puppeteer code for known anti-patterns before execution.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure human-authored scripts where LLM gotchas are irrelevant — use puppeteer-launch-setup and puppeteer-page-interaction directly.</item>
+        <item>Long-running sessions that require stateful browser state across multiple LLM turns — use a daemonised runner and expose an HTTP control API instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agentic-workflow">
+      <rule>
+        <statement>Drive Puppeteer from a worker process the agent invokes via Bash, not from inside the LLM turn. The agent writes a script (or fills a parametric template), launches it with a hard timeout, captures console/screenshots/HAR to disk, then reads structured artifacts back. Long sessions belong in a daemonised runner the agent talks to over a queue or HTTP — keep the LLM stateless.</statement>
+        <rationale>Browser processes are long-lived and stateful; the LLM context window is stateless and token-bounded. Running browser logic inline in the LLM turn creates unbounded waits, memory leaks, and unrecoverable state on context compaction.</rationale>
+      </rule>
+      <example type="good" title="Agent prompt pattern for one-shot scraping">
+        <code lang="text"><![CDATA[Write a Node script at /tmp/scrape.js that:
+- launches puppeteer-extra with stealth plugin
+- navigates to {URL}, waits for selector "{S}"
+- emits { title, h1, status } as JSON to stdout
+- exits non-zero on any thrown error
+Run it with `timeout 60 node /tmp/scrape.js > out.json`.
+Return the JSON only.]]></code>
+      </example>
+      <example type="good" title="Minimal agent-droppable harness">
+        <code lang="javascript"><![CDATA[// /tmp/run.js — usage: node run.js <url>
+const puppeteer = require('puppeteer-extra');
+const Stealth = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(Stealth());
+
+(async () => {
+  const url = process.argv[2];
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-dev-shm-usage'],
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setDefaultTimeout(15000);
+    const resp = await page.goto(url, { waitUntil: 'domcontentloaded' });
+    const data = await page.evaluate(() => ({
+      title: document.title,
+      h1: document.querySelector('h1')?.innerText ?? null,
+    }));
+    process.stdout.write(JSON.stringify({ status: resp.status(), ...data }));
+  } finally {
+    await browser.close();
+  }
+})().catch((e) => { console.error(e.message); process.exit(1); });]]></code>
+        <note>The finally block guarantees browser.close() even on unhandled promise rejection.</note>
+      </example>
+    </section>
+
+    <section name="llm-gotchas">
+      <p>Known bugs in LLM-generated Puppeteer code — check for all of these before executing agent-written scripts:</p>
+      <antipattern>
+        <description>The model writes await page.waitForTimeout(N).</description>
+        <reason>waitForTimeout was deprecated and removed in Puppeteer 22. Replace with new Promise(r =&gt; setTimeout(r, N)) or a targeted waitForSelector/waitForFunction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LLMs default to waitUntil: 'networkidle0' on every page.goto().</description>
+        <reason>networkidle0 hangs forever on auth/analytics-heavy pages and SPAs with WebSocket/SSE. Force domcontentloaded + targeted waits in prompts and code review.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Selectors generated from screenshots (e.g. nth-child positions, visual class names).</description>
+        <reason>Positional selectors break on any layout or content change. Require the agent to fetch DOM via page.content() first and use attribute-based selectors (data-testid, id, name).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Credentials, cookies, or filled form data written to log files or stdout without scrubbing.</description>
+        <reason>Automated pipelines that log full page state or network HAR will leak session tokens. Pair with a password-scrubber step before persisting any artifacts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Fully automated loops on login forms, CAPTCHA challenges, or 2FA prompts.</description>
+        <reason>Any flow involving credentials or 2FA must pause and surface a screenshot for human review; never let the agent loop silently on an auth wall.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance-flags">
+      <example type="good" title="Disable unnecessary features for DOM-only scraping">
+        <code lang="javascript"><![CDATA[const browser = await puppeteer.launch({
+  args: [
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    '--disable-setuid-sandbox',
+    '--no-sandbox',
+    '--disable-accelerated-2d-canvas',
+    '--disable-extensions',
+    '--disable-plugins',
+    '--disable-images',             // if images not needed
+    '--blink-settings=imagesEnabled=false'
+  ]
+});
+
+// Block resources via interception (complementary to flags)
+await page.setRequestInterception(true);
+page.on('request', request => {
+  const blocked = ['image', 'stylesheet', 'font', 'media'];
+  if (blocked.includes(request.resourceType())) {
+    request.abort();
+  } else {
+    request.continue();
+  }
+});]]></code>
+        <note>Combining launch flags + request interception gives a 3-5x speedup on DOM-only extraction versus a full page load.</note>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <p>Ecosystem tools for Puppeteer-based pipelines:</p>
+      <list>
+        <item>puppeteer — Bundled Chromium driver. npm i puppeteer · https://pptr.dev</item>
+        <item>puppeteer-core — Driver without bundled browser. npm i puppeteer-core</item>
+        <item>puppeteer-extra + puppeteer-extra-plugin-stealth — Bot-detection evasion. npm i puppeteer-extra puppeteer-extra-plugin-stealth</item>
+        <item>@sparticuz/chromium — Lambda/Cloud Run compatible chromium. npm i @sparticuz/chromium</item>
+        <item>pageres-cli — One-shot screenshot CLI built on Puppeteer. npm i -g pageres-cli</item>
+        <item>lighthouse (CLI) — Audits pages via Puppeteer-driven Chrome. npm i -g lighthouse</item>
+      </list>
+    </section>
+
+    <section name="managed-services">
+      <p>Managed browser services for production agent pipelines:</p>
+      <list>
+        <item>Browserless.io (SaaS) — Drop-in puppeteer.connect({ browserWSEndpoint }); bills per second. Agent-friendly REST/WS endpoints.</item>
+        <item>ScrapingBee / ScraperAPI (SaaS) — HTTP API hiding Puppeteer; good when only HTML is needed.</item>
+        <item>Bright Data Scraping Browser (SaaS) — Bundles residential proxies + unlock; defeats most anti-bot but expensive.</item>
+        <item>Apify / Crawlee (SaaS+OSS SDK) — Actors expose HTTP; Crawlee wraps Puppeteer/Playwright with queues, retries, proxies.</item>
+        <item>Browserless self-hosted (OSS Docker) — Run ghcr.io/browserless/chromium for shared, sandboxed instances.</item>
+        <item>Rendertron (OSS) — Headless render-as-service for SSR/SEO; abandoned by Google but still functional.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://pptr.dev"/>
+      <link href="https://github.com/berstend/puppeteer-extra"/>
+      <link href="https://github.com/Sparticuz/chromium"/>
+      <link href="https://crawlee.dev"/>
+      <link href="https://www.browserless.io/docs"/>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+    </see-also>
+  </content>
+</methodology>
