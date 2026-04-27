@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-models">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Django models design: BaseModel inheritance, SoftDelete, TextChoices, database constraints, ForeignKey on_delete, custom QuerySets, indexes, N+1 prevention.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>models</tag>
+      <tag>database-design</tag>
+      <tag>querysets</tag>
+      <tag>performance</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Models</title>
+
+    <summary>Django models are thin data containers: fields, indexes, constraints, and __str__. Business logic belongs in services (HackSoft style). Every domain model inherits from BaseModel (uid + timestamps). Status fields use TextChoices/IntegerChoices. ForeignKey on_delete is chosen deliberately — PROTECT for user/account refs, CASCADE only for child rows with no meaning without parent. Every generated migration file is reviewed by a human before migrate.</summary>
+
+    <why>
+      <p>Thin models and a service layer keep business rules testable, migrations predictable, and ORM queries composable via custom QuerySets. Models bloated with business logic become impossible to test without a database and export their logic to views as copy-paste code.</p>
+      <p>Omitting full_clean() before save() in services silently drops model-level validation. Omitting related_name generates confusing model_set reverse names that break when models are renamed. Every db_index=True added without justification bloats write amplification. CASCADE on_delete for user references causes irreversible data loss when accounts are deleted — a common production incident.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding a new model to a Django app.</item>
+        <item>Refactoring a model bloated with business logic into thin model + service functions.</item>
+        <item>Audit: scanning for missing db_index, wrong on_delete, missing Meta.constraints.</item>
+        <item>Designing status/state fields — converting raw string choices to TextChoices.</item>
+        <item>Migrating Django 4.x → 5.x to use db_default and GeneratedField.</item>
+        <item>Code review of Django model definitions for design consistency and best practices.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>ORM-less projects (FastAPI + SQLAlchemy, Flask + SQLAlchemy) — route to SQLAlchemy methodology.</item>
+        <item>Migrating to a different ORM (peewee, Tortoise, SQLModel) — conventions don't translate.</item>
+        <item>Quick throwaway prototypes where Django Admin + auto-generated tables are sufficient.</item>
+        <item>Reporting/read-only projects backed by views or external warehouses.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basemodel-pattern">
+      <rule testable="true">
+        <statement>Every domain model inherits from BaseModel (uid + created_at + updated_at). Never inherit from models.Model directly for domain entities.</statement>
+        <rationale>Consistent base fields across all models enables audit trails and safe public APIs without per-model boilerplate.</rationale>
+      </rule>
+
+      <reference path="templates/base_model.py">BaseModel + SoftDeleteModel scaffold.</reference>
+
+      <example type="good" title="Model using BaseModel with uid and timestamps">
+        <code lang="python"><![CDATA[
+from apps.core.models import BaseModel
+
+class Order(BaseModel):
+    user = models.ForeignKey('users.User', on_delete=models.PROTECT)
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+
+    def __str__(self):
+        return f"Order {self.uid} by {self.user}"
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="service-layer">
+      <rule testable="true">
+        <statement>Models must be thin: fields, Meta, and __str__ only. Business logic belongs in services/. Always call full_clean() before save() in service functions.</statement>
+        <rationale>full_clean() is not called automatically by save(). Omitting it silently bypasses model-level validation (clean(), validators, constraints).</rationale>
+      </rule>
+
+      <example type="good" title="Service layer handling business logic and validation">
+        <code lang="python"><![CDATA[
+# apps/users/services.py
+def user_create(*, email: str, name: str, password: str) -> User:
+    user = User(email=email, name=name)
+    user.set_password(password)
+    user.full_clean()   # must be explicit — save() does not call it
+    user.save()
+    return user
+        ]]></code>
+      </example>
+
+      <example type="bad" title="Business logic in model methods — hard to test">
+        <code lang="python"><![CDATA[
+class Order(models.Model):
+    def apply_discount(self, percentage):
+        self.total = self.total * (1 - percentage / 100)
+        self.save()  # No validation
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="textchoices-and-integerchoices">
+      <rule testable="true">
+        <statement>Always use TextChoices or IntegerChoices for enumerated fields. Never use raw string tuples as choices.</statement>
+        <rationale>TextChoices provides .choices, .values, .labels, and .names; raw tuples require parallel string maintenance and are caught by ruff DJ rules.</rationale>
+      </rule>
+
+      <example type="good" title="Using TextChoices for status fields">
+        <code lang="python"><![CDATA[
+# apps/orders/constants.py
+from django.db import models
+
+class OrderStatus(models.TextChoices):
+    PENDING    = 'pending',    'Pending'
+    PROCESSING = 'processing', 'Processing'
+    SHIPPED    = 'shipped',    'Shipped'
+    CANCELLED  = 'cancelled',  'Cancelled'
+
+# apps/orders/models.py
+class Order(BaseModel):
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+    )
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="database-constraints">
+      <rule testable="true">
+        <statement>Use Meta.constraints for invariants that span multiple fields. Use CheckConstraint for value-range rules and UniqueConstraint for conditional uniqueness.</statement>
+        <rationale>DB-level constraints enforce invariants even when ORM validation is bypassed (bulk_create, raw SQL). CheckConstraint with condition requires PostgreSQL — pin the backend in a comment.</rationale>
+      </rule>
+
+      <example type="good" title="Database constraints for data integrity">
+        <code lang="python"><![CDATA[
+from django.db.models import Q, CheckConstraint, UniqueConstraint
+
+class Order(BaseModel):
+    quantity = models.PositiveIntegerField()
+    discount = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                check=Q(discount__gte=0) & Q(discount__lte=100),
+                name='valid_discount_pct',
+            ),
+            UniqueConstraint(
+                fields=['user', 'product'],
+                condition=Q(deleted_at__isnull=True),
+                name='unique_active_user_product',  # PostgreSQL only
+            ),
+        ]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="foreignkey-on-delete">
+      <rule testable="true">
+        <statement>Choose on_delete deliberately: PROTECT for user/account refs (delete is an event, not silent cascade), CASCADE only for child rows with no meaning without parent, SET_NULL for optional assignees.</statement>
+        <rationale>CASCADE on user references causes irreversible data loss when an account is deleted — a common production incident.</rationale>
+      </rule>
+
+      <p>Relationship Types: User/Account reference = PROTECT (deletion is an event). Child rows (e.g. OrderItem under Order) = CASCADE (child has no meaning without parent). Optional assignee (e.g. assigned_to) = SET_NULL (row survives reassignment). Audit trail reference = PROTECT (preserve historical record).</p>
+    </section>
+
+    <section name="custom-queryset">
+      <rule testable="true">
+        <statement>Define domain-specific filter logic as QuerySet methods, not in service functions or views. Use Manager.from_queryset(QuerySet)() — note the trailing () to instantiate.</statement>
+        <rationale>QuerySet methods are chainable; service-level filtering is not. Missing () on from_queryset creates the class object, not an instance — a confusing runtime error.</rationale>
+      </rule>
+
+      <example type="good" title="Custom QuerySet with chainable methods">
+        <code lang="python"><![CDATA[
+class ArticleQuerySet(models.QuerySet):
+    def published(self):
+        return self.filter(status='published', published_at__isnull=False)
+
+    def by_author(self, user):
+        return self.filter(author=user)
+
+    def with_stats(self):
+        return self.annotate(
+            comment_count=models.Count('comments'),
+            avg_rating=models.Avg('ratings__score'),
+        )
+
+class ArticleManager(models.Manager):
+    def get_queryset(self):
+        return ArticleQuerySet(self.model, using=self._db)
+
+    def create_draft(self, *, title: str, author, content: str = '') -> 'Article':
+        return self.create(title=title, author=author, content=content, status='draft')
+
+class Article(BaseModel):
+    title   = models.CharField(max_length=200)
+    author  = models.ForeignKey('users.User', on_delete=models.PROTECT, related_name='articles')
+    status  = models.CharField(max_length=20, default='draft')
+
+    # Correct: Manager.from_queryset(QS)() — trailing () is required
+    objects = ArticleManager.from_queryset(ArticleQuerySet)()
+
+# Chainable:
+Article.objects.published().by_author(user).with_stats()
+# Factory method:
+Article.objects.create_draft(title='Draft', author=user)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="soft-delete-queryset">
+      <example type="good" title="SoftDelete QuerySet implementation">
+        <code lang="python"><![CDATA[
+class SoftDeleteQuerySet(models.QuerySet):
+    def delete(self):
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def dead(self):
+        return self.filter(deleted_at__isnull=False)
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db).alive()
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>If a child model redefines objects, it must replicate the alive() filter or the soft-delete protection is lost.</statement>
+        <rationale>Custom managers override the default; naively replacing objects loses the alive filter and returns deleted rows.</rationale>
+      </rule>
+    </section>
+
+    <section name="indexing-strategy">
+      <rule testable="true">
+        <statement>Add db_index or a composite Index for every field combination used in filter()/order_by()/distinct() paths that hit production traffic. Require justification — every index costs write amplification.</statement>
+        <rationale>Missing indexes cause full-table scans at scale. Unnecessary indexes slow writes and bloat storage.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use partial indexes (condition=Q(...)) only on PostgreSQL. Comment the backend requirement next to the index definition.</statement>
+        <rationale>Partial indexes use PostgreSQL-specific SQL. MySQL and SQLite ignore the condition silently or error at migration time.</rationale>
+      </rule>
+
+      <example type="good" title="Index strategy balancing reads and writes">
+        <code lang="python"><![CDATA[
+class Meta:
+    indexes = [
+        models.Index(fields=['user', 'status']),
+        models.Index(fields=['status', 'created_at']),
+        # PostgreSQL only — partial index on pending orders
+        models.Index(
+            fields=['created_at'],
+            condition=Q(status='pending'),
+            name='pending_orders_idx',
+        ),
+        # Covering index — avoids table lookup for summary queries
+        models.Index(
+            fields=['user', 'status'],
+            include=['total'],
+            name='order_summary_idx',
+        ),
+    ]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="n-plus-one-prevention">
+      <rule testable="true">
+        <statement>Use select_related for ForeignKey/OneToOne (JOIN), prefetch_related for reverse FK and ManyToMany (second query). Add these at the QuerySet/Manager level for the common access pattern.</statement>
+        <rationale>Per-call select_related is easy to forget; manager-level defaults ensure the optimization is always applied for the most common query shape.</rationale>
+      </rule>
+
+      <example type="bad" title="N+1 query antipattern">
+        <code lang="python"><![CDATA[
+# N+1: one query per order
+for order in Order.objects.all():
+    print(order.user.email)
+        ]]></code>
+      </example>
+
+      <example type="good" title="Optimized query with select_related">
+        <code lang="python"><![CDATA[
+# Single JOIN query
+for order in Order.objects.select_related('user'):
+    print(order.user.email)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="validation">
+      <rule testable="true">
+        <statement>Define cross-field invariants in clean(). Define field-level constraints with validators=[...] on the field. Both require full_clean() to be called explicitly from services.</statement>
+        <rationale>DRF and Ninja do not call clean() automatically. Validation placed only in clean() is invisible to API consumers unless services call full_clean().</rationale>
+      </rule>
+    </section>
+
+    <section name="django5-features">
+      <rule testable="true">
+        <statement>Use db_default for values the database computes at INSERT time (avoids Python-side time skew). Use GeneratedField for columns computed from other columns. Pin PostgreSQL when using GeneratedField(db_persist=True).</statement>
+        <rationale>db_default uses DB NOW() — strictly monotonic in distributed systems. GeneratedField(db_persist=False) is a virtual column unsupported on SQLite.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Inheriting from models.Model directly instead of the project BaseModel.</description>
+        <reason>Breaks uid/timestamps consistency across the codebase. All domain models must use BaseModel. Audit with: grep -r "models.Model" apps/*/models.py and flag direct inheritance.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Omitting full_clean() in service functions before save().</description>
+        <reason>model.save() does not call full_clean(). Validation defined in clean() or field validators is silently skipped.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Exposing id (PK) and uid both in DRF serializers.</description>
+        <reason>Defeats the purpose of UUID. Serializers must exclude id; use uid only. DRF viewsets need lookup_field = 'uid'.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using GeneratedField(db_persist=True) or partial indexes on non-PostgreSQL databases.</description>
+        <reason>SQLite and MySQL do not fully support these features. Migrations may succeed but fail at query time. Pin the DB engine in a comment next to the field/index.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-squashing migrations without reviewing the generated migration file.</description>
+        <reason>Squash can drop UUID unique=True constraints and re-add without backfilling, corrupting production data. Every migration file must be reviewed by a human before migrate runs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding db_index=True on every field "for performance" without justification.</description>
+        <reason>Every index increases write overhead and storage. Only index fields actually used in filter/order_by/distinct on production traffic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Reordering fields in a model "to clean it up".</description>
+        <reason>Django generates spurious AlterField migrations on field reorder. Lock field order via code review.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Do not use SoftDeleteModel for models containing personally identifiable information (PII). PII subject to deletion requests requires hard delete.</statement>
+        <rationale>Soft delete preserves the data — directly contradicting GDPR Article 17 (right to erasure) deletion requests.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/topics/db/models/"/>
+      <link href="https://docs.djangoproject.com/en/stable/topics/db/queries/"/>
+      <link href="https://www.cosmicpython.com/"/>
+    </see-also>
+  </content>
+</methodology>

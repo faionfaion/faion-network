@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-coding-standards">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Conventions for Django structure: apps/ + core/ + config/ layout, aliased imports, service-layer logic, keyword-only args, TextChoices, update_fields on saves.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>coding-standards</tag>
+      <tag>architecture</tag>
+      <tag>service-layer</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Django Coding Standards</title>
+
+    <summary>Structural and code conventions for Django projects establishing consistent directory layout (apps/ + core/ + config/settings/), aliased cross-app imports to prevent circular dependencies, service-layer architecture isolating business logic from HTTP concerns, keyword-only service arguments for clarity, TextChoices for model constants, and mandatory update_fields on .save() calls to prevent full-row writes. These rules apply equally to new code and refactoring targets, ensuring the codebase is testable by default and reviewable without domain-specific knowledge.</summary>
+
+    <why>
+      <p>Without explicit conventions agents and developers put business logic in views, use bare from apps.x.models import Y (circular import risk), omit type hints, and forget update_fields on save (causing full-row writes that overwrite concurrent changes). Consistent aliasing and service isolation make the codebase testable by default and prevent the most common review findings in Django PRs.</p>
+      <p>The service-layer pattern (fat services, thin views) enforces a critical separation: business logic belongs in services/, views handle HTTP only, utils contain pure functions, and models define data. This partition lets services be called from views, management commands, Celery tasks, and tests without modification. Views are thin (20-30 lines) and become nearly trivial to review.</p>
+      <p>Aliased imports (from apps.orders import models as order_models) prevent circular dependencies that plague growing Django projects. Direct imports (from apps.orders.models import Order) create tight coupling that breaks as apps evolve.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Django app: wiring apps/, core/, config/settings/{base,development,production}.py</item>
+        <item>Refactoring a Django repo where business logic is in views or model save()</item>
+        <item>Code-review pass enforcing "fat services, thin views" on every PR</item>
+        <item>Onboarding a multi-app project where circular imports are a risk</item>
+        <item>Generating service scaffolds and unit tests from a feature spec</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-file Django scripts or management commands under ~10 lines</item>
+        <item>Async-first stacks (FastAPI, Litestar) — service pattern needs async adaptation</item>
+        <item>Greenfield prototypes where speed over structure is acceptable for day one</item>
+        <item>Heavy DDD / hexagonal architecture — a richer pattern set is needed beyond this baseline</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-layout">
+      <p>Standard Django project organization separates configuration, domain applications, shared code, and tests into distinct folders with clear responsibilities. This structure enables agents and developers to navigate the codebase predictably without reading every file.</p>
+
+      <rule>
+        <statement>Organise Django projects as: config/ (settings split), apps/ (domain applications), core/ (shared BaseModel + exceptions), tests/ (conftest.py).</statement>
+        <rationale>Separating config from apps from shared code gives each a single reason to change and makes the project onboardable by agents without reading every file. The config folder holds Django settings and URL routing. The apps folder holds domain models, views, services, serializers per application. The core folder holds reusable base classes and shared exceptions. Tests live at the project root for easy pytest discovery.</rationale>
+      </rule>
+
+      <example type="good" title="Standard project structure">
+        <code lang="text"><![CDATA[
+project/
+├── config/
+│   ├── settings/
+│   │   ├── base.py        # secrets-free defaults
+│   │   ├── development.py # overrides only
+│   │   └── production.py  # overrides only
+│   ├── urls.py
+│   └── celery.py
+├── apps/
+│   ├── users/
+│   │   ├── models.py
+│   │   ├── services.py
+│   │   ├── views.py
+│   │   ├── serializers.py
+│   │   └── __init__.py
+│   ├── orders/
+│   └── catalog/
+├── core/
+│   ├── models.py          # BaseModel
+│   └── exceptions.py
+└── tests/
+    └── conftest.py
+        ]]></code>
+        <note>Each app folder contains models, services, views, serializers (not separate folders per type, which would fragment the app). config/ holds project-level settings. core/ is reused by all apps. tests/ sits at project root for easy discovery.</note>
+      </example>
+    </section>
+
+    <section name="import-aliasing-rules">
+      <p>Cross-app imports must use module aliases to prevent circular import errors as applications grow and evolve. Direct imports create tight coupling that breaks when one app is renamed or refactored.</p>
+
+      <rule>
+        <statement>Always use module aliases for cross-app imports: from apps.orders import models as order_models. Never import symbols directly from another app's module.</statement>
+        <rationale>Direct cross-app symbol imports create circular import risk as apps grow. If apps.orders.models imports from apps.users.services and apps.users.services imports from apps.orders.models, Django's app loading fails. Aliased module imports let the entire app load before accessing symbols, avoiding these cycles. This pattern scales to dozens of apps without import headaches.</rationale>
+      </rule>
+
+      <example type="good" title="Aliased cross-app imports">
+        <code lang="python"><![CDATA[
+# Cross-app: always use alias
+from apps.orders import models as order_models
+from apps.users import services as user_services
+
+# Own app: relative imports are fine
+from .models import User
+from . import constants
+from .services import create_user
+
+# Usage
+order = order_models.Order.objects.get(id=1)
+user = user_services.get_or_create_user(email='x@y.z')
+        ]]></code>
+        <note>Relative imports within the same app (from .models) are fine because they're guaranteed to be loaded before your module. Cross-app imports use the alias pattern for safety.</note>
+      </example>
+
+      <example type="bad" title="Direct symbol imports (anti-pattern)">
+        <code lang="python"><![CDATA[
+# BAD: direct symbol import from another app
+from apps.orders.models import Order
+        ]]></code>
+        <note>This creates a direct dependency on apps.orders.models at import time. As apps grow and apps.orders.models starts importing from apps.users.services, which imports from apps.orders.models, you get a circular import error at startup.</note>
+      </example>
+    </section>
+
+    <section name="settings-split">
+      <p>Settings configuration must be split across base.py (defaults only) and environment-specific overrides to prevent secrets leakage and misconfiguration.</p>
+
+      <rule>
+        <statement>base.py is the only settings file with secrets-free defaults. development.py and production.py only override. Never import the other direction.</statement>
+        <rationale>base.py contains only safe defaults and should be checked into version control. development.py and production.py override with environment-specific values (SECRET_KEY, DATABASES, etc.) and must never be committed. This split prevents secrets from leaking into the repo.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Never import from django.contrib.auth.models import User. Always use get_user_model() or settings.AUTH_USER_MODEL.</statement>
+        <rationale>Direct User import breaks custom user model setups silently. If a project defines AUTH_USER_MODEL = 'users.CustomUser', a direct import of User loads the Django-provided User class and creates a table that is never used. get_user_model() respects AUTH_USER_MODEL at runtime and always returns the correct model.</rationale>
+      </rule>
+    </section>
+
+    <section name="service-layer-architecture">
+      <p>Business logic must be isolated in services/, leaving views thin and HTTP-aware code separate from domain logic. This partition makes services reusable from multiple entry points (HTTP, CLI, tasks, tests).</p>
+
+      <rule>
+        <statement>Business logic lives only in services/. Views call services; views never call the ORM directly. Services return domain objects, never HTTP Response.</statement>
+        <rationale>Services callable from views, management commands, Celery tasks, and tests. Putting logic in views makes it untestable without the HTTP stack. A service function that takes a User and returns an Order (or raises a ValidationError) can be tested with three lines: create user, call service, assert result. A view with the same logic requires setting up an HTTP client, mocking the ORM, and parsing JSON responses.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use keyword-only arguments (after *) for optional service parameters. Type-hint all parameters and return values. Include a docstring with Args and Raises sections.</statement>
+        <rationale>Keyword-only args make the function signature clear at call sites (send_email(..., notify_admin=True)) and prevent positional confusion. Type hints let agents verify correctness without running code. Docstrings with Raises document error handling, critical for agents writing error recovery code.</rationale>
+      </rule>
+
+      <example type="good" title="Service function with keyword-only args and docstring">
+        <code lang="python"><![CDATA[
+from django.db import transaction
+from django.core.exceptions import ValidationError
+
+def activate_user_item(
+    user: User,
+    item_code: str,
+    *,
+    activated_by: User | None = None,
+    send_notification: bool = True,
+) -> Item:
+    """
+    Activate an item for a user.
+
+    Args:
+        user: The user receiving the item
+        item_code: Unique code identifying the item
+        activated_by: Admin who performed activation
+        send_notification: Whether to send email notification
+
+    Raises:
+        Item.DoesNotExist: If item with code not found
+        ValidationError: If item already activated
+    """
+    item = Item.objects.select_for_update().get(code=item_code)
+
+    if item.is_active:
+        raise ValidationError("Item already activated")
+
+    item.user = user
+    item.is_active = True
+    item.activated_at = timezone.now()
+    item.save(update_fields=['user', 'is_active', 'activated_at', 'updated_at'])
+
+    if send_notification:
+        transaction.on_commit(lambda: send_activation_email.delay(user.id, item.id))
+
+    return item
+        ]]></code>
+        <note>select_for_update() prevents race conditions where two requests both read "not active" and both activate the same item. transaction.on_commit() ensures the email task runs after the DB write commits, not before.</note>
+      </example>
+    </section>
+
+    <section name="update-fields-and-transactions">
+      <p>Every database write must specify which fields are being changed and Celery tasks must be enqueued via transaction.on_commit() to ensure consistency.</p>
+
+      <rule>
+        <statement>Every .save() call must include update_fields listing only the fields being modified. Never call .save() without update_fields except on object creation.</statement>
+        <rationale>Full-row writes (no update_fields) overwrite concurrent changes to other fields. If two concurrent requests both call item.save() for different fields, the second write overwrites the first. update_fields makes the write atomic at the field level and is detectable in code review. On object creation (first .save()), update_fields is optional because the row doesn't exist yet.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Enqueue Celery tasks via transaction.on_commit(), never directly inside the service function body. This prevents task execution before the DB commit completes.</statement>
+        <rationale>A task fired before commit will read stale data. If you call task.delay() inside the service and immediately return, the task may execute while the transaction is still open or may see an older snapshot. on_commit() guarantees the task sees the committed state.</rationale>
+      </rule>
+    </section>
+
+    <section name="thin-view-pattern">
+      <p>Views must be minimal, handling only HTTP concerns and delegating all business logic to services. A view should be under 30 lines of code.</p>
+
+      <rule>
+        <statement>Views handle three things only: validate input via serializer, call the service, return response. No ORM calls, no business logic, no side effects in views.</statement>
+        <rationale>Views are the HTTP entry point, not the logic container. A thin view is easy to test (mock the service, assert the response), easy to refactor (change the service signature, not the HTTP contract), and easy to understand at a glance.</rationale>
+      </rule>
+
+      <example type="good" title="Thin view calling service">
+        <code lang="python"><![CDATA[
+class ItemActivationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Validate input
+        serializer = ItemActivationRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Call service
+        item = services.activate_user_item(
+            user=request.user,
+            item_code=serializer.validated_data['item_code'],
+        )
+
+        # 3. Return response
+        return Response(ItemResponse(item).data, status=status.HTTP_200_OK)
+        ]]></code>
+        <note>22 lines total. The view validates input, calls one service function, and returns. The service handles all business logic and transactions. If activation rules change, only the service changes; the view stays the same.</note>
+      </example>
+
+      <example type="bad" title="Fat view with business logic (anti-pattern)">
+        <code lang="python"><![CDATA[
+class OrderView(APIView):
+    def post(self, request):
+        order = Order.objects.create(user=request.user)
+        order.items.set(request.data['items'])        # ORM in view
+        order.total = sum(i.price for i in order.items.all())
+        order.save()
+        send_email(order)   # side effect in view
+        return Response(...)
+        ]]></code>
+        <note>Business logic and side effects in views cannot be tested without an HTTP context and cannot be reused from management commands or Celery tasks. Adding features (apply discounts, reserve inventory) requires modifying the view, not just the service.</note>
+      </example>
+    </section>
+
+    <section name="constants-and-enums">
+      <p>All model choice fields must use TextChoices and numeric/string constants must be centralized in constants.py for consistency and grep-ability.</p>
+
+      <rule>
+        <statement>Use TextChoices with explicit string values for all model choice fields. Use constants.py for numeric limits and thresholds. Never use magic strings or magic numbers in service code.</statement>
+        <rationale>TextChoices with explicit values (OrderStatus.PENDING = 'pending') make enum reordering safe — if you reorder the choices, the database value doesn't change, just the list order. Constants.py centralizes thresholds (MAX_ITEMS_PER_ORDER = 100) so they're grep-able and auditable across the codebase. Magic numbers in code are easy to miss during reviews and refactoring.</rationale>
+      </rule>
+    </section>
+
+    <section name="common-antipatterns">
+      <p>Patterns observed in code reviews that lead to bugs or reduced testability.</p>
+
+      <antipattern>
+        <description>Bare except: clause on Model.objects.get() calls.</description>
+        <reason>Catches every exception including KeyboardInterrupt and SystemExit. Always catch the specific exception: Model.DoesNotExist. This lets actual errors (OOM, corrupt DB) propagate and fail the task correctly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Validation in Model.clean() for DRF API flows.</description>
+        <reason>clean() is called by ModelForms and Django admin, not by DRF serializers. Validation in clean() is silently skipped on API requests, leading to invalid data in the database.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Serializer with password in Meta.fields without write_only: True.</description>
+        <reason>Password hash leaks into API responses. Always add extra_kwargs = {'password': {'write_only': True}} so the field is accepted on write but never returned on read.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/service-stub.py" purpose="Service function skeleton with type hints, keyword-only args, docstring, update_fields"/>
+      <template path="templates/ruff-django.toml" purpose="ruff config with DJ ruleset for automated detection of anti-patterns"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/"/>
+      <link href="https://www.feldroy.com/books/two-scoops-of-django-3-x"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+      <link href="https://docs.astral.sh/ruff/rules/#flake8-django-dj"/>
+      <link href="https://django-stubs.readthedocs.io/"/>
+      <link href="https://github.com/cookiecutter/cookiecutter-django"/>
+    </see-also>
+  </content>
+</methodology>

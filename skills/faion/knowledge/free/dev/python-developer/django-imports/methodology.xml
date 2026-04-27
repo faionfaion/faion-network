@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-imports">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Import organization for Django multi-app projects: PEP 8 order, mandatory aliases for cross-app imports, TYPE_CHECKING guards, strategies to prevent circular dependencies.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>imports</tag>
+      <tag>circular-dependencies</tag>
+      <tag>pep8</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Import Patterns</title>
+
+    <summary>Import organization rules for Django multi-app projects: PEP 8 section order, mandatory aliases for cross-app imports, TYPE_CHECKING guards for type-only imports, string FK references and apps.get_model() to break circular dependencies. Core rule: cross-app imports MUST use aliases (from apps.users import models as user_models) — even when no current naming collision exists, future apps will collide.</summary>
+
+    <why>
+      <p>Unaliased cross-app imports are the primary cause of ImportError: cannot import name 'User' circular-dependency crashes in Django multi-app projects. String FK references ('users.User') and apps.get_model() move resolution to after all apps are loaded, making circular imports structurally impossible for the model layer.</p>
+      <p>Clean import organization makes the module's dependencies explicit at a glance and prevents silent name shadowing when two apps happen to export the same name (a common occurrence with generic names like User, Order, or Product).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new Django project: pyproject.toml ruff/isort config with known-first-party.</item>
+        <item>Adding a new app to a multi-app project: establish the cross-app alias convention before duplicate User collisions appear.</item>
+        <item>Resolving ImportError: cannot import name '...' from circular cross-app dependencies.</item>
+        <item>Adding type hints to legacy Django code: use if TYPE_CHECKING: blocks for type-only imports.</item>
+        <item>Setting up CI gates: ruff I (isort) auto-sort on staged files in pre-commit.</item>
+        <item>Code review of Django PRs: verify import order and aliasing follow the rules.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-app projects — alias rules add noise without benefit.</item>
+        <item>Codebases with a core.imports shim or central re-export — duplicating direct imports defeats the shim.</item>
+        <item>One-off management commands or scripts where readability beats convention.</item>
+        <item>Pure data pipelines (Airflow DAGs, Prefect flows) — Django ORM rarely involved.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="import-section-order">
+      <rule testable="true">
+        <statement>Organize imports in this order: (1) __future__, (2) standard library, (3) third-party (Django, DRF, Celery, etc.), (4) cross-app absolute imports, (5) local relative imports. Separate each group with a blank line.</statement>
+        <rationale>PEP 8 defines this order. Django adds the cross-app vs local-relative distinction. Ruff I (isort) with known-first-party enforcement automates this — developers should not sort manually.</rationale>
+      </rule>
+
+      <example type="good" title="Correct Django module import order">
+        <code lang="python"><![CDATA[
+from __future__ import annotations  # 1. __future__
+
+import json                          # 2. Standard library
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from django.db import models         # 3. Third-party (Django core)
+from django.utils import timezone
+from rest_framework import serializers
+
+from apps.users import models as user_models   # 4. Cross-app (aliased)
+from apps.catalog import services as catalog_services
+
+from .models import Order            # 5. Local relative
+from .serializers import OrderSerializer
+
+if TYPE_CHECKING:
+    from apps.payments.models import Payment
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="absolute-vs-relative-rules">
+      <rule testable="true">
+        <statement>Use absolute imports for Django core (from django.db import models), third-party packages, and cross-app imports. Use single-dot relative imports (from .models import User) within the same app only.</statement>
+        <rationale>Absolute imports make the module's location unambiguous when reading the file in isolation. Single-dot relative imports are idiomatic within an app and survive app renaming. Multi-dot relative imports (from ...users.models) are fragile and break on any restructuring.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never use multi-dot relative imports (from .., from ...). Replace them with absolute cross-app imports using the full apps.X.Y path.</statement>
+        <rationale>Multi-dot relative imports are fragile — any reorganization of the directory tree breaks them. They also confuse readers about where the module lives. Absolute cross-app imports are always unambiguous regardless of nesting depth.</rationale>
+      </rule>
+    </section>
+
+    <section name="cross-app-import-aliases">
+      <rule testable="true">
+        <statement>All cross-app imports MUST use module-level aliases: from apps.users import models as user_models. Even when no current naming collision exists, future apps will introduce one.</statement>
+        <rationale>Unaliased cross-app imports (from apps.users.models import User) are the primary cause of ImportError: cannot import name 'User' circular-dependency crashes. An alias makes the origin explicit (user_models.User vs order_models.User) and prevents silent shadowing when two apps export the same name.</rationale>
+      </rule>
+
+      <example type="bad" title="Unaliased cross-app import — collision-prone">
+        <code lang="python"><![CDATA[
+from apps.users.models import User    # Which User? Collides with local User model
+from apps.orders.models import Order  # Will collide if other apps also have Order
+        ]]></code>
+      </example>
+
+      <example type="good" title="Aliased cross-app imports — origin explicit, collision-proof">
+        <code lang="python"><![CDATA[
+from apps.users import models as user_models
+from apps.orders import models as order_models
+from apps.catalog import services as catalog_services
+
+# Usage: origin always visible
+user = user_models.User.objects.get(id=user_id)
+order = order_models.Order.objects.filter(user=user)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="circular-dependency-prevention">
+      <p>Strategy ladder: (1) string FK refs, (2) apps.get_model(), (3) TYPE_CHECKING, (4) function-scoped imports, (5) core/ extraction.</p>
+
+      <rule testable="true">
+        <statement>Apply circular dependency strategies in this order: (1) string FK references for model fields, (2) apps.get_model() for runtime model access in services, (3) TYPE_CHECKING guard for type-only imports, (4) function-scoped imports as a last resort, (5) extract shared types to a core/ app if multiple strategies are needed in the same module.</statement>
+        <rationale>Each strategy has a different scope and cost. String FK references are zero-cost and the standard Django model pattern. apps.get_model() is safe but verbose. TYPE_CHECKING guards work for types but break runtime isinstance checks. Function-scoped imports add call overhead. core/ extraction is a structural fix for systemic circular dependency clusters.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always use string references in ForeignKey and ManyToManyField definitions: ForeignKey('users.User', ...) instead of ForeignKey(User, ...). This is the Django standard and makes the model layer circular-import-proof.</statement>
+        <rationale>String references ('app_label.ModelName') are resolved by Django's app registry after all apps have loaded. Direct import references create load-order dependencies between apps that can cause circular import failures depending on INSTALLED_APPS order.</rationale>
+      </rule>
+
+      <example type="good" title="String references in model FK and ManyToMany fields">
+        <code lang="python"><![CDATA[
+from django.db import models
+
+class Order(models.Model):
+    user = models.ForeignKey(
+        'users.User',        # String reference — no import needed
+        on_delete=models.CASCADE,
+        related_name='orders',
+    )
+    products = models.ManyToManyField(
+        'catalog.Product',   # String reference
+        through='OrderItem',
+    )
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use apps.get_model('app_label', 'ModelName') in service/selector functions that need model classes at runtime but cannot import them at module level due to circular deps.</statement>
+        <rationale>apps.get_model() returns the model class from Django's app registry, which is fully populated after django.setup(). It moves the import from module load time to function call time, breaking the circular import chain without coupling the module to a specific import path.</rationale>
+      </rule>
+
+      <example type="good" title="apps.get_model() for runtime model access in a service">
+        <code lang="python"><![CDATA[
+from django.apps import apps
+
+def get_user_orders(user_id: int) -> list:
+    Order = apps.get_model('orders', 'Order')
+    return list(Order.objects.filter(user_id=user_id).select_related('items'))
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Move imports needed only for type hints into if TYPE_CHECKING: blocks. Combine with from __future__ import annotations to avoid evaluating the annotation strings at runtime.</statement>
+        <rationale>TYPE_CHECKING is False at runtime — imports inside the block are never executed. Type checkers (mypy, pyright) treat TYPE_CHECKING as True and follow the imports for analysis. This eliminates circular imports caused by cross-app type annotations.</rationale>
+      </rule>
+
+      <example type="good" title="TYPE_CHECKING guard for cross-app type annotations">
+        <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.users.models import User
+    from apps.catalog.models import Product
+
+def calculate_discount(user: User, product: Product) -> float:
+    # Type checker knows User and Product types
+    # At runtime, the annotation strings are not evaluated
+    ...
+        ]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>When three or more apps have circular import relationships, extract the shared types, constants, or base classes into a core/ (or common/) app. The core/ app imports from no other app.</statement>
+        <rationale>Circular import clusters indicate shared concepts that belong in a common layer. Moving them to core/ establishes a dependency direction: all apps can import from core/, but core/ never imports from other apps. This pattern resolves the entire cluster in one structural change.</rationale>
+      </rule>
+    </section>
+
+    <section name="ruff-isort-configuration">
+      <rule testable="true">
+        <statement>Configure ruff with known-first-party = ["apps"] and section-order to place cross-app imports in their own section. Run ruff check --select I --fix on staged files in pre-commit.</statement>
+        <rationale>Without known-first-party configured, ruff treats apps.users as a third-party package and merges it with Django imports. The separate section makes the cross-app dependency graph visible at a glance.</rationale>
+      </rule>
+
+      <reference path="templates/ruff-isort-config.toml">ruff isort config block with known-first-party and section-order</reference>
+
+      <p>All cross-app imports MUST use module-level aliases. Even when no current naming collision exists, future apps will introduce one. This is the single biggest failure mode: unaliased cross-app imports are the primary cause of ImportError: cannot import name 'User' circular-dependency crashes in Django multi-app projects.</p>
+
+      <p>The migration mapping shows how to organize imports: map standard library imports, third-party imports (Django, DRF, Celery, etc.), cross-app absolute imports with aliases, and local relative imports. The core rule is cross-app imports MUST use aliases (from apps.users import models as user_models) — even when no current naming collision exists, future apps will collide.</p>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Importing model classes directly from other apps without aliases: from apps.users.models import User.</description>
+        <reason>Direct unaliased cross-app imports create circular dependency risks and name collision hazards. When two apps both have a User model, the last import wins — silently. Use from apps.users import models as user_models and reference user_models.User everywhere.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using from app.models import * or from app.views import * anywhere in a Django project.</description>
+        <reason>Wildcard imports make it impossible to determine where a name comes from without running the code. They also import private names (_internal), pollute the module namespace, and confuse both human readers and type checkers. Django's autoloading already handles admin.py, apps.py, etc. — wildcards add no value.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding from __future__ import annotations to DRF serializer or view files that use DRF field introspection or drf-spectacular schema generation.</description>
+        <reason>DRF uses get_type_hints() for serializer field resolution. from __future__ import annotations defers all annotations to strings, which breaks DRF's introspection and drf-spectacular's schema generation. The annotations become unparseable strings at the point where DRF expects actual type objects. Verify DRF compatibility before adding __future__ annotations to serializer files.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using lazy from heavy_module import HeavyClass syntax (PEP 810) on Python 3.12 or 3.13 codebases.</description>
+        <reason>PEP 810 lazy import syntax is not available until Python 3.14+. Using it on 3.12/3.13 causes SyntaxError at import time — not at the usage site. The current alternative (function-scoped import or importlib.import_module()) achieves the same effect without version risk.</reason>
+      </antipattern>
+
+      <example type="good" title="Lazy import on Python 3.12/3.13 without PEP 810 syntax">
+        <code lang="python"><![CDATA[
+# Python 3.12/3.13 — function-scoped lazy import
+def generate_report(data: list[dict]) -> bytes:
+    from heavy_analytics import ReportGenerator  # Loaded on first call only
+    return ReportGenerator(data).render()
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using multi-dot relative imports (from ...users.models import User) or other multi-dot relative imports across app boundaries.</description>
+        <reason>Multi-dot relative imports break on any directory restructuring and create fragile coupling to the physical directory layout. They also confuse readers about where the module lives. Replace with absolute cross-app imports: from apps.users import models as user_models.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/"/>
+      <link href="https://pep8.org/"/>
+      <link href="https://docs.python.org/3/reference/import.html"/>
+    </see-also>
+  </content>
+</methodology>

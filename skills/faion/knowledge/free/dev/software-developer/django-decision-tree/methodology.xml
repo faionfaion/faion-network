@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-decision-tree">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Decision framework for placing code: views → HTTP, services → business logic, utils → pure functions. Dependency direction: views → services → utils. No reverse dependencies.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>architecture</tag>
+      <tag>code-placement</tag>
+      <tag>layering</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Django Code Decision Tree</title>
+
+    <summary>A deterministic decision framework for placing code in Django applications, partitioning functionality into views (HTTP handling), services (business logic and DB writes), utils (pure functions), integrations (third-party API wrappers), tasks (async/background work), models (data definitions), and serializers (validation and formatting). The dependency direction is strict: views depend on services, services depend on models and utils, utils depend on nothing. This partition ensures every layer is independently testable and prevents the chaos of "where does this function belong?" arguments.</summary>
+
+    <why>
+      <p>Without an explicit placement rule, developers put business logic in views, DB queries in utils, and external API calls anywhere. This makes the codebase unpredictable and hard to review. A reviewer cannot reason about whether a function is correct without understanding its entire call graph, whether it has hidden DB dependencies, and whether it can fail due to network errors.</p>
+      <p>The tree gives every team member — including agents — a deterministic answer for where any piece of code belongs. Views handle HTTP. Services handle state changes and transactions. Utils are pure and side-effect-free. Integrations wrap external services. This contract makes the codebase predictable: you know where to find business logic, you know how to test it, and you know what to mock in tests.</p>
+      <p>Testability follows directly from layering. Utils with no dependencies can be tested in three lines of code. Services with mocked models and utils can be tested in isolation. Views with mocked services are thin and trivial to test. Breaking this layering—putting DB calls in utils or business logic in views—defeats testability and requires expensive integration tests to verify correctness.</p>
+      <p>Circular imports plague projects that ignore layering. If views import services, services import models, and models import signals that import views, the entire import graph is tangled. Strict layering makes circular imports impossible.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deciding where to implement new functionality in a Django project</item>
+        <item>Refactoring existing code into proper architectural layers</item>
+        <item>Code review to verify correct module placement</item>
+        <item>Onboarding agents or new developers to the project's architecture</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-Django backends — the layer names (views, serializers, tasks) are Django-specific</item>
+        <item>Microservices with no shared codebase — each service has its own architecture</item>
+        <item>Trivial scripts or management commands with no reuse requirement</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="placement-rules">
+      <p>Every type of code has a single correct location, with clear responsibilities and dependencies. The tree is deterministic: given a requirement, the placement is unambiguous.</p>
+
+      <rule>
+        <statement>Code that changes the database (CREATE/UPDATE/DELETE) belongs in services/. Code that makes external API calls belongs in services/ or integrations/. Pure functions and transformations (no side effects, no DB) belong in utils/. HTTP request/response handling belongs in views/. Data structure definitions belong in models/. Input validation belongs in serializers/. Background/async jobs belong in tasks/.</statement>
+        <rationale>This partition ensures every layer is independently testable: utils/ has no dependencies to mock, services/ has no HTTP context to set up, views/ has no business logic to test exhaustively. A function in utils/ is a pure function with no state; it can be tested with unit tests. A function in services/ is testable by mocking its dependencies (models via Django test transactions, external APIs via mocks). A view is testable by mocking the service it calls.</rationale>
+      </rule>
+
+      <rule>
+        <statement>The dependency direction is strict: views/ depends on services/ and serializers/. Services/ depends on models/ and utils/. Utils/ depends on nothing (or stdlib only). Never reverse this direction.</statement>
+        <rationale>Reversing the dependency direction (services importing views, utils importing services) creates circular imports and makes the layers impossible to test in isolation. A service importing a view is nonsensical—the service should not know about HTTP. A util importing a service is nonsensical—utils are pure helpers, not orchestrators. Enforcing direction is non-negotiable for scalability.</rationale>
+      </rule>
+    </section>
+
+    <section name="layer-responsibilities">
+      <p>Reference table of each layer's purpose and dependencies. Use this as your source of truth for placement decisions.</p>
+
+      <list>
+        <item>views/ — HTTP handling: parse request, validate input (delegate to serializer), call service, format response. Depends on: services, serializers. Never: ORM calls, business logic, side effects. Test: mock the service, assert HTTP status and response shape.</item>
+        <item>services/ — Business logic and state changes: DB writes (wrapped in transaction.atomic), multi-step operations, external API calls, validation errors. Depends on: models, utils. Never: HTTP context, request/response, imports from views. Test: mock models and external services, assert return values and side effects.</item>
+        <item>utils/ — Pure functions and helpers: calculation, transformation, string processing, validation predicates (is_valid_email). Depends on: nothing or stdlib. Never: ORM, HTTP, external APIs, side effects. Test: unit tests, no mocks, deterministic inputs/outputs.</item>
+        <item>models/ — Data structure, DB schema, ORM metadata: fields, Meta class, manager customization. Depends on: Django ORM. Never: business logic, service calls. Test: migrations (ensure schema matches expectations).</item>
+        <item>serializers/ — Input validation and output formatting: schema, field validation, nested object handling. Depends on: models. Never: service calls, ORM queries. Test: valid and invalid inputs, assert errors raised correctly.</item>
+        <item>tasks/ — Background and async jobs: Celery tasks, scheduled jobs, defer processing. Depends on: services. Never: views, HTTP context. Test: mock the service it calls, assert the task completes correctly.</item>
+        <item>integrations/ — Third-party API wrappers: Stripe, Twilio, OpenAI clients, HTTP abstractions. Depends on: utils. Never: models, services (unless the integration is application-specific). Test: mock the external service, assert correct API calls and error handling.</item>
+      </list>
+    </section>
+
+    <section name="quick-reference">
+      <p>Placement decisions for common code patterns. Use this as a quick lookup table.</p>
+
+      <list>
+        <item>Create user → services/users.py create_user(email, name, ...) — DB write, validation, notifications</item>
+        <item>Hash password → utils/auth.py hash_password(plain_text) — pure function, no DB</item>
+        <item>Login endpoint → views/auth.py LoginView.post(request) — HTTP handling, call service</item>
+        <item>User model → models/user.py class User — fields, indexes, Meta</item>
+        <item>User input validation → serializers/users.py CreateUserSerializer — field validation, nested objects</item>
+        <item>Send welcome email → tasks/notifications.py send_welcome_email.delay(user_id) — async job, call service</item>
+        <item>Stripe payment wrapper → integrations/stripe.py StripeClient — external API, no business logic</item>
+        <item>Calculate tax → utils/pricing.py calculate_tax(amount, rate) — pure function</item>
+        <item>Process payment → services/payments.py process_payment(user, amount, ...) — orchestrate, DB writes, call integrations</item>
+        <item>Bulk email users → tasks/notifications.py send_bulk_email.delay(user_ids) — async job, iterate and call service</item>
+        <item>Log audit trail → services/ or tasks/ depending on sync/async — state-changing, so service or task</item>
+        <item>Export CSV → services/ or tasks/ — depends on size; small: service; large: async task</item>
+      </list>
+    </section>
+
+    <section name="correct-patterns">
+      <p>Exemplar code showing proper placement for common patterns.</p>
+
+      <example type="good" title="Service with transaction and inter-service calls">
+        <code lang="python"><![CDATA[
+# services/orders.py — DB writes with transaction
+from django.db import transaction
+from apps.inventory import services as inventory_services
+
+@transaction.atomic
+def create_order(user, items, *, shipping_address):
+    """Create an order and reserve inventory for each item."""
+    order = Order.objects.create(
+        user=user,
+        shipping_address=shipping_address,
+        status=OrderStatus.PENDING,
+    )
+    for item in items:
+        # Call another service to reserve stock
+        inventory_services.reserve_stock(item['product_id'], item['quantity'])
+        order.items.create(**item)
+    order.calculate_total()
+    return order
+        ]]></code>
+        <note>Service owns the transaction boundary (@transaction.atomic) and calls other services. No HTTP context, no request object. The function can be called from a view, a management command, or a Celery task.</note>
+      </example>
+
+      <example type="good" title="Pure function in utils">
+        <code lang="python"><![CDATA[
+# utils/pricing.py — pure function, no DB, no side effects
+from decimal import Decimal
+
+def calculate_discount(subtotal, discount_percent, *, max_discount=None):
+    """Calculate discount amount from subtotal and percentage."""
+    discount = subtotal * Decimal(discount_percent) / 100
+    if max_discount is not None:
+        discount = min(discount, max_discount)
+    return discount.quantize(Decimal('0.01'))
+
+# Test: trivial
+assert calculate_discount(Decimal('100'), 10) == Decimal('10.00')
+assert calculate_discount(Decimal('100'), 50, max_discount=Decimal('10')) == Decimal('10.00')
+        ]]></code>
+        <note>Pure function: same input always produces same output. Trivial to unit test. No mocks needed. No dependencies. Reusable from anywhere in the codebase.</note>
+      </example>
+
+      <example type="good" title="Thin view calling service">
+        <code lang="python"><![CDATA[
+# views/orders.py — HTTP handling
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from apps.orders import services as order_services
+
+class CreateOrderView(APIView):
+    def post(self, request):
+        # 1. Validate input
+        serializer = CreateOrderSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Call service
+        order = order_services.create_order(
+            user=request.user,
+            items=serializer.validated_data['items'],
+            shipping_address=serializer.validated_data['shipping_address'],
+        )
+
+        # 3. Return response
+        return Response(OrderSerializer(order).data, status=201)
+        ]]></code>
+        <note>22 lines: validate, call, return. No ORM calls in the view. No business logic. If order creation rules change, only the service changes; the view stays the same.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common placement mistakes that break testability and create circular imports.</p>
+
+      <antipattern>
+        <description>Database query in utils/ (e.g., User.objects.filter() inside a utils function).</description>
+        <reason>utils/ functions have no DB dependency by convention. Adding ORM calls makes them non-pure, breaks unit testability (now you need a test DB), and blurs the service/util boundary. Any code needing a DB query belongs in services/, not utils/. Move the logic to services and have utils handle the pure transformation parts.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Business logic in views/ (conditional rules, calculations, multi-step DB operations directly in the view method).</description>
+        <reason>Business logic in views is untestable without an HTTP context. The view becomes a 200-line method that is impossible to reuse or test in isolation. Agents writing new features will duplicate the logic in another view, creating inconsistency. Always delegate to services/.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Circular imports between apps (apps/orders/services.py importing from apps/users/services.py when users already imports orders).</description>
+        <reason>Circular imports cause ImportError at startup, breaking the entire application. Root cause: tight coupling through direct imports. Solutions: break the import cycle by restructuring (extract shared code to core/), use Django signals for async notifications, or pass data by value instead of importing. Never accept circular imports; they're always a design smell.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Service importing a view (to call view methods or access view constants).</description>
+        <reason>A service should not know about HTTP. If you need to import a view in a service, that's a sign the code should be in utils or the view should delegate to the service instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Util importing a service (for convenience, to avoid passing parameters).</description>
+        <reason>Utils are pure helpers. If a util imports a service, it's no longer pure and loses testability. Break the util into smaller pure functions and have the service call them.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://import-linter.readthedocs.io/"/>
+      <link href="https://gauge-sh.github.io/tach/"/>
+      <link href="https://docs.djangoproject.com/en/stable/topics/db/transactions/"/>
+      <link href="https://www.cosmicpython.com/"/>
+      <link href="https://martinfowler.com/eaaCatalog/serviceLayer.html"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+    </see-also>
+  </content>
+</methodology>

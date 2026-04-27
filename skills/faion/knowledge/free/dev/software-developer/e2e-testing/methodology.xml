@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="e2e-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>End-to-end testing with Playwright validates complete user journeys through the full application stack. Use Page Object Model, select via data-testid/ARIA only, seed test data via API, limit critical-path suite to less than 50 tests.</summary>
+    <tags>
+      <tag>playwright</tag>
+      <tag>e2e</tag>
+      <tag>testing</tag>
+      <tag>browser-automation</tag>
+      <tag>pom</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>End-to-End Testing with Playwright</title>
+
+    <summary>End-to-end testing with Playwright validates complete user journeys through the full application stack. Core rules: use Page Object Model (one POM per route), select only via `data-testid` or ARIA roles, seed/tear-down test data via API never via UI, and limit the critical-path suite to less than 50 tests. E2E covers journeys; unit and integration tests cover logic.</summary>
+
+    <why>
+      <p>E2E tests are the only layer that validates the rendered DOM, browser engine behavior, and real backend integration together. They are 10-20x slower than unit tests and are the most expensive to maintain, so they must be reserved for critical user journeys (signup, checkout, payment) and smoke gates on deploys, not for logic branches already covered by cheaper tests.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Critical revenue/auth paths (login, signup, checkout, payment) with a real browser + real backend.</item>
+        <item>Smoke suite gating production deploys — 5-15 fast tests, run post-deploy, roll back on failure.</item>
+        <item>Cross-browser parity where engine-specific bugs can't be caught by unit tests.</item>
+        <item>Visual-regression baselines for marketing pages.</item>
+        <item>LLM-generated UI changes that need a rendered DOM gate.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Business-rule branches already covered by unit or integration tests — duplicating them adds cost with no signal.</item>
+        <item>Input validation edge cases — drive via API tests; the browser layer is wasted cycles.</item>
+        <item>Performance benchmarking — Playwright measurement overhead distorts numbers; use Lighthouse CI / k6.</item>
+        <item>Pre-MVP UIs changing shape weekly — fixture/selector churn outpaces value.</item>
+        <item>Third-party flows without a sandbox mode — non-deterministic, cannot be cleaned up.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="scope-rules">
+      <rule testable="true">
+        <statement>E2E tests cover complete user journeys only — not individual component behavior or API logic.</statement>
+        <rationale>E2E tests are 10-20x slower than unit tests. Testing logic already covered at cheaper layers wastes CI budget and creates maintenance cost without adding signal.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Limit the critical-path E2E suite to less than 50 tests. Gate non-critical tests to a nightly run.</statement>
+        <rationale>Suites beyond 50 tests routinely exceed 30 minutes in CI, causing teams to skip or disable them. A tight budget forces selection of only the most valuable journeys.</rationale>
+      </rule>
+    </section>
+
+    <section name="selector-rules">
+      <rule testable="true">
+        <statement>Use only `getByTestId()`, `getByRole()`, or `getByLabel()` locators. Never use CSS selectors, IDs, or XPath.</statement>
+        <rationale>CSS selectors break on any style refactor. `data-testid` attributes are stable and signal intent to developers that the element is tested. `getByRole` aligns tests with accessibility expectations.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never use `page.waitForTimeout()` or hard-coded sleeps. Use Playwright's built-in auto-wait via `expect(locator).toBeVisible()` or explicit network/navigation waits.</statement>
+        <rationale>Hard-coded waits are the primary source of flakiness in E2E suites. Playwright auto-waits for actionability; explicit assertions wait for the right state.</rationale>
+      </rule>
+    </section>
+
+    <section name="test-isolation">
+      <rule testable="true">
+        <statement>Each test must seed its own data via API in `beforeEach` and clean up in `afterEach`. Never rely on data left by another test.</statement>
+        <rationale>Test-order dependencies cause cascading failures that are difficult to diagnose. API-based seeding with timestamped unique data prevents `unique_email` violations.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reuse `storageState` for authenticated sessions — log in once in global setup; use saved cookies for the rest of the suite.</statement>
+        <rationale>Logging in via UI per test adds 2-5 seconds each. Saved auth state reduces suite time by 30-50% on auth-heavy applications.</rationale>
+      </rule>
+    </section>
+
+    <section name="page-object-model">
+      <rule testable="true">
+        <statement>Create one Page Object class per route. Name methods after user intent, not DOM events: `login()` not `clickSubmitButton()`.</statement>
+        <rationale>Intent-based names make test specs read like user stories. DOM-event names couple the test to the implementation and break on any UI restructure.</rationale>
+      </rule>
+      <example type="good" title="LoginPage with intent-based methods">
+        <code lang="typescript"><![CDATA[// e2e/pages/LoginPage.ts
+export class LoginPage {
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly submitButton: Locator;
+
+  constructor(private page: Page) {
+    this.emailInput = page.getByTestId('login-email');
+    this.passwordInput = page.getByTestId('login-password');
+    this.submitButton = page.getByTestId('login-submit');
+  }
+
+  async goto() {
+    await this.page.goto('/login');
+    await expect(this.emailInput).toBeVisible();
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+
+  async expectLoggedIn() {
+    await expect(this.page).toHaveURL('/dashboard');
+  }
+}]]></code>
+        <note>All locators use `getByTestId`. `goto()` waits for page readiness. Methods are named after user actions.</note>
+      </example>
+      <example type="good" title="Fixtures for shared state">
+        <code lang="typescript"><![CDATA[// e2e/fixtures.ts
+export const test = base.extend<{
+  loginPage: LoginPage;
+  testUser: { email: string; password: string; id: string };
+  authenticatedPage: Page;
+}>({
+  testUser: async ({ request }, use) => {
+    const user = await createTestUser(request);
+    await use(user);
+    await cleanupTestData(request);
+  },
+  authenticatedPage: async ({ page, testUser }, use) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.login(testUser.email, testUser.password);
+    await expect(page).toHaveURL('/dashboard');
+    await use(page);
+  },
+});]]></code>
+        <note>Fixtures compose: `authenticatedPage` depends on `testUser`. Cleanup runs automatically after each test.</note>
+      </example>
+    </section>
+
+    <section name="test-data-management">
+      <rule testable="true">
+        <statement>Create and clean up test data via API endpoints in beforeEach/afterEach, never through the UI.</statement>
+        <rationale>UI-based seeding tests something other than the actual test scenario and is 5-10x slower. API seeding is deterministic and isolated.</rationale>
+      </rule>
+      <example type="good" title="API-based test user creation">
+        <code lang="typescript"><![CDATA[// e2e/helpers/testData.ts
+export async function createTestUser(
+  api: APIRequestContext,
+  overrides: Partial<TestUser> = {}
+): Promise<TestUser> {
+  const userData = {
+    email: `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}@test.com`,
+    password: 'TestPassword123!',
+    name: 'E2E Test User',
+    ...overrides,
+  };
+  const response = await api.post('/api/test/users', { data: userData });
+  const user = await response.json();
+  return { ...user, password: userData.password };
+}]]></code>
+        <note>Timestamped + random email prevents unique_email collisions on parallel test runs.</note>
+      </example>
+      <rule testable="true">
+        <statement>Mock all third-party API calls at the network boundary using `page.route()`. Never depend on live SaaS in CI.</statement>
+        <rationale>Real third-party calls add 1-2% flake rate from network variability. Stripe, Auth0, and similar services have sandbox modes but even those add latency and can have outages.</rationale>
+      </rule>
+      <example type="good" title="Mocking Stripe payment API">
+        <code lang="typescript"><![CDATA[// Mock Stripe in test
+await page.route('https://api.stripe.com/**', async (route) => {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ id: 'pi_test', status: 'succeeded' }),
+  });
+});]]></code>
+      </example>
+    </section>
+
+    <section name="e2e-antipatterns">
+      <antipattern>
+        <description>`page.waitForTimeout(5000)` or any hard-coded sleep instead of element/navigation waits.</description>
+        <reason>Arbitrary sleeps are the primary source of flakiness — too short on slow CI, too long locally. Playwright auto-waits for actionability; use `expect(locator).toBeVisible()` instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>CSS selectors or dynamic IDs (`#submit-btn-1234`) as locators.</description>
+        <reason>CSS selectors break on any style refactor; dynamic IDs change on every render. Only `data-testid` and ARIA-based locators (`getByRole`, `getByLabel`) are stable.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Tests sharing a single user account across parallel workers.</description>
+        <reason>Concurrent password changes, profile updates, or session mutations from parallel tests cause cascading failures. Use per-worker or per-test accounts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Visual snapshots committed from a macOS runner, diffed against a Linux CI runner.</description>
+        <reason>Anti-aliasing and font rendering differ across OS. Visual snapshots must be captured and compared on the same OS. Force snapshot updates from one Linux runner only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`page.locator(...).click({ force: true })` to bypass actionability checks.</description>
+        <reason>Force bypasses Playwright's visibility and interactability checks, hiding real UI bugs (overlapping elements, disabled states). It is always a symptom of a real problem to fix.</reason>
+      </antipattern>
+      <antipattern>
+        <description>E2E suite growing beyond 200 tests with no nightly/critical distinction.</description>
+        <reason>Above 50 critical-path tests the suite exceeds 30 minutes; teams skip it. Enforce a budget; promote logic tests to unit/integration when possible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Trace ZIP files committed to git or stored in public CI artifacts without scrubbing.</description>
+        <reason>Playwright traces capture network requests including auth tokens. Scrub via `playwright.config.ts` `recordHar` filters or add artifacts to `.gitignore`.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/playwright.config.ts" purpose="Multi-browser config with retries, reporters, baseURL, webServer."/>
+      <template path="templates/page-object.ts" purpose="POM skeleton with constructor, goto, action, and assertion methods."/>
+      <template path="templates/smoke-gate.sh" purpose="Deploy gate script running @smoke-tagged tests against a staging URL."/>
+    </templates>
+
+    <see-also>
+      <link href="https://playwright.dev/docs/intro"/>
+      <link href="https://playwright.dev/docs/best-practices"/>
+      <link href="https://testing.googleblog.com/2015/04/just-say-no-to-more-end-to-end-tests.html"/>
+      <link href="https://docs.cypress.io/guides/references/best-practices"/>
+      <link href="https://docs.percy.io/docs/playwright"/>
+    </see-also>
+  </content>
+</methodology>

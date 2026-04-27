@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-base-model">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Abstract BaseModel with uid (UUID), created_at, updated_at for all domain models. Keep integer PK for joins; expose UUID in APIs and URLs.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>base-model</tag>
+      <tag>uuid</tag>
+      <tag>timestamps</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Django Base Model Pattern</title>
+
+    <summary>Every Django domain model must inherit from BaseModel, an abstract model providing uid (UUID), created_at, and updated_at fields. The integer primary key is kept for join performance; uid is the public identifier exposed in APIs and URLs. This pattern decouples internal DB layout from public API contracts while ensuring all domain entities carry audit timestamps with zero per-model boilerplate. Auto-increment IDs leak table size, enable enumeration attacks, and couple internal schema to external contracts.</summary>
+
+    <why>
+      <p>Auto-increment IDs leak table size, enable enumeration attacks (an attacker iterating through numeric IDs to discover all users or orders), and create coupling between internal DB layout and public API contracts. A UUID secondary identifier (uid) decouples these concerns at negligible cost — one extra column and one unique index per table.</p>
+      <p>Abstract inheritance guarantees all domain models carry uid, created_at, and updated_at with zero per-model boilerplate. Without this base, developers either forget audit timestamps or duplicate the boilerplate across dozens of models, leading to inconsistent handling of timestamps across the codebase.</p>
+      <p>The integer primary key is retained for database join performance (smaller index keys, better cache locality) while the UUID serves as the public identifier in REST endpoints, GraphQL IDs, and external references. This dual-identifier pattern is proven at scale in production systems across every tier (startups to enterprises).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting any new Django project — define BaseModel before first domain model</item>
+        <item>Creating any model that represents a domain entity (user, order, product, post, comment)</item>
+        <item>Building REST/GraphQL APIs that must expose a stable, non-enumerable identifier</item>
+        <item>Systems requiring audit trails (created_at/updated_at) for compliance or debugging</item>
+        <item>Refactoring legacy models to add UUID and timestamp fields retroactively</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal-only models never exposed externally (M2M through-tables, analytics rollups) — extra UUID column and index are dead weight</item>
+        <item>Models inheriting from third-party abstract bases (django-mppt, django-polymorphic) that define their own PK/timestamp scheme — MRO conflicts</item>
+        <item>High-write tables in the millions of rows without a migration plan — UUIDv4 has poor B-tree index locality (use UUIDv7 instead)</item>
+        <item>Read-replica DBs where every extra index slows replication lag</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="base-model-implementation">
+      <p>The BaseModel class establishes a contract that every domain entity inherits uid, created_at, and updated_at fields. Setting abstract = True ensures no table is created for BaseModel itself; each concrete subclass gets the fields inlined into its own table.</p>
+
+      <rule>
+        <statement>Every domain model must inherit from BaseModel. Never inherit from models.Model directly for domain entities.</statement>
+        <rationale>Ensures all models carry uid (UUID), created_at, and updated_at with zero per-model boilerplate. Agents and developers can rely on these fields always being present.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set abstract = True in BaseModel.Meta. Omitting it creates a real database table for BaseModel itself, which is wasteful.</statement>
+        <rationale>An abstract base generates no table; each concrete subclass gets the fields inlined. A non-abstract BaseModel creates a real table with no domain meaning.</rationale>
+      </rule>
+
+      <example type="good" title="BaseModel implementation">
+        <code lang="python"><![CDATA[
+# core/models.py
+import uuid
+from django.db import models
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(
+        default=uuid.uuid4, editable=False, unique=True, db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+        get_latest_by = 'created_at'
+
+    def __str__(self) -> str:
+        return f"{type(self).__name__}({self.uid})"
+        ]]></code>
+        <note>The uid field is unique=True globally across the table, with db_index=True for fast lookups. created_at is also indexed because queries often filter or order by creation time. auto_now_add ensures created_at is set once at INSERT; auto_now updates updated_at on every save.</note>
+      </example>
+    </section>
+
+    <section name="foreign-key-patterns">
+      <p>Foreign key relationships require explicit on_delete strategy and related_name to prevent data loss and reverse lookup confusion.</p>
+
+      <rule>
+        <statement>Choose on_delete deliberately: PROTECT for user/account references (prevent deletion if anything depends on it), CASCADE only when child rows have no meaning without parent, SET_NULL for optional assignees.</statement>
+        <rationale>CASCADE on user references causes silent data loss when an account is deleted—the deletion succeeds and data vanishes. PROTECT forces explicit handling of the relationship before any deletion. SET_NULL is appropriate for optional foreign keys (handled_by, reviewed_by) where the reference is not required for the entity to exist.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always set explicit related_name on ForeignKey fields.</statement>
+        <rationale>Auto-generated model_set names (e.g., order_set) break when models are renamed and confuse reverse lookups. An explicit related_name (orders) is self-documenting and survives refactoring.</rationale>
+      </rule>
+
+      <example type="good" title="ForeignKey with PROTECT and related_name">
+        <code lang="python"><![CDATA[
+class Order(BaseModel):
+    user = models.ForeignKey(
+        'users.User', on_delete=models.PROTECT, related_name='orders',
+    )
+    handled_by = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='handled_orders',
+    )
+
+    class Meta:
+        db_table = 'orders'
+        indexes = [
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['status', 'created_at']),
+        ]
+        ]]></code>
+        <note>The handled_by is optional (null=True) and uses SET_NULL, so if an admin is deleted, their handled orders survive with handled_by=NULL. The user field uses PROTECT so deletion of a user is blocked if they have any orders—forcing explicit handling of the relationship.</note>
+      </example>
+    </section>
+
+    <section name="soft-delete-extension">
+      <p>SoftDeleteModel extends BaseModel for non-PII entities that require delete history and restore capability.</p>
+
+      <rule>
+        <statement>Use SoftDeleteModel only for non-PII (personally identifiable information) data. For personal data subject to deletion requests (GDPR, CCPA), use hard delete.</statement>
+        <rationale>Soft delete preserves data that users may have a legal right to have erased (GDPR Article 17, right to be forgotten). Always hard-delete user data when requested.</rationale>
+      </rule>
+
+      <example type="good" title="SoftDeleteModel implementation">
+        <code lang="python"><![CDATA[
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class SoftDeleteModel(BaseModel):
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    objects = SoftDeleteManager()      # excludes deleted (normal queries)
+    all_objects = models.Manager()     # includes deleted (audits)
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        """Soft delete: mark deleted_at, do not remove from DB."""
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        """Permanently remove from DB. Use only for PII."""
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        """Un-soft-delete: clear deleted_at."""
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at', 'updated_at'])
+        ]]></code>
+        <note>The .objects manager filters out soft-deleted rows by default. all_objects gives access to everything for auditing. Calling delete() soft-deletes; calling hard_delete() is permanent.</note>
+      </example>
+    </section>
+
+    <section name="django-5-features">
+      <p>Modern Django 5 provides db_default and GeneratedField for computed columns and database-side defaults.</p>
+
+      <rule>
+        <statement>Use db_default for values computed by the database at INSERT time (e.g., CURRENT_TIMESTAMP, UUID functions). Use GeneratedField for columns computed from other columns. Pin PostgreSQL when using GeneratedField(db_persist=True) — SQLite support is limited.</statement>
+        <rationale>db_default avoids Python-side time skew in distributed systems where the Django process time may differ from the DB server time. GeneratedField keeps computed data consistent without triggers and is database-agnostic.</rationale>
+      </rule>
+    </section>
+
+    <section name="drf-integration">
+      <p>Django REST Framework integration requires explicit lookup_field configuration to expose UUID instead of integer PK.</p>
+
+      <rule>
+        <statement>Set lookup_field = 'uid' and lookup_url_kwarg = 'uid' on DRF viewsets. Exclude 'id' from all serializer Meta.fields. Mark uid as read_only in serializers.</statement>
+        <rationale>Without explicit lookup_field, DRF defaults to PK lookup (id) and generates URLs like /orders/123/ exposing the integer PK. Even if you remove id from serializers, the URL still leaks the PK. Setting lookup_field = 'uid' makes URLs like /orders/550e8400-e29b-41d4-a716-446655440000/.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common mistakes when implementing BaseModel, with emphasis on failure modes that evade testing.</p>
+
+      <antipattern>
+        <description>Exposing auto-increment id in DRF serializers or URL patterns instead of uid.</description>
+        <reason>Leaks table size, enables enumeration attacks, and couples public API to internal DB layout. Always use uid in Meta.fields and set lookup_field = 'uid' on viewsets.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Overriding Meta in a child model without inheriting BaseModel.Meta (class Meta(BaseModel.Meta)).</description>
+        <reason>Silently loses the base ordering (['-created_at']) and get_latest_by ('created_at'); discovered only when querysets return unexpected order in production or when a manager calls .latest() and gets the wrong row.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using default=uuid.uuid4() (called once at import time) instead of default=uuid.uuid4 (callable).</description>
+        <reason>All rows created after the first migration get the same UUID. Caught only by a test that creates two rows and asserts u1.uid != u2.uid.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Applying BaseModel to M2M through-tables and intermediate models.</description>
+        <reason>Through-tables are link entities, not domain entities. Extra UUID column and unique index balloon the index count for zero benefit. Reserve BaseModel for domain models only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Squashing migrations without verifying the UUID unique=True constraint is preserved.</description>
+        <reason>Auto-squash can drop and re-add constraints without backfilling — silently corrupts production data if the constraint is dropped without running a backfill. Never auto-squash; always review the generated migration file.</reason>
+      </antipattern>
+    </section>
+
+    <section name="missing-indexes">
+      <p>Composite indexes on common query patterns prevent full-table scans in production.</p>
+
+      <example type="bad" title="Missing composite index">
+        <code lang="python"><![CDATA[
+# Missing composite index — full-table scan on common query
+class Order(BaseModel):
+    status = models.CharField(max_length=20)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+        ]]></code>
+        <note>Queries like Order.objects.filter(user=user, status='pending') will full-table scan because there's no composite index on (user, status).</note>
+      </example>
+
+      <example type="good" title="With composite index">
+        <code lang="python"><![CDATA[
+class Order(BaseModel):
+    status = models.CharField(max_length=20, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='orders')
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'status', 'created_at'])]
+        ]]></code>
+        <note>The composite index on (user, status, created_at) covers common query patterns and sorts by creation time for pagination.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/base_model.py" purpose="BaseModel + SoftDeleteModel scaffold with UUIDv7 upgrade path"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/topics/db/models/#abstract-base-classes"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/models/fields/#uuidfield"/>
+      <link href="https://uuid7.com/"/>
+      <link href="https://www.percona.com/blog/store-uuid-optimized-way/"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+    </see-also>
+  </content>
+</methodology>

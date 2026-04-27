@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-backend">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Go backend pattern: cmd/ + internal/ layout, consumer-side interfaces, context propagation, typed errors, worker pool concurrency.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>backend</tag>
+      <tag>project-layout</tag>
+      <tag>http</tag>
+      <tag>error-handling</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Go Backend</title>
+    <summary>Production-grade Go backend pattern using the standard cmd/ + internal/ project layout with Gin or Echo routers. Key conventions: interfaces defined at the consumer side, context.Context as first arg on all I/O functions, typed AppError mapped to HTTP via middleware, worker-pool concurrency via a Pool struct with channel-based job queue.</summary>
+    <why>
+      <p>The internal/ boundary prevents circular imports and keeps domain packages isolated. Consumer-side interfaces (service defines UserRepository, repository provides the impl) enable mockable unit tests without reflection-based mocking. Typed errors with Unwrap() let callers use errors.Is / errors.As for clean control flow. Worker pool decouples job submission from execution and supports graceful shutdown via context.Context.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield Go service scaffolding with cmd/ + internal/handler/service/repository layers.</item>
+        <item>Adding endpoints to an existing Gin/Echo project following this layout.</item>
+        <item>Generating typed AppError taxonomies and error-handler middleware.</item>
+        <item>Building worker-pool / fan-out-fan-in glue code around a typed Job interface.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Non-standard layouts (Hex / Clean / monorepo multi-module) — import paths will be wrong.</item>
+        <item>Performance-critical hot paths needing sync.Pool or escape-analysis awareness.</item>
+        <item>Cgo / unsafe / kernel-bypass code — out of scope.</item>
+        <item>Generics-heavy domain libraries — examples use pre-generics style.</item>
+      </list>
+    </when-not-to-use>
+    <section name="project-structure">
+      <rule>
+        <statement>Use the standard Go layout: cmd/api/main.go for entry point, internal/{handler,service,repository,model,middleware,config} for domain code, pkg/ for public packages, migrations/ for DB migrations.</statement>
+        <rationale>internal/ prevents external imports, enforcing encapsulation. cmd/ supports multiple binaries from one module.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="text"><![CDATA[
+project/
+├── cmd/api/main.go
+├── internal/
+│   ├── handler/
+│   ├── service/
+│   ├── repository/
+│   ├── model/
+│   ├── middleware/
+│   └── config/
+├── pkg/
+├── migrations/
+├── go.mod
+└── go.sum
+]]></code>
+      </example>
+    </section>
+    <section name="interface-at-consumer">
+      <rule>
+        <statement>Define interfaces in the package that consumes them, not in the package that provides the implementation. service/ defines UserRepository; repository/ provides the implementation.</statement>
+        <rationale>This is the Go idiom. Interfaces at the consumer side break import cycles and make mocking straightforward — the test provides a mock that satisfies the interface without importing the real impl.</rationale>
+      </rule>
+    </section>
+    <section name="request-dtos">
+      <rule>
+        <statement>Use separate *Request structs for HTTP request binding. Never bind directly into domain model structs.</statement>
+        <rationale>Domain models may have fields that must never be set by external input (IDs, timestamps, internal flags). DTO separation enforces this boundary.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name" binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+    Age   int    `json:"age" binding:"gte=0,lte=130"`
+}
+]]></code>
+      </example>
+    </section>
+    <section name="main-go-discipline">
+      <rule>
+        <statement>Keep cmd/api/main.go thin: only wiring (config → deps → router → server). No business logic.</statement>
+        <rationale>Agents bloat main.go when not constrained. Thin main makes each layer independently testable.</rationale>
+      </rule>
+    </section>
+    <section name="context-context">
+      <rule>
+        <statement>Pass context.Context as the first argument of every exported function that does I/O. Never capture gin.Context inside a goroutine — derive context first.</statement>
+        <rationale>Context carries cancellation, deadlines, and trace IDs. Capturing gin.Context in a goroutine is a data race and causes request-context leaks.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func (h *UserHandler) GetUser(c *gin.Context) {
+    id := c.Param("id")
+    ctx := c.Request.Context() // derive before any goroutine
+    user, err := h.userService.GetByID(ctx, id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(http.StatusOK, user)
+}
+]]></code>
+      </example>
+    </section>
+    <section name="gin-router">
+      <rule>
+        <statement>Use Gin with small, single-purpose middlewares. Never put business logic in middleware.</statement>
+        <rationale>Small middlewares compose cleanly and are easier for agents to understand and extend.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func SetupRouter(h *handler.UserHandler) *gin.Engine {
+    r := gin.Default()
+    r.Use(middleware.RequestID())
+    r.Use(middleware.Logger())
+    r.Use(middleware.Recovery())
+
+    v1 := r.Group("/api/v1")
+    {
+        users := v1.Group("/users")
+        users.Use(middleware.Auth())
+        {
+            users.GET("", h.ListUsers)
+            users.GET("/:id", h.GetUser)
+            users.POST("", h.CreateUser)
+            users.PUT("/:id", h.UpdateUser)
+            users.DELETE("/:id", h.DeleteUser)
+        }
+    }
+    return r
+}
+]]></code>
+      </example>
+    </section>
+    <section name="echo-router">
+      <example type="good">
+        <code lang="go"><![CDATA[
+func SetupRouter() *echo.Echo {
+    e := echo.New()
+    e.Use(middleware.Logger())
+    e.Use(middleware.Recover())
+    e.Use(middleware.RequestID())
+
+    api := e.Group("/api/v1")
+    api.Use(middleware.JWT([]byte("secret")))
+
+    api.GET("/users", listUsers)
+    api.GET("/users/:id", getUser)
+    api.POST("/users", createUser)
+    return e
+}
+]]></code>
+      </example>
+    </section>
+    <section name="request-binding">
+      <rule>
+        <statement>Use ShouldBindJSON for Gin (returns error) instead of BindJSON (aborts on error). Use binding struct tags for validation.</statement>
+        <rationale>ShouldBind lets handlers return custom error responses; BindJSON writes a 400 and aborts, bypassing the ErrorHandler middleware.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    // Process valid request
+}
+]]></code>
+      </example>
+    </section>
+    <section name="error-handler-middleware">
+      <rule>
+        <statement>Use a single ErrorHandler middleware that maps AppError to HTTP status. Handlers call c.Error(err) and return — never call c.JSON directly for errors.</statement>
+        <rationale>Centralizing error mapping ensures consistent error response shape and avoids duplicating HTTP status logic in every handler.</rationale>
+      </rule>
+      <reference path="templates/app-error.go">AppError struct and ErrorHandler middleware.</reference>
+    </section>
+    <section name="worker-pool">
+      <rule>
+        <statement>Use the Pool struct with a buffered jobs channel and context-aware workers. Pool.Submit must select on both the jobs channel and ctx.Done() to avoid deadlock under cancellation.</statement>
+        <rationale>Blocking submit on a full buffer without ctx awareness deadlocks when the caller is cancelled. The select pattern drains cleanly.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+type Job func(ctx context.Context) error
+
+type Pool struct {
+    workers int
+    jobs    chan Job
+    wg      sync.WaitGroup
+}
+
+func (p *Pool) Submit(ctx context.Context, job Job) error {
+    select {
+    case p.jobs <- job:
+        return nil
+    case <-ctx.Done():
+        return ctx.Err()
+    }
+}
+]]></code>
+      </example>
+    </section>
+    <section name="fan-out-fan-in">
+      <rule>
+        <statement>Use runtime.NumCPU() for default worker count. Close the jobs channel after all jobs are sent; let workers drain naturally.</statement>
+        <rationale>Closing the channel signals workers to exit their range loop cleanly without an explicit stop signal.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func ProcessItems(ctx context.Context, items []Item) []Result {
+    numWorkers := runtime.NumCPU()
+    jobs := make(chan Item, len(items))
+    results := make(chan Result, len(items))
+
+    var wg sync.WaitGroup
+    for i := 0; i < numWorkers; i++ {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for item := range jobs {
+                results <- processItem(ctx, item)
+            }
+        }()
+    }
+
+    for _, item := range items {
+        jobs <- item
+    }
+    close(jobs)
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    var output []Result
+    for r := range results {
+        output = append(output, r)
+    }
+    return output
+}
+]]></code>
+      </example>
+    </section>
+    <templates>
+      <template path="templates/app-error.go" purpose="AppError struct with sentinel errors and constructors."/>
+      <template path="templates/check-layout.sh" purpose="CI script: verify required internal/ dirs exist and internal/ is not imported from outside."/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://github.com/golang-standards/project-layout"/>
+      <link href="https://gin-gonic.com/docs/"/>
+      <link href="https://echo.labstack.com/docs"/>
+      <link href="https://github.com/uber-go/guide/blob/master/style.md"/>
+    </see-also>
+  </content>
+</methodology>

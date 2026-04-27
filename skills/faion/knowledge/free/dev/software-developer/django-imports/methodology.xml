@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-imports">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Import convention for Django multi-app projects: always alias cross-app imports, never direct symbol import. Eliminates model name collisions and enables reliable tooling.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>imports</tag>
+      <tag>conventions</tag>
+      <tag>refactoring</tag>
+      <tag>lint</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Import Patterns</title>
+
+    <summary>A convention for Django multi-app projects: always import cross-app modules via alias (from apps.orders import models as order_models), never via direct symbol import (from apps.orders.models import Order). Import order: __future__, stdlib, third-party (Django/DRF), cross-app aliased, relative. Type-only cross-app imports go under if TYPE_CHECKING: with from __future__ import annotations at the file top.</summary>
+
+    <why>
+      <p>In Django projects with many apps, model names collide: User, Order, Item appear in multiple apps. Direct imports create ambiguity in call sites and make grep-based refactoring unreliable. The alias convention (order_models.Order) makes the source app explicit at every usage, eliminates name collisions, and enables reliable tooling (import-linter, AST fixers) to enforce cross-app coupling constraints.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Django project: lock down import style before apps proliferate.</item>
+        <item>Onboarding multi-app codebases where Order, User, Item collide in serializers.</item>
+        <item>Refactoring legacy code with from app.models import * patterns.</item>
+        <item>Adding type hints to a Django codebase with circular import problems.</item>
+        <item>Authoring pre-commit hooks to enforce the alias rule.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-app Django projects with fewer than 10 models — alias overhead pays nothing.</item>
+        <item>Non-Django Python repos with flat package structure — rule is Django-app-specific.</item>
+        <item>DRF serializers and form classes where direct symbol import is idiomatic (from rest_framework import serializers) — the rule applies to cross-app project imports only.</item>
+        <item>One-shot scripts and Jupyter notebooks where unaliased names are more readable.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="limitations-and-failure-modes">
+      <p>No automated enforcement out of the box. ruff/isort sort imports but do not enforce the alias-on-cross-app rule; teams drift unless a custom AST checker runs in CI.</p>
+      <p>Alias bikeshedding: order_models vs orders_models vs m_orders — without a written convention every PR re-litigates the alias.</p>
+      <p>Long lines: order_models.OrderLineItemDiscount reads worse than OrderLineItemDiscount; the rule trades readability for unambiguity.</p>
+      <p>TYPE_CHECKING + circular imports. The convention mentions from __future__ import annotations but does not show how it interacts with serializer Meta.model (which needs runtime symbols). Easy to break.</p>
+      <p>DRF / Django generics use direct imports by convention. Mixing the two styles in one file (alias for app models, direct for DRF) confuses readers and tools.</p>
+      <p>Refactor cost. Renaming an app (apps.orders → apps.commerce) cascades into every alias usage; a git grep works but agents still miss usages in tests and migrations.</p>
+    </section>
+
+    <section name="cross-app-alias-rule">
+      <rule testable="true">
+        <statement>Import cross-app modules via their module alias: from apps.orders import models as order_models. Never import symbols directly: from apps.orders.models import Order.</statement>
+        <rationale>Django projects with many apps accumulate model name collisions: User, Order, Item appear in multiple apps. Aliases make the source app explicit at every call site and enable reliable automated refactoring.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use a consistent alias suffix per module type: _models, _services, _constants. Never mix order_models and orders_models in the same project.</statement>
+        <rationale>Inconsistent alias names cause the same name-collision problem the convention exists to solve. Pin the pattern in pyproject.toml documentation and enforce via AST linter.</rationale>
+      </rule>
+    </section>
+
+    <section name="import-order">
+      <rule testable="true">
+        <statement>Order imports in four tiers: (1) __future__, (2) stdlib, (3) third-party (django, rest_framework, celery), (4) cross-app aliased, (5) relative from . import.</statement>
+        <rationale>PEP 8 / isort canonical order. Consistent ordering eliminates diff noise and makes it trivial to see which tier an import belongs to at a glance.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never use wildcard imports: from apps.orders.models import * is unconditionally banned.</statement>
+        <rationale>Wildcards make it impossible to determine which names are in scope, break tools like mypy and pylint, and re-create the name-collision problem the alias rule solves.</rationale>
+      </rule>
+    </section>
+
+    <section name="circular-import-prevention">
+      <rule testable="true">
+        <statement>Gate type-only cross-app imports behind if TYPE_CHECKING: and add from __future__ import annotations at the file top.</statement>
+        <rationale>Cross-app imports between models.py files are the primary source of Django circular imports. TYPE_CHECKING is False at runtime, so the import never executes. __future__ annotations defers annotation evaluation, making the type hint work without the runtime import.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>DRF serializer Meta.model requires a runtime symbol; do not gate it under TYPE_CHECKING. Use apps.get_model("app_label", "ModelName") or a direct runtime import.</statement>
+        <rationale>Serializers introspect Meta.model at class creation time. A TYPE_CHECKING-gated import makes the symbol undefined at runtime, causing an AttributeError on serializer load.</rationale>
+      </rule>
+    </section>
+
+    <section name="migration-exclusion">
+      <rule testable="true">
+        <statement>Exclude migrations/ from the alias linter. Django's migration loader parses model references as strings; agent-generated alias rewrites in migrations break the loader.</statement>
+        <rationale>Migration files use "users.User" string references that are resolved by Django's app registry, not Python imports. Rewriting them to use_models.User breaks makemigrations and migrate.</rationale>
+      </rule>
+    </section>
+
+    <example type="good" title="Canonical Import Block">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+from django.db import models
+from rest_framework import serializers
+
+from apps.orders import models as order_models
+from apps.users import models as user_models
+from apps.catalog import models as catalog_models
+from apps.orders import services as order_services
+from apps.orders import constants as order_constants
+
+from .models import MyModel
+from . import constants
+
+if TYPE_CHECKING:
+    from apps.payments import models as payment_models
+      ]]></code>
+      <note>Five tiers in order. Cross-app aliased in tier 4. TYPE_CHECKING-only imports in a separate block at the bottom.</note>
+    </example>
+
+    <example type="bad" title="Direct Import (Avoid)">
+      <code lang="python"><![CDATA[
+from apps.users.models import User       # avoid: direct symbol import
+from apps.orders.models import Order     # avoid: direct symbol import
+from apps.users.models import *          # NEVER: wildcard
+      ]]></code>
+      <note>Direct imports cause name collisions and break alias-based tooling. Wildcard imports are unconditionally banned.</note>
+    </example>
+
+    <example type="good" title="TYPE_CHECKING for Circular Dependency">
+      <code lang="python"><![CDATA[
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.billing import models as billing_models
+
+def get_invoice_total(user: billing_models.Invoice) -> Decimal:
+    """Works in Python 3.9+ with __future__ annotations."""
+    ...
+      ]]></code>
+      <note>__future__ annotations defers evaluation so billing_models.Invoice is never resolved at runtime. No circular import.</note>
+    </example>
+
+    <example type="good" title="Python 3.10+ Modern Syntax">
+      <code lang="python"><![CDATA[
+# Python 3.10+ — no typing import needed for union
+def get_item(uid: str) -> order_models.Order | None:
+    return order_models.Order.objects.filter(pk=uid).first()
+
+# Built-in generics — no List import
+def get_orders(user: user_models.User) -> list[order_models.Order]:
+    return list(order_models.Order.objects.filter(user=user))
+      ]]></code>
+      <note>Use built-in generics (list[], dict[], tuple[]) and | for union types in Python 3.10+. Still use cross-app aliases.</note>
+    </example>
+
+    <antipattern>
+      <description>Direct cross-app model import: from apps.users.models import User.</description>
+      <reason>In projects with multiple apps each defining a User model, direct imports create silent name collisions. The alias convention makes the source app explicit at every usage and enables reliable tooling.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Wildcard import: from apps.orders.models import *.</description>
+      <reason>Wildcards make namespace scope opaque to tools (mypy, pylint, IDEs), prevent refactoring automation, and collapse the alias convention's disambiguation benefit.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Re-exporting models from __init__.py: __all__ = [Order, User, Item].</description>
+      <reason>Re-exports collapse the app namespace and recreate the original collision problem. Consumers can import from the wrong location silently. Keep __init__.py empty unless explicitly justified.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>DRF serializer Meta.model gated under TYPE_CHECKING.</description>
+      <reason>Serializer Meta.model is resolved at class creation time (import time). A TYPE_CHECKING-gated import makes the symbol undefined at runtime, causing an AttributeError on serializer load. Use apps.get_model() or a runtime import for Meta.model.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Agent rewrites import aliases but misses call sites: User.objects.get() not updated to user_models.User.objects.get().</description>
+      <reason>Partial rewrites leave dangling names that cause NameError at runtime. Alias fixes require AST-based rewrite of both the import and every usage, not just the import line.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Inconsistent alias names across files: user_models in one file, users_models in another.</description>
+      <reason>Inconsistency defeats the readability benefit of the convention. Every new contributor must re-discover the alias for each app. Pin one suffix pattern (_models, _services, _constants) project-wide.</reason>
+    </antipattern>
+
+    <section name="agentic-workflow">
+      <p>Use Claude subagents in three modes against this convention. (1) Scaffolder — when generating a new app or models module, the agent emits the import block in the canonical order (stdlib → third-party → cross-app aliased → relative) and pre-imports the app's own models, services, constants siblings. (2) Linter / fixer — an agent reads existing files, detects from apps.X.models import Y violations, and rewrites them to from apps.X import models as X_models plus call-site changes. (3) Reviewer — on PRs, the agent confirms no import *, no unaliased cross-app, no missing TYPE_CHECKING for circular dependencies.</p>
+      <p>Best practice: Require agents to read conftest or lint output first. Prompt the agent to use import-linter config + AST diff to enforce the alias rule and the order-by-tier rule. Never allow an import-fixing agent to rewrite without also rewriting all call sites — partial fixes produce NameError at runtime.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Default LLM output is direct imports. Models trained on tutorials produce from apps.users.models import User. Always pin the prompt to the alias rule and run the linter post-generation.</p>
+      <p>Alias name drift. Agents pick users_models one file and user_models the next. Force a canonical pattern and reject diffs that deviate.</p>
+      <p>Removing an alias usage breaks call sites. Agents that fix imports often forget to update User → user_models.User references downstream. Require an AST-based rewrite, not a regex one.</p>
+      <p>Generated __init__.py re-exports. Agents creating an __init__.py like to populate __all__ from submodules — that defeats the alias intent. Keep __init__.py empty unless explicitly justified.</p>
+      <p>Circular imports masked by TYPE_CHECKING. Agents wrap runtime imports in the gate when they should not; runtime breakage at module load. Verify by booting Django (manage.py check) after agent edits.</p>
+      <p>DRF serializer Meta.model requires runtime symbol. Agents put it under TYPE_CHECKING; serializer fails at import. Guard with a runtime import or apps.get_model().</p>
+      <p>Migrations rewriting. Migrations generated by makemigrations reference models by string; an over-eager import-fixer agent may rewrite them to use the alias and break Django's migration loader. Exclude migrations/ paths.</p>
+      <p>Wildcard re-imports. Agents trained on from .views import * patterns reintroduce wildcards into urls.py. Lint blocks this.</p>
+      <p>isort vs ruff conflict. Agents installing isort separately produce different sort orders than ruff; pick one tool (ruff) and disable the other in pre-commit.</p>
+      <p>apps ambiguity. Some Django projects keep apps at the top level (users/, not apps/users/). The rule must be re-templated; an agent reusing the README verbatim emits from apps.X against the wrong layout.</p>
+    </section>
+
+    <section name="best-practices">
+      <p>Pin the alias convention in pyproject.toml under [tool.ruff.lint.isort] known-first-party = ["apps"] and document the alias suffix (_models, _services, _constants).</p>
+      <p>Never re-export models from __init__.py. It collapses the alias rule and re-creates the original collision problem.</p>
+      <p>Use TYPE_CHECKING aggressively for cross-app type hints. Combined with from __future__ import annotations, it eliminates 90% of circular import problems.</p>
+      <p>Migrations must use string app labels ("users.User", not from apps.users.models import User); enforce this with a separate ruff rule on */migrations/*.</p>
+      <p>Keep settings.py free of app imports. Lazy resolve with django.apps.apps.get_model("users", "User") when needed at runtime.</p>
+      <p>One alias per app per module — do not mix user_models and users_models in the same file.</p>
+      <p>Document forbidden direction. apps.users should not import from apps.orders; encode in import-linter contracts. Domain coupling enforced at import level prevents architectural rot.</p>
+      <p>Refactor in two steps: first add the new alias and run, then mechanically delete the old direct imports.</p>
+    </section>
+
+    <templates>
+      <template path="templates/django_import_lint.py" purpose="AST linter: flags cross-app imports without alias and wildcard imports."/>
+    </templates>
+
+    <see-also>
+      <link href="https://peps.python.org/pep-0008/#imports"/>
+      <link href="https://peps.python.org/pep-0563/"/>
+      <link href="https://pycqa.github.io/isort/"/>
+      <link href="https://docs.astral.sh/ruff/rules/#isort-i"/>
+      <link href="https://import-linter.readthedocs.io"/>
+      <link href="https://adamj.eu/tech/2021/05/13/python-type-hints-how-to-avoid-circular-imports/"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/applications/"/>
+    </see-also>
+  </content>
+</methodology>

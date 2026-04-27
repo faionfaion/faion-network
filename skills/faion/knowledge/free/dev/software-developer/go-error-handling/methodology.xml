@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-error-handling">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Custom AppError type with Code, Message, HTTPStatus, and wrapped Err fields, plus HTTP middleware that translates *AppError into structured JSON responses. Wrap external errors into AppError at repository boundaries; use errors.As (never type assertions) to unwrap at the HTTP layer.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>error-handling</tag>
+      <tag>http</tag>
+      <tag>middleware</tag>
+      <tag>typed-errors</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Go Error Handling</title>
+    <summary>Custom AppError type with Code, Message, HTTPStatus, and wrapped Err fields, plus HTTP middleware that translates *AppError into structured JSON responses. Wrap external errors into AppError at repository boundaries; use errors.As (never type assertions) to unwrap at the HTTP layer.</summary>
+    <why>
+      <p>Go's built-in errors carry no HTTP status, machine-readable code, or structured context. Without a shared error type, each handler invents its own response shape, status mapping, and logging format. A single AppError + middleware pattern enforces consistency and lets errors.Is / errors.As work across wrapping chains.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New Go HTTP service (chi / gin / echo / stdlib net/http) needing consistent JSON error responses</item>
+        <item>Refactoring a service that returns bare errors.New(...) — wrap with apperror.New* constructors</item>
+        <item>Adding correlation / trace IDs to error responses for production debugging</item>
+        <item>Standardizing structured error logging (slog, zerolog, zap)</item>
+        <item>Library code needing typed errors callable via errors.Is / errors.As</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>gRPC services — use google.golang.org/grpc/status + codes.Code; HTTPStatus is meaningless</item>
+        <item>CLI tools — errors go to stderr + exit code; JSON overhead not justified</item>
+        <item>Public library packages — custom error type forces consumers to depend on your package; prefer sentinel errors</item>
+        <item>Shallow code paths where fmt.Errorf("%w", err) chains already do the job</item>
+      </list>
+    </when-not-to-use>
+    <section name="apperror-type">
+      <rule>
+        <statement>Define AppError with Code, Message, HTTPStatus, and Err fields. Implement Error() and Unwrap() so errors.Is/As work across wrapping chains.</statement>
+        <rationale>Go's built-in errors carry no HTTP status or machine-readable code. A shared type lets any layer wrap with context while the HTTP boundary uses errors.As to extract the right status.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+package apperror
+
+import (
+    "fmt"
+    "net/http"
+)
+
+type AppError struct {
+    Code       string `json:"code"`
+    Message    string `json:"message"`
+    HTTPStatus int    `json:"-"`
+    Err        error  `json:"-"`
+}
+
+func (e *AppError) Error() string {
+    if e.Err != nil {
+        return fmt.Sprintf("%s: %v", e.Message, e.Err)
+    }
+    return e.Message
+}
+
+func (e *AppError) Unwrap() error { return e.Err }
+
+// Constructor functions — never return package-level vars directly.
+// Mutable package vars are a footgun: ErrNotFound.Message = "X" mutates the global.
+
+func NewNotFound(resource string) *AppError {
+    return &AppError{
+        Code:       "NOT_FOUND",
+        Message:    fmt.Sprintf("%s not found", resource),
+        HTTPStatus: http.StatusNotFound,
+    }
+}
+
+func NewUnauthorized(msg string) *AppError {
+    return &AppError{Code: "UNAUTHORIZED", Message: msg, HTTPStatus: http.StatusUnauthorized}
+}
+
+func NewValidation(msg string) *AppError {
+    return &AppError{Code: "VALIDATION_ERROR", Message: msg, HTTPStatus: http.StatusBadRequest}
+}
+
+// Wrap preserves HTTPStatus and Code from inner *AppError when present.
+func Wrap(err error, msg string) *AppError {
+    var inner *AppError
+    if errors.As(err, &inner) {
+        return &AppError{
+            Code:       inner.Code,
+            Message:    msg,
+            HTTPStatus: inner.HTTPStatus,
+            Err:        err,
+        }
+    }
+    return &AppError{
+        Code:       "INTERNAL_ERROR",
+        Message:    msg,
+        HTTPStatus: http.StatusInternalServerError,
+        Err:        err,
+    }
+}
+]]></code>
+      </example>
+      <reference path="templates/apperror.go">Full pkg/apperror package source</reference>
+    </section>
+    <section name="wrapping-rules">
+      <rule>
+        <statement>Always wrap with fmt.Errorf("context: %w", err) — never %v. Use errors.As at HTTP boundaries, never type assertions.</statement>
+        <rationale>%v formats but does not wrap; errors.Is/As returns false. Type assertions (*AppError) bypass wrapping and fail silently for nested errors.</rationale>
+      </rule>
+      <rule>
+        <statement>Map driver errors (pgx.ErrNoRows, sql.ErrNoRows) to AppError at the repository layer. Never let pgx.* or database/sql errors reach HTTP handlers.</statement>
+        <rationale>Driver-specific errors are implementation details. Leaking them couples API responses to the persistence layer choice.</rationale>
+      </rule>
+    </section>
+    <section name="handler-wrapper-pattern">
+      <rule>
+        <statement>Use a Handler type (func returning error) + Wrap adapter so handlers can return errors directly instead of writing responses inline. The middleware logs and translates at one place.</statement>
+        <rationale>Standard http.HandlerFunc cannot return errors. Without a wrapper, every handler must duplicate status writing and logging logic.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+package httpx
+
+import (
+    "encoding/json"
+    "errors"
+    "log/slog"
+    "net/http"
+
+    "yourmod/pkg/apperror"
+)
+
+type errBody struct {
+    Code    string `json:"code"`
+    Message string `json:"message"`
+    TraceID string `json:"trace_id,omitempty"`
+}
+
+type Handler func(http.ResponseWriter, *http.Request) error
+
+func Wrap(h Handler) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        err := h(w, r)
+        if err == nil {
+            return
+        }
+        var appErr *apperror.AppError
+        if !errors.As(err, &appErr) {
+            appErr = apperror.Wrap(err, "internal error")
+        }
+        // 4xx → Info/Warn, 5xx → Error
+        if appErr.HTTPStatus >= 500 {
+            slog.ErrorContext(r.Context(), "http error",
+                "code", appErr.Code, "status", appErr.HTTPStatus, "err", err)
+        } else {
+            slog.InfoContext(r.Context(), "http client error",
+                "code", appErr.Code, "status", appErr.HTTPStatus)
+        }
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(appErr.HTTPStatus)
+        _ = json.NewEncoder(w).Encode(errBody{
+            Code: appErr.Code, Message: appErr.Message,
+            TraceID: TraceIDFromCtx(r.Context()),
+        })
+    }
+}
+]]></code>
+      </example>
+      <reference path="templates/error-middleware.go">Full middleware source with panic recovery</reference>
+    </section>
+    <section name="middleware-ordering">
+      <rule>
+        <statement>Register panic recovery middleware BEFORE the error-mapping middleware. Panics that reach the error mapper produce blank 500s with no body.</statement>
+        <rationale>Middleware executes in registration order for incoming requests. Recovery must wrap the entire handler chain to catch panics from downstream handlers.</rationale>
+      </rule>
+      <rule>
+        <statement>Always call w.WriteHeader before json.NewEncoder(w).Encode. Writing the body first causes some frameworks to flush a 200 implicitly before the explicit WriteHeader.</statement>
+        <rationale>HTTP status must be set before any bytes are written. Some Go HTTP frameworks buffer, but the stdlib does not.</rationale>
+      </rule>
+    </section>
+    <section name="mutable-package-vars">
+      <antipattern>
+        <description>Returning package-level mutable *AppError vars directly (e.g., return apperror.ErrNotFound).</description>
+        <reason>Any caller can mutate the shared var: ErrNotFound.Message = "X" corrupts the global for all subsequent requests. Always use constructors.</reason>
+      </antipattern>
+    </section>
+    <section name="format-verb-mistake">
+      <antipattern>
+        <description>Using %v instead of %w in fmt.Errorf: fmt.Errorf("op failed: %v", err).</description>
+        <reason>%v formats the error string but does not chain the error. errors.Is and errors.As return false through %v-wrapped errors. The errorlint linter catches this.</reason>
+      </antipattern>
+    </section>
+    <section name="type-assertion-pitfall">
+      <antipattern>
+        <description>Type asserting instead of errors.As: appErr := err.(*apperror.AppError).</description>
+        <reason>Type assertion fails for wrapped errors — it only checks the outermost type. errors.As traverses the Unwrap chain and handles wrapped *AppError correctly.</reason>
+      </antipattern>
+    </section>
+    <section name="wrap-status-clobbering">
+      <antipattern>
+        <description>Wrap always sets HTTPStatus 500, silently promoting 4xx errors to 5xx.</description>
+        <reason>Wrapping a NewNotFound (404) with a naive Wrap function produces an AppError with HTTPStatus 500. Wrap must preserve the inner AppError's status when present.</reason>
+      </antipattern>
+    </section>
+    <section name="leaking-driver-errors">
+      <antipattern>
+        <description>Leaking driver errors (pgx.ErrNoRows, sql.ErrNoRows) to HTTP handlers.</description>
+        <reason>Driver errors couple response shapes to the persistence layer. Map at the repository boundary: pgx.ErrNoRows → apperror.NewNotFound(...).</reason>
+      </antipattern>
+    </section>
+    <section name="ignored-encode-errors">
+      <antipattern>
+        <description>Ignoring errors from json.NewEncoder(w).Encode(body) with _ =.</description>
+        <reason>A write failure leaves the client without a response body. Log the write error even if you cannot re-send the response. errcheck (golangci-lint) flags this.</reason>
+      </antipattern>
+    </section>
+    <section name="linter-configuration">
+      <rule>
+        <statement>Run golangci-lint with errorlint, wrapcheck, errcheck, and nilnil enabled. Default golangci-lint configuration misses most error-handling bugs.</statement>
+        <rationale>errorlint catches == comparison on errors (use errors.Is). wrapcheck flags unwrapped external errors. errcheck flags ignored return errors.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/apperror.go" purpose="pkg/apperror package: AppError type + constructors + Wrap"/>
+      <template path="templates/error-middleware.go" purpose="pkg/httpx/error_middleware.go: recovery + errors.As handler"/>
+      <template path="templates/prompt-error-scaffold.txt" purpose="Prompt to scaffold apperror package + middleware + tests"/>
+    </templates>
+    <see-also>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://pkg.go.dev/errors"/>
+    </see-also>
+  </content>
+</methodology>

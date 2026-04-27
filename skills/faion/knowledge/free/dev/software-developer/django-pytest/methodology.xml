@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-pytest">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>pytest with pytest-django is the modern Django test stack. Tests use fixtures (not setUp), factory_boy for test data, APIClient.force_authenticate for auth, and the db fixture for database access.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>pytest</tag>
+      <tag>testing</tag>
+      <tag>fixtures</tag>
+      <tag>tdd</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Testing with pytest</title>
+
+    <summary>pytest with pytest-django is the modern Django test stack. Tests use fixtures (not TestCase), factory_boy for test data, APIClient.force_authenticate for auth, and the db fixture for database access. Every test is a function or class method — no TestCase inheritance. Block all real network calls with an autouse socket monkeypatch.</summary>
+
+    <why>
+      <p>pytest fixtures compose and override cleanly where TestCase.setUp does not. Parametrize replaces repeated test methods. factory_boy generates realistic data with field overrides in a single call. @pytest.mark.django_db makes DB access explicit, preventing accidental hits. The result is faster, more readable tests that survive refactoring because they test observable behavior, not internal method calls.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Django projects — pytest-django is the default over TestCase</item>
+        <item>Adding cross-cutting fixtures (API client, authenticated user, factory) reused across many tests</item>
+        <item>Integration tests against DRF endpoints with APIClient and JWT/session auth</item>
+        <item>Testing services, models, and database operations</item>
+        <item>Adding negative tests (auth failures, validation errors)</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Projects already heavily invested in TestCase where mixed styles cause confusion — pick one</item>
+        <item>Test environments without DB access (pure logic) — plain pytest without pytest-django is lighter</item>
+        <item>Async test suites using httpx.AsyncClient against ASGI directly — db fixture and sync ORM complicate things; use pytest-asyncio with manual setup</item>
+        <item>Code paths relying on call_command-style isolation where TestCase transaction handling is simpler</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="configuration">
+      <rule testable="true">
+        <statement>Set DJANGO_SETTINGS_MODULE in pyproject.toml [tool.pytest.ini_options] to a test-specific settings file with DEBUG=False, in-memory cache, fake email backend, and MD5PasswordHasher.</statement>
+        <rationale>Test settings reduce overhead and prevent accidental real email/payment sends. MD5PasswordHasher speeds up tests by 10-100x but must never leak into dev/prod settings.</rationale>
+      </rule>
+      <example type="good" title="pytest Configuration">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = ["-v", "--tb=short", "--strict-markers", "-ra"]
+markers = [
+    "slow: deselect with '-m not slow'",
+    "integration: integration tests",
+]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="directory-structure">
+      <rule testable="true">
+        <statement>Keep conftest.py close to where fixtures are used. Project-root conftest only for truly global fixtures (api_client, user, auth_client, network-blocking).</statement>
+        <rationale>Auto-discovery cascades — nested conftest fixtures shadow each other silently if not scoped.</rationale>
+      </rule>
+    </section>
+
+    <section name="shared-fixtures">
+      <rule testable="true">
+        <statement>Add an autouse network-blocking fixture in the root conftest that raises on any socket.create_connection call. Tests that need real network must explicitly opt out.</statement>
+        <rationale>Tests that forget to mock external services produce 30s timeouts, not clear failures. A loud guard makes the gap obvious immediately.</rationale>
+      </rule>
+      <reference path="templates/conftest.py">Minimal conftest with api_client, user, auth_client, and network-blocking fixture.</reference>
+    </section>
+
+    <section name="factory-pattern">
+      <rule testable="true">
+        <statement>Use factory_boy DjangoModelFactory instead of fixture-as-function for test data. Override fields per test with UserFactory(email='x@y.z').</statement>
+        <rationale>factory_boy handles sequences and related objects; plain fixtures-as-functions require manual wiring for each variant.</rationale>
+      </rule>
+      <example type="good" title="Factory Pattern">
+        <code lang="python"><![CDATA[
+import factory
+from apps.users.models import User
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+        ]]></code>
+      </example>
+      <reference path="templates/factories.py">DjangoModelFactory scaffolds for User and related models.</reference>
+    </section>
+
+    <section name="unit-tests-for-services">
+      <rule testable="true">
+        <statement>Mark test classes or functions with @pytest.mark.django_db only when DB access is required. Pure logic tests must not touch the DB.</statement>
+        <rationale>DB setup costs time; pure logic tests run much faster without it. --strict-markers makes missing markers a hard error.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Structure each test: Arrange (set up data) → Act (call code under test) → Assert (verify observable outcome). One logical assertion group per test.</statement>
+        <rationale>Tests with multiple unrelated assertions fail for multiple reasons simultaneously, making the root cause ambiguous.</rationale>
+      </rule>
+      <example type="good" title="Unit Test Structure">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestCreateOrder:
+    def test_creates_order_with_valid_data(self, user, product):
+        order = services.create_order(user=user, items=[{"product_id": product.id, "quantity": 2}])
+        assert order.user == user
+        assert order.status == "pending"
+
+    def test_raises_for_insufficient_stock(self, user, product):
+        product.stock = 1
+        product.save()
+        with pytest.raises(ValueError, match="Insufficient stock"):
+            services.create_order(user=user, items=[{"product_id": product.id, "quantity": 10}])
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="integration-tests-for-apis">
+      <rule testable="true">
+        <statement>Use APIClient.force_authenticate instead of issuing real login requests in integration tests — much faster and tests the endpoint, not the auth flow.</statement>
+        <rationale>Real login calls include password hashing and token generation — 100-1000ms per test. force_authenticate bypasses all of that.</rationale>
+      </rule>
+      <example type="good" title="API Integration Test">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestUserAPI:
+    def test_list_requires_auth(self, api_client):
+        response = api_client.get("/api/v1/users/")
+        assert response.status_code == 401
+
+    def test_list_returns_users(self, authenticated_client, user_factory):
+        user_factory(email="a@b.com")
+        response = authenticated_client.get("/api/v1/users/")
+        assert response.status_code == 200
+        assert len(response.data["results"]) >= 1
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="parametrize">
+      <rule testable="true">
+        <statement>Use @pytest.mark.parametrize for boundary and equivalence-class testing where the same logic runs against multiple inputs.</statement>
+        <rationale>Replaces repetitive test functions with a single declaration; failures show exactly which parameter set failed.</rationale>
+      </rule>
+      <example type="good" title="Parametrized Test">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize("password,valid", [
+    ("ValidPass1!", True),
+    ("short1!", False),
+    ("NOLOWER1!", False),
+    ("NoDigit!!", False),
+])
+def test_password_validation(password, valid):
+    assert validate_password(password).is_valid == valid
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="mocking-external-services">
+      <rule testable="true">
+        <statement>Mock at the I/O boundary (HTTP, mail, payment), test the rest with real DB and real serialization. Over-mocking produces tests that prove nothing.</statement>
+        <rationale>Mocking internal methods tests implementation, not behavior. Tests that mock the wrong import path pass silently with zero real coverage.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use transactional_db (not db) when the code under test calls transaction.on_commit — on_commit callbacks never fire inside a rolled-back transaction.</statement>
+        <rationale>db wraps each test in a savepoint that never commits; on_commit handlers that send emails or dispatch tasks are silently skipped.</rationale>
+      </rule>
+    </section>
+
+    <antipattern>
+      <description>Testing internal method calls instead of observable behavior.</description>
+      <reason>Tests that assert on _validate_items was called break on any refactoring that renames the method, even if behavior is unchanged. Test the outcome (exception raised, object created) not the path.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Shared mutable state on test class attributes (class-level list or dict).</description>
+      <reason>Tests execute in arbitrary order; shared state causes order-dependent failures. Use pytest fixtures — each test gets a fresh instance.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Re-creating fixtures inline instead of reusing shared conftest fixtures.</description>
+      <reason>Inline creation duplicates logic and diverges from the shared fixture over time. LLMs must read conftest.py first and reuse user, api_client, auth_client.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using --reuse-db in CI.</description>
+      <reason>Masks migration drift — agents update models without re-running migrations, and existing DB state hides the missing column. CI must always --create-db.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Calling mocker.patch with the module the agent read, not the module where the SUT imports the symbol.</description>
+      <reason>Patching the wrong import path produces a test that always passes regardless of the mock — silent zero coverage.</reason>
+    </antipattern>
+
+    <section name="agentic-workflow">
+      <p>A test-writing subagent reads the spec/test-plan, lists test cases per acceptance criterion, then generates pytest functions using shared fixtures from conftest.py. The agent NEVER assumes a fixture exists — it greps conftest.py first. A test-runner subagent runs pytest --junitxml=results.xml -q --cov=src --cov-fail-under=80, parses results, and feeds failures back. A code-review agent enforces "no @pytest.mark.django_db without db fixture if you only read", "no transactional_db if db is enough", and "no setUp style — use fixtures."</p>
+      <p>Test generation prompt pattern: Generate pytest tests for apps/app/services/file.py. Use existing fixtures from tests/conftest.py (read it first). For each public function: 1 happy-path + 1 boundary + 1 error case. Use APIClient and the user fixture. Mark integration tests @pytest.mark.integration. Output the full file. Stop.</p>
+      <p>Test result parsing: Run pytest --junitxml=/tmp/r.xml --cov=src --cov-report=term-missing -q. Parse failures. For each: test name, root cause (code/test/fixture/flake), proposed fix as a unified diff. Do not apply yet.</p>
+    </section>
+
+    <section name="limitations-and-failure-modes">
+      <p>db fixture wraps each test in a transaction (fast) but breaks if the code-under-test calls transaction.on_commit — those callbacks never fire. Use transactional_db and pay the speed cost.</p>
+      <p>pytest-django's live_server fixture spawns a real server; flaky on CI without explicit wait_for_port and parallel-port allocation.</p>
+      <p>pytest-xdist parallel runs trip on shared DB state; need --create-db per-worker plus DB name templating. pytest-xdist + pytest-django + --create-db + --reuse-db is finicky.</p>
+      <p>Auto-discovery of conftest.py cascades — duplicate fixtures in nested conftests silently shadow each other.</p>
+      <p>factory_boy + DRF + recursive relations (User → Profile → User) cause infinite recursion if SubFactory cycles are not broken with LazyAttribute.</p>
+      <p>pytest-mock mocker.patch("module.attr") patches the wrong scope when the code under test imports the symbol differently than the test does — silent test pass with no real coverage.</p>
+    </section>
+
+    <section name="llm-specific-gotchas">
+      <rule testable="true">
+        <statement>Require agents to read tests/conftest.py before generating any test. Prompt: "Read tests/conftest.py first. Reuse existing fixtures."</statement>
+        <rationale>LLMs default to inline creation rather than reuse; reading the file first surfaces the available fixture names.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Require --strict-markers and a lint rule that finds DB-touching code in tests without @pytest.mark.django_db.</statement>
+        <rationale>LLMs omit the marker; the resulting error is clear but wastes tokens iterating. Catch it in lint, not at runtime.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Always supply on_delete= explicitly on ForeignKey — PROTECT for "do not lose data", CASCADE only for owned children, SET_NULL for optional refs.</p>
+      <p>Add related_name= on every FK; if a reverse accessor is not needed, use related_name='+'.</p>
+      <p>Put Meta.ordering only on small / paginated models; on large tables it adds an ORDER BY that hurts performance.</p>
+      <p>Combine Meta.indexes with a real EXPLAIN against representative data — do not add indexes speculatively.</p>
+      <p>Use models.UniqueConstraint(fields=[...], name='...') over unique_together (deprecated path).</p>
+      <p>Use TextChoices for fixed enums; reference them through a constants module so admin/forms/serializers all share one source.</p>
+      <p>Never edit applied migration files; create a new migration to alter or drop instead.</p>
+    </section>
+
+    <templates>
+      <template path="templates/conftest.py" purpose="Minimal conftest with api_client, user, auth_client, and network-blocking fixture."/>
+      <template path="templates/factories.py" purpose="factory_boy DjangoModelFactory scaffolds for User and related models."/>
+    </templates>
+
+    <see-also>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://docs.pytest.org/en/latest/"/>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://www.django-rest-framework.org/api-guide/testing/"/>
+    </see-also>
+  </content>
+</methodology>

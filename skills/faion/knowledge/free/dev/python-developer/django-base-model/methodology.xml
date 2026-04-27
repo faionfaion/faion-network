@@ -29,6 +29,8 @@
 
     <why>
       <p>All models need a consistent approach to common concerns: unique identifiers for external exposure (UUID vs integer ID), creation/modification timestamps, soft deletes for data preservation, and audit trails for compliance. Building these patterns once and reusing them prevents reimplementation bugs, ensures consistency across your application, and makes it easier to reason about data lifecycle and security implications (like UUID preventing ID enumeration attacks).</p>
+      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Without a base model, every developer invents timestamps independently, some expose integer IDs in APIs, some use CASCADE when PROTECT is safer. The costs accumulate: inconsistency across the app, repeated bugs, and security gaps.</p>
+      <p>A single base model enforces standards: UUID for external exposure (preventing enumeration), indexed timestamps (enabling efficient time-range queries), consistent `__str__` representation, and DRY manager patterns. This methodology covers not just building the base, but combining it with mixins for soft delete, audit trails, and multi-tenant row scoping.</p>
     </why>
 
     <when-to-use>
@@ -49,44 +51,52 @@
       </list>
     </when-not-to-use>
 
-    <section name="why-base-models">
-      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Without a base model, every developer invents timestamps independently, some expose integer IDs in APIs, some use CASCADE when PROTECT is safer. The costs accumulate: inconsistency across the app, repeated bugs, and security gaps.</p>
-      <p>A single base model enforces standards: UUID for external exposure (preventing enumeration), indexed timestamps (enabling efficient time-range queries), consistent `__str__` representation, and DRY manager patterns. This methodology covers not just building the base, but combining it with mixins for soft delete, audit trails, and multi-tenant row scoping.</p>
+    <section name="overview-and-benefits">
+      <p>The Base Model pattern solves fundamental problems that appear in every Django project. Key benefits include:</p>
       <list>
-        <item>Consistency: All models share common fields and behaviors.</item>
-        <item>DRY: No repeated code for timestamps, UUIDs, soft delete.</item>
-        <item>Security: UUID exposure prevents ID enumeration attacks.</item>
-        <item>Audit Trail: Built-in tracking of creation/modification.</item>
-        <item>Maintainability: Single place to modify common behavior.</item>
+        <item>Consistency: All models share common fields and behaviors across the entire application.</item>
+        <item>DRY: No repeated code for timestamps, UUIDs, soft delete — write once, inherit everywhere.</item>
+        <item>Security: UUID exposure prevents ID enumeration attacks (endpoints like /orders/1 leak competitive info).</item>
+        <item>Audit Trail: Built-in tracking of creation and modification for compliance and debugging.</item>
+        <item>Maintainability: Single place to modify common behavior; changes cascade to all models.</item>
         <item>Compliance: Audit trail supports regulatory requirements (SOX, HIPAA, GDPR).</item>
       </list>
+      <p>Key Decision: UUID as Separate Field vs Primary Key — Use UUID as a separate uid field (recommended) for better FK performance and integer clustering. Keep integer id as primary key. UUID v4 PKs cause index fragmentation; integer keys cluster related inserts and improve FK join performance. The uid field handles external API exposure and prevents ID enumeration.</p>
     </section>
 
     <section name="requirements-analysis">
-      <p>Before implementing a base model, identify your application's needs.</p>
+      <p>Before implementing a base model, identify your application's needs. Not all projects need all features.</p>
       <rule testable="false">
-        <statement>Document: Do all models need timestamps? Do you need external UUIDs? Do you need soft delete? Audit trail? Multi-tenant scoping?</statement>
-        <rationale>Not all projects need all features. Understanding requirements prevents over-engineering and unnecessary complexity. A simple TimestampMixin may suffice; a full FullFeaturedModel is overkill for internal services.</rationale>
+        <statement>Document: Do all models need timestamps? Do you need external UUIDs? Do you need soft delete? Audit trail? Multi-tenant scoping? Optimistic locking?</statement>
+        <rationale>Understanding requirements prevents over-engineering and unnecessary complexity. A simple TimestampMixin may suffice for internal microservices; a full FullFeaturedModel is overkill if you don't need soft delete.</rationale>
       </rule>
       <checklist>
-        <check>Identify whether integer PK with uid field or full UUID PK is required.</check>
-        <check>Determine if soft delete is a business requirement (can users recover deleted data?).</check>
-        <check>Check if audit trail is needed for compliance or debugging.</check>
-        <check>Confirm multi-tenancy needs (single tenant, shared schema, schema-per-tenant).</check>
+        <check>Do all models need timestamps (created_at, updated_at)?</check>
+        <check>Do you need external-facing UUIDs (API exposure)?</check>
+        <check>Do you need soft delete functionality (enable trash/recovery)?</check>
+        <check>Do you need audit trail (track who changed what, when)?</check>
+        <check>Is this a multi-tenant application?</check>
+        <check>Do you need optimistic locking (version field)?</check>
+        <check>Determine UUID strategy: Option A: Integer PK + separate uid field (recommended) OR Option B: UUID as primary key (distributed systems)</check>
       </checklist>
     </section>
 
     <section name="abstract-base-model">
-      <p>The foundation pattern - provides UUID and timestamps to all models.</p>
+      <p>The foundation pattern provides UUID and timestamps to all models using abstract inheritance.</p>
 
       <rule testable="true">
-        <statement>Define an abstract BaseModel with UUID (uid field), created_at, and updated_at fields. Set class Meta.abstract = True.</statement>
-        <rationale>Abstract models don't create database tables; they are inherited by concrete models. This provides a single source of truth for common fields and ensures all models have consistent timestamp and UUID behavior.</rationale>
+        <statement>Define an abstract BaseModel with UUID (uid field), created_at, and updated_at fields. Set class Meta.abstract = True and ordering = ['-created_at'].</statement>
+        <rationale>Abstract models don't create database tables; they are inherited by concrete models. This provides a single source of truth for common fields and ensures all models have consistent timestamp and UUID behavior. Default ordering makes queries consistent.</rationale>
       </rule>
 
       <rule testable="true">
-        <statement>Index created_at field for efficient time-range queries and default ordering. Ordering = ['-created_at'] ensures newest first by default.</statement>
+        <statement>Index created_at field (db_index=True) for efficient time-range queries. Default ordering = ['-created_at'] ensures newest first.</statement>
         <rationale>Most list views filter or sort by creation time. An indexed created_at prevents full table scans. Setting default ordering makes queries consistent and predictable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Mark uid field as editable=False and unique=True with db_index=True. Never allow direct UUID modification.</statement>
+        <rationale>UIDs should be immutable identifiers. editable=False prevents accidental changes in admin. unique=True and db_index=True ensure they can be efficiently looked up and prevent duplicates.</rationale>
       </rule>
 
       <rule testable="true">
@@ -124,12 +134,7 @@ class BaseModel(models.Model):
 
       <rule testable="true">
         <statement>Use UUID as a separate uid field, not as primary key. Keep integer id as primary key for better FK performance and index clustering.</statement>
-        <rationale>UUID v4 primary keys cause index fragmentation at scale. An integer PK clusters related inserts and improves FK join performance. The uid field handles external API exposure and prevents ID enumeration. For distributed systems needing true UUID PKs, consider UUID v7 (timestamp-based, coming in Postgres 18) or clustering strategies.</rationale>
-      </rule>
-
-      <rule testable="true">
-        <statement>Mark uid field as editable=False and unique=True with db_index=True. Never allow direct UUID modification.</statement>
-        <rationale>UIDs should be immutable identifiers. editable=False prevents accidental changes in admin. unique=True and db_index=True ensure they can be efficiently looked up and prevent duplicates.</rationale>
+        <rationale>UUID v4 primary keys cause index fragmentation at scale because inserts are random, not sequential. An integer PK clusters related inserts and improves FK join performance. For truly distributed systems needing UUID PKs, consider UUID v7 (timestamp-based) or clustering strategies.</rationale>
       </rule>
     </section>
 
@@ -137,8 +142,8 @@ class BaseModel(models.Model):
       <p>For projects that don't need UUID, a lightweight TimestampMixin provides only created_at and updated_at.</p>
 
       <rule testable="true">
-        <statement>Define TimestampMixin with created_at (auto_now_add=True) and updated_at (auto_now=True), both indexed. Set abstract=True.</statement>
-        <rationale>auto_now_add=True sets created_at once at creation; auto_now=True updates updated_at on every save. Both should be indexed for efficient querying.</rationale>
+        <statement>Define TimestampMixin with created_at (auto_now_add=True) and updated_at (auto_now=True), both indexed. Set abstract=True and default ordering.</statement>
+        <rationale>auto_now_add=True sets created_at once at creation; auto_now=True updates updated_at on every save. Both should be indexed for efficient querying. Default ordering by -created_at makes queries consistent.</rationale>
       </rule>
 
       <example type="good" title="Lightweight timestamp mixin">
@@ -146,25 +151,41 @@ class BaseModel(models.Model):
 class TimestampMixin(models.Model):
     """Adds created_at and updated_at fields."""
 
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="When this record was created",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this record was last updated",
+    )
 
     class Meta:
         abstract = True
+        ordering = ['-created_at']
 ]]></code>
       </example>
     </section>
 
-    <section name="custom-managers">
-      <p>Custom managers and querysets allow filtering and querying patterns to be reusable and testable.</p>
+    <section name="custom-managers-and-querysets">
+      <p>Custom managers and querysets allow filtering and querying patterns to be reusable and testable across views and selectors.</p>
 
       <rule testable="true">
-        <statement>Implement custom managers for filtered querysets: ActiveManager, PublishedManager, etc. Use the QuerySet.as_manager() pattern for DRY code.</statement>
-        <rationale>Managers encapsulate filter logic so it's not repeated across views and selectors. QuerySet.as_manager() chains custom queryset methods into the manager itself, reducing boilerplate.</rationale>
+        <statement>Implement custom managers for filtered querysets: ActiveManager, PublishedManager, etc. Use the QuerySet.as_manager() pattern to reduce boilerplate and keep logic in one place.</statement>
+        <rationale>Managers encapsulate filter logic so it's not repeated across views and selectors. QuerySet.as_manager() chains custom queryset methods into the manager itself, eliminating duplicate code between manager and queryset classes.</rationale>
       </rule>
 
-      <example type="good" title="Manager pattern with custom filtering">
+      <rule testable="true">
+        <statement>Override get_queryset() in Manager to apply default filters. Provide alternative managers (e.g., all_objects) for unfiltered access when needed.</statement>
+        <rationale>The default manager's get_queryset() ensures all queries include desired filters automatically. Alternative managers provide escapes for admin and special operations without repeating filter logic.</rationale>
+      </rule>
+
+      <example type="good" title="Manager pattern with custom filtering and QuerySet">
         <code lang="python"><![CDATA[
+from django.db import models
+
+
 class ArticleQuerySet(models.QuerySet):
     """Custom queryset for articles."""
 
@@ -197,7 +218,8 @@ class ArticleManager(models.Manager):
         return self.get_queryset().recent(days)
 
 
-# Alternative: Manager from QuerySet (DRY)
+# Alternative DRY pattern: Manager from QuerySet
+# No need to duplicate methods
 ArticleManager = ArticleQuerySet.as_manager()
 ]]></code>
       </example>
@@ -207,26 +229,65 @@ ArticleManager = ArticleQuerySet.as_manager()
       <p>Soft delete enables "trash" functionality without permanent data loss, allowing restoration of accidentally deleted records and preservation of historical data.</p>
 
       <rule testable="true">
-        <statement>Implement soft delete with a deleted_at DateTimeField. Create a SoftDeleteManager that filters deleted_at__isnull=True by default, and provide AllObjectsManager for admin access.</statement>
-        <rationale>The default manager should return only active records, preventing accidental exposure of deleted data. The all_objects manager allows admins and audits to access deleted records when needed.</rationale>
+        <statement>Implement soft delete with a deleted_at DateTimeField. Create a SoftDeleteManager that filters deleted_at__isnull=True by default. Provide AllObjectsManager for admin and audit access.</statement>
+        <rationale>The default manager should return only active records, preventing accidental exposure of deleted data. The all_objects manager allows admins and audits to access deleted records when needed without having to write custom queries.</rationale>
       </rule>
 
-      <example type="good" title="Soft delete mixin">
+      <rule testable="true">
+        <statement>Override the delete() method on SoftDeleteMixin to set deleted_at instead of hard deleting. Provide hard_delete() and restore() methods for explicit permanent and recovery operations.</statement>
+        <rationale>Overriding delete() makes soft delete the default behavior for all calls. Explicit hard_delete() and restore() methods make intentions clear and prevent accidental permanent deletion.</rationale>
+      </rule>
+
+      <example type="good" title="Soft delete mixin with managers and queryset methods">
         <code lang="python"><![CDATA[
 from django.db import models
 from django.utils import timezone
 
 
+class SoftDeleteQuerySet(models.QuerySet):
+    """QuerySet that supports soft delete operations."""
+
+    def delete(self):
+        """Soft delete all objects in queryset."""
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        """Permanently delete all objects in queryset."""
+        return super().delete()
+
+    def restore(self):
+        """Restore all soft-deleted objects in queryset."""
+        return self.update(deleted_at=None)
+
+    def active(self):
+        """Return only non-deleted objects."""
+        return self.filter(deleted_at__isnull=True)
+
+    def deleted(self):
+        """Return only deleted objects."""
+        return self.filter(deleted_at__isnull=False)
+
+
 class SoftDeleteManager(models.Manager):
-    """Excludes soft-deleted records by default."""
+    """Manager that excludes soft-deleted records by default."""
 
     def get_queryset(self):
-        return super().get_queryset().filter(deleted_at__isnull=True)
+        return SoftDeleteQuerySet(self.model, using=self._db).active()
+
+    def with_deleted(self):
+        """Include soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db)
+
+    def deleted_only(self):
+        """Return only soft-deleted records."""
+        return SoftDeleteQuerySet(self.model, using=self._db).deleted()
 
 
 class AllObjectsManager(models.Manager):
-    """Includes all records (deleted and active)."""
-    pass
+    """Manager that includes all records (deleted and active)."""
+
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
 
 
 class SoftDeleteMixin(models.Model):
@@ -266,7 +327,12 @@ class SoftDeleteMixin(models.Model):
 
       <rule testable="true">
         <statement>Use db_default with Now() for database-computed timestamps instead of Python auto_now when database truth is needed.</statement>
-        <rationale>Database-computed defaults ensure consistency regardless of timezone settings and prevent timestamp skew between application servers.</rationale>
+        <rationale>Database-computed defaults ensure consistency regardless of timezone settings and prevent timestamp skew between application servers in distributed setups.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use GeneratedField for computed columns like full_name or total_amount that should always be in sync with source fields. Set db_persist=True on PostgreSQL to store the value.</statement>
+        <rationale>Computed columns stored in the database ensure the value is always up-to-date and can be indexed. Without db_persist=True on PostgreSQL, the field is virtual only and cannot be reliably indexed.</rationale>
       </rule>
 
       <example type="good" title="Database-level defaults with db_default">
@@ -283,11 +349,6 @@ class Article(models.Model):
     created_at = models.DateTimeField(db_default=Now())
 ]]></code>
       </example>
-
-      <rule testable="true">
-        <statement>Use GeneratedField for computed columns like full_name or total_amount that should always be in sync with source fields.</statement>
-        <rationale>Computed columns stored in the database ensure the value is always up-to-date and can be indexed. Without db_persist=True on PostgreSQL, the field is virtual only.</rationale>
-      </rule>
 
       <example type="good" title="Computed columns with GeneratedField">
         <code lang="python"><![CDATA[
@@ -329,8 +390,8 @@ class Order(models.Model):
       <p>Multi-tenant models require tenant scoping to ensure data isolation between customers.</p>
 
       <rule testable="true">
-        <statement>For shared-schema multi-tenant, add a tenant ForeignKey to every tenant-scoped model. Use a TenantManager that filters by current tenant, and provide an unscoped manager for admin access.</statement>
-        <rationale>Row-level filtering via the default manager ensures accidental queries return only the current tenant's data. The unscoped manager is restricted to admin operations to prevent data leaks.</rationale>
+        <statement>For shared-schema multi-tenant, add a tenant ForeignKey to every tenant-scoped model. Use a TenantManager that filters by current tenant via middleware or context. Provide unscoped manager for admin access.</statement>
+        <rationale>Row-level filtering via the default manager ensures accidental queries return only the current tenant's data. The unscoped manager is restricted to admin operations to prevent data leaks. Shared schema is the recommended approach for most SaaS.</rationale>
       </rule>
 
       <example type="good" title="Tenant-aware model with scoped manager">
@@ -375,11 +436,11 @@ class TenantAwareModel(models.Model):
     </section>
 
     <section name="audit-trail">
-      <p>Audit trails track all changes to important data for compliance and debugging.</p>
+      <p>Audit trails track all changes to important data for compliance, debugging, and forensics.</p>
 
       <rule testable="true">
-        <statement>Use django-simple-history or django-auditlog for audit trail tracking. Add HistoricalRecords to models that need change tracking, and configure user tracking middleware.</statement>
-        <rationale>Library-based solutions are battle-tested and handle edge cases like bulk operations, partial updates, and transaction rollbacks. Hand-rolled audit trails almost always have blind spots.</rationale>
+        <statement>Use django-simple-history or django-auditlog for audit trail tracking. Add HistoricalRecords to models needing change tracking. Configure user tracking middleware to capture who made changes.</statement>
+        <rationale>Library-based solutions are battle-tested and handle edge cases like bulk operations, partial updates, and transaction rollbacks. Hand-rolled audit trails almost always have blind spots and miss important change scenarios.</rationale>
       </rule>
 
       <example type="good" title="Audit trail with django-simple-history">
@@ -413,11 +474,11 @@ class Contract(AuditedModel):
     </section>
 
     <section name="foreignkey-best-practices">
-      <p>ForeignKey on_delete behavior determines what happens when a related object is deleted.</p>
+      <p>ForeignKey on_delete behavior determines what happens when a related object is deleted. Choose carefully.</p>
 
       <rule testable="true">
-        <statement>Choose on_delete based on the relationship semantics: CASCADE for ownership (Order→OrderItem), PROTECT for ownership of history (User owns Order), SET_NULL for optional references (Task→assigned_user).</statement>
-        <rationale>Wrong on_delete behavior causes silent data loss (CASCADE without intent) or cryptic errors (PROTECT without planning). Align the database rule with the business model.</rationale>
+        <statement>Choose on_delete based on relationship semantics: CASCADE for composition (Order→OrderItem), PROTECT for ownership of history (User→Order), SET_NULL for optional references (Task→assigned_user).</statement>
+        <rationale>Wrong on_delete behavior causes silent data loss (CASCADE without intent) or cryptic errors (PROTECT without planning). Align the database rule with the business model to prevent accidents.</rationale>
       </rule>
 
       <example type="good" title="ForeignKey on_delete selection">
@@ -426,27 +487,27 @@ from django.db import models
 
 
 class Order(models.Model):
-    """Ownership relationship."""
-    user = models.ForeignKey(User, on_delete=models.PROTECT)  # Don't lose order history
+    """Ownership relationship: orders shouldn't cascade-delete when user leaves."""
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
 
 
 class OrderItem(models.Model):
-    """Composition: items belong to order."""
-    order = models.ForeignKey(Order, on_delete=models.CASCADE)  # Items meaningless without order
+    """Composition: items are part of order and meaningless without it."""
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
 
 
 class Task(models.Model):
-    """Assignment: task survives user deletion."""
+    """Assignment: task survives when user leaves, assignment cleared."""
     assigned_to = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,  # Preserve task, clear assignment
+        on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
 
 
 class Comment(models.Model):
-    """Attribution: preserve content, clear author."""
+    """Attribution: preserve comment, clear author when user deleted."""
     author = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -458,10 +519,19 @@ class Comment(models.Model):
     </section>
 
     <section name="combining-mixins">
-      <p>Mixins can be combined to create feature-rich base models that avoid boilerplate.</p>
+      <p>Mixins can be combined to create feature-rich base models.</p>
+
+      <rule testable="true">
+        <statement>Combine mixins (TimestampMixin, SoftDeleteMixin, TenantAwareModel) in order: TimestampMixin, SoftDeleteMixin, TenantAwareModel, then inherit from models.Model. This ordering ensures MRO (Method Resolution Order) is correct.</statement>
+        <rationale>Python's MRO processes parent classes left-to-right. Correct ordering ensures super() calls work as expected and prevents AttributeError from missing methods.</rationale>
+      </rule>
 
       <example type="good" title="Full-featured model combining all patterns">
         <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+
 class FullFeaturedModel(
     TimestampMixin,
     SoftDeleteMixin,
@@ -487,28 +557,197 @@ class FullFeaturedModel(
 
       <antipattern>
         <description>Using UUID as primary key without understanding performance impact. UUID v4 keys cause index fragmentation because inserts are random, not sequential.</description>
-        <reason>At scale (millions of rows), UUID PKs degrade query performance and waste storage. Keep integer PK, expose uid field for external use.</reason>
+        <reason>At scale (millions of rows), UUID PKs degrade query performance, increase storage, and waste memory on B-tree nodes. Keep integer PK, expose uid field for external use.</reason>
       </antipattern>
 
       <antipattern>
-        <description>Forgetting to index the uid field. UUIDs are unique but not indexed by default in some configurations.</description>
-        <reason>Unindexed uid lookups are full table scans. Always add db_index=True to uid fields that will be searched.</reason>
+        <description>Forgetting to index the uid field. UUIDs are unique but not indexed by default in all configurations.</description>
+        <reason>Unindexed uid lookups are full table scans. Always add db_index=True to uid fields that will be searched or used in APIs.</reason>
       </antipattern>
 
       <antipattern>
         <description>Using CASCADE when PROTECT is safer for ownership relationships like User→Order.</description>
-        <reason>CASCADE silently deletes historical data. PROTECT forces explicit handling, preventing accidental data loss.</reason>
+        <reason>CASCADE silently deletes historical order data when a user is deleted. PROTECT forces explicit handling, preventing accidental data loss and preserving audit trails.</reason>
       </antipattern>
 
       <antipattern>
         <description>Not considering soft delete for important data. Hard deletes cannot be undone.</description>
-        <reason>Soft delete is cheap (one DateTimeField) and prevents losing data to user mistakes or bugs.</reason>
+        <reason>Soft delete is cheap (one DateTimeField, one index) and prevents losing data to user mistakes, bugs, or accidental database manipulations.</reason>
       </antipattern>
 
       <antipattern>
         <description>Exposing auto-increment IDs in APIs. Integer IDs leak information about system size and enable enumeration attacks.</description>
-        <reason>Use uuid field in URLs/APIs. Endpoints like /orders/1, /orders/2 reveal competitor data patterns. UUIDs are opaque.</reason>
+        <reason>Endpoints like /orders/1, /orders/2 reveal competitor data patterns and enable bots to crawl all your data. UUIDs are opaque and prevent enumeration.</reason>
       </antipattern>
+
+      <antipattern>
+        <description>Not handling cascading soft deletes. When a parent is soft deleted, related children remain active.</description>
+        <reason>A soft-deleted order with active order items creates inconsistent state. Implement cascading soft deletes or use SET_NULL for optional relationships.</reason>
+      </antipattern>
+    </section>
+
+    <section name="implementation-checklist">
+      <p>Step-by-step checklist for designing and implementing base models in Django projects.</p>
+      <checklist>
+        <check>Identify common fields needed (timestamps, UUID, soft delete, audit trail, version).</check>
+        <check>Determine UUID strategy (separate uid field or UUID PK).</check>
+        <check>Identify inheritance pattern (abstract base, multi-table, proxy).</check>
+        <check>Create core BaseModel with UUID, created_at, updated_at fields.</check>
+        <check>Design mixin hierarchy (TimestampMixin, UUIDMixin, SoftDeleteMixin, AuditMixin, TenantMixin).</check>
+        <check>Define custom managers (default active manager, all_objects for admin).</check>
+        <check>Implement soft delete manager and queryset methods (delete, hard_delete, restore, active, deleted).</check>
+        <check>Configure soft delete model with deleted_at field and override delete() method.</check>
+        <check>Set up audit trail (choose library: django-simple-history or django-auditlog).</check>
+        <check>Add HistoricalRecords to models needing change tracking.</check>
+        <check>Implement user tracking middleware for audit trail user capture.</check>
+        <check>Create TenantAwareModel for multi-tenant with tenant FK and TenantManager.</check>
+        <check>Implement TenantManager with get_current_tenant() filtering via middleware.</check>
+        <check>Create unique constraints with soft delete (include deleted_at in uniqueness).</check>
+        <check>Define ForeignKey on_delete behavior (CASCADE, PROTECT, SET_NULL) per relationship type.</check>
+        <check>Combine mixins in correct order for MRO (Method Resolution Order).</check>
+        <check>Test model inheritance and manager behavior with all managers.</check>
+        <check>Verify admin integration shows deleted records and restore actions.</check>
+        <check>Run migrations and verify database structure matches design.</check>
+        <check>Test soft delete cascading behavior for related models.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts-for-base-models">
+      <p>Effective prompts for AI-assisted Django base model design and implementation.</p>
+
+      <prompt purpose="Initial base model system design">
+I'm starting a new Django project. Help me design a base model system.
+
+Project context:
+- Type: [SaaS / E-commerce / Internal tool / API backend]
+- Django version: [5.0+ / 5.2 LTS]
+- Database: [PostgreSQL / MySQL / SQLite]
+- Multi-tenant: [Yes / No]
+- Soft delete needed: [Yes / No]
+- Audit trail needed: [Yes / No]
+- API exposure: [REST / GraphQL / None]
+
+Please recommend:
+1. Base model structure (fields, mixins)
+2. Manager/QuerySet patterns
+3. UUID strategy (separate field vs PK)
+4. Any Django 5.x features to leverage
+      </prompt>
+
+      <prompt purpose="Soft delete implementation">
+Implement a production-ready soft delete system for Django with:
+
+Requirements:
+1. SoftDeleteManager - excludes deleted by default
+2. AllObjectsManager - includes deleted for admin
+3. delete() - sets deleted_at timestamp
+4. hard_delete() - actually removes from DB
+5. restore() - undeletes record
+6. is_deleted property
+7. QuerySet with bulk soft delete/restore
+8. Consider unique constraints with deleted records
+
+Provide complete, copy-paste ready code.
+      </prompt>
+
+      <prompt purpose="Multi-tenant model design">
+I need to implement multi-tenancy in Django. Help me choose and implement the right approach.
+
+Context:
+- Expected tenants: [10-100 / 100-1000 / 1000+]
+- Data isolation requirement: [Strict / Moderate]
+- Tenant identification: [Subdomain / Header / URL path]
+- Database: [PostgreSQL / MySQL]
+- Existing models: [Yes, need migration / No, greenfield]
+
+Compare these approaches for my use case:
+1. Shared schema with tenant FK
+2. Schema per tenant (PostgreSQL)
+3. Database per tenant
+
+Then implement the recommended approach with:
+- Tenant model
+- Tenant-aware base mixin
+- Middleware for tenant resolution
+- Manager that auto-filters by tenant
+      </prompt>
+
+      <prompt purpose="Audit trail library selection">
+I need to implement audit trail for Django models. Compare these options for my use case:
+
+Requirements:
+- Track: [All fields / Specific fields only]
+- History access: [Frequent queries / Rare, mostly compliance]
+- Database: [PostgreSQL / MySQL / SQLite]
+- Performance priority: [Writes / Reads / Balanced]
+
+Compare:
+1. django-simple-history
+2. django-auditlog
+3. django-reversion
+4. pghistory (PostgreSQL only)
+
+Recommend one and explain why, then show implementation with:
+- Installation and setup
+- Model configuration with HistoricalRecords
+- Middleware for user tracking
+- Example queries (get history, as_of, diff)
+- Admin integration
+      </prompt>
+
+      <prompt purpose="Custom manager and queryset design">
+Design a custom Manager/QuerySet system for a Django model.
+
+Model: [ModelName]
+Common query patterns:
+- [Query 1: e.g., "Get active items"]
+- [Query 2: e.g., "Filter by date range"]
+- [Query 3: e.g., "Get items by status"]
+- [Query 4: e.g., "Aggregate by category"]
+
+Requirements:
+- Methods should be chainable
+- Manager should expose QuerySet methods
+- Include type hints
+- Support for filtering on related models
+
+Generate the complete implementation with examples of chaining.
+      </prompt>
+
+      <prompt purpose="Django 5.x GeneratedField">
+I want to use Django 5.x GeneratedField for computed columns.
+
+Use cases:
+1. Full name from first_name + last_name
+2. Order total from quantity * unit_price
+3. Discount price from price * (1 - discount_percent/100)
+
+For each:
+- Show the GeneratedField definition
+- Explain db_persist=True vs False
+- Note database compatibility
+- Show how to query/filter on generated fields
+- Migration considerations
+      </prompt>
+    </section>
+
+    <section name="performance-and-scale">
+      <p>Considerations for base models at scale and with large datasets.</p>
+
+      <rule testable="false">
+        <statement>For models with millions of rows, ensure created_at and updated_at fields are indexed. Add db_index=True to any frequently queried timestamp field.</statement>
+        <rationale>Unindexed time-range queries (e.g., get orders from last 30 days) become full table scans at scale. Indexes make these queries efficient and O(log n).</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>When using soft delete with unique constraints, consider adding deleted_at to the uniqueness constraint so deleted records don't block new records with the same value (e.g., email).</statement>
+        <rationale>A deleted user with email alice@example.com blocks new registration with that email if the unique constraint doesn't include deleted_at. Use UniqueConstraint with Q(deleted_at__isnull=True).</rationale>
+      </rule>
+
+      <rule testable="false">
+        <statement>In multi-tenant systems, add indexes to (tenant_id, created_at) composite keys for efficient tenant + time queries. This is more efficient than separate indexes.</statement>
+        <rationale>Composite indexes allow the database to filter by tenant first, then by time, in a single index traversal. Separate indexes force index merges.</rationale>
+      </rule>
     </section>
 
     <templates>

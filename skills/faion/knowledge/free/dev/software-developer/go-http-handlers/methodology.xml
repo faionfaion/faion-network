@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-http-handlers">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Build Go HTTP services with Gin or Echo using explicit middleware, thin handlers, context propagation, and graceful shutdown to prevent production bugs.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>http</tag>
+      <tag>gin</tag>
+      <tag>echo</tag>
+      <tag>middleware</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Go HTTP Handlers (Gin / Echo)</title>
+    <summary>A methodology for building Go HTTP services with Gin or Echo: explicit middleware stack (Recovery first, then Logger, then RequestID), thin handlers that only bind → call service → translate to HTTP, request structs with `binding:"required,..."` tags, `c.Request.Context()` propagated to all downstream calls, and a graceful shutdown wrapper on SIGINT/SIGTERM. Choose Gin for ecosystem breadth; Echo for first-party middleware and interface-driven handlers.</summary>
+    <why>
+      <p>Both frameworks are safe defaults but have subtle traps: `gin.Default()` double-registers Logger/Recovery, middleware order changes auth/logging semantics silently, and attaching goroutines to `c.Request.Context()` causes panics after the response returns. These are not caught by the compiler. Explicit middleware registration, thin handlers, and context propagation rules prevent the class of bugs that only appear in production under concurrent load.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building a Go HTTP service with ergonomic routing and middleware composition.</item>
+        <item>Gin: JSON-heavy endpoints, gin-binding tag validation, broad middleware ecosystem.</item>
+        <item>Echo: first-party JWT/CORS/rate-limit, interface-driven handlers, HTTP/2.</item>
+        <item>Greenfield microservice on Linux/k8s where memory footprint matters.</item>
+        <item>Migrating a Python/Node API to Go for throughput or cost reasons.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Go 1.22+ shops where `net/http` ServeMux supports method+path routing and the team prefers stdlib-only.</item>
+        <item>`fasthttp`-backed routers (Fiber) where stdlib middleware compatibility is required.</item>
+        <item>gRPC-first services — drive HTTP via `grpc-gateway` instead.</item>
+        <item>One-off CLIs or five-route admin tools.</item>
+        <item>Teams already standardized on chi, Fiber, or huma — do not mix routers.</item>
+      </list>
+    </when-not-to-use>
+    <section name="middleware-order">
+      <rule>
+        <statement>Register middleware in this order: Recovery first, Logger second, RequestID third, then auth and domain-specific middleware.</statement>
+        <rationale>Recovery must be outermost so panics in all subsequent middleware and handlers are caught. Logger before RequestID means panic logs would lack the request ID. The specific order is not obvious from the APIs and is a frequent source of silent breakage.</rationale>
+      </rule>
+      <rule>
+        <statement>Use gin.New() instead of gin.Default(). Explicitly register each middleware.</statement>
+        <rationale>gin.Default() registers Logger and Recovery automatically. Adding r.Use(middleware.Logger()) again doubles every log entry and makes the middleware stack implicit. gin.New() with explicit registration is the only self-documenting approach.</rationale>
+      </rule>
+    </section>
+    <section name="context-propagation">
+      <rule>
+        <statement>Use c.Request.Context() everywhere. Pass it to every service, repository, and database call.</statement>
+        <rationale>c.Request.Context() is cancelled when the client disconnects. Propagating it to DB calls frees goroutines and connections immediately on disconnect, preventing goroutine leaks under load.</rationale>
+      </rule>
+      <rule>
+        <statement>Never create context.Background() inside a handler. context.Background() is for main() and test setup only.</statement>
+        <rationale>A handler that creates context.Background() spawns work that lives beyond the request lifetime, bypassing cancellation and timeout propagation. Lint for context.Background() outside main and tests.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not spawn goroutines inside a handler that use c.Request.Context(). The context is cancelled when the handler returns, causing panics in goroutines that then try to use it.</statement>
+        <rationale>The goroutine outlives the request. When the request completes, c.Request.Context() is cancelled and the goroutine's next DB or HTTP call returns context.Canceled, often panicking the goroutine without a Recovery wrapper.</rationale>
+      </rule>
+    </section>
+    <section name="thin-handlers">
+      <rule>
+        <statement>Keep handlers to: bind request → validate → call one service method → translate to HTTP. No business logic in handler files.</statement>
+        <rationale>Business logic in handlers is untestable without spinning up a full HTTP server. Thin handlers allow service logic to be unit-tested independently of HTTP concerns.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate in the request struct via binding tags, not in the handler body. Use binding:"required,email,gte=0" in Gin; centralized validator in Echo.</statement>
+        <rationale>Inline validation (if req.Email == "") scatters logic, misses edge cases, and produces inconsistent error messages. Tag-based validation runs before the handler body and returns structured errors automatically.</rationale>
+      </rule>
+    </section>
+    <section name="server-timeouts">
+      <rule>
+        <statement>Always set ReadHeaderTimeout, ReadTimeout, WriteTimeout, and IdleTimeout on http.Server. Never leave default zero values.</statement>
+        <rationale>Zero timeouts leave the server open to slow-loris attacks and unbounded goroutine accumulation from idle connections. Set conservative values (e.g., ReadHeaderTimeout: 5s, WriteTimeout: 30s).</rationale>
+      </rule>
+    </section>
+    <example type="good" title="Gin Router with Explicit Middleware">
+      <code lang="go"><![CDATA[
+func SetupRouter(h *handler.UserHandler) *gin.Engine {
+    r := gin.New()  // not gin.Default()
+
+    // Middleware order: Recovery → Logger → RequestID
+    r.Use(middleware.Recovery())
+    r.Use(middleware.Logger())
+    r.Use(middleware.RequestID())
+
+    r.GET("/healthz", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+    r.GET("/readyz",  func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+
+    v1 := r.Group("/api/v1")
+    users := v1.Group("/users")
+    users.Use(middleware.Auth())
+    {
+        users.GET("",     h.ListUsers)
+        users.GET("/:id", h.GetUser)
+        users.POST("",    h.CreateUser)
+        users.PUT("/:id", h.UpdateUser)
+        users.DELETE("/:id", h.DeleteUser)
+    }
+
+    return r
+}
+      ]]></code>
+      <note>gin.New() + explicit middleware order. Health endpoints before auth group.</note>
+    </example>
+    <example type="good" title="Request Binding Struct">
+      <code lang="go"><![CDATA[
+type CreateUserRequest struct {
+    Name  string `json:"name"  binding:"required,min=2,max=100"`
+    Email string `json:"email" binding:"required,email"`
+    Age   int    `json:"age"   binding:"gte=0,lte=130"`
+}
+
+func (h *UserHandler) CreateUser(c *gin.Context) {
+    var req CreateUserRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    user, err := h.svc.CreateUser(c.Request.Context(), req)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+        return
+    }
+    c.JSON(http.StatusCreated, gin.H{"data": user})
+}
+      ]]></code>
+      <note>Validation in struct tags. c.Request.Context() propagated to service. Handler is thin.</note>
+    </example>
+    <antipattern>
+      <description>Using gin.Default() and then adding r.Use(middleware.Logger()) again.</description>
+      <reason>gin.Default() already registers Logger and Recovery. Adding Logger a second time doubles every log entry and makes the middleware stack invisible to readers. Use gin.New() with explicit middleware registration.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Creating context.Background() inside a handler to pass to a service or DB call.</description>
+      <reason>context.Background() is never cancelled and has no deadline. The downstream call outlives the request, keeps connections open, and prevents graceful shutdown from completing. Always use c.Request.Context().</reason>
+    </antipattern>
+    <antipattern>
+      <description>Spawning go func() inside a handler that captures c.Request.Context().</description>
+      <reason>When the handler returns, the context is cancelled. The goroutine's next DB or HTTP call returns context.Canceled. Without a recover() inside the goroutine, the panic kills the process. Use a derived context with explicit timeout from context.Background() for fire-and-forget work.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Returning raw gin.H{"error": err.Error()} which leaks struct field names and binding tag details.</description>
+      <reason>gin's validator returns messages like "Field validation for 'Email' failed on the 'email' tag". These expose internal model field names and validation rules to external clients. Wrap in a translator or return a generic error message.</reason>
+    </antipattern>
+    <antipattern>
+      <description>CORS configured with AllowOrigins: ["*"] and AllowCredentials: true.</description>
+      <reason>This combination is invalid per the CORS spec. Modern browsers reject credentialed cross-origin requests when the response contains a wildcard origin. Specify origins explicitly.</reason>
+    </antipattern>
+    <antipattern>
+      <description>JWT signing key shorter than 32 bytes or hardcoded as a string literal.</description>
+      <reason>Short HS256 keys are brute-forceable. Hardcoded keys are committed to source control. Use a minimum 32-byte key loaded from an environment variable or secrets manager, or switch to RS256 with a managed key pair.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Graceful shutdown: calling srv.Shutdown(ctx) but not waiting for server.close before exiting.</description>
+      <reason>srv.Shutdown is asynchronous relative to the process exit. Without waiting for the server.close callback, the process exits mid-request. Use the server.Run wrapper that blocks until Shutdown completes.</reason>
+    </antipattern>
+    <section name="best-practices">
+      <rule>
+        <statement>Always set timeouts on `http.Server`: `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`. Default zero values are slow-loris-friendly.</statement>
+        <rationale>Unbounded timeouts cause goroutine and connection accumulation under load.</rationale>
+      </rule>
+      <rule>
+        <statement>Use `c.Request.Context()` everywhere. Pass it down to services, repos, DB. Cancel-on-disconnect propagates and saves goroutines.</statement>
+        <rationale>Request context cancellation prevents resource leaks when clients disconnect mid-request.</rationale>
+      </rule>
+      <rule>
+        <statement>Wrap errors with `%w`. `fmt.Errorf("create user %s: %w", id, err)`. Use `errors.Is/As` upstream. Never log + return; pick one.</statement>
+        <rationale>Error wrapping enables proper error inspection and prevents duplicate logging.</rationale>
+      </rule>
+      <rule>
+        <statement>One handler per file for resources >5 endpoints; otherwise grouping by resource is fine.</statement>
+        <rationale>Single-file handlers stay readable and testable.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep handlers thin: bind → call service → translate to HTTP. No business logic in handler files.</statement>
+        <rationale>Thin handlers are unit-testable without HTTP context.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate in the request struct, not in the handler body. Use `binding:"required,email,..."` (Gin) or a centralized validator (Echo) — never `if req.Email == ""`.</statement>
+        <rationale>Struct-level validation is centralized, automatic, and returns consistent errors.</rationale>
+      </rule>
+      <rule>
+        <statement>Structured logging only. `zap` or `slog`; include `request_id`, `user_id`, `route`, `latency_ms`. Plain `fmt.Println` is banned.</statement>
+        <rationale>Structured logs enable log aggregation and filtering at scale.</rationale>
+      </rule>
+      <rule>
+        <statement>`/healthz` (liveness) ≠ `/readyz` (readiness). Liveness should never check downstream dependencies; readiness must.</statement>
+        <rationale>Liveness-check dependencies cause cascading failures in Kubernetes orchestration.</rationale>
+      </rule>
+      <rule>
+        <statement>Build distroless static images. `CGO_ENABLED=0` + `gcr.io/distroless/static-debian12` keeps containers less than 20 MB and CVE-free.</statement>
+        <rationale>Minimal images reduce attack surface and improve startup time.</rationale>
+      </rule>
+      <rule>
+        <statement>`pprof` behind a separate listener on `127.0.0.1:6060` — never expose on the public router.</statement>
+        <rationale>Profiling endpoints expose sensitive runtime information.</rationale>
+      </rule>
+      <rule>
+        <statement>Recovery middleware first, logger second, request-ID even earlier so panics are logged with the correct request.</statement>
+        <rationale>Proper middleware order ensures comprehensive observability of failures.</rationale>
+      </rule>
+      <rule>
+        <statement>No background goroutines tied to request context. If you need fire-and-forget, derive from `context.Background()` with an explicit timeout, and log + recover inside.</statement>
+        <rationale>Background goroutines must not depend on request context lifecycle.</rationale>
+      </rule>
+    </section>
+    <section name="ai-agent-gotchas">
+      <note>Implicit middleware order: Agents trained on Gin "Hello World" emit `r := gin.Default()` (which already includes Logger + Recovery), then add `r.Use(middleware.Logger())` again — duplicates logs. Reject `gin.Default()`; use `gin.New()` and explicit middleware.</note>
+      <note>`gin.H` vs typed responses: Agents return `gin.H{"data": ...}` everywhere; lose static typing. Force typed response structs.</note>
+      <note>Mixing Echo v4 and v5 imports: Module-aware go.sum will pin one; the agent's import path must match. Verify before generation.</note>
+      <note>Hardcoded `:8080`: Agents inline ports / DB URLs; force `os.Getenv` or a `config` package.</note>
+      <note>Forgetting Recovery: A panic kills the process; agents skip Recovery in "minimal" examples. Mandate it in middleware list.</note>
+      <note>`context.Background()` in handlers: Agents create background contexts inside handlers, breaking cancellation. Lint for `context.Background()` outside `main` and tests.</note>
+      <note>Goroutine leaks via `c.Request.Context()` after return: A `go func() { db.Query(c.Request.Context(), ...) }()` panics; agents do this often. Reviewer must flag.</note>
+      <note>Validator messages exposed raw: Agents do `c.JSON(400, gin.H{"error": err.Error()})` — leaks struct field names and tag rules. Wrap in a translator.</note>
+      <note>CORS wildcard: Default LLM output is `AllowOrigins: ["*"], AllowCredentials: true` — invalid combo at the browser. Use specific origins.</note>
+      <note>JWT signing key: Agents hard-code `[]byte("secret")` as in the Echo example; reject anything shorter than 32 bytes and prefer RS256 with a key file or KMS.</note>
+      <note>`for _, x := range slice { go func() { use(x) } }` — pre-Go 1.22 captures by ref; agents trained on older code reproduce the bug. Confirm Go version and either use 1.22+ semantics or the explicit shadowed-var pattern.</note>
+      <note>`json:"-"` on password fields forgotten: Agents return user models directly with hashed passwords inside; require a Response DTO for every model.</note>
+      <note>Shutdown swallowed: Agents call `srv.Shutdown(ctx)` but exit without waiting; container kills mid-request. Reviewer must verify.</note>
+      <note>Hand-rolled rate-limit: Agents implement IP-keyed maps without TTL — memory leak. Use `uber-go/ratelimit` or `httprate` (chi).</note>
+    </section>
+    <commands>
+      <command name="go toolchain">Build / test / vet. Install: https://go.dev/dl/</command>
+      <command name="staticcheck">Linter beyond `go vet`. Install: `go install honnef.co/go/tools/cmd/staticcheck@latest`</command>
+      <command name="golangci-lint">Aggregate linter (govet, staticcheck, gosec, errcheck, ...). Install: https://golangci-lint.run</command>
+      <command name="gosec">Security scanner for Go. Install: `go install github.com/securego/gosec/v2/cmd/gosec@latest`</command>
+      <command name="air">Live-reload during dev. Install: `go install github.com/cosmtrek/air@latest`</command>
+      <command name="delve (dlv)">Debugger. Install: `go install github.com/go-delve/delve/cmd/dlv@latest`</command>
+      <command name="pprof">Profiling (CPU, heap, goroutine). Bundled with Go.</command>
+      <command name="oapi-codegen">Generate Echo/Gin handlers from OpenAPI. Docs: https://github.com/oapi-codegen/oapi-codegen</command>
+      <command name="wire (Google)">Compile-time DI. Docs: https://github.com/google/wire</command>
+      <command name="httpie / xh / curl">API smoke tests. Docs: https://github.com/ducaale/xh</command>
+      <command name="vegeta">Load testing. Install: `go install github.com/tsenart/vegeta/v12@latest`</command>
+      <command name="grype / trivy">Image vulnerability scanning. Docs: https://github.com/anchore/grype</command>
+    </commands>
+    <templates>
+      <template path="templates/server.go" purpose="Graceful shutdown wrapper with signal.NotifyContext and drain timeout"/>
+    </templates>
+    <see-also>
+      <link href="https://gin-gonic.com/docs/"/>
+      <link href="https://echo.labstack.com"/>
+      <link href="https://pkg.go.dev/net/http#ServeMux"/>
+      <link href="https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/"/>
+      <link href="https://github.com/go-playground/validator"/>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://opentelemetry.io/docs/instrumentation/go/"/>
+      <link href="https://github.com/securego/gosec"/>
+    </see-also>
+  </content>
+</methodology>

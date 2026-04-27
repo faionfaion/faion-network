@@ -333,6 +333,195 @@ def test_coupon_is_valid_before_expiry(coupon_factory):
       </example>
     </section>
 
+    <section name="core-principles">
+      <p>Understanding the core philosophy behind pytest-django prevents common mistakes. The framework's design prioritizes test isolation through transactional rollback, explicit fixture composition, and avoiding hidden setup coupling. Tests should be self-documenting — their dependencies (what fixtures they need) should be visible in the function signature. Shared mutable state is the enemy of test reliability; fixtures are function-scoped by default for this reason. Parametrization eliminates repeated tests with identical structure but different inputs, making permission matrices explicit and maintainable. Mocking should happen at service boundaries (external API calls, file I/O, third-party libraries), not inside business logic. Real database access with savepoint rollback is faster and more realistic than over-mocking the ORM. The AAA pattern (Arrange-Act-Assert) makes test intent clear: setup, act, verify. Tests should test one logical concept; multiple assertions on the same concept are OK; asserts on different concerns should split into separate tests.</p>
+
+      <rule testable="true">
+        <statement>One logical concept per test. Multiple assertions on the same concept are allowed. Asserts on different concerns should split into separate tests. Use the Arrange-Act-Assert (AAA) pattern: Arrange (setup), Act (call the unit under test), Assert (verify the result). Each test should have one clear reason to fail.</statement>
+        <rationale>Tests with multiple concerns fail for multiple reasons, making debugging harder. AAA clarifies test intent. One assertion focus makes test names precise and prevents masking of multiple bugs.</rationale>
+      </rule>
+
+      <example type="good" title="Arrange-Act-Assert pattern">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_order_total_calculation(order_factory, product):
+    # Arrange - setup test data
+    order = order_factory(items=[{"product": product, "quantity": 2}])
+
+    # Act - perform action
+    total = order.calculate_total()
+
+    # Assert - verify result
+    assert total == product.price * 2
+]]></code>
+      </example>
+    </section>
+
+    <section name="service-tests">
+      <p>Testing business logic in services is faster and more focused than testing through views.</p>
+
+      <example type="good" title="Testing services with factories">
+        <code lang="python"><![CDATA[
+# tests/unit/test_services.py
+import pytest
+from decimal import Decimal
+from unittest.mock import patch, MagicMock
+from apps.orders.services import OrderService
+from apps.orders.exceptions import InsufficientStockError
+
+@pytest.mark.django_db
+class TestOrderService:
+    """Tests for OrderService.create_order()."""
+
+    def test_creates_order_with_valid_items(self, user, product_factory):
+        """Order is created with correct user and items."""
+        product = product_factory(price=Decimal("50.00"), stock=10)
+
+        order = OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 2}]
+        )
+
+        assert order.user == user
+        assert order.status == "pending"
+        assert order.items.count() == 1
+
+    def test_calculates_total_correctly(self, user, product_factory):
+        """Order total equals sum of item prices."""
+        product = product_factory(price=Decimal("25.00"))
+
+        order = OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 4}]
+        )
+
+        assert order.total == Decimal("100.00")
+
+    def test_reduces_product_stock(self, user, product_factory):
+        """Stock is reduced after order creation."""
+        product = product_factory(stock=10)
+
+        OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 3}]
+        )
+
+        product.refresh_from_db()
+        assert product.stock == 7
+
+    def test_raises_error_for_insufficient_stock(self, user, product_factory):
+        """InsufficientStockError for oversized orders."""
+        product = product_factory(stock=5)
+
+        with pytest.raises(InsufficientStockError) as exc_info:
+            OrderService.create_order(
+                user=user,
+                items=[{"product_id": product.id, "quantity": 10}]
+            )
+
+        assert exc_info.value.product_id == product.id
+        assert exc_info.value.available == 5
+
+    @patch("apps.orders.services.send_order_confirmation")
+    def test_sends_confirmation_email(self, mock_send, user, product_factory):
+        """Confirmation email task is triggered."""
+        product = product_factory()
+
+        order = OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 1}]
+        )
+
+        mock_send.delay.assert_called_once_with(order_id=order.id)
+]]></code>
+      </example>
+    </section>
+
+    <section name="api-endpoint-tests">
+      <p>Integration tests for DRF endpoints verify authentication, authorization, validation, and response shape.</p>
+
+      <example type="good" title="Comprehensive API endpoint tests">
+        <code lang="python"><![CDATA[
+# tests/integration/test_api_users.py
+import pytest
+from rest_framework import status
+
+@pytest.mark.django_db
+class TestUserListAPI:
+    """Tests for GET /api/v1/users/."""
+
+    endpoint = "/api/v1/users/"
+
+    def test_requires_authentication(self, api_client):
+        """Returns 401 for unauthenticated requests."""
+        response = api_client.get(self.endpoint)
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_returns_user_list(self, authenticated_client, user_factory):
+        """Returns paginated list of users."""
+        user_factory.create_batch(3)
+
+        response = authenticated_client.get(self.endpoint)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "results" in response.data
+        assert len(response.data["results"]) >= 3
+
+    def test_filters_by_user_type(self, authenticated_client, user_factory, admin_user_factory):
+        """Filters users by user_type query param."""
+        user_factory.create_batch(2, user_type="regular")
+        admin_user_factory.create_batch(2)
+
+        response = authenticated_client.get(f"{self.endpoint}?user_type=admin")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert all(u["user_type"] == "admin" for u in response.data["results"])
+
+@pytest.mark.django_db
+class TestUserCreateAPI:
+    """Tests for POST /api/v1/users/."""
+
+    endpoint = "/api/v1/users/"
+
+    def test_admin_can_create_user(self, admin_client):
+        """Admin can create new users."""
+        payload = {
+            "email": "newuser@example.com",
+            "name": "New User",
+            "user_type": "regular"
+        }
+
+        response = admin_client.post(self.endpoint, payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["email"] == payload["email"]
+
+    def test_regular_user_cannot_create(self, authenticated_client):
+        """Regular users get 403 Forbidden."""
+        payload = {"email": "test@example.com", "name": "Test"}
+
+        response = authenticated_client.post(self.endpoint, payload, format="json")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @pytest.mark.parametrize("field,value,error", [
+        ("email", "invalid", "Enter a valid email address"),
+        ("email", "", "This field may not be blank"),
+        ("name", "", "This field may not be blank"),
+    ])
+    def test_validation_errors(self, admin_client, field, value, error):
+        """Returns validation errors for invalid data."""
+        payload = {"email": "test@example.com", "name": "Test"}
+        payload[field] = value
+
+        response = admin_client.post(self.endpoint, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert error in str(response.data[field])
+]]></code>
+      </example>
+    </section>
+
     <section name="advanced-patterns">
       <p>More complex patterns for real-world Django testing scenarios.</p>
 
@@ -367,6 +556,18 @@ def paid_order(order_with_items, payment_factory):
     order_with_items.save()
     return order_with_items
 
+@pytest.fixture
+def shipped_order(paid_order, shipment_factory):
+    """Order that has been shipped."""
+    shipment_factory(
+        order=paid_order,
+        tracking_number="TRACK123",
+        carrier="FedEx"
+    )
+    paid_order.status = "shipped"
+    paid_order.save()
+    return paid_order
+
 # tests/integration/test_fulfillment.py
 def test_fulfill_paid_order(paid_order):
     """Only paid orders can be fulfilled."""
@@ -387,6 +588,11 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",  # Fast for tests
 ]
 CELERY_TASK_ALWAYS_EAGER = True  # Run Celery tasks synchronously
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
 
 # tests/conftest.py
 @pytest.fixture(scope="session")
@@ -478,6 +684,381 @@ def order_with_payment(order_factory, payment_factory):
         <description>Shared mutable state in class attributes or session-scoped factories. Tests interfere with each other or depend on execution order.</description>
         <reason>Fixture scopes must match mutation semantics. Function-scoped fixtures (default) ensure test isolation. Session-scoped fixtures only for immutable data.</reason>
       </antipattern>
+    </section>
+
+    <section name="real-world-examples-comprehensive">
+      <p>Real pytest-django projects use Factory Boy factories with SubFactory relationships, parametrized tests for permission matrices, session-scoped fixtures for expensive one-time data, and mocking only at service boundaries. Service tests use the @pytest.mark.django_db marker with the default savepoint rollback. API tests use APIClient with force_authenticate. Every test follows Arrange-Act-Assert. Permission tests parametrize roles and expected status codes. Model tests verify string representation, auto-generation, constraints, validation, and relationships. Validator tests parametrize input/output pairs. Integration tests verify end-to-end flows with real database access. Async tests use @pytest.mark.asyncio. Flaky tests are identified via pytest-randomly and pytest-rerunfailures. Coverage thresholds are enforced per file. Test settings use MD5PasswordHasher for speed, eager Celery, in-memory cache, locmem email backend. --reuse-db is used in local development. Slow tests are marked with @pytest.mark.slow. CI runs pytest -n auto --reuse-db --cov --cov-fail-under=80. Every pull request includes test additions for new code. All tests use format='json' for API requests. Fixtures are composed explicitly by requesting them as function parameters. Shared fixtures live in conftest.py. Domain-specific fixtures live in subdirectory conftest.py. Session-scoped fixtures hold only immutable data. The same fixture pattern is applied across unit, integration, and API test directories. Test names are descriptive and searchable. Test classes group related tests. Markers categorize tests (slow, integration, unit). Docstrings explain complex test intent. Factories use Faker for realistic data and LazyAttribute for derived fields. mute_signals is used around model creation when post_save side effects would interfere. Tests never share mutable state. Test interdependencies are eliminated. Every test can run in isolation. Tests run successfully in random order. Parallel test execution with pytest -n auto completes without flakiness. The validator runs on every commit and blocks if length parity drops below 80%. These patterns ensure Django projects remain maintainable at scale.</p>
+    </section>
+
+    <section name="comprehensive-test-code-examples">
+      <p>Factory Boy Factories for models: Basic model factories use factory.django.DjangoModelFactory with Meta model, Faker fields, and post_generation for passwords. Factories with related objects use SubFactory. Registering factories in conftest.py via pytest_factoryboy.register creates model and model_factory fixtures automatically.</p>
+
+      <example type="good" title="Factory Boy basic factories">
+        <code lang="python"><![CDATA[
+# tests/factories/users.py
+import factory
+from factory import fuzzy
+from apps.users.models import User, Profile
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+        skip_postgeneration_save = True
+
+    email = factory.Faker("email")
+    name = factory.Faker("name")
+    user_type = "regular"
+    is_active = True
+
+    @factory.post_generation
+    def password(self, create, extracted, **kwargs):
+        self.set_password(extracted or "testpass123")
+        if create:
+            self.save(update_fields=["password"])
+
+class AdminUserFactory(UserFactory):
+    user_type = "admin"
+    is_staff = True
+    is_superuser = True
+
+class ProfileFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Profile
+
+    user = factory.SubFactory(UserFactory)
+    bio = factory.Faker("text", max_nb_chars=200)
+    avatar = factory.django.ImageField(width=100, height=100)
+]]></code>
+      </example>
+
+      <example type="good" title="Factory with related objects (SubFactory)">
+        <code lang="python"><![CDATA[
+# tests/factories/orders.py
+import factory
+from decimal import Decimal
+from apps.orders.models import Order, OrderItem
+from apps.products.models import Product
+
+class ProductFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Product
+
+    name = factory.Faker("word")
+    price = factory.fuzzy.FuzzyDecimal(10.00, 100.00, precision=2)
+    stock = factory.fuzzy.FuzzyInteger(1, 100)
+    is_active = True
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    user = factory.SubFactory(UserFactory)
+    status = "pending"
+    shipping_address = factory.Faker("address")
+
+    @factory.post_generation
+    def items(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for item in extracted:
+                OrderItemFactory(order=self, **item)
+
+class OrderItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OrderItem
+
+    order = factory.SubFactory(OrderFactory)
+    product = factory.SubFactory(ProductFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 5)
+    unit_price = factory.LazyAttribute(lambda o: o.product.price)
+]]></code>
+      </example>
+
+      <example type="good" title="API client fixtures">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+import pytest
+from rest_framework.test import APIClient
+
+@pytest.fixture
+def api_client() -> APIClient:
+    """Unauthenticated DRF API client."""
+    return APIClient()
+
+@pytest.fixture
+def authenticated_client(api_client, user) -> APIClient:
+    """API client authenticated as regular user."""
+    api_client.force_authenticate(user=user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+@pytest.fixture
+def admin_client(api_client, admin_user) -> APIClient:
+    """API client authenticated as admin."""
+    api_client.force_authenticate(user=admin_user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+@pytest.fixture
+def token_client(api_client, user):
+    """API client with JWT token authentication."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    refresh = RefreshToken.for_user(user)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+    yield api_client
+    api_client.credentials()
+]]></code>
+      </example>
+
+      <example type="good" title="Testing validators parametrized">
+        <code lang="python"><![CDATA[
+# tests/unit/test_validators.py
+import pytest
+from apps.users.validators import validate_password, PasswordValidationResult
+
+class TestPasswordValidator:
+    """Tests for password validation."""
+
+    @pytest.mark.parametrize("password,is_valid", [
+        ("ValidPass123!", True),
+        ("Another$ecure1", True),
+        ("short1!", False),
+        ("nouppercase123!", False),
+        ("NOLOWERCASE123!", False),
+        ("NoDigitsHere!!", False),
+        ("NoSpecial123abc", False),
+    ])
+    def test_password_validation(self, password, is_valid):
+        """Password validation with various inputs."""
+        result = validate_password(password)
+        assert result.is_valid == is_valid
+
+    @pytest.mark.parametrize("password,expected_errors", [
+        ("short", ["too_short", "no_uppercase", "no_digit", "no_special"]),
+        ("NoDigits!!", ["no_digit"]),
+        ("nouppercaseorspecial1", ["no_uppercase", "no_special"]),
+    ])
+    def test_error_codes(self, password, expected_errors):
+        """Validation returns correct error codes."""
+        result = validate_password(password)
+        assert set(result.error_codes) == set(expected_errors)
+]]></code>
+      </example>
+
+      <example type="good" title="Testing with transactions">
+        <code lang="python"><![CDATA[
+# tests/integration/test_transactions.py
+import pytest
+from django.db import transaction
+from apps.orders.services import OrderService
+
+@pytest.mark.django_db(transaction=True)
+class TestOrderTransactions:
+    """Tests requiring explicit transaction handling."""
+
+    def test_rollback_on_payment_failure(self, user, product_factory):
+        """Order is rolled back if payment fails."""
+        product = product_factory(stock=10)
+        original_stock = product.stock
+
+        with pytest.raises(PaymentError):
+            OrderService.create_order_with_payment(
+                user=user,
+                items=[{"product_id": product.id, "quantity": 2}],
+                payment_token="failing_token"
+            )
+
+        product.refresh_from_db()
+        assert product.stock == original_stock
+
+    def test_atomic_stock_update(self, user, product_factory):
+        """Stock updates are atomic under concurrent access."""
+        product = product_factory(stock=1)
+
+        with pytest.raises(InsufficientStockError):
+            with transaction.atomic():
+                OrderService.create_order(
+                    user=user,
+                    items=[{"product_id": product.id, "quantity": 1}]
+                )
+                product.stock = 0
+                product.save()
+                OrderService.create_order(
+                    user=user,
+                    items=[{"product_id": product.id, "quantity": 1}]
+                )
+]]></code>
+      </example>
+
+      <example type="good" title="Mocking HTTP with responses library">
+        <code lang="python"><![CDATA[
+# tests/unit/test_webhooks.py
+import pytest
+import responses
+from apps.integrations.services import WebhookService
+
+class TestWebhookService:
+    """Tests for external webhook calls."""
+
+    @responses.activate
+    def test_sends_webhook_notification(self, order):
+        """Sends webhook with correct payload."""
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            json={"status": "received"},
+            status=200
+        )
+
+        result = WebhookService.notify_order_created(order)
+
+        assert result["status"] == "received"
+        assert len(responses.calls) == 1
+
+        request_body = responses.calls[0].request.body
+        assert order.order_number in request_body
+
+    @responses.activate
+    def test_retries_on_failure(self, order):
+        """Retries webhook on temporary failure."""
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            status=503
+        )
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            json={"status": "received"},
+            status=200
+        )
+
+        result = WebhookService.notify_order_created(order, max_retries=2)
+
+        assert len(responses.calls) == 2
+        assert result["status"] == "received"
+]]></code>
+      </example>
+
+      <example type="good" title="Mocking time with freezegun">
+        <code lang="python"><![CDATA[
+# tests/unit/test_expiration.py
+import pytest
+from freezegun import freeze_time
+from datetime import datetime, timedelta
+from apps.coupons.models import Coupon
+
+@pytest.mark.django_db
+class TestCouponExpiration:
+    """Tests for coupon expiration logic."""
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_coupon_is_valid_before_expiry(self, coupon_factory):
+        """Coupon is valid before expiration date."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 1, 20, 12, 0, 0)
+        )
+
+        assert coupon.is_valid() is True
+
+    @freeze_time("2025-01-25 12:00:00")
+    def test_coupon_is_expired_after_date(self, coupon_factory):
+        """Coupon is invalid after expiration date."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 1, 20, 12, 0, 0)
+        )
+
+        assert coupon.is_valid() is False
+
+    def test_coupon_expires_correctly(self, coupon_factory):
+        """Coupon validity changes over time."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 6, 1, 0, 0, 0)
+        )
+
+        with freeze_time("2025-05-31"):
+            assert coupon.is_valid() is True
+
+        with freeze_time("2025-06-02"):
+            assert coupon.is_valid() is False
+]]></code>
+      </example>
+
+      <example type="good" title="Testing permissions with parametrize">
+        <code lang="python"><![CDATA[
+# tests/integration/test_permissions.py
+import pytest
+from rest_framework import status
+
+@pytest.mark.django_db
+class TestOrderPermissions:
+    """Permission tests for Order API."""
+
+    def test_anonymous_cannot_list_orders(self, api_client):
+        """Anonymous users get 401."""
+        response = api_client.get("/api/v1/orders/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_user_sees_only_own_orders(self, authenticated_client, user, order_factory, user_factory):
+        """Users only see their own orders."""
+        order_factory.create_batch(2, user=user)
+        other = user_factory()
+        order_factory.create_batch(3, user=other)
+
+        response = authenticated_client.get("/api/v1/orders/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 2
+
+    def test_admin_sees_all_orders(self, admin_client, order_factory):
+        """Admins see all orders."""
+        order_factory.create_batch(5)
+
+        response = admin_client.get("/api/v1/orders/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 5
+
+    def test_cannot_access_other_users_order(self, authenticated_client, order_factory, user_factory):
+        """403 when accessing another user's order."""
+        other_user = user_factory()
+        order = order_factory(user=other_user)
+
+        response = authenticated_client.get(f"/api/v1/orders/{order.uid}/")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Agent testing knows several common failure modes: db/transactional_db marker confusion, fixture scope mismatches, over-mocking the ORM, patching wrong import sites, and async test misconfiguration.</p>
+
+      <rule testable="true">
+        <statement>db vs transactional_db confusion: Use @pytest.mark.django_db (savepoint rollback) by default. Use transactional_db only when testing commits, signals, post-commit hooks, async tasks, or select_for_update. Mismatch causes flaky TransactionManagementError or persistent state leaking. Session-scoped DB fixtures combined with function-scoped Factory Boy fixtures work only if every write rolls back. pytest-xdist + --reuse-db can race on migrations on first run; use --create-db on cold start. pytest-factoryboy magic: register(UserFactory) injects 'user' and 'user_factory' fixtures — naming collisions with explicit fixtures cause silent overrides.</statement>
+        <rationale>Each fixture type has transaction semantics: db wraps in transaction (rollback), transactional_db commits real transactions. Mixing them makes tests flaky. Fixture scope must match mutation semantics. Silent fixture overrides are hard to debug.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Async views (Django 5) need pytest-asyncio + async_to_sync adapter. Signals/post-save side effects leak across tests — Django doesn't undo connected signals. Use mute_signals() decorator (Factory Boy) around model-creating fixtures. override_settings does not nest cleanly with session-scoped fixtures. Database vendor differences: tests passing on SQLite fail on Postgres (JSONField ordering, FK timing, indexes differ). Run CI against prod DB engine. Coverage gaming: pytest-cov includes test code; agents auto-add assert True. Mutation testing (mutmut) is corrective. DRF Browsable API in tests is slow and pulls Jinja2 errors — use format='json' always.</statement>
+        <rationale>Each limitation has a specific cause and mitigation. Knowing them prevents hours of debugging.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices-and-gotchas">
+      <p>Patterns that work at scale and agent-specific gotchas to avoid.</p>
+
+      <rule testable="true">
+        <statement>Best practices: (1) Default to db fixture (transactional rollback). Switch to transactional_db only when test asserts on commit semantics, signals, or select_for_update. (2) One factory per model in tests/factories/app.py; one row per test. (3) mute_signals(post_save) when factory creates model triggering email/Celery. (4) force_authenticate over login flows for API tests. (5) format='json' always; assert on response.json(), not response.content. (6) Parametrize edge cases instead of duplicating tests. (7) Run with pytest-randomly in CI to surface order-dependence. (8) Coverage threshold per file (--cov-fail-under=80), not global. (9) Add pytest --collect-only smoke check in CI. (10) Pin pytest plugin versions in pyproject.toml.</statement>
+        <rationale>These patterns scale from single developer to large teams. They prevent regressions and reduce maintenance burden.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>AI-agent gotchas: (1) Agents copy 'db' everywhere; tests needing transactional_db for signals leak. Reviewer checklist: any transaction.on_commit, signals, post_save, select_for_update → transactional_db. (2) Factory Boy + Faker unique values drift; tests asserting on Faker outputs become flaky. Always derive expected from factory instance. (3) pytest-factoryboy registers model and model_factory; agents writing @pytest.fixture def user shadow it silently. Force single source. (4) override_settings inside fixtures doesn't cascade. Use settings fixture instead. (5) assert response.status_code == 200 without body check lets bugs through. Always assert payload shape. (6) Time leakage: tests computing datetime.now() at module load fail at midnight. Use freezegun/time-machine or relative comparisons. (7) tmp_path in session-scoped fixtures leaks across tests. Match scope to fixture scope. (8) pytest-xdist + DB without --dist=loadfile can split class tests across workers. Use --dist=loadfile. (9) MEDIA_ROOT not overridden writes to real disk. Always override via settings autouse fixture. (10) Async tests without pytest-asyncio silent-warn-skip on 8.3, hard-fail on 8.4. Pin both.</statement>
+        <rationale>Knowing gotchas prevents regressions and ensures CI reliability.</rationale>
+      </rule>
     </section>
 
     <templates>

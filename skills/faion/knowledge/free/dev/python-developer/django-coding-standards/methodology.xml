@@ -1,0 +1,601 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-coding-standards">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Django coding standards for consistent maintainable code: project structure, service layer, selectors, type hints, import organization, error handling, testing strategies for Django 5.x+ projects.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>code-standards</tag>
+      <tag>architecture</tag>
+      <tag>service-layer</tag>
+      <tag>project-structure</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Django Coding Standards</title>
+
+    <summary>LLM-optimized patterns for Django 5.x+ based on HackSoft Styleguide and Two Scoops. Covers project structure, service layer architecture, selectors, type hints, import organization that separate concerns and improve testability, maintainability, and consistency across Django applications.</summary>
+
+    <why>
+      <p>Consistency in code structure enables faster onboarding, easier code review, and reduces the number of bugs introduced by different developers using different patterns. A standard project structure means models, views, serializers, services, and tests are in predictable locations. Service layers decouple business logic from HTTP concerns, making code testable without mocking requests. Selectors encapsulate complex queries so they're not scattered across views and tests. Type hints prevent whole classes of bugs (None type errors, wrong field types) and make IDE autocomplete reliable. Explicit import organization (avoiding wildcards, using aliases for cross-app imports) prevents circular dependencies and makes dependencies explicit.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new Django project that will grow beyond 10K LOC.</item>
+        <item>Building APIs with multiple endpoints and complex business logic.</item>
+        <item>Leading a team where consistency matters (CR time, onboarding, handoff).</item>
+        <item>Projects with tight quality requirements (testability, maintainability, CI gates).</item>
+        <item>Refactoring legacy Django code that lacks clear structure.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny scripts or one-off CLI tools — overhead exceeds value.</item>
+        <item>Solo greenfield projects with no intention of team growth.</item>
+        <item>Strict legacy systems where changing structure would require massive refactor.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <p>The foundation of Django coding standards rests on several core principles:</p>
+      <list>
+        <item>Services for writes: All business logic for write operations goes in service functions, not views.</item>
+        <item>Selectors for reads: Complex queries go in selector functions, not scattered across views.</item>
+        <item>Explicit imports: Use aliases for cross-app imports to prevent circular dependencies and make edges explicit.</item>
+        <item>Type hints everywhere: All function parameters and returns are typed for IDE support and bug prevention.</item>
+        <item>Constants over magic: Use TextChoices and constants.py instead of string literals or numeric codes.</item>
+        <item>Validation in models: Use clean() for multi-field validations; serializers validate shape only.</item>
+      </list>
+    </section>
+
+    <section name="project-structure">
+      <p>Standard Django project layout that scales from 10 to 100K+ LOC.</p>
+
+      <rule testable="true">
+        <statement>Organize code into apps (domains) following business domains, not layers. Each app has models, services, selectors, apis, serializers, tests. Config and core folders hold shared code (settings, exceptions, pagination, permissions, base models).</statement>
+        <rationale>Domain-driven structure makes it easy to find related code. A business domain (orders, users, products) is complete within one app folder. Avoids the "where does this go?" confusion of layer-based structure (all models in models/ folder, all views in views/).</rationale>
+      </rule>
+
+      <example type="good" title="Recommended project structure">
+        <code lang="text"><![CDATA[
+project/
+├── config/                    # Django configuration
+│   ├── settings/
+│   │   ├── base.py           # Common settings
+│   │   ├── development.py    # Dev overrides
+│   │   └── production.py     # Prod overrides
+│   ├── urls.py               # Root URL config
+│   ├── celery.py             # Celery app
+│   ├── wsgi.py               # WSGI entry
+│   └── asgi.py               # ASGI entry
+│
+├── apps/                      # Domain applications
+│   ├── users/
+│   │   ├── __init__.py
+│   │   ├── apps.py
+│   │   ├── constants.py      # TextChoices, limits
+│   │   ├── models.py         # Data structure
+│   │   ├── services.py       # Write logic
+│   │   ├── selectors.py      # Read logic
+│   │   ├── apis.py           # HTTP views
+│   │   ├── serializers.py    # DRF serializers
+│   │   ├── urls.py           # URL patterns
+│   │   ├── admin.py          # Admin config
+│   │   ├── permissions.py    # Custom permissions
+│   │   └── tests/
+│   │       ├── test_models.py
+│   │       ├── test_services.py
+│   │       ├── test_selectors.py
+│   │       └── test_apis.py
+│   │
+│   ├── orders/
+│   │   ├── models.py
+│   │   ├── services.py
+│   │   ├── selectors.py
+│   │   ├── apis.py
+│   │   └── tests/
+│   │
+│   └── products/
+│       ├── models.py
+│       ├── services.py
+│       └── ...
+│
+├── core/                      # Shared code
+│   ├── models.py             # BaseModel
+│   ├── exceptions.py         # Custom exceptions
+│   ├── pagination.py         # Custom pagination
+│   ├── permissions.py        # Custom permissions
+│   └── utils.py              # Utilities
+│
+├── tests/
+│   ├── conftest.py           # pytest fixtures
+│   └── factories/            # Factory Boy factories
+│
+├── manage.py
+├── pyproject.toml            # Dependencies + tools
+└── requirements/
+    ├── base.txt
+    ├── development.txt
+    └── production.txt
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="naming-conventions">
+      <p>Consistent naming makes code predictable and searchable.</p>
+
+      <rule testable="true">
+        <statement>Services: use &lt;entity&gt;_&lt;action&gt; pattern (user_create, order_process, product_update). Selectors: use &lt;entity&gt;_&lt;query&gt; pattern (user_list, order_get_by_id). Constants: UPPER_SNAKE_CASE. Models: PascalCase, singular. Apps: snake_case, plural.</statement>
+        <rationale>Consistent naming makes it obvious where to find code. A grep for "user_create" finds all create services for users. Naming patterns make intent clear: user_list is a query (selector), order_process is a write operation (service).</rationale>
+      </rule>
+
+      <example type="good" title="Service and selector naming">
+        <code lang="python"><![CDATA[
+# services.py — naming: <entity>_<action>
+def user_create(*, email: str, name: str) -> User:
+    """Create a new user."""
+    pass
+
+def order_process_payment(*, order: Order, payment_method: str) -> PaymentResult:
+    """Process payment for an order."""
+    pass
+
+def user_send_verification_email(*, user: User) -> None:
+    """Send verification email to user."""
+    pass
+
+
+# selectors.py — naming: <entity>_<query>
+def user_list(*, is_active: bool = True) -> QuerySet[User]:
+    """Get all active users."""
+    pass
+
+def order_list_for_user(*, user: User) -> QuerySet[Order]:
+    """Get all orders for a user."""
+    pass
+
+def order_get_by_id(*, order_id: int) -> Order:
+    """Get a single order by ID."""
+    pass
+
+
+# constants.py
+class OrderStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending'
+    PROCESSING = 'processing', 'Processing'
+    COMPLETED = 'completed', 'Completed'
+
+MAX_ORDER_ITEMS = 1000
+DEFAULT_PAGE_SIZE = 20
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="import-organization">
+      <p>Organized imports prevent circular dependencies and make code dependencies explicit.</p>
+
+      <rule testable="true">
+        <statement>Organize imports in order: __future__, standard library, third-party, Django, first-party, local. Use aliases (as) for cross-app imports. Use TYPE_CHECKING block for imports that would cause circular dependencies.</statement>
+        <rationale>This order is enforced by isort with Django profile. Aliases make cross-app edges explicit; they're searchable. TYPE_CHECKING prevents circular import errors while preserving type hints.</rationale>
+      </rule>
+
+      <example type="good" title="Proper import organization">
+        <code lang="python"><![CDATA[
+# 1. Future imports
+from __future__ import annotations
+
+# 2. Standard library
+import uuid
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
+
+# 3. Third-party
+from django.db import models, transaction
+from django.utils import timezone
+from rest_framework import serializers, status
+from rest_framework.views import APIView
+
+# 4. Cross-app imports (ALWAYS use alias)
+from apps.orders import models as order_models
+from apps.orders import services as order_services
+from apps.users import selectors as user_selectors
+
+# 5. Local imports (relative)
+from .constants import OrderStatus, MAX_ITEMS
+from .models import Order
+from .serializers import OrderCreateRequest, OrderResponse
+
+# 6. TYPE_CHECKING imports (avoid circular imports)
+if TYPE_CHECKING:
+    from apps.users.models import User
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="service-layer-pattern">
+      <p>Service layer encapsulates write operations and business logic, keeping views thin and logic testable.</p>
+
+      <rule testable="true">
+        <statement>All write operations (create, update, delete, side effects) go in service functions. Services take keyword-only arguments, use transaction.atomic() for multi-model writes, call full_clean() before save(), and raise domain exceptions (not HTTP exceptions).</statement>
+        <rationale>Services are independently testable without HTTP request mocks. Keyword-only args prevent accidental positional args. Transactions ensure atomicity. full_clean() catches model-level validation errors before DB save. Domain exceptions decouple business logic from HTTP status codes.</rationale>
+      </rule>
+
+      <example type="good" title="Service function with proper patterns">
+        <code lang="python"><![CDATA[
+# apps/orders/services.py
+from django.db import transaction
+
+from apps.orders.models import Order, OrderItem
+from apps.products import selectors as product_selectors
+
+
+def order_create(
+    *,
+    user: "User",
+    items: list[dict],
+    shipping_address: str,
+) -> Order:
+    """
+    Create a new order with items.
+
+    Args:
+        user: The user placing the order
+        items: List of {"product_id": int, "quantity": int}
+        shipping_address: Delivery address
+
+    Returns:
+        Created Order instance
+
+    Raises:
+        ValidationError: If any product is unavailable
+    """
+    # Validate products exist and have stock
+    product_ids = [item["product_id"] for item in items]
+    products = product_selectors.product_list_by_ids(product_ids=product_ids)
+
+    if len(products) != len(product_ids):
+        raise ValidationError("Some products not found")
+
+    with transaction.atomic():
+        order = Order(
+            user=user,
+            shipping_address=shipping_address,
+            status=OrderStatus.PENDING,
+        )
+        order.full_clean()
+        order.save()
+
+        for item in items:
+            product = next(p for p in products if p.id == item["product_id"])
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=item["quantity"],
+                unit_price=product.price,
+            )
+
+        order.calculate_total()
+
+    return order
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="selector-pattern">
+      <p>Selectors encapsulate complex queries so they're not repeated across views, tests, and management commands.</p>
+
+      <rule testable="true">
+        <statement>All complex read operations (filters, aggregations, prefetches) go in selector functions. Selectors return QuerySet (for chainable queries) or single objects. Selectors include prefetch_related and select_related to prevent N+1 queries.</statement>
+        <rationale>Selectors centralize query logic, making optimization easier. A change to a selector (adding an index, prefetch) automatically propagates to all uses. QuerySet returns allow chaining; single-object returns are cached and fast.</rationale>
+      </rule>
+
+      <example type="good" title="Selector functions with optimization">
+        <code lang="python"><![CDATA[
+# apps/orders/selectors.py
+from django.db.models import QuerySet, Prefetch
+
+from apps.orders.models import Order, OrderItem
+
+
+def order_list_for_user(
+    *,
+    user: "User",
+    status: str | None = None,
+) -> QuerySet[Order]:
+    """
+    Get orders for a user with optimized queries.
+
+    Args:
+        user: The user to get orders for
+        status: Optional status filter
+
+    Returns:
+        QuerySet of orders with prefetched items
+    """
+    queryset = Order.objects.filter(user=user).prefetch_related(
+        Prefetch(
+            "items",
+            queryset=OrderItem.objects.select_related("product"),
+        )
+    )
+
+    if status:
+        queryset = queryset.filter(status=status)
+
+    return queryset.order_by("-created_at")
+
+
+def order_get_by_id(*, order_id: int, user: "User" = None) -> Order:
+    """
+    Get single order by ID.
+
+    Args:
+        order_id: The order ID
+        user: Optional user for ownership check
+
+    Returns:
+        Order instance
+
+    Raises:
+        Order.DoesNotExist: If order not found
+    """
+    queryset = Order.objects.prefetch_related("items__product")
+
+    if user:
+        queryset = queryset.filter(user=user)
+
+    return queryset.get(id=order_id)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="error-handling">
+      <p>Custom exception hierarchy makes error handling explicit and decouples business logic from HTTP status codes.</p>
+
+      <rule testable="true">
+        <statement>Define custom exception classes inheriting from ApplicationError. Services raise domain exceptions. Views catch exceptions and map to HTTP status codes (404 NotFound → 404_NOT_FOUND, ValidationError → 400_BAD_REQUEST).</statement>
+        <rationale>Domain exceptions don't know about HTTP; they represent business failures. Views map them to HTTP status codes. This decoupling makes services reusable in async tasks, CLI commands, and other entry points.</rationale>
+      </rule>
+
+      <example type="good" title="Exception hierarchy and handling">
+        <code lang="python"><![CDATA[
+# core/exceptions.py
+class ApplicationError(Exception):
+    """Base exception for business logic errors."""
+
+    def __init__(self, message: str, extra: dict = None):
+        super().__init__(message)
+        self.message = message
+        self.extra = extra or {}
+
+
+class NotFoundError(ApplicationError):
+    """Resource not found."""
+    pass
+
+
+class ValidationError(ApplicationError):
+    """Business validation failed."""
+    pass
+
+
+class PermissionDeniedError(ApplicationError):
+    """User lacks permission."""
+    pass
+
+
+# View layer
+def custom_exception_handler(exc, context):
+    """Handle both DRF and custom exceptions."""
+    response = exception_handler(exc, context)
+
+    if response is not None:
+        return response
+
+    if isinstance(exc, NotFoundError):
+        return Response(
+            {"error": exc.message, "extra": exc.extra},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if isinstance(exc, ValidationError):
+        return Response(
+            {"error": exc.message, "extra": exc.extra},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if isinstance(exc, PermissionDeniedError):
+        return Response(
+            {"error": exc.message},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return None
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="testing-strategy">
+      <p>Test organization mirrors code structure: test_models, test_services, test_selectors, test_apis.</p>
+
+      <rule testable="true">
+        <statement>Test structure mirrors code: test_models.py tests model validation and properties, test_services.py tests business logic with database (no mocks), test_selectors.py tests queries for N+1, test_apis.py tests HTTP with test client.</statement>
+        <rationale>This structure makes it obvious what to test. Model tests don't call services. Service tests don't mock models (use real database). Selector tests verify optimization (assert prefetch_related works). API tests verify HTTP layer including auth and status codes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use Factory Boy for test data. Create factories/ folder with factories for each model. Use SubFactory for relationships. Avoid fixtures; factories are clearer and more composable.</statement>
+        <rationale>Factory Boy tests are readable (OrderFactory(items=2) creates order with 2 items) and DRY. Factories compose easily; you can override any field in tests. Fixtures are a tangled global state.</rationale>
+      </rule>
+
+      <example type="good" title="Factory pattern for test data">
+        <code lang="python"><![CDATA[
+# tests/factories/orders.py
+import factory
+from factory.django import DjangoModelFactory
+
+from apps.orders.models import Order, OrderItem
+from apps.orders.constants import OrderStatus
+
+
+class OrderFactory(DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    user = factory.SubFactory("tests.factories.users.UserFactory")
+    status = OrderStatus.PENDING
+    shipping_address = factory.Faker("address")
+    total = factory.Faker("pydecimal", left_digits=4, right_digits=2)
+
+
+class OrderItemFactory(DjangoModelFactory):
+    class Meta:
+        model = OrderItem
+
+    order = factory.SubFactory(OrderFactory)
+    product = factory.SubFactory("tests.factories.products.ProductFactory")
+    quantity = factory.Faker("random_int", min=1, max=10)
+    unit_price = factory.LazyAttribute(lambda obj: obj.product.price)
+
+
+# usage in tests
+def test_order_creation():
+    order = OrderFactory(status=OrderStatus.COMPLETED, items=3)
+    assert order.items.count() == 3
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="type-hints">
+      <p>Type hints prevent bugs, enable IDE autocomplete, and serve as inline documentation.</p>
+
+      <rule testable="true">
+        <statement>All function parameters and return types are annotated. Use QuerySet[Model] for queryset returns. Use | None instead of Optional. Use modern syntax (list[str] instead of List[str]). Add TYPE_CHECKING imports for forward references.</statement>
+        <rationale>Type hints catch errors at development time (wrong field type, None handling). IDEs autocomplete properly with hints. Models should not be imported at module level if it causes circular imports; use TYPE_CHECKING and string quotes for forward references.</rationale>
+      </rule>
+
+      <example type="good" title="Type hints in services and selectors">
+        <code lang="python"><![CDATA[
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from apps.users.models import User
+
+
+def user_create(
+    *,
+    email: str,
+    name: str,
+) -> User:
+    """Create a user with email and name."""
+    pass
+
+
+def order_list_for_user(
+    *,
+    user: "User",
+) -> QuerySet[Order]:
+    """Get all orders for a user."""
+    pass
+
+
+def order_calculate_total(
+    *,
+    items: list[dict[str, int]],
+) -> Decimal:
+    """Calculate total from items list."""
+    pass
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="django-6-features">
+      <p>Django 6.x adds native background tasks and improved template partials.</p>
+
+      <rule testable="false">
+        <statement>Use Django 6.x native @task decorator for background jobs instead of Celery when possible. Tasks are simpler, have no external dependency, and integrate with Django's task scheduler.</statement>
+        <rationale>Django tasks are suitable for most workloads (send email, update cache, report). Celery is still better for complex workflows, scheduling, and monitoring. Native tasks have lower operational overhead.</rationale>
+      </rule>
+
+      <example type="good" title="Native Django 6.x background task">
+        <code lang="python"><![CDATA[
+# config/tasks.py
+from django.tasks import task
+
+@task
+def send_order_confirmation(order_id: int) -> None:
+    """Send order confirmation email asynchronously."""
+    from apps.orders import selectors as order_selectors
+    from apps.notifications import services as notification_services
+
+    order = order_selectors.order_get_by_id(order_id=order_id)
+    notification_services.send_email(
+        to=order.user.email,
+        template="order_confirmation",
+        context={"order": order},
+    )
+
+
+# Usage in service
+def order_complete(*, order: Order) -> Order:
+    order.status = OrderStatus.COMPLETED
+    order.save(update_fields=["status", "updated_at"])
+
+    # Queue background task
+    send_order_confirmation.enqueue(order_id=order.id)
+
+    return order
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="code-review-checklist">
+      <p>Points to verify in code review to ensure standards are maintained.</p>
+      <checklist>
+        <check>Business logic is in services, not views/serializers.</check>
+        <check>Complex queries are in selectors, not views.</check>
+        <check>Services use transaction.atomic() for multi-model writes.</check>
+        <check>Services call full_clean() before save().</check>
+        <check>Services raise domain exceptions, not HTTP exceptions.</check>
+        <check>Services take keyword-only arguments (no positional args after *).</check>
+        <check>All function parameters have type hints.</check>
+        <check>All function return types are annotated.</check>
+        <check>No circular imports (use TYPE_CHECKING for forward refs).</check>
+        <check>Cross-app imports use aliases (from apps.X import Y as X_Y).</check>
+        <check>No string literals for statuses/enums (use TextChoices constants).</check>
+        <check>Selectors include prefetch_related/select_related for optimization.</check>
+        <check>Models use clean() for multi-field validation, not save().</check>
+        <check>No business logic in serializer validate_* methods.</check>
+        <check>No business logic in model save() override.</check>
+        <check>Tests use Factory Boy, not fixtures.</check>
+        <check>Test APIs with Django test client (self.client.get/post), not view directly.</check>
+        <check>No DEBUG=True, SECRET_KEY leaks, or credentials in code.</check>
+      </checklist>
+    </section>
+
+    <templates>
+      <template path="templates/" purpose="Code templates for services, selectors, models, tests."/>
+    </templates>
+
+    <see-also>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide-Example"/>
+      <link href="https://www.feldroy.com/two-scoops-of-django"/>
+      <link href="https://docs.djangoproject.com/en/6.0/releases/6.0/"/>
+      <link href="https://docs.djangoproject.com/en/dev/internals/contributing/writing-code/coding-style/"/>
+    </see-also>
+  </content>
+</methodology>

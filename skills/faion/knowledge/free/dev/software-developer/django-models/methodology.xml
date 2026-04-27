@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-models">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>BaseModel pattern: integer PK + UUID, explicit on_delete, TextChoices enums, composite Meta.indexes.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>models</tag>
+      <tag>database</tag>
+      <tag>design</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Models</title>
+
+    <summary>Django model design following the BaseModel abstract pattern (integer PK + UUID field + timestamps), with explicit on_delete on every ForeignKey, TextChoices enums in per-app constants.py, and composite Meta.indexes for query-driven indexing. Django 5 db_default is supported for database-computed defaults.</summary>
+
+    <why>
+      <p>A consistent BaseModel base eliminates timestamp/UUID boilerplate and gives every record a stable external identifier (uid) separate from the internal integer PK. Explicit on_delete prevents accidental data loss. TextChoices centralizes enum values so admin, forms, and serializers share one source. Declaring indexes in Meta.indexes keeps them reviewable in migrations.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating a new Django app's models/ package.</item>
+        <item>Refactoring ad-hoc models to the canonical BaseModel + Meta.indexes shape.</item>
+        <item>Adding ForeignKey relations and choosing on_delete policy.</item>
+        <item>Introducing per-app constants.py with TextChoices enums.</item>
+        <item>Adding Django 5 db_default / computed fields.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Async ORM workflows (.asave(), .aget()) — async manager patterns are not covered here.</item>
+        <item>Multi-database routing, sharding, or replicas — out of scope.</item>
+        <item>Heavy JSONField / ArrayField document-style data — methodology assumes relational schema.</item>
+        <item>Tenant isolation (django-tenants, schema-per-tenant) — needs additional methodology.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="base-model-pattern">
+      <rule testable="true">
+        <statement>All domain models must inherit from BaseModel. BaseModel provides integer PK (implicit id), a UUID external identifier (uid), created_at, and updated_at.</statement>
+        <rationale>Consistent base eliminates boilerplate. Integer PK is used for internal joins; uid is the stable external identifier exposed to APIs and clients.</rationale>
+      </rule>
+      <example type="good" title="BaseModel with ForeignKey and Indexes">
+        <code lang="python"><![CDATA[
+import uuid
+from django.db import models
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+class Order(BaseModel):
+    user = models.ForeignKey("users.User", on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Order {self.uid}"
+        ]]></code>
+      </example>
+      <reference path="templates/base-model.py">Standalone BaseModel definition.</reference>
+    </section>
+
+    <section name="foreign-key-on-delete-policies">
+      <rule testable="true">
+        <statement>Supply on_delete= explicitly on every ForeignKey. Use PROTECT for data you must not lose, CASCADE only for owned children, SET_NULL for optional references.</statement>
+        <rationale>The default is not safe; omitting on_delete causes a migration error in Django 2.0+ and signals unclear intent in code review.</rationale>
+      </rule>
+      <example type="good" title="ForeignKey on_delete Patterns">
+        <code lang="python"><![CDATA[
+# PROTECT — prevent deletion if related exists
+user = models.ForeignKey("users.User", on_delete=models.PROTECT)
+
+# CASCADE — delete together (use carefully!)
+item = models.ForeignKey("Item", on_delete=models.CASCADE)
+
+# SET_NULL — set to NULL on delete
+last_handler = models.ForeignKey(
+    "Handler",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="handled_orders",
+)
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Add related_name= to every ForeignKey. If the reverse accessor is not needed, use related_name='+'.</statement>
+        <rationale>Without related_name, Django generates a default name that clashes when two models share a parent, causing migration errors.</rationale>
+      </rule>
+    </section>
+
+    <section name="meta-indexes">
+      <rule testable="true">
+        <statement>Define all indexes in Meta.indexes with an explicit name following the pattern appname_model_columns_idx. Do not rely on db_index=True for composite indexes.</statement>
+        <rationale>Named indexes in Meta.indexes are visible in migrations and reviewable. Pair with EXPLAIN against representative data — don't add indexes speculatively.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use UniqueConstraint(fields=[...], name="...") instead of deprecated unique_together.</statement>
+        <rationale>unique_together is deprecated and will be removed in a future Django version.</rationale>
+      </rule>
+    </section>
+
+    <section name="django-5-db-default">
+      <rule testable="true">
+        <statement>Use db_default for database-level defaults (computed at INSERT by the DB). Use default= for application-level defaults (computed by Python). Do not mix them.</statement>
+        <rationale>db_default generates different SQL migrations and applies at a different layer. Confusing them produces migrations that fail on older DB versions (requires Postgres 12+ / SQLite 3.38+).</rationale>
+      </rule>
+      <example type="good" title="Database-Computed Default">
+        <code lang="python"><![CDATA[
+from django.db.models.functions import Now
+
+class Article(models.Model):
+    created_at = models.DateTimeField(db_default=Now())
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="text-choices-and-constants">
+      <rule testable="true">
+        <statement>Define all field choices as TextChoices subclasses in a per-app constants.py. Reference them from models, admin, forms, and serializers via the same import.</statement>
+        <rationale>Single source of truth prevents drift between the choices used in the model definition and those used in forms/serializers.</rationale>
+      </rule>
+      <example type="good" title="TextChoices Pattern">
+        <code lang="python"><![CDATA[
+# apps/users/constants.py
+from django.db import models
+
+class UserType(models.TextChoices):
+    REGULAR = "regular", "Regular"
+    PREMIUM = "premium", "Premium"
+    ADMIN = "admin", "Administrator"
+
+DEFAULT_PAGE_SIZE = 20
+MAX_ITEMS_PER_USER = 100
+        ]]></code>
+      </example>
+      <example type="good" title="Model Using TextChoices">
+        <code lang="python"><![CDATA[
+# apps/users/models/user.py
+from apps.users import constants as user_constants
+
+class User(BaseModel):
+    user_type = models.CharField(
+        max_length=20,
+        choices=user_constants.UserType.choices,
+        default=user_constants.UserType.REGULAR,
+    )
+        ]]></code>
+      </example>
+      <rule testable="true">
+        <statement>Import constants using the module alias pattern: from apps.users import constants as user_constants. Do not do from apps.users.constants import UserType.</statement>
+        <rationale>Module alias makes the origin explicit at call sites and prevents ambiguous name collisions when multiple apps have a UserType.</rationale>
+      </rule>
+      <reference path="templates/constants.py">Per-app constants.py template.</reference>
+    </section>
+
+    <section name="project-structure">
+      <rule testable="true">
+        <statement>Each app follows the standard structure with models/, services/, tests/, constants.py, and migrations/. Split models into individual files under models/ for apps with more than 2 models.</statement>
+        <rationale>Flat models.py becomes unwieldy; splitting into models/user.py, models/order.py keeps each file focused and reduces merge conflicts.</rationale>
+      </rule>
+      <example type="good" title="Project Layout">
+        <code lang="text"><![CDATA[
+project/
+├── config/
+│   ├── settings/
+│   │   ├── base.py
+│   │   ├── development.py
+│   │   └── production.py
+│   ├── urls.py
+│   └── celery.py
+├── apps/
+│   ├── users/
+│   ├── orders/
+│   └── catalog/
+├── core/
+│   ├── models.py     <- BaseModel lives here
+│   └── exceptions.py
+└── tests/
+    └── conftest.py
+        ]]></code>
+      </example>
+      <example type="good" title="Per-App Structure">
+        <code lang="text"><![CDATA[
+users/
+├── models/
+│   ├── __init__.py
+│   └── user.py
+├── services/
+├── utils/
+├── tasks/
+├── admin/
+├── serializers/
+├── views/
+├── filters/
+├── migrations/
+├── constants.py
+├── apps.py
+├── urls.py
+└── tests/
+    ├── conftest.py
+    ├── unit/
+    └── integration/
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat model changes as propose-diff → migration-review → test. Have one subagent draft the model edit, a second run manage.py makemigrations --dry-run --check and inspect the auto-generated migration file for destructive ops (RemoveField, AlterField on PKs, RenameField). A third subagent writes/updates a pytest fixture covering the new field's choices and constraints. Never let a single agent both edit models and generate migrations without a review gate.</p>
+      <p>Model generation subagent constraints: extend BaseModel (UUID+timestamps); FK on_delete must be explicit; choices live in constants.py as TextChoices. After edit: run python manage.py makemigrations --dry-run and paste the planned migration. Stop and ask before running with --no-dry-run if any field is removed/renamed.</p>
+      <p>Index-adding subagent: Add an index for the query pattern. Use Meta.indexes; name it app_model_cols_idx. Do not drop other indexes. Output the migration plan only.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents may switch the PK to UUID by replacing id with uid — the pattern keeps integer PK + indexed UUID. Re-state this in the prompt or it will produce an irreversible migration.</p>
+      <p>auto_now=True / auto_now_add=True are silently ignored by bulk_create and update(). Agents writing batch jobs often miss this.</p>
+      <p>db_default and default look interchangeable but produce different migrations and apply at different layers (DB vs Python). Agents conflate them.</p>
+      <p>LLMs love adding unique=True on email / username without db_index=False — Postgres makes uniqueness an index, so explicit db_index=True is redundant; agents add both.</p>
+      <p>Human-in-loop checkpoint: review every generated migration's operations = [...] before migrate. Especially watch for AlterField that changes column type — Postgres may rewrite the table.</p>
+      <p>Agents often add new choice values to TextChoices and forget the migration — choices are stored in DB enums only if you opt into them; otherwise just code-level.</p>
+      <p>Do not let an agent run migrate --fake autonomously; it desyncs the migration graph from schema.</p>
+    </section>
+
+    <checklist>
+      <check>Identify all entities and relationships</check>
+      <check>Determine field types and constraints for each entity</check>
+      <check>Plan ForeignKey on_delete behavior for each relationship</check>
+      <check>Identify fields that need indexes (FK fields, frequently filtered fields)</check>
+      <check>Plan timestamped fields (use BaseModel)</check>
+      <check>Create BaseModel abstract class in core/models.py if not present</check>
+      <check>Define all models inheriting from BaseModel</check>
+      <check>Add field validators and help_text for non-obvious fields</check>
+      <check>Define __str__ methods</check>
+      <check>Create custom QuerySets for common filters</check>
+      <check>Add Meta options: ordering, indexes, db_table names</check>
+      <check>Put all TextChoices in constants.py</check>
+      <check>Define ForeignKey with explicit on_delete</check>
+      <check>Add related_name= on every FK (use '+' if reverse not needed)</check>
+      <check>Use lazy string references ('app.Model') to avoid circular imports</check>
+      <check>Replace unique_together with UniqueConstraint(fields=[], name="...")</check>
+      <check>Verify FK fields have database indexes (Django adds them automatically)</check>
+      <check>Add composite indexes to Meta.indexes for common filter combinations</check>
+      <check>Name every index: appname_model_cols_idx</check>
+      <check>Remove redundant db_index=True when uniqueness already implies an index</check>
+      <check>Run makemigrations --check to detect unstaged model changes</check>
+      <check>Review migration operations for destructive changes (RemoveField, AlterField on PKs)</check>
+      <check>Test migration on a fresh database before committing</check>
+      <check>Never edit applied migration files; create a new migration instead</check>
+    </checklist>
+
+    <templates>
+      <template path="templates/base-model.py" purpose="Abstract BaseModel with UUID + timestamps."/>
+      <template path="templates/constants.py" purpose="Per-app constants.py with TextChoices enum example."/>
+      <template path="templates/check-migrations.sh" purpose="Pre-commit script: refuse commit if model changed without staged migration."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/topics/db/models/"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/models/fields/"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/models/instances/"/>
+    </see-also>
+  </content>
+</methodology>
