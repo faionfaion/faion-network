@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-quality-logging">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Structured logging for Django with structlog and django-structlog: JSON output, request context, Sentry error tracking, and LLM prompt patterns for Django code generation.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>logging</tag>
+      <tag>structlog</tag>
+      <tag>sentry</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>observability</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-queries"/>
+      <ref slug="django-quality-security"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Structured Logging and Observability</title>
+
+    <summary>Production Django needs structured JSON logging (structlog + django-structlog for request context), Sentry error tracking, and LLM-optimized prompts for generating high-quality Django code. Freeform string logging is noise; structured events with bound context are signals that enable alerts and incident investigation.</summary>
+
+    <why>
+      <p>JSON logs are machine-readable, enabling alert rules and queries in Datadog, Loki, or CloudWatch. Structured logging (not freeform strings) lets ops teams search by order_id, user_id, or transaction_id across millions of log lines. Tracing IDs (request_id, trace_id) link related events across services. Without structlog, Python logging produces freeform strings that require regex parsing — expensive and fragile.</p>
+      <p>django-structlog's RequestMiddleware automatically binds request_id, user_id, and ip to every log event within a request, without manual logger.bind() at every call site. Sentry captures unhandled exceptions with full context (request headers, user, breadcrumbs) in production. The combination means any production incident can be traced from the Sentry alert through structured logs to the specific function and database query.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Django project shipping to production where incident investigation matters.</item>
+        <item>Logging migration from stdlib logging to structlog for cloud log aggregation.</item>
+        <item>Setting up Sentry error tracking for a new or existing Django project.</item>
+        <item>Projects deploying to platforms that ingest JSON logs natively (GCP, AWS, Datadog).</item>
+        <item>Multi-service systems where correlated trace IDs across services are needed.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes — stdlib logging with console output is sufficient.</item>
+        <item>Self-hosted projects without log aggregation infrastructure — freeform logs are acceptable when no one is querying them programmatically.</item>
+        <item>Codebases already on a different structured logging solution (e.g., python-json-logger) — don't migrate for its own sake.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="structlog-setup">
+      <p>structlog replaces the logging.getLogger pattern with a processor chain that binds context, formats events as JSON, and integrates with stdlib logging via ProcessorFormatter. django-structlog's RequestMiddleware automatically binds request_id, user_id, and ip to every log event within a request context.</p>
+
+      <rule testable="true">
+        <statement>Django projects MUST use structlog + django-structlog for structured JSON logging in production. Configure structlog in settings with: contextvars merge, filter_by_level, add_logger_name, add_log_level, TimeStamper(fmt="iso"), and JSONRenderer for production / ConsoleRenderer for development. Add django_structlog.middlewares.RequestMiddleware to MIDDLEWARE to auto-bind request context. NEVER mix structlog.get_logger() and logging.getLogger() in the same module — pick one per file.</statement>
+        <rationale>structlog's processor chain ensures every log event is JSON-serialized with consistent fields. django-structlog's middleware adds request_id, user_id, and ip automatically — without it, every service function must manually bind context. Mixing structlog and stdlib loggers in the same module produces hybrid output where half the logs are structured and half are plain text, making log queries unreliable.</rationale>
+      </rule>
+
+      <example type="good" title="structlog configuration in settings">
+        <code lang="python"><![CDATA[
+# config/settings/base.py
+import structlog
+
+MIDDLEWARE = [
+    # ... other middleware
+    "django_structlog.middlewares.RequestMiddleware",  # Auto-binds request context
+]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.processors.JSONRenderer(),
+        },
+        "console": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.dev.ConsoleRenderer(),
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "console" if DEBUG else "json",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": "WARNING",  # Only log slow/error queries
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.filter_by_level,
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ],
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Structured logging in service functions">
+        <code lang="python"><![CDATA[
+import structlog
+from decimal import Decimal
+
+logger = structlog.get_logger(__name__)
+
+
+def process_payment(order_id: int, amount: Decimal) -> bool:
+    """Process payment with structured logging and bound context."""
+    # Bind context to all subsequent log events in this function
+    log = logger.bind(order_id=order_id, amount=str(amount))
+
+    log.info("payment_processing_started")
+
+    try:
+        result = payment_gateway.charge(amount)
+        log.info(
+            "payment_processed",
+            transaction_id=result.transaction_id,
+            status=result.status
+        )
+        return True
+    except PaymentError as e:
+        log.error(
+            "payment_failed",
+            error_code=e.code,
+            error_message=str(e),
+            exc_info=True  # Include full traceback
+        )
+        return False
+
+
+def create_order(*, user: User, items: list[dict]) -> Order:
+    """Order creation with structured audit logging."""
+    log = logger.bind(user_id=user.id, item_count=len(items))
+
+    with transaction.atomic():
+        order = Order.objects.create(user=user)
+        # ... business logic
+
+        log.info(
+            "order_created",
+            order_id=order.id,
+            extra={"user_id": user.id, "item_count": len(items)}
+        )
+
+    return order
+]]></code>
+      </example>
+    </section>
+
+    <section name="sentry-setup">
+      <p>Sentry captures unhandled exceptions with full request context: headers, POST data, user info, Django settings snapshot, and a breadcrumb trail of prior events. Django integration auto-instruments all requests without manual try/except wrapping.</p>
+
+      <rule testable="true">
+        <statement>All Django production applications MUST configure Sentry with: DjangoIntegration(), CeleryIntegration() if using Celery, RedisIntegration() if using Redis. Set traces_sample_rate=0.1 and profiles_sample_rate=0.1 (not 1.0 — full tracing is expensive). Set send_default_pii=False. Configure before_send to scrub sensitive data. Load SENTRY_DSN from environment variable, never hardcode. Use a custom system check to warn when SENTRY_DSN is missing in production.</statement>
+        <rationale>DjangoIntegration hooks into Django's signal system to capture every 500 error with request context automatically. traces_sample_rate=0.1 captures 10% of transactions — sufficient for performance monitoring without the cost of full tracing. send_default_pii=False prevents automatic capture of cookies, session data, and IP addresses that may violate GDPR. The custom system check catches missing DSN configuration before deployment.</rationale>
+      </rule>
+
+      <example type="good" title="Sentry initialization in production settings">
+        <code lang="python"><![CDATA[
+# config/settings/production.py
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+
+sentry_sdk.init(
+    dsn=env("SENTRY_DSN"),
+    integrations=[
+        DjangoIntegration(),
+        CeleryIntegration(),
+        RedisIntegration(),
+    ],
+    # Sample 10% of transactions for performance monitoring
+    traces_sample_rate=0.1,
+    profiles_sample_rate=0.1,
+
+    # Do not capture PII automatically
+    send_default_pii=False,
+
+    environment=env("ENVIRONMENT", default="production"),
+
+    # Scrub sensitive data before sending
+    before_send=scrub_sensitive_data,
+)
+
+
+def scrub_sensitive_data(event, hint):
+    """Remove sensitive data from Sentry events before sending."""
+    # Remove password from POST data
+    if "request" in event:
+        post_data = event["request"].get("data", {})
+        if isinstance(post_data, dict):
+            for key in ("password", "token", "secret", "credit_card"):
+                post_data.pop(key, None)
+    return event
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <p>LLM prompts for Django code generation. Providing project context and quality requirements upfront produces better, immediately-usable code and reduces iteration cycles.</p>
+
+      <rule testable="true">
+        <statement>When using LLMs to generate Django code, always provide: (1) Django + Python version, (2) API framework (DRF or Django Ninja), (3) whether service layer pattern is used, (4) quality requirements (type hints, docstrings, exception handling, query optimization, logging). Generic "write Django code" requests produce untypeable, unoptimized output that requires full rewrite. Provide the function signature and models involved for service generation tasks.</statement>
+        <rationale>LLMs default to the most common Django patterns they've seen, which often lack type hints, use bare except, and miss query optimization. Explicit requirements produce code that passes ruff, mypy, and review without iteration. Function signature + models constrains the LLM to the correct interface instead of inventing its own.</rationale>
+      </rule>
+
+      <example type="good" title="Project context template for LLM prompts">
+        <code lang="text"><![CDATA[
+I'm working on a Django project with the following stack:
+- Django 5.2 / Python 3.12
+- PostgreSQL database
+- Django REST Framework for APIs
+- pytest for testing
+- Ruff for linting, mypy for type checking
+- structlog for structured logging
+
+Code standards:
+- Service layer pattern (Hacksoft style) — business logic in services.py
+- Type hints required on all functions (django-stubs types)
+- Google-style docstrings
+- Specific exception handling (no bare except:)
+- query optimization (select_related/prefetch_related)
+- structlog for logging important operations
+]]></code>
+      </example>
+
+      <prompt purpose="generate-service-function">
+<![CDATA[
+Create a Django service function for [OPERATION] with:
+
+Context:
+- Models: [LIST RELEVANT MODELS WITH THEIR RELATIONS]
+- Business rules: [DESCRIBE RULES]
+
+Requirements:
+- Type hints with django-stubs types
+- Transaction handling with atomic() where needed
+- Specific exception handling (never bare except)
+- structlog structured logging at INFO/ERROR levels
+- Input validation (raise ValidationError for invalid input)
+- Docstring with Args, Returns, Raises sections
+
+Function signature:
+def [function_name](*, [params]) -> [ReturnType]:
+]]>
+      </prompt>
+
+      <prompt purpose="generate-optimized-queryset">
+<![CDATA[
+Create an optimized Django QuerySet for [OPERATION]:
+
+Models involved:
+- [Model1] has ForeignKey to [Model2]
+- [Model1] has ManyToMany to [Model3]
+- Need to access: [fields/relations needed]
+
+Requirements:
+- Use select_related for ForeignKey/OneToOne
+- Use prefetch_related for ManyToMany/reverse FK
+- Use Prefetch() for filtered related objects if needed
+- Use only()/defer() for large text/binary fields
+- Include pagination
+- Return type-annotated function
+- Add assertNumQueries test to lock the count
+]]>
+      </prompt>
+
+      <prompt purpose="review-code-quality">
+<![CDATA[
+Review this Django code for quality issues:
+
+```python
+[PASTE CODE]
+```
+
+Check for:
+1. Missing type hints
+2. Bare except or overly broad exception handling
+3. N+1 query problems (missing select_related/prefetch_related)
+4. Missing input validation
+5. Security vulnerabilities (SQL injection, XSS, missing permission checks)
+6. Missing structlog logging for important operations
+7. Code duplication or violations of service layer pattern
+
+For each issue: severity (high/med/low), file:line, specific fix.
+Do NOT apply fixes unless asked — report only.
+]]>
+      </prompt>
+
+      <prompt purpose="debug-n-plus-one">
+<![CDATA[
+I'm seeing slow performance in this Django code. Help identify N+1 queries:
+
+```python
+[PASTE CODE]
+```
+
+Models:
+[DESCRIBE MODEL RELATIONSHIPS]
+
+Provide:
+1. List of N+1 query locations with explanation
+2. Query count estimate before optimization
+3. Optimized code with select_related/prefetch_related
+4. Query count after optimization
+5. assertNumQueries test to lock the count
+]]>
+      </prompt>
+    </section>
+
+    <section name="logging-checklist">
+      <p>Production logging configuration checklist.</p>
+      <checklist>
+        <check>structlog configured with JSON formatter in production, ConsoleRenderer in development</check>
+        <check>django_structlog.middlewares.RequestMiddleware added to MIDDLEWARE</check>
+        <check>structlog.get_logger() used consistently (not logging.getLogger in structlog modules)</check>
+        <check>logger.bind() used to attach request context (order_id, user_id) before INFO/ERROR calls</check>
+        <check>exc_info=True on all logger.error() calls that catch exceptions</check>
+        <check>No passwords, tokens, or PII logged anywhere</check>
+        <check>django.db.backends logger level set to WARNING (avoid SQL query noise)</check>
+        <check>Sentry configured with DjangoIntegration, traces_sample_rate=0.1, send_default_pii=False</check>
+        <check>SENTRY_DSN loaded from environment variable</check>
+        <check>Custom system check warns when SENTRY_DSN is missing in production</check>
+        <check>before_send scrubs sensitive POST data from Sentry events</check>
+      </checklist>
+    </section>
+
+    <section name="gotchas">
+      <p>Common agent pitfalls with Django logging and observability.</p>
+
+      <antipattern>
+        <description>Mixing structlog.get_logger() and logging.getLogger() in the same module.</description>
+        <reason>Without ProcessorFormatter bridging them, half the logs from the module are unstructured plain text. The bridge requires explicit configuration. Pick one per module: use structlog everywhere for new code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Setting Sentry traces_sample_rate=1.0 in production.</description>
+        <reason>Full transaction tracing at 1.0 captures every request and can cost 10x the base Sentry bill on high-traffic services. Start at 0.01 and increase based on cost tolerance.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sentry before_send filter that drops entire events to avoid PII.</description>
+        <reason>Dropping events to avoid PII removes the error context entirely. Scrub specific fields (password, token) from the event dict instead of returning None.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>django-silk profiling every request in production at default settings.</description>
+        <reason>django-silk stores every request's SQL queries and metadata to the database by default. Without SILKY_INTERCEPT_PERCENT = 1 (1% sampling), it doubles the database write load and fills disk.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Logging DEBUG-level SQL queries in production (django.db.backends at DEBUG).</description>
+        <reason>Every ORM query generates a DEBUG log event. In a view issuing 10 queries to serve 1000 req/s, that is 10,000 log events/second — saturating log pipelines and causing log drop.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://django-structlog.readthedocs.io/"/>
+      <link href="https://www.structlog.org/"/>
+      <link href="https://docs.sentry.io/platforms/python/guides/django/"/>
+      <link href="https://github.com/jazzband/django-silk"/>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-security"/>
+    </see-also>
+  </content>
+</methodology>

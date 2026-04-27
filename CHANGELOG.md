@@ -8,6 +8,7 @@
 - decompose: embeddings → 5 slugs (embeddings-model-selection, embeddings-provider-apis, embeddings-batch-and-cache, embeddings-evaluation, embeddings-production-ops)
 - decompose: api-gateway-design → 5 slugs (api-gateway-patterns, api-gateway-resilience, api-gateway-security, api-gateway-observability, api-gateway-graphql)
 - decompose: vector-database-setup → 5 slugs (vector-db-setup-dev, vector-db-setup-prod, vector-db-index-tuning, vector-db-security, vector-db-monitoring)
+- decompose: django-quality → 4 slugs (django-quality-linting, django-quality-queries, django-quality-security, django-quality-logging)
 - decompose: guardrails → 5 slugs (guardrails-concepts, guardrails-nemo, guardrails-ai-framework, guardrails-custom-pipeline, guardrails-testing)
 - decompose: django-coding-standards → 5 slugs (django-project-structure, django-service-layer, django-selectors, django-serializers, django-constants)
 - decompose: django-pytest → 5 slugs (django-pytest-fixtures, django-pytest-factories, django-pytest-integration, django-pytest-parametrize, django-pytest-mocking)
