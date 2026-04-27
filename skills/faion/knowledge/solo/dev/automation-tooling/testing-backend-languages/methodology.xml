@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-backend-languages">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Backend testing patterns for Ruby/RSpec, PHP/Laravel+Pest, Java/Spring Boot, C#/.NET xUnit, and Rust — canonical idioms and LLM gotchas per language.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>rspec</tag>
+      <tag>phpunit</tag>
+      <tag>spring-boot</tag>
+      <tag>rust</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>ruby</language>
+      <language>php</language>
+      <language>java</language>
+      <language>rust</language>
+    </languages>
+    <frameworks>
+      <framework>rails</framework>
+      <framework>laravel</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Backend Language Testing: Ruby, PHP, Java, C#, Rust</title>
+
+    <summary>Each backend language has a canonical test idiom. This methodology provides the minimum pattern for Ruby/RSpec, PHP/Laravel+Pest, Java/Spring Boot, C#/.NET xUnit, and Rust, plus the LLM gotchas specific to each stack so agents produce idiomatic tests on the first pass.</summary>
+
+    <why>
+      <p>Each language section is a single canonical example, not a decision matrix. Without a canonical pattern, agents pick the wrong framework (RSpec vs Minitest, Pest vs PHPUnit, JUnit 4 vs JUnit 5) and produce tests that fight the project standard. Agents also tend to over-use full container boot (Spring's @SpringBootTest, .NET's WebApplicationFactory) even for unit-level service tests, blowing test time.</p>
+      <p>Providing the correct idiom per language reduces the review burden from "fix the framework choice" to "add edge cases".</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a test suite in a new Ruby on Rails, PHP Laravel, Java Spring, C# .NET, or Rust service.</item>
+        <item>Filling coverage holes on an existing backend module — feed source + this reference and ask for unit/integration tests in the project idiom.</item>
+        <item>Standardising test style across a polyglot backend monorepo where each service uses a different stack.</item>
+        <item>Producing first-cut tests during SDD in-progress/ so review focuses on logic, not boilerplate.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Python/Django — see testing-django-pytest for the pytest + factory_boy idiom.</item>
+        <item>Frontend JS/TS — see testing-js-ts-frontend for vitest + Testing Library.</item>
+        <item>Performance / load testing — see perf-test-basics, perf-test-tools.</item>
+        <item>When the project already has a strong test convention — agent will drift into the generic style here and create churn.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ruby-rspec">
+      <p>Ruby on Rails projects default to RSpec for unit and service tests. The canonical pattern uses describe/context/let and expects results to be_success or satisfy domain assertions. Use factory_bot for object creation (not fixtures).</p>
+
+      <rule testable="true">
+        <statement>Ruby tests MUST use RSpec (not Minitest) with let blocks for test data and factory_bot factories for object graphs. Tests MUST be free of slow I/O unless explicitly labelled :integration.</statement>
+        <rationale>RSpec's expressive DSL and factory_bot are the Rails community standard for service-layer tests. Minitest is valid for simpler unit tests but agents should default to RSpec unless the Gemfile shows minitest as the project runner.</rationale>
+      </rule>
+
+      <example type="good" title="RSpec service test">
+        <code lang="ruby"><![CDATA[
+RSpec.describe UserService do
+  describe '#create' do
+    let(:params) { { name: 'John', email: 'john@example.com' } }
+
+    it 'creates user with valid params' do
+      result = described_class.create(params)
+      expect(result).to be_success
+    end
+
+    it 'returns error with missing email' do
+      result = described_class.create(params.except(:email))
+      expect(result).to be_failure
+      expect(result.error).to eq('email is required')
+    end
+  end
+end
+]]></code>
+        <note>described_class avoids hardcoding the class name; let is lazily evaluated. Separate example per concept.</note>
+      </example>
+
+      <antipattern>
+        <description>Slow, flaky tests from missing let! vs let distinction — let is lazy; let! forces evaluation immediately in before blocks.</description>
+        <reason>Test ordering sensitivity emerges when objects created lazily are mutated by other examples. Use let! for objects that must exist before every example in the group.</reason>
+      </antipattern>
+    </section>
+
+    <section name="php-laravel">
+      <p>Laravel projects should use Pest (the default since Laravel 11) over raw PHPUnit. Pest's function syntax is lighter. Use the RefreshDatabase trait to isolate test DB state.</p>
+
+      <rule testable="true">
+        <statement>Laravel tests MUST use Pest function syntax with RefreshDatabase for any test touching the database. HTTP endpoint tests MUST use Laravel's $this->postJson / getJson assertion chain rather than raw Guzzle or curl.</statement>
+        <rationale>Pest is the Laravel default and produces cleaner output than PHPUnit class syntax. RefreshDatabase wraps each test in a transaction to avoid state leak. The built-in JSON assertion methods check status and structure in one call.</rationale>
+      </rule>
+
+      <example type="good" title="Laravel Pest HTTP test">
+        <code lang="php"><![CDATA[
+it('can create a user', function () {
+    $response = $this->postJson('/api/users', [
+        'name' => 'John',
+        'email' => 'john@example.com',
+    ]);
+
+    $response->assertStatus(201)
+             ->assertJson(['name' => 'John']);
+});
+]]></code>
+        <note>Pest function style. assertStatus + assertJson chained — no raw PHPUnit assertions needed.</note>
+      </example>
+
+      <example type="bad" title="Raw PHPUnit class in a Pest project">
+        <code lang="php"><![CDATA[
+class UserTest extends TestCase
+{
+    public function test_user_can_be_created(): void
+    {
+        $response = $this->postJson('/api/users', [
+            'name' => 'John',
+            'email' => 'john@example.com',
+        ]);
+        $response->assertStatus(201);
+    }
+}
+]]></code>
+        <note>PHPUnit class style works but agents should use Pest function syntax in Laravel 11+ projects.</note>
+      </example>
+    </section>
+
+    <section name="java-spring-boot">
+      <p>Spring Boot tests default to JUnit 5 + AssertJ. The critical rule: prefer test slices (@DataJpaTest, @WebMvcTest, @ServiceTest) over full context (@SpringBootTest) except for integration tests. Full context boots the entire application — adds seconds per test class.</p>
+
+      <rule testable="true">
+        <statement>Spring Boot unit and slice tests MUST NOT use @SpringBootTest unless the test genuinely requires the full application context. Service tests MUST use plain unit tests with Mockito. Repository tests MUST use @DataJpaTest. Controller tests MUST use @WebMvcTest.</statement>
+        <rationale>@SpringBootTest adds 5-30 seconds of context startup to every test class that uses it. Test slices boot only the relevant layers; controller slices are 10x faster than full context for endpoint tests.</rationale>
+      </rule>
+
+      <example type="good" title="Spring service test with Mockito (no full context)">
+        <code lang="java"><![CDATA[
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void shouldCreateUser() {
+        CreateUserDto dto = new CreateUserDto("John", "john@example.com");
+        when(userRepository.save(any())).thenReturn(new User(1L, "John", "john@example.com"));
+        User result = userService.createUser(dto);
+        assertThat(result.getName()).isEqualTo("John");
+    }
+}
+]]></code>
+        <note>MockitoExtension, no Spring context, sub-millisecond startup. Use AssertJ assertThat for readable assertions.</note>
+      </example>
+
+      <example type="bad" title="@SpringBootTest for a service unit test">
+        <code lang="java"><![CDATA[
+@SpringBootTest
+class UserServiceTest {
+    @Autowired
+    private UserService userService;
+
+    @Test
+    void shouldCreateUser() {
+        CreateUserDto dto = new CreateUserDto("John", "john@example.com");
+        User result = userService.createUser(dto);
+        assertThat(result.getName()).isEqualTo("John");
+    }
+}
+]]></code>
+        <note>@SpringBootTest boots the entire application for a service unit test — unnecessary 10-30 second overhead per class.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent adds @SpringBootTest to all test classes because the example in documentation uses it.</description>
+        <reason>Force @ExtendWith(MockitoExtension.class) for services, @DataJpaTest for repositories, @WebMvcTest for controllers in the prompt. Only use @SpringBootTest for explicit integration tests labelled @Tag("integration").</reason>
+      </antipattern>
+    </section>
+
+    <section name="csharp-dotnet">
+      <p>.NET projects use xUnit as the default (NUnit is legacy). Dependency injection testing uses Moq or NSubstitute for mocks. FluentAssertions provides readable assertion messages.</p>
+
+      <rule testable="true">
+        <statement>.NET service tests MUST use xUnit [Fact] / [Theory] with Moq (or NSubstitute) for dependencies and FluentAssertions for assertions. Tests MUST NOT use WebApplicationFactory unless testing HTTP middleware or integration scenarios.</statement>
+        <rationale>xUnit is the .NET standard. FluentAssertions error messages name the expected and actual values clearly, reducing debug time. WebApplicationFactory boots the full ASP.NET pipeline — reserve it for integration tests.</rationale>
+      </rule>
+
+      <example type="good" title="xUnit service test with Moq">
+        <code lang="csharp"><![CDATA[
+public class UserServiceTests
+{
+    [Fact]
+    public async Task CreateAsync_ShouldReturnUser()
+    {
+        var mockRepo = new Mock<IUserRepository>();
+        mockRepo.Setup(r => r.SaveAsync(It.IsAny<User>()))
+                .ReturnsAsync(new User { Name = "John", Email = "john@example.com" });
+        var service = new UserService(mockRepo.Object);
+
+        var result = await service.CreateAsync(new CreateUserDto("John", "john@example.com"));
+
+        result.Name.Should().Be("John");
+    }
+}
+]]></code>
+        <note>Constructor injection used directly — no DI container in unit tests. FluentAssertions .Should().Be() for readable assertion.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent uses new Mock without setting up the method under test, leaving it returning null/default.</description>
+        <reason>Untriggered mocks return default values silently; the test passes vacuously. Always verify mock setup covers every call the SUT makes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="rust-testing">
+      <p>Rust has first-class test support in cargo. Unit tests live in a #[cfg(test)] mod tests module in the same file. Integration tests live in tests/. Async tests require the #[tokio::test] attribute from tokio.</p>
+
+      <rule testable="true">
+        <statement>Rust unit tests MUST use #[test] in a #[cfg(test)] mod tests block in the same file as the implementation. Async tests MUST use #[tokio::test] with the tokio runtime — never mix #[test] with async fn without a runtime wrapper. Integration tests MUST live in tests/ and MUST NOT use #[cfg(test)].</statement>
+        <rationale>Mixing #[test] and async fn without a runtime wrapper compiles but panics at runtime with "no runtime found". The #[cfg(test)] guard ensures test code is never compiled into production binaries.</rationale>
+      </rule>
+
+      <example type="good" title="Rust unit and async test">
+        <code lang="rust"><![CDATA[
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_user() {
+        let user = User::new("John", "john@example.com");
+        assert_eq!(user.name, "John");
+    }
+
+    #[tokio::test]
+    async fn test_async_fetch() {
+        let result = fetch_data().await;
+        assert!(result.is_ok());
+    }
+}
+]]></code>
+        <note>Sync test uses #[test]; async test uses #[tokio::test]. Both inside #[cfg(test)] mod tests.</note>
+      </example>
+
+      <antipattern>
+        <description>Agent mixes #[test] with async fn, producing a function that compiles but panics at runtime.</description>
+        <reason>async fn under #[test] (without tokio::test) creates a future that is never polled — the test body never runs, assertion is never reached, test "passes". Explicitly require #[tokio::test] for all async test functions in the prompt.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools">
+      <p>Standard CLI tools per language:</p>
+      <list>
+        <item>Ruby: bundle exec rspec — run suite; rspec spec/services/ — run service specs only</item>
+        <item>PHP: php artisan test (Laravel); ./vendor/bin/pest --coverage</item>
+        <item>Java: mvn test or gradle test; mvn test -pl module-name for monorepo slices</item>
+        <item>.NET: dotnet test; dotnet test --filter Category=Unit</item>
+        <item>Rust: cargo test; cargo test --lib for unit only; cargo test --test integration_test</item>
+        <item>Rust coverage: cargo tarpaulin --out Html (install: cargo install cargo-tarpaulin)</item>
+        <item>Ruby mutation: mutant (bundle add mutant); PHP mutation: infection/infection</item>
+      </list>
+    </section>
+
+    <section name="cross-language-best-practices">
+      <list>
+        <item>One assertion concept per test — name the test after the concept, not a sequence number.</item>
+        <item>Use factories / builders for object graphs — raw ORM / constructor calls rot with model changes.</item>
+        <item>Speed budget: unit under 50 ms, integration under 1 s, full unit suite under 60 s.</item>
+        <item>Fail loud on flaky tests: quarantine with a tag/marker, never add retry decorators that hide race conditions.</item>
+        <item>Forbid network in unit tests — use mocks/stubs; agents otherwise add live API calls.</item>
+        <item>Coverage as a goal, not a target: require mutation score on critical modules, not just line coverage.</item>
+      </list>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Testing infrastructure services useful across all backend stacks:</p>
+      <list>
+        <item>Codecov (SaaS) — coverage diff on PRs; agents can read the Codecov API to gate merges.</item>
+        <item>Coveralls (SaaS) — free tier for OSS; same niche as Codecov.</item>
+        <item>SonarQube / SonarCloud (SaaS + OSS) — quality gate on coverage + smells; REST API.</item>
+        <item>Testcontainers (OSS) — real DB/Redis/Kafka in tests; available for Java, .NET, Python, Go, Rust.</item>
+        <item>Wiremock / MockServer (OSS) — HTTP fakes for integration tests across all languages.</item>
+        <item>GitHub Actions (SaaS) — cache test runners, shard via matrices for parallel test execution.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://rspec.info/"/>
+      <link href="https://pestphp.com/"/>
+      <link href="https://docs.spring.io/spring-boot/docs/current/reference/html/test-auto-configuration.html"/>
+      <link href="https://docs.rs/tokio-test"/>
+      <link href="https://martinfowler.com/articles/practical-test-pyramid.html"/>
+      <ref slug="testing-django-pytest"/>
+      <ref slug="testing-js-ts-frontend"/>
+    </see-also>
+  </content>
+</methodology>
