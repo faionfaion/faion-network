@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feature-flags-services-testing">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Flag service landscape (LaunchDarkly, Flagsmith, Unleash, OpenFeature, Piranha), pytest fixtures for both branches, stale-flag CI audit workflow, and agentic workflow for flag generation and cleanup.</summary>
+    <tags>
+      <tag>feature-flags</tag>
+      <tag>testing</tag>
+      <tag>pytest</tag>
+      <tag>openfeature</tag>
+      <tag>agent-workflow</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flag Services, Testing, and Agentic Workflow</title>
+
+    <summary>Choosing a flag service, writing pytest fixtures that test both ON and OFF code paths, running a weekly stale-flag CI audit, and wiring a flag agent that generates definitions, wraps new code paths, and creates cleanup tasks are the four operational concerns that complete a production-grade flag system.</summary>
+
+    <why>
+      <p>Testing only the enabled path is the single most common feature-flag bug. An untested disabled path is a latent production incident waiting for the flag to be turned off. Pytest fixtures that explicitly exercise both branches make this failure mode a lint-level catch rather than a production incident.</p>
+      <p>Without automated stale-flag detection, cleanup never happens. A weekly CI job that lists flags past their expiry and opens a GitHub issue converts a social obligation ("someone should clean this up") into a trackable work item with an owner.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Choosing between flag service vendors for a new project or migration.</item>
+        <item>Writing tests that must cover both the enabled and disabled code path for a flagged feature.</item>
+        <item>Setting up a weekly CI audit to surface flags past their expected cleanup date.</item>
+        <item>Configuring an AI agent to generate flag definitions, wrap new code, write dual-branch tests, and register cleanup tasks automatically.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-flag prototypes — the overhead of a full service integration outweighs the value.</item>
+        <item>Projects that have no CI pipeline — the stale-flag audit workflow assumes a scheduled GitHub Actions runner.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-landscape">
+      <p>Flag services differ on self-hostability, agent-friendliness (REST API quality), experimentation support, and solo-developer pricing. The OpenFeature CNCF spec decouples call sites from the vendor so the provider can be swapped without rewriting the application.</p>
+
+      <section name="service-table">
+        <p>Service comparison for solo and small-team use:</p>
+        <list>
+          <item>LaunchDarkly — SaaS only; industry default; best REST API + CLI; expensive at scale. Agent-friendly.</item>
+          <item>Flagsmith — SaaS + OSS self-hostable; good REST; comparable features at lower cost. Agent-friendly.</item>
+          <item>Unleash — SaaS + OSS; strong gradual rollout strategies; active community. Agent-friendly REST.</item>
+          <item>GrowthBook — SaaS + OSS; bundles flags + A/B experimentation + warehouse integration. Excellent for experiment-heavy teams.</item>
+          <item>ConfigCat — SaaS; solo-friendly free tier; simplest model; no self-host.</item>
+          <item>PostHog Feature Flags — SaaS + OSS; bundled with product analytics; good if you already use PostHog.</item>
+          <item>Statsig — SaaS; strongest on experimentation and CUPED variance reduction.</item>
+          <item>OpenFeature (CNCF spec) — vendor-neutral SDK; use via a provider; avoids lock-in. Strongly recommended for new projects.</item>
+          <item>Cloudflare Workers KV — DIY edge flags via KV API; no targeting UI; use only if already on Workers.</item>
+        </list>
+      </section>
+
+      <rule>
+        <statement>New projects MUST use the OpenFeature SDK so the provider can be swapped without rewriting call sites. The provider (LaunchDarkly, Unleash, custom) is wired once at startup.</statement>
+        <rationale>Vendor-specific SDKs scatter proprietary calls across the codebase. Migrating later requires touching every flag evaluation point. OpenFeature wraps the provider behind a stable interface.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools for flag management from the command line or CI scripts:</p>
+      <list>
+        <item>unleash-cli — Manage Unleash flags from CLI: npm i -g unleash-cli</item>
+        <item>ld-cli — LaunchDarkly CLI: brew install launchdarkly/tap/ldcli</item>
+        <item>flagsmith-cli — Flagsmith CLI: npm i -g flagsmith-cli</item>
+        <item>growthbook (CLI) — OSS A/B + flags: npm i -g growthbook</item>
+        <item>openfeature SDK — Vendor-neutral flag API: pip install openfeature-sdk</item>
+        <item>piranha (Uber) — Auto-cleanup of stale flags: https://github.com/uber/piranha</item>
+      </list>
+    </section>
+
+    <section name="testing-both-branches">
+      <p>Every flagged feature MUST have tests for both the enabled and disabled code path. Pytest fixtures that toggle overrides on the global FeatureFlagManager instance make this mechanical.</p>
+
+      <example type="good" title="Pytest fixtures for flag-enabled and flag-disabled paths">
+        <code lang="python"><![CDATA[
+import pytest
+from unittest.mock import patch
+
+
+@pytest.fixture
+def feature_flags_enabled():
+    """Fixture to enable specific flags in tests."""
+    def _enable(*flags):
+        original = feature_flags._overrides.copy()
+        for flag in flags:
+            feature_flags._overrides[flag] = True
+
+        yield
+
+        feature_flags._overrides = original
+
+    return _enable
+
+
+@pytest.fixture
+def feature_flags_disabled():
+    """Fixture to disable specific flags in tests."""
+    def _disable(*flags):
+        original = feature_flags._overrides.copy()
+        for flag in flags:
+            feature_flags._overrides[flag] = False
+
+        yield
+
+        feature_flags._overrides = original
+
+    return _disable
+
+
+def test_new_checkout_flow(feature_flags_enabled):
+    with feature_flags_enabled("new_checkout"):
+        result = process_checkout(cart)
+        assert result.used_new_flow is True
+
+
+def test_old_checkout_flow(feature_flags_disabled):
+    with feature_flags_disabled("new_checkout"):
+        result = process_checkout(cart)
+        assert result.used_new_flow is False
+
+
+# Parametrized: test both paths in one test
+@pytest.mark.parametrize("flag_enabled", [True, False])
+def test_checkout_both_paths(flag_enabled):
+    with patch.object(feature_flags, "is_enabled", return_value=flag_enabled):
+        result = process_checkout(cart)
+        assert result.success is True
+]]></code>
+        <note>The parametrized form is the most concise way to guarantee both paths are exercised. Use it when the behavior differs only in which branch runs, not in the assertions.</note>
+      </example>
+
+      <rule>
+        <statement>Every new flag MUST have a test with the flag enabled AND a test with the flag disabled before the PR is merged. Code coverage tools MUST treat an untested branch as a failure.</statement>
+        <rationale>Agents frequently write only the enabled-path test because that is the "happy path." The disabled path is the fallback that runs for 99% of users during initial rollout — it must work.</rationale>
+      </rule>
+    </section>
+
+    <section name="stale-flag-audit">
+      <p>A weekly GitHub Actions workflow runs a stale-flag finder script and opens an issue listing flags past their expected cleanup date. This converts cleanup from a social obligation into a tracked work item.</p>
+
+      <example type="good" title="Stale flag finder script and CI workflow">
+        <code lang="python"><![CDATA[
+# scripts/find_stale_flags.py — list flags older than N days
+import json
+import subprocess
+import sys
+from datetime import datetime, timedelta
+
+DAYS = int(sys.argv[1]) if len(sys.argv) > 1 else 90
+cutoff = datetime.utcnow() - timedelta(days=DAYS)
+
+flags = json.loads(subprocess.check_output(
+    ["ld-cli", "flags", "list", "--output", "json"]
+))
+
+for f in flags:
+    last = datetime.fromisoformat(f["lastModified"].replace("Z", "+00:00"))
+    if last.replace(tzinfo=None) < cutoff:
+        usage = subprocess.run(
+            ["git", "grep", "-l", f["key"]], capture_output=True, text=True
+        ).stdout.strip().splitlines()
+        print(f"STALE: {f['key']:40s} last={last:%Y-%m-%d} files={len(usage)}")
+]]></code>
+      </example>
+
+      <example type="good" title="Weekly CI stale-flag audit workflow">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/flag-audit.yml — weekly stale-flag check
+on:
+  schedule: [{ cron: '0 9 * * 1' }]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/find_stale_flags.py 90 > stale.txt
+      - run: gh issue create --title "Stale flags audit $(date -I)" --body-file stale.txt
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+]]></code>
+        <note>The issue is created only when stale.txt is non-empty — add a check if stale.txt is empty, skip gh issue create to avoid noise.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A flag agent automates the full flag lifecycle: generates definitions, wraps new code paths, writes dual-branch tests, and registers cleanup tasks in the SDD backlog.</p>
+
+      <prompt purpose="generate flag definition and tests">
+<![CDATA[New flag: <name>. Type: release|experiment|ops|permission|kill-switch.
+Owner: <handle>. Expiry: <YYYY-MM-DD>.
+Default in code: false (release/experiment) or true (kill-switch).
+Generate:
+1. Flag definition in flags.py / flags.ts.
+2. Wrap the new branch with is_enabled().
+3. Two test files: tests/<feature>_on_test.py, tests/<feature>_off_test.py.
+4. SDD cleanup task in todo/ with expiry date in title.]]>
+      </prompt>
+
+      <prompt purpose="audit and propose actions for stale flags">
+<![CDATA[Audit flags: list all flags with expiry < today() OR last_changed > 90 days ago.
+For each: propose REMOVE if rollout=100%, ROLLBACK if errors>baseline, EXTEND with justification.]]>
+      </prompt>
+
+      <section name="recommended-subagents">
+        <list>
+          <item>faion-sdd-executor-agent — gates on "both flag branches covered by tests" and "flag has expiry".</item>
+          <item>faion-improver (skill) — periodic audit pass to surface stale flags and propose removals.</item>
+        </list>
+      </section>
+
+      <section name="agent-gotchas">
+        <antipattern>
+          <description>Agent forgets the OFF-branch test entirely, writing only the happy-path test.</description>
+          <reason>Force the gate: faion-sdd-executor-agent MUST require both branches tested before marking the task done.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Removal is harder than addition: agent deletes the flag check but leaves the OFF branch orphaned in the code.</description>
+          <reason>Use piranha or a two-step review: first confirm the flag is at 100%, then delete both the check and the old branch in the same commit.</reason>
+        </antipattern>
+        <antipattern>
+          <description>During incidents, agent flips the wrong flag because flag keys are ambiguous or similarly named.</description>
+          <reason>Require explicit flag key + dry-run output before any production flag flip. Human-in-loop for kill-switch operations.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Cross-service flag drift: same flag name, different semantics in service A vs service B.</description>
+          <reason>User sees broken state when service A treats the flag as enabled and service B treats it as disabled. Lock the registry and validate flag name uniqueness across services in CI.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <see-also>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <link href="https://docs.launchdarkly.com/"/>
+      <link href="https://openfeature.dev/"/>
+      <link href="https://docs.getunleash.io/"/>
+      <link href="https://github.com/uber/piranha"/>
+    </see-also>
+  </content>
+</methodology>
