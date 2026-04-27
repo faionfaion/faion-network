@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-saga-pattern">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Saga pattern for distributed transactions across microservices: orchestrated step sequences with mandatory compensation paths for every step to handle partial failures safely.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>saga</tag>
+      <tag>distributed-transactions</tag>
+      <tag>compensation</tag>
+      <tag>eventual-consistency</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Saga Pattern for Distributed Transactions</title>
+
+    <summary>The saga pattern manages distributed transactions across microservices as a sequence of local transactions, each publishing an event or message triggering the next step. On failure, compensation transactions undo previously completed steps in reverse order. Every step requires a paired compensation path — partial compensation is a data-integrity incident.</summary>
+
+    <why>
+      <p>Microservices cannot use traditional ACID transactions across service boundaries because each service owns its own database. Two-phase commit (2PC) is theoretically possible but in practice creates tight availability coupling and is unsupported by most modern datastores.</p>
+      <p>The saga pattern embraces eventual consistency: each local transaction completes atomically within its service; failures trigger compensating transactions that roll back the distributed operation. This allows multi-service workflows to maintain data integrity without a distributed lock coordinator.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-step workflows that span more than one service and require all-or-nothing semantics (create order, reserve inventory, process payment).</item>
+        <item>Long-running business processes where locking resources for the duration is impractical.</item>
+        <item>When using Temporal, Cadence, or Camunda as an orchestration engine for complex workflows.</item>
+        <item>Any distributed operation where partial completion must be observable, retryable, and compensatable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-service operations — use a local DB transaction instead.</item>
+        <item>Operations where the business domain cannot define a meaningful compensation (e.g., sending an email — you cannot unsend it; use a separate notification step instead).</item>
+        <item>Sub-millisecond latency requirements — saga orchestration adds at least one network round-trip per step.</item>
+        <item>Simple two-service workflows with no compensation risk — a direct event and consumer is sufficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="saga-orchestration">
+      <rule testable="true">
+        <statement>Every saga step MUST have a paired compensation transaction. A saga without compensation for every completed step is incomplete and MUST be rejected in code review.</statement>
+        <rationale>Half-compensated sagas leave business entities in inconsistent states. Inventory reserved but payment refunded with no order cancellation means the item is unavailable to other buyers indefinitely.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Compensation transactions MUST be idempotent. The orchestrator may retry compensation multiple times; duplicate executions must be safe.</statement>
+        <rationale>Networks fail; orchestrators crash mid-compensation. Idempotency ensures that retrying compensation does not double-refund, double-release, or double-cancel.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Saga state MUST be persisted and observable. Each state transition (STARTED, PROCESSING, COMPLETED, COMPENSATING, FAILED) must be logged with the saga ID, step name, and timestamp.</statement>
+        <rationale>Without observable state, debugging a half-compensated saga requires forensic log analysis across multiple services. A saga table or workflow engine log is the audit trail.</rationale>
+      </rule>
+
+      <example type="good" title="Orchestrated saga with compensation paths">
+        <code lang="python"><![CDATA[
+# Choreography-based saga
+from dataclasses import dataclass
+from enum import Enum
+from uuid import UUID
+
+
+class SagaState(Enum):
+    STARTED = "started"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    COMPENSATING = "compensating"
+    FAILED = "failed"
+
+
+@dataclass
+class CreateOrderSaga:
+    """Saga for creating an order across services."""
+
+    order_id: UUID
+    user_id: UUID
+    items: list
+    state: SagaState = SagaState.STARTED
+
+
+class OrderSagaOrchestrator:
+    """Orchestrates the order creation saga."""
+
+    def __init__(
+        self,
+        order_service: OrderServiceClient,
+        inventory_service: InventoryServiceClient,
+        payment_service: PaymentServiceClient,
+        message_bus: MessagePublisher,
+    ):
+        self._order_service = order_service
+        self._inventory_service = inventory_service
+        self._payment_service = payment_service
+        self._message_bus = message_bus
+
+    async def execute(self, saga: CreateOrderSaga) -> None:
+        """Execute saga steps with compensation on failure."""
+        steps_completed = []
+
+        try:
+            # Step 1: Reserve inventory
+            await self._inventory_service.reserve(saga.order_id, saga.items)
+            steps_completed.append("inventory")
+
+            # Step 2: Process payment
+            await self._payment_service.charge(saga.user_id, saga.total)
+            steps_completed.append("payment")
+
+            # Step 3: Create order
+            await self._order_service.create(saga.order_id, saga.items)
+            steps_completed.append("order")
+
+            saga.state = SagaState.COMPLETED
+
+        except Exception as e:
+            # Compensate completed steps
+            saga.state = SagaState.COMPENSATING
+            await self._compensate(saga, steps_completed)
+            saga.state = SagaState.FAILED
+            raise
+
+    async def _compensate(
+        self,
+        saga: CreateOrderSaga,
+        steps: list,
+    ) -> None:
+        """Compensate completed steps in reverse order."""
+        for step in reversed(steps):
+            try:
+                if step == "order":
+                    await self._order_service.cancel(saga.order_id)
+                elif step == "payment":
+                    await self._payment_service.refund(saga.user_id)
+                elif step == "inventory":
+                    await self._inventory_service.release(saga.order_id)
+            except Exception:
+                # Log compensation failure — do not raise; attempt all steps
+                pass
+]]></code>
+        <note>Compensation iterates steps in reverse order. Every step has a paired undo. Compensation failures are logged but do not halt the compensation loop.</note>
+      </example>
+    </section>
+
+    <section name="saga-limitations">
+      <p>The saga skeleton above is correct in structure but production sagas require additional hardening.</p>
+
+      <list>
+        <item>Eventual-consistency UX: user places an order and navigates to "My Orders," sees nothing because the read projection lags. Without read-your-writes (sticky session on write store, optimistic UI, command-side return), it looks like data loss.</item>
+        <item>Saga rollback observability: half-compensated states leak if compensation failures are silently swallowed. Log every compensation attempt and failure with saga ID and step name to a durable store.</item>
+        <item>For more than three steps, prefer an orchestrated saga (Temporal, Cadence, Camunda) over choreography. Choreography with many steps produces event spaghetti that is impossible to reason about.</item>
+        <item>Commands must carry an idempotency key generated by the caller. Without it, retries after a compensation failure double-execute the compensating transaction.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Saga/process manager owns orchestration. Do not put multi-step workflows inside a command handler — use Temporal, Cadence, Camunda, or an in-house process manager. The saga skeleton above is fine for choreography; for more than three steps, prefer orchestrated.</item>
+        <item>Persist saga state to a durable store before each step transition. An orchestrator that crashes mid-saga must be able to resume from the last known state.</item>
+        <item>Test compensation paths as rigorously as happy paths. Inject failures at each step and verify the compensated state is correct.</item>
+        <item>Publish saga completion and failure events so downstream projections and dashboards can track saga health.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Saga without compensation: agents emit the happy-path saga, skip the compensation branches. Force a checklist: every "do" step has a paired "undo."</item>
+        <item>Non-idempotent compensation: agents write compensation handlers that are not idempotent (e.g., refund that does not check if already refunded). Require idempotency keys on all commands including compensation calls.</item>
+        <item>Choreography for complex workflows: agents implement choreography with five or more services producing event spaghetti. Recommend Temporal or Cadence for workflows with more than three steps.</item>
+        <item>Missing saga state persistence: agents keep saga state in memory only. A crash mid-saga produces ghost reservations and phantom charges with no record to recover from.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <link href="https://microservices.io/patterns/data/saga.html"/>
+      <link href="https://docs.temporal.io"/>
+      <link href="https://www.confluent.io/learn-more/outbox-pattern/"/>
+    </see-also>
+  </content>
+</methodology>
