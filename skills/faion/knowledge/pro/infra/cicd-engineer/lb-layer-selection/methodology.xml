@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-layer-selection">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Choose between L4 (transport) and L7 (application) load balancing based on routing needs, SSL strategy, content inspection, and performance requirements.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>networking</tag>
+      <tag>l4</tag>
+      <tag>l7</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-algorithms"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-session-persistence"/>
+      <ref slug="lb-high-availability"/>
+      <ref slug="load-balancing-implementation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer Layer Selection: L4 vs L7</title>
+
+    <summary>Choosing between L4 (transport layer) and L7 (application layer) load balancing is the first architectural decision when deploying a load balancer. L4 routes TCP/UDP by IP and port with minimal CPU cost; L7 routes by HTTP headers, URL, cookies, and content — enabling SSL termination, path routing, and header manipulation at the cost of more resources. Modern stacks often use both layers together.</summary>
+
+    <why>
+      <p>L4 and L7 load balancing operate at fundamentally different OSI layers and are not interchangeable. Picking the wrong layer wastes resources (L7 overhead on a simple TCP proxy) or blocks features (L4 when URL path routing is needed). Agents frequently conflate the two — proposing "L4 for performance" then listing L7 features such as path routing or header rewriting. Calling out this inconsistency early prevents expensive rework.</p>
+      <p>Modern stacks use both: an NLB or HAProxy L4 front-end in front of an Ingress or Envoy L7 layer. The L4 layer absorbs connection overhead and provides anycast or cross-zone distribution; the L7 layer does content routing. Agents who treat L4 vs L7 as binary miss this hybrid pattern.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Choosing or reviewing a load balancer type at the start of an infrastructure design.</item>
+        <item>Traffic profile is purely TCP/UDP (gaming, streaming, database proxies) — L4 is sufficient.</item>
+        <item>Content-based routing, SSL termination at the load balancer, or HTTP header manipulation is needed — L7 is required.</item>
+        <item>A/B testing, canary deployments, or API gateway functionality is in scope — L7 is required.</item>
+        <item>Architecture review catches an agent proposing L4 but listing L7 features — reject the inconsistency.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Vendor/tool selection — use load-balancing-implementation for HAProxy/NGINX/cloud LB specifics.</item>
+        <item>TLS cipher suite decisions — see ssl-tls-setup.</item>
+        <item>Service-mesh internal routing (mTLS, sidecar/sidecarless) — different concern entirely.</item>
+        <item>Database read-replica or write-splitter routing — use DB-specific guidance.</item>
+        <item>API gateway feature decisions (auth, quotas, transformations) — a gateway is more than a load balancer.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layer-comparison">
+      <p>The table below captures the key decision dimensions between L4 and L7:</p>
+
+      <rule testable="true">
+        <statement>Select L4 (transport) load balancing when: maximum throughput is the primary goal, routing is purely by IP/port, SSL pass-through is required, or the protocol is not HTTP (gaming, streaming, database). Select L7 (application) load balancing when: content-based routing is needed, SSL termination at the load balancer is desired, HTTP header manipulation is required, or API gateway features are in scope.</statement>
+        <rationale>L4 operates on TCP/UDP framing with near-zero inspection cost; L7 must parse HTTP which adds CPU cycles. Picking L4 for an HTTP workload that needs path routing forces hacks; picking L7 for a pure TCP workload wastes CPU and adds latency.</rationale>
+      </rule>
+
+      <example type="good" title="L4 for high-throughput database proxy">
+        <code lang="haproxy"><![CDATA[
+defaults
+    mode    tcp
+    option  tcplog
+    timeout connect 5s
+    timeout client  1h
+    timeout server  1h
+
+frontend db_front
+    bind *:5432
+    default_backend postgres_servers
+
+backend postgres_servers
+    balance leastconn
+    option tcp-check
+    server db1 10.0.3.1:5432 check
+    server db2 10.0.3.2:5432 check
+]]></code>
+        <note>TCP mode: no HTTP parsing, minimal CPU, correct for database proxies.</note>
+      </example>
+
+      <example type="good" title="L7 for HTTP content routing">
+        <code lang="haproxy"><![CDATA[
+defaults
+    mode    http
+    option  httplog
+    option  forwardfor
+
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/example.com.pem
+
+    acl is_api path_beg /api
+    acl is_static path_beg /static
+
+    use_backend api_servers if is_api
+    use_backend static_servers if is_static
+    default_backend web_servers
+]]></code>
+        <note>HTTP mode: ACL routing by URL path, SSL termination, forwardfor header — all L7 features.</note>
+      </example>
+
+      <example type="bad" title="L4 claim with L7 features listed">
+        <code lang="text"><![CDATA[
+# WRONG: "use L4 for performance, then route by /api path"
+# L4 cannot inspect HTTP paths. Contradiction.
+# Either:
+#   - use L7 (accept the CPU cost)
+#   - use L4 with a separate L7 proxy behind it
+]]></code>
+        <note>Agents frequently propose "L4 for performance" then list URL path routing or header manipulation — these are L7 features. Reject the proposal and force an explicit layer choice.</note>
+      </example>
+
+      <antipattern>
+        <description>Treating L4 vs L7 as mutually exclusive on a single stack.</description>
+        <reason>Modern architectures use L4 (NLB/HAProxy TCP) in front of L7 (Ingress/Envoy) to get anycast distribution and cross-zone load balancing at L4 while retaining content routing at L7. Collapsing this to a single binary choice misses the hybrid pattern.</reason>
+      </antipattern>
+    </section>
+
+    <section name="load-balancer-types">
+      <p>Load balancers exist at multiple OSI layers. DNS-based GSLB operates at L3/DNS; cloud global load balancers span multiple layers. Choose the right type for the traffic scope:</p>
+
+      <rule testable="true">
+        <statement>For geographic distribution, prefer anycast-based global load balancers (AWS Global Accelerator, Cloudflare LB, GCP Global LB) over pure DNS-based GSLB. DNS-based failover relies on TTL respect, which clients honor poorly — real failover takes 30 seconds to 5 minutes in practice, not sub-second as DNS TTL implies.</statement>
+        <rationale>Anycast routes at the network layer and fails over in seconds without DNS re-resolution. DNS-based GSLB requires client TTL compliance; corporate DNS resolvers and CDN intermediaries cache aggressively, breaking SLO assumptions.</rationale>
+      </rule>
+
+      <example type="good" title="AWS cloud LB type mapping">
+        <code lang="text"><![CDATA[
+HTTP/HTTPS web apps and APIs  → ALB (L7, path/host routing, WAF, sticky sessions)
+TCP/UDP high throughput        → NLB (L4, preserve client IP, TLS pass-through)
+Cross-region global failover   → Global Accelerator (anycast, not DNS-based)
+Internal microservice mesh     → ALB or NLB (internal scheme, private subnets)
+]]></code>
+        <note>Mapping cloud LB product to OSI layer and traffic type prevents selecting NLB when path routing is needed or ALB when sub-millisecond TCP passthrough is the goal.</note>
+      </example>
+
+      <antipattern>
+        <description>Quoting sub-second GSLB failover SLOs when using DNS-based routing.</description>
+        <reason>DNS TTLs are honored unevenly by clients and intermediary resolvers. Failover after a backend failure takes 30 seconds to 5 minutes in practice. Use anycast or set realistic SLOs that match measured DNS propagation times.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ssl-strategy">
+      <p>SSL/TLS termination strategy is tightly coupled to layer selection:</p>
+
+      <rule testable="true">
+        <statement>Choose SSL termination strategy at layer-selection time: (1) SSL Termination at LB — decrypt at L7 load balancer, forward plain HTTP to backends; use when backends need HTTP inspection or the LB performs WAF. (2) SSL Pass-through — L4 forwards encrypted TCP to backends; backends hold the private key; use for end-to-end encryption requirements. (3) SSL Re-encryption — terminate at LB, re-encrypt to backend; balances inspection capability with in-transit encryption inside the cluster.</statement>
+        <rationale>Switching SSL strategy post-deployment requires certificate redistribution, backend reconfiguration, and health-check endpoint changes. Deciding at design time avoids late-stage rework. Compliance requirements (PCI-DSS, HIPAA) often mandate specific termination points.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common errors agents make when reasoning about L4 vs L7:</p>
+
+      <list>
+        <item>LLMs default to "L7 for web apps" without checking whether the overhead is justified for simple TCP workloads (database proxies, Redis frontends, gaming backends).</item>
+        <item>Agents conflate L4 pass-through with L4 termination — pass-through leaves TLS to the backend; L4 termination (rare) decrypts at L4.</item>
+        <item>Capacity math: agents forget that the LB CPU itself becomes the bottleneck for TLS-heavy or regex-heavy L7 workloads — size the LB tier explicitly, not just the backends.</item>
+        <item>L4 vs L7 confusion: agents propose "L4 for performance" then list L7 features (path routing, header rewrite) — reject the inconsistency immediately.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://www.haproxy.com/blog/layer-4-vs-layer-7-load-balancing"/>
+      <link href="https://www.a10networks.com/glossary/how-do-layer-4-and-layer-7-load-balancing-differ/"/>
+      <ref slug="lb-algorithms"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-session-persistence"/>
+      <ref slug="lb-high-availability"/>
+    </see-also>
+  </content>
+</methodology>
