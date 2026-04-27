@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-modules-structure">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Standard layout, file responsibilities, module types, and design principles for authoring self-contained, single-responsibility Terraform modules.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>modules</tag>
+      <tag>iac</tag>
+      <tag>structure</tag>
+      <tag>design</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="terraform-modules-versioning"/>
+      <ref slug="terraform-modules-composition"/>
+      <ref slug="terraform-modules-security"/>
+      <ref slug="terraform-basics"/>
+      <ref slug="iac-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Terraform Module Structure and Design</title>
+
+    <summary>Terraform modules are self-contained packages of Terraform configurations that encapsulate reusable infrastructure components. Well-designed modules reduce code duplication, improve maintainability, and enable team collaboration at scale. Every module must have a single responsibility, a clear inputs/outputs contract, and comprehensive documentation.</summary>
+
+    <why>
+      <p>Modules are the primary unit of code reuse in Terraform. Without a standard structure, teams end up with mega-modules that mix VPC, ECS, and RDS in one directory — increasing blast radius and coupling. A consistent file layout (main.tf, variables.tf, outputs.tf, versions.tf) makes modules predictable: agents and engineers know exactly where to find resources, inputs, outputs, and version constraints. The single-responsibility principle further limits the surface area that changes when a dependency evolves.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Authoring a new reusable Terraform module for a specific resource type (VPC, ECS service, RDS instance).</item>
+        <item>Refactoring an existing flat Terraform root that is growing beyond a single concern.</item>
+        <item>Onboarding a new engineer or agent to an existing module — use this as the canonical layout reference.</item>
+        <item>Publishing a module to the Terraform Registry or an internal registry.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off scripts or environment-specific configs — a root module with inline resources is simpler and sufficient.</item>
+        <item>Prototype repos with fewer than 5 resources — the overhead of a full module structure exceeds the value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="standard-layout">
+      <p>The canonical module directory layout separates concerns by file. Every file has a single declared responsibility and agents must not place resources in variables.tf or outputs in main.tf.</p>
+
+      <rule testable="true">
+        <statement>Every Terraform module MUST contain at minimum: main.tf (primary resources), variables.tf (input definitions), outputs.tf (output values), and versions.tf (provider and Terraform version constraints). Optional files: locals.tf for computed values, data.tf for data source lookups.</statement>
+        <rationale>Predictable layout lets agents and engineers locate any construct in O(1) — no file scanning required. versions.tf prevents silent provider upgrades that break consumers.</rationale>
+      </rule>
+
+      <example type="good" title="Standard module layout">
+        <code lang="text"><![CDATA[
+modules/
+├── vpc/
+│   ├── main.tf           # Resources
+│   ├── variables.tf      # Input variables
+│   ├── outputs.tf        # Output values
+│   ├── versions.tf       # Provider requirements
+│   ├── locals.tf         # Local values (optional)
+│   ├── data.tf           # Data sources (optional)
+│   └── README.md         # Documentation
+├── ec2/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+└── rds/
+    ├── main.tf
+    ├── variables.tf
+    └── outputs.tf
+]]></code>
+        <note>ec2 and rds omit locals.tf and data.tf — only include optional files when they carry real content.</note>
+      </example>
+
+      <example type="bad" title="Mixed-responsibility module">
+        <code lang="text"><![CDATA[
+modules/
+└── app/
+    ├── main.tf      # VPC + ECS + RDS + IAM all in one file
+    └── variables.tf
+]]></code>
+        <note>A single module owning network, compute, and data tiers means any VPC change risks breaking the ECS service config. Split into vpc/, ecs-service/, and rds/ modules.</note>
+      </example>
+    </section>
+
+    <section name="file-responsibilities">
+      <p>Each file in a module has a declared role. Deviating from this contract forces consumers to grep the entire module to understand the resource graph.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>main.tf MUST contain only resource and module blocks. Data source blocks belong in data.tf. Local value blocks belong in locals.tf.</statement>
+          <rationale>Keeps main.tf as the authoritative resource inventory; reviewers can audit resource creation without filtering noise.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>variables.tf MUST define every input variable with: a description, a type constraint, and a default value where the variable is optional. Sensitive inputs MUST set sensitive = true.</statement>
+          <rationale>Missing descriptions break terraform-docs automation. Missing type constraints cause runtime panics on type mismatches. Unmarked sensitive variables leak to logs.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>outputs.tf MUST export resource IDs, ARNs, and connection strings needed by callers. Every output MUST have a description. Sensitive outputs MUST set sensitive = true.</statement>
+          <rationale>Callers cannot reference internals of a module — outputs are the only API surface. Undocumented outputs force callers to read the source.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>versions.tf MUST declare required_version for Terraform and required_providers with source and version for every provider the module uses. Child modules MUST NOT contain provider blocks.</statement>
+          <rationale>Provider blocks in child modules cause Terraform to instantiate a duplicate provider configuration, breaking inheritance from the root module and causing apply failures.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="module-types">
+      <p>Terraform recognizes three module roles. Understanding the distinction prevents misconfigurations (e.g., backend blocks in child modules).</p>
+
+      <term name="Root Module">The main working directory where terraform apply runs. Contains the backend block, provider configuration, and calls to child modules. Exactly one per environment.</term>
+
+      <term name="Child Module">Reusable module called by the root or by other modules. Located in modules/ directory or sourced from an external registry. MUST NOT contain backend or provider blocks.</term>
+
+      <term name="Published Module">Module shared via the Terraform Registry, GitHub, or a private registry. MUST follow the naming convention: terraform-PROVIDER-NAME (e.g., terraform-aws-vpc, terraform-google-sql).</term>
+    </section>
+
+    <section name="design-principles">
+      <p>Four principles govern whether a module is well-designed. Violations are the most common source of module technical debt.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>Each module MUST have a single responsibility. A module named vpc MUST NOT manage ECS services or RDS instances. A module named ecs-service MUST NOT create VPCs.</statement>
+          <rationale>Single responsibility limits the blast radius of changes. A VPC change should never require touching ECS task definitions.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Modules MUST avoid mega-modules. A module with more than 500 lines across all .tf files is a candidate for splitting into smaller child modules.</statement>
+          <rationale>Large modules have many more reasons to change, require longer plan times, and make it harder for reviewers to verify correctness.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Module dependencies MUST flow through explicit outputs and inputs. Modules MUST NOT reference each other's internal resources by hardcoded names or ARNs.</statement>
+          <rationale>Implicit coupling breaks when either module renames an internal resource. Explicit interfaces survive refactoring.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Modules MUST provide sensible defaults for optional variables, use validation blocks for input constraints, and add descriptions to every variable and output.</statement>
+          <rationale>Without defaults, every caller must specify every input. Without validation, invalid inputs surface as cryptic provider errors instead of readable messages.</rationale>
+        </rule>
+      </rules>
+
+      <antipattern>
+        <description>Using a single monolithic module that provisions VPC, subnets, security groups, ECS cluster, ECS services, RDS, and IAM roles in one directory.</description>
+        <reason>Changes to the RDS parameter group force a full plan across all resources, making plan output unreadable. A bug in the VPC CIDR blocks can destroy the ECS service if the plan is applied carelessly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Omitting validation blocks on variables that accept CIDRs, ARNs, or instance types.</description>
+        <reason>Terraform passes invalid values straight to the provider, which surfaces an obscure API error instead of a clear error_message from the validation block.</reason>
+      </antipattern>
+    </section>
+
+    <section name="variable-output-guidelines">
+      <p>Variables and outputs are the public API of a module. Treat them with the same discipline as a function signature in application code.</p>
+
+      <checklist>
+        <check>All variables have descriptions (enables terraform-docs automation).</check>
+        <check>Sensible defaults provided for optional inputs (callers should not need to specify every variable).</check>
+        <check>Type constraints defined: string, number, bool, list, map, object — never omit.</check>
+        <check>Validation blocks for format-constrained inputs (CIDR, ARN, name length).</check>
+        <check>sensitive = true on any variable that holds a password, token, or key.</check>
+        <check>Complex types use object() with explicit attribute structure rather than any.</check>
+        <check>Resource IDs, ARNs, and connection strings exported as outputs.</check>
+        <check>All outputs have descriptions.</check>
+        <check>sensitive = true on any output that echoes a secret value.</check>
+      </checklist>
+
+      <example type="good" title="Variable with validation and description">
+        <code lang="hcl"><![CDATA[
+variable "name" {
+  description = "Name prefix for all resources"
+  type        = string
+
+  validation {
+    condition     = length(var.name) > 0 && length(var.name) <= 32
+    error_message = "Name must be between 1 and 32 characters."
+  }
+}
+
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+
+  validation {
+    condition     = can(cidrhost(var.vpc_cidr, 0))
+    error_message = "VPC CIDR must be a valid CIDR block."
+  }
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Outputs with descriptions and sensitivity">
+        <code lang="hcl"><![CDATA[
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = aws_vpc.main.id
+}
+
+output "private_subnet_ids" {
+  description = "IDs of private subnets"
+  value       = aws_subnet.private[*].id
+}
+
+output "nat_gateway_id" {
+  description = "ID of the NAT Gateway"
+  value       = var.enable_nat_gateway ? aws_nat_gateway.main[0].id : null
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="project-layout">
+      <p>The module directory lives within a larger Terraform project. The recommended project layout separates environments from shared modules and global resources.</p>
+
+      <example type="good" title="Recommended Terraform project layout">
+        <code lang="text"><![CDATA[
+terraform/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── terraform.tfvars
+│   │   └── backend.tf
+│   ├── staging/
+│   └── prod/
+├── modules/
+│   ├── vpc/
+│   ├── ec2/
+│   ├── rds/
+│   └── ecs/
+├── global/
+│   ├── iam/
+│   └── dns/
+└── README.md
+]]></code>
+        <note>Each environment directory is a root module. It calls child modules from ../modules/. The global/ directory holds resources shared across environments (IAM roles, Route53 zones).</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Use .tfvars files or per-environment directories for environment differences. MUST NOT use terraform workspace as the primary environment isolation mechanism for production infrastructure.</statement>
+        <rationale>Workspaces share state backends and make it easy to accidentally apply the wrong environment. Per-environment directories provide strong isolation with separate state files and explicit variable sets.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <ref slug="terraform-modules-versioning"/>
+      <ref slug="terraform-modules-composition"/>
+      <ref slug="terraform-modules-security"/>
+      <ref slug="terraform-basics"/>
+      <ref slug="iac-patterns"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/modules/pattern-module-creation"/>
+      <link href="https://www.hashicorp.com/en/blog/how-to-write-and-rightsize-terraform-modules"/>
+      <link href="https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/structure.html"/>
+    </see-also>
+  </content>
+</methodology>
