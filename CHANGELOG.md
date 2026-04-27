@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 code-quality methodologies migrated to methodology.xml (batch: pair-programming, refactoring-patterns, tech-debt-basics)
 - refactor: 3/3 javascript-developer methodologies migrated to methodology.xml (batch: nodejs-fastify, nodejs-patterns, typescript-react-2026)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: code-review, css-in-js, django-api)
 - refactor: 3/3 free-tier methodologies migrated to new shape (batch: python-typing, python-web-frameworks, api-testing)
