@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-production-patterns">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LangChain production hardening: fallbacks, retries, configurable fields, batch processing, and dependency management for reliable LLM chains.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>production</tag>
+      <tag>fallback</tag>
+      <tag>retry</tag>
+      <tag>lcel</tag>
+    </tags>
+    <category>reliability</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langchain</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="langchain-rag-pipeline"/>
+      <ref slug="langchain-observability"/>
+      <ref slug="langchain-chains"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LangChain Production Patterns</title>
+
+    <summary>Production LangChain chains require fallbacks for model outages, retries for transient errors, configurable fields for runtime model swaps, and pinned dependency versions to avoid silent breakage. Without these, chain failures propagate silently and are nearly impossible to debug retroactively.</summary>
+
+    <why>
+      <p>Model outages are common and chain failures without fallbacks propagate silently — the caller receives an exception rather than a degraded-but-functional response. LangChain's LCEL makes fallbacks and retries first-class: with_fallbacks() and with_retry() are chainable on any Runnable. The configurable_fields pattern lets a single chain serve multiple runtime configurations (model, temperature) without duplication. Pinning langchain, langchain-openai, and langchain-community versions together is critical: they have tight version coupling and mismatched versions cause hard-to-diagnose errors.</p>
+      <p>RunnableParallel runs branches concurrently only in the async variant (ainvoke, astream); sync invoke runs branches sequentially despite the name. This is a common source of unexpected latency in production chains that appear to be running in parallel.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any LangChain chain deployed to production where model outages or rate limits are possible.</item>
+        <item>Projects that require LLM provider flexibility (swap OpenAI for Anthropic without rewriting the chain).</item>
+        <item>Services that need runtime model switching (e.g. A/B testing gpt-4o vs gpt-4o-mini) without redeployment.</item>
+        <item>Batch processing workflows that require concurrent chain invocations with controlled concurrency.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-call LLM tasks — fallback and retry setup adds boilerplate with no value for throw-away scripts.</item>
+        <item>When the team is unfamiliar with LangChain's abstraction layers — debugging failures in production chains requires deep framework knowledge.</item>
+        <item>Projects with strict latency SLAs where LCEL's serialization overhead matters.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fallback-and-retry">
+      <p>with_fallbacks() wraps any Runnable: if the primary raises an exception (rate limit, timeout, model error), the fallback list is tried in order. with_retry() adds exponential back-off with jitter on top of any Runnable, including a chain that already has fallbacks.</p>
+
+      <rule>
+        <statement>Use with_fallbacks() on every production LLM call; model outages are common and chain failures propagate silently without it.</statement>
+        <rationale>A chain with no fallback raises an exception that the caller must handle. A chain with a fallback returns a degraded-but-correct response. In multi-step pipelines, a single uncaught LLM exception cascades through all downstream steps.</rationale>
+      </rule>
+
+      <example type="good" title="Fallback from GPT-4o to Claude with retry">
+        <code lang="python"><![CDATA[
+import os
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_PROJECT"] = "my-project"
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a concise research assistant."),
+    ("user", "{question}")
+])
+
+primary = ChatOpenAI(model="gpt-4o", temperature=0)
+fallback = ChatAnthropic(model="claude-sonnet-4-5")
+robust_llm = primary.with_fallbacks([fallback])
+
+chain = prompt | robust_llm | StrOutputParser()
+chain_with_retry = chain.with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+
+answer = chain_with_retry.invoke({"question": "What is LCEL?"})
+]]></code>
+        <note>Tracing is enabled from the start, not retroactively. Both primary and fallback calls appear in LangSmith.</note>
+      </example>
+
+      <example type="bad" title="Chain with no fallback or retry">
+        <code lang="python"><![CDATA[
+# No fallback, no retry — a single model outage kills the response
+chain = prompt | ChatOpenAI(model="gpt-4o") | StrOutputParser()
+answer = chain.invoke({"question": "..."})
+]]></code>
+        <note>Any rate limit or timeout raises an uncaught exception. In a multi-step pipeline this cascades through all downstream steps.</note>
+      </example>
+    </section>
+
+    <section name="configurable-fields">
+      <p>ConfigurableField lets a single chain accept runtime overrides for model, temperature, and other constructor arguments via the config dict. This is the standard pattern for A/B testing or per-request model selection.</p>
+
+      <example type="good" title="Configurable model and temperature at runtime">
+        <code lang="python"><![CDATA[
+from langchain_core.runnables.utils import ConfigurableField
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+configurable_llm = ChatOpenAI(model="gpt-4o").configurable_fields(
+    model=ConfigurableField(
+        id="model",
+        name="Model",
+        description="The model to use"
+    ),
+    temperature=ConfigurableField(
+        id="temperature",
+        name="Temperature",
+        description="Sampling temperature"
+    )
+)
+
+chain = ChatPromptTemplate.from_messages([
+    ("system", "You are a concise assistant."),
+    ("user", "{input}")
+]) | configurable_llm | StrOutputParser()
+
+# Default config
+response_default = chain.invoke({"input": "Hello"})
+
+# Override at runtime — no redeployment needed
+response_mini = chain.invoke(
+    {"input": "Hello"},
+    config={"configurable": {"model": "gpt-4o-mini", "temperature": 0}}
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="batch-and-async">
+      <p>chain.batch() runs a list of inputs concurrently up to max_concurrency. It is the correct pattern for bulk processing — not a loop of chain.invoke() calls, which blocks on each response.</p>
+
+      <rule>
+        <statement>RunnableParallel runs branches concurrently ONLY in the async variant (ainvoke, astream); sync invoke runs branches sequentially despite the name. Use ainvoke/astream for I/O-bound parallel branches in production.</statement>
+        <rationale>Blocking sync calls in async contexts causes thread starvation and unpredictable latency spikes. The naming is misleading and this is a well-known LangChain gotcha.</rationale>
+      </rule>
+
+      <example type="good" title="Batch processing with concurrency control">
+        <code lang="python"><![CDATA[
+# Batch: runs up to 5 concurrent requests
+responses = chain.batch([
+    {"input": "Question 1"},
+    {"input": "Question 2"},
+    {"input": "Question 3"}
+], config={"max_concurrency": 5})
+
+# Async streaming for I/O-bound parallel branches
+async def stream_response(query: str):
+    async for chunk in chain.astream({"input": query}):
+        yield chunk
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using RunnableParallel in a synchronous invoke() call expecting true parallel execution of multiple LLM branches.</description>
+        <reason>Sync RunnableParallel runs branches sequentially. For actual parallelism use ainvoke() or astream() with async branches.</reason>
+      </antipattern>
+    </section>
+
+    <section name="dependency-management">
+      <p>langchain, langchain-openai, and langchain-community have tight version coupling. Pin them together in requirements files and upgrade them together. Mixing versions causes Pydantic v1/v2 conflicts and import errors that are hard to diagnose.</p>
+
+      <rule>
+        <statement>Pin langchain, langchain-openai, and langchain-community versions together in requirements files; upgrade them as a unit. Never update one package without updating the others.</statement>
+        <rationale>LangChain's internal models use Pydantic v1 patterns; mixing with v2-native code in the same project causes type errors. Mismatched langchain/* versions cause hard-to-diagnose import failures at runtime.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always use LCEL (| pipe syntax) instead of legacy LLMChain, ConversationalChain classes — they are deprecated and will be removed.</statement>
+        <rationale>Legacy Chain classes do not support streaming, async, or the configurable field pattern. They accumulate technical debt that blocks migration to newer LangChain versions.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using hub.pull() in a production chain that may run in air-gapped or restricted network environments.</description>
+        <reason>hub.pull() fetches prompts from LangSmith Hub at runtime. If the Hub is down or the prompt is deleted, the chain fails with an unclear error. Inline prompts or locally committed templates are safer for production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Importing from langchain-community without pinning the optional backend dependencies (pypdf, chromadb, etc.).</description>
+        <reason>Community loaders depend on optional libraries not installed by default. Missing deps fail silently or raise confusing ImportError at invocation time, not at import time.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="langchain-observability"/>
+      <ref slug="langchain-rag-pipeline"/>
+      <link href="https://python.langchain.com/docs/expression_language/"/>
+      <link href="https://smith.langchain.com/"/>
+    </see-also>
+  </content>
+</methodology>
