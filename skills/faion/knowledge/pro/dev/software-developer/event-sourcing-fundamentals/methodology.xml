@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-fundamentals">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Event Sourcing core concept: persist state as an immutable sequence of domain events; derive current state by replaying them. When to use, when not, key principles.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>domain-events</tag>
+      <tag>immutability</tag>
+      <tag>audit-trail</tag>
+      <tag>cqrs</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="event-sourcing-projections"/>
+      <ref slug="event-sourcing-snapshots"/>
+      <ref slug="event-sourcing-versioning"/>
+      <ref slug="event-sourcing-agentic"/>
+      <ref slug="cqrs-pattern"/>
+      <ref slug="domain-driven-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Fundamentals</title>
+
+    <summary>Event Sourcing persists the state of an entity as a sequence of state-changing events. Instead of storing current state, you store all events that led to it. The current state is derived by replaying events.</summary>
+
+    <why>
+      <p>Traditional CRUD stores only the current snapshot. You lose the history of how state changed, who changed it, and when. Event Sourcing solves this by making the event log the primary source of truth: every state transition is an explicit, immutable record. This enables complete audit trails, temporal queries ("what was the state on date X"), and the ability to replay history through new business logic.</p>
+      <p>Event-driven architectures benefit because downstream consumers — search, analytics, ML feature stores — can subscribe to the event log instead of polling a mutable database. The log becomes the integration backbone.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complete audit trail required — banking, ledger, healthcare records, compliance-heavy SaaS.</item>
+        <item>Aggregates where temporal queries are needed: "what was the state on date X", "who changed Y when".</item>
+        <item>Systems where business rules evolve and you need to replay history through new logic (recompute royalties, retry failed reconciliations).</item>
+        <item>Front-end of a CQRS system with multiple read models that must stay in sync from one truth — events are that truth.</item>
+        <item>Domain-event-driven microservices where downstream consumers (search, analytics, ML feature store) subscribe to a published event log.</item>
+        <item>Workflows requiring undo / what-if analysis (engineering simulators, financial projections).</item>
+        <item>Complex domain with temporal queries and event-driven architectures.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CRUD-shaped data with no audit need — events double the storage and triple the complexity for no payoff.</item>
+        <item>Reporting-first products where the dominant access pattern is aggregate analytics — keep a relational warehouse, not an event store.</item>
+        <item>Strong real-time consistency UX (banking transfer that must instantly show the new balance to the same user) without a careful read-your-writes strategy.</item>
+        <item>Tiny solo apps and pre-PMF MVPs — the event/projection plumbing dwarfs the feature.</item>
+        <item>Teams without DDD experience — without aggregate boundaries, the event log degenerates into a CDC log of CRUD updates.</item>
+        <item>Domains where regulatory rules require destruction (GDPR right to erasure) and crypto-shredding is not acceptable.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <rule>
+        <statement>Events are immutable. Once stored, events MUST never be modified or deleted.</statement>
+        <rationale>Mutability destroys the audit trail and breaks replay determinism. State is derived exclusively from the append-only event log.</rationale>
+      </rule>
+      <rule>
+        <statement>Events are the source of truth. Current state MUST be derived by replaying the ordered event sequence, never stored directly.</statement>
+        <rationale>Storing derived state creates two sources of truth that can diverge. The event log is canonical; read models are caches.</rationale>
+      </rule>
+      <rule>
+        <statement>Event order matters. Events MUST be applied in the exact sequence they were recorded (by stream version number).</statement>
+        <rationale>Out-of-order application produces incorrect state. Optimistic concurrency (expected_version on append) enforces order at the storage layer.</rationale>
+      </rule>
+      <rule>
+        <statement>Events MUST be named in past tense and describe a specific business action, not a state snapshot. Examples: OrderPlaced, ItemAdded, PaymentCaptured.</statement>
+        <rationale>Past-tense event names describe what happened, not what changed. "OrderUpdated" with a full snapshot is a CRUD anti-pattern — it loses the business intent.</rationale>
+      </rule>
+    </section>
+
+    <section name="event-definitions">
+      <p>Events carry only the data that changed in that specific business action. Use frozen dataclasses in Python, records in Java, or immutable structs in C# to enforce immutability at compile time.</p>
+      <example type="good" title="Frozen dataclass base + domain events (Python)">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+from uuid import UUID, uuid4
+
+
+@dataclass(frozen=True)
+class Event:
+    """Base class for all domain events."""
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=datetime.utcnow)
+    metadata: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class OrderCreated(Event):
+    order_id: UUID = None
+    customer_id: UUID = None
+
+
+@dataclass(frozen=True)
+class OrderItemAdded(Event):
+    order_id: UUID = None
+    product_id: UUID = None
+    product_name: str = ""
+    quantity: int = 0
+    unit_price: Decimal = Decimal("0")
+
+
+@dataclass(frozen=True)
+class OrderItemRemoved(Event):
+    order_id: UUID = None
+    product_id: UUID = None
+
+
+@dataclass(frozen=True)
+class OrderPlaced(Event):
+    order_id: UUID = None
+    shipping_address: dict = field(default_factory=dict)
+    total_amount: Decimal = Decimal("0")
+
+
+@dataclass(frozen=True)
+class OrderShipped(Event):
+    order_id: UUID = None
+    tracking_number: str = ""
+    carrier: str = ""
+
+
+@dataclass(frozen=True)
+class OrderDelivered(Event):
+    order_id: UUID = None
+    delivered_at: datetime = None
+    signature: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class OrderCancelled(Event):
+    order_id: UUID = None
+    reason: str = ""
+    cancelled_by: UUID = None
+]]></code>
+        <note>frozen=True is mandatory — prevents any mutation after creation. Each event carries only the fields relevant to that specific business action.</note>
+      </example>
+
+      <antipattern>
+        <description>Mutable event objects — setting fields after instantiation.</description>
+        <reason>Mutable events allow post-hoc tampering with history. Use frozen dataclasses / records so mutation is a compile-time error.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Large catch-all events: OrderUpdated(entire_order_data: dict) carrying the full state snapshot.</description>
+        <reason>Snapshot-style events destroy the audit trail — you can no longer answer "what specific business action triggered this change". Use fine-grained events: OrderItemAdded, ShippingAddressChanged, etc.</reason>
+      </antipattern>
+    </section>
+
+    <section name="architecture-overview">
+      <p>The canonical flow: Command Handler loads events from the Event Store, reconstructs the aggregate by replaying them, executes the command (generating new events), then persists new events back to the store. Downstream Projections subscribe to the event stream and build specialized read models.</p>
+      <p>The Event Store holds append-only streams keyed by (stream_id, version). Optimistic concurrency via expected_version prevents concurrent writes from producing inconsistent state. Projections are independent, rebuilable from event offset 0 at any time.</p>
+    </section>
+
+    <section name="architecture-table">
+      <p>Key store schema: EventId, StreamId, Version, EventType, EventData (JSON), OccurredAt, Metadata.</p>
+      <p>Example stream for order-1: version 1 = OrderCreated, version 2 = ItemAdded, version 3 = ItemAdded, version 4 = OrderPlaced.</p>
+    </section>
+
+    <see-also>
+      <link href="https://martinfowler.com/eaaDev/EventSourcing.html"/>
+      <link href="https://www.youtube.com/watch?v=8JKjvY4etTY"/>
+      <link href="https://www.eventstore.com/"/>
+      <link href="https://martendb.io/events/"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="cqrs-pattern"/>
+    </see-also>
+  </content>
+</methodology>
