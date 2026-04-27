@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-lb-high-availability">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>HA patterns (active-passive, active-active, anycast, DNS failover), cloud LB selection guide (AWS ALB/NLB/GLB, GCP, Azure), and Terraform/CloudFormation templates for AWS ALB and GCP HTTPS LB.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>high-availability</tag>
+      <tag>cloud</tag>
+      <tag>aws</tag>
+      <tag>disaster-recovery</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-lb-algorithms"/>
+      <ref slug="devops-lb-ssl-tls"/>
+      <ref slug="devops-lb-haproxy"/>
+    </related>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Load Balancer High Availability and Cloud Patterns</title>
+
+    <summary>A load balancer is itself a single point of failure unless deployed in an HA topology. Active-active with floating VIP is the standard on-premise pattern; cloud managed LBs (AWS ALB, GCP HTTPS LB, Azure Front Door) handle HA internally across availability zones. Select the cloud LB product based on OSI layer and routing requirements.</summary>
+
+    <why>
+      <p>A single load balancer instance that fails takes down all traffic behind it, negating the HA benefits of backend server pools. HA load balancer topologies ensure the LB tier itself survives instance failures. Cloud managed load balancers are preferred for new deployments because they delegate HA, capacity, and firmware maintenance to the provider, reducing operational burden significantly.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production service with an SLA above 99% — a single LB instance cannot achieve this.</item>
+        <item>Multi-AZ deployments where backend servers span availability zones.</item>
+        <item>Global applications requiring cross-region failover or latency-based routing.</item>
+        <item>Deployments where the load balancer tier must survive a full AZ failure.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development or staging environments where downtime during maintenance is acceptable — HA adds cost and complexity.</item>
+        <item>Do not implement active-active LB without cross-session state synchronisation or sticky sessions — inconsistent routing will break stateful applications.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ha-patterns">
+      <p>Four HA patterns with different failover characteristics:</p>
+      <list>
+        <item>Active-Passive: Primary LB handles all traffic; standby takes over on failure via floating IP (keepalived/VRRP). Failover time: 1-30 seconds. Simple to configure; wastes 50% of LB capacity at rest.</item>
+        <item>Active-Active: Both LBs handle traffic simultaneously, sharing load via anycast IP or DNS round-robin. Near-zero failover time. Requires session synchronisation or stateless backends.</item>
+        <item>DNS Failover: Health checks drive DNS record updates (Route 53 health checks, Cloudflare LB). Failover time is TTL-dependent (minutes). Appropriate for cross-region failover; too slow for single-region HA.</item>
+        <item>Anycast: Same IP address announced from multiple locations via BGP. Traffic routes to the nearest healthy node with near-zero failover. Used by CDNs and global cloud LBs (GCP Global HTTPS LB, AWS Global Accelerator, Cloudflare).</item>
+      </list>
+    </section>
+
+    <section name="cloud-lb-selection">
+      <p>AWS load balancer products:</p>
+      <list>
+        <item>ALB (Application Load Balancer, L7): HTTP/HTTPS, WebSocket, gRPC. Path-based and host-based routing, Lambda targets, sticky sessions, WAF integration. Use for web applications and APIs.</item>
+        <item>NLB (Network Load Balancer, L4): TCP/UDP. Extreme throughput (millions of req/s), static IP, TLS passthrough. Use for high-performance TCP/UDP services, databases, and gaming.</item>
+        <item>GLB (Gateway Load Balancer, L3): Transparent bump-in-the-wire for firewalls and appliances. Use for network security appliances.</item>
+        <item>CLB (Classic LB, L4/L7): Legacy. Avoid for new deployments — superseded by ALB and NLB.</item>
+      </list>
+
+      <p>GCP load balancer products:</p>
+      <list>
+        <item>Global HTTP(S) LB (L7): Global anycast, CDN integration, Cloud Armor WAF. Use for internet-facing HTTP/HTTPS with global reach.</item>
+        <item>Regional TCP/UDP LB (L4): Regional TCP/UDP traffic. Use for non-HTTP internal services.</item>
+        <item>Internal LB (L4/L7): Private VPC traffic. Use for service-to-service communication inside GCP.</item>
+      </list>
+
+      <p>Azure load balancer products:</p>
+      <list>
+        <item>Application Gateway (L7): HTTP/HTTPS, WAF, URL-based routing. Equivalent to AWS ALB.</item>
+        <item>Azure Load Balancer (L4): Regional TCP/UDP. Equivalent to AWS NLB.</item>
+        <item>Front Door (L7): Global CDN + WAF + LB. Equivalent to AWS CloudFront + ALB or GCP Global HTTPS LB.</item>
+        <item>Traffic Manager (DNS): DNS-based routing with health checks. Equivalent to AWS Route 53 latency/failover routing.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Deploy load balancers in a minimum of two availability zones. For AWS ALB/NLB, enable cross-zone load balancing to distribute traffic evenly across AZs regardless of instance count per AZ.</statement>
+        <rationale>A single-AZ LB deployment fails when that AZ experiences an outage. Cross-zone load balancing prevents uneven distribution when AZ instance counts differ (e.g. during rolling deployments).</rationale>
+      </rule>
+      <rule>
+        <statement>Use managed cloud load balancers (AWS ALB/NLB, GCP Global HTTPS LB, Azure Front Door) for new internet-facing workloads rather than self-hosted HAProxy or Nginx, unless specific features require self-hosting.</statement>
+        <rationale>Managed LBs provide built-in HA, automatic scaling, TLS certificate management, and DDoS mitigation with zero operational overhead for firmware updates, OS patching, and capacity planning. The operational cost of self-hosting LBs is justified only when cloud products lack required features.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure CloudWatch (AWS), Cloud Monitoring (GCP), or Azure Monitor alarms on load balancer error rates (4xx, 5xx), target response times, and healthy host count. Alert when healthy host count drops below 50%.</statement>
+        <rationale>LB-level metrics aggregate across all backends, providing the earliest signal of backend pool degradation. Backend-level metrics may not surface pool-wide issues until multiple backends degrade.</rationale>
+      </rule>
+    </rules>
+
+    <section name="aws-alb-cloudformation">
+      <example type="good" title="AWS ALB with CloudFormation — HTTPS + path routing">
+        <code lang="yaml"><![CDATA[
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Application Load Balancer
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet::Id
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet::Id
+  CertificateArn:
+    Type: String
+
+Resources:
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: my-alb
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+        - Key: routing.http2.enabled
+          Value: 'true'
+        - Key: access_logs.s3.enabled
+          Value: 'true'
+        - Key: access_logs.s3.bucket
+          Value: my-alb-logs
+
+  HTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref WebTargetGroup
+
+  HTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            StatusCode: HTTP_301
+
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: web-targets
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: instance
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: '200'
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: '30'
+        - Key: stickiness.enabled
+          Value: 'true'
+        - Key: stickiness.type
+          Value: lb_cookie
+        - Key: stickiness.lb_cookie.duration_seconds
+          Value: '86400'
+
+  APITargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: api-targets
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: instance
+      HealthCheckPath: /api/health
+
+  APIListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref HTTPSListener
+      Priority: 10
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /api/*
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref APITargetGroup
+
+Outputs:
+  LoadBalancerDNS:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  LoadBalancerArn:
+    Value: !Ref ApplicationLoadBalancer
+]]></code>
+        <note>SslPolicy ELBSecurityPolicy-TLS13-1-2-2021-06 enables TLS 1.3 with TLS 1.2 fallback. deregistration_delay 30s drains connections before removing targets during deployments.</note>
+      </example>
+    </section>
+
+    <section name="aws-nlb-terraform">
+      <example type="good" title="AWS NLB with Terraform">
+        <code lang="hcl"><![CDATA[
+resource "aws_lb" "nlb" {
+  name               = "my-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = var.public_subnet_ids
+
+  enable_cross_zone_load_balancing = true
+
+  tags = {
+    Environment = "production"
+  }
+}
+
+resource "aws_lb_target_group" "tcp" {
+  name     = "tcp-targets"
+  port     = 8080
+  protocol = "TCP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    enabled             = true
+    protocol            = "TCP"
+    interval            = 30
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
+  }
+
+  deregistration_delay = 30
+}
+
+resource "aws_lb_listener" "tcp" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = 443
+  protocol          = "TLS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tcp.arn
+  }
+}
+]]></code>
+        <note>enable_cross_zone_load_balancing is critical for NLB — without it, traffic to an AZ with fewer targets saturates those targets while others are idle.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Deploy LB in minimum 2 availability zones.</check>
+      <check>Configure health checks for the LB tier itself (not just backends).</check>
+      <check>Use floating/virtual IP or cloud-managed VIP for failover.</check>
+      <check>Enable cross-zone load balancing on AWS ALB/NLB.</check>
+      <check>Test failover procedures regularly (chaos engineering or scheduled drills).</check>
+      <check>Monitor LB health metrics, connection counts, error rates (4xx/5xx), and latency P99.</check>
+      <check>Set up CloudWatch/Cloud Monitoring alarms on healthy host count.</check>
+      <check>Document manual failover runbooks.</check>
+      <check>Configure access logs to S3/GCS for audit and debugging.</check>
+      <check>Set deregistration delay (30s) to drain connections during deployments.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Single-AZ load balancer deployment with multi-AZ backends.</description>
+      <reason>The LB becomes the single point of failure. An AZ outage that takes out the LB removes all traffic handling regardless of how many backend instances are healthy in other AZs.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using DNS TTL as a failover mechanism with TTL above 60 seconds.</description>
+      <reason>DNS-based failover is limited by TTL and client-side caching — actual failover time can be 5-10x the configured TTL. This is acceptable for cross-region failover but not for within-region HA where sub-minute RTO is expected.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/elasticloadbalancing/"/>
+      <link href="https://cloud.google.com/load-balancing/docs"/>
+    </see-also>
+  </content>
+</methodology>
