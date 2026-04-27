@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-chat-engine">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex chat engine modes (condense_plus_context, context, react), ChatMemoryBuffer token management, and streaming responses for document-grounded multi-turn conversations.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>chat</tag>
+      <tag>memory</tag>
+      <tag>streaming</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>llamaindex</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex Chat Engine and Streaming</title>
+
+    <summary>LlamaIndex chat engines wrap a VectorStoreIndex with conversation memory and follow-up question handling. Choose chat mode based on follow-up complexity: condense_plus_context for standard Q&amp;A with history, react for tool-using agents. Bound memory with ChatMemoryBuffer(token_limit=3900) to prevent context overflow. Use streaming for responsive UX in production.</summary>
+
+    <why>
+      <p>Standard query engines are stateless: each query is independent. Chat engines maintain conversation history and optionally rewrite follow-up questions into standalone queries before retrieval. Without condensation, follow-ups like "tell me more" retrieve nothing — the query engine sees no context. condense_plus_context mode solves this by first condensing history+follow-up into a standalone query, then augmenting it with retrieved context.</p>
+      <p>Memory bounding is non-negotiable in long conversations. Unbounded history grows the prompt token count until the LLM context window overflows. ChatMemoryBuffer enforces a token limit, truncating old messages to stay within budget.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Document Q&amp;A with follow-up questions — users refer to previous answers ("what did you say about X?").</item>
+        <item>Customer support bots grounded in a knowledge base — context mode injects relevant documents into each turn.</item>
+        <item>Long-running research sessions where conversation history helps the agent track what has been covered.</item>
+        <item>Production UX requiring streaming — users see words appear as the model generates, not a long wait.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn Q&amp;A with no follow-up — a query engine is simpler and cheaper (no history overhead).</item>
+        <item>High-throughput batch querying — chat engines maintain per-session state; use query engines with async batching instead.</item>
+        <item>The primary task is tool orchestration with complex state — LangGraph or a custom ReAct loop has better control primitives.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="chat-modes">
+      <p>LlamaIndex provides five chat modes. The three most useful in production: condense_plus_context, context, and react.</p>
+
+      <rule>
+        <statement>Default to condense_plus_context for document Q&amp;A with conversation history. Use context when history condensation is not needed (each turn is independent). Use react only when the chat engine needs to invoke tools dynamically during the conversation.</statement>
+        <rationale>condense_question alone rewrites the query but does not inject retrieved context — the LLM answers from memory. context alone injects context but does not handle follow-ups. condense_plus_context combines both, making it the safe default for document-grounded chat.</rationale>
+      </rule>
+
+      <example type="good" title="condense_plus_context with bounded memory">
+        <code lang="python"><![CDATA[
+from llama_index.core.memory import ChatMemoryBuffer
+
+memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
+
+chat_engine = index.as_chat_engine(
+    chat_mode="condense_plus_context",
+    memory=memory,
+    system_prompt=(
+        "You are a helpful assistant answering questions "
+        "about documents. Use only the provided context."
+    ),
+    verbose=True,
+)
+
+response = chat_engine.chat("What is this document about?")
+print(response)
+
+response = chat_engine.chat("Can you give me an example from it?")
+print(response)
+]]></code>
+        <note>token_limit=3900 leaves room for retrieved context and generation within an 8k context window.</note>
+      </example>
+
+      <example type="bad" title="Unbounded memory in a long session">
+        <code lang="python"><![CDATA[
+# Do NOT omit token_limit for long sessions
+chat_engine = index.as_chat_engine(
+    chat_mode="condense_plus_context",
+)
+]]></code>
+        <note>History grows without bound. After ~20 turns on a verbose topic, the prompt overflows the context window and the LLM errors or silently truncates early turns.</note>
+      </example>
+    </section>
+
+    <section name="chat-mode-reference">
+      <p>Mode selection reference for common scenarios.</p>
+
+      <list>
+        <item>condense_question: rewrites follow-up into standalone query using history; does NOT inject retrieved context — answer comes from LLM memory only. Use for conversational rephrasing without RAG.</item>
+        <item>context: retrieves documents for every turn and injects them; does NOT condense follow-ups — "tell me more" retrieves nothing relevant. Use when each turn is semantically complete.</item>
+        <item>condense_plus_context: condenses follow-up into standalone query, then retrieves and injects context. Best for document-grounded multi-turn chat.</item>
+        <item>simple: no context augmentation, no condensation. Equivalent to a plain LLM chat. Use only for non-RAG turns.</item>
+        <item>react: ReAct agent with tools exposed as chat turns. Use when the chat engine needs to call tools (search, calculator, code executor) during conversation.</item>
+      </list>
+    </section>
+
+    <section name="streaming">
+      <p>Streaming sends tokens to the client as they are generated, avoiding a long wait. LlamaIndex streaming works for both query engines and chat engines.</p>
+
+      <rule>
+        <statement>Enable streaming=True on any user-facing query or chat engine. Consume response_gen in a loop; do not buffer the full response before display. For async applications, use astream_chat() and async for.</statement>
+        <rationale>LLM generation latency is dominated by the first token wait plus token-by-token delivery. Streaming eliminates the perceived latency: users see the first word in ~1 second instead of waiting for the full paragraph. Buffering the full stream before display negates this benefit.</rationale>
+      </rule>
+
+      <example type="good" title="Streaming query engine response">
+        <code lang="python"><![CDATA[
+query_engine = index.as_query_engine(streaming=True)
+streaming_response = query_engine.query("What is the main topic?")
+
+for text in streaming_response.response_gen:
+    print(text, end="", flush=True)
+print()  # newline after stream completes
+]]></code>
+      </example>
+
+      <example type="good" title="Async streaming chat engine">
+        <code lang="python"><![CDATA[
+from llama_index.core.memory import ChatMemoryBuffer
+
+memory = ChatMemoryBuffer.from_defaults(token_limit=3900)
+chat_engine = index.as_chat_engine(
+    chat_mode="condense_plus_context",
+    memory=memory,
+)
+
+async def stream_chat(query: str) -> None:
+    response = await chat_engine.astream_chat(query)
+    async for token in response.async_response_gen():
+        print(token, end="", flush=True)
+    print()
+]]></code>
+        <note>astream_chat() does not block the event loop — required when the chat engine runs inside an async agent or web server.</note>
+      </example>
+    </section>
+
+    <section name="agent-integration-patterns">
+      <p>When building an agent that uses a chat engine, the agentic workflow selects the retrieval strategy based on query characteristics and routes through the chat engine for context-augmented generation.</p>
+
+      <p>Recommended subagent pattern: a planner subagent decides whether the query requires multi-document synthesis (SubQuestionQueryEngine) or single-document Q&amp;A (chat engine). The chat engine handles the latter, maintaining session state across the agent's conversation turns.</p>
+
+      <prompt purpose="multi-document-research-agent"><![CDATA[
+You are a multi-document research agent. Load indexes from paths {index_paths}.
+For query "{query}":
+1. If query compares multiple sources -> use SubQuestionQueryEngine across all indexes
+2. If query is factual about one source -> use VectorRetriever on the relevant index via chat engine
+3. Always rerank top-20 to top-5 before synthesis
+Return JSON: {"answer": str, "strategy_used": str, "sources": [{"index": str, "text": str}]}
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Set token_limit on ChatMemoryBuffer before deploying any chat engine to production.</check>
+      <check>Default to condense_plus_context mode for document-grounded multi-turn Q&amp;A.</check>
+      <check>Enable streaming=True on all user-facing query and chat engines.</check>
+      <check>Use astream_chat() (not stream_chat()) inside async agent loops to avoid blocking the event loop.</check>
+      <check>Reset chat engine history between unrelated sessions to prevent cross-session context leakage.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/chat_engine/"/>
+    </see-also>
+  </content>
+</methodology>
