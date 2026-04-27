@@ -1,0 +1,586 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-landing-zone">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GCP landing zone: resource hierarchy, IAM foundation, org policies, and Terraform modules for an enterprise-ready cloud foundation.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>landing-zone</tag>
+      <tag>terraform</tag>
+      <tag>iam</tag>
+      <tag>organization</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="gcp-network-architecture"/>
+      <ref slug="gcp-gke-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Landing Zone Design</title>
+
+    <summary>A GCP landing zone (cloud foundation) is a modular configuration enabling enterprise adoption of Google Cloud. It establishes resource hierarchy, IAM, network architecture, security controls, and monitoring as a reusable foundation before any workload is deployed.</summary>
+
+    <why>
+      <p>Without a landing zone, teams create ad-hoc projects with inconsistent IAM, overlapping CIDRs, missing audit logs, and no org-level guardrails. The landing zone establishes the governance layer once — all subsequent workloads inherit security controls automatically, reducing security debt and operational toil.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new GCP organization or migrating from another cloud.</item>
+        <item>Setting up multi-environment (production, staging, development) project structures.</item>
+        <item>Enforcing org-wide security policies (no SA keys, no public IPs, location restrictions).</item>
+        <item>Deploying a Shared VPC host project for centralized network administration.</item>
+        <item>Establishing FinOps foundations: billing export, budgets, cost labels.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-project proofs of concept — org-level setup overhead is not justified.</item>
+        <item>Personal/sandbox accounts without an organization — many controls require org node.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="resource-hierarchy">
+      <p>The Google Cloud resource hierarchy is: Organization → Folders → Projects → Resources. Folders group projects by department, environment, or both. All IAM and org policies set at a parent node are inherited downward.</p>
+
+      <rule>
+        <statement>Use a folder-per-environment pattern (Production/, Staging/, Development/) under the organization root, plus a Shared Infrastructure/ folder for host projects (shared-vpc-host, shared-monitoring, shared-security, CI/CD).</statement>
+        <rationale>Environment isolation prevents accidental cross-environment resource sharing. Shared services in a dedicated folder allow centralized administration with delegated IAM for consuming teams.</rationale>
+      </rule>
+
+      <example type="good" title="Folder hierarchy">
+        <code lang="text"><![CDATA[
+Organization
+  +-- Production/
+  |     +-- Project: prod-frontend
+  |     +-- Project: prod-backend
+  |     +-- Project: prod-data
+  +-- Staging/
+  |     +-- Project: staging-app
+  +-- Development/
+  |     +-- Project: dev-sandbox-team-a
+  +-- Shared Infrastructure/
+        +-- Project: shared-vpc-host
+        +-- Project: shared-monitoring
+        +-- Project: shared-security
+]]></code>
+      </example>
+
+      <example type="good" title="Create folders via gcloud">
+        <code lang="bash"><![CDATA[
+# Create folders for environments
+gcloud resource-manager folders create \
+    --display-name="Production" \
+    --organization=ORGANIZATION_ID
+
+gcloud resource-manager folders create \
+    --display-name="Staging" \
+    --organization=ORGANIZATION_ID
+
+gcloud resource-manager folders create \
+    --display-name="Development" \
+    --organization=ORGANIZATION_ID
+
+gcloud resource-manager folders create \
+    --display-name="Shared Infrastructure" \
+    --organization=ORGANIZATION_ID
+
+# Create shared VPC host project
+gcloud projects create shared-vpc-host-prod \
+    --folder=SHARED_FOLDER_ID \
+    --name="Shared VPC Host"
+
+# Enable Shared VPC
+gcloud compute shared-vpc enable shared-vpc-host-prod
+]]></code>
+      </example>
+    </section>
+
+    <section name="iam-foundation">
+      <p>IAM is the primary access control layer. The landing zone must configure identity federation, group naming, least-privilege roles, and Workload Identity Federation before any service account key is created.</p>
+
+      <rules>
+        <rule>
+          <statement>Disable service account key creation at org level via org policy constraints/iam.disableServiceAccountKeyCreation. Use Workload Identity Federation for CI/CD pipelines.</statement>
+          <rationale>SA keys are long-lived credentials that leak through source control, CI logs, and backups. WIF exchanges short-lived OIDC tokens, eliminating the key lifecycle risk.</rationale>
+        </rule>
+        <rule>
+          <statement>Assign predefined roles, never primitive roles (Owner/Editor/Viewer) at the project or org level.</statement>
+          <rationale>Primitive roles grant hundreds of permissions including destructive ones. Predefined roles are scoped to specific services and follow the least-privilege principle.</rationale>
+        </rule>
+        <rule>
+          <statement>Require MFA for all human identities and configure SSO with the corporate IdP before granting production access.</statement>
+          <rationale>Phishing is the primary GCP account compromise vector. MFA and IdP federation remove shared-password risk and tie Google identity lifecycle to HR offboarding.</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="Org policy: disable SA key creation">
+        <code lang="bash"><![CDATA[
+# Disable service account key creation
+gcloud org-policies set-policy - --organization=ORGANIZATION_ID <<EOF
+constraint: constraints/iam.disableServiceAccountKeyCreation
+booleanPolicy:
+  enforced: true
+EOF
+
+# Require OS Login for VMs
+gcloud org-policies set-policy - --organization=ORGANIZATION_ID <<EOF
+constraint: constraints/compute.requireOsLogin
+booleanPolicy:
+  enforced: true
+EOF
+
+# Disable VM external IPs
+gcloud org-policies set-policy - --organization=ORGANIZATION_ID <<EOF
+constraint: constraints/compute.vmExternalIpAccess
+listPolicy:
+  allValues: DENY
+EOF
+
+# Disable default network
+gcloud org-policies set-policy - --organization=ORGANIZATION_ID <<EOF
+constraint: constraints/compute.skipDefaultNetworkCreation
+booleanPolicy:
+  enforced: true
+EOF
+]]></code>
+      </example>
+    </section>
+
+    <section name="landing-zone-checklist">
+      <p>Use this phase checklist to track landing zone setup. All phases must complete before production workloads are deployed.</p>
+
+      <checklist>
+        <check>Phase 1 Planning: assemble cross-functional team (security, identity, network, ops), define governance, naming conventions, labeling strategy, compliance requirements (SOC2/HIPAA/PCI/GDPR), data residency, SLA per environment.</check>
+        <check>Phase 2 Identity: create GCP organization, connect Cloud Identity or Google Workspace, configure org admin, set up super admin recovery, enable audit logging at org level, configure SSO with corporate IdP, set MFA requirements.</check>
+        <check>Phase 3 Resource Hierarchy: design folder hierarchy, create environment folders (prod/staging/dev), create shared infrastructure folder, define project naming convention, create shared services projects (VPC host, monitoring, security, CI/CD).</check>
+        <check>Phase 4 Network: choose VPC pattern (single/shared/hub-spoke), design non-overlapping IP plan, configure subnets with secondary ranges for GKE, enable Private Google Access, set up Cloud NAT, configure Private Service Connect for Google APIs, define firewall policy hierarchy with base deny-all.</check>
+        <check>Phase 5 Security: verify default encryption at rest, configure CMEK for sensitive data, enable Cloud Audit Logs with central log sink, enable Security Command Center, configure VPC Service Controls for sensitive data projects.</check>
+        <check>Phase 6 Operations: configure Cloud Monitoring workspace, set alerting policies, link billing account, export billing to BigQuery, create budgets and alerts, configure cost allocation labels, set up IaC repository with CI/CD for infrastructure.</check>
+      </checklist>
+    </section>
+
+    <section name="org-policy-templates">
+      <p>Organization policy templates enforce security guardrails automatically across all projects. Apply at the org node so all folders and projects inherit them.</p>
+
+      <example type="good" title="YAML org policy bundle">
+        <code lang="yaml"><![CDATA[
+# org-policies/security.yaml
+
+# Disable service account key creation
+- constraint: constraints/iam.disableServiceAccountKeyCreation
+  enforcement: true
+
+# Disable service account key upload
+- constraint: constraints/iam.disableServiceAccountKeyUpload
+  enforcement: true
+
+# Require OS Login
+- constraint: constraints/compute.requireOsLogin
+  enforcement: true
+
+# Restrict external IPs on VMs
+- constraint: constraints/compute.vmExternalIpAccess
+  listPolicy:
+    deniedValues:
+      - all
+
+# Restrict resource locations
+- constraint: constraints/gcp.resourceLocations
+  listPolicy:
+    allowedValues:
+      - in:us-locations
+      - in:europe-locations
+
+# Skip default network creation
+- constraint: constraints/compute.skipDefaultNetworkCreation
+  enforcement: true
+
+# Uniform bucket-level access
+- constraint: constraints/storage.uniformBucketLevelAccess
+  enforcement: true
+
+# Disable public IP for Cloud SQL
+- constraint: constraints/sql.restrictPublicIp
+  enforcement: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="terraform-landing-zone-module">
+      <p>The Terraform landing zone module provisions folders, IAM, networking, and security as a single reusable unit. The module structure follows the separation-of-concerns principle: one file per concern.</p>
+
+      <example type="good" title="Terraform module main.tf — API enablement">
+        <code lang="hcl"><![CDATA[
+# modules/landing-zone/main.tf
+
+terraform {
+  required_version = ">= 1.5"
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "~> 5.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 5.0"
+    }
+  }
+}
+
+# Enable required APIs
+resource "google_project_service" "services" {
+  for_each = toset([
+    "compute.googleapis.com",
+    "container.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "secretmanager.googleapis.com",
+    "cloudresourcemanager.googleapis.com",
+    "iam.googleapis.com",
+    "logging.googleapis.com",
+    "monitoring.googleapis.com",
+    "dns.googleapis.com",
+    "sqladmin.googleapis.com",
+  ])
+
+  project                    = var.project_id
+  service                    = each.value
+  disable_on_destroy         = false
+  disable_dependent_services = false
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform module variables.tf">
+        <code lang="hcl"><![CDATA[
+# modules/landing-zone/variables.tf
+
+variable "organization_id" {
+  description = "GCP Organization ID"
+  type        = string
+}
+
+variable "billing_account" {
+  description = "Billing account ID"
+  type        = string
+}
+
+variable "project_id" {
+  description = "Host project ID"
+  type        = string
+}
+
+variable "region" {
+  description = "Default region"
+  type        = string
+  default     = "us-central1"
+}
+
+variable "environments" {
+  description = "List of environments to create"
+  type        = list(string)
+  default     = ["production", "staging", "development"]
+}
+
+variable "enable_shared_vpc" {
+  description = "Enable Shared VPC"
+  type        = bool
+  default     = true
+}
+
+variable "vpc_cidr_ranges" {
+  description = "CIDR ranges per environment"
+  type = map(object({
+    primary  = string
+    pods     = string
+    services = string
+  }))
+  default = {
+    production = {
+      primary  = "10.0.0.0/20"
+      pods     = "10.0.16.0/14"
+      services = "10.0.32.0/20"
+    }
+    staging = {
+      primary  = "10.1.0.0/20"
+      pods     = "10.1.16.0/14"
+      services = "10.1.32.0/20"
+    }
+    development = {
+      primary  = "10.2.0.0/20"
+      pods     = "10.2.16.0/14"
+      services = "10.2.32.0/20"
+    }
+  }
+}
+
+variable "admin_members" {
+  description = "List of admin members"
+  type        = list(string)
+  default     = []
+}
+
+variable "labels" {
+  description = "Labels to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform folders.tf">
+        <code lang="hcl"><![CDATA[
+# modules/landing-zone/folders.tf
+
+resource "google_folder" "environments" {
+  for_each = toset(var.environments)
+
+  display_name = title(each.value)
+  parent       = "organizations/${var.organization_id}"
+}
+
+resource "google_folder" "shared" {
+  display_name = "Shared Infrastructure"
+  parent       = "organizations/${var.organization_id}"
+}
+
+output "folder_ids" {
+  value = {
+    for env, folder in google_folder.environments : env => folder.id
+  }
+}
+
+output "shared_folder_id" {
+  value = google_folder.shared.id
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform iam.tf — GKE service account">
+        <code lang="hcl"><![CDATA[
+# modules/landing-zone/iam.tf
+
+resource "google_organization_iam_member" "org_admins" {
+  for_each = toset(var.admin_members)
+
+  org_id = var.organization_id
+  role   = "roles/resourcemanager.organizationAdmin"
+  member = each.value
+}
+
+resource "google_project_iam_member" "network_admins" {
+  for_each = toset(var.admin_members)
+
+  project = var.project_id
+  role    = "roles/compute.networkAdmin"
+  member  = each.value
+}
+
+resource "google_service_account" "gke_nodes" {
+  account_id   = "gke-nodes"
+  display_name = "GKE Node Service Account"
+  project      = var.project_id
+}
+
+resource "google_project_iam_member" "gke_nodes_roles" {
+  for_each = toset([
+    "roles/logging.logWriter",
+    "roles/monitoring.metricWriter",
+    "roles/monitoring.viewer",
+    "roles/stackdriver.resourceMetadata.writer",
+    "roles/artifactregistry.reader",
+  ])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.gke_nodes.email}"
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform outputs.tf">
+        <code lang="hcl"><![CDATA[
+# modules/landing-zone/outputs.tf
+
+output "vpc_id" {
+  description = "VPC network ID"
+  value       = google_compute_network.main.id
+}
+
+output "vpc_name" {
+  description = "VPC network name"
+  value       = google_compute_network.main.name
+}
+
+output "subnet_ids" {
+  description = "Subnet IDs by environment"
+  value = {
+    for env, subnet in google_compute_subnetwork.subnets : env => subnet.id
+  }
+}
+
+output "subnet_names" {
+  description = "Subnet names by environment"
+  value = {
+    for env, subnet in google_compute_subnetwork.subnets : env => subnet.name
+  }
+}
+
+output "nat_ip" {
+  description = "Cloud NAT external IPs"
+  value       = google_compute_router_nat.nat.nat_ips
+}
+
+output "gke_service_account" {
+  description = "GKE nodes service account email"
+  value       = google_service_account.gke_nodes.email
+}
+
+output "private_service_connection" {
+  description = "Private service connection name"
+  value       = google_service_networking_connection.private_vpc_connection.network
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Landing zone usage example">
+        <code lang="hcl"><![CDATA[
+# main.tf — consuming the landing-zone module
+module "landing_zone" {
+  source = "./modules/landing-zone"
+
+  organization_id = "123456789012"
+  billing_account = "XXXXXX-XXXXXX-XXXXXX"
+  project_id      = "my-project"
+  region          = "us-central1"
+
+  environments      = ["production", "staging", "development"]
+  enable_shared_vpc = true
+
+  admin_members = [
+    "group:platform-admins@example.com",
+  ]
+
+  labels = {
+    managed_by = "terraform"
+    team       = "platform"
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform GCS backend for state">
+        <code lang="hcl"><![CDATA[
+# backend.tf
+terraform {
+  backend "gcs" {
+    bucket = "my-project-terraform-state"
+    prefix = "landing-zone"
+  }
+}
+
+# Create state bucket (run once)
+resource "google_storage_bucket" "terraform_state" {
+  name     = "${var.project_id}-terraform-state"
+  location = var.region
+  project  = var.project_id
+
+  versioning {
+    enabled = true
+  }
+
+  uniform_bucket_level_access = true
+
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 5
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <p>Use these prompts when asking an AI to design or review a GCP landing zone.</p>
+
+      <prompt purpose="design-landing-zone"><![CDATA[
+Design a GCP landing zone for:
+
+Organization: {ORGANIZATION_NAME}
+Industry: {INDUSTRY}
+Compliance requirements: {SOC2|HIPAA|PCI-DSS|GDPR|None}
+
+Current state:
+- Existing cloud: {None|AWS|Azure|Other GCP}
+- Number of teams: {NUMBER}
+- Expected workloads: {Describe workloads}
+
+Requirements:
+- Environments: {production, staging, development, ...}
+- Multi-region: {yes|no, list regions if yes}
+- Hybrid connectivity: {none|VPN|Interconnect}
+- On-premises CIDR: {CIDR if applicable}
+
+Provide:
+1. Organization hierarchy (folders, projects)
+2. IAM strategy (groups, roles)
+3. Network architecture (VPC pattern, IP planning)
+4. Security controls (org policies, logging)
+5. Diagram of the architecture
+6. Implementation priority order
+7. Terraform module structure
+]]></prompt>
+
+      <prompt purpose="resource-hierarchy-design"><![CDATA[
+Design GCP resource hierarchy for:
+
+Organization ID: {ORG_ID}
+Number of business units: {NUMBER}
+Environments per unit: {LIST}
+Shared services needed: {networking, monitoring, security, CI/CD}
+
+Constraints:
+- Budget isolation: {by team|by environment|both}
+- Network isolation: {strict|moderate|minimal}
+- Admin delegation: {centralized|federated}
+
+Provide:
+1. Folder structure diagram
+2. Project naming convention
+3. IAM role assignments per level
+4. Billing account structure
+5. Terraform code for hierarchy
+]]></prompt>
+    </section>
+
+    <templates>
+      <template path="templates/landing-zone-main.tf" purpose="Terraform landing-zone module: API enablement, folder creation, IAM, networking, security."/>
+      <template path="templates/org-policies.yaml" purpose="Org-level security policy bundle: SA key disable, OS Login, external IP restrict, location restrict."/>
+    </templates>
+
+    <see-also>
+      <ref slug="gcp-network-architecture"/>
+      <ref slug="gcp-gke-architecture"/>
+      <ref slug="gcp-storage-cdn"/>
+      <link href="https://docs.cloud.google.com/architecture/framework"/>
+      <link href="https://docs.cloud.google.com/architecture/landing-zones"/>
+    </see-also>
+  </content>
+</methodology>
