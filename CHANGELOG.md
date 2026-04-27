@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: iac-patterns → 5 slugs (iac-patterns-module-design, iac-patterns-dry, iac-patterns-composition, iac-patterns-testing, iac-patterns-cicd)
 - decompose: finops-cloud-cost-optimization → 5 slugs (fco-rightsizing, fco-commitment-pricing, fco-spot-instances, fco-cost-allocation, fco-waste-elimination)
 - decompose: backup-implementation → 6 slugs (backup-database-postgres, backup-database-mysql-mongo, backup-filesystem-restic, backup-kubernetes-velero, backup-cloud-aws, backup-verification-dr)
 - decompose: terraform-modules → 5 slugs (terraform-modules-structure, terraform-modules-versioning, terraform-modules-composition, terraform-modules-security, terraform-modules-prompts)
