@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops-progressive-delivery">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Progressive delivery layered on GitOps: canary and blue-green deployments with Flagger and Argo Rollouts, automated metric-based rollback, and traffic shifting via service mesh or ingress.</summary>
+    <tags>
+      <tag>progressive-delivery</tag>
+      <tag>canary</tag>
+      <tag>flagger</tag>
+      <tag>argo-rollouts</tag>
+      <tag>gitops</tag>
+    </tags>
+    <category>gitops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="argocd-gitops"/>
+      <ref slug="gitops-flux"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Progressive Delivery with GitOps</title>
+
+    <summary>Progressive delivery extends GitOps with automated canary and blue-green deployments. Flagger and Argo Rollouts integrate with ArgoCD or Flux to shift traffic incrementally, analyze metrics (success rate, latency), and automatically roll back on threshold violations — without human intervention in the happy path.</summary>
+
+    <why>
+      <p>Standard GitOps deploys a new version atomically (replace all pods). Progressive delivery reduces blast radius: traffic shifts from 0% to 100% in configurable steps, with metric analysis between steps. If success rate drops below 99% or p99 latency exceeds 500ms, the tool rolls back automatically and reports failure. This enables continuous delivery to production with safety guarantees that manual deployments cannot match.</p>
+      <p>Flagger integrates natively with ArgoCD and Flux; it requires a traffic management layer (Istio, Linkerd, NGINX Ingress, Contour, App Mesh). Argo Rollouts provides standalone canary/blue-green CRDs and integrates with NGINX, Traefik, AWS ALB, and Istio without requiring Flagger.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>High-traffic production services where a bad deploy affects many users before it's caught.</item>
+        <item>Services with reliable Prometheus metrics (success rate, latency) that can serve as rollback signals.</item>
+        <item>Teams that have adopted GitOps and want to add automated rollback to their CD pipeline.</item>
+        <item>Environments where blue-green switchover needs to be controlled without downtime.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Services without meaningful Prometheus metrics — canary analysis has nothing to trigger rollback on; use standard rolling updates.</item>
+        <item>Environments without a traffic management layer (service mesh or capable ingress) — Flagger/Rollouts require traffic splitting support.</item>
+        <item>Stateful services with schema migrations that can't run with two versions simultaneously.</item>
+        <item>Low-traffic internal tools where a bad deploy affects 1-2 users — standard rollout with fast rollback is simpler.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flagger-canary">
+      <p>Flagger wraps a standard Deployment in a Canary CRD. It creates primary and canary Deployments + Services automatically, shifts traffic via the configured traffic management provider, and runs analysis at each step.</p>
+      <example type="good" title="Flagger Canary with Prometheus metrics analysis">
+        <code lang="yaml"><![CDATA[
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  progressDeadlineSeconds: 60
+  service:
+    port: 80
+    targetPort: 8080
+  analysis:
+    interval: 30s
+    threshold: 5
+    maxWeight: 50
+    stepWeight: 10
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+      - name: request-duration
+        thresholdRange:
+          max: 500
+        interval: 30s
+    webhooks:
+      - name: load-test
+        url: http://flagger-loadtester/
+        timeout: 5s
+        metadata:
+          cmd: "hey -z 1m -q 10 -c 2 http://my-app-canary/"
+]]></code>
+        <note>traffic shifts 10% per step up to 50% max; if success rate drops below 99% OR p99 exceeds 500ms at any step, Flagger rolls back automatically.</note>
+      </example>
+    </section>
+
+    <section name="argo-rollouts">
+      <p>Argo Rollouts replaces the standard Deployment with a Rollout CRD that natively supports canary steps, blue-green, and traffic routing. It integrates with ArgoCD via the Rollout health check plugin.</p>
+      <example type="good" title="Argo Rollout canary with NGINX traffic routing">
+        <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app
+          image: my-app:v1.2.3
+  strategy:
+    canary:
+      steps:
+        - setWeight: 20
+        - pause: { duration: 1m }
+        - setWeight: 40
+        - pause: { duration: 1m }
+        - setWeight: 60
+        - pause: { duration: 1m }
+        - setWeight: 80
+        - pause: { duration: 1m }
+      trafficRouting:
+        nginx:
+          stableIngress: my-app-stable
+]]></code>
+        <note>Each pause step can be configured with analysis to auto-promote or auto-abort based on metrics.</note>
+      </example>
+    </section>
+
+    <section name="rules">
+      <rules>
+        <rule>
+          <statement>Require at least two success metrics (success rate AND latency) before considering a canary step passed; a single metric is insufficient to detect all regressions.</statement>
+          <rationale>A deployment can maintain high success rate while causing severe latency degradation (e.g., slow database queries), which would not trigger a success-rate-only rollback gate.</rationale>
+        </rule>
+        <rule>
+          <statement>Set progressDeadlineSeconds conservatively — at minimum 3× the analysis interval × number of steps; stale deployments that exceed the deadline are automatically rolled back.</statement>
+          <rationale>An analysis that never receives enough traffic (e.g., due to low QPS in off-hours) will stall indefinitely if the deadline is too generous, blocking future releases.</rationale>
+        </rule>
+        <rule>
+          <statement>Never run canary analysis against production traffic without a load test webhook generating synthetic baseline load during the analysis window.</statement>
+          <rationale>At low real traffic, a single error can push success rate below 99%; synthetic load ensures the analysis has enough samples to be statistically meaningful.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Using progressive delivery for schema migrations that change database columns used by both versions simultaneously.</description>
+        <reason>Two versions of the app running concurrently means both the old schema and the new schema must be valid simultaneously. Skipping this constraint causes data corruption or runtime errors during the canary window.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Setting maxWeight: 100 with a single large step (e.g., stepWeight: 100) — effectively a standard rolling update with analysis theatre.</description>
+        <reason>Shifts 100% of traffic immediately, removing the blast-radius benefit of progressive delivery. Use at least 5-10 steps to ensure rollback has time to fire before all users are on the bad version.</reason>
+      </antipattern>
+    </section>
+
+    <section name="argocd-integration">
+      <p>ArgoCD + Flagger integration: ArgoCD syncs the Canary CRD from Git; Flagger's controller picks it up and drives the canary lifecycle. ArgoCD app health shows Progressing, Healthy, or Degraded based on Flagger's status. Argo Rollouts has a dedicated ArgoCD health check plugin that reports rollout status back to the ArgoCD UI.</p>
+      <p>AI-powered deployment (Akuity AI): as of 2025-2026, Akuity's hosted ArgoCD platform includes auto-rollback triggered by anomaly detection on deployment metrics — equivalent to Flagger analysis but integrated into the ArgoCD UI.</p>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="progressive-delivery-setup"><![CDATA[
+Design a progressive delivery strategy with GitOps.
+
+Requirements:
+- Deployment strategy: [canary / blue-green / rolling]
+- Traffic management: [Istio / Nginx / Linkerd / other]
+- Metrics for analysis: [list]
+- Rollback criteria: [describe]
+
+Generate:
+1. Tool selection (Flagger / Argo Rollouts)
+2. Canary/rollout configuration
+3. Analysis template
+4. Integration with GitOps workflow
+5. Alert configuration
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Traffic management layer in place (Istio, Linkerd, NGINX Ingress, or AWS ALB).</check>
+      <check>Prometheus metrics available: request success rate and p99 latency per service.</check>
+      <check>Flagger or Argo Rollouts installed and configured.</check>
+      <check>Canary/Rollout CRD committed to config repo and reconciled by ArgoCD/Flux.</check>
+      <check>At least two analysis metrics configured: success rate (min 99%) + latency (max Xms).</check>
+      <check>Load test webhook configured to generate synthetic baseline traffic during analysis.</check>
+      <check>progressDeadlineSeconds set to at least 3 x interval x step-count.</check>
+      <check>Notifications configured for canary promotion and rollback events.</check>
+      <check>Database migration compatibility verified for any schema changes before enabling canary.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://fluxcd.io/flagger/"/>
+      <link href="https://argoproj.github.io/argo-rollouts/"/>
+      <link href="https://kargo.akuity.io/"/>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="argocd-gitops"/>
+    </see-also>
+  </content>
+</methodology>
