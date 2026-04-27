@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-fastify">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>High-performance TypeScript-first Node.js framework with JSON Schema validation, plugin architecture, and built-in security and rate limiting.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>fastify</tag>
+      <tag>typescript</tag>
+      <tag>rest-api</tag>
+      <tag>http-framework</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Fastify Framework Patterns</title>
+    <summary>Fastify is a modern web framework for Node.js that prioritizes performance, TypeScript support, and comprehensive schema validation using JSON Schema and TypeBox. Features a plugin architecture, built-in security, rate limiting, CORS, graceful shutdown, and custom error handling.</summary>
+    <why>
+      <p>Fastify solves performance bottlenecks and type safety challenges in Node.js APIs. Its plugin architecture enables modular, composable applications. TypeBox integration provides type-safe schemas that triple as request validators, response serializers, and OpenAPI documentation. The framework ships security-first with helmet, rate limiting, and CORS as first-class plugins. Schema-driven serialization is measurably faster than hand-coded JSON stringification.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Performance-critical APIs where high RPS and fast serialization matter.</item>
+        <item>TypeScript-first projects requiring strict type safety and schema validation.</item>
+        <item>Greenfield HTTP APIs with JSON payloads and microservices architectures.</item>
+        <item>Migrating Express 4/5 services that have outgrown ad-hoc validation.</item>
+        <item>Building secure-by-default services where helmet, rate limiting, JWT, and CORS are required.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Edge-runtime targets (Cloudflare Workers, Vercel Edge) — use Hono or Itty Router instead; Fastify is Node-native only.</item>
+        <item>Static-site or thin SSR layers — use Next.js, SvelteKit, or similar frameworks that own the HTTP layer.</item>
+        <item>WebSocket-heavy realtime applications — Socket.IO or uWebSockets.js may suit better despite Fastify's @fastify/websocket plugin.</item>
+        <item>Trivial scripts and CLIs — Fastify boot weight exceeds value for minimal utilities.</item>
+        <item>Bun-only services without specific Fastify plugins — use Bun.serve with Hono for lighter footprint.</item>
+      </list>
+    </when-not-to-use>
+    <section name="key-principles">
+      <p>Fastify applications are built on five core principles:</p>
+      <rules>
+        <rule>
+          <statement>Plugin architecture: decompose applications into reusable, composable plugins registered via await app.register().</statement>
+          <rationale>Plugins enable modular code, decoupling concerns, and reuse across projects. Prevents monolithic route files.</rationale>
+        </rule>
+        <rule>
+          <statement>Schema validation: define request and response shapes using TypeBox or JSON Schema for every route.</statement>
+          <rationale>Schema-driven validation catches bad inputs early, prevents silent data corruption, and auto-generates OpenAPI docs and type hints.</rationale>
+        </rule>
+        <rule>
+          <statement>TypeScript-first: use TypeBox to generate types from schemas, avoiding hand-written types that drift from validators.</statement>
+          <rationale>Single source of truth for both validation and types prevents the classic bug where types and validators diverge.</rationale>
+        </rule>
+        <rule>
+          <statement>High throughput: leverage fast-json-stringify (built-in serializer) and async/await for non-blocking I/O.</statement>
+          <rationale>Fastify benchmarks at 2–3× higher RPS than Express on identical workloads.</rationale>
+        </rule>
+        <rule>
+          <statement>Graceful shutdown: use close-with-grace or app.close() hooks to drain in-flight requests before terminating.</statement>
+          <rationale>Prevents dropped connections, incomplete transactions, and zero-downtime deployments.</rationale>
+        </rule>
+      </rules>
+    </section>
+    <section name="fastify-application-setup">
+      <p>Initialize Fastify with TypeBox type provider, register plugins, define error handler, and wire routes.</p>
+      <code lang="typescript"><![CDATA[
+// app.ts
+import Fastify, { FastifyInstance } from 'fastify';
+import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { userRoutes } from './routes/users.routes';
+import { authRoutes } from './routes/auth.routes';
+import { errorHandler } from './plugins/errorHandler';
+import { config } from './config';
+
+export async function createApp(): Promise<FastifyInstance> {
+  const app = Fastify({
+    logger: {
+      level: config.logLevel,
+      transport: config.isDevelopment
+        ? { target: 'pino-pretty' }
+        : undefined,
+    },
+  }).withTypeProvider<TypeBoxTypeProvider>();
+
+  // Plugins
+  await app.register(helmet);
+  await app.register(cors, {
+    origin: config.corsOrigins,
+    credentials: true,
+  });
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: '15 minutes',
+  });
+
+  // Custom error handler
+  app.setErrorHandler(errorHandler);
+
+  // Health check
+  app.get('/health', async () => ({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+  }));
+
+  // Routes
+  await app.register(authRoutes, { prefix: '/api/v1/auth' });
+  await app.register(userRoutes, { prefix: '/api/v1/users' });
+
+  return app;
+}
+
+// server.ts
+import { createApp } from './app';
+import { config } from './config';
+
+async function start() {
+  const app = await createApp();
+
+  try {
+    await app.listen({ port: config.port, host: '0.0.0.0' });
+  } catch (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+}
+
+start();
+]]></code>
+      <note>Always use withTypeProvider&lt;TypeBoxTypeProvider&gt;() to enable type-safe routes and schemas. Pino logger requires pino-pretty transport in development for readable output.</note>
+    </section>
+    <section name="routes-with-typebox">
+      <p>Define routes with request and response schemas. TypeBox Type.Object() generates types compatible with FastifyRequest and reply.</p>
+      <code lang="typescript"><![CDATA[
+// routes/users.routes.ts
+import { FastifyPluginAsync } from 'fastify';
+import { Type, Static } from '@sinclair/typebox';
+
+const UserSchema = Type.Object({
+  id: Type.String(),
+  email: Type.String({ format: 'email' }),
+  name: Type.String(),
+  createdAt: Type.String({ format: 'date-time' }),
+});
+
+const CreateUserSchema = Type.Object({
+  email: Type.String({ format: 'email' }),
+  name: Type.String({ minLength: 1, maxLength: 100 }),
+  password: Type.String({ minLength: 8 }),
+});
+
+const UpdateUserSchema = Type.Partial(
+  Type.Object({
+    email: Type.String({ format: 'email' }),
+    name: Type.String({ minLength: 1, maxLength: 100 }),
+  })
+);
+
+const ParamsSchema = Type.Object({
+  id: Type.String(),
+});
+
+const QuerySchema = Type.Object({
+  page: Type.Optional(Type.Number({ minimum: 1, default: 1 })),
+  limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100, default: 20 })),
+  search: Type.Optional(Type.String()),
+});
+
+type User = Static<typeof UserSchema>;
+type CreateUser = Static<typeof CreateUserSchema>;
+type UpdateUser = Static<typeof UpdateUserSchema>;
+
+export const userRoutes: FastifyPluginAsync = async (app) => {
+  // GET /users
+  app.get<{
+    Querystring: Static<typeof QuerySchema>;
+    Reply: { users: User[]; total: number; page: number; limit: number };
+  }>(
+    '/',
+    {
+      schema: {
+        querystring: QuerySchema,
+        response: {
+          200: Type.Object({
+            users: Type.Array(UserSchema),
+            total: Type.Number(),
+            page: Type.Number(),
+            limit: Type.Number(),
+          }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    async (request, reply) => {
+      const { page = 1, limit = 20, search } = request.query;
+      const result = await app.userService.getUsers(page, limit, search);
+      return result;
+    }
+  );
+
+  // GET /users/:id
+  app.get<{
+    Params: Static<typeof ParamsSchema>;
+    Reply: { data: User };
+  }>(
+    '/:id',
+    {
+      schema: {
+        params: ParamsSchema,
+        response: {
+          200: Type.Object({ data: UserSchema }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    async (request) => {
+      const user = await app.userService.getUser(request.params.id);
+      return { data: user };
+    }
+  );
+
+  // POST /users
+  app.post<{
+    Body: CreateUser;
+    Reply: { data: User };
+  }>(
+    '/',
+    {
+      schema: {
+        body: CreateUserSchema,
+        response: {
+          201: Type.Object({ data: UserSchema }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = await app.userService.createUser(request.body);
+      reply.status(201);
+      return { data: user };
+    }
+  );
+
+  // PATCH /users/:id
+  app.patch<{
+    Params: Static<typeof ParamsSchema>;
+    Body: UpdateUser;
+    Reply: { data: User };
+  }>(
+    '/:id',
+    {
+      schema: {
+        params: ParamsSchema,
+        body: UpdateUserSchema,
+        response: {
+          200: Type.Object({ data: UserSchema }),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    async (request) => {
+      const user = await app.userService.updateUser(
+        request.params.id,
+        request.body
+      );
+      return { data: user };
+    }
+  );
+
+  // DELETE /users/:id
+  app.delete<{
+    Params: Static<typeof ParamsSchema>;
+  }>(
+    '/:id',
+    {
+      schema: {
+        params: ParamsSchema,
+        response: {
+          204: Type.Null(),
+        },
+      },
+      preHandler: [app.authenticate],
+    },
+    async (request, reply) => {
+      await app.userService.deleteUser(request.params.id);
+      reply.status(204).send();
+    }
+  );
+};
+]]></code>
+      <note>Use Type.Object() to define schemas; then Static&lt;typeof Schema&gt; extracts TypeScript types. Every route MUST have request (body, params, querystring) and response schemas. Use Type.Optional() and Type.Partial() for optional fields.</note>
+    </section>
+    <section name="authentication-plugin">
+      <p>Create a reusable JWT authentication plugin using fastify-plugin (fp) to decorate the app instance.</p>
+      <code lang="typescript"><![CDATA[
+// plugins/auth.ts
+import { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import fp from 'fastify-plugin';
+import jwt from 'jsonwebtoken';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    authenticate: (request: FastifyRequest) => Promise<void>;
+  }
+  interface FastifyRequest {
+    user: { userId: string; email: string };
+  }
+}
+
+const authPlugin: FastifyPluginAsync = async (app) => {
+  app.decorate('authenticate', async (request: FastifyRequest) => {
+    const authHeader = request.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw app.httpErrors.unauthorized('Missing authorization');
+    }
+
+    try {
+      const token = authHeader.slice(7);
+      const payload = jwt.verify(token, app.config.jwtSecret);
+      request.user = payload as { userId: string; email: string };
+    } catch {
+      throw app.httpErrors.unauthorized('Invalid token');
+    }
+  });
+};
+
+export default fp(authPlugin, { name: 'auth' });
+]]></code>
+      <note>CRITICAL: use fastify-plugin (fp) to break encapsulation. Without fp(), decorators like app.authenticate are scoped to the plugin and invisible to routes. Always declare module augmentation for custom decorators and request properties.</note>
+    </section>
+    <section name="database-plugin">
+      <p>Decorate Fastify with a database connection pool, initialize on plugin load, and clean up on shutdown.</p>
+      <code lang="typescript"><![CDATA[
+// plugins/database.ts
+import { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
+import { Pool } from 'pg';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    db: Pool;
+  }
+}
+
+const databasePlugin: FastifyPluginAsync = async (app) => {
+  const pool = new Pool({
+    host: app.config.dbHost,
+    port: app.config.dbPort,
+    database: app.config.dbName,
+    user: app.config.dbUser,
+    password: app.config.dbPassword,
+  });
+
+  // Test connection
+  await pool.query('SELECT 1');
+  app.log.info('Database connected');
+
+  // Decorate instance with pool
+  app.decorate('db', pool);
+
+  // Close pool on shutdown
+  app.addHook('onClose', async (instance) => {
+    await instance.db.end();
+    instance.log.info('Database connection closed');
+  });
+};
+
+export default fp(databasePlugin, { name: 'database' });
+]]></code>
+      <note>Test the connection immediately to catch configuration errors early. Use app.addHook('onClose', ...) for cleanup to ensure graceful shutdown. Always use fp() for plugins that decorate the app.</note>
+    </section>
+    <section name="error-handler-plugin">
+      <p>Centralized error handler returning RFC 7807 Problem Details format, handling validation errors, HTTP errors, and unexpected exceptions.</p>
+      <code lang="typescript"><![CDATA[
+// plugins/errorHandler.ts
+import { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+
+export function errorHandler(
+  error: FastifyError,
+  request: FastifyRequest,
+  reply: FastifyReply
+) {
+  request.log.error(error);
+
+  // Validation errors
+  if (error.validation) {
+    return reply.status(400).send({
+      error: 'Validation Error',
+      message: error.message,
+      details: error.validation,
+    });
+  }
+
+  // HTTP errors
+  if (error.statusCode) {
+    return reply.status(error.statusCode).send({
+      error: error.name,
+      message: error.message,
+    });
+  }
+
+  // Unknown errors
+  return reply.status(500).send({
+    error: 'Internal Server Error',
+    message: 'An unexpected error occurred',
+  });
+}
+]]></code>
+      <note>Always return structured error responses. Validation errors include the validation details array. Never expose internal error messages to clients in production.</note>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Not awaiting plugin registration. Registering plugins without await causes async race conditions where plugins are only partially loaded when routes run.</description>
+        <reason>Without await, the plugin's registration hooks may not complete before the app tries to use decorated properties or config, leading to undefined references and runtime crashes.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+export async function createApp() {
+  const app = Fastify();
+  app.register(cors); // Missing await
+  app.register(helmet); // Missing await
+  return app;
+}
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+export async function createApp() {
+  const app = Fastify();
+  await app.register(cors);
+  await app.register(helmet);
+  return app;
+}
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Missing type safety in routes. Omitting TypeBox schemas or using inline plain objects without Type.Object() leads to loose inference and broken handler typing.</description>
+        <reason>TypeScript cannot infer request/reply types without explicit schemas, causing unsafe property access and runtime errors. Loose types bypass validation.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+app.get('/users/:id', async (request, reply) => {
+  const id = request.params.id; // any type
+  const user = await getUser(id);
+  return user;
+});
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+app.get<{
+  Params: { id: string };
+  Reply: { data: User };
+}>(
+  '/:id',
+  {
+    schema: {
+      params: Type.Object({ id: Type.String() }),
+      response: {
+        200: Type.Object({ data: UserSchema }),
+      },
+    },
+  },
+  async (request) => {
+    const id = request.params.id; // string type
+    const user = await getUser(id);
+    return { data: user };
+  }
+);
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Mixing reply.send() and return statements. Using both in the same handler causes double-response errors where Fastify tries to send the response twice.</description>
+        <reason>Fastify's handler can return a value OR call reply.send(), not both. Mixing them violates the implicit contract and crashes with ERR_HTTP_HEADERS_SENT.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+app.post('/users', async (request, reply) => {
+  const user = await createUser(request.body);
+  reply.send(user); // Inconsistent: some use return, some use send
+});
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+app.post('/users', async (request, reply) => {
+  const user = await createUser(request.body);
+  reply.status(201);
+  return { data: user }; // Always return, use reply for status only
+});
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting fastify-plugin (fp) wrapper on plugins that decorate the app. Without fp, decorators are scoped to the plugin and invisible to routes.</description>
+        <reason>Fastify plugins are scoped by default to prevent namespace pollution. The fp() wrapper explicitly breaks encapsulation so decorators are available app-wide. Without it, app.db or app.authenticate are undefined in routes.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+const databasePlugin: FastifyPluginAsync = async (app) => {
+  const pool = new Pool({ ... });
+  app.decorate('db', pool); // Scoped; routes can't access app.db
+};
+
+export default databasePlugin; // Missing fp() wrapper
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+const databasePlugin: FastifyPluginAsync = async (app) => {
+  const pool = new Pool({ ... });
+  app.decorate('db', pool);
+};
+
+export default fp(databasePlugin, { name: 'database' }); // Wrapped in fp()
+]]></code>
+        </example>
+      </antipattern>
+    </section>
+    <section name="graceful-shutdown">
+      <p>Use close-with-grace or Fastify's app.close() hooks to drain in-flight requests before terminating, enabling zero-downtime deployments.</p>
+      <code lang="typescript"><![CDATA[
+// server.ts (graceful shutdown excerpt)
+import closeWithGrace from 'close-with-grace';
+import { createApp } from './app';
+
+const app = await createApp();
+await app.listen({ port: Number(process.env.PORT ?? 3000), host: '0.0.0.0' });
+
+closeWithGrace({ delay: 10_000 }, async ({ signal, err }) => {
+  if (err) app.log.error({ err }, 'shutdown error');
+  app.log.info({ signal }, 'shutting down');
+  await app.close();
+});
+]]></code>
+      <note>The delay parameter (10 seconds) gives in-flight requests time to complete before hard shutdown. This prevents dropped connections and lost transactions during deploys.</note>
+    </section>
+    <section name="testing">
+      <p>Use app.inject() for tests instead of binding a real port. This is faster, deterministic, and safe for parallel test execution.</p>
+      <code lang="typescript"><![CDATA[
+import { test, expect } from 'vitest';
+import { createApp } from '../src/app';
+
+test('GET /health', async () => {
+  const app = await createApp();
+  const res = await app.inject({ method: 'GET', url: '/health' });
+  expect(res.statusCode).toBe(200);
+  expect(res.json()).toMatchObject({ status: 'ok' });
+  await app.close();
+});
+]]></code>
+      <note>app.inject() simulates HTTP requests without binding to a port. Use with vitest for fast, parallel-safe tests. Always call app.close() for cleanup.</note>
+    </section>
+    <section name="best-practices">
+      <rules>
+        <rule>
+          <statement>Always set both request AND response schemas on every route. Response schema doubles as serializer and OpenAPI documentation source.</statement>
+          <rationale>Complete schemas enable validation, serialization optimization, and auto-generated API docs. Incomplete schemas hide fields in responses.</rationale>
+        </rule>
+        <rule>
+          <statement>Plugins that decorate app must be wrapped in fastify-plugin (fp) to break encapsulation and make decorators app-wide.</statement>
+          <rationale>Without fp, decorators are plugin-scoped and routes cannot access them. Silent runtime failures ensue.</rationale>
+        </rule>
+        <rule>
+          <statement>Always await app.register(...) — forgetting await causes async plugins to half-load and race conditions follow.</statement>
+          <rationale>Async plugin registration is required for proper initialization and hook execution order.</rationale>
+        </rule>
+        <rule>
+          <statement>Error handler returns RFC 7807 Problem Details (type, title, status, detail, instance) for consistency with API consumers and OpenAPI.</statement>
+          <rationale>Standardized error format improves client error handling and debuggability.</rationale>
+        </rule>
+        <rule>
+          <statement>For authentication, prefer @fastify/jwt + a verify hook on protected route prefixes; never decode JWT manually.</statement>
+          <rationale>Centralized JWT verification prevents key rotation bugs and token tampering.</rationale>
+        </rule>
+        <rule>
+          <statement>Log everything with request-bound request.log or reply.log; never use console.log in production code.</statement>
+          <rationale>request.log captures request context (correlation ID, method, path, duration) for debugging. console.log is lost.</rationale>
+        </rule>
+        <rule>
+          <statement>Use app.inject() for tests over starting a real port — fast, deterministic, parallel-safe.</statement>
+          <rationale>Real port binding is slow and thread-unsafe. app.inject() simulates HTTP without a port.</rationale>
+        </rule>
+      </rules>
+    </section>
+    <section name="cli-tools">
+      <p>Recommended tools for Fastify development and deployment:</p>
+      <list>
+        <item>fastify-cli: Scaffold and run apps via start.js convention; `npm i -D fastify-cli`.</item>
+        <item>tsx / tsdown: Dev and build tooling for TypeScript Fastify apps; tsx.is.</item>
+        <item>pino-pretty: Pretty-print development logs; `npm i -D pino-pretty`.</item>
+        <item>@fastify/swagger + swagger-ui: Auto-generate OpenAPI docs from JSON Schema; github.com/fastify/fastify-swagger.</item>
+        <item>autocannon: Load testing and HTTP benchmarking; `npx autocannon`.</item>
+        <item>clinic.js: Production diagnostics (doctor, flame, bubbleprof); clinicjs.org.</item>
+        <item>@types/node + typescript: TypeScript toolchain for type checking.</item>
+        <item>vitest + light-my-request (app.inject): Fast unit tests without a port; vitest.dev.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://fastify.dev/docs/latest/"/>
+      <link href="https://fastify.dev/docs/latest/Reference/Plugins/"/>
+      <link href="https://github.com/sinclairzx81/typebox"/>
+      <link href="https://github.com/fastify/fastify-swagger"/>
+      <link href="https://github.com/mcollina/close-with-grace"/>
+      <link href="https://github.com/mcollina/autocannon"/>
+      <link href="https://getpino.io/"/>
+    </see-also>
+  </content>
+</methodology>
