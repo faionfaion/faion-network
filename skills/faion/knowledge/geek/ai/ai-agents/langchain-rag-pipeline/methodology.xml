@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-rag-pipeline">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Build RAG pipelines with LangChain: load documents, split into chunks, embed into a vectorstore, and retrieve via LCEL chains.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>rag</tag>
+      <tag>vectorstore</tag>
+      <tag>retrieval</tag>
+      <tag>lcel</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langchain</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="langchain-chains"/>
+      <ref slug="langchain-production-patterns"/>
+      <ref slug="langchain-observability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LangChain RAG Pipeline</title>
+
+    <summary>A LangChain RAG pipeline loads documents via loaders, splits them with RecursiveCharacterTextSplitter, embeds them into a vectorstore (Chroma or Pinecone), then wraps the retriever in an LCEL chain: context retriever branch runs in parallel with the question passthrough, feeds into a prompt, then an LLM, then a parser.</summary>
+
+    <why>
+      <p>LangChain's modular design lets each RAG stage (load, split, embed, retrieve, generate) be swapped independently. LCEL's pipe syntax keeps the chain topology declarative and readable, while the retriever abstraction hides whether the backend is Chroma, Pinecone, or any other vectorstore. This is the canonical pattern for grounded generation when the knowledge base is too large to fit in a prompt.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building LLM applications that must answer questions from a private document corpus.</item>
+        <item>Rapid prototyping of RAG pipelines where provider flexibility (OpenAI, Anthropic) is required without rewriting the retrieval chain.</item>
+        <item>Projects that need composable, swappable retrieval components (prompt templates, parsers, retrievers).</item>
+        <item>Implementing RAG pipelines where documents must be loaded, split, embedded, and retrieved.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-call LLM tasks — LCEL pipe syntax adds complexity with no benefit over a direct API call.</item>
+        <item>When you control the model exclusively (Claude-only) — the Anthropic SDK directly is simpler and cheaper.</item>
+        <item>When avoiding dependency bloat: langchain + langchain-openai + langchain-community adds ~200 transitive dependencies.</item>
+        <item>Projects with strict latency SLAs where LCEL's serialization overhead matters.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="document-loading">
+      <p>LangChain ships loaders for text files, PDFs, web pages, and entire directories. The DirectoryLoader accepts a glob pattern and a loader class, applying it uniformly across all matched files.</p>
+
+      <rule>
+        <statement>Always add explicit try/except ImportError guards around langchain-community loaders (WebBaseLoader, PyPDFLoader); they depend on external libraries that may not be installed.</statement>
+        <rationale>langchain-community loaders are maintained by contributors, not LangChain core; quality varies and missing optional deps silently break pipelines.</rationale>
+      </rule>
+
+      <example type="good" title="Loading documents from multiple sources">
+        <code lang="python"><![CDATA[
+from langchain_community.document_loaders import (
+    TextLoader,
+    PyPDFLoader,
+    WebBaseLoader,
+    DirectoryLoader
+)
+
+# Load a single PDF
+pdf_loader = PyPDFLoader("document.pdf")
+
+# Load all .txt files in a directory
+dir_loader = DirectoryLoader(
+    "./documents",
+    glob="**/*.txt",
+    loader_cls=TextLoader
+)
+documents = dir_loader.load()
+]]></code>
+      </example>
+    </section>
+
+    <section name="text-splitting">
+      <p>RecursiveCharacterTextSplitter is the standard choice: it tries to split on paragraph breaks, then newlines, then spaces, then characters, preserving semantic units as long as possible within the chunk_size budget.</p>
+
+      <rule>
+        <statement>Use chunk_overlap of at least 10-20% of chunk_size so that sentences that span chunk boundaries appear in both chunks and are not lost from retrieval.</statement>
+        <rationale>Without overlap, a sentence split across a boundary may not appear in either chunk's embedding space, causing retrieval misses for queries that match that sentence.</rationale>
+      </rule>
+
+      <example type="good" title="Splitting with overlap and metadata tagging">
+        <code lang="python"><![CDATA[
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+    length_function=len,
+    separators=["\n\n", "\n", " ", ""]
+)
+
+splits = text_splitter.split_documents(documents)
+
+# Tag each chunk with its position
+for i, split in enumerate(splits):
+    split.metadata["chunk_id"] = i
+]]></code>
+      </example>
+    </section>
+
+    <section name="vectorstore-and-retriever">
+      <p>Chroma is the default local vectorstore for prototyping. It requires no server; the index is persisted to disk. For production, swap to Pinecone or a managed service without changing the retriever interface.</p>
+
+      <example type="good" title="Embedding documents into Chroma">
+        <code lang="python"><![CDATA[
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+
+documents = [
+    Document(page_content="LangChain is a framework for LLM apps", metadata={"source": "docs"}),
+    Document(page_content="LCEL is the expression language for chains", metadata={"source": "docs"}),
+]
+
+vectorstore = Chroma.from_documents(documents, embeddings)
+
+# Retrieve top-3 most similar chunks
+retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+]]></code>
+      </example>
+    </section>
+
+    <section name="rag-lcel-chain">
+      <p>The canonical RAG chain feeds the retriever output and the raw question into a prompt via RunnablePassthrough and a parallel dict assignment. The retriever branch formats each retrieved Document's page_content before injection.</p>
+
+      <rule>
+        <statement>Always define a format_docs helper that joins retrieved Document objects into a plain-text context string before passing to the prompt; never pass the raw Document list.</statement>
+        <rationale>ChatPromptTemplate expects string values; passing a list of Document objects causes a silent type coercion that produces malformed context in the prompt.</rationale>
+      </rule>
+
+      <example type="good" title="Full RAG chain with LCEL">
+        <code lang="python"><![CDATA[
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+rag_prompt = ChatPromptTemplate.from_template("""
+Answer based on the context below.
+
+Context: {context}
+
+Question: {question}
+
+Answer:""")
+
+def format_docs(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+rag_chain = (
+    {"context": retriever | format_docs, "question": RunnablePassthrough()}
+    | rag_prompt
+    | llm
+    | StrOutputParser()
+)
+
+answer = rag_chain.invoke("What is LangChain?")
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Building a RAG chain that passes the raw retriever output (a list of Documents) directly into the prompt template without a format_docs step.</description>
+        <reason>The prompt template receives a list object, not a string, causing malformed context and degraded generation quality.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="langchain-chains"/>
+      <ref slug="langchain-production-patterns"/>
+      <link href="https://python.langchain.com/docs/expression_language/"/>
+      <link href="https://docs.trychroma.com/"/>
+    </see-also>
+  </content>
+</methodology>
