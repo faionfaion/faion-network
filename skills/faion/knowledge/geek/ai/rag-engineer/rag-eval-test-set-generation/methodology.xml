@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-eval-test-set-generation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Build labeled test sets for RAG evaluation via automatic LLM-based Q&amp;A generation or manual curation, covering factual, comparative, reasoning, and summarization question types.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>evaluation</tag>
+      <tag>test-set</tag>
+      <tag>question-generation</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-metrics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>RAG Test Set Generation</title>
+
+    <summary>A RAG evaluation can only be as good as its test set. Generate test questions automatically from the document corpus using an LLM (factual, comparative, reasoning, summarization types) or curate them manually. The test set must be versioned, stratified by question type and difficulty, and include at least 20% hard or edge-case questions.</summary>
+
+    <why>
+      <p>Evaluating a RAG system without a labeled test set is guesswork. Automatic generation bootstraps coverage fast — an LLM generates question, expected answer, and source quote from each sampled document. Manual curation adds the hard edge cases that expose retrieval failures on ambiguous queries. The combination gives statistical coverage (automated) plus adversarial stress (manual). Without diverse question types, easy factual questions mask systematic failures on reasoning or comparative queries.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a comprehensive evaluation framework before first deployment.</item>
+        <item>Setting up continuous evaluation after any pipeline change (chunking, top-K, model swap).</item>
+        <item>When no labeled data exists and the corpus is large enough for synthetic generation to be representative.</item>
+        <item>When you need diverse question types (factual, comparative, reasoning, summarization) to measure different failure modes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Proof-of-concept phase with no budget for LLM-based generation — defer until validation stage.</item>
+        <item>When the test set would be smaller than 20 questions — statistical noise dominates and results are not actionable.</item>
+        <item>When ground truth answers are unavailable and the domain is too specialized for synthetic generation to be reliable.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule>
+        <statement>The test set MUST be versioned in source control alongside the RAG pipeline code. Test set drift is as dangerous as model drift.</statement>
+        <rationale>Without versioning, it is impossible to distinguish a pipeline regression from a test set change when metrics shift.</rationale>
+      </rule>
+      <rule>
+        <statement>Include at least 20% hard or edge-case questions in the test set. Easy questions mask retrieval failures on ambiguous queries.</statement>
+        <rationale>Models that score well on easy factual questions often fail on multi-hop reasoning or comparative questions that require retrieving from multiple documents.</rationale>
+      </rule>
+      <rule>
+        <statement>Stratify the test set by document source and question type. Aggregate metrics hide per-source degradation.</statement>
+        <rationale>A corpus with heterogeneous document types (PDFs, wiki pages, support tickets) has very different retrieval difficulty per source type; stratification exposes these gaps.</rationale>
+      </rule>
+      <rule>
+        <statement>Manually spot-check every batch of LLM-generated test cases before use. The generator LLM sometimes creates questions the document does not actually answer (hallucinated source quotes).</statement>
+        <rationale>Synthetic question generation has a positivity bias — the LLM generates questions the document can answer well, not the hard edge-case questions that fail in production. Unverified synthetic sets inflate measured quality.</rationale>
+      </rule>
+    </rules>
+
+    <section name="automatic-generation">
+      <p>Automatic question generation samples N documents from the corpus and prompts an LLM to produce question/answer/source-quote triples. For comprehensive coverage, generate across four question types: factual (simple fact lookup), comparative (compare two things), reasoning (requires inference), and summarization (synthesize information). Each question includes a difficulty label for stratified sampling.</p>
+
+      <example type="good" title="Generate test questions from documents">
+        <code lang="python"><![CDATA[
+from typing import List, Dict
+import random
+from openai import OpenAI
+
+client = OpenAI()
+
+def generate_test_questions(
+    documents: List[str],
+    num_questions: int = 10,
+    model: str = "gpt-4o"
+) -> List[Dict[str, str]]:
+    """
+    Generate test questions from documents.
+    """
+    test_set = []
+
+    for doc in random.sample(documents, min(num_questions, len(documents))):
+        prompt = f"""Based on this document, generate a question and its answer.
+
+Document:
+{doc[:2000]}
+
+Generate a factual question that can be answered from this document.
+Return JSON with: question, answer, source_quote"""
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        import json
+        qa = json.loads(response.choices[0].message.content)
+        qa["document"] = doc
+        test_set.append(qa)
+
+    return test_set
+
+def generate_diverse_questions(
+    documents: List[str],
+    question_types: List[str] = ["factual", "comparative", "reasoning", "summarization"]
+) -> List[Dict[str, str]]:
+    """
+    Generate diverse question types for comprehensive testing.
+    """
+    test_set = []
+
+    for q_type in question_types:
+        prompt = f"""Generate a {q_type} question based on the documents.
+
+Documents:
+{chr(10).join(documents[:3])}
+
+Question type: {q_type}
+- factual: Simple fact lookup
+- comparative: Compare two things
+- reasoning: Requires inference
+- summarization: Summarize information
+
+Return JSON with: question, expected_answer, type, difficulty"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        import json
+        test_set.append(json.loads(response.choices[0].message.content))
+
+    return test_set
+]]></code>
+      </example>
+    </section>
+
+    <section name="manual-curation">
+      <p>Manual test cases complement auto-generated ones with adversarial and edge-case questions. Each case carries an id, question, expected answer, list of relevant document ids, difficulty, and category. This structured format feeds directly into the evaluation pipeline.</p>
+
+      <example type="good" title="Structured manual test cases">
+        <code lang="python"><![CDATA[
+# Structure for manual test cases
+test_cases = [
+    {
+        "id": "test_001",
+        "question": "What is retrieval augmented generation?",
+        "expected_answer": "RAG combines information retrieval with language generation...",
+        "relevant_doc_ids": ["doc_42", "doc_103"],
+        "difficulty": "easy",
+        "category": "factual"
+    },
+    {
+        "id": "test_002",
+        "question": "Compare semantic search and keyword search",
+        "expected_answer": "Semantic search understands meaning...",
+        "relevant_doc_ids": ["doc_15", "doc_89"],
+        "difficulty": "medium",
+        "category": "comparative"
+    }
+]
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-prompt-pattern">
+      <p>When wiring test generation into an agentic workflow, use this prompt pattern to constrain the generator to questions answerable only from the provided document — reducing hallucinated source quotes.</p>
+
+      <prompt purpose="test-set-generator">
+        <![CDATA[
+You are a test-set generator. Given: document (text, max 2000 chars).
+Generate one test case per question type: factual, comparative, reasoning.
+For each: {"question": "...", "answer": "...", "source_quote": "...", "type": "...", "difficulty": "easy|medium|hard"}
+Return: JSON array of 3 test cases.
+Constraint: questions must be answerable ONLY from the provided document.
+        ]]>
+      </prompt>
+    </section>
+
+    <antipattern>
+      <description>Using only factual, easy questions in the test set because they are the simplest to generate.</description>
+      <reason>Easy questions mask retrieval failures. A system can score 0.90 faithfulness on factual lookups while completely failing multi-hop reasoning queries. The test set must stress all failure modes.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Regenerating the test set from scratch after each corpus update without reviewing changes.</description>
+      <reason>Silent test set changes invalidate all metric comparisons. Always version the test set and diff it before re-running the evaluation suite.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-metrics"/>
+      <link href="https://docs.ragas.io/"/>
+      <link href="https://arxiv.org/abs/2309.15217"/>
+    </see-also>
+  </content>
+</methodology>
