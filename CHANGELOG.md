@@ -9,6 +9,7 @@
 - decompose: rust-testing → 5 slugs (rust-testing-unit, rust-testing-integration, rust-testing-property, rust-testing-antipatterns, rust-testing-ci-toolchain)
 - decompose: rag-eval-methods → 4 slugs (rag-eval-test-set-generation, rag-eval-pipeline, rag-eval-ab-testing, rag-eval-production-monitoring)
 - decompose: chunking-advanced → 4 slugs (chunking-semantic, chunking-document-structure, chunking-code-ast, chunking-production-service)
+- decompose: trunk-based-dev-patterns → 4 slugs (trunk-based-feature-flags, trunk-based-branch-by-abstraction, trunk-based-ci-gates, trunk-based-challenges)
 - decompose: dev-methodologies-practices → 5 slugs (practices-django-coding, practices-python-ecosystem, practices-js-ts-stack, practices-backend-languages, practices-frontend-components)
 - decompose: web-scraping → 4 slugs (web-scraping-element-extraction, web-scraping-pagination, web-scraping-resilience, web-scraping-agentic-workflow)
 - decompose: feature-flags → 4 slugs (feature-flags-types-lifecycle, feature-flags-core-implementation, feature-flags-rollout-targeting, feature-flags-services-testing)
