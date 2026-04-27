@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-pytest-fixtures">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Manage pytest-django fixtures: db vs transactional_db semantics, fixture scopes, conftest organisation, API client fixtures, and composed fixture patterns.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>pytest</tag>
+      <tag>fixtures</tag>
+      <tag>conftest</tag>
+      <tag>testing</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-pytest-factories"/>
+      <ref slug="django-pytest-integration"/>
+      <ref slug="django-pytest-mocking"/>
+      <ref slug="django-pytest-parametrize"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django pytest Fixtures</title>
+
+    <summary>pytest-django provides database fixtures with distinct transaction semantics (db, transactional_db, django_db_reset_sequences). Choosing the correct one and composing fixtures explicitly in conftest.py is the foundation of a reliable, fast, and maintainable Django test suite.</summary>
+
+    <why>
+      <p>pytest-django bridges pytest's explicit fixture system with Django's ORM and request handling. Compared to Django's native TestCase setUp/tearDown, fixtures declare dependencies in function signatures, making tests self-documenting and reducing hidden coupling. The fixture scope system (function, class, module, session) lets expensive setup operations be amortized across multiple tests without sacrificing isolation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing unit or integration tests for Django models, services, and utilities.</item>
+        <item>Setting up DRF API clients for endpoint tests.</item>
+        <item>Sharing test data across a test module or session without re-creating it for each test.</item>
+        <item>Replacing Django TestCase setUp/tearDown with composable, reusable fixtures.</item>
+        <item>Debugging flaky tests caused by transaction semantics or fixture scope mismatches.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure unit tests of helpers or pure functions with no Django dependency — plain pytest (no pytest-django) is faster and clearer.</item>
+        <item>One-off scripts or ad-hoc manage.py shell exploration — fixture infrastructure overhead is not justified.</item>
+        <item>Tests that must run inside manage.py test (legacy CI gates with Django runner) until that constraint is removed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="database-fixture-semantics">
+      <p>pytest-django provides several database fixtures with different transaction semantics. Choosing the wrong one causes flaky TransactionManagementError exceptions or persistent state leaking between tests.</p>
+
+      <rule testable="true">
+        <statement>Any test that accesses the database MUST be marked with @pytest.mark.django_db. Fixtures that create database objects MUST explicitly request the 'db' fixture. Use transactional_db only when the test asserts on transaction commit/rollback semantics, post-commit hooks, signals, or select_for_update. Default to 'db' for all other cases.</statement>
+        <rationale>The db fixture wraps each test in a transaction and rolls back after the test, ensuring isolation. Omitting the marker causes "no database access allowed" errors. Mismatching db and transactional_db creates flaky tests that depend on transaction semantics but are not marked for it. transactional_db commits real transactions and requires explicit cleanup.</rationale>
+      </rule>
+
+      <section name="fixture-types-table">
+        <p>Fixture type selection guide:
+- db: basic database access with auto-rollback (default for all tests).
+- transactional_db: no auto-rollback; use when testing transaction.atomic, post-commit hooks, select_for_update.
+- django_db_reset_sequences: resets auto-increment IDs; use when testing ID generation or sequential ordering.
+- django_db_serialized_rollback: multi-database setups with serialized fixture rollback.</p>
+      </section>
+
+      <example type="good" title="Correct database fixture usage">
+        <code lang="python"><![CDATA[
+# Mark test function for database access
+@pytest.mark.django_db
+def test_user_creation():
+    user = User.objects.create(email="test@example.com")
+    assert user.pk is not None
+
+# For fixtures needing database access
+@pytest.fixture
+def user(db):  # Request 'db' fixture explicitly
+    return User.objects.create(email="test@example.com")
+
+# Testing transactions explicitly
+@pytest.mark.django_db(transaction=True)
+def test_payment_rollback(transactional_db):
+    with pytest.raises(PaymentError):
+        PaymentService.process_with_rollback(order, token="failing")
+    order.refresh_from_db()
+    assert order.status == "pending"  # Verified rolled back
+
+# Testing ID sequences
+@pytest.mark.django_db
+def test_order_number_auto_increment(django_db_reset_sequences):
+    order1 = Order.objects.create(user=user)
+    order2 = Order.objects.create(user=user)
+    assert order2.id == order1.id + 1  # IDs are sequential
+]]></code>
+      </example>
+
+      <example type="bad" title="Missing db fixture or marker">
+        <code lang="python"><![CDATA[
+# Missing @pytest.mark.django_db - raises "no database access allowed"
+def test_user_creation():
+    user = User.objects.create(email="test@example.com")
+    assert user.pk is not None
+
+# Fixture missing db parameter - creates data outside transaction
+@pytest.fixture
+def user():
+    return User.objects.create(email="test@example.com")
+]]></code>
+        <note>Either error causes the test to fail with database access errors or test isolation violations.</note>
+      </example>
+    </section>
+
+    <section name="fixture-scope">
+      <p>Fixture scope controls how long a fixture lives and when it is torn down. Mismatching scope and mutation semantics is a leading cause of flaky tests.</p>
+
+      <rule testable="true">
+        <statement>Use function scope (default) for mutable data. Use module scope for shared test data within a file. Use session scope only for immutable, expensive-to-create data (e.g., static categories loaded once). Session-scoped fixtures MUST be immutable — creating copies for each test unless explicitly intending shared state. Session-scoped DB fixtures combined with function-scoped Factory Boy fixtures work only if every write rolls back.</statement>
+        <rationale>Function-scoped fixtures guarantee test isolation: each test gets a fresh copy. Session-scoped fixtures amortize one-time expensive operations but must be read-only — mutations accumulate across tests and create order dependencies. Scope mismatch is hard to debug because failures appear random.</rationale>
+      </rule>
+
+      <section name="scope-table">
+        <p>Scope selection:
+- function: mutable data, default, safest.
+- class: shared within test class, rare.
+- module: shared within test file, for read-only reference data.
+- session: immutable one-time expensive setup (loading categories, static data).</p>
+      </section>
+
+      <example type="good" title="Session-scoped immutable fixture">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Load initial data once per test session."""
+    with django_db_blocker.unblock():
+        from django.core.management import call_command
+        call_command("loaddata", "categories.json")
+
+@pytest.fixture(scope="module")
+def sample_products(db, product_factory):
+    """Create sample products for a test module."""
+    return [
+        product_factory(name="Laptop", price=999.99),
+        product_factory(name="Mouse", price=29.99),
+        product_factory(name="Keyboard", price=79.99),
+    ]
+]]></code>
+        <note>loaddata in session scope runs once; sample_products in module scope creates once per file. Both are read-only to downstream tests.</note>
+      </example>
+    </section>
+
+    <section name="api-client-fixtures">
+      <p>DRF API tests need authenticated client fixtures. Create them in conftest.py with force_authenticate for speed and correctness.</p>
+
+      <rule testable="true">
+        <statement>Create api_client, authenticated_client, and admin_client fixtures in root conftest.py. Use APIClient.force_authenticate(user=...) instead of login flows. Use yield to clear authentication after each test. Never use credentials() for test authentication unless the test is specifically about the token exchange flow.</statement>
+        <rationale>force_authenticate bypasses the authentication middleware, making API tests 10-100x faster and independent of the authentication backend. yield ensures cleanup (force_authenticate(user=None)) even when tests fail. credentials() tests the token pipeline, not the business logic; mix them only when the test is about authentication itself.</rationale>
+      </rule>
+
+      <example type="good" title="API client fixtures">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+import pytest
+from rest_framework.test import APIClient
+
+
+@pytest.fixture
+def api_client() -> APIClient:
+    """Unauthenticated DRF API client."""
+    return APIClient()
+
+
+@pytest.fixture
+def authenticated_client(api_client, user) -> APIClient:
+    """API client authenticated as regular user."""
+    api_client.force_authenticate(user=user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+
+@pytest.fixture
+def admin_client(api_client, admin_user) -> APIClient:
+    """API client authenticated as admin."""
+    api_client.force_authenticate(user=admin_user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+
+@pytest.fixture
+def token_client(api_client, user):
+    """API client with JWT token authentication."""
+    from rest_framework_simplejwt.tokens import RefreshToken
+
+    refresh = RefreshToken.for_user(user)
+    api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {refresh.access_token}")
+    yield api_client
+    api_client.credentials()
+]]></code>
+      </example>
+    </section>
+
+    <section name="composed-fixtures">
+      <p>Compose fixtures explicitly by requesting multiple fixture parameters. This makes dependencies visible in the function signature and avoids hidden state coupling.</p>
+
+      <rule testable="true">
+        <statement>Compose fixtures by declaring them as function parameters. Use pytest_plugins to modularize fixtures across subdirectories. Avoid class attributes for fixture state — use yield fixtures with explicit teardown. Each conftest.py only contains fixtures relevant to its directory and below.</statement>
+        <rationale>Explicit composition makes test dependencies visible and searchable. pytest_plugins lets domain-specific fixtures live near domain-specific tests without polluting the root conftest. Class attributes for state are reset between test methods but not between fixture invocations, causing subtle leaks.</rationale>
+      </rule>
+
+      <example type="good" title="Composed fixture pattern">
+        <code lang="python"><![CDATA[
+# tests/fixtures/orders.py
+import pytest
+
+
+@pytest.fixture
+def order_with_items(order_factory, product_factory):
+    """Order with 3 items ready for checkout."""
+    products = [product_factory() for _ in range(3)]
+    order = order_factory(items=[
+        {"product": p, "quantity": 2} for p in products
+    ])
+    return order
+
+
+@pytest.fixture
+def paid_order(order_with_items, payment_factory):
+    """Order with completed payment."""
+    payment_factory(
+        order=order_with_items,
+        status="completed",
+        amount=order_with_items.total
+    )
+    order_with_items.status = "paid"
+    order_with_items.save()
+    return order_with_items
+
+
+@pytest.fixture
+def shipped_order(paid_order, shipment_factory):
+    """Order that has been shipped."""
+    shipment_factory(
+        order=paid_order,
+        tracking_number="TRACK123",
+        carrier="FedEx"
+    )
+    paid_order.status = "shipped"
+    paid_order.save()
+    return paid_order
+
+
+# tests/integration/test_fulfillment.py
+def test_fulfill_paid_order(paid_order):
+    """Only paid orders can be fulfilled."""
+    result = fulfill_order(paid_order)
+    assert result.status == "shipped"
+]]></code>
+      </example>
+    </section>
+
+    <section name="conftest-structure">
+      <p>A well-structured conftest.py hierarchy keeps shared fixtures centrally defined and directory-specific fixtures close to the tests that use them.</p>
+
+      <rule testable="true">
+        <statement>Root conftest.py holds fixtures shared across all tests: API clients, factory registration, global settings overrides. Each subdirectory (unit/, integration/, e2e/) MAY have its own conftest.py with directory-specific fixtures. Use pytest_plugins inside a conftest.py to load modular fixture files. Avoid duplicating fixtures across conftest files.</statement>
+        <rationale>The conftest hierarchy follows pytest's natural file system scoping: root conftest is visible everywhere, subdirectory conftest is visible only to that subtree. Keeping shared fixtures in one root file prevents drift. pytest_plugins breaks a large conftest into domain files without losing automatic loading.</rationale>
+      </rule>
+
+      <example type="good" title="Root conftest.py template">
+        <code lang="python"><![CDATA[
+"""
+Root conftest.py - Shared fixtures for all tests.
+"""
+import pytest
+from rest_framework.test import APIClient
+
+# Register factories
+from pytest_factoryboy import register
+from tests.factories.users import UserFactory, AdminUserFactory
+from tests.factories.orders import ProductFactory, OrderFactory
+
+register(UserFactory)
+register(AdminUserFactory, _name="admin_user")
+register(ProductFactory)
+register(OrderFactory)
+
+
+# API Client Fixtures
+
+@pytest.fixture
+def api_client() -> APIClient:
+    """Unauthenticated DRF API client."""
+    return APIClient()
+
+
+@pytest.fixture
+def authenticated_client(api_client: APIClient, user) -> APIClient:
+    """API client authenticated as regular user."""
+    api_client.force_authenticate(user=user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+
+@pytest.fixture
+def admin_client(api_client: APIClient, admin_user) -> APIClient:
+    """API client authenticated as admin user."""
+    api_client.force_authenticate(user=admin_user)
+    yield api_client
+    api_client.force_authenticate(user=None)
+
+
+# Settings Fixtures
+
+@pytest.fixture
+def settings_debug(settings):
+    """Enable DEBUG mode for a test."""
+    settings.DEBUG = True
+    return settings
+
+
+@pytest.fixture
+def settings_no_celery(settings):
+    """Disable Celery eager mode for async testing."""
+    settings.CELERY_TASK_ALWAYS_EAGER = False
+    return settings
+
+
+# Utility Fixtures
+
+@pytest.fixture(autouse=True)
+def _media_root(tmp_path, settings):
+    """Override MEDIA_ROOT to a tmp dir; prevents writing to real disk."""
+    settings.MEDIA_ROOT = tmp_path / "media"
+]]></code>
+      </example>
+    </section>
+
+    <section name="test-settings">
+      <p>A dedicated test settings module makes tests faster and prevents side effects in the real environment.</p>
+
+      <rule testable="true">
+        <statement>Create config/settings/test.py inheriting from base settings. Override: DATABASES to in-memory SQLite (or Postgres in CI via test_postgres.py), PASSWORD_HASHERS to MD5PasswordHasher, EMAIL_BACKEND to locmem, CELERY_TASK_ALWAYS_EAGER=True, CACHES to locmem. Set MEDIA_ROOT via autouse fixture (not settings file) so each test run gets a fresh temp dir.</statement>
+        <rationale>In-memory SQLite is faster than Postgres for unit tests. MD5PasswordHasher is ~200x faster than bcrypt. locmem email captures outgoing mail for assertions. Eager Celery makes tasks run synchronously, enabling assertions immediately after the call. autouse fixture for MEDIA_ROOT ensures tmp_path cleanup per test.</rationale>
+      </rule>
+
+      <example type="good" title="Test settings module">
+        <code lang="python"><![CDATA[
+"""
+Test settings for Django project.
+Optimized for fast test execution.
+"""
+from .base import *  # noqa: F401, F403
+
+DEBUG = False
+TEMPLATE_DEBUG = False
+
+# Faster in-memory database
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": ":memory:",
+        "TEST": {
+            "NAME": ":memory:",
+        },
+    }
+}
+
+# Faster password hashing
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+]
+
+# Email backend - captures sent emails
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+# Celery - run tasks synchronously
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# Cache - use local memory
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+# Disable logging during tests
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": True,
+    "handlers": {"null": {"class": "logging.NullHandler"}},
+    "root": {"handlers": ["null"], "level": "CRITICAL"},
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Known failure modes in pytest-django fixture usage and how to avoid them.</p>
+
+      <antipattern>
+        <description>db vs transactional_db confusion: using db for a test that asserts on commit semantics, post-commit hooks, or signals.</description>
+        <reason>The db fixture wraps the test in a savepoint; post-commit hooks and signals that fire on real commits never execute. Use transactional_db for any test involving transaction.on_commit, signals, post_save, or select_for_update.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Session-scoped mutable fixtures: creating a session-scoped factory instance that different tests modify.</description>
+        <reason>Session-scoped fixtures are shared across all tests in the session. Any mutation accumulates and creates order-dependent failures. Session scope is only safe for truly immutable data (read-only reference tables, static config).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>pytest-xdist + --reuse-db racing on migrations on first run.</description>
+        <reason>Multiple workers try to create the database simultaneously. Use --create-db on cold start (first run or after schema changes), then --reuse-db for subsequent runs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>override_settings inside a fixture without using the pytest-django settings fixture.</description>
+        <reason>override_settings as a context manager or decorator does not cascade cleanly into session-scoped fixtures. Use the settings fixture from pytest-django; it is properly scoped and cleaned up.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>MEDIA_ROOT not overridden in test settings, causing tests to write files to the real disk.</description>
+        <reason>Tests that create uploads pollute the real MEDIA_ROOT and each other. Always override MEDIA_ROOT via an autouse fixture using tmp_path so each test gets a clean directory that is deleted after the test.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance-fixtures">
+      <p>Performance optimization in fixtures: parallel execution, database reuse, and faster settings.</p>
+
+      <rule testable="true">
+        <statement>Run tests in parallel with pytest-xdist: pytest -n auto. Use --reuse-db to skip migrations on subsequent local runs (use --create-db on first run or after schema change). Session-scope immutable data fixtures. Profile test duration with pytest --durations=10. Mark slow tests with @pytest.mark.slow and run them in a separate CI job.</statement>
+        <rationale>Parallel execution scales with CPU cores (2-4x speedup on quad-core). Database reuse skips migration cost (20-50% savings on suites with many apps). Profiling reveals unexpected slowdowns. Slow markers let CI run fast tests on every PR and slow tests on merge only.</rationale>
+      </rule>
+
+      <example type="good" title="Performance-optimised fixtures and CLI">
+        <code lang="python"><![CDATA[
+# config/settings/test.py
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.MD5PasswordHasher",  # Fast for tests
+]
+CELERY_TASK_ALWAYS_EAGER = True  # Run Celery tasks synchronously
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+# conftest.py - Session-scoped fixture for expensive setup
+@pytest.fixture(scope="session")
+def sample_products(django_db_setup, django_db_blocker):
+    """Create immutable product data once per test session."""
+    with django_db_blocker.unblock():
+        return [
+            Product.objects.create(name="Laptop", price=999.99),
+            Product.objects.create(name="Mouse", price=29.99),
+        ]
+
+# CLI - Run tests in parallel with database reuse
+# pytest -n auto --reuse-db --cov
+]]></code>
+      </example>
+    </section>
+
+    <section name="directory-structure">
+      <p>Recommended test directory layout for Django projects using pytest.</p>
+
+      <rule testable="true">
+        <statement>Organize tests as: tests/conftest.py (root fixtures), tests/factories/ (Factory Boy classes), tests/fixtures/ (complex composed fixtures), tests/unit/ (unit tests, no DB), tests/integration/ (DB + API), tests/e2e/ (end-to-end). Each subdirectory MAY have its own conftest.py for directory-specific fixtures.</statement>
+        <rationale>This structure scales from small projects to monorepos. Unit tests run fastest (no DB). Integration tests share factories. conftest inheritance (root → unit/ → module) manages fixture scope cleanly. Developers know immediately where a test belongs and what setup it requires.</rationale>
+      </rule>
+
+      <example type="good" title="Recommended test directory structure">
+        <code lang="text"><![CDATA[
+tests/
+├── conftest.py              # Root fixtures (shared across all tests)
+├── factories/
+│   ├── __init__.py
+│   ├── users.py             # UserFactory, ProfileFactory
+│   └── orders.py            # OrderFactory, OrderItemFactory
+├── fixtures/
+│   ├── __init__.py
+│   ├── api.py               # API client fixtures
+│   └── data.py              # Data fixtures
+├── unit/
+│   ├── conftest.py          # Unit-specific fixtures
+│   ├── test_models.py
+│   ├── test_services.py
+│   └── test_validators.py
+├── integration/
+│   ├── conftest.py          # Integration-specific fixtures
+│   ├── test_api.py
+│   └── test_views.py
+└── e2e/
+    ├── conftest.py
+    └── test_flows.py
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>All tests touching the database are marked with @pytest.mark.django_db</check>
+      <check>Fixtures that create database objects request the 'db' fixture explicitly</check>
+      <check>transactional_db used only for tests asserting on commits, signals, or select_for_update</check>
+      <check>API client fixtures use force_authenticate, not credentials()</check>
+      <check>Yield used in client fixtures so authentication is cleared after each test</check>
+      <check>Session-scoped fixtures contain only immutable data</check>
+      <check>MEDIA_ROOT overridden via autouse fixture using tmp_path</check>
+      <check>Test settings module uses MD5PasswordHasher, locmem email, eager Celery</check>
+      <check>Root conftest.py contains shared fixtures; subdirectory conftest.py contains local fixtures</check>
+      <check>pytest -n auto runs tests in parallel without failures</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-pytest-factories"/>
+      <ref slug="django-pytest-integration"/>
+      <ref slug="django-pytest-mocking"/>
+      <ref slug="django-pytest-parametrize"/>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://docs.pytest.org/"/>
+      <link href="https://schegel.net/posts/making-your-django-tests-faster/"/>
+    </see-also>
+  </content>
+</methodology>
