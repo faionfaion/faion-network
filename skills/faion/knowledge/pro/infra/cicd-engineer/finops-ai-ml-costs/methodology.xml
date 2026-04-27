@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-ai-ml-costs">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>FinOps for AI/ML workloads: GPU spot instances with checkpointing, inference caching, model quantization, batch requests, and cost tracking per training run and inference request.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>ai-costs</tag>
+      <tag>gpu-optimization</tag>
+      <tag>inference-caching</tag>
+      <tag>ml-cost-tracking</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-agentic-workflow"/>
+      <ref slug="finops-cloud-cost-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>FinOps for AI/ML Workloads: GPU, Training, and Inference Costs</title>
+
+    <summary>AI/ML workloads present unique FinOps challenges: GPU costs run 5-10x higher than standard compute, token economics are invisible to instance-hour dashboards, and standard rightsizing heuristics (CPU utilization) are misleading for GPU workloads. This methodology covers training cost optimization via spot instances with checkpointing, inference cost reduction via caching and quantization, and cost tracking at the request and experiment level.</summary>
+
+    <why>
+      <p>Organizations tracking AI costs reached 63% in 2025 (up from 31% in 2024), with average monthly AI spend at $85,521. GPU compute costs 5-10x more than standard compute per hour, yet standard FinOps dashboards built on instance-hours hide the real cost driver: request economics ($/inference, $/1k tokens, $/training-run).</p>
+      <p>The two most costly AI/ML mistakes are: (1) using spot instances for training without checkpointing — a spot interruption loses hours of work and the cost of the interrupted run, and (2) running inference on full-precision models when quantized variants deliver the same quality at half the cost. Neither mistake shows up in a standard rightsizing recommendation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any AI/ML workload with GPU instances — standard rightsizing is not applicable.</item>
+        <item>Training costs exceeding $10k/month — spot + checkpointing pays back immediately.</item>
+        <item>Inference serving with repetitive queries — response caching provides 20-60% cost reduction.</item>
+        <item>Monthly AI spend opaque (reported as instance-hours, not per-request costs).</item>
+        <item>LLM API spend growing with no per-model or per-experiment tracking.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Standard CPU-only workloads — apply general rightsizing and commitment discount methodology instead.</item>
+        <item>Real-time inference with strict SLA (sub-100ms) where caching adds latency complexity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="training-optimization">
+      <rule>
+        <statement>Use spot/preemptible instances for all ML training workloads that implement checkpointing. Checkpoint at minimum every 10 minutes (or every N epochs, whichever is shorter). On spot termination signal (SIGTERM on AWS, 30-second notice on GCP), save the checkpoint and exit cleanly. Never enable spot for training without checkpointing — data loss from an interrupted 12-hour run costs more than the savings.</statement>
+        <rationale>Spot instances provide 70-90% discounts for training. Without checkpointing, a spot interruption means restarting from zero. With checkpointing, an interruption means resuming from the last checkpoint — typically less than 10 minutes of lost work.</rationale>
+      </rule>
+
+      <example type="good" title="PyTorch SpotCheckpointer with SIGTERM handler">
+        <code lang="python"><![CDATA[
+# PyTorch training with checkpointing for spot instances
+import torch
+import signal
+import sys
+import os
+
+class SpotCheckpointer:
+    def __init__(self, model, optimizer, checkpoint_path):
+        self.model = model
+        self.optimizer = optimizer
+        self.checkpoint_path = checkpoint_path
+        self.epoch = 0
+        self.step = 0
+
+        # Handle spot termination signal
+        signal.signal(signal.SIGTERM, self.save_and_exit)
+
+    def save_checkpoint(self):
+        torch.save({
+            'epoch': self.epoch,
+            'step': self.step,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+        }, self.checkpoint_path)
+        print(f"Checkpoint saved at epoch {self.epoch}, step {self.step}")
+
+    def load_checkpoint(self):
+        if os.path.exists(self.checkpoint_path):
+            checkpoint = torch.load(self.checkpoint_path)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.epoch = checkpoint['epoch']
+            self.step = checkpoint['step']
+            print(f"Resumed from epoch {self.epoch}, step {self.step}")
+
+    def save_and_exit(self, signum, frame):
+        print("Spot termination notice received, saving checkpoint...")
+        self.save_checkpoint()
+        sys.exit(0)
+]]></code>
+        <note>AWS gives 2-minute notice via instance metadata; GCP gives 30 seconds via ACPI. Test the SIGTERM handler in a non-spot run before relying on it in production training.</note>
+      </example>
+
+      <rule>
+        <statement>Rightsize GPU selection based on actual workload, not maximum GPU available. Use GPU utilization metrics (not CPU) to evaluate fit. Schedule training jobs during off-peak hours to benefit from lower spot prices. Require approval workflows for any training run estimated to cost above a team-specific threshold.</statement>
+        <rationale>A V100 costs 3x an A10G but is not 3x faster for many workloads. GPU selection is the second largest training cost lever after spot discounts.</rationale>
+      </rule>
+    </section>
+
+    <section name="inference-optimization">
+      <rule>
+        <statement>Implement Redis-based response caching for LLM inference with a deterministic cache key (hash of model + messages). Cache TTL: 24 hours for factual queries, shorter for time-sensitive. Target 20-60% cache hit rate by identifying high-frequency repeated queries. Monitor and report cache hit rate alongside per-request cost.</statement>
+        <rationale>LLM inference costs scale linearly with token count. Cached responses cost nothing beyond storage. A 30% cache hit rate on a $10k/month inference bill saves $3k/month at near-zero implementation cost.</rationale>
+      </rule>
+
+      <example type="good" title="Redis-based LLM response caching">
+        <code lang="python"><![CDATA[
+# Redis-based LLM response caching
+import hashlib
+import json
+import redis
+from openai import OpenAI
+
+class CachedLLM:
+    def __init__(self, redis_url="redis://localhost:6379"):
+        self.client = OpenAI()
+        self.cache = redis.from_url(redis_url)
+        self.cache_ttl = 86400  # 24 hours
+
+    def _cache_key(self, messages, model):
+        content = json.dumps({'messages': messages, 'model': model}, sort_keys=True)
+        return f"llm:v1:{hashlib.sha256(content.encode()).hexdigest()}"
+
+    def chat(self, messages, model="gpt-4o", use_cache=True):
+        cache_key = self._cache_key(messages, model)
+
+        # Check cache
+        if use_cache:
+            cached = self.cache.get(cache_key)
+            if cached:
+                return json.loads(cached)
+
+        # Call API
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=messages
+        )
+
+        result = response.choices[0].message.content
+
+        # Cache response
+        if use_cache:
+            self.cache.setex(cache_key, self.cache_ttl, json.dumps(result))
+
+        return result
+
+# Usage - saves 20-60% on repeated queries
+llm = CachedLLM()
+response = llm.chat([{"role": "user", "content": "What is FinOps?"}])
+]]></code>
+        <note>Disable caching for personalized or stateful queries. Log cache hit/miss ratio to a metric for cost reporting.</note>
+      </example>
+
+      <rule>
+        <statement>Apply model quantization (INT8 or FP16) to inference models where quality benchmarks confirm acceptable accuracy. Target: 2x speedup and 50% cost reduction. Use smaller models where quality allows — benchmark before and after. Batch inference requests for GPU-bound workloads to maximize utilization.</statement>
+        <rationale>Quantization reduces model weight from FP32 to INT8 or FP16 — halving memory bandwidth and often doubling throughput on the same hardware. Combined with batching to saturate GPU compute, this is the primary lever for inference cost reduction without changing the model architecture.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-cost-tracking">
+      <rule>
+        <statement>Track AI costs at the request level, not the instance-hour level. Required metrics: cost per training run, cost per 1k inference tokens (input and output separately), cost per experiment, GPU utilization percentage, cache hit rate. Tag all AI/ML resources with model-name, experiment-id, and team in addition to standard tags. Create AI-specific cost dashboards separate from general cloud cost dashboards.</statement>
+        <rationale>Instance-hour reporting hides token economics. An LLM with a 3x token count per request costs 3x even if the instance utilization looks normal. Without per-request metrics, teams cannot identify which queries or models are driving cost growth.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Set AI spending alerts separately from general infrastructure alerts. Alert when: monthly AI spend increases more than 20% week-over-week, GPU utilization drops below 70% for more than 4 hours during active training, cache hit rate drops below baseline by more than 10 percentage points, cost per 1k tokens increases (model version change or routing failure).</statement>
+        <rationale>AI cost is volatile per request (token counts vary 10x). General infrastructure anomaly detection calibrated to instance-hours will miss AI-specific cost anomalies.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-checklist">
+      <checklist>
+        <check>Use spot instances with checkpointing for all training workloads.</check>
+        <check>Implement SIGTERM handler for graceful checkpoint-on-termination.</check>
+        <check>Rightsize GPU selection based on actual workload benchmarks.</check>
+        <check>Implement approval workflows for training runs above cost threshold.</check>
+        <check>Schedule training during off-peak hours for lower spot prices.</check>
+        <check>Track cost per training run.</check>
+        <check>Implement response caching for inference with deterministic cache key.</check>
+        <check>Apply model quantization where quality benchmarks allow.</check>
+        <check>Batch inference requests to maximize GPU utilization.</check>
+        <check>Monitor GPU utilization (not CPU) for AI workloads.</check>
+        <check>Track cost per inference and cost per 1k tokens.</check>
+        <check>Tag all AI/ML resources with model-name, experiment-id, and team.</check>
+        <check>Create AI-specific cost dashboards.</check>
+        <check>Monitor token and API usage costs for managed LLM APIs.</check>
+        <check>Set AI spending alerts separate from general infrastructure alerts.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="develop-ai-ml-cost-strategy"><![CDATA[
+Develop a cost optimization strategy for AI/ML workloads:
+
+Current state:
+- Training workloads: [describe]
+- Inference workloads: [describe]
+- GPU types in use: [list]
+- Monthly AI spend: $[amount]
+- Provider: [AWS/GCP/Azure]
+
+Requirements:
+- Training frequency: [daily/weekly/monthly]
+- Inference latency SLA: [Xms]
+- Model size: [parameters]
+- Batch vs real-time: [ratio]
+
+Provide recommendations for:
+1. Training cost optimization (spot, scheduling, checkpointing)
+2. Inference cost optimization (caching, batching, quantization)
+3. GPU selection and rightsizing
+4. Cost allocation and tracking
+5. Approval workflows for expensive experiments
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://www.cloudzero.com/blog/ai-costs/"/>
+      <link href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-interruptions.html"/>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-agentic-workflow"/>
+    </see-also>
+  </content>
+</methodology>
