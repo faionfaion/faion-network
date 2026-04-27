@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>python-developer</domain>
-    <summary>Python 3.12/3.13/3.14 features (PEP 695 generics, PEP 701 f-strings, free-threading) and modern tooling (uv, ruff, hatchling, pyright). Pin one Python version per repo; keep requires-python, ruff target-version, and mypy python_version in sync.</summary>
+    <summary>Python 3.12/3.13/3.14 features and modern tooling. Pin one Python version per repo via .python-version file.</summary>
     <tags>
       <tag>python-3.12</tag>
       <tag>python-3.13</tag>
@@ -189,6 +189,111 @@ class Cache[K, V]:
       <rule>
         <statement>Replace Black and Flake8 with ruff in pre-commit hooks in one commit. Keep the existing line-length setting to avoid a massive reformatting diff.</statement>
         <rationale>Switching formatters with a different line length produces a diff that touches every file, making git blame useless for recent history. Keeping the existing line length in the ruff config produces a minimal diff from the formatter switch.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <rule>
+        <statement>New project: (1) uv init proj --python 3.13, (2) draft pyproject.toml from templates.md, (3) uv add fastapi pydantic, (4) uv add --dev pytest pytest-asyncio ruff mypy pre-commit, (5) commit lockfile, (6) pre-commit install and verify hook runs ruff + mypy on touched files.</statement>
+        <rationale>This sequence ensures reproducible environment setup and validates tooling early.</rationale>
+      </rule>
+      <rule>
+        <statement>Migration: (1) read current Python version, (2) bump requires-python = "&gt;=3.12" after team consensus, (3) ruff check --select UP --fix to auto-modernize syntax, (4) run tests under new interpreter, (5) flip ruff target-version = "py312".</statement>
+        <rationale>Staged migration prevents surprises. Auto-fixes first, then manual testing, then toolchain alignment.</rationale>
+      </rule>
+      <rule>
+        <statement>Free-threaded experiment: isolate to a single CPU-bound module first, install python3.13t separately, run benchmark before/after.</statement>
+        <rationale>Free-threading should never be adopted project-wide without isolated proof of correctness and benefit.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>t"..." template strings exist only in Python 3.14+. Agents grab the syntax from the README and paste into 3.12 code.</description>
+        <reason>Runtime SyntaxError when 3.14 syntax hits 3.12 parser.</reason>
+      </antipattern>
+      <antipattern>
+        <description>PEP 695 type Vec[T] = list[T] requires 3.12+. Mixing with from typing import TypeAlias is fine but redundant.</description>
+        <reason>Agents conflate old and new syntax, producing unnecessary imports.</reason>
+      </antipattern>
+      <antipattern>
+        <description>uv python install 3.13t is the free-threaded build — not the same as 3.13. Agents conflate them.</description>
+        <reason>Installing the wrong build breaks the entire experiment.</reason>
+      </antipattern>
+      <antipattern>
+        <description>uv run invokes the project's venv automatically — no source .venv/bin/activate. Agents that activate manually break uv's cache logic.</description>
+        <reason>Manual activation bypasses uv's environment management.</reason>
+      </antipattern>
+      <antipattern>
+        <description>uv sync removes packages not in pyproject.toml — surprise for agents who pip install ad-hoc.</description>
+        <reason>Agents should use uv add or uv run --with, not pip install.</reason>
+      </antipattern>
+      <antipattern>
+        <description>ruff format does NOT obey Black exactly — small differences (string quotes, trailing commas in some edges). Pin ruff version per repo.</description>
+        <reason>Formatters are tools; versions matter.</reason>
+      </antipattern>
+      <antipattern>
+        <description>mypy_django_plugin requires settings module — pyright doesn't, so agents flipping checkers see different error counts.</description>
+        <reason>Type checkers have different plugin ecosystems.</reason>
+      </antipattern>
+      <antipattern>
+        <description>pyproject.toml [tool.uv] block controls uv-specific options (index URLs, dev deps groups). Agents miss it and put dev deps in [project.optional-dependencies] only.</description>
+        <reason>Tool-specific blocks are often overlooked.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hatchling [tool.hatch.build.targets.wheel] packages must match src layout. Mismatch produces empty wheel, no ImportError until install.</description>
+        <reason>Build config must match project layout exactly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Free-threaded benchmarks lie for I/O-bound code. README's table is honest but agents quote 3.3x speedup for code that won't see it.</description>
+        <reason>Benchmarks are context-specific.</reason>
+      </antipattern>
+      <antipattern>
+        <description>f"{path.replace('\\', '/')}" (PEP 701) only works in 3.12+. Older Python errors at parse time, not runtime.</description>
+        <reason>Syntax errors are parse-time failures.</reason>
+      </antipattern>
+      <antipattern>
+        <description>asyncio_mode = "auto" in pytest config means every async def test_ runs without @pytest.mark.asyncio — agents removing the marker on 3.11+ projects without auto mode break tests silently.</description>
+        <reason>pytest mode must match marker usage.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Pin one Python version per repo via .python-version (uv/pyenv reads it). CI matrix can fan out, but development is single-version.</statement>
+        <rationale>Developers and CI must use the same Python to catch version-specific bugs early. A .python-version file is the single source of truth.</rationale>
+      </rule>
+      <rule>
+        <statement>Lockfile is a first-class artifact. uv.lock committed; CI runs uv sync --frozen to detect drift.</statement>
+        <rationale>Lockfiles pin exact transitive dependency versions. Uncommitted regenerations cause silent version drift across machines.</rationale>
+      </rule>
+      <rule>
+        <statement>requires-python matches target-version — pyproject.toml requires-python = "&gt;=3.13" aligns with ruff target-version = "py313" aligns with mypy python_version = "3.13". Drift causes silent rule mismatches.</statement>
+        <rationale>Misalignment produces false CI passes. ruff may not flag syntax from a higher version if target-version is too low; mypy allows features unavailable on deployment Python if python_version is too high.</rationale>
+      </rule>
+      <rule>
+        <statement>Use src layout (src/&lt;pkg&gt;/) — keeps tests from accidentally importing from the working directory.</statement>
+        <rationale>Src layout enforces proper package installation semantics and prevents import shadowing bugs.</rationale>
+      </rule>
+      <rule>
+        <statement>Don't enable free-threading in production until your full dependency tree is audited. Most C extensions still use the GIL.</statement>
+        <rationale>Running GIL-dependent extensions under python3.13t either works (slow) or crashes.</rationale>
+      </rule>
+      <rule>
+        <statement>ruff check --select UP --fix is safe — it only modernizes syntax. Run it as a one-shot migration, not constantly.</statement>
+        <rationale>UP rule group handles mechanical upgrades with no semantic impact. Safe to auto-apply.</rationale>
+      </rule>
+      <rule>
+        <statement>Reserve S (bandit) rules for prod code; relax in tests via [tool.ruff.lint.per-file-ignores] "tests/**" = ["S101"] (assert is fine in tests).</statement>
+        <rationale>Security rules produce false positives in test-only code (intentional asserts, test fixtures).</rationale>
+      </rule>
+      <rule>
+        <statement>Cache ~/.cache/uv in CI keyed on uv.lock hash — full installs are seconds, not minutes.</statement>
+        <rationale>uv's global cache dramatically speeds up CI when properly cached.</rationale>
+      </rule>
+      <rule>
+        <statement>JIT is opt-in via -X jit; don't ship apps assuming it's on. Profile to confirm wins.</statement>
+        <rationale>JIT may regress some workloads. Enable only after profiling shows benefit.</rationale>
       </rule>
     </section>
 
