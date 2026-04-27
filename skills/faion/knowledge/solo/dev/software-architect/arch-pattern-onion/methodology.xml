@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="arch-pattern-onion">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Onion Architecture: domain model at the center, domain services as a dedicated ring, then application services, then infrastructure — all coupling toward the center, no outward dependencies.</summary>
+    <tags>
+      <tag>onion-architecture</tag>
+      <tag>domain-driven</tag>
+      <tag>layered-architecture</tag>
+      <tag>enterprise-patterns</tag>
+      <tag>dotnet</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-hexagonal"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Onion Architecture</title>
+
+    <summary>Jeffrey Palermo (2008) formalised Onion Architecture: all coupling points toward the center. The Domain Model (entities, value objects, repository interfaces) occupies the innermost ring with zero outward dependencies. Domain Services wrap cross-entity logic. Application Services orchestrate use cases. Infrastructure sits at the outermost ring.</summary>
+
+    <why>
+      <p>Onion Architecture emerged from enterprise .NET practice to solve the problem of deeply coupled N-tier applications where the data layer dominated design decisions. By placing the Domain Model at the center with absolutely no outward dependencies, every layer can be tested in isolation and the infrastructure (ORM, messaging, web) becomes a replaceable detail.</p>
+      <p>The key distinction from Clean Architecture is the explicit separation of Domain Services (cross-entity logic that cannot belong to a single entity) from Application Services (orchestration and use cases). This separation reflects the reality of enterprise domains where complex business calculations span multiple entities but are still purely domain concepts.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Enterprise .NET applications (C#, F#) where the Onion vocabulary is well established and tooling (Project References, .NET solution structure) maps naturally to layers.</item>
+        <item>Applications where domain services as a separate layer is conceptually meaningful — e.g., a pricing engine that spans Product, Customer, and Promotion aggregates.</item>
+        <item>Teams familiar with the Onion naming convention (Domain, Domain.Services, Application, Infrastructure) who want consistency across projects.</item>
+        <item>Complex enterprise apps where the domain must be completely independent of UI, database, and framework choices.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple domains without meaningful cross-entity business logic — the Domain.Services layer will be empty and adds confusion.</item>
+        <item>Non-.NET stacks where teams are more familiar with Clean or Hexagonal vocabulary — use whichever fits the team's shared mental model.</item>
+        <item>Prototypes or scripts — overhead of multiple projects/layers exceeds value.</item>
+        <item>Microservices where the domain fits in 200 lines — the four-layer split is overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layers">
+      <p>Layers from inside out:</p>
+      <list>
+        <item>Domain Model (innermost) — Entities, Value Objects, Repository Interfaces. No outward dependencies whatsoever. No logging, no ORM, no clock.</item>
+        <item>Domain Services — Logic that spans multiple entities or aggregates but is still purely domain (no infrastructure). E.g., OrderPricingService that uses both Order and Promotion.</item>
+        <item>Application Services — Use cases and orchestration. Coordinates domain objects, calls repository interfaces, manages transaction boundaries. No direct DB access.</item>
+        <item>Infrastructure (outermost) — Repository implementations, external service adapters, DI setup, web framework, ORM. Depends on all inner layers.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>The Domain Model layer MUST have zero dependencies on any application, infrastructure, or presentation concern. Domain Services MAY depend on the Domain Model only. Application Services MAY depend on Domain and Domain Services. Infrastructure MAY depend on all inner layers.</statement>
+        <rationale>All coupling toward the center ensures that inner layers can be unit-tested without any external infrastructure. This is the defining invariant of Onion Architecture.</rationale>
+      </rule>
+
+      <example type="good" title="Layer dependency table (Onion)">
+        <code lang="text"><![CDATA[
+Layer                | Can depend on                  | Cannot depend on
+---------------------|-------------------------------|-----------------------------------
+Domain Model         | nothing external               | Domain Services, Application, Infrastructure
+Domain Services      | Domain Model                   | Application, Infrastructure
+Application Services | Domain, Domain Services        | Infrastructure
+Infrastructure       | All inner layers               | (nothing restricted — outermost)
+]]></code>
+      </example>
+    </section>
+
+    <section name="comparison-with-clean">
+      <p>Onion vs Clean Architecture — key differences:</p>
+      <list>
+        <item>Domain Services: Onion has a dedicated Domain Services layer between Domain Model and Application Services. Clean Architecture folds domain services into either Entities or Use Cases without a strict separate ring.</item>
+        <item>Use Cases vs Application Services: Clean calls them Use Cases (explicit, single-purpose objects). Onion calls them Application Services (often broader service classes per domain concept).</item>
+        <item>Naming: Clean is Use-Case-driven naming. Onion is Layer-driven naming.</item>
+        <item>Origin: Clean emerged from software craftsmanship circles; Onion emerged from enterprise .NET practice.</item>
+      </list>
+    </section>
+
+    <section name="folder-structure">
+      <p>Canonical .NET solution layout for Onion Architecture:</p>
+      <code lang="text"><![CDATA[
+ECommerce/
+├── src/
+│   ├── ECommerce.Domain/              # Innermost layer
+│   │   ├── Entities/
+│   │   │   ├── Order.cs
+│   │   │   └── Customer.cs
+│   │   ├── ValueObjects/
+│   │   │   ├── Money.cs
+│   │   │   └── Address.cs
+│   │   └── Interfaces/                # Repository interfaces
+│   │       └── IOrderRepository.cs
+│   │
+│   ├── ECommerce.Domain.Services/     # Domain Services layer
+│   │   └── OrderPricingService.cs     # spans Order + Promotion
+│   │
+│   ├── ECommerce.Application/         # Application Services layer
+│   │   ├── Services/
+│   │   │   └── OrderApplicationService.cs
+│   │   ├── DTOs/
+│   │   │   └── OrderDto.cs
+│   │   └── Interfaces/                # External service interfaces
+│   │       └── IEmailService.cs
+│   │
+│   ├── ECommerce.Infrastructure/      # Outermost layer
+│   │   ├── Persistence/
+│   │   │   ├── OrderRepository.cs
+│   │   │   └── ECommerceDbContext.cs
+│   │   ├── Email/
+│   │   │   └── SmtpEmailService.cs
+│   │   └── DependencyInjection/
+│   │       └── ServiceCollectionExtensions.cs
+│   │
+│   └── ECommerce.WebApi/              # Presentation (outside of Onion proper)
+│       ├── Controllers/
+│       │   └── OrdersController.cs
+│       └── Program.cs
+│
+└── tests/
+    ├── ECommerce.Domain.Tests/
+    ├── ECommerce.Domain.Services.Tests/
+    ├── ECommerce.Application.Tests/
+    └── ECommerce.WebApi.Tests/
+]]></code>
+    </section>
+
+    <section name="implementation-examples">
+      <example type="good" title="Domain entity (C#) — no dependencies">
+        <code lang="csharp"><![CDATA[
+// ECommerce.Domain/Entities/Order.cs
+namespace ECommerce.Domain.Entities;
+
+public class Order
+{
+    public Guid Id { get; private set; }
+    public Guid CustomerId { get; private set; }
+    public IReadOnlyList<OrderItem> Items { get; private set; }
+    public OrderStatus Status { get; private set; }
+
+    private Order() { } // EF Core constructor
+
+    public static Order Create(Guid customerId, IEnumerable<OrderItem> items)
+    {
+        if (!items.Any()) throw new DomainException("Order must have at least one item.");
+        return new Order
+        {
+            Id = Guid.NewGuid(),
+            CustomerId = customerId,
+            Items = items.ToList().AsReadOnly(),
+            Status = OrderStatus.Pending
+        };
+    }
+
+    public void Place()
+    {
+        if (Status != OrderStatus.Pending) throw new DomainException("Can only place pending orders.");
+        Status = OrderStatus.Placed;
+    }
+
+    public void Cancel()
+    {
+        if (Status == OrderStatus.Shipped) throw new DomainException("Cannot cancel shipped orders.");
+        Status = OrderStatus.Cancelled;
+    }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Domain Service (C#) — cross-entity logic">
+        <code lang="csharp"><![CDATA[
+// ECommerce.Domain.Services/OrderPricingService.cs
+using ECommerce.Domain.Entities;
+using ECommerce.Domain.ValueObjects;
+
+namespace ECommerce.Domain.Services;
+
+/// <summary>Domain service for pricing logic spanning Order and Promotion.</summary>
+public class OrderPricingService
+{
+    public Money CalculateFinalPrice(Order order, IEnumerable<Promotion> promotions)
+    {
+        var basePrice = order.Items.Aggregate(Money.Zero, (sum, item) => sum.Add(item.Subtotal));
+        var discount = promotions
+            .Where(p => p.IsApplicableTo(order))
+            .Aggregate(Money.Zero, (sum, p) => sum.Add(p.CalculateDiscount(basePrice)));
+        return basePrice.Subtract(discount);
+    }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Application Service (C#) — orchestration">
+        <code lang="csharp"><![CDATA[
+// ECommerce.Application/Services/OrderApplicationService.cs
+using ECommerce.Domain.Entities;
+using ECommerce.Domain.Interfaces;
+using ECommerce.Domain.Services;
+using ECommerce.Application.DTOs;
+using ECommerce.Application.Interfaces;
+
+namespace ECommerce.Application.Services;
+
+public class OrderApplicationService
+{
+    private readonly IOrderRepository _orderRepository;
+    private readonly IEmailService _emailService;
+    private readonly OrderPricingService _pricingService;
+
+    public OrderApplicationService(
+        IOrderRepository orderRepository,
+        IEmailService emailService,
+        OrderPricingService pricingService)
+    {
+        _orderRepository = orderRepository;
+        _emailService = emailService;
+        _pricingService = pricingService;
+    }
+
+    public async Task<OrderDto> PlaceOrderAsync(PlaceOrderRequest request)
+    {
+        var order = Order.Create(request.CustomerId, request.Items.Select(/* map */));
+        var price = _pricingService.CalculateFinalPrice(order, request.ApplicablePromotions);
+        order.Place();
+        await _orderRepository.SaveAsync(order);
+        await _emailService.SendOrderConfirmationAsync(order, price);
+        return OrderDto.FromOrder(order, price);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="testing-strategy">
+      <p>Testing approach per layer:</p>
+      <list>
+        <item>Domain Model tests — pure unit tests, no mocks. Verify entity invariants, state transitions, value object equality.</item>
+        <item>Domain Services tests — unit tests. Instantiate real domain objects; no infrastructure mocks needed.</item>
+        <item>Application Services tests — unit tests. Mock IOrderRepository, IEmailService. Inject real domain services.</item>
+        <item>Infrastructure tests — integration tests. Real database (testcontainers), real SMTP sandbox.</item>
+        <item>Web API tests — integration tests against the full stack assembled with in-memory hosting.</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Putting domain service logic inside Application Services ("fat application service" that does cross-entity calculations).</description>
+        <reason>Cross-entity domain logic belongs in Domain Services, not Application Services. Application Services should orchestrate; Domain Services should compute. Mixing them defeats testability and conceptual clarity.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Domain entities depending on EF Core DbContext or any ORM concept.</description>
+        <reason>The Domain layer must have zero dependencies. EF Core navigation properties and data annotations are infrastructure concerns. Use separate persistence models and map them in the Infrastructure layer.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using ORM entities as domain entities (same class serves both purposes).</description>
+        <reason>ORM schemas change on database needs; domain entities change on business rules. Conflating them creates a permanent coupling that makes both harder to evolve independently.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Having circular dependencies between Domain and Application layers.</description>
+        <reason>The dependency rule is strict: Application → Domain, not the other way. If Domain needs something from Application, extract it to Domain or invert the dependency via an interface.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>ECommerce.Domain project has no external package references beyond language stdlib.</check>
+      <check>ECommerce.Domain.Services references only ECommerce.Domain.</check>
+      <check>ECommerce.Application references Domain and Domain.Services, not Infrastructure.</check>
+      <check>Repository interfaces are declared in ECommerce.Domain.Interfaces, implementations in ECommerce.Infrastructure.</check>
+      <check>Application Services inject all repositories and external services via interfaces.</check>
+      <check>Domain and Domain.Services test projects have zero mocks (pure unit tests).</check>
+      <check>ORM persistence models are separate from domain entities where schemas diverge.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://jeffreypalermo.com/2008/07/the-onion-architecture-part-1/"/>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-hexagonal"/>
+      <ref slug="arch-pattern-ddd"/>
+    </see-also>
+  </content>
+</methodology>
