@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-aggregate">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Event-sourced aggregate root pattern: apply/replay cycle, command handlers, from_events reconstruction, optimistic concurrency, and pending-event collection.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>aggregate</tag>
+      <tag>domain-driven-design</tag>
+      <tag>command-handler</tag>
+      <tag>optimistic-concurrency</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-projections"/>
+      <ref slug="domain-driven-design"/>
+      <ref slug="cqrs-pattern"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Aggregate Root Pattern</title>
+
+    <summary>The event-sourced aggregate root reconstructs its state by replaying a list of past events and emits new events (never mutating state directly) when commands succeed. State MUST be mutated only inside apply() handlers, never inside command methods.</summary>
+
+    <why>
+      <p>The aggregate root is the consistency boundary. All invariant checks happen here before any event is emitted. By separating "command executes invariant check + emits event" from "apply(event) mutates state", the aggregate becomes trivially testable via given/when/then and fully replayable from any point in history. Mixing state mutation into command methods breaks replay determinism.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Implementing an event-sourced domain model that has business invariants to enforce.</item>
+        <item>Any aggregate root in a CQRS system where commands are handled and events are persisted.</item>
+        <item>When you need to reconstruct aggregate state from a repository (load events, replay, then execute command).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD entities with no invariants — the apply/replay overhead adds zero value.</item>
+        <item>Cross-aggregate operations — never load two aggregates and mutate both in one command handler; use sagas/process managers instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="aggregate-implementation">
+      <rule>
+        <statement>Aggregate state MUST be mutated only inside _apply (or apply) event handlers, never inside command methods. Command methods validate invariants, emit events, and return.</statement>
+        <rationale>Replay calls apply() on historical events without going through command logic. If command methods mutate state directly, replay produces different state than the original command execution — the entire point of event sourcing is broken.</rationale>
+      </rule>
+      <rule>
+        <statement>Repository MUST call save(stream_id, events, expected_version) with the version loaded at the start of the command. Omitting expected_version causes silent ghost writes on concurrent commands.</statement>
+        <rationale>Without optimistic concurrency, two concurrent commands loading the same aggregate version both succeed; the second write overwrites the first event stream silently. expected_version makes this a detectable conflict.</rationale>
+      </rule>
+      <rule>
+        <statement>The aggregate MUST expose a collect_pending_events() method that returns and clears the list of new events. The repository calls this after save() succeeds.</statement>
+        <rationale>Pending events drive outbox publishing, projection updates, and saga triggers. They must be collected after persistence, not during command execution, to avoid double-publishing on retry.</rationale>
+      </rule>
+      <example type="good" title="Event-sourced Order aggregate (Python)">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from decimal import Decimal
+from enum import Enum
+from typing import List, Optional
+from uuid import UUID
+import re
+
+from domain.events.order_events import (
+    Event, OrderCreated, OrderItemAdded, OrderItemRemoved,
+    OrderPlaced, OrderShipped, OrderCancelled,
+)
+
+
+class OrderStatus(Enum):
+    DRAFT = "draft"
+    PLACED = "placed"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class OrderItem:
+    product_id: UUID
+    product_name: str
+    quantity: int
+    unit_price: Decimal
+
+    @property
+    def total(self) -> Decimal:
+        return self.unit_price * self.quantity
+
+
+class DomainError(Exception):
+    pass
+
+
+@dataclass
+class Order:
+    """Event-sourced Order aggregate."""
+
+    id: UUID
+    customer_id: UUID = None
+    status: OrderStatus = OrderStatus.DRAFT
+    items: List[OrderItem] = field(default_factory=list)
+    shipping_address: dict = None
+    tracking_number: str = None
+    version: int = 0
+    _pending_events: List[Event] = field(default_factory=list, repr=False)
+
+    @classmethod
+    def create(cls, order_id: UUID, customer_id: UUID) -> "Order":
+        """Factory: creates new order, emits OrderCreated."""
+        order = cls(id=order_id)
+        order._apply(OrderCreated(order_id=order_id, customer_id=customer_id))
+        return order
+
+    @classmethod
+    def from_events(cls, order_id: UUID, events: List[Event]) -> "Order":
+        """Reconstruct order from event history."""
+        order = cls(id=order_id)
+        for event in events:
+            order._apply(event, is_new=False)
+        return order
+
+    def add_item(
+        self,
+        product_id: UUID,
+        product_name: str,
+        quantity: int,
+        unit_price: Decimal,
+    ) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify placed order")
+        if quantity <= 0:
+            raise DomainError("Quantity must be positive")
+        if any(item.product_id == product_id for item in self.items):
+            raise DomainError("Product already in order")
+        self._apply(OrderItemAdded(
+            order_id=self.id,
+            product_id=product_id,
+            product_name=product_name,
+            quantity=quantity,
+            unit_price=unit_price,
+        ))
+
+    def remove_item(self, product_id: UUID) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify placed order")
+        if not any(item.product_id == product_id for item in self.items):
+            raise DomainError("Product not in order")
+        self._apply(OrderItemRemoved(order_id=self.id, product_id=product_id))
+
+    def place(self, shipping_address: dict) -> None:
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Order already placed")
+        if not self.items:
+            raise DomainError("Cannot place empty order")
+        self._apply(OrderPlaced(
+            order_id=self.id,
+            shipping_address=shipping_address,
+            total_amount=self.total,
+        ))
+
+    def ship(self, tracking_number: str, carrier: str) -> None:
+        if self.status != OrderStatus.PLACED:
+            raise DomainError("Order must be placed before shipping")
+        self._apply(OrderShipped(
+            order_id=self.id,
+            tracking_number=tracking_number,
+            carrier=carrier,
+        ))
+
+    def cancel(self, reason: str, cancelled_by: UUID) -> None:
+        if self.status in (OrderStatus.SHIPPED, OrderStatus.DELIVERED):
+            raise DomainError("Cannot cancel shipped order")
+        self._apply(OrderCancelled(
+            order_id=self.id,
+            reason=reason,
+            cancelled_by=cancelled_by,
+        ))
+
+    @property
+    def total(self) -> Decimal:
+        return sum(item.total for item in self.items)
+
+    def _apply(self, event: Event, is_new: bool = True) -> None:
+        """Route event to state-mutation handler, increment version."""
+        handler_name = f"_on_{self._to_snake_case(type(event).__name__)}"
+        handler = getattr(self, handler_name, None)
+        if handler:
+            handler(event)
+        self.version += 1
+        if is_new:
+            self._pending_events.append(event)
+
+    def _on_order_created(self, event: OrderCreated) -> None:
+        self.customer_id = event.customer_id
+        self.status = OrderStatus.DRAFT
+
+    def _on_order_item_added(self, event: OrderItemAdded) -> None:
+        self.items.append(OrderItem(
+            product_id=event.product_id,
+            product_name=event.product_name,
+            quantity=event.quantity,
+            unit_price=event.unit_price,
+        ))
+
+    def _on_order_item_removed(self, event: OrderItemRemoved) -> None:
+        self.items = [i for i in self.items if i.product_id != event.product_id]
+
+    def _on_order_placed(self, event: OrderPlaced) -> None:
+        self.shipping_address = event.shipping_address
+        self.status = OrderStatus.PLACED
+
+    def _on_order_shipped(self, event: OrderShipped) -> None:
+        self.tracking_number = event.tracking_number
+        self.status = OrderStatus.SHIPPED
+
+    def _on_order_cancelled(self, event: OrderCancelled) -> None:
+        self.status = OrderStatus.CANCELLED
+
+    def collect_pending_events(self) -> List[Event]:
+        """Get and clear pending events for outbox/publishing."""
+        events = self._pending_events.copy()
+        self._pending_events.clear()
+        return events
+
+    @staticmethod
+    def _to_snake_case(name: str) -> str:
+        return re.sub(r'(?<!^)(?=[A-Z])', '_', name).lower()
+]]></code>
+        <note>State mutation lives ONLY in _on_* handlers. Command methods (add_item, place, ship) validate invariants then call _apply. from_events replays history with is_new=False so no pending events are collected.</note>
+      </example>
+
+      <antipattern>
+        <description>Mutating aggregate state directly inside command methods instead of inside apply handlers.</description>
+        <reason>Agents commonly write self.status = "placed" in command methods because it feels natural. This breaks replay: replaying events skips the command path but must reproduce the same state. State mutation belongs in _on_* handlers only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Loading multiple aggregates (Customer, Inventory, Payment) in a single command handler and mutating all of them.</description>
+        <reason>Cross-aggregate mutations are not atomic across event streams. This creates ghost states and eventual consistency violations. Use a saga or process manager to coordinate across aggregates.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Calling repository.save(stream_id, events) without expected_version.</description>
+        <reason>Without optimistic concurrency, concurrent commands at the same version both succeed. The second write silently overwrites the first, producing incorrect state with no detectable error.</reason>
+      </antipattern>
+    </section>
+
+    <section name="testing-pattern">
+      <p>The canonical aggregate test shape is given/when/then: given a list of past events (replay state), when a command is executed, then a specific list of new events is emitted. This directly tests the aggregate's event emission logic without touching the repository or store.</p>
+      <example type="good" title="Given/when/then aggregate test (Python)">
+        <code lang="python"><![CDATA[
+from uuid import uuid4
+from decimal import Decimal
+import pytest
+
+def test_add_item_to_draft_order():
+    order_id = uuid4()
+    customer_id = uuid4()
+    product_id = uuid4()
+
+    # given
+    order = Order.from_events(order_id, [
+        OrderCreated(order_id=order_id, customer_id=customer_id),
+    ])
+
+    # when
+    order.add_item(
+        product_id=product_id,
+        product_name="Widget",
+        quantity=2,
+        unit_price=Decimal("9.99"),
+    )
+
+    # then
+    events = order.collect_pending_events()
+    assert len(events) == 1
+    assert isinstance(events[0], OrderItemAdded)
+    assert events[0].product_id == product_id
+    assert events[0].quantity == 2
+
+
+def test_cannot_add_item_to_placed_order():
+    order_id = uuid4()
+    customer_id = uuid4()
+
+    order = Order.from_events(order_id, [
+        OrderCreated(order_id=order_id, customer_id=customer_id),
+        OrderPlaced(order_id=order_id, shipping_address={}, total_amount=Decimal("0")),
+    ])
+
+    with pytest.raises(DomainError, match="Cannot modify placed order"):
+        order.add_item(uuid4(), "Widget", 1, Decimal("1.00"))
+]]></code>
+        <note>No database, no repository — just aggregate state reconstruction from events and assertion on emitted events.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-projections"/>
+      <ref slug="domain-driven-design"/>
+    </see-also>
+  </content>
+</methodology>
