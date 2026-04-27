@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-session-management">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Manage browser sessions in Puppeteer: persist and restore cookies, manipulate localStorage/sessionStorage, intercept and modify HTTP requests, mock API responses, and capture response data.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>cookies</tag>
+      <tag>request-interception</tag>
+      <tag>session</tag>
+      <tag>browser-automation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-page-interaction"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Session, Cookies &amp; Request Interception</title>
+
+    <summary>Covers cookie get/set/delete, localStorage/sessionStorage manipulation, HTTP request interception (block, modify headers, mock responses), and response capture for data extraction pipelines.</summary>
+
+    <why>
+      <p>Maintaining session state across Puppeteer runs avoids repeated logins and warms caches. Request interception enables performance gains (blocking images/fonts) and test isolation (mocking APIs). Without explicit session management, every browser run re-authenticates and re-downloads resources.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Automating authenticated workflows where re-login on every run is too slow or triggers CAPTCHA.</item>
+        <item>Blocking images/fonts/stylesheets to get a 3-5x speedup on DOM-only scraping tasks.</item>
+        <item>Mocking external API responses for deterministic test runs.</item>
+        <item>Adding auth headers (Bearer tokens) to requests without touching the page JS.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Sites that detect cookie injection as a session anomaly — some auth systems re-verify on suspicious cookie patterns; test first.</item>
+        <item>When the goal is intercepting encrypted traffic (HTTPS MITM) — Puppeteer interception works at the protocol level but does not decrypt independently of the browser's TLS stack.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cookie-management">
+      <example type="good" title="Get, set, delete cookies">
+        <code lang="javascript"><![CDATA[// Get all cookies
+const cookies = await page.cookies();
+
+// Get specific cookie
+const sessionCookie = cookies.find(c => c.name === 'session_id');
+
+// Set cookies
+await page.setCookie({
+  name: 'auth_token',
+  value: 'abc123',
+  domain: '.example.com',
+  path: '/',
+  httpOnly: true,
+  secure: true
+});
+
+// Delete cookies
+await page.deleteCookie({ name: 'auth_token' });]]></code>
+      </example>
+      <example type="good" title="Save and restore cookies across runs">
+        <code lang="javascript"><![CDATA[const fs = require('fs');
+
+// Save session
+const cookies = await page.cookies();
+fs.writeFileSync('cookies.json', JSON.stringify(cookies));
+
+// Restore session (next run)
+const savedCookies = JSON.parse(fs.readFileSync('cookies.json'));
+await page.setCookie(...savedCookies);]]></code>
+      </example>
+      <rule>
+        <statement>Persist a userDataDir per logical identity, not per run — avoids re-doing logins and warms HSTS/cache. Pass it to puppeteer.launch({ userDataDir: '/tmp/profile-user1' }).</statement>
+        <rationale>userDataDir persists the full Chromium profile including cookies, storage, and cert cache; it is more reliable than manual cookie serialisation for complex auth flows.</rationale>
+      </rule>
+    </section>
+
+    <section name="local-storage">
+      <example type="good" title="localStorage and sessionStorage">
+        <code lang="javascript"><![CDATA[// Set localStorage
+await page.evaluate(() => {
+  localStorage.setItem('key', 'value');
+});
+
+// Get localStorage
+const value = await page.evaluate(() => localStorage.getItem('key'));
+
+// Clear storage
+await page.evaluate(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+});]]></code>
+      </example>
+    </section>
+
+    <section name="request-interception">
+      <example type="good" title="Block images and stylesheets">
+        <code lang="javascript"><![CDATA[await page.setRequestInterception(true);
+
+page.on('request', request => {
+  const blocked = ['image', 'stylesheet', 'font', 'media'];
+  if (blocked.includes(request.resourceType())) {
+    request.abort();
+  } else {
+    request.continue();
+  }
+});]]></code>
+        <note>Blocking images/fonts/stylesheets gives a 3-5x speedup when you only need DOM data.</note>
+      </example>
+      <example type="good" title="Inject auth headers">
+        <code lang="javascript"><![CDATA[await page.setRequestInterception(true);
+
+page.on('request', request => {
+  if (request.url().includes('/api/')) {
+    request.continue({
+      headers: {
+        ...request.headers(),
+        'Authorization': 'Bearer token123'
+      }
+    });
+  } else {
+    request.continue();
+  }
+});]]></code>
+      </example>
+      <example type="good" title="Mock API responses">
+        <code lang="javascript"><![CDATA[await page.setRequestInterception(true);
+
+page.on('request', request => {
+  if (request.url().endsWith('/api/data')) {
+    request.respond({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ mocked: true })
+    });
+  } else {
+    request.continue();
+  }
+});]]></code>
+      </example>
+    </section>
+
+    <section name="response-capture">
+      <example type="good" title="Capture API response data">
+        <code lang="javascript"><![CDATA[page.on('response', async response => {
+  if (response.url().includes('/api/data')) {
+    const data = await response.json();
+    console.log('API Response:', data);
+  }
+});]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Call setRequestInterception(true) before navigating to the page, not after.</check>
+      <check>Every request handler must call request.continue(), request.abort(), or request.respond() — unhandled requests hang indefinitely.</check>
+      <check>Scrub cookies/headers in artifacts before logging — they may contain credentials.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://pptr.dev"/>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+    </see-also>
+  </content>
+</methodology>
