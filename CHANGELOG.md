@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: e2e-testing, error-handling, files-reference)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: go-backend, go-concurrency, go-error-handling)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: go-http-handlers, integration-testing, javascript)
 - refactor: 3/3 python-developer methodologies migrated to methodology.xml (batch: python-async, python-basics, python-code-quality)
