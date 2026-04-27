@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-multi-account-landing-zone">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Design and deploy an AWS multi-account landing zone: OU hierarchy, Control Tower, LZA, SCPs, and org-level CloudTrail via Terraform.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>multi-account</tag>
+      <tag>landing-zone</tag>
+      <tag>organizations</tag>
+      <tag>control-tower</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-well-architected-framework"/>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-vpc-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Multi-Account Landing Zone Design</title>
+
+    <summary>A landing zone is the foundational multi-account AWS environment: an Organizations structure, OU hierarchy, Control Tower (or Landing Zone Accelerator), service control policies, centralized logging, and IAM Identity Center integration. It isolates blast radius, enforces governance at scale, and enables consistent security posture across all workloads.</summary>
+
+    <why>
+      <p>A single AWS account shares quotas, IAM namespace, and billing across all workloads. When one workload hits a quota or a misconfigured IAM policy, every workload in that account is affected. The multi-account model enforces hard blast-radius isolation: a compromised or quota-exhausted account cannot affect its siblings. Service Control Policies applied at the OU level are harder to bypass than per-account IAM policies because they cannot be overridden by account-level administrators.</p>
+      <p>Landing Zone Accelerator (LZA) extends Control Tower with IaC-driven customization and supports 35+ AWS service integrations, compliance framework mappings (GDPR, HIPAA, PCI-DSS), and GitOps governance. For organizations that need more than the Control Tower default guardrails, LZA is the right layer.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new AWS organization from scratch or formalizing an ad-hoc multi-account setup.</item>
+        <item>Compliance requirements (GDPR, HIPAA, PCI-DSS, SOC2) that mandate environment isolation and centralized logging.</item>
+        <item>Organizations with 3+ development teams where quota and billing isolation is necessary.</item>
+        <item>Any production workload requiring auditable org-level CloudTrail and immutable log storage.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-account hobby or prototype projects — Control Tower and LZA overhead is wasteful for a solo developer or throwaway environment.</item>
+        <item>Pure application-layer decisions — use dev skills instead.</item>
+        <item>Non-AWS clouds — this pattern is AWS-specific; use gcp-arch-basics for GCP equivalents.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ou-structure">
+      <p>Recommended OU hierarchy for a production organization. Keep it shallow (max 3-4 levels). Apply SCPs at the OU level, not at individual accounts — policy drift at account level is hard to audit.</p>
+
+      <rule testable="true">
+        <statement>The management account MUST contain no workloads. It is used only for AWS Organizations, consolidated billing, and IAM Identity Center. All application workloads MUST live in member accounts under the Workloads OU. The management account MUST NOT have access keys for human users — only federated access via IAM Identity Center.</statement>
+        <rationale>The management account has elevated trust across the organization. A compromised management account can modify SCPs and create new accounts. Keeping it workload-free minimizes the attack surface and satisfies compliance requirements that mandate management plane separation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>SCPs MUST be applied at the OU level, not at individual accounts. The OU structure MUST include at minimum: Security OU (log-archive account, security-tooling account), Infrastructure OU (network account, shared-services account), Workloads OU (nested Prod and Non-Prod OUs), Sandbox OU, and Suspended OU for decommissioned accounts.</statement>
+        <rationale>OU-level SCPs ensure that every account created under that OU inherits the policy automatically. Account-level SCP attachments require manual maintenance and are easily missed when provisioning new accounts via Account Factory.</rationale>
+      </rule>
+
+      <example type="good" title="OU structure with nested Prod/Non-Prod">
+        <code lang="text"><![CDATA[Root
+├── Security OU
+│   ├── Log Archive Account
+│   ├── Security Tooling Account
+│   └── Security Read-Only Account
+├── Infrastructure OU
+│   ├── Network Account (Transit Gateway, VPC)
+│   ├── Shared Services Account
+│   └── Identity Account (IAM Identity Center)
+├── Sandbox OU
+│   └── Developer Sandbox Accounts
+├── Workloads OU
+│   ├── Production OU
+│   │   ├── Prod Account 1
+│   │   └── Prod Account 2
+│   └── Non-Production OU
+│       ├── Dev Account
+│       ├── Staging Account
+│       └── Test Account
+├── Policy Staging OU
+│   └── SCP Test Accounts
+└── Suspended OU
+    └── Decommissioned Accounts]]></code>
+        <note>Max 3-4 levels. Policy Staging OU lets you test new SCPs against disposable accounts before rolling out to Workloads.</note>
+      </example>
+    </section>
+
+    <section name="control-tower-lza">
+      <p>AWS Control Tower (v4.0+) provides a pre-packaged multi-account setup with Account Factory, mandatory and recommended guardrails, centralized logging, and IAM Identity Center integration. Use it as the base. For advanced customization, extend with Landing Zone Accelerator (LZA).</p>
+
+      <list>
+        <item>Control Tower: deploy in the management account. Configure IAM Identity Center as the identity source. Enable mandatory guardrails, then recommended guardrails for production OUs. Use Account Factory for provisioning new member accounts.</item>
+        <item>LZA (Landing Zone Accelerator): config-driven YAML. Extends Control Tower with 35+ AWS service integrations, compliance framework support (GDPR/HIPAA/PCI), GitOps governance. Pin to a known LZA release — do not use always-latest in production; breaking changes between minor versions are documented but frequent.</item>
+        <item>Account Factory for Terraform (AFT): Terraform-native account provisioning layer on top of Control Tower. Use when the team is Terraform-first and wants account lifecycle managed via pull requests.</item>
+      </list>
+    </section>
+
+    <section name="scp-patterns">
+      <p>Key SCPs to apply at the Workloads OU level as a security baseline. Terraform examples using the for_each pattern over a local map of SCP definitions.</p>
+
+      <example type="good" title="Deny root user SCP">
+        <code lang="hcl"><![CDATA[resource "aws_organizations_policy" "deny_root_user" {
+  name        = "DenyRootUser"
+  description = "Deny all actions for root user in member accounts"
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyRootUser"
+        Effect    = "Deny"
+        Action    = "*"
+        Resource  = "*"
+        Condition = {
+          StringLike = {
+            "aws:PrincipalArn" = "arn:aws:iam::*:root"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_organizations_policy_attachment" "deny_root_workloads" {
+  policy_id = aws_organizations_policy.deny_root_user.id
+  target_id = aws_organizations_organizational_unit.workloads.id
+}]]></code>
+      </example>
+
+      <example type="good" title="Require S3 encryption SCP">
+        <code lang="hcl"><![CDATA[resource "aws_organizations_policy" "require_s3_encryption" {
+  name        = "RequireS3Encryption"
+  description = "Require S3 objects to be encrypted"
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyUnencryptedUploads"
+        Effect    = "Deny"
+        Action    = "s3:PutObject"
+        Resource  = "*"
+        Condition = {
+          Null = {
+            "s3:x-amz-server-side-encryption" = "true"
+          }
+        }
+      }
+    ]
+  })
+}]]></code>
+      </example>
+
+      <example type="good" title="Region restriction SCP (EU only)">
+        <code lang="hcl"><![CDATA[resource "aws_organizations_policy" "region_restriction" {
+  name        = "RegionRestriction"
+  description = "Allow only EU regions"
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "DenyNonEURegions"
+        Effect    = "Deny"
+        NotAction = [
+          "iam:*",
+          "organizations:*",
+          "route53:*",
+          "budgets:*",
+          "waf:*",
+          "cloudfront:*",
+          "globalaccelerator:*",
+          "support:*",
+          "health:*"
+        ]
+        Resource = "*"
+        Condition = {
+          StringNotEquals = {
+            "aws:RequestedRegion" = [
+              "eu-central-1",
+              "eu-west-1",
+              "eu-west-2"
+            ]
+          }
+        }
+      }
+    ]
+  })
+}]]></code>
+        <note>Always exclude global services (IAM, Route 53, CloudFront) from region restrictions or they break.</note>
+      </example>
+
+      <example type="good" title="Require IMDSv2 SCP">
+        <code lang="hcl"><![CDATA[# Require EC2 instances to use IMDSv2 (token-required mode)
+resource "aws_organizations_policy" "require_imdsv2" {
+  name        = "RequireIMDSv2"
+  description = "Require EC2 instances to use IMDSv2"
+  type        = "SERVICE_CONTROL_POLICY"
+
+  content = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "RequireIMDSv2"
+        Effect = "Deny"
+        Action = "ec2:RunInstances"
+        Resource = "arn:aws:ec2:*:*:instance/*"
+        Condition = {
+          StringNotEquals = {
+            "ec2:MetadataHttpTokens" = "required"
+          }
+        }
+      }
+    ]
+  })
+}]]></code>
+      </example>
+    </section>
+
+    <section name="org-terraform-setup">
+      <p>Terraform configuration for the management account organization setup. Store state in a dedicated S3 bucket with DynamoDB locking in the management account itself.</p>
+
+      <example type="good" title="Organization Terraform backend and provider">
+        <code lang="hcl"><![CDATA[# organization/main.tf
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "organization/terraform.tfstate"
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+provider "aws" {
+  region = var.region
+
+  default_tags {
+    tags = {
+      ManagedBy   = "terraform"
+      Project     = "organization"
+      Environment = "management"
+    }
+  }
+}]]></code>
+      </example>
+
+      <example type="good" title="AWS Organizations resource with service access">
+        <code lang="hcl"><![CDATA[resource "aws_organizations_organization" "org" {
+  aws_service_access_principals = [
+    "cloudtrail.amazonaws.com",
+    "config.amazonaws.com",
+    "sso.amazonaws.com",
+    "guardduty.amazonaws.com",
+    "securityhub.amazonaws.com",
+    "ram.amazonaws.com",
+  ]
+
+  feature_set = "ALL"
+
+  enabled_policy_types = [
+    "SERVICE_CONTROL_POLICY",
+    "TAG_POLICY",
+    "BACKUP_POLICY",
+  ]
+}
+
+# Security OU
+resource "aws_organizations_organizational_unit" "security" {
+  name      = "Security"
+  parent_id = aws_organizations_organization.org.roots[0].id
+}
+
+# Infrastructure OU
+resource "aws_organizations_organizational_unit" "infrastructure" {
+  name      = "Infrastructure"
+  parent_id = aws_organizations_organization.org.roots[0].id
+}
+
+# Workloads OU with nested Prod/Non-Prod
+resource "aws_organizations_organizational_unit" "workloads" {
+  name      = "Workloads"
+  parent_id = aws_organizations_organization.org.roots[0].id
+}
+
+resource "aws_organizations_organizational_unit" "production" {
+  name      = "Production"
+  parent_id = aws_organizations_organizational_unit.workloads.id
+}
+
+resource "aws_organizations_organizational_unit" "non_production" {
+  name      = "Non-Production"
+  parent_id = aws_organizations_organizational_unit.workloads.id
+}]]></code>
+      </example>
+    </section>
+
+    <section name="tagging-strategy">
+      <p>Enforce required tags via a Tag Policy at the organization level. Common tags for all resources and compliance-required data classification tags.</p>
+
+      <example type="good" title="Tag policy enforcing required tags">
+        <code lang="hcl"><![CDATA[locals {
+  common_tags = {
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Team        = var.team
+    CostCenter  = var.cost_center
+  }
+
+  required_tags = {
+    DataClassification = var.data_classification # public/internal/confidential/restricted
+    Compliance         = var.compliance_framework # gdpr/hipaa/pci/none
+  }
+}
+
+resource "aws_organizations_policy" "required_tags" {
+  name    = "RequiredTags"
+  type    = "TAG_POLICY"
+
+  content = jsonencode({
+    tags = {
+      Project = {
+        tag_key = {
+          @@assign = "Project"
+        }
+        enforced_for = {
+          @@assign = ["ec2:instance", "rds:db", "s3:bucket"]
+        }
+      }
+      Environment = {
+        tag_key = {
+          @@assign = "Environment"
+        }
+        tag_value = {
+          @@assign = ["dev", "staging", "prod"]
+        }
+        enforced_for = {
+          @@assign = ["ec2:instance", "rds:db", "s3:bucket"]
+        }
+      }
+      CostCenter = {
+        tag_key = {
+          @@assign = "CostCenter"
+        }
+        enforced_for = {
+          @@assign = ["ec2:instance", "rds:db"]
+        }
+      }
+    }
+  })
+}]]></code>
+      </example>
+    </section>
+
+    <section name="landing-zone-prompts">
+      <p>LLM prompts for multi-account and landing zone work:</p>
+
+      <prompt purpose="Design AWS Organization structure">
+        <![CDATA[Design an AWS Organizations structure for [COMPANY_TYPE]:
+
+Requirements:
+- Company size: [STARTUP/SMB/ENTERPRISE]
+- Compliance: [GDPR/HIPAA/PCI-DSS/SOC2/NONE]
+- Environments: [DEV/STAGING/PROD] or [SPECIFY]
+- Teams: [NUMBER] development teams
+- Workloads: [WEB/API/ML/DATA/HYBRID]
+
+Provide:
+1. Recommended OU hierarchy
+2. Account types and purposes
+3. SCPs for each OU level
+4. IAM Identity Center permission sets
+5. Cross-account access patterns
+6. Billing/cost allocation strategy]]>
+      </prompt>
+
+      <prompt purpose="Plan Control Tower deployment">
+        <![CDATA[Plan AWS Control Tower deployment:
+
+Current state:
+- Existing accounts: [NUMBER] or greenfield
+- Identity provider: [OKTA/AZURE_AD/GOOGLE/AWS_SSO_ONLY]
+- Regions: [PRIMARY_REGION] + [SECONDARY_REGIONS]
+- Compliance requirements: [LIST]
+
+Deliverables:
+1. Pre-deployment checklist
+2. OU structure design
+3. Guardrails selection (preventive/detective)
+4. Account Factory configuration
+5. Customizations via LZA (if needed)
+6. Migration plan for existing accounts]]>
+      </prompt>
+    </section>
+
+    <section name="recommended-tools">
+      <list>
+        <item>AWS Control Tower — pre-packaged multi-account setup. Bootstraps org; bulk changes via Account Factory for Terraform (AFT). Partial IaC support; LZA preferred for full GitOps.</item>
+        <item>Landing Zone Accelerator (LZA) — OSS (AWS). Config-driven YAML. Codify org policy, SCPs, network, logging. https://docs.aws.amazon.com/solutions/latest/landing-zone-accelerator-on-aws/</item>
+        <item>AWS Organizations + SCPs — apply guardrails at OU level via API or Terraform.</item>
+        <item>IAM Identity Center — federate with Okta/Entra/Google Workspace via SCIM + API.</item>
+        <item>cloud-custodian (c7n) — policy-as-code remediation and scheduled governance actions. https://cloudcustodian.io/</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/whitepapers/latest/organizing-your-aws-environment/organizing-your-aws-environment.html"/>
+      <link href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_best-practices.html"/>
+      <link href="https://docs.aws.amazon.com/prescriptive-guidance/latest/designing-control-tower-landing-zone/introduction.html"/>
+      <link href="https://docs.aws.amazon.com/solutions/latest/landing-zone-accelerator-on-aws/solution-overview.html"/>
+      <link href="https://docs.aws.amazon.com/controltower/latest/userguide/aft-overview.html"/>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-vpc-design"/>
+    </see-also>
+  </content>
+</methodology>
