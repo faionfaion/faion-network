@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-agentic-workflow">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Continuous-loop FinOps with AI agents: daily billing-snapshot agent, tag-auditor, idle-hunter, RI/SP-advisor, human-in-loop approval gates, and agent gotchas for safe cost automation.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>agentic</tag>
+      <tag>cost-automation</tag>
+      <tag>human-in-loop</tag>
+      <tag>idle-detection</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-ai-ml-costs"/>
+      <ref slug="finops-cost-visibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>FinOps with AI Agents: Continuous-Loop Cost Automation</title>
+
+    <summary>FinOps with agents is continuous-loop optimization: a daily billing-snapshot agent ingests cost data, a tag-auditor flags untagged resources, an idle-hunter files tickets for waste candidates, and a weekly RI/SP-advisor proposes commitment adjustments. All write-actions require human approval — agents never auto-delete or auto-terminate. Split detection (read-only) from remediation (write, gated) to prevent runaway savings loops.</summary>
+
+    <why>
+      <p>Manual FinOps reviews happen monthly at best. Agentic workflows shift to continuous monitoring: anomalies are caught within hours, idle resources are surfaced weekly, and commitment coverage is reviewed against actual usage before the next billing cycle. The agent handles the data-intensive legwork; humans make the final call on consequential actions.</p>
+      <p>Agent-driven FinOps without guardrails produces the opposite of savings: an agent that both detects and remediates can terminate a production database because its CPU utilization looked "idle" (it was I/O-bound). Human-in-loop checkpoints on irreversible actions are the critical safety control.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Cloud bill above $10k/month and growing — manual weekly review misses too many anomalies.</item>
+        <item>Multiple teams deploying independently — no single human has visibility across all accounts.</item>
+        <item>Commitment (RI/SP) renewals require analysis of 30-90 day usage patterns — tedious for humans, trivial for agents.</item>
+        <item>Tagging compliance below 95% — tag-auditor agent closes the gap without manual resource-by-resource review.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cloud bill below $5k/month — agent setup cost exceeds value; manual weekly review is sufficient.</item>
+        <item>Strictly regulated environments where all changes require formal change control — agent-generated tickets still need human workflow before approval.</item>
+        <item>No human owner available to review agent recommendations — agents without a human approver accumulate unreviewed backlogs that become stale and misleading.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agent-architecture">
+      <rule>
+        <statement>Split FinOps agent responsibility into two distinct agents per domain: (1) a detection agent (read-only, runs on schedule, produces structured findings) and (2) a remediation agent (write-access, runs only on human-approved tickets, applies a single specific action). Never combine detection and remediation in one agent — prevents runaway savings loops where the agent applies its own findings without human review.</statement>
+        <rationale>Detection-remediation conflation is the most dangerous FinOps agent failure mode. A detection agent that also remediates can terminate resources in a feedback loop before any human sees the findings. Read-only detection agents are safe to run continuously; remediation agents should be triggered only by human-approved tickets.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Required agentic FinOps loop: (1) daily billing-snapshot agent ingests CUR/billing export → writes to queryable store (Athena/BigQuery/Snowflake); (2) daily tag-auditor agent flags untagged resources by spend with owner-best-guess from CloudTrail; (3) weekly idle-hunter agent finds candidates and files tickets/PRs — never auto-deletes; (4) weekly RI/SP-advisor runs against last 30/90-day usage and proposes commitments. Always require human approval for any action with spend impact above configured threshold.</statement>
+        <rationale>The four-agent loop covers the complete FinOps lifecycle: visibility (snapshot), tagging (auditor), waste (idle-hunter), commitments (advisor). Each agent is single-purpose and read-only except when executing a human-approved action.</rationale>
+      </rule>
+    </section>
+
+    <section name="recommended-subagents">
+      <p>Recommended subagent roster:</p>
+      <list>
+        <item>finops-tag-auditor (Sonnet, read-only) — given billing export and tag policy, lists untagged resources by spend with owner-best-guess from CloudTrail.</item>
+        <item>finops-rightsizing-advisor (Opus) — given utilization metrics, proposes instance-class changes with risk/saving table.</item>
+        <item>finops-idle-hunter (Sonnet, read-only) — finds unattached EBS volumes, unused Elastic IPs, idle NAT gateways, stopped instances older than 7 days, orphaned snapshots; outputs structured ticket list with rollback commands.</item>
+        <item>finops-ri-sp-advisor (Opus) — analyzes last 30/90-day usage patterns, current commitments, growth forecast; proposes RI/SP purchases with expected savings and flexibility tradeoffs.</item>
+      </list>
+    </section>
+
+    <section name="idle-hunter-script">
+      <p>Reference implementation — AWS unattached EBS volume finder:</p>
+      <example type="good" title="AWS idle EBS volume finder (read-only, under 40 lines)">
+        <code lang="python"><![CDATA[
+# scripts/finops_idle_ebs.py
+import boto3, datetime as dt, json
+
+ec2 = boto3.client("ec2")
+PRICE_PER_GB_MONTH = {"gp3": 0.08, "gp2": 0.10, "io2": 0.125}
+
+def find_unattached_volumes():
+    paginator = ec2.get_paginator("describe_volumes")
+    out = []
+    for page in paginator.paginate(Filters=[{"Name": "status", "Values": ["available"]}]):
+        for v in page["Volumes"]:
+            age = (dt.datetime.now(dt.timezone.utc) - v["CreateTime"]).days
+            if age < 7:
+                continue  # ignore freshly detached, may be in flight
+            owner = next((t["Value"] for t in v.get("Tags", []) if t["Key"] == "owner"), None)
+            cost = v["Size"] * PRICE_PER_GB_MONTH.get(v["VolumeType"], 0.10)
+            out.append({
+                "id": v["VolumeId"],
+                "type": v["VolumeType"],
+                "size_gb": v["Size"],
+                "age_days": age,
+                "owner": owner,
+                "monthly_cost_usd": round(cost, 2),
+                "recommended_action": "snapshot+delete" if age > 30 else "tag-for-review",
+                "rollback": f"aws ec2 create-volume --snapshot-id <pre-delete-snapshot> --availability-zone {v['AvailabilityZone']}",
+            })
+    return sorted(out, key=lambda x: -x["monthly_cost_usd"])
+
+if __name__ == "__main__":
+    print(json.dumps(find_unattached_volumes(), indent=2, default=str))
+]]></code>
+        <note>Read-only; produces JSON ticket list. Human reviews the list and approves actions individually. Never wire this directly to a delete command.</note>
+      </example>
+    </section>
+
+    <section name="prompt-patterns">
+      <prompt purpose="weekly-finops-report"><![CDATA[
+Generate weekly FinOps report for <account/org>.
+Inputs: 7d + 28d billing exports, tag policy, prior recommendations, current commitments.
+Output: (1) top 10 cost movers (week-over-week, with attribution), (2) untagged resource spend, (3) idle-resource candidates with reclaim impact ($, risk), (4) RI/SP coverage + recommendation for next purchase, (5) AI-workload cost per 1k requests, (6) anomaly list with confidence score.
+Forbid: any auto-delete; produce tickets/PRs only; mark every recommendation with a reversibility flag (1-way / 2-way door).
+]]></prompt>
+
+      <prompt purpose="idle-resource-analysis"><![CDATA[
+Idle-resource analysis. For each resource: (id, type, account, owner_tag, monthly_cost, last_activity, evidence_metric, recommended_action, blast_radius, rollback_command). Flag any without owner_tag for tagging triage.
+]]></prompt>
+
+      <prompt purpose="generate-executive-summary"><![CDATA[
+Generate an executive summary of cloud costs for [month/quarter]:
+
+Data:
+[Paste cost data by service, team, environment]
+
+Include:
+1. One-paragraph executive summary
+2. Key metrics table (total spend, vs budget, vs last period)
+3. Top 3 highlights (positive or concerning)
+4. Top 3 action items
+5. Forecast for next period
+
+Keep language business-focused, avoid technical jargon.
+Maximum length: 1 page.
+]]></prompt>
+
+      <prompt purpose="analyze-commitment-underutilization"><![CDATA[
+Analyze Reserved Instance / Savings Plan underutilization:
+
+Commitment details:
+- Type: [RI/Savings Plan]
+- Term: [1/3 years]
+- Purchase date: [date]
+- Monthly commitment: $[amount]
+- Current utilization: [X]%
+
+Usage data:
+[Paste utilization metrics]
+
+Provide:
+1. Root cause of underutilization
+2. Options to improve utilization
+3. Cost of continuing current state
+4. Recommendations (modify, exchange, sell, accept)
+5. Prevention strategies for future purchases
+]]></prompt>
+    </section>
+
+    <section name="agent-gotchas">
+      <warning>Human-in-loop checkpoint is mandatory for any action that terminates resources, modifies Reserved Instances or Savings Plans, or changes instance families. Agent emits the ticket; human signs off; agent applies after explicit approval. This is a non-negotiable safety control, not a convenience feature.</warning>
+
+      <antipattern>
+        <description>Agent identifies "low CPU" resources as idle and proposes rightsizing or termination.</description>
+        <reason>A service may be I/O-bound, GPU-bound, or network-bound; CPU utilization alone is a dangerously incomplete signal. Rightsizing on CPU alone breaks workloads. Always include memory, network, GPU, and disk IOPS before classifying a resource as idle.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>LLM proposes spot instances for stateful workloads ("save 70%!") without confirming checkpointing is implemented.</description>
+        <reason>Spot interruption on a stateful workload without checkpointing produces a data-loss incident. Force the agent to check for checkpoint configuration before recommending spot, and mark the recommendation blocked until checkpointing is confirmed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>RI/SP recommendations from LLMs that assume usage continues linearly.</description>
+        <reason>LLMs extrapolate from recent history without accounting for planned workload changes, seasonal patterns, or architecture migrations. Force the agent to state the assumption explicitly: "this assumes above-70% steady-state usage continues for 12 months." Human signs off on the assumption, not just the recommendation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tag-fix automations rewriting owner tags based on CloudTrail data.</description>
+        <reason>The original creator may have left the company; stale CloudTrail data produces wrong ownership attribution. Cross-reference HRIS or Backstage service catalog before assigning owner tags retroactively. Manual confirmation for any unverifiable ownership.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Auto-shutdown of "idle" non-prod environments at a fixed UTC time.</description>
+        <reason>A 18:00 UTC shutdown hits an APAC team's morning standup. Add timezone awareness to shutdown schedules — either per-region cron offsets or a timezone metadata tag on the resource. Query team timezone from a service catalog, not hardcode UTC.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Anomaly detection agents claiming spikes on less than 60 days of history.</description>
+        <reason>Monthly batch jobs, billing cycle artifacts, and seasonal patterns all look like anomalies to a detector trained on short history. Train anomaly detectors on at least 60 days (two full billing cycles) before using them to page on-call.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Tag policy first, optimization second. Without owner, cost-center, env, and data-class on more than 95% of resources, every report is fiction. Run the tag-auditor agent before any other FinOps agent.</statement>
+        <rationale>All downstream FinOps automation — showback, chargeback, idle detection, rightsizing — depends on reliable tag data. Optimize tagging before optimizing cost.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Showback (visibility) before Chargeback (accountability) before Optimization (action). Skipping showback breaks engineering trust in the numbers before they have a chance to validate them.</statement>
+        <rationale>Teams resist costs they cannot verify. Showback builds the shared understanding of cost attribution; chargeback converts that understanding into accountability. Optimization actions taken before trust is established produce organizational resistance that costs more than the savings.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Commit to Reserved Instances and Savings Plans at 60-70% of baseline usage coverage — never 100%. The remaining 30-40% headroom accommodates autoscaling, burst traffic, and new workloads without paying on-demand for coverage gaps. Reassess commitment coverage quarterly.</statement>
+        <rationale>Over-commitment locks in spend for workloads that may be retired or rightsized. Under-commitment leaves money on the table. The 60-70% floor is the empirically validated FinOps industry target for balancing savings against flexibility.</rationale>
+      </rule>
+
+      <rule>
+        <statement>For AI costs: always track $/request, $/1k tokens (input and output separately), $/training-run, and cache-hit-rate. Without per-request metrics, GPU spend is opaque. Instance-hour reports mask token-level cost drivers.</statement>
+        <rationale>A model upgrade that doubles output token count per request doubles inference cost even if GPU utilization stays flat. Only per-token tracking catches this before it compounds over weeks.</rationale>
+      </rule>
+    </section>
+
+    <section name="cli-tools">
+      <p>Agent-friendly CLI tools for FinOps automation:</p>
+      <list>
+        <item>aws ce — Cost Explorer: cost queries and forecasts. https://docs.aws.amazon.com/cli/latest/reference/ce/</item>
+        <item>aws cur + S3 + Athena — Cost and Usage Report: single source of truth for detailed billing. https://docs.aws.amazon.com/cur/</item>
+        <item>aws compute-optimizer — rightsizing recommendations. https://aws.amazon.com/compute-optimizer/</item>
+        <item>gcloud billing / BigQuery billing export — GCP detailed billing. https://cloud.google.com/billing/docs/how-to/export-data-bigquery</item>
+        <item>gcloud recommender — idle and rightsizing recommendations. https://cloud.google.com/recommender/docs</item>
+        <item>az consumption / Cost Management exports — Azure billing. https://learn.microsoft.com/azure/cost-management-billing/</item>
+        <item>kubectl-cost (Kubecost CLI) — Kubernetes cost allocation. https://www.kubecost.com/</item>
+        <item>infracost — IaC cost diff in PRs. https://www.infracost.io/</item>
+        <item>FOCUS spec exporters — vendor-neutral billing format. https://focus.finops.org/</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://www.finops.org/framework/"/>
+      <link href="https://focus.finops.org/"/>
+      <link href="https://www.infracost.io/"/>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-ai-ml-costs"/>
+      <ref slug="finops-cost-visibility"/>
+    </see-also>
+  </content>
+</methodology>
