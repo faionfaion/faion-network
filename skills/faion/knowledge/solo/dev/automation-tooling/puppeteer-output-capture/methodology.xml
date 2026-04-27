@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-output-capture">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Capture screenshots (full page, element, clip, base64) and generate PDF documents from rendered HTML using Puppeteer page.screenshot() and page.pdf() APIs.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>screenshot</tag>
+      <tag>pdf-generation</tag>
+      <tag>browser-automation</tag>
+      <tag>nodejs</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-page-interaction"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Screenshot &amp; PDF Capture</title>
+
+    <summary>Puppeteer can capture full-page screenshots, element-scoped screenshots, and PDF exports directly from rendered HTML. This methodology covers all screenshot options (type, quality, clip, base64) and PDF configuration (format, margins, headers/footers).</summary>
+
+    <why>
+      <p>Puppeteer is the only Node-native tool that uses the same Chrome rendering pipeline as a real user's browser — screenshots and PDFs are pixel-accurate renderings. This makes it superior to HTML-to-image libraries or wkhtmltopdf for layouts that depend on CSS variables, web fonts, or JavaScript-rendered content.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Generating PDFs or screenshots from rendered HTML inside a Node-only pipeline.</item>
+        <item>Automated visual regression artifacts — capturing page state before/after a change.</item>
+        <item>Producing invoice/report PDFs from a web app's print-stylesheet layout.</item>
+        <item>Sending screenshots as evidence in monitoring/alerting workflows.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Static HTML with no JS rendering — a simpler HTML-to-PDF library (e.g. WeasyPrint for Python) avoids the Chromium dependency.</item>
+        <item>High-volume thumbnail generation at scale — a dedicated service like Puppeteer clusters or Browserless is more cost-efficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="screenshots">
+      <example type="good" title="Full-page screenshot">
+        <code lang="javascript"><![CDATA[// Full page screenshot
+await page.screenshot({
+  path: 'fullpage.png',
+  fullPage: true
+});]]></code>
+      </example>
+      <example type="good" title="Element-scoped screenshot">
+        <code lang="javascript"><![CDATA[// Specific element only
+const element = await page.$('#chart');
+await element.screenshot({ path: 'chart.png' });]]></code>
+      </example>
+      <example type="good" title="Screenshot with all options">
+        <code lang="javascript"><![CDATA[await page.screenshot({
+  path: 'screenshot.png',
+  type: 'png',       // or 'jpeg', 'webp'
+  quality: 80,       // jpeg/webp only
+  clip: { x: 0, y: 0, width: 800, height: 600 },
+  omitBackground: true // transparent background
+});
+
+// As base64 (no path required — useful for passing to APIs)
+const base64 = await page.screenshot({ encoding: 'base64' });]]></code>
+      </example>
+      <rule>
+        <statement>Use type: 'jpeg' or 'webp' with quality: 80 for large pages in pipelines that store or transmit many screenshots. PNG is lossless but 3-5x larger than JPEG for photographic content.</statement>
+        <rationale>Storage and transfer costs dominate in high-volume screenshot workflows; lossy formats at quality 80 are visually indistinguishable for most content.</rationale>
+      </rule>
+    </section>
+
+    <section name="pdf-generation">
+      <example type="good" title="A4 PDF with headers and footers">
+        <code lang="javascript"><![CDATA[await page.pdf({
+  path: 'document.pdf',
+  format: 'A4',  // or 'Letter', 'Legal', etc.
+  printBackground: true,
+  margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
+  displayHeaderFooter: true,
+  headerTemplate: '<div style="font-size:10px;text-align:center;width:100%;">Header</div>',
+  footerTemplate: '<div style="font-size:10px;text-align:center;width:100%;"><span class="pageNumber"></span>/<span class="totalPages"></span></div>'
+});]]></code>
+      </example>
+      <example type="good" title="Custom page size PDF">
+        <code lang="javascript"><![CDATA[await page.pdf({
+  path: 'custom.pdf',
+  width: '8.5in',
+  height: '11in'
+});]]></code>
+      </example>
+      <rule>
+        <statement>Set printBackground: true whenever the page uses CSS background colours or images. Chromium strips backgrounds by default in PDF mode; without this flag invoices and dashboards render as black-on-white with missing visual elements.</statement>
+        <rationale>Chrome's print CSS media query hides backgrounds for paper economy; printBackground overrides this for programmatic generation where the full design is required.</rationale>
+      </rule>
+      <antipattern>
+        <description>Calling page.pdf() immediately after page.goto() without waiting for the full render.</description>
+        <reason>JavaScript-rendered content (charts, fonts, lazy-loaded images) may not have finished when goto resolves. Add waitForSelector on a key element or waitForNetworkIdle before calling pdf().</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://pptr.dev/api/puppeteer.page.screenshot"/>
+      <link href="https://pptr.dev/api/puppeteer.page.pdf"/>
+      <ref slug="puppeteer-launch-setup"/>
+    </see-also>
+  </content>
+</methodology>
