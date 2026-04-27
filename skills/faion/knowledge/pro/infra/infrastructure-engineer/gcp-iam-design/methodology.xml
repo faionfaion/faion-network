@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-iam-design">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Design GCP IAM strategy: least privilege, predefined roles, service account setup, Workload Identity Federation for GKE, and auditing overly permissive bindings.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>iam</tag>
+      <tag>service-accounts</tag>
+      <tag>workload-identity</tag>
+      <tag>least-privilege</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-org-policies"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP IAM Design and Service Account Strategy</title>
+
+    <summary>GCP IAM controls who can do what on which resource. Every identity (user, group, service account) should receive the minimum role required. Basic roles (Owner/Editor/Viewer) must never be used in production — use predefined or custom roles. Service accounts must never use key files in GKE workloads; use Workload Identity Federation instead.</summary>
+
+    <why>
+      <p>IAM misconfiguration is the most common source of GCP security incidents. Over-permissioned service accounts with exported key files, or basic Editor roles granted to large groups, create broad blast radii when credentials are compromised. Workload Identity eliminates the key management problem entirely for GKE workloads, which are the majority of production service account consumers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing IAM role assignments for a new project, folder, or organization.</item>
+        <item>Setting up service accounts for GKE workloads that need GCP API access.</item>
+        <item>Auditing existing IAM bindings for over-permissive roles or unused service accounts.</item>
+        <item>Implementing a break-glass access procedure for emergency org admin access.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Quick personal projects without production data — overhead of custom roles exceeds value for throwaway work.</item>
+        <item>Network-layer access control (firewall rules, VPC Service Controls) — those have separate methodologies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <p>Five IAM principles every GCP environment must enforce:</p>
+      <list>
+        <item>Least Privilege — grant minimum permissions required for the task; nothing more.</item>
+        <item>Role Hierarchy — roles cascade: Organization → Folder → Project → Resource.</item>
+        <item>Predefined Roles — use Google-managed roles over basic roles (Owner/Editor/Viewer).</item>
+        <item>Custom Roles — create only when predefined roles are too broad; maintain them in Terraform.</item>
+        <item>Service Accounts — use Workload Identity Federation for GKE; avoid exported key files.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Basic roles (roles/owner, roles/editor, roles/viewer) MUST NOT be granted in production projects. Use predefined roles or custom roles with only the required permissions.</statement>
+        <rationale>Basic roles grant access to all GCP services, not just the ones a workload needs. A service account with roles/editor can write to any bucket, create VMs, and modify IAM — far beyond what most workloads require.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Service account keys (JSON key files) MUST NOT be used for GKE workloads. Use Workload Identity Federation to bind Kubernetes service accounts to GCP service accounts instead.</statement>
+        <rationale>Key files are static credentials that can be leaked via container logs, environment variables, or git commits. Workload Identity uses short-lived tokens bound to the pod identity and requires no secret management.</rationale>
+      </rule>
+    </section>
+
+    <section name="role-assignment-by-level">
+      <p>IAM role assignment patterns at each hierarchy level:</p>
+
+      <example type="good" title="Organization-level IAM bindings">
+        <code lang="bash"><![CDATA[
+# Assign Organization Admin (break-glass with time condition)
+gcloud organizations add-iam-policy-binding ORG_ID \
+  --member="user:admin@company.com" \
+  --role="roles/resourcemanager.organizationAdmin" \
+  --condition="expression=request.time < timestamp('2025-12-31T00:00:00Z'),title=temporary-access"
+
+# Assign Billing Admin to billing group
+gcloud organizations add-iam-policy-binding ORG_ID \
+  --member="group:billing-admins@company.com" \
+  --role="roles/billing.admin"
+
+# Assign Security Reviewer (read-only for compliance)
+gcloud organizations add-iam-policy-binding ORG_ID \
+  --member="group:security-team@company.com" \
+  --role="roles/iam.securityReviewer"
+]]></code>
+        <note>Organization Admin should be granted with an IAM condition expiry — break-glass access, not permanent.</note>
+      </example>
+
+      <example type="good" title="Folder-level IAM bindings">
+        <code lang="bash"><![CDATA[
+# Grant folder admin to team lead
+gcloud resource-manager folders add-iam-policy-binding FOLDER_ID \
+  --member="user:lead@company.com" \
+  --role="roles/resourcemanager.folderAdmin"
+
+# Grant project creator to developers in folder (not org-wide)
+gcloud resource-manager folders add-iam-policy-binding FOLDER_ID \
+  --member="group:developers@company.com" \
+  --role="roles/resourcemanager.projectCreator"
+]]></code>
+      </example>
+
+      <example type="good" title="Project-level IAM with conditions">
+        <code lang="bash"><![CDATA[
+# Grant specific role with resource condition (bucket-scoped only)
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="serviceAccount:app@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer" \
+  --condition="expression=resource.name.startsWith('projects/_/buckets/my-bucket'),title=bucket-access-only"
+]]></code>
+        <note>IAM conditions scope a binding to specific resources, time windows, or request attributes — use them to narrow overly broad predefined roles.</note>
+      </example>
+
+      <antipattern>
+        <description>Granting roles/editor to a team group at the project level "for convenience".</description>
+        <reason>Editor grants write access to all GCP services in the project. When the team's scope changes or a member leaves, the blast radius of the over-permission is already established. Use predefined per-service roles (roles/cloudsql.client, roles/storage.objectAdmin) and update them as scope changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="service-account-strategy">
+      <p>Service account design rules for production workloads:</p>
+
+      <rule testable="true">
+        <statement>Each workload MUST have a dedicated service account. Never share a service account across multiple applications or environments. Never use the default compute service account.</statement>
+        <rationale>Shared service accounts make it impossible to audit which workload made which API call, and over-permission one workload to satisfy another. Per-workload service accounts enable least-privilege and auditable activity logs.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Dedicated service accounts created per workload — not the default compute SA.</check>
+        <check>No default service account in use for production workloads.</check>
+        <check>Workload Identity configured for all GKE workloads needing GCP API access.</check>
+        <check>Service account key rotation policy defined (if keys are unavoidable outside GKE).</check>
+        <check>Service account impersonation used instead of key files for human access to SA permissions.</check>
+        <check>Activity logging enabled for service accounts (Cloud Audit Logs).</check>
+      </checklist>
+
+      <example type="good" title="Workload Identity setup for GKE">
+        <code lang="bash"><![CDATA[
+# Create dedicated GCP service account for this workload
+gcloud iam service-accounts create app-sa \
+  --display-name="Application Service Account" \
+  --project=PROJECT_ID
+
+# Grant Workload Identity binding (KSA → GSA)
+gcloud iam service-accounts add-iam-policy-binding \
+  app-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="serviceAccount:PROJECT_ID.svc.id.goog[NAMESPACE/KSA_NAME]"
+
+# Grant only the permissions this workload actually needs
+gcloud projects add-iam-policy-binding PROJECT_ID \
+  --member="serviceAccount:app-sa@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/cloudsql.client"
+]]></code>
+        <note>The KSA annotation must be added separately: kubectl annotate serviceaccount KSA_NAME iam.gke.io/gcp-service-account=app-sa@PROJECT_ID.iam.gserviceaccount.com</note>
+      </example>
+
+      <example type="bad" title="Key file exported and mounted in pod">
+        <code lang="yaml"><![CDATA[
+# DO NOT do this — mounts a static JSON key into the pod
+env:
+  - name: GOOGLE_APPLICATION_CREDENTIALS
+    value: /secrets/sa-key.json
+volumeMounts:
+  - name: sa-key
+    mountPath: /secrets
+volumes:
+  - name: sa-key
+    secret:
+      secretName: gcp-sa-key
+]]></code>
+        <note>Static key files can be leaked via logs, env dumps, or accidental git commits. Use Workload Identity instead.</note>
+      </example>
+    </section>
+
+    <section name="iam-audit-checklist">
+      <checklist>
+        <check>Basic roles (Owner/Editor/Viewer) not granted in production.</check>
+        <check>Predefined roles used over custom when possible.</check>
+        <check>Least privilege principle enforced — review quarterly.</check>
+        <check>No service account keys in use (verify with iam.disableServiceAccountKeyCreation org policy).</check>
+        <check>Organization Admin limited to break-glass access with IAM condition expiry.</check>
+        <check>Billing Admin role assigned to billing group, not individuals.</check>
+        <check>Security Admin role assigned to security team group.</check>
+        <check>Audit Viewer role assigned for compliance access.</check>
+        <check>Folder IAM reflects team/department boundaries.</check>
+        <check>No allUsers or allAuthenticatedUsers grants on any resource.</check>
+        <check>Service accounts have minimal required roles — no basic roles.</check>
+        <check>IAM conditions used where applicable to scope role binding.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="Design IAM strategy for project or org">
+        <![CDATA[
+Design IAM strategy for GCP [PROJECT/ORGANIZATION]:
+
+Context:
+- Team structure: [describe teams and roles]
+- Access requirements: [who needs what access]
+- Compliance: [any regulatory requirements]
+- Service accounts: [workloads needing identity]
+
+Requirements:
+1. Define role assignments per team
+2. Design service account strategy
+3. Implement least privilege
+4. Set up Workload Identity for GKE
+5. Define break-glass access procedures
+
+Constraints:
+- No basic roles (Owner/Editor/Viewer) in production
+- No service account keys
+- All access auditable
+]]>
+      </prompt>
+
+      <prompt purpose="Audit IAM permissions">
+        <![CDATA[
+Audit and remediate IAM permissions for [PROJECT_ID]:
+
+Current Concerns:
+- [List known issues or areas of concern]
+
+Audit Requirements:
+1. Identify overly permissive roles
+2. Find unused service accounts
+3. Check for external access grants
+4. Verify service account key usage
+5. Review conditional access policies
+
+Output:
+- List of findings with severity
+- Remediation recommendations
+- Terraform changes if applicable
+- Timeline for implementation
+]]>
+      </prompt>
+
+      <prompt purpose="Design Workload Identity setup">
+        <![CDATA[
+Design Workload Identity setup for GKE:
+
+Workloads:
+- [List workloads and their GCP API needs]
+
+GKE Context:
+- Cluster: [cluster name/project]
+- Namespaces: [list namespaces]
+- Kubernetes Service Accounts: [list KSAs]
+
+Requirements:
+1. Map workloads to GSA permissions
+2. Create GSA per workload or shared
+3. Bind KSA to GSA
+4. Annotate KSA for Workload Identity
+5. Test access patterns
+]]>
+      </prompt>
+
+      <prompt purpose="Debug IAM Permission Denied">
+        <![CDATA[
+Debug IAM "Permission Denied" error:
+
+Error Details:
+- Error message: [exact error]
+- User/SA: [identity trying to access]
+- Resource: [resource being accessed]
+- Operation: [what they're trying to do]
+
+Investigation Steps:
+1. Identify required permission
+2. Check effective IAM policy
+3. Verify resource hierarchy inheritance
+4. Check organization policies
+5. Verify service account status
+6. Check VPC Service Controls
+
+Provide:
+- Root cause identification
+- Fix recommendation
+- Prevention measures
+]]>
+      </prompt>
+    </section>
+
+    <section name="verification-commands">
+      <commands>
+        <command name="get-iam-policy">gcloud projects get-iam-policy PROJECT_ID</command>
+        <command name="get-org-iam-policy">gcloud organizations get-iam-policy ORG_ID</command>
+        <command name="list-service-accounts">gcloud iam service-accounts list --project=PROJECT_ID</command>
+        <command name="list-sa-keys">gcloud iam service-accounts keys list --iam-account=SA_EMAIL</command>
+      </commands>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-org-policies"/>
+      <link href="https://cloud.google.com/iam/docs/best-practices"/>
+    </see-also>
+  </content>
+</methodology>
