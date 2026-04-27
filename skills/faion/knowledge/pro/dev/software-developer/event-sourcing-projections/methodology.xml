@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-projections">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Build read models (projections) from event streams: position tracking, idempotent UPSERT, projection drift detection, and scheduled rebuilds from offset 0.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>projections</tag>
+      <tag>read-models</tag>
+      <tag>cqrs</tag>
+      <tag>idempotency</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="cqrs-pattern"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Projections and Read Models</title>
+
+    <summary>Projections listen to event streams and maintain specialized read models by applying events as idempotent UPSERTs keyed by (stream_id, position). Projections are passive — they never execute business logic, never emit domain events, and are always fully rebuildable from event offset 0.</summary>
+
+    <why>
+      <p>The event store is write-optimized: loading an aggregate means replaying all its events. Queries that span many aggregates or require denormalized views (order list by customer, analytics dashboard) would be prohibitively slow against the raw event log. Projections solve this by maintaining purpose-built read tables updated asynchronously as events arrive.</p>
+      <p>Because projections are derived from events, they are disposable: drop the table, rebuild from scratch. This makes them safe to evolve — change the projection logic, wipe the table, replay. The price is eventual consistency: the read model lags writes by the projection latency.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any query that cannot be answered by loading a single aggregate — list views, cross-entity joins, analytics.</item>
+        <item>Read-heavy surfaces where replay latency would be too slow for direct event-store queries.</item>
+        <item>CQRS systems with multiple consumer shapes (mobile API, admin panel, reporting) each needing a different read model.</item>
+        <item>Downstream consumers (search index, ML feature store, notification service) that need to react to business events.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Business logic execution — projections are passive UPSERTs; put logic in command handlers or sagas.</item>
+        <item>Real-time read-your-writes without a separate strategy — projection lag means a user who just placed an order may not see it in their order list immediately.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="projection-rules">
+      <rule>
+        <statement>Every projection MUST track its last processed position (stream_id, event position or global sequence number) in a checkpoint table. Projection handlers MUST be idempotent — applying the same event twice MUST produce the same read model state.</statement>
+        <rationale>At-least-once delivery guarantees duplicate events. Without idempotent writes keyed on position, duplicate processing corrupts the read model. A checkpoint prevents re-processing already-applied events after restart.</rationale>
+      </rule>
+      <rule>
+        <statement>Projections MUST NOT execute business logic, trigger side effects, or emit domain events. They MUST only write to the read store (UPSERT / INSERT / DELETE).</statement>
+        <rationale>Business logic in projections creates hidden second-write paths that are not captured in the event log. Side effects (sending email, charging payment) on every rebuild would fire multiple times and corrupt downstream systems.</rationale>
+      </rule>
+      <rule>
+        <statement>Every projection MUST be rebuildable from event offset 0 by dropping its read table and replaying. A "rebuild from scratch" command MUST exist and be tested at least quarterly.</statement>
+        <rationale>Without a tested rebuild path, projection drift (read model diverges from events) becomes permanent data corruption. Rebuilds also allow schema migrations — evolve the projection logic, wipe, replay.</rationale>
+      </rule>
+    </section>
+
+    <section name="projection-implementation">
+      <p>A minimal projection implementation tracks position in a checkpoint table and applies events via idempotent UPSERT. The handler is a simple function mapping event type to read-store writes.</p>
+      <example type="good" title="Order list projection with checkpoint tracking (Python)">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Optional
+from uuid import UUID
+import json
+
+
+@dataclass
+class OrderSummary:
+    """Read model for the order list view."""
+    order_id: UUID
+    customer_id: UUID
+    status: str
+    total_amount: Decimal
+    item_count: int
+    last_event_position: int
+
+
+class OrderListProjection:
+    """Builds order list read model from event stream."""
+
+    def __init__(self, db):
+        self.db = db  # any DB connection with execute()
+
+    def get_checkpoint(self) -> int:
+        """Return last processed global position, or 0."""
+        row = self.db.execute(
+            "SELECT last_position FROM projection_checkpoints WHERE name = 'order_list'"
+        ).fetchone()
+        return row[0] if row else 0
+
+    def process(self, event_type: str, event_data: dict, global_position: int) -> None:
+        """Apply one event to the read model. Idempotent."""
+        # idempotency guard — skip already-applied positions
+        checkpoint = self.get_checkpoint()
+        if global_position <= checkpoint:
+            return
+
+        if event_type == "OrderCreated":
+            self._upsert_order(
+                order_id=event_data["order_id"],
+                customer_id=event_data["customer_id"],
+                status="draft",
+                total_amount=Decimal("0"),
+                item_count=0,
+            )
+        elif event_type == "OrderItemAdded":
+            self.db.execute("""
+                UPDATE order_list
+                SET item_count = item_count + 1,
+                    total_amount = total_amount + :item_total
+                WHERE order_id = :order_id
+            """, {
+                "order_id": event_data["order_id"],
+                "item_total": Decimal(str(event_data["unit_price"])) * event_data["quantity"],
+            })
+        elif event_type == "OrderItemRemoved":
+            # recalculate from stored items on removal
+            self.db.execute("""
+                UPDATE order_list
+                SET item_count = item_count - 1
+                WHERE order_id = :order_id
+            """, {"order_id": event_data["order_id"]})
+        elif event_type == "OrderPlaced":
+            self.db.execute("""
+                UPDATE order_list SET status = 'placed', total_amount = :total
+                WHERE order_id = :order_id
+            """, {"order_id": event_data["order_id"], "total": event_data["total_amount"]})
+        elif event_type == "OrderShipped":
+            self.db.execute("""
+                UPDATE order_list SET status = 'shipped'
+                WHERE order_id = :order_id
+            """, {"order_id": event_data["order_id"]})
+        elif event_type == "OrderCancelled":
+            self.db.execute("""
+                UPDATE order_list SET status = 'cancelled'
+                WHERE order_id = :order_id
+            """, {"order_id": event_data["order_id"]})
+
+        # advance checkpoint
+        self.db.execute("""
+            INSERT INTO projection_checkpoints (name, last_position)
+            VALUES ('order_list', :pos)
+            ON CONFLICT (name) DO UPDATE SET last_position = :pos
+        """, {"pos": global_position})
+
+    def _upsert_order(self, order_id, customer_id, status, total_amount, item_count):
+        self.db.execute("""
+            INSERT INTO order_list (order_id, customer_id, status, total_amount, item_count)
+            VALUES (:order_id, :customer_id, :status, :total_amount, :item_count)
+            ON CONFLICT (order_id) DO UPDATE SET
+                status = EXCLUDED.status,
+                total_amount = EXCLUDED.total_amount,
+                item_count = EXCLUDED.item_count
+        """, {
+            "order_id": str(order_id),
+            "customer_id": str(customer_id),
+            "status": status,
+            "total_amount": str(total_amount),
+            "item_count": item_count,
+        })
+]]></code>
+        <note>The idempotency guard at the start of process() ensures replays and retries are safe. The checkpoint advances only after the write succeeds.</note>
+      </example>
+
+      <antipattern>
+        <description>Writing business logic inside projection handlers: if order.total &gt; 1000: send_email(...).</description>
+        <reason>Projections are replayed from offset 0 for rebuilds. Side effects fire on every rebuild, sending duplicate emails or charging payments. Business logic belongs in command handlers; emit a domain event for "high-value order" and handle it separately.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Projection with no checkpoint tracking — processing every event from the beginning on every application start.</description>
+        <reason>Without a checkpoint, every restart replays the entire event history. On a long-running system this takes minutes and produces duplicate writes for non-idempotent operations.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Non-idempotent projection writes: INSERT without ON CONFLICT handling.</description>
+        <reason>At-least-once delivery guarantees an event will eventually be delivered more than once (after a restart or retry). A plain INSERT fails or inserts duplicates; UPSERT keyed on (stream_id, position) absorbs duplicates safely.</reason>
+      </antipattern>
+    </section>
+
+    <section name="drift-detection">
+      <p>Projection drift occurs when the read model diverges from the event log — usually from a bug in projection logic, a failed write, or a schema migration without a rebuild. The canonical detection strategy is a nightly shadow rebuild: replay all events into a shadow table and diff against the live read model. Alert on any discrepancy before users notice stale data.</p>
+      <p>Schedule projection rebuilds: nightly job rebuilds projections from offset 0 in a shadow DB and diffs against live; alerts on drift before users notice.</p>
+    </section>
+
+    <see-also>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="cqrs-pattern"/>
+      <link href="https://martendb.io/events/projections/"/>
+    </see-also>
+  </content>
+</methodology>
