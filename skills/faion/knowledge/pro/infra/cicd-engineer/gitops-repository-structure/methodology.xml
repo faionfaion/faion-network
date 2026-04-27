@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops-repository-structure">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitOps config repo layout: folder-per-environment monorepo with base/overlays, Kustomize and Helm patterns, multi-team tenant structure, and environment promotion via PRs.</summary>
+    <tags>
+      <tag>gitops</tag>
+      <tag>kustomize</tag>
+      <tag>helm</tag>
+      <tag>repository-structure</tag>
+      <tag>kubernetes</tag>
+    </tags>
+    <category>gitops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="gitops-flux"/>
+      <ref slug="argocd-gitops"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitOps Repository Structure</title>
+
+    <summary>The config repository layout is the foundation of a maintainable GitOps setup. Use folder-per-environment in a monorepo with Kustomize base/overlays or Helm value files. Avoid branch-per-environment — it creates merge complexity and makes promotions difficult.</summary>
+
+    <why>
+      <p>A poorly structured config repo becomes unmanageable as environments and teams grow. Folder-per-environment keeps all environment states visible in a single branch, makes promotion diffs obvious (a PR that copies a known-good version from staging to prod), and prevents the merge conflicts that branch-per-environment generates during environment-specific hotfixes.</p>
+      <p>Separating the app repo (source code, Dockerfile, tests) from the config repo (Kubernetes manifests, Helm values, Kustomize overlays) prevents circular dependencies between CI (which builds images) and CD (which deploys them).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new GitOps config repository for one or more Kubernetes clusters.</item>
+        <item>Migrating from a branch-per-environment workflow to a maintainable structure.</item>
+        <item>Onboarding a new team or application into an existing GitOps platform.</item>
+        <item>Defining environment promotion strategy (dev to staging to prod via PRs).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-application, single-environment repos where the monorepo layout adds unnecessary complexity — use a flat structure.</item>
+        <item>Non-Kubernetes workloads (bare VMs, serverless) where Kustomize/Helm overlays don't apply.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="recommended-monorepo-structure">
+      <p>Recommended monorepo layout with folders per environment:</p>
+      <example type="good" title="Monorepo with Kustomize base/overlays">
+        <code lang="text"><![CDATA[
+gitops-config/
+├── base/
+│   ├── kustomization.yaml
+│   ├── namespace.yaml
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   └── configmap.yaml
+├── overlays/
+│   ├── dev/
+│   │   ├── kustomization.yaml
+│   │   ├── replica-patch.yaml
+│   │   └── configmap-patch.yaml
+│   ├── staging/
+│   │   ├── kustomization.yaml
+│   │   ├── replica-patch.yaml
+│   │   └── configmap-patch.yaml
+│   └── production/
+│       ├── kustomization.yaml
+│       ├── replica-patch.yaml
+│       ├── configmap-patch.yaml
+│       └── hpa.yaml
+└── infrastructure/
+    ├── cert-manager/
+    ├── ingress-nginx/
+    └── monitoring/
+]]></code>
+        <note>base/ holds shared config; overlays/ patches per environment; infrastructure/ holds cluster-wide tools.</note>
+      </example>
+    </section>
+
+    <section name="multi-team-structure">
+      <p>For platform teams managing multiple application teams (multi-tenancy):</p>
+      <example type="good" title="Multi-team tenant structure">
+        <code lang="text"><![CDATA[
+platform-gitops/
+├── clusters/
+│   ├── production/
+│   │   ├── flux-system/
+│   │   └── tenants.yaml
+│   └── staging/
+│       ├── flux-system/
+│       └── tenants.yaml
+├── infrastructure/
+│   ├── base/
+│   │   ├── cert-manager/
+│   │   ├── external-dns/
+│   │   └── ingress-nginx/
+│   ├── production/
+│   └── staging/
+└── tenants/
+    ├── team-frontend/
+    │   ├── base/
+    │   ├── production/
+    │   └── staging/
+    └── team-backend/
+        ├── base/
+        ├── production/
+        └── staging/
+]]></code>
+        <note>clusters/ bootstraps each cluster; infrastructure/ manages shared tools; tenants/ isolates team workloads.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Use folder-per-environment, NEVER branch-per-environment.</statement>
+        <rationale>Branch-per-environment creates merge conflicts when hotfixes go to prod without going through staging, makes PR promotion diffs invisible, and breaks most GitOps operators' single-branch reconciliation model.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate the app repo (source code) from the config repo (manifests), OR maintain a clean boundary inside a monorepo (e.g., a /deploy or /k8s top-level folder).</statement>
+        <rationale>Mixing app code and deployment manifests means every CI artifact push also triggers manifest reconciliation noise; separation keeps CD history readable and prevents circular CI/CD triggers.</rationale>
+      </rule>
+      <rule>
+        <statement>Validate manifests in CI on every PR: run kustomize build and/or helm template, then kubeconform for schema validation and conftest/kyverno for policy checks.</statement>
+        <rationale>Invalid manifests that reach the operator cause sync failures visible only after merge; CI validation catches 90% of issues before they affect any cluster.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin Helm chart versions — never track latest or a floating semver range in production overlays.</statement>
+        <rationale>Floating chart versions cause non-deterministic reconciliation; two syncs of the same Git SHA can produce different cluster states if the upstream chart changed.</rationale>
+      </rule>
+    </rules>
+
+    <section name="kustomize-patterns">
+      <p>Kustomize base/overlay pattern for managing environment differences:</p>
+      <example type="good" title="Base deployment">
+        <code lang="yaml"><![CDATA[
+# base/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: app
+          image: my-app:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+]]></code>
+      </example>
+      <example type="good" title="Production overlay patching replicas and image tag">
+        <code lang="yaml"><![CDATA[
+# overlays/production/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: my-app-prod
+resources:
+  - ../../base
+patches:
+  - path: replica-patch.yaml
+  - path: resources-patch.yaml
+images:
+  - name: my-app
+    newTag: v1.2.3
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals:
+      - LOG_LEVEL=info
+      - ENVIRONMENT=production
+]]></code>
+      </example>
+      <example type="good" title="Replica patch">
+        <code lang="yaml"><![CDATA[
+# overlays/production/replica-patch.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 3
+]]></code>
+      </example>
+    </section>
+
+    <section name="environment-promotion">
+      <p>Environment promotion flow via PRs:</p>
+      <list>
+        <item>Feature branch builds and pushes image with SHA tag.</item>
+        <item>Auto-PR to dev overlay bumps image tag to new SHA.</item>
+        <item>Auto-sync deploys to dev, CI runs smoke tests.</item>
+        <item>Promotion agent opens PR to staging overlay copying the SHA from dev — human reviews.</item>
+        <item>After merge, ArgoCD/Flux syncs staging; integration tests run.</item>
+        <item>Production promotion is always human-gated: PR opened automatically, requires manual approval and merge.</item>
+      </list>
+      <antipattern>
+        <description>Direct push to production overlay without a PR.</description>
+        <reason>Bypasses review, breaks audit trail, and prevents automated diff checks from catching dangerous changes (replica drops, RBAC widening, image rollbacks).</reason>
+      </antipattern>
+    </section>
+
+    <section name="diff-review-prompt">
+      <p>Prompt pattern for a GitOps diff reviewer agent:</p>
+      <prompt purpose="gitops-diff-reviewer"><![CDATA[
+You are a GitOps diff reviewer. Run `argocd app diff <app> --revision <pr-sha>`.
+If the diff includes any of: replica count decrease, removal of `resources.limits`,
+RBAC subject additions, or image tag downgrades — block with a comment listing each.
+Otherwise approve.
+]]></prompt>
+      <prompt purpose="gitops-pr-author"><![CDATA[
+You are a GitOps PR author. Input: `{service: api, image: ghcr.io/org/api@sha256:xxx, env: staging}`.
+Modify only `clusters/staging/apps/api/kustomization.yaml` to bump the image tag.
+Do NOT touch `clusters/production/`. Return a unified diff and a PR title
+`chore(staging): bump api to <sha8>`.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential CLI tools for GitOps repo management:</p>
+      <list>
+        <item>kustomize — render Kustomize overlays; https://kustomize.io/</item>
+        <item>helm + helm diff — render and diff charts; https://helm.sh/</item>
+        <item>kubeconform — manifest schema validation; https://github.com/yannh/kubeconform</item>
+        <item>conftest — policy testing with Rego; https://www.conftest.dev/</item>
+        <item>kyverno CLI — Kyverno policy testing; https://kyverno.io/docs/kyverno-cli/</item>
+        <item>argocd — Argo CD CLI for apps, sync, diff; https://argo-cd.readthedocs.io/en/stable/cli_installation/</item>
+        <item>flux — Flux CLI for sources, kustomizations, helm releases; https://fluxcd.io/flux/cmd/</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>GitOps repository created, separate from app code repo (or clean boundary in monorepo).</check>
+      <check>Directory structure: /base for shared configs, /clusters/{env} or /overlays/{env} for environment-specific.</check>
+      <check>Branch protection rules configured, PR review requirements set.</check>
+      <check>CI validation pipeline: kustomize build / helm template + kubeconform + conftest on every PR.</check>
+      <check>Folder-per-environment confirmed — no branches named dev/staging/prod.</check>
+      <check>Helm chart versions pinned in all environment overlays.</check>
+      <check>Environment promotion workflow defined: auto for dev, human-gated for prod.</check>
+      <check>Rollback procedure documented (revert PR or image tag pin).</check>
+      <check>App-of-Apps or ApplicationSet configured for fleet-wide deployments (avoid hand-listing apps).</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://fluxcd.io/flux/guides/repository-structure/"/>
+      <link href="https://medium.com/google-cloud/the-gitops-repository-structure-monorepo-vs-polyrepo-and-best-practices-17399ae6f3f4"/>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="gitops-flux"/>
+      <ref slug="argocd-gitops"/>
+    </see-also>
+  </content>
+</methodology>
