@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ollama-agent-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Integrate Ollama into agent workflows via OpenAI-compatible endpoint. Covers drop-in client replacement, health-check with cloud fallback, agentic gotchas, and production best practices.</summary>
+    <tags>
+      <tag>ollama</tag>
+      <tag>agents</tag>
+      <tag>openai-compatible</tag>
+      <tag>fallback</tag>
+    </tags>
+    <category>local-llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ollama-setup-models"/>
+      <ref slug="ollama-tool-calling"/>
+      <ref slug="ollama-python-client"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Ollama Agent Integration</title>
+
+    <summary>Ollama exposes an OpenAI-compatible endpoint at http://localhost:11434/v1, enabling drop-in replacement of the OpenAI SDK by changing one environment variable. This methodology covers the integration pattern, health-check with automatic cloud fallback, agent-specific gotchas, and the ecosystem of tools (LiteLLM, Langfuse, Qdrant) that work with Ollama.</summary>
+
+    <why>
+      <p>Agent architectures frequently use the OpenAI SDK as the LLM interface. Ollama's /v1/ endpoint means existing agent code runs against local models without refactoring — only the base_url changes. This enables: privacy-sensitive sub-agents that never make external calls, zero-cost local CI test agents that mock cloud LLM behavior, and hybrid setups where the agent uses local models when available and falls back to cloud when the local server is down or the task requires frontier model quality.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Existing OpenAI-based agent code that needs to run against local models for privacy or cost.</item>
+        <item>Any extraction or classification sub-agent where input data must not leave the machine.</item>
+        <item>Local test agents in CI pipelines that mock cloud LLM behavior without API costs.</item>
+        <item>Agent prototyping before committing to cloud provider pricing.</item>
+        <item>Hybrid local/cloud setups where the agent uses the best available endpoint.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Best-quality responses required for complex reasoning — even 70B local models trail frontier cloud models.</item>
+        <item>Multilingual tasks across more than 20 languages — local models lag cloud providers significantly.</item>
+        <item>Fine-tuned custom behavior needed but GPU for fine-tuning is unavailable.</item>
+        <item>Real-time latency requirements on small hardware — CPU inference is 5-20x slower than GPU.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="openai-compatible-endpoint">
+      <p>The /v1/ endpoint accepts identical requests to the OpenAI API. Change only base_url and api_key. This works with any OpenAI SDK consumer: LangChain, LlamaIndex, Instructor, Guidance, and custom agent frameworks.</p>
+
+      <example type="good" title="Drop-in OpenAI SDK replacement">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+
+# Drop-in replacement: just change base_url
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="ollama"  # Required but not validated by Ollama
+)
+
+def local_chat(prompt: str, model: str = "llama3.1:8b") -> str:
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1024,
+    )
+    return response.choices[0].message.content
+
+# Streaming via OpenAI-compatible endpoint
+stream = client.chat.completions.create(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Tell me a joke"}],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+]]></code>
+        <note>The /v1/ endpoint has slightly different error format than the native Ollama API — test error handling paths with both if using mixed clients.</note>
+      </example>
+    </section>
+
+    <section name="health-check-fallback">
+      <p>Implement a health check before agent startup. On failure, fall back to a cloud API automatically. This pattern enables seamless hybrid local/cloud operation.</p>
+
+      <example type="good" title="Health check with automatic cloud fallback">
+        <code lang="python"><![CDATA[
+import httpx
+from openai import OpenAI
+
+def get_llm_client(prefer_local: bool = True) -> tuple[OpenAI, str]:
+    """Return (client, model) — local if healthy, cloud fallback otherwise."""
+    if prefer_local:
+        try:
+            resp = httpx.get("http://localhost:11434/api/tags", timeout=2.0)
+            if resp.status_code == 200:
+                return (
+                    OpenAI(base_url="http://localhost:11434/v1", api_key="ollama"),
+                    "llama3.1:8b"
+                )
+        except (httpx.ConnectError, httpx.TimeoutException):
+            pass
+    return OpenAI(), "gpt-4o-mini"  # cloud fallback
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Starting agent with sleep X then assuming Ollama is ready.</description>
+        <reason>ollama serve must be confirmed running before agent startup — implement retry loop with timeout check against /api/tags, not sleep X then start agent.</reason>
+      </antipattern>
+    </section>
+
+    <section name="native-client-patterns">
+      <example type="good" title="Native Ollama client with streaming for agents">
+        <code lang="python"><![CDATA[
+import ollama
+
+def stream_response(prompt: str, model: str = "llama3.1:8b"):
+    stream = ollama.chat(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        stream=True,
+    )
+    for chunk in stream:
+        yield chunk["message"]["content"]
+
+# Tool-calling agent pattern (Llama 3.1+ required)
+tools = [{"type": "function", "function": {
+    "name": "get_weather",
+    "description": "Get weather for a city",
+    "parameters": {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"]
+    },
+}}]
+
+response = ollama.chat(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Weather in Kyiv?"}],
+    tools=tools,
+    options={"num_ctx": 32768}
+)
+if response.message.tool_calls:
+    for tc in response.message.tool_calls:
+        print(tc.function.name, tc.function.arguments)
+]]></code>
+      </example>
+    </section>
+
+    <section name="ecosystem">
+      <p>CLI tools and services that work with Ollama for agent workflows:</p>
+      <list>
+        <item>ollama — core runtime; OpenAI-compatible API at port 11434 (install: curl -fsSL https://ollama.com/install.sh | sh)</item>
+        <item>ollama-python — Python client with async support (pip install ollama)</item>
+        <item>openai Python SDK — works with Ollama via base_url override (pip install openai)</item>
+        <item>litellm — unified proxy: routes OpenAI calls to Ollama and normalizes cloud + local under one API (pip install litellm)</item>
+        <item>ngrok / cloudflared — expose local Ollama to remote agents when needed</item>
+      </list>
+      <p>Compatible services:</p>
+      <list>
+        <item>Ollama — OSS, agent-friendly, core runtime with OpenAI-compatible API at port 11434</item>
+        <item>LiteLLM — OSS, proxy normalizing Ollama and cloud providers under one API</item>
+        <item>Open WebUI — OSS, web UI for model testing (not agent-facing)</item>
+        <item>Langfuse — OSS, LLM tracing works with Ollama via LiteLLM proxy</item>
+        <item>Qdrant — OSS, vector DB for RAG pipelines using Ollama embeddings</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Production best practices for Ollama in agent workflows:</p>
+      <list>
+        <item>Match quantization to available VRAM: Q4_K_M for memory-constrained, Q8_0 for quality-sensitive tasks</item>
+        <item>Set num_ctx explicitly — default (2048) is too small for agent tasks; use 8192-32768</item>
+        <item>Keep models loaded between calls: set OLLAMA_KEEP_ALIVE=1h to avoid 5-30s cold start per request</item>
+        <item>Test structured output compliance for exact model + schema before committing to production</item>
+        <item>Use GPU inference when available: CPU inference on 7B models is ~5-10 tokens/sec; GPU is 30-100 tokens/sec</item>
+        <item>Pin model tags: llama3.1:8b not llama3.1 — untagged version may resolve to a different quantization after pull</item>
+        <item>Use dedicated embedding models (nomic-embed-text, mxbai-embed-large) not generalist chat models for RAG</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common failure modes specific to agent integration:</p>
+      <list>
+        <item>Local models have higher hallucination rates on specialized knowledge — add output validation before any action on local model outputs (human-in-loop checkpoint)</item>
+        <item>Tool calling fails silently if context window is too small — model returns text instead of JSON tool calls; always set num_ctx at or above 32768 for tool use</item>
+        <item>Ollama does not support concurrent model loading on the same GPU — sequential requests to different models cause eviction + reload overhead; plan for single-model-per-GPU</item>
+        <item>The OpenAI-compatible endpoint (/v1/) has slightly different error format than the native Ollama API — test error handling with both if using mixed clients</item>
+        <item>Container deployments need GPU passthrough (--gpus all for Docker); without it inference falls back to CPU automatically with no warning</item>
+        <item>ollama serve must be running before agent startup — implement retry loop with timeout, not sleep X then start agent</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Use the OpenAI SDK with base_url="http://localhost:11434/v1" and api_key="ollama" to make existing OpenAI-based agent code work with local Ollama models without refactoring.</statement>
+        <rationale>Changing one parameter reuses all existing OpenAI SDK error handling, retry logic, and tool-calling code without duplication.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement a health check against /api/tags with a 2s timeout before agent startup; on failure fall back to cloud API rather than failing the whole agent pipeline.</statement>
+        <rationale>Ollama unavailability (server restart, OOM, cold boot) should degrade gracefully to cloud, not fail the agent's task entirely.</rationale>
+      </rule>
+      <rule>
+        <statement>Add output validation (schema check, required field presence, value range) before any downstream action on local model output — local models hallucinate specialized facts at higher rates than cloud models.</statement>
+        <rationale>Unvalidated local model outputs in automated pipelines can cause incorrect data to propagate silently, with no human review.</rationale>
+      </rule>
+      <rule>
+        <statement>Never use OLLAMA_MODEL=llama3.1 (untagged) in agent configuration — pin the exact tag (llama3.1:8b, llama3.1:70b) to prevent silent model swaps after ollama pull.</statement>
+        <rationale>Untagged pulls may resolve to different quantizations across restarts, changing response quality or failing to load on constrained hardware.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Chose integration method: OpenAI SDK via base_url override, native ollama library, or LiteLLM proxy</check>
+      <check>Implemented health check against /api/tags with timeout before agent startup</check>
+      <check>Added automatic cloud fallback when local server is unavailable</check>
+      <check>Configured retry logic with exponential backoff for transient failures</check>
+      <check>Set appropriate timeouts (60-120s for large models)</check>
+      <check>Set num_ctx to at least 32768 for tool-calling agents</check>
+      <check>Added output validation before any downstream action on model outputs</check>
+      <check>Pinned model tags in all configuration</check>
+      <check>Tested streaming responses end-to-end</check>
+      <check>Tested error conditions (model not found, server down, context exceeded)</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://ollama.com/"/>
+      <link href="https://github.com/ollama/ollama"/>
+      <link href="https://docs.litellm.ai/docs/providers/ollama"/>
+      <ref slug="ollama-python-client"/>
+      <ref slug="ollama-tool-calling"/>
+      <ref slug="ollama-setup-models"/>
+    </see-also>
+  </content>
+</methodology>
