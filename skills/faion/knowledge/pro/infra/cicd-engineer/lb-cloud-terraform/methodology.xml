@@ -1,0 +1,465 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-cloud-terraform">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Provision AWS ALB/NLB and GCP Global HTTP(S) Load Balancers with Terraform: target groups, health checks, TLS listeners, S3 access logs, deletion protection, and WAF integration.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>aws</tag>
+      <tag>gcp</tag>
+      <tag>load-balancing</tag>
+      <tag>infrastructure-as-code</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-monitoring"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Load Balancer Provisioning with Terraform</title>
+
+    <summary>Terraform modules for AWS ALB (Application Load Balancer) and NLB (Network Load Balancer), and GCP Global HTTP(S) Load Balancer. Covers: aws_lb resource with deletion protection and access logs to S3, target groups with health check configuration, HTTPS listener with ELBSecurityPolicy-TLS13-1-2-2021-06, HTTP-to-HTTPS redirect listener, security groups, and GCP backend services with CDN policy, URL maps, and managed SSL certificates.</summary>
+
+    <why>
+      <p>Cloud managed LBs (AWS ALB/NLB, GCP Cloud LB) eliminate the operational overhead of HA, certificate renewal, and failover that self-hosted HAProxy/Nginx require. Terraform is the standard IaC vehicle because it provides: state management for drift detection, plan/apply workflow for safe changes, and modular reuse across environments. AWS ALB and GCP Global LB are anycast-aware and integrate natively with WAF, Shield, and Cloud Armor.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Provisioning a new cloud LB for a service on AWS or GCP using Terraform.</item>
+        <item>Migrating from self-hosted HAProxy/Nginx to AWS ALB or GCP Cloud LB.</item>
+        <item>Adding WAF, Shield, or Cloud Armor to an existing cloud LB via Terraform.</item>
+        <item>Setting up NLB for TCP/UDP workloads (databases, Redis) on AWS.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Kubernetes workloads — use the AWS Load Balancer Controller or GKE Ingress instead of raw aws_lb resources; the controllers manage target group registration automatically.</item>
+        <item>Self-hosted bare-metal environments — Terraform AWS/GCP providers require cloud API access; use HAProxy plus keepalived instead.</item>
+        <item>Azure — use azurerm_application_gateway or azurerm_frontdoor; the patterns differ from AWS/GCP.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="aws-alb-terraform">
+      <example type="good" title="Terraform: complete AWS ALB with HTTPS, target group, redirect, security group, S3 logs">
+        <code lang="hcl"><![CDATA[
+# variables.tf
+variable "environment" {
+  type = string
+}
+
+variable "vpc_id" {
+  type = string
+}
+
+variable "public_subnet_ids" {
+  type = list(string)
+}
+
+variable "private_subnet_ids" {
+  type = list(string)
+}
+
+variable "certificate_arn" {
+  type = string
+}
+
+# alb.tf
+resource "aws_lb" "main" {
+  name               = "${var.environment}-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = var.public_subnet_ids
+
+  enable_deletion_protection = true
+  enable_http2               = true
+
+  idle_timeout = 60
+
+  access_logs {
+    bucket  = aws_s3_bucket.lb_logs.bucket
+    prefix  = "alb"
+    enabled = true
+  }
+
+  tags = {
+    Name        = "${var.environment}-alb"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_target_group" "web" {
+  name        = "${var.environment}-web-tg"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+    timeout             = 5
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    matcher             = "200"
+  }
+
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400
+    enabled         = false
+  }
+
+  deregistration_delay = 30
+
+  tags = {
+    Name        = "${var.environment}-web-tg"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+}
+
+resource "aws_lb_listener" "http_redirect" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# security_group.tf
+resource "aws_security_group" "alb" {
+  name        = "${var.environment}-alb-sg"
+  description = "ALB Security Group"
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP (redirect)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "All traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.environment}-alb-sg"
+    Environment = var.environment
+  }
+}
+
+# s3_logs.tf
+resource "aws_s3_bucket" "lb_logs" {
+  bucket = "${var.environment}-alb-logs"
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "lb_logs" {
+  bucket = aws_s3_bucket.lb_logs.id
+
+  rule {
+    id     = "expire-logs"
+    status = "Enabled"
+
+    expiration {
+      days = 90
+    }
+  }
+}
+
+# outputs.tf
+output "alb_dns_name" {
+  value = aws_lb.main.dns_name
+}
+
+output "alb_zone_id" {
+  value = aws_lb.main.zone_id
+}
+
+output "target_group_arn" {
+  value = aws_lb_target_group.web.arn
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="aws-nlb-terraform">
+      <example type="good" title="Terraform: AWS NLB for TCP/UDP workloads">
+        <code lang="hcl"><![CDATA[
+resource "aws_lb" "network" {
+  name               = "${var.environment}-nlb"
+  internal           = false
+  load_balancer_type = "network"
+  subnets            = var.public_subnet_ids
+
+  enable_deletion_protection       = true
+  enable_cross_zone_load_balancing = true
+
+  tags = {
+    Name        = "${var.environment}-nlb"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_target_group" "tcp" {
+  name        = "${var.environment}-tcp-tg"
+  port        = 6379
+  protocol    = "TCP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    interval            = 10
+    port                = "traffic-port"
+    protocol            = "TCP"
+  }
+
+  tags = {
+    Name = "${var.environment}-tcp-tg"
+  }
+}
+
+resource "aws_lb_listener" "tcp" {
+  load_balancer_arn = aws_lb.network.arn
+  port              = "6379"
+  protocol          = "TCP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tcp.arn
+  }
+}
+]]></code>
+        <note>Use NLB (not ALB) for TCP/UDP protocols. NLB does not support path-based routing or WAF; use ALB for HTTP(S).</note>
+      </example>
+    </section>
+
+    <section name="gcp-lb-terraform">
+      <example type="good" title="Terraform: GCP Global HTTP(S) Load Balancer with CDN and URL map">
+        <code lang="hcl"><![CDATA[
+# Global HTTP(S) Load Balancer
+resource "google_compute_global_address" "default" {
+  name = "${var.environment}-lb-ip"
+}
+
+resource "google_compute_managed_ssl_certificate" "default" {
+  name = "${var.environment}-cert"
+
+  managed {
+    domains = [var.domain]
+  }
+}
+
+resource "google_compute_backend_service" "default" {
+  name        = "${var.environment}-backend"
+  port_name   = "http"
+  protocol    = "HTTP"
+  timeout_sec = 30
+
+  backend {
+    group = google_compute_instance_group_manager.default.instance_group
+  }
+
+  health_checks = [google_compute_health_check.default.id]
+
+  enable_cdn = true
+
+  cdn_policy {
+    cache_mode  = "CACHE_ALL_STATIC"
+    default_ttl = 3600
+    max_ttl     = 86400
+  }
+}
+
+resource "google_compute_health_check" "default" {
+  name               = "${var.environment}-health-check"
+  check_interval_sec = 5
+  timeout_sec        = 5
+
+  http_health_check {
+    port         = 8080
+    request_path = "/health"
+  }
+}
+
+resource "google_compute_url_map" "default" {
+  name            = "${var.environment}-url-map"
+  default_service = google_compute_backend_service.default.id
+
+  host_rule {
+    hosts        = [var.domain]
+    path_matcher = "main"
+  }
+
+  path_matcher {
+    name            = "main"
+    default_service = google_compute_backend_service.default.id
+
+    path_rule {
+      paths   = ["/api/*"]
+      service = google_compute_backend_service.api.id
+    }
+  }
+}
+
+resource "google_compute_target_https_proxy" "default" {
+  name             = "${var.environment}-https-proxy"
+  url_map          = google_compute_url_map.default.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.default.id]
+}
+
+resource "google_compute_global_forwarding_rule" "https" {
+  name       = "${var.environment}-https-rule"
+  target     = google_compute_target_https_proxy.default.id
+  port_range = "443"
+  ip_address = google_compute_global_address.default.address
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-cloud">
+      <prompt purpose="generate-terraform-alb">
+        <![CDATA[
+Generate Terraform configuration for AWS Application Load Balancer:
+
+Requirements:
+- Environment: [production/staging]
+- VPC ID: [VPC_ID]
+- Subnets: [SUBNET_IDS]
+- Certificate ARN: [CERT_ARN]
+
+Target groups:
+- web: port 8080, health check /health
+- api: port 3000, health check /health/ready
+
+Features:
+- Access logs to S3
+- Deletion protection
+- HTTP to HTTPS redirect
+- WAF integration (optional)
+
+Include security groups and outputs.
+]]>
+      </prompt>
+      <prompt purpose="migrate-to-cloud-lb">
+        <![CDATA[
+Plan migration from [HAProxy/Nginx] to [AWS ALB/GCP LB/Azure LB]:
+
+Current configuration:
+[PASTE CONFIG]
+
+Current features used:
+- [LIST FEATURES]
+
+Requirements:
+- Zero downtime migration
+- Feature parity where possible
+- Cost optimization
+
+Provide:
+1. Feature mapping (current -> cloud equivalent)
+2. Migration steps
+3. Terraform configuration for new setup
+4. Rollback plan
+5. Validation checklist
+]]>
+      </prompt>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>AWS ALB MUST have enable_deletion_protection = true and access_logs block pointing to an S3 bucket in all non-ephemeral environments. The S3 bucket MUST have a lifecycle rule expiring logs after 90 days minimum.</statement>
+        <rationale>ALB deletion protection prevents accidental terraform destroy from taking down production traffic. Access logs to S3 are the audit trail for compliance (PCI-DSS, HIPAA) and the raw data for post-incident traffic analysis. Without them, debugging a past incident is impossible.</rationale>
+      </rule>
+      <rule>
+        <statement>AWS ALB HTTPS listener MUST use ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06" or a more recent policy. Never use "ELBSecurityPolicy-2016-08" or any policy that includes TLS 1.0 or 1.1.</statement>
+        <rationale>AWS updates SSL policies; older policy names remain valid but include deprecated ciphers and TLS versions. The 2021-06 policy enforces TLS 1.2 minimum with TLS 1.3 preferred and excludes all known-weak ciphers.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Load balancer type correct (ALB for HTTP/HTTPS, NLB for TCP/UDP).</check>
+      <check>Subnets span multiple AZs.</check>
+      <check>Security groups allow only required traffic.</check>
+      <check>Access logs enabled to S3 with lifecycle expiry.</check>
+      <check>Deletion protection enabled.</check>
+      <check>Health check path correct; interval and thresholds set.</check>
+      <check>Deregistration delay configured (30s default; increase for long-lived connections).</check>
+      <check>Stickiness disabled unless explicitly required.</check>
+      <check>HTTPS listener with valid certificate ARN.</check>
+      <check>HTTP to HTTPS redirect listener configured.</check>
+      <check>SSL policy is ELBSecurityPolicy-TLS13-1-2-2021-06 or newer.</check>
+      <check>WAF attached if needed.</check>
+      <check>Security groups least-privilege (ingress 443 and 80 only).</check>
+      <check>VPC endpoint for private access if applicable.</check>
+      <check>Outputs declared (dns_name, zone_id, target_group_arn).</check>
+    </checklist>
+
+    <section name="cloud-lb-quota-gotchas">
+      <p>Cloud LB quota limits that agents silently hit at scale:</p>
+      <list>
+        <item>AWS ALB: 100 target groups per LB by default; 100 rules per listener. Request limit increases before reaching 80%.</item>
+        <item>AWS NLB: 200 targets per target group for instance type; 500 for IP type.</item>
+        <item>GCP: 50 backend services per URL map; 100 forwarding rules per project.</item>
+        <item>AWS: ALB quotas are per-region; multi-region deployments each have their own limits.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb"/>
+      <link href="https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_backend_service"/>
+      <link href="https://docs.aws.amazon.com/elasticloadbalancing/latest/application/"/>
+      <link href="https://cloud.google.com/load-balancing/docs"/>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-monitoring"/>
+    </see-also>
+  </content>
+</methodology>
