@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-monitoring-observability">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Build AWS observability: CloudWatch dashboards, metric alarms with SNS, X-Ray tracing, org-level CloudTrail, Config compliance rules, and Security Hub posture monitoring via Terraform.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cloudwatch</tag>
+      <tag>observability</tag>
+      <tag>monitoring</tag>
+      <tag>alarms</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-well-architected-framework"/>
+      <ref slug="aws-iam-security-foundations"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Monitoring and Observability Stack</title>
+
+    <summary>Production AWS observability uses CloudWatch for metrics, logs, and alarms; X-Ray for distributed tracing; an org-level CloudTrail with KMS encryption and log file validation for API auditing; and AWS Config for resource configuration tracking and compliance. Alarms feed SNS topics that route to PagerDuty, OpsGenie, or Slack. All resources are Terraform-managed.</summary>
+
+    <why>
+      <p>Without structured observability, failures are discovered by customers rather than operators. CloudWatch Container Insights gives EKS pod-level CPU and memory metrics that the control plane does not expose natively. ALB 5xx alarms catch backend failures before they cascade. RDS CPU and connection alarms detect capacity exhaustion before queries start timing out.</p>
+      <p>Org-level CloudTrail is the immutable audit record for compliance: every API call across every account in the organization is logged, encrypted with KMS, and stored in the log-archive account where workload accounts cannot delete it. AWS Config rules catch drift between the desired state (Terraform) and the actual state (running resources) and trigger remediation or findings in Security Hub.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new environment or account and defining the baseline monitoring stack.</item>
+        <item>Adding workloads (EKS cluster, RDS cluster, ALB) that require metric coverage and alerting.</item>
+        <item>Compliance audits that require evidence of CloudTrail coverage and Config rule compliance.</item>
+        <item>Incidents where the post-mortem reveals a monitoring gap that allowed the failure to go undetected.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Day-2 incident triage — this methodology is for setup; use runbooks for active incidents.</item>
+        <item>Non-AWS clouds — use GCP Cloud Monitoring / Datadog equivalents.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-services">
+      <p>Core observability services and their roles in the stack:</p>
+      <list>
+        <item>CloudWatch — metrics, logs, dashboards, and alarms. Container Insights extends CloudWatch to EKS and ECS pod-level metrics. Use log groups with retention policies (not unlimited — CloudWatch log storage costs scale quickly).</item>
+        <item>X-Ray — distributed tracing for applications. Instrument with AWS X-Ray SDK or OpenTelemetry. Required for service-map visualization and latency breakdown across microservices.</item>
+        <item>CloudTrail (org trail) — API audit logging for all accounts. MUST write to an S3 bucket in the log-archive account with Object Lock, deny-delete bucket policy, log file validation enabled, and KMS encryption. Enable for ALL regions, not just the primary region.</item>
+        <item>AWS Config — resource configuration tracking. Use a Config Aggregator to view compliance across all organization accounts. Enable AWS Security Hub standards to surface Config rule findings in one dashboard.</item>
+        <item>Security Hub — security posture dashboard. Aggregates findings from GuardDuty, Inspector, Macie, and Config. Enable CIS AWS Foundations Benchmark and AWS Foundational Security Best Practices standards.</item>
+      </list>
+    </section>
+
+    <section name="key-metrics">
+      <p>Key metrics to monitor per service tier. These define the minimum viable alarm set for a production workload.</p>
+      <list>
+        <item>EKS: pod_cpu_utilization, pod_memory_utilization (Container Insights namespace), node_cpu_reserved_capacity, node_memory_reserved_capacity.</item>
+        <item>RDS / Aurora: CPUUtilization (threshold 80%), DatabaseConnections (threshold: max_connections * 0.8), ReadIOPS + WriteIOPS, FreeStorageSpace.</item>
+        <item>ALB: RequestCount (baseline trending), TargetResponseTime P99 (threshold varies by SLA), HTTPCode_ELB_5XX_Count (threshold 10 per minute), HTTPCode_Target_5XX_Count.</item>
+        <item>Lambda: Errors, Duration P99, Throttles, ConcurrentExecutions approaching account limit.</item>
+        <item>SQS: ApproximateAgeOfOldestMessage (dead-letter queue depth), NumberOfMessagesSent vs Received ratio for consumer lag.</item>
+      </list>
+    </section>
+
+    <section name="cloudwatch-dashboard-terraform">
+      <p>Terraform for a CloudWatch dashboard covering EKS, RDS, and ALB metrics.</p>
+
+      <example type="good" title="CloudWatch dashboard with EKS, RDS, and ALB widgets">
+        <code lang="hcl"><![CDATA[resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "${var.project}-${var.environment}"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "EKS Cluster CPU"
+          region  = var.region
+          metrics = [
+            ["ContainerInsights", "pod_cpu_utilization", "ClusterName", module.eks.cluster_name]
+          ]
+          period = 300
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title   = "RDS Connections"
+          region  = var.region
+          metrics = [
+            ["AWS/RDS", "DatabaseConnections", "DBClusterIdentifier", module.aurora.cluster_id]
+          ]
+          period = 300
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title   = "ALB Request Count"
+          region  = var.region
+          metrics = [
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", module.alb.arn_suffix]
+          ]
+          period = 60
+          stat   = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title   = "ALB 5xx Errors"
+          region  = var.region
+          metrics = [
+            ["AWS/ApplicationELB", "HTTPCode_ELB_5XX_Count", "LoadBalancer", module.alb.arn_suffix],
+            ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", module.alb.arn_suffix]
+          ]
+          period = 60
+          stat   = "Sum"
+        }
+      }
+    ]
+  })
+}]]></code>
+      </example>
+    </section>
+
+    <section name="alarms-sns">
+      <p>CloudWatch alarms with SNS notification. Use a single encrypted SNS topic per environment and route from SNS to PagerDuty/OpsGenie/Slack via subscription or EventBridge Pipes.</p>
+
+      <example type="good" title="SNS topic and RDS CPU alarm">
+        <code lang="hcl"><![CDATA[resource "aws_sns_topic" "alerts" {
+  name              = "${var.project}-${var.environment}-alerts"
+  kms_master_key_id = aws_kms_key.sns.id
+}
+
+resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
+  alarm_name          = "${var.project}-${var.environment}-rds-cpu"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/RDS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+  alarm_description   = "RDS CPU utilization exceeds 80%"
+
+  dimensions = {
+    DBClusterIdentifier = module.aurora.cluster_id
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
+  alarm_name          = "${var.project}-${var.environment}-alb-5xx"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "HTTPCode_ELB_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 10
+  alarm_description   = "High 5xx error rate on ALB"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = module.alb.arn_suffix
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+
+  tags = local.common_tags
+}]]></code>
+      </example>
+    </section>
+
+    <section name="monitoring-module-interface">
+      <p>Reusable monitoring module variables for team-wide standardization. Accepts optional EKS, RDS, and ALB identifiers and conditionally creates only the relevant widgets and alarms.</p>
+
+      <example type="good" title="Monitoring module variables">
+        <code lang="hcl"><![CDATA[# modules/monitoring/variables.tf
+variable "project" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "region" {
+  type = string
+}
+
+variable "eks_cluster_name" {
+  type    = string
+  default = ""
+}
+
+variable "rds_cluster_id" {
+  type    = string
+  default = ""
+}
+
+variable "alb_arn_suffix" {
+  type    = string
+  default = ""
+}
+
+variable "sns_topic_arn" {
+  type        = string
+  description = "SNS topic ARN for alarms"
+}]]></code>
+      </example>
+    </section>
+
+    <section name="monitoring-checklist">
+      <checklist>
+        <check>CloudWatch log groups created with retention policies (not unlimited — 30/90/365 days based on compliance).</check>
+        <check>Custom metrics published for application-level KPIs.</check>
+        <check>Dashboards created for each environment (EKS, RDS, ALB at minimum).</check>
+        <check>Alarms defined for critical metrics with SNS actions.</check>
+        <check>SNS topic encrypted with KMS.</check>
+        <check>X-Ray enabled for distributed tracing (Lambda, ECS, API Gateway).</check>
+        <check>CloudTrail org trail created — all regions, all accounts.</check>
+        <check>CloudTrail log file validation enabled.</check>
+        <check>CloudTrail logs encrypted with KMS.</check>
+        <check>CloudTrail destination S3 bucket in log-archive account with Object Lock and deny-delete bucket policy.</check>
+        <check>AWS Config rules enabled for compliance baseline.</check>
+        <check>Config Aggregator configured for cross-account view.</check>
+        <check>Security Hub standards enabled (CIS + AWS Foundational).</check>
+        <check>Automated remediation configured where safe (e.g., auto-enable S3 public access block).</check>
+        <check>Regular Well-Architected reviews scheduled.</check>
+      </checklist>
+    </section>
+
+    <section name="monitoring-prompts">
+      <prompt purpose="Design observability stack">
+        <![CDATA[Design AWS observability stack for [ENVIRONMENT]:
+
+Workloads:
+- [LIST_WITH_TYPES]
+
+Requirements:
+- Metrics: [CLOUDWATCH/PROMETHEUS/BOTH]
+- Logs: [CLOUDWATCH/OPENSEARCH/EXTERNAL]
+- Traces: [XRAY/OTEL/EXTERNAL]
+- Alerting: [CLOUDWATCH/PAGERDUTY/OPSGENIE]
+- Dashboards: [CLOUDWATCH/GRAFANA]
+
+Design:
+1. Metrics collection strategy
+2. Log aggregation architecture
+3. Distributed tracing setup
+4. Dashboard templates
+5. Alert definitions (thresholds, routing)
+6. Cost optimization (retention, sampling)]]>
+      </prompt>
+
+      <prompt purpose="Create alerting strategy">
+        <![CDATA[Create CloudWatch alerting strategy:
+
+Services monitored:
+- EKS cluster: [NAME]
+- RDS/Aurora: [CLUSTER_ID]
+- ALB: [NAME]
+- Lambda functions: [LIST]
+- Custom metrics: [NAMESPACE]
+
+Alert tiers:
+- P1 (Critical): immediate page
+- P2 (High): page within 15 minutes
+- P3 (Medium): ticket
+- P4 (Low): weekly digest
+
+For each service, define:
+1. Key metrics to monitor
+2. Thresholds (warning/critical)
+3. Evaluation periods
+4. Alert destinations
+5. Runbook links]]>
+      </prompt>
+
+      <prompt purpose="Quick CloudWatch alarm creation">
+        <![CDATA[Create CloudWatch alarm for [SERVICE]:
+- Metric: [NAME]
+- Threshold: [VALUE]
+- Period: [SECONDS]
+- SNS topic: [ARN]]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/WhatIsCloudWatch.html"/>
+      <link href="https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html"/>
+      <ref slug="aws-well-architected-framework"/>
+      <ref slug="aws-iam-security-foundations"/>
+    </see-also>
+  </content>
+</methodology>
