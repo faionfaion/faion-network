@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-caching">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Cache embedding vectors to avoid redundant API calls: in-memory LRU, file-based JSON, and Redis (production) patterns with model-namespaced cache keys.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>caching</tag>
+      <tag>redis</tag>
+      <tag>rag</tag>
+      <tag>cost-reduction</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Embedding Caching Patterns</title>
+
+    <summary>Embedding the same text twice wastes API cost and latency. Cache embeddings by a model-namespaced hash of the text. In production, use Redis with a 30-day TTL. Typical RAG workloads see 70-90% cache hit rates on repeat queries and re-ingested documents.</summary>
+
+    <why>
+      <p>Cache hit rate of 80% produces 80% cost reduction on embedding API spend. Repeat queries in RAG systems are common — users ask similar questions, documents are re-ingested during incremental updates. Redis cache keys must include the model name — reusing the same key format for multiple models causes silent cross-model cache collisions where a vector from model A is returned for a request from model B.</p>
+      <p>Cache invalidation: text-based cache keys must include the model name — different models produce different vectors for the same text. Cache hit rate of 80% = 80% cost reduction on embedding spend.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>High-volume embedding workloads where documents or queries repeat across requests.</item>
+        <item>RAG systems with incremental ingestion — new documents added to a mostly-stable corpus.</item>
+        <item>Production systems where embedding API cost is measurable.</item>
+        <item>Any workload calling the same embedding model for overlapping text sets.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-time batch ingestion of a fully unique corpus — cache miss rate will be 100% and cache adds overhead.</item>
+        <item>Streaming real-time embeddings where latency matters more than cost — Redis round-trip may exceed the embedding API latency for small models.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="in-memory-cache">
+      <p>Use Python's lru_cache for small workloads where persistence is not required. Limited to process lifetime and maxsize entries.</p>
+
+      <example type="good" title="LRU in-memory embedding cache">
+        <code lang="python"><![CDATA[
+import hashlib
+from functools import lru_cache
+from typing import Tuple
+
+def text_hash(text: str) -> str:
+    """Create consistent hash for text."""
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+@lru_cache(maxsize=10000)
+def get_embedding_cached(text_hash: str, text: str, model: str) -> Tuple[float, ...]:
+    """Cache embeddings in memory."""
+    embedding = get_embedding(text, model)
+    return tuple(embedding)  # Tuples are hashable for lru_cache
+]]></code>
+        <note>lru_cache requires hashable arguments. Tuples are hashable; lists are not — convert the returned list to tuple for storage.</note>
+      </example>
+    </section>
+
+    <section name="file-based-cache">
+      <p>File-based JSON cache persists across process restarts. Suitable for local development and infrequent batch jobs. Not suitable for concurrent multi-process access.</p>
+
+      <example type="good" title="File-based embedding cache">
+        <code lang="python"><![CDATA[
+import json
+import hashlib
+from pathlib import Path
+
+class EmbeddingCache:
+    def __init__(self, cache_dir: str = ".embedding_cache"):
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
+
+    def _get_key(self, text: str, model: str) -> str:
+        content = f"{model}:{text}"
+        return hashlib.sha256(content.encode()).hexdigest()
+
+    def get(self, text: str, model: str) -> list[float] | None:
+        key = self._get_key(text, model)
+        cache_file = self.cache_dir / f"{key}.json"
+
+        if cache_file.exists():
+            return json.loads(cache_file.read_text())
+        return None
+
+    def set(self, text: str, model: str, embedding: list[float]):
+        key = self._get_key(text, model)
+        cache_file = self.cache_dir / f"{key}.json"
+        cache_file.write_text(json.dumps(embedding))
+
+    def get_or_compute(
+        self,
+        text: str,
+        model: str,
+        compute_fn
+    ) -> list[float]:
+        cached = self.get(text, model)
+        if cached:
+            return cached
+
+        embedding = compute_fn(text, model)
+        self.set(text, model, embedding)
+        return embedding
+]]></code>
+        <note>Cache key includes model name to prevent cross-model collisions. Each vector stored as a separate JSON file — avoids holding the entire cache in memory.</note>
+      </example>
+    </section>
+
+    <section name="redis-cache">
+      <p>Redis is the production caching backend for embeddings. Supports batch retrieval via pipeline, TTL-based expiry, and concurrent multi-process access.</p>
+
+      <rule>
+        <statement>Redis cache keys MUST be namespaced as emb:{model}:{sha256-of-model-and-text}. Cache TTL MUST be set (30 days is standard). Batch retrieval MUST use Redis pipeline to avoid N round-trips.</statement>
+        <rationale>Without model namespace in the key, a cache populated by text-embedding-3-small will silently return wrong vectors for text-embedding-3-large requests — the text is identical but the vector spaces differ. TTL prevents unbounded memory growth. Pipeline reduces N Redis round-trips to 1.</rationale>
+      </rule>
+
+      <example type="good" title="Redis embedding cache with pipeline batch retrieval">
+        <code lang="python"><![CDATA[
+import redis
+import json
+import hashlib
+
+class RedisEmbeddingCache:
+    def __init__(self, redis_url: str = "redis://localhost:6379"):
+        self.client = redis.from_url(redis_url)
+        self.ttl = 86400 * 30  # 30 days
+
+    def _get_key(self, text: str, model: str) -> str:
+        content = f"{model}:{text}"
+        hash_val = hashlib.sha256(content.encode()).hexdigest()
+        return f"emb:{model}:{hash_val}"
+
+    def get(self, text: str, model: str) -> list[float] | None:
+        key = self._get_key(text, model)
+        data = self.client.get(key)
+        return json.loads(data) if data else None
+
+    def set(self, text: str, model: str, embedding: list[float]):
+        key = self._get_key(text, model)
+        self.client.setex(key, self.ttl, json.dumps(embedding))
+
+    def get_batch(
+        self,
+        texts: list[str],
+        model: str
+    ) -> dict[str, list[float] | None]:
+        """Get multiple embeddings from cache in one pipeline."""
+        pipe = self.client.pipeline()
+        keys = [self._get_key(t, model) for t in texts]
+
+        for key in keys:
+            pipe.get(key)
+
+        results = pipe.execute()
+        return {
+            text: json.loads(data) if data else None
+            for text, data in zip(texts, results)
+        }
+]]></code>
+        <note>Key format emb:{model}:{hash} namespaces by model. Pipeline collapses N GET calls into 1 round-trip — essential for batch cache lookups of 50-100 texts.</note>
+      </example>
+    </section>
+
+    <section name="batch-cached-embed">
+      <p>Full production pattern: batch embed with Redis cache check, token-limit guard, and fallback to API for uncached texts.</p>
+
+      <example type="good" title="Batch embed with Redis cache and token guard">
+        <code lang="python"><![CDATA[
+import hashlib, json, tiktoken
+import redis as redis_lib
+
+enc = tiktoken.get_encoding("cl100k_base")
+rc = redis_lib.from_url("redis://localhost:6379")
+
+def embed_batch_cached(client, texts: list[str], model: str, max_tokens: int = 8000) -> list[list[float]]:
+    results = [None] * len(texts)
+    to_embed = []  # (original_index, text, cache_key)
+
+    for i, text in enumerate(texts):
+        token_count = len(enc.encode(text))
+        if token_count > max_tokens:
+            text = enc.decode(enc.encode(text)[:max_tokens])  # truncate with warning
+
+        key = f"emb:{model}:{hashlib.sha256((model + text).encode()).hexdigest()}"
+        cached = rc.get(key)
+        if cached:
+            results[i] = json.loads(cached)
+        else:
+            to_embed.append((i, text, key))
+
+    if to_embed:
+        resp = client.embeddings.create(input=[t for _, t, _ in to_embed], model=model)
+        for j, (i, _, key) in enumerate(to_embed):
+            emb = resp.data[j].embedding
+            rc.setex(key, 86400 * 30, json.dumps(emb))
+            results[i] = emb
+
+    return results
+]]></code>
+        <note>Returns results in the same order as input texts. Cache hits bypass the API call entirely — only uncached texts go to the embedding API in one batch.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A separate caching layer (Redis) intercepts embed requests and returns cached vectors for previously seen texts. The ingestion agent reports: embedded count, cache hits, skipped (over token limit), and total tokens.</p>
+
+      <prompt purpose="embedding-ingestion-agent"><![CDATA[
+You are an embedding ingestion agent. Given: texts[], model_name, batch_size=100.
+For each batch:
+1. Check token count per text — skip any exceeding 8000 tokens (log warning).
+2. Check Redis cache — retrieve cached embeddings for texts already seen.
+3. For uncached texts: call embed API in one batch request.
+4. Store results to Redis cache (TTL=30 days).
+5. Return: {"embedded": N, "cache_hits": M, "skipped": K, "total_tokens": T}
+]]></prompt>
+
+      <antipattern>
+        <description>Cache keys that include only text hash without model name: emb:{sha256-of-text}.</description>
+        <reason>When a pipeline switches models (e.g., text-embedding-3-small to text-embedding-3-large), existing cache entries for the old model are returned for the new model's requests. The vectors are from different spaces — retrieval produces wrong results silently.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No TTL on Redis cache keys.</description>
+        <reason>Embedding vectors for deleted or updated documents accumulate indefinitely. Redis memory grows unbounded. Cache key space becomes stale over time.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://redis.readthedocs.io/"/>
+      <ref slug="embedding-model-selection"/>
+      <ref slug="embedding-cost-optimization"/>
+    </see-also>
+  </content>
+</methodology>
