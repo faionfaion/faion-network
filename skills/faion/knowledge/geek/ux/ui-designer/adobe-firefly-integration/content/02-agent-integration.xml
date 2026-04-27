@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-agent-integration" title="Agent Integration for Adobe Firefly">
+  <summary>Agentic workflow, API auth pattern, service catalog, and gotchas for automating Firefly asset generation.</summary>
+
+  <section title="Agentic Workflow">
+    <rule>
+      <statement>Agents drive Firefly via Firefly Services REST API only; in-Figma plugin usage requires a human at the keyboard.</statement>
+      <rationale>Firefly cannot be driven headlessly from inside Figma. The Services API (enterprise) is the only agent-compatible surface for batch operations.</rationale>
+    </rule>
+    <rule>
+      <statement>Implement OAuth2 client-credentials token refresh; Firefly Services tokens expire every 24 hours.</statement>
+      <rationale>A batch pipeline that forgets token renewal will fail silently mid-run. Proactive refresh before expiry is required.</rationale>
+    </rule>
+    <rule>
+      <statement>Use numVariations: 3 and require a human to select; never auto-select generated images for production.</statement>
+      <rationale>AI aesthetic outputs are non-deterministic and brand-inconsistent at scale. Human selection is the quality gate.</rationale>
+    </rule>
+  </section>
+
+  <section title="Services">
+    <list>
+      <item>Adobe Firefly Services (enterprise SaaS) — REST API, OAuth2 machine-to-machine, requires enterprise plan</item>
+      <item>Photoshop API (enterprise SaaS) — headless PS: remove-bg, smart-crop, generative fill</item>
+      <item>Cloudinary (SaaS) — CDN and transformation layer for Firefly-generated assets</item>
+      <item>Bynder / Brandfolder (SaaS DAM) — approved asset destination; enforces brand consistency</item>
+      <item>imagemagick — post-process downloaded assets (resize, crop, convert)</item>
+      <item>rclone — sync generated assets to S3/GCS/Cloudflare R2</item>
+    </list>
+  </section>
+
+  <section title="Gotchas">
+    <antipattern>
+      <description>Synchronous loops without rate-limit backoff.</description>
+      <reason>Firefly API rate limits (typically 10 req/s) require exponential backoff. Latency per generation is 2–8s; synchronous tight loops will exhaust limits and fail.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Not monitoring credit consumption.</description>
+      <reason>Credit consumption is opaque for automated pipelines; large batches exhaust allotments quickly. Monitor per-project with a dashboard and alert before budget exhaustion.</reason>
+    </antipattern>
+  </section>
+
+  <reference path="templates/batch-generate.py">Batch generation script: CSV of prompts → Firefly API → downloaded assets</reference>
+  <reference path="templates/firefly-prompt.txt">Pre-approved hero image prompt template</reference>
+</text>

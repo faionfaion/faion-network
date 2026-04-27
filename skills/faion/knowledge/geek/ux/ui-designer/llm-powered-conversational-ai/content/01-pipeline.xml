@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline" title="LLM Conversational AI Pipeline">
+  <summary>Core pipeline stages, capability comparison, and guardrail rules for LLM-powered conversational interfaces.</summary>
+
+  <section title="Pipeline Stages">
+    <rule>
+      <statement>Route user speech through ASR → LLM → TTS in sequence; never skip or merge stages.</statement>
+      <rationale>Each stage has distinct failure modes. ASR errors propagate to LLM as noisy input; LLM output must be buffered to sentence boundaries before TTS to prevent unnatural speech fragments.</rationale>
+    </rule>
+    <rule>
+      <statement>Buffer LLM streaming output to sentence boundaries before submitting to TTS.</statement>
+      <rationale>Partial-sentence TTS sounds unnatural and breaks comprehension. Sentence-boundary buffering adds minimal latency while preserving audio quality.</rationale>
+    </rule>
+    <rule>
+      <statement>Keep conversation history to 5–10 turns; summarize older context rather than dropping it.</statement>
+      <rationale>Unbounded history grows context window cost and latency without proportional benefit. Summarization preserves relevant prior context at fixed cost.</rationale>
+    </rule>
+  </section>
+
+  <section title="Capability Comparison">
+    <p>LLM-powered VUI handles complex, multi-part queries, full conversation history, ambiguity resolution, and natural follow-ups. Traditional rule-based VUI is limited to simple intents, slot-filling, pre-defined follow-ups, and no tone detection.</p>
+  </section>
+
+  <section title="Guardrails">
+    <rule>
+      <statement>Define the persona scope boundary explicitly in the system prompt; require the LLM to escalate when outside it.</statement>
+      <rationale>Without an explicit boundary, LLMs engage with off-topic queries confidently. Escalation triggers (user says "agent", "human", "frustrated") are more reliable than sentiment scoring.</rationale>
+    </rule>
+    <rule>
+      <statement>Always confirm with the user before executing real-world actions (booking, purchasing, deleting).</statement>
+      <rationale>One LLM turn of confirmation is cheap; a bad action is not. Never trust LLM-generated parameter values directly — validate against schema before execution.</rationale>
+    </rule>
+    <rule>
+      <statement>Run a guardrail validator agent on every tool call before execution.</statement>
+      <rationale>The guardrail agent must see the original ASR transcript, not just the LLM-generated call, because the LLM may hallucinate parameters not present in the user's speech.</rationale>
+    </rule>
+  </section>
+
+  <section title="Limitations">
+    <antipattern>
+      <description>Passing ASR transcript directly to LLM without confidence filtering.</description>
+      <reason>Low-confidence transcripts (e.g., "buck a flight" for "book a flight") produce wrong LLM intent. Log ASR confidence scores and require LLM confirmation for ambiguous transcripts.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Unbounded conversation history without a window limit.</description>
+      <reason>At 10–15 turns, context window cost and latency increase significantly with no proportional benefit. Use a 5–10 turn window with summarization of older context.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using sentiment scoring instead of explicit escalation triggers.</description>
+      <reason>Emotion/tone detection is imprecise — aggressive frustration and mild impatience produce similar ASR output. Use explicit keywords ("agent", "human") as escalation triggers.</reason>
+    </antipattern>
+  </section>
+
+  <see-also>
+    <link path="content/02-agent-integration.xml"/>
+    <link path="templates/persona-system-prompt.txt"/>
+    <link path="templates/guardrail-validator-prompt.txt"/>
+    <link path="templates/pipeline.py"/>
+  </see-also>
+</text>

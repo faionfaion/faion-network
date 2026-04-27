@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-ai-tools" title="Figma AI Tool Catalog and Agent Boundary">
+  <summary>Figma AI tools catalog, the agent boundary rule, and what the REST and Webhooks APIs actually expose.</summary>
+
+  <section title="Tool Catalog">
+    <list>
+      <item>Figma Make — prompt-based web app prototype generation; UI-only, no API or CLI</item>
+      <item>Figma Draw — generative AI vector sketching; UI-only, no external API</item>
+      <item>Figma Sites — publish landing pages directly from Figma; publish is UI-only; published URLs are agent-auditable</item>
+      <item>AI Image Tools — erase objects, isolate objects, expand images (raster only); operates on canvas, no export/re-import cycle; UI-only</item>
+    </list>
+  </section>
+
+  <section title="Agent Boundary Rule">
+    <rule>
+      <statement>None of Figma's AI features (Make, Draw, Sites publishing, Image Tools) can be triggered by agents via any API — all require a human in a Figma UI session.</statement>
+      <rationale>There is no API or programmatic interface to these features. Any workflow that claims to "use Figma Make via an agent" requires a human at the keyboard. Agents that assume otherwise will silently fail.</rationale>
+    </rule>
+    <rule>
+      <statement>Use Figma Webhooks instead of polling the REST API to detect file changes.</statement>
+      <rationale>Figma REST API rate limit is 150 requests/minute per token. Polling a complex file for changes quickly exhausts limits. Webhooks are event-driven and do not count against the rate limit for detection.</rationale>
+    </rule>
+  </section>
+
+  <section title="API Surface">
+    <list>
+      <item>Figma REST API — read file structure, components, styles; limited write (update existing node properties only; cannot create new frames)</item>
+      <item>Figma Webhooks API — event-driven: file_update, library_publish, comment events; triggers agent audit passes</item>
+    </list>
+  </section>
+
+  <section title="Limitations">
+    <antipattern>
+      <description>Fetching the full file JSON for complex Figma files.</description>
+      <reason>Figma file JSON can be 50–500 MB for complex files. Always request specific node subtrees using the ?ids=node_id parameter. Fetching the full file at scale will exhaust rate limits and memory.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Figma Sites published URLs as canonical references without re-checking after file changes.</description>
+      <reason>Figma Sites published URLs do not reflect file changes until a human manually re-publishes. Agents monitoring the URL may audit stale content if they assume the URL is always current.</reason>
+    </antipattern>
+  </section>
+</text>
