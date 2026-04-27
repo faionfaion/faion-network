@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embeddings-production-ops">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production operations for embedding systems: latency SLOs, scalability patterns, monitoring, debugging poor retrieval and dimension mismatches, cost analysis, and model migration.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>production</tag>
+      <tag>monitoring</tag>
+      <tag>debugging</tag>
+      <tag>cost-optimization</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="embeddings-evaluation"/>
+      <ref slug="embeddings-batch-and-cache"/>
+      <ref slug="llm-observability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Embedding System Production Operations</title>
+
+    <summary>Running embedding systems in production requires attention to latency SLOs, rate limit handling, cost tracking, fault tolerance, and model migration. The most common production failure modes are embedding drift (model version mismatch), silent token truncation, and missing monitoring until costs spike. Set up monitoring before launch, not after.</summary>
+
+    <why>
+      <p>Embedding pipelines fail silently in production. Embedding drift (mixing old and new model vectors in the same index after a model update) produces hard-to-debug recall degradation. Silent token truncation at the model limit changes semantic content without errors. Rate limit throttling during large indexing jobs corrupts batch order without error if not handled. These failures share a common pattern: they degrade quality rather than raise exceptions, making them invisible until user metrics drop.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up monitoring and alerting for a new embedding pipeline.</item>
+        <item>Debugging poor retrieval quality in production.</item>
+        <item>Planning a model migration or version update.</item>
+        <item>Optimizing costs as embedding volume grows.</item>
+        <item>Hardening a prototype for production deployment.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Early prototype with under 1000 documents — apply basic patterns from embeddings-provider-apis first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="production-readiness-checklist">
+      <p>Performance requirements to verify before launch:</p>
+      <list>
+        <item>p50 latency measured and within target.</item>
+        <item>p95 latency measured and within target.</item>
+        <item>p99 latency measured and within target.</item>
+        <item>Throughput (embeddings per second) meets peak demand.</item>
+        <item>Concurrent request handling tested.</item>
+        <item>Batch size optimized for provider limits and throughput.</item>
+        <item>Memory usage acceptable under load.</item>
+        <item>GPU utilization optimal if applicable.</item>
+      </list>
+      <p>Scalability requirements:</p>
+      <list>
+        <item>Stateless design (no session state) to enable horizontal scaling.</item>
+        <item>Load balancer configured.</item>
+        <item>Auto-scaling rules defined.</item>
+        <item>Health checks implemented.</item>
+        <item>Client-side rate limiting implemented with exponential backoff.</item>
+        <item>Queue for overflow requests.</item>
+      </list>
+      <p>Reliability requirements:</p>
+      <list>
+        <item>Retry logic with exponential backoff and jitter.</item>
+        <item>Fallback model configured for provider outages.</item>
+        <item>Circuit breaker pattern for cascading failures.</item>
+        <item>Graceful degradation plan (e.g. keyword fallback when embeddings unavailable).</item>
+      </list>
+    </section>
+
+    <section name="monitoring-setup">
+      <p>Metrics to track from day one:</p>
+      <list>
+        <item>Request/response logging with model identifier and token count per request.</item>
+        <item>Error rate alerting — spike in 429s indicates rate limit issues.</item>
+        <item>Latency alerting — p95 above threshold indicates performance regression.</item>
+        <item>Cost monitoring — per-request cost calculated, monthly projection tracked.</item>
+        <item>Cache hit rate dashboard — drop below 50% on a stable corpus indicates cache misconfiguration.</item>
+        <item>Embedding dimensionality consistency check — alert if stored vector dims differ from current model dims.</item>
+      </list>
+    </section>
+
+    <section name="security">
+      <p>API key and data security:</p>
+      <list>
+        <item>Keys not in source code — use environment variables or secrets manager.</item>
+        <item>Keys rotated regularly (monthly).</item>
+        <item>Access logging enabled.</item>
+        <item>Principle of least privilege — separate keys per environment.</item>
+        <item>PII handling reviewed — do not embed raw PII without consent and data retention policy.</item>
+        <item>Embedding storage encrypted at rest.</item>
+        <item>Access controls implemented on vector DB.</item>
+      </list>
+    </section>
+
+    <section name="debugging-poor-retrieval">
+      <p>Common issues and fixes:</p>
+      <list>
+        <item>Low retrieval quality → check chunk size: try smaller chunks (256-512 tokens for Q&amp;A).</item>
+        <item>High latency → increase batch size, add caching for repeated queries.</item>
+        <item>High costs → implement caching, deduplicate before embedding.</item>
+        <item>Rate limit errors → add exponential backoff, reduce concurrency.</item>
+        <item>Dimension mismatch → verify same model used for all vectors in the index.</item>
+        <item>Poor multilingual → switch to multilingual model (BGE-M3 or embed-multilingual-v3.0).</item>
+        <item>Token limit exceeded → implement proper text chunking before embedding.</item>
+      </list>
+    </section>
+
+    <section name="debugging-prompts">
+      <prompt purpose="debug-poor-retrieval">
+<![CDATA[
+My embedding-based retrieval is performing poorly. Help me debug.
+
+Symptoms:
+- Expected Recall@10: [%]
+- Actual Recall@10: [%]
+- Specific failure patterns: [describe]
+
+Example Failures:
+Query: "[example query that fails]"
+Expected documents: "[titles/snippets of expected results]"
+Actual top results: "[titles/snippets of actual results]"
+
+System Configuration:
+- Embedding model: [model name]
+- Dimensions: [number]
+- Chunk size: [tokens]
+- Vector DB: [name]
+- Distance metric: [cosine/euclidean/dot product]
+
+Data Characteristics:
+- Document types: [description]
+- Average document length: [tokens]
+- Vocabulary characteristics: [technical, general, domain-specific]
+
+Please help me:
+1. Identify likely root causes
+2. Diagnostic queries to run
+3. Quick fixes to try
+4. Systematic debugging approach
+5. Metrics to track during debugging
+]]>
+      </prompt>
+      <prompt purpose="debug-dimension-mismatch">
+<![CDATA[
+I'm getting dimension mismatch errors in my embedding system.
+
+Error Message: [paste exact error]
+Setup:
+- Embedding model(s) used: [list]
+- Expected dimensions: [number]
+- Actual dimensions: [number]
+- Vector database: [name]
+- Index configuration: [details]
+
+History:
+- When did this start: [date/event]
+- Recent changes: [model updates, config changes, etc.]
+
+Please help me:
+1. Diagnose the root cause
+2. Fix the immediate issue
+3. Prevent future occurrences
+4. Handle existing data with wrong dimensions
+]]>
+      </prompt>
+      <prompt purpose="debug-slow-embedding">
+<![CDATA[
+Embedding generation is slower than expected. Help me diagnose.
+
+Performance:
+- Expected: [embeddings/second]
+- Actual: [embeddings/second]
+- Batch size: [number]
+
+Setup:
+- Model: [name]
+- Hardware: [CPU/GPU specs]
+- Memory: [available RAM/VRAM]
+- Framework: [sentence-transformers, OpenAI SDK, etc.]
+
+Observations:
+- CPU utilization: [%]
+- GPU utilization: [%]
+- Memory usage: [%]
+- Network latency (if API): [ms]
+
+Please help me:
+1. Identify the bottleneck
+2. Optimize for my hardware
+3. Benchmark properly
+4. Set realistic expectations
+]]>
+      </prompt>
+    </section>
+
+    <section name="cost-analysis-prompts">
+      <prompt purpose="total-cost-of-ownership">
+<![CDATA[
+Help me calculate the total cost of ownership for my embedding infrastructure.
+
+Option A: Cloud API
+- Provider: [OpenAI/Voyage/Cohere]
+- Model: [name]
+- Monthly volume: [tokens]
+
+Option B: Self-hosted
+- Model: [name]
+- Hardware needed: [GPU type, count]
+- Cloud vs on-prem: [preference]
+
+Hidden Costs to Consider:
+- Engineering time: [hourly rate]
+- Maintenance overhead: [hours/month]
+- Monitoring/observability: [current tools]
+
+Timeline:
+- Project duration: [months/years]
+- Expected growth rate: [% per month]
+
+Please analyze:
+1. Year 1 TCO comparison
+2. Year 3 TCO comparison
+3. Break-even point for self-hosting
+4. Risk factors for each option
+5. Recommendation with rationale
+]]>
+      </prompt>
+      <prompt purpose="cost-projection">
+<![CDATA[
+Help me project embedding costs as my system scales.
+
+Current State:
+- Monthly volume: [tokens]
+- Monthly cost: [$]
+- Model: [name]
+
+Growth Projections:
+- Document growth: [% per month]
+- Query growth: [% per month]
+- New use cases planned: [description]
+
+Budget Constraints:
+- Maximum acceptable monthly cost: [$]
+- When this becomes a problem: [month/date]
+
+Please provide:
+1. Cost projection curve (6, 12, 24 months)
+2. When budget will be exceeded
+3. Optimization levers to pull
+4. Alternative architectures for scale
+5. Phased approach to manage costs
+]]>
+      </prompt>
+      <prompt purpose="optimization">
+<![CDATA[
+Help me optimize embedding costs for my production system.
+
+Current State:
+- Model: [model name]
+- Monthly volume: [tokens embedded]
+- Current monthly cost: [$]
+- Cache hit rate: [%]
+- Average batch size: [texts per request]
+
+Usage Patterns:
+- New documents per day: [count]
+- Queries per day: [count]
+- Duplicate/similar text ratio: [%]
+- Document update frequency: [daily/weekly/rarely]
+
+Quality Baseline:
+- Current Recall@10: [%]
+- Minimum acceptable Recall@10: [%]
+
+Please suggest:
+1. Quick wins (no quality impact)
+2. Trade-offs (some quality for significant savings)
+3. Architectural changes for long-term optimization
+4. Expected savings for each recommendation
+]]>
+      </prompt>
+      <prompt purpose="latency-optimization">
+<![CDATA[
+Help me reduce embedding latency in my application.
+
+Current Performance:
+- Embedding latency (p50): [ms]
+- Embedding latency (p95): [ms]
+- Embedding latency (p99): [ms]
+- Target latency (p95): [ms]
+
+Setup:
+- Model: [model name]
+- Deployment: [API / local GPU / local CPU]
+- Batch size: [current batch size]
+- Concurrent requests: [count]
+
+Bottlenecks Identified: [list any known bottlenecks]
+
+Please recommend:
+1. Model-level optimizations
+2. Infrastructure optimizations
+3. Architectural patterns (caching, pre-computation)
+4. Trade-offs to consider
+5. Expected latency improvement for each change
+]]>
+      </prompt>
+    </section>
+
+    <section name="model-migration">
+      <p>Model migration procedure — all steps are required. Skipping any step risks embedding drift (mixed-model vectors in the same index):</p>
+      <list>
+        <item>Step 1: Benchmark new model on your evaluation data — verify quality improvement justifies migration cost.</item>
+        <item>Step 2: Test in staging with shadow traffic — do not migrate production until staging passes quality gates.</item>
+        <item>Step 3: Prepare rollback plan — keep old index available and keep old model deployed until new index is verified.</item>
+        <item>Step 4: Re-embed all documents with the new model — no partial migration is possible.</item>
+        <item>Step 5: Run A/B test routing a fraction of traffic to the new index — verify quality metrics before full cutover.</item>
+        <item>Step 6: Monitor quality metrics closely for the first week after cutover.</item>
+        <item>Step 7: Document the change with old model, new model, quality delta, and cost impact.</item>
+        <item>Step 8: Decommission old index and old model after stability confirmed.</item>
+      </list>
+    </section>
+
+    <section name="migration-prompts">
+      <prompt purpose="model-migration-planning">
+<![CDATA[
+Help me plan a migration from one embedding model to another.
+
+Current State:
+- Model: [current model]
+- Dimensions: [number]
+- Indexed documents: [count]
+- Vector DB: [name]
+
+Target State:
+- Model: [new model]
+- Dimensions: [number]
+- Reason for migration: [quality, cost, features]
+
+Constraints:
+- Downtime tolerance: [none / minutes / hours]
+- Recompute budget: [can recompute all / only new / incremental]
+- Timeline: [deadline]
+
+Please provide:
+1. Migration strategy options
+2. Recommended approach for my constraints
+3. Step-by-step migration plan
+4. Rollback plan
+5. Validation strategy
+6. Risk mitigation
+]]>
+      </prompt>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Never mix embeddings from different model versions in the same vector index. When updating the embedding model, re-embed the entire corpus before switching query-time to the new model.</statement>
+        <rationale>Embedding spaces are model-specific. Mixed-model vectors produce unpredictable similarity scores because the geometric relationships differ between model versions. No partial migration is possible.</rationale>
+      </rule>
+      <rule>
+        <statement>Rate limits on embedding APIs (OpenAI: 1M tokens/min on tier 1) will throttle indexing of large corpora. Implement exponential backoff with jitter: delay = (2^attempt * base_delay) + random.random().</statement>
+        <rationale>Simple retry without backoff amplifies the thundering herd problem and extends the throttling window. Jitter prevents synchronized retries from multiple workers hitting the rate limit simultaneously.</rationale>
+      </rule>
+    </rules>
+
+    <antipattern>
+      <description>Starting production without monitoring for cache hit rate, error rate, and latency — only adding monitoring after cost spikes or user complaints.</description>
+      <reason>Embedding cost and quality regressions are invisible without metrics. Cache misconfiguration produces 10x cost overruns silently. Error rate spikes from rate limits corrupt indexing jobs without visible exceptions. Set up monitoring on day one.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Partial model migration: re-embedding only new documents with the new model while leaving old documents with the old model.</description>
+      <reason>This produces embedding drift — the index contains vectors from two incompatible geometric spaces. Similarity scores become meaningless and recall degrades silently. Full re-embedding is the only safe migration path.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Ignoring silent truncation: embedding documents that exceed the token limit without pre-truncation or chunking.</description>
+      <reason>All embedding models silently truncate at their token limit (typically 512-8192 tokens). The embedding reflects only the truncated portion. Long documents must be chunked before embedding — see chunking-strategies methodology.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="embeddings-evaluation"/>
+      <ref slug="embeddings-batch-and-cache"/>
+      <ref slug="llm-observability"/>
+      <ref slug="chunking-strategies"/>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+      <link href="https://docs.voyageai.com/docs/embeddings"/>
+    </see-also>
+  </content>
+</methodology>
