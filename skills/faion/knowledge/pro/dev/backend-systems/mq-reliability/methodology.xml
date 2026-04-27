@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mq-reliability">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Message queue reliability: publisher confirms, DLQ with alerting, exponential backoff with jitter, backpressure via prefetch limits, schema versioning, and replay runbooks for production incidents.</summary>
+    <tags>
+      <tag>message-queues</tag>
+      <tag>reliability</tag>
+      <tag>dead-letter-queue</tag>
+      <tag>backpressure</tag>
+      <tag>schema-versioning</tag>
+    </tags>
+    <category>messaging</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="mq-patterns"/>
+      <ref slug="mq-broker-implementations"/>
+      <ref slug="mq-idempotent-consumers"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Message Queue Reliability</title>
+
+    <summary>Reliable message queues require four complementary practices: publisher confirms so "published" means durably stored (not just buffered); DLQ with alerting so poison messages are isolated rather than lost silently; exponential backoff with jitter so retry storms do not DOS the broker; and backpressure via prefetch limits so slow consumers do not starve siblings or OOM the broker.</summary>
+
+    <why>
+      <p>The most common failure mode is silent data loss. A producer that publishes without confirms only knows the message reached the broker's TCP buffer. If the broker crashes before writing to disk, the message is gone. A consumer that nacks-to-DLQ without an alert produces a pile of failed messages that nobody notices until a business process stops working.</p>
+      <p>The second most common failure is retry storms. A broker hiccup triggers simultaneous retries from all consumers. Without backoff and jitter, all retries land at the same instant, overwhelm the broker, and extend the outage.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any queue that carries business-critical messages where loss means a lost order, payment, or user action.</item>
+        <item>Any queue with a retry policy — applies backoff and jitter rules.</item>
+        <item>Any queue that routes to a DLQ — applies alerting rules.</item>
+        <item>Any schema that changes — applies versioning rules.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fire-and-forget logging pipelines where occasional message loss is acceptable — publisher confirms and DLQs add overhead without value.</item>
+        <item>Ephemeral event streams for real-time dashboards where stale data is simply not displayed — at-most-once delivery is correct.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="publisher-confirms">
+      <rule testable="true">
+        <statement>Producers MUST use publisher confirms (RabbitMQ) or acks=all (Kafka) before treating a message as published. Without confirms, "published" means "written to the local TCP send buffer" — a broker crash before flush loses the message with no indication of failure.</statement>
+        <rationale>RabbitMQ publisher confirms are asynchronous broker acks sent after the message is written to the durable queue. Kafka acks=all requires the leader and all in-sync replicas to acknowledge. Without either, the message is acknowledged by the broker's TCP stack, not its storage engine.</rationale>
+      </rule>
+
+      <example type="good" title="RabbitMQ publisher confirms">
+        <code lang="python"><![CDATA[
+import pika
+
+def publish_with_confirms(channel, queue: str, body: bytes):
+    # Enable publisher confirms on the channel
+    channel.confirm_delivery()
+
+    try:
+        channel.basic_publish(
+            exchange='',
+            routing_key=queue,
+            body=body,
+            properties=pika.BasicProperties(delivery_mode=2),  # persistent
+        )
+        # confirm_delivery() makes basic_publish block until broker acks
+        # If delivery fails, raises pika.exceptions.NackError
+    except pika.exceptions.NackError:
+        raise RuntimeError("broker nacked message — retry or log for manual review")
+]]></code>
+        <note>With confirm_delivery() enabled, basic_publish raises NackError if the broker cannot accept the message durably. Catch and handle — do not silently swallow.</note>
+      </example>
+
+      <example type="good" title="Kafka producer with acks=all">
+        <code lang="python"><![CDATA[
+from confluent_kafka import Producer
+
+producer = Producer({
+    'bootstrap.servers': 'localhost:9092',
+    'acks': 'all',               # Wait for all in-sync replicas
+    'enable.idempotence': True,  # Exactly-once producer-side dedup
+    'retries': 5,
+    'retry.backoff.ms': 300,
+})
+
+def delivery_report(err, msg):
+    if err:
+        raise RuntimeError(f"Delivery failed: {err}")
+
+producer.produce('orders', key='order-123', value=b'...', callback=delivery_report)
+producer.flush()  # Block until all pending messages are delivered
+]]></code>
+        <note>enable.idempotence=True activates Kafka's producer-side exactly-once. It requires acks=all and retries &gt; 0. Without it, network retries can produce duplicates even with acks=all.</note>
+      </example>
+    </section>
+
+    <section name="dlq-and-alerting">
+      <rule testable="true">
+        <statement>Every queue that can receive a failure MUST have a DLQ configured before going live, and DLQ depth MUST trigger an alert when non-zero for more than 5 minutes. A DLQ without an alert is equivalent to no DLQ.</statement>
+        <rationale>Without a DLQ, failed messages either retry forever (blocking the queue and consuming worker capacity) or are silently lost (nack without requeue). Without an alert, the DLQ becomes a graveyard — messages accumulate unnoticed while the business process stops working.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every DLQ deployment MUST include a replay runbook (script or documented procedure) that: reads messages from the DLQ, applies the fix, republishes to the main queue, and deletes from the DLQ. The runbook must be tested before the queue goes live.</statement>
+        <rationale>A DLQ without a replay path is a write-only dead end. The messages carry the evidence of what failed; the replay is how you recover. Teams that skip the runbook discover they cannot replay safely under production pressure.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>DLQ with no alert and no replay runbook — the common "set it and forget it" configuration.</description>
+        <reason>DLQ messages are production incidents in slow motion. Without an alert, no one knows they are accumulating. Without a runbook, the replay is ad-hoc and risky. Both are required before a queue goes live.</reason>
+      </antipattern>
+    </section>
+
+    <section name="retry-policy">
+      <rule testable="true">
+        <statement>Retry policies MUST specify: max retries (hard ceiling), initial backoff interval, backoff multiplier, maximum backoff interval, and jitter (randomization ±20-50% of the computed delay). Infinite retry without a DLQ ceiling is forbidden.</statement>
+        <rationale>Without a hard ceiling, a poison message retries forever, consumes a worker, and blocks the queue. Without jitter, all consumers retrying after a broker hiccup fire simultaneously at the same instant, producing a thundering-herd that extends the outage.</rationale>
+      </rule>
+
+      <example type="good" title="Exponential backoff with jitter">
+        <code lang="python"><![CDATA[
+import random
+import time
+
+def retry_with_backoff(
+    fn,
+    max_retries: int = 5,
+    initial_delay: float = 1.0,
+    multiplier: float = 2.0,
+    max_delay: float = 60.0,
+    jitter: float = 0.3,
+):
+    delay = initial_delay
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except TransientError as e:
+            if attempt == max_retries:
+                raise  # Exhausted retries; caller routes to DLQ
+            # Add jitter: delay * (1 ± jitter)
+            actual_delay = delay * (1 + random.uniform(-jitter, jitter))
+            time.sleep(min(actual_delay, max_delay))
+            delay = min(delay * multiplier, max_delay)
+        except TerminalError:
+            raise  # Do not retry; route to DLQ immediately
+]]></code>
+        <note>Distinguish TransientError (retry) from TerminalError (skip to DLQ immediately). Retrying a validation error or a permanent 400 response wastes retries and delays DLQ routing.</note>
+      </example>
+
+      <antipattern>
+        <description>Naive while True retry loop without backoff or ceiling on broker hiccup.</description>
+        <reason>All consumers retry simultaneously with zero delay, flooding the broker with requests at the exact moment it is recovering. This produces a retry storm that extends the outage. Use exponential backoff with jitter and a hard retry ceiling.</reason>
+      </antipattern>
+    </section>
+
+    <section name="backpressure">
+      <rule testable="true">
+        <statement>Set prefetch_count (RabbitMQ) or max.poll.records (Kafka) to limit the number of in-flight messages per consumer. A slow consumer without a prefetch limit gobbles the queue and starves sibling consumers, concentrating all unprocessed messages on one worker.</statement>
+        <rationale>Without prefetch limits, a broker dispatches all available messages to the first available consumer. If that consumer is slow or fails, all messages are blocked. Prefetch_count=10 is a safe starting point; tune based on message processing time and consumer count.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set queue length limits on the broker (RabbitMQ x-max-length, SQS MessageRetentionPeriod, Kafka log.retention.bytes) to prevent OOM when producers outpace consumers. Combine with producer-side acks to propagate backpressure to the producer.</statement>
+        <rationale>Producers without flow control fill brokers indefinitely. A queue with no length limit and a slow consumer is a time bomb. Length limits force the system to shed load visibly rather than silently accumulating unbounded backlogs.</rationale>
+      </rule>
+    </section>
+
+    <section name="schema-versioning">
+      <rule testable="true">
+        <statement>Message schemas MUST be registered in a schema registry (Avro, Protobuf, or JSON Schema) and versioned. Consumers MUST be backward-compatible across at least one schema version. Adding optional fields is allowed without a version bump; removing or renaming existing fields requires a new version with a migration fence.</statement>
+        <rationale>Schema drift is the most common source of deserialization failures in production. Without a registry, agents add fields without bumping the version, old consumers crash on the unknown field, and the failure cascades silently to the DLQ before anyone notices.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Adding a required field to a message schema without a version bump and consumer migration.</description>
+        <reason>Old consumers that do not know the new required field fail on every message after the schema change. Deploy consumer first (backward-compatible, ignores new field), then deploy producer that sends the new field, then bump the schema version and make the field required.</reason>
+      </antipattern>
+    </section>
+
+    <section name="monitoring">
+      <p>Minimum observable signals for any production queue:</p>
+      <list>
+        <item>Queue depth (messages waiting) — growing depth indicates consumer lag or crash.</item>
+        <item>Consumer lag (Kafka: offset lag per partition) — leading indicator of throughput issues.</item>
+        <item>DLQ size — non-zero for more than 5 minutes triggers PagerDuty/alert.</item>
+        <item>Oldest unacked message age — indicates a consumer stuck on a poison message.</item>
+        <item>Processing error rate (messages nacked / messages consumed) — baseline for SLO.</item>
+        <item>Message rate (in/out) — detect sudden spikes or drops in producer volume.</item>
+      </list>
+
+      <checklist>
+        <check>Publisher confirms or acks=all enabled on every producer.</check>
+        <check>DLQ configured on every queue before go-live.</check>
+        <check>Alert on DLQ depth &gt; 0 for more than 5 minutes.</check>
+        <check>DLQ replay runbook written and tested.</check>
+        <check>Retry policy specifies max retries, backoff, multiplier, max delay, and jitter.</check>
+        <check>Prefetch count or max.poll.records set on every consumer.</check>
+        <check>Queue length limit set on broker to prevent unbounded growth.</check>
+        <check>Schema registered in a registry with version; consumers backward-compatible by one version.</check>
+        <check>Metrics: queue depth, consumer lag, DLQ size, oldest-unacked-age, error rate, message rate.</check>
+      </checklist>
+    </section>
+
+    <section name="exactly-once-reality">
+      <p>Exactly-once delivery semantics: what brokers actually provide and what the application must add.</p>
+
+      <rule testable="true">
+        <statement>Do NOT rely on broker-advertised exactly-once delivery without verifying all required configurations are active: Kafka requires enable.idempotence=true on the producer, a transactional producer session, and isolation.level=read_committed on the consumer. RabbitMQ requires publisher confirms plus application-level deduplication. A single missing config silently reverts to at-least-once.</statement>
+        <rationale>Exactly-once is the hardest guarantee in distributed systems. All major brokers that claim it require specific, non-default configuration on both sides of the pipe. Agents frequently enable one side but not the other, producing silent duplicates in production.</rationale>
+      </rule>
+
+      <p>Practical recommendation: build idempotent consumers (see mq-idempotent-consumers) and accept at-least-once. This is more portable, simpler to reason about, and survives broker upgrades that change EOS behavior.</p>
+    </section>
+
+    <see-also>
+      <ref slug="mq-patterns"/>
+      <ref slug="mq-broker-implementations"/>
+      <ref slug="mq-idempotent-consumers"/>
+      <link href="https://kafka.apache.org/documentation/"/>
+      <link href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html"/>
+      <link href="https://www.rabbitmq.com/docs/confirms"/>
+    </see-also>
+  </content>
+</methodology>
