@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="iac-patterns-testing">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Four-level IaC testing pyramid: static analysis (terraform validate, tflint), unit tests (native terraform test), integration tests (Terratest in Go), and policy tests (OPA/Conftest, Sentinel).</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>testing</tag>
+      <tag>terratest</tag>
+      <tag>opa</tag>
+      <tag>iac</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+      <language>go</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-cicd"/>
+      <ref slug="terraform-modules-structure"/>
+    </related>
+  </metadata>
+  <content>
+    <title>IaC Testing Patterns</title>
+    <summary>A four-level testing pyramid for Terraform modules: static analysis catches syntax and policy errors in seconds, native terraform test validates module contracts with plan-only or mock providers, Terratest deploys real resources for integration verification, and OPA/Conftest enforces compliance policies as code. Each level has a distinct cost/confidence tradeoff.</summary>
+
+    <why>
+      <p>Untested Terraform modules accumulate hidden bugs: resources that plan but never apply cleanly, outputs that work in dev but fail in prod, security misconfigurations invisible to fmt/validate. The four testing levels address different failure modes: static analysis catches structural errors; unit tests validate module contracts without cloud calls; integration tests prove real resources behave correctly; policy tests enforce compliance requirements as executable rules rather than wiki pages.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any reusable module — add at minimum static analysis + a plan-only terraform test before publishing.</item>
+        <item>Modules that create security-sensitive resources (IAM, security groups, S3 buckets) — add OPA/Conftest policy tests.</item>
+        <item>Modules consumed by multiple teams — add integration tests (Terratest) to validate real resource behavior.</item>
+        <item>Pre-merge CI gates — run static analysis and plan tests on every PR; integration tests on merge to main.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off root modules not intended for reuse — static analysis only is sufficient.</item>
+        <item>Integration tests (Terratest) in a tight inner loop — they create real cloud resources; use plan-only tests for fast feedback during development.</item>
+        <item>Policy tests when no compliance requirements exist — OPA rules need maintenance; don't add them speculatively.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="testing-levels">
+      <p>The four testing levels and their tooling:</p>
+      <rule testable="true">
+        <statement>Level 1 — Static Analysis: run terraform fmt, terraform validate, and tflint on every PR. Also run checkov or tfsec for security scanning. These must pass before any plan.</statement>
+        <rationale>Static analysis catches structural errors (missing required arguments, deprecated syntax, misconfigured provider blocks) in seconds without cloud credentials. They are the lowest-cost gate.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Level 2 — Unit Testing: use native terraform test (.tftest.hcl files in tests/) with command = plan and mock providers. Test: default inputs produce correct plan, all input validations reject invalid values, outputs match expected values.</statement>
+        <rationale>Plan-only tests with mocks run in seconds, require no cloud credentials, and validate the module's contract without creating real resources.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Level 3 — Integration Testing: use Terratest (Go) to deploy real resources in a dedicated test environment. Always defer terraform.Destroy to ensure cleanup. Validate resource properties via cloud SDK calls after apply.</statement>
+        <rationale>Only integration tests catch issues that surface only after apply: IAM propagation delays, service quotas, cross-resource dependency ordering, and eventual-consistency bugs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Level 4 — Policy Testing: use OPA/Conftest or Sentinel to enforce compliance rules (encryption required, naming conventions, required tags, no public access). Policy tests run against the plan output (JSON) before apply.</statement>
+        <rationale>Policy-as-code makes compliance requirements testable and auditable; a Conftest rule that blocks public S3 buckets is more reliable than a wiki page or manual review.</rationale>
+      </rule>
+    </section>
+
+    <section name="static-analysis">
+      <checklist>
+        <check>terraform fmt applied (no formatting diff)</check>
+        <check>terraform validate passes</check>
+        <check>tflint configured and passes</check>
+        <check>checkov or tfsec security scanning passes</check>
+        <check>No provider credentials in code</check>
+      </checklist>
+    </section>
+
+    <section name="unit-testing">
+      <p>Native terraform test uses .tftest.hcl files with command = plan or command = apply. Plan tests are fast and require no credentials:</p>
+      <example type="good" title="Native terraform test — plan-only assertions">
+        <code lang="hcl"><![CDATA[# tests/s3_bucket.tftest.hcl
+
+variables {
+  bucket_name = "test-bucket-example"
+  tags = {
+    Environment = "test"
+  }
+}
+
+run "bucket_creates_successfully" {
+  command = plan
+
+  assert {
+    condition     = aws_s3_bucket.this.bucket == "test-bucket-example"
+    error_message = "Bucket name does not match expected value"
+  }
+
+  assert {
+    condition     = aws_s3_bucket_versioning.this.versioning_configuration[0].status == "Enabled"
+    error_message = "Versioning should be enabled by default"
+  }
+}
+
+run "bucket_blocks_public_access" {
+  command = plan
+
+  assert {
+    condition     = aws_s3_bucket_public_access_block.this.block_public_acls == true
+    error_message = "Public ACLs should be blocked"
+  }
+
+  assert {
+    condition     = aws_s3_bucket_public_access_block.this.block_public_policy == true
+    error_message = "Public policy should be blocked"
+  }
+}]]></code>
+      </example>
+      <example type="good" title="terraform test template — with mock provider and validation testing">
+        <code lang="hcl"><![CDATA[# tests/module.tftest.hcl
+
+# Default variable values for tests
+variables {
+  name        = "test-resource"
+  environment = "dev"
+  tags = {
+    Test = "true"
+  }
+}
+
+# Plan-only test (fast, no resources)
+run "validates_plan" {
+  command = plan
+
+  assert {
+    condition     = aws_resource.main.name == "test-resource"
+    error_message = "Resource name should match input"
+  }
+}
+
+# Apply test with mock provider
+run "creates_resource_with_mocks" {
+  command = apply
+
+  providers = {
+    aws = aws.mock
+  }
+
+  assert {
+    condition     = output.id != ""
+    error_message = "Should output resource ID"
+  }
+}
+
+# Test input validation
+run "rejects_invalid_environment" {
+  command = plan
+
+  variables {
+    environment = "invalid"
+  }
+
+  expect_failures = [
+    var.environment,
+  ]
+}]]></code>
+      </example>
+      <checklist>
+        <check>Test files in tests/ directory</check>
+        <check>Input validation tested — invalid inputs cause expected failures</check>
+        <check>Output contracts verified — outputs match expected values</check>
+        <check>Mock providers used for unit tests</check>
+        <check>Plan-only tests for quick feedback during development</check>
+      </checklist>
+    </section>
+
+    <section name="integration-testing">
+      <p>Terratest deploys real resources and validates them via cloud SDK calls. Always use defer for Destroy to ensure cleanup even on test failure:</p>
+      <example type="good" title="Terratest — S3 bucket integration test">
+        <code lang="go"><![CDATA[// tests/s3_bucket_test.go
+package test
+
+import (
+    "testing"
+    "github.com/gruntwork-io/terratest/modules/terraform"
+    "github.com/gruntwork-io/terratest/modules/aws"
+    "github.com/stretchr/testify/assert"
+)
+
+func TestS3BucketModule(t *testing.T) {
+    t.Parallel()
+
+    awsRegion := "us-east-1"
+    bucketName := fmt.Sprintf("test-bucket-%s", random.UniqueId())
+
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+        TerraformDir: "../modules/s3-bucket",
+        Vars: map[string]interface{}{
+            "bucket_name":        bucketName,
+            "versioning_enabled": true,
+        },
+        EnvVars: map[string]string{
+            "AWS_DEFAULT_REGION": awsRegion,
+        },
+    })
+
+    defer terraform.Destroy(t, terraformOptions)
+
+    terraform.InitAndApply(t, terraformOptions)
+
+    // Verify bucket exists
+    bucketId := terraform.Output(t, terraformOptions, "bucket_id")
+    assert.Equal(t, bucketName, bucketId)
+
+    // Verify encryption
+    encryption := aws.GetS3BucketEncryption(t, awsRegion, bucketName)
+    assert.Equal(t, "AES256", encryption)
+
+    // Verify versioning
+    versioning := aws.GetS3BucketVersioning(t, awsRegion, bucketName)
+    assert.Equal(t, "Enabled", versioning)
+}]]></code>
+      </example>
+      <example type="good" title="Terratest template — basic and production-variant tests">
+        <code lang="go"><![CDATA[// tests/module_test.go
+package test
+
+import (
+    "fmt"
+    "testing"
+    "time"
+
+    "github.com/gruntwork-io/terratest/modules/random"
+    "github.com/gruntwork-io/terratest/modules/terraform"
+    "github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/require"
+)
+
+func TestModuleBasic(t *testing.T) {
+    t.Parallel()
+
+    uniqueID := random.UniqueId()
+    name := fmt.Sprintf("test-%s", uniqueID)
+
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+        TerraformDir: "../",
+        Vars: map[string]interface{}{
+            "name":        name,
+            "environment": "dev",
+        },
+        EnvVars: map[string]string{
+            "AWS_DEFAULT_REGION": "us-east-1",
+        },
+        // Retry settings for flaky operations
+        MaxRetries:         3,
+        TimeBetweenRetries: 5 * time.Second,
+    })
+
+    // Cleanup resources after test
+    defer terraform.Destroy(t, terraformOptions)
+
+    // Deploy infrastructure
+    terraform.InitAndApply(t, terraformOptions)
+
+    // Validate outputs
+    resourceID := terraform.Output(t, terraformOptions, "id")
+    require.NotEmpty(t, resourceID, "Resource ID should not be empty")
+
+    resourceArn := terraform.Output(t, terraformOptions, "arn")
+    assert.Contains(t, resourceArn, name, "ARN should contain resource name")
+}
+
+func TestModuleProduction(t *testing.T) {
+    t.Parallel()
+
+    terraformOptions := terraform.WithDefaultRetryableErrors(t, &terraform.Options{
+        TerraformDir: "../",
+        Vars: map[string]interface{}{
+            "name":        fmt.Sprintf("test-prod-%s", random.UniqueId()),
+            "environment": "prod",
+        },
+    })
+
+    defer terraform.Destroy(t, terraformOptions)
+    terraform.InitAndApply(t, terraformOptions)
+
+    // Production-specific assertions
+    // Verify multi-AZ, encryption, etc.
+}]]></code>
+      </example>
+      <checklist>
+        <check>Dedicated test environment (never test against prod)</check>
+        <check>Resources actually deployed — not just planned</check>
+        <check>Functionality validated via cloud SDK (encryption, versioning, connectivity)</check>
+        <check>Resources cleaned up after test (defer Destroy)</check>
+        <check>Tests run in CI pipeline on merge</check>
+      </checklist>
+    </section>
+
+    <section name="policy-testing">
+      <p>OPA/Conftest and Sentinel enforce compliance as executable rules against plan JSON output:</p>
+      <checklist>
+        <check>OPA/Conftest policies defined for security requirements</check>
+        <check>Security policies enforced (encryption, public access, least privilege)</check>
+        <check>Cost policies applied (instance type restrictions)</check>
+        <check>Naming conventions validated</check>
+        <check>Tag requirements checked</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts-testing">
+      <prompt purpose="Write tests for a Terraform module">
+        <![CDATA[Write tests for this Terraform module:
+
+[PASTE_MODULE_CODE]
+
+Create tests using [terraform test / Terratest]:
+
+Test cases needed:
+1. Basic deployment with required inputs only
+2. Deployment with all optional inputs
+3. Input validation (should reject invalid inputs)
+4. Output verification
+5. [ENVIRONMENT]-specific behavior
+
+For integration tests, also verify:
+- Resources are created correctly
+- Security configurations are applied
+- Connectivity works as expected]]>
+      </prompt>
+      <prompt purpose="Add input validation rules">
+        <![CDATA[Add comprehensive validation rules to these variables:
+
+[PASTE_VARIABLES_TF]
+
+Validation requirements:
+1. CIDR blocks should be valid CIDR notation
+2. Names should follow pattern: [NAMING_PATTERN]
+3. Environment should be one of: [VALID_ENVS]
+4. Numeric values should be within reasonable bounds
+5. Required tags should be present
+
+Include helpful error messages that guide users to correct values.]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="iac-patterns-module-design"/>
+      <ref slug="iac-patterns-cicd"/>
+      <link href="https://cloud.google.com/docs/terraform/best-practices/testing"/>
+      <link href="https://terratest.gruntwork.io/"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/recommended-patterns"/>
+    </see-also>
+  </content>
+</methodology>
