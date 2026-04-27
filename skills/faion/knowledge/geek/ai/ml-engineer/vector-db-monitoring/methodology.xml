@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-db-monitoring">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Monitor vector databases in production: key metrics (latency p95/p99, error rate, memory, disk), alerting thresholds, Prometheus/Grafana observability stack, and capacity planning.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>monitoring</tag>
+      <tag>prometheus</tag>
+      <tag>alerting</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>setup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-security"/>
+      <ref slug="vector-db-index-tuning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Vector Database Monitoring and Alerting</title>
+
+    <summary>Instrument a production vector database with Prometheus metrics, configure Grafana dashboards, define warning and critical alert thresholds for latency, error rate, memory, and disk, and establish capacity planning baselines to prevent surprise outages before they reach users.</summary>
+
+    <why>
+      <p>Vector databases exhibit non-linear performance degradation: memory pressure causes index eviction that spikes p99 latency, not p50, making mean metrics deceptive. Disk exhaustion kills Qdrant and Weaviate without warning. Replication lag above one second silently serves stale results to RAG pipelines. Without per-metric alert thresholds configured before go-live, these failure modes are detected only after user-facing impact has already occurred.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any vector database serving production traffic.</item>
+        <item>Adding a new vector database to an existing observability stack.</item>
+        <item>After scaling a collection past 1M vectors where resource consumption patterns change.</item>
+        <item>Before enabling quantization or changing index parameters — establish a baseline first.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fully managed services (Pinecone Serverless, Weaviate Cloud) — use the provider's built-in dashboards and alert webhooks instead.</item>
+        <item>Development environments — log-based debugging is sufficient; Prometheus overhead is not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-metrics">
+      <p>Metrics to collect and their alert thresholds:</p>
+
+      <section name="metrics-table">
+        <list>
+          <item>Query latency p95: warning above 100ms, critical above 500ms.</item>
+          <item>Query latency p99: warning above 200ms, critical above 1s.</item>
+          <item>Error rate: warning above 0.1%, critical above 1%.</item>
+          <item>Memory usage: warning above 70%, critical above 85%.</item>
+          <item>Disk usage: warning above 70%, critical above 85%.</item>
+          <item>Replication lag: warning above 1s, critical above 10s.</item>
+        </list>
+      </section>
+
+      <section name="metric-categories">
+        <p>Three categories of metrics to collect:</p>
+
+        <section name="infrastructure-metrics">
+          <list>
+            <item>CPU utilization (per instance and per container).</item>
+            <item>Memory usage (RSS, cache, swap if any).</item>
+            <item>Disk I/O (read/write throughput, IOPS, latency).</item>
+            <item>Network throughput (ingress/egress per service).</item>
+          </list>
+        </section>
+
+        <section name="database-metrics">
+          <list>
+            <item>Query latency histogram (p50, p95, p99).</item>
+            <item>Queries per second (QPS).</item>
+            <item>Error rates (per error type: connection, timeout, not-found).</item>
+            <item>Index size and vector count per collection.</item>
+            <item>Index coverage percentage (vectors indexed vs. total uploaded).</item>
+          </list>
+        </section>
+
+        <section name="application-metrics">
+          <list>
+            <item>End-to-end RAG request latency.</item>
+            <item>Cache hit rate (if query caching is enabled).</item>
+            <item>Upsert throughput (vectors/second during indexing pipeline runs).</item>
+            <item>Batch size distribution for bulk upsert operations.</item>
+          </list>
+        </section>
+      </section>
+    </section>
+
+    <section name="observability-stack">
+      <p>Standard observability stack: Prometheus scrapes database metrics → Grafana provides dashboards → AlertManager routes alerts to PagerDuty/Slack.</p>
+
+      <example type="good" title="Prometheus scrape configuration for Qdrant">
+        <code lang="yaml"><![CDATA[
+# prometheus.yml
+scrape_configs:
+  - job_name: 'qdrant'
+    static_configs:
+      - targets: ['qdrant:6333']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'weaviate'
+    static_configs:
+      - targets: ['weaviate:2112']
+    scrape_interval: 15s
+]]></code>
+      </example>
+
+      <example type="good" title="AlertManager rules for vector database SLA">
+        <code lang="yaml"><![CDATA[
+# alerting-rules.yml
+groups:
+  - name: vector-database
+    rules:
+      - alert: VectorDBHighLatency
+        expr: histogram_quantile(0.95, rate(qdrant_request_duration_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector DB p95 latency exceeds 500ms"
+
+      - alert: VectorDBHighErrorRate
+        expr: rate(qdrant_rest_api_requests_total{status=~"5.."}[5m]) /
+              rate(qdrant_rest_api_requests_total[5m]) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector DB error rate exceeds 1%"
+
+      - alert: VectorDBMemoryHigh
+        expr: (container_memory_rss{container="qdrant"} /
+               container_spec_memory_limit_bytes{container="qdrant"}) > 0.85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector DB memory usage exceeds 85%"
+
+      - alert: VectorDBDiskHigh
+        expr: (1 - node_filesystem_avail_bytes{mountpoint="/qdrant/storage"} /
+                    node_filesystem_size_bytes{mountpoint="/qdrant/storage"}) > 0.85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector DB disk usage exceeds 85%"
+
+      - alert: VectorDBReplicationLag
+        expr: qdrant_cluster_replication_lag_seconds > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vector DB replication lag exceeds 10s"
+]]></code>
+      </example>
+    </section>
+
+    <section name="alerting-config">
+      <p>Alert routing configuration:</p>
+
+      <rule>
+        <statement>Configure at minimum four critical alerts before go-live: database down (health endpoint fails), high error rate (above 1%), latency SLA breach (p95 above defined threshold), and disk critical (above 85%). Route critical alerts to on-call immediately; route warning alerts to a team Slack channel.</statement>
+        <rationale>The most common production failures — disk exhaustion and memory OOM — are silent until the database crashes. Pre-emptive disk and memory alerts at 70% and 85% give enough lead time to intervene.</rationale>
+      </rule>
+
+      <section name="alert-categories">
+        <list>
+          <item>Critical alerts: database down, error rate above 1%, latency SLA breach (p95 above threshold), disk space above 85%.</item>
+          <item>Warning alerts: high latency (p95 above warning threshold), elevated error rate (above 0.1%), memory pressure (above 80%), replication lag above 1s.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="capacity-planning">
+      <p>Capacity planning prevents reactive scaling:</p>
+
+      <rule>
+        <statement>Establish baseline metrics (CPU, memory, disk) at current vector count before any scaling event. Project 6-month and 12-month vector count growth. Provision with at least 30% capacity headroom at peak load. Define auto-scaling triggers on memory usage and QPS, not just CPU.</statement>
+        <rationale>Vector databases are memory-bound, not CPU-bound. CPU-based auto-scaling triggers (the cloud default) will not fire in time when a collection grows past the RAM limit and starts spilling to disk, causing latency spikes.</rationale>
+      </rule>
+
+      <section name="capacity-checklist-items">
+        <list>
+          <item>Baseline metrics (CPU, memory, disk, latency) established at current load.</item>
+          <item>Vector count growth projections for 6 and 12 months documented.</item>
+          <item>Scaling triggers defined on memory usage and QPS.</item>
+          <item>30% capacity headroom maintained at peak.</item>
+          <item>Disk growth rate monitored weekly; alert fired when 90-day runway falls below 30 days.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="monitoring-setup-checklist">
+      <checklist>
+        <check>Prometheus scrape endpoints configured for all database instances.</check>
+        <check>Grafana dashboard shows p50/p95/p99 latency, QPS, error rate, memory, disk per collection.</check>
+        <check>Four critical alerts configured and routed to on-call: down, error rate, latency, disk.</check>
+        <check>Warning alerts routed to team channel: elevated latency, memory pressure, replication lag.</check>
+        <check>Alert routing: on-call rotation defined, escalation policy set, alert fatigue reviewed.</check>
+        <check>Baseline metrics documented before go-live for comparison after configuration changes.</check>
+        <check>Runbooks written for the top-5 most likely operational issues.</check>
+        <check>Capacity headroom target (30%) set and reviewed monthly.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-security"/>
+      <ref slug="vector-db-index-tuning"/>
+      <link href="https://qdrant.tech/documentation/guides/monitoring/"/>
+      <link href="https://weaviate.io/developers/weaviate/configuration/monitoring"/>
+    </see-also>
+  </content>
+</methodology>
