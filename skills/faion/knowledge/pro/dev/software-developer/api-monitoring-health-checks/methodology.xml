@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-monitoring-health-checks">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Design liveness and readiness health-check endpoints for APIs: separate concerns, return correct status codes, and avoid cascade failures under k8s.</summary>
+    <tags>
+      <tag>api-monitoring</tag>
+      <tag>health-checks</tag>
+      <tag>kubernetes</tag>
+      <tag>fastapi</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>API Health Check Endpoints: Liveness vs. Readiness</title>
+
+    <summary>Every API must expose two distinct health endpoints: /healthz (liveness — process alive, no downstream calls) and /readyz (readiness — all dependencies reachable). Conflating the two causes cascade restart loops under Kubernetes.</summary>
+
+    <why>
+      <p>Kubernetes (and most orchestrators) use separate probes for different failure modes. Liveness probes trigger container restarts; if a liveness probe calls downstream (DB, Redis, Stripe) and those dependencies are slow, every service restarts in a cascade. Readiness probes gate traffic routing; they should check all dependencies but never trigger restarts. Getting this wrong causes cascading failure at scale.</p>
+      <p>A second failure mode is false liveness: a /health endpoint that just returns 200 provides no signal about degraded dependencies, causing traffic to route to broken instances. The readiness probe catches this.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any API service deployed under Kubernetes, Docker Swarm, ECS, or any orchestrator that uses liveness/readiness distinctions.</item>
+        <item>When adding observability to a new Python/Node/Go/Java API for the first time.</item>
+        <item>Before a planned launch or scale event — health probes must exist before load balancers are configured.</item>
+        <item>When migrating from a single /health endpoint to a split liveness/readiness pattern.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-product-fit prototypes — /health returning 200 with log-to-stdout is enough; full probe separation adds overhead without value.</item>
+        <item>Static sites and CDN-only deployments — the CDN provider's health checks already cover availability.</item>
+        <item>One-shot batch jobs and cron tasks — use job-completion alerts (Healthchecks.io, Dead Man's Snitch) instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Liveness endpoint (/healthz) MUST check ONLY that the process is alive. It MUST NOT call any downstream service (database, Redis, external API). It returns 200 with a JSON body containing status and timestamp.</statement>
+        <rationale>If liveness calls downstream and that downstream is slow, Kubernetes restarts the healthy process. This turns a dependency outage into a cascading restart loop that takes down your service even though the process itself was fine.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Readiness endpoint (/readyz) MUST check all critical dependencies (database, cache, external APIs). It MUST return 503 with the failing check names in the response body when any dependency is unreachable. It MUST never trigger a container restart — wire to readiness probes only, never liveness.</statement>
+        <rationale>Readiness gates traffic. When readiness fails, the orchestrator removes the pod from load-balancer rotation; the process stays running and can recover when the dependency comes back.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>External dependency URLs in readiness probes MUST be from the vendor's documented health/status contract (e.g., Stripe: https://status.stripe.com/api/v2/status.json) or an in-house canary endpoint. Invented URLs like https://api.stripe.com/health are fictional; the probe will always fail.</statement>
+        <rationale>AI agents and copy-paste culture produce hallucinated vendor health URLs constantly. Agents frequently use README's https://api.stripe.com/health — that URL does not exist. Always verify against vendor docs before wiring.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Split liveness and readiness in FastAPI">
+      <code lang="python"><![CDATA[
+from fastapi import FastAPI, Response
+from datetime import datetime
+import asyncpg
+import aioredis
+import httpx
+import json
+
+app = FastAPI()
+
+@app.get("/healthz")
+async def health_check():
+    """Liveness probe — process alive only, no downstream calls."""
+    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+@app.get("/readyz")
+async def readiness_check():
+    """Readiness probe — checks all dependencies."""
+    checks = {}
+
+    # Database
+    try:
+        async with asyncpg.create_pool(DATABASE_URL) as pool:
+            await pool.fetchval("SELECT 1")
+        checks["database"] = {"status": "ok"}
+    except Exception as e:
+        checks["database"] = {"status": "error", "error": str(e)}
+
+    # Redis
+    try:
+        redis = await aioredis.from_url(REDIS_URL)
+        await redis.ping()
+        checks["redis"] = {"status": "ok"}
+    except Exception as e:
+        checks["redis"] = {"status": "error", "error": str(e)}
+
+    # External API — use vendor's documented status endpoint, NOT invented URLs
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                "https://status.stripe.com/api/v2/status.json", timeout=5
+            )
+            checks["stripe"] = {"status": "ok" if r.status_code == 200 else "degraded"}
+    except Exception as e:
+        checks["stripe"] = {"status": "error", "error": str(e)}
+
+    all_ok = all(c["status"] == "ok" for c in checks.values())
+    return Response(
+        content=json.dumps({
+            "status": "ok" if all_ok else "degraded",
+            "checks": checks,
+            "timestamp": datetime.utcnow().isoformat()
+        }),
+        status_code=200 if all_ok else 503,
+        media_type="application/json"
+    )
+]]></code>
+      <note>Liveness calls nothing downstream. Readiness checks DB + Redis + external and returns 503 on failure. Stripe uses the real documented status API, not a fictional /health URL.</note>
+    </example>
+
+    <example type="bad" title="Single /health endpoint used as liveness probe">
+      <code lang="python"><![CDATA[
+# DO NOT DO THIS — liveness probe calls downstream
+@app.get("/health")
+async def health_check():
+    await db.execute("SELECT 1")          # downstream call in liveness
+    await redis.ping()                    # downstream call in liveness
+    r = await client.get("https://api.stripe.com/health", timeout=5)  # fictional URL
+    return {"status": "ok"}
+]]></code>
+      <note>This causes a cascade restart loop if DB or Redis is slow. The Stripe URL is fictional and will always fail. Using this as a Kubernetes liveness probe brings down a healthy service when its dependencies are degraded.</note>
+    </example>
+
+    <section name="key-metrics-targets">
+      <p>Target thresholds for API health monitoring:</p>
+      <list>
+        <item>Availability target: 99.9% | Alert threshold: below 99%</item>
+        <item>Response time p50: below 100ms | Alert threshold: above 200ms</item>
+        <item>Response time p95: below 500ms | Alert threshold: above 1s</item>
+        <item>Response time p99: below 1s | Alert threshold: above 2s</item>
+        <item>Error rate target: below 0.1% | Alert threshold: above 1%</item>
+        <item>Rate limit hits: low baseline | Alert on sudden spike</item>
+      </list>
+    </section>
+
+    <section name="planning-checklist">
+      <p>Health-check implementation checklist:</p>
+      <checklist>
+        <check>Define SLOs (service level objectives) before wiring any probes.</check>
+        <check>Identify critical endpoints to monitor.</check>
+        <check>Create /healthz endpoint (liveness probe) — process-only check.</check>
+        <check>Create /readyz endpoint (readiness probe) — dependency checks.</check>
+        <check>Verify database connectivity in readiness probe.</check>
+        <check>Verify Redis/cache connectivity in readiness probe.</check>
+        <check>Verify critical external service dependencies in readiness probe.</check>
+        <check>Use vendor's documented status endpoint, not invented URLs.</check>
+        <check>Return proper status codes: 200 for healthy, 503 for degraded.</check>
+        <check>Test health checks manually before wiring to orchestrator.</check>
+        <check>Configure liveness probe to /healthz only; readiness probe to /readyz.</check>
+      </checklist>
+    </section>
+
+    <antipattern>
+      <description>Configuring Kubernetes liveness probe to hit /readyz (which calls downstream dependencies).</description>
+      <reason>If a downstream dependency is slow, the liveness probe fails, triggering container restarts. The pod restarts into the same degraded dependency, causing a restart loop that takes down the service even though the process itself is healthy.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using a single /health endpoint for both liveness and readiness without distinguishing what it checks.</description>
+      <reason>Forces a trade-off: either risk cascade restarts (if it checks downstream) or provide no signal about dependency health (if it doesn't). Both outcomes are worse than the split pattern.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using invented or undocumented vendor health URLs like https://api.stripe.com/health in the readiness probe.</description>
+      <reason>Undocumented URLs can return 404 at any time or not exist at all. The probe then always fails or produces false positives. Always verify health endpoint contracts from official vendor documentation.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="api-monitoring-metrics"/>
+      <ref slug="api-monitoring-logging"/>
+      <ref slug="api-monitoring-alerting"/>
+      <link href="https://sre.google/sre-book/monitoring-distributed-systems/"/>
+      <link href="https://fastapi.tiangolo.com/tutorial/middleware/"/>
+    </see-also>
+  </content>
+</methodology>
