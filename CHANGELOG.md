@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 8/8 methodologies migrated to new shape (batch: ai-interview-analysis, ai-assisted-persona-building, ai-persona-building, ai-assisted-accessibility, ai-accessibility-automation-2026, ai-spatial-computing, multimodal-vui-design, ai-enhanced-design-systems)
 - refactor: 7/7 ui-designer methodologies migrated to new shape (batch: llm-powered-conversational-ai, adobe-firefly-integration, ai-plugin-ecosystem, generative-ui-design, ai-design-assistant-patterns, figma-vs-adobe-strategy-2026, figma-ai-ecosystem)
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-accessibility-automation-2026, ai-spatial-computing, ai-plugin-ecosystem, generative-ui-design, ai-design-assistant-patterns, figma-vs-adobe-strategy-2026, figma-ai-ecosystem, synthetic-users)
 - refactor: 8/8 methodologies migrated to new shape (batch: django-services, django-celery, design-tokens-implementation, pwa-core, shadcn-ui, tailwind-patterns, tailwind, frontend-design)
