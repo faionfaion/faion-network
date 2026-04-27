@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cicd-tls-renewal-automation">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Automate TLS certificate renewal via ACME clients (certbot, acme.sh, lego) with systemd timers, renewal hooks, and short-lived cert strategies to eliminate manual rotation outages.</summary>
+    <tags>
+      <tag>tls</tag>
+      <tag>certificates</tag>
+      <tag>acme</tag>
+      <tag>automation</tag>
+      <tag>let-s-encrypt</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+      <ref slug="cicd-tls-validation-gate"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>TLS Certificate Renewal Automation</title>
+
+    <summary>Automate certificate renewal end-to-end: ACME client selection, systemd timer or cron scheduling, post-renew reload hooks, and short-lived cert policy. Manual renewal is an outage waiting to happen — treat it as a reliability requirement.</summary>
+
+    <why>
+      <p>Certificate renewal is the number-one TLS outage cause. ACME failures from rate limits, DNS propagation delays, or HTTP-01 challenge path mismatches all silently expire. Short-lived certificates (Let's Encrypt 6-day or upcoming 45-day) require full automation — any manual step in the renewal loop will eventually cause downtime.</p>
+      <p>The correct posture: automation handles every renewal, alerts fire at 21 days, pages fire at 7 days, and the engineering team never touches a certificate manually except in an emergency rotation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Issuing and rotating certificates for public web or API endpoints (Let's Encrypt, ZeroSSL, commercial CA).</item>
+        <item>Adopting short-lived certs (LE 6-day or 45-day) where manual renewal is structurally impossible.</item>
+        <item>Setting up post-renewal hooks to reload nginx/apache/traefik after certificate update.</item>
+        <item>Configuring ACME Renewal Information (ARI) checks to catch early renewal recommendations from the CA.</item>
+        <item>Any CI/CD pipeline that provisions or re-provisions infrastructure and needs certs issued automatically.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal-only dev environments where mkcert self-signed is sufficient and not regulated — overhead exceeds value.</item>
+        <item>Service-mesh mTLS — Linkerd/Istio/Cilium auto-rotate identities; do not hand-roll ACME on top of a mesh.</item>
+        <item>Legacy systems mandated to use TLS 1.0/1.1 — you have a compliance/risk problem, not a setup problem.</item>
+        <item>VPN/IPSec — different protocols and certificate authorities apply.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="acme-client-selection">
+      <p>Choose ACME client based on environment constraints. certbot is the default for traditional Linux servers; acme.sh is preferred when DNS-01 is required for wildcard certs and a pure-shell dependency footprint is needed; lego is the Go-based option for pipelines that produce static binaries.</p>
+
+      <rule testable="true">
+        <statement>Select the ACME client before writing any cert-related code: certbot for nginx/apache on Ubuntu/Debian; acme.sh for DNS-01 wildcard certs or minimal-dependency environments; lego for Go-based pipelines or containers. Do NOT mix clients on the same host — competing renewals corrupt the cert store.</statement>
+        <rationale>Each client owns /etc/letsencrypt or its equivalent and writes lockfiles; mixing clients causes race conditions on renewal and inconsistent certificate paths referenced by the web server.</rationale>
+      </rule>
+
+      <section name="client-reference">
+        <p>ACME client quick-reference with installation and DNS-01 capability:</p>
+        <list>
+          <item>certbot — https://certbot.eff.org/ — package-based, nginx/apache plugins, systemd timer auto-installed</item>
+          <item>acme.sh — https://github.com/acmesh-official/acme.sh — pure shell, 150+ DNS providers, cron-based</item>
+          <item>lego — https://go-acme.github.io/lego/ — Go binary, Docker-friendly, 100+ DNS providers</item>
+          <item>step (smallstep) — https://smallstep.com/docs/step-cli/ — CA + cert ops, internal PKI, ACME client</item>
+          <item>step-ca — https://smallstep.com/docs/step-ca/ — self-hosted ACME/CA server for internal short-lived certs</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="certbot-automation">
+      <p>certbot with nginx plugin is the fastest path to automated renewal on Ubuntu/Debian. The systemd timer installed by the package runs twice daily and is preferred over cron.</p>
+
+      <example type="good" title="certbot non-interactive production issuance">
+        <code lang="bash"><![CDATA[
+# Install certbot with nginx plugin (Ubuntu/Debian)
+sudo apt update && sudo apt install certbot python3-certbot-nginx
+
+# Non-interactive production issuance
+sudo certbot certonly --nginx \
+  --non-interactive \
+  --agree-tos \
+  --email admin@example.com \
+  -d example.com -d www.example.com
+
+# Test renewal before enabling
+sudo certbot renew --dry-run
+
+# Enable systemd timer (usually auto-installed)
+sudo systemctl enable certbot.timer
+sudo systemctl start certbot.timer
+]]></code>
+        <note>Use --nginx for automatic config; use certonly if you manage nginx config yourself to avoid certbot rewriting your server blocks.</note>
+      </example>
+
+      <example type="good" title="DNS challenge for wildcard certificates">
+        <code lang="bash"><![CDATA[
+# DNS challenge required for wildcard — certbot manual or acme.sh preferred
+sudo certbot certonly --manual --preferred-challenges=dns \
+  -d "*.example.com" -d example.com
+
+# acme.sh with Cloudflare DNS-01 (non-interactive, better for wildcards)
+# export CF_Token="..."
+acme.sh --issue --dns dns_cf -d example.com -d '*.example.com'
+acme.sh --install-cert -d example.com \
+  --cert-file /etc/ssl/example.com/cert.pem \
+  --key-file /etc/ssl/example.com/privkey.pem \
+  --fullchain-file /etc/ssl/example.com/fullchain.pem \
+  --reloadcmd "systemctl reload nginx"
+]]></code>
+        <note>acme.sh sets up its own cron at install time; verify with crontab -l for the acme.sh user.</note>
+      </example>
+
+      <example type="bad" title="Manual cron renewal without post-hook">
+        <code lang="bash"><![CDATA[
+# Missing post-hook — cert renews but nginx still serves old cert
+0 0,12 * * * /usr/bin/certbot renew --quiet
+]]></code>
+        <note>Without --post-hook "systemctl reload nginx" the renewed cert is on disk but not loaded by the web server — silent failure until the old cert expires and connections start failing.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Every certbot or acme.sh renewal MUST include a post-hook that reloads the web server (systemctl reload nginx, systemctl reload apache2, etc.). The hook MUST be tested independently before enabling the timer.</statement>
+        <rationale>Auto-renewal silent failure: cert renewed but reverse-proxy not reloaded. The new cert file exists on disk but the running process holds the old one in memory. The outage only appears when the old cert actually expires, making root-cause analysis harder.</rationale>
+      </rule>
+    </section>
+
+    <section name="post-renewal-hooks">
+      <p>Renewal hooks live in /etc/letsencrypt/renewal-hooks/{pre,deploy,post}/ and execute on every successful renewal. The deploy/ hook fires only when the cert is actually renewed (not on a --dry-run), making it the correct location for service reloads.</p>
+
+      <example type="good" title="systemd-based post-renew service reload">
+        <code lang="bash"><![CDATA[
+# /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+#!/bin/bash
+systemctl reload nginx
+]]></code>
+      </example>
+
+      <example type="good" title="Multi-service reload with logging">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# /etc/letsencrypt/renewal-hooks/deploy/reload-services.sh
+set -euo pipefail
+LOG=/var/log/certbot-deploy.log
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) cert renewed for $RENEWED_DOMAINS" >> "$LOG"
+systemctl reload nginx
+systemctl reload postfix 2>/dev/null || true
+echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) services reloaded" >> "$LOG"
+]]></code>
+        <note>$RENEWED_DOMAINS is set by certbot to the space-separated list of renewed domain names.</note>
+      </example>
+    </section>
+
+    <section name="short-lived-certs">
+      <p>Let's Encrypt short-lived certificates (6-day as of Feb 2025, 45-day coming May 2026) eliminate the need for OCSP/CRL URLs and reduce the compromise window. They require fully automated renewal with no manual intervention possible.</p>
+
+      <rule testable="true">
+        <statement>When adopting LE 6-day or 45-day certs, the pipeline MUST automate renewal at least twice the renewal frequency (e.g., renew every 3 days for 6-day certs). Alert thresholds MUST be set at 2 days (warning) and 1 day (critical) rather than the default 30/7 day windows used for 90-day certs.</statement>
+        <rationale>Short-lived certs have reduced compromise windows and no OCSP/CRL URL overhead, improving security posture. But the standard "alert at 30 days" is useless for a 6-day cert — the cert would already be expired.</rationale>
+      </rule>
+
+      <section name="le-timeline">
+        <p>Let's Encrypt certificate lifetime roadmap (2025-2027):</p>
+        <list>
+          <item>6-day certificates — available Feb 2025+, opt-in, no OCSP/CRL URLs needed</item>
+          <item>IP address certificates — available 2025+</item>
+          <item>45-day certificates — coming May 2026, will become new default</item>
+          <item>64-day certificates — coming Feb 2027</item>
+          <item>Client Auth EKU removal — Feb 2026 (alternative profile available until May 2026)</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="acme-gotchas">
+      <p>Common ACME automation failure modes observed in production CI/CD environments:</p>
+
+      <antipattern>
+        <description>HTTP-01 challenge selected when the pipeline later needs wildcard certificates.</description>
+        <reason>HTTP-01 cannot issue wildcard certs. Flag wildcard requests early and force DNS-01 from the start — migrating mid-flight requires re-issuance and potential downtime.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Iterating on certificate issuance against the production LE endpoint during development.</description>
+        <reason>Let's Encrypt rate limits: 50 certs/week per registered domain. Agents or pipelines iterating on issuance burn the quota fast. Always use the staging endpoint (https://acme-staging-v02.api.letsencrypt.org/directory) during development and testing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Defaulting to RSA-2048 key generation when ECDSA P-256 is available.</description>
+        <reason>ECDSA P-256 is faster (smaller signatures, faster handshakes) and the modern standard. RSA-2048 provides 112-bit security while P-256 provides 128-bit security at a fraction of the computational cost.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>ARI (ACME Renewal Information) checks disabled or ignored.</description>
+        <reason>ARI lets the CA signal early renewal (e.g., due to mass revocation events). Ignoring ARI means your automation misses CA-recommended renewal windows and certs may expire unexpectedly during a CA incident.</reason>
+      </antipattern>
+    </section>
+
+    <section name="renewal-monitoring">
+      <p>Expiry alerting is the safety net when automation fails. The inline sweep script below covers a list of host:port pairs and can run in CI or as a cron job.</p>
+
+      <example type="good" title="TLS expiry sweep across domain list">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# tls-expiry-sweep.sh — alert on certs expiring < 21 days across a domain list
+set -euo pipefail
+DOMAINS=${1:?file with one host:port per line, default port 443}
+THRESH=${2:-21}
+NOW=$(date +%s)
+while read -r line; do
+  [[ -z "$line" || "$line" == \#* ]] && continue
+  host="${line%:*}"; port="${line##*:}"; [[ "$host" == "$port" ]] && port=443
+  end=$(echo | openssl s_client -servername "$host" -connect "$host:$port" 2>/dev/null \
+        | openssl x509 -noout -enddate 2>/dev/null | sed 's/notAfter=//')
+  [[ -z "$end" ]] && { echo "ERR  $host:$port unreachable"; continue; }
+  end_ts=$(date -d "$end" +%s)
+  days=$(( (end_ts - NOW) / 86400 ))
+  if (( days < THRESH )); then
+    echo "WARN $host:$port expires in $days days ($end)"
+  else
+    echo "OK   $host:$port $days days"
+  fi
+done < "$DOMAINS"
+]]></code>
+        <note>Run this in CI on every deploy and as a daily cron to catch renewal failures before they become outages.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Install ACME client (certbot/acme.sh/lego) and confirm no other ACME client is present on the host.</check>
+      <check>Choose validation method: HTTP-01 for single domains, DNS-01 for wildcards.</check>
+      <check>Configure non-interactive issuance with --agree-tos and admin email.</check>
+      <check>Verify certificate chain is complete (fullchain.pem, not just cert.pem).</check>
+      <check>Add deploy hook that reloads the web server after successful renewal.</check>
+      <check>Run --dry-run to confirm renewal succeeds before enabling the timer.</check>
+      <check>Enable systemd timer (certbot) or confirm cron entry (acme.sh).</check>
+      <check>Configure ARI checks if the ACME client supports them.</check>
+      <check>Set up expiry monitoring: alert at 21 days, page at 7 days (adjust for short-lived certs).</check>
+      <check>Use staging endpoint during all development and testing to avoid rate limit exhaustion.</check>
+      <check>Confirm private key permissions are 600 and key is not readable by web server user.</check>
+      <check>Document key rotation procedure and emergency re-issuance steps in runbook.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://letsencrypt.org/docs/"/>
+      <link href="https://letsencrypt.org/2025/01/16/6-day-and-ip-certs"/>
+      <link href="https://letsencrypt.org/2025/12/02/from-90-to-45"/>
+      <link href="https://certbot.eff.org/"/>
+      <link href="https://github.com/acmesh-official/acme.sh"/>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+      <ref slug="cicd-tls-validation-gate"/>
+    </see-also>
+  </content>
+</methodology>
