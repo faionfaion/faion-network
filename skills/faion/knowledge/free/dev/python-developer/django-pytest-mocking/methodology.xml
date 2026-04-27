@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-pytest-mocking">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Mock external service calls in Django pytest tests: unittest.mock.patch, responses library for HTTP, freezegun for datetime, and boundary-mocking rules.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>pytest</tag>
+      <tag>mocking</tag>
+      <tag>testing</tag>
+      <tag>freezegun</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django pytest Mocking</title>
+
+    <summary>Mock external service calls at the integration boundary: patch at the import site (not definition site), use the responses library for HTTP calls, and freezegun for datetime-dependent logic. Always verify mock calls with expected arguments. Never mock Django ORM internals.</summary>
+
+    <why>
+      <p>External services (Stripe, AWS S3, SendGrid, partner APIs) are slow, flaky, cost money, and require credentials. Mocking isolates the code under test from these dependencies, making tests fast, deterministic, and runnable offline. The key insight is to mock at the boundary — the point where your code calls the external service — not inside your own business logic. This tests your integration code (does it call Stripe with the right arguments?) without requiring a real Stripe account.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Tests that call external APIs (Stripe, Twilio, SendGrid, AWS, partner webhooks).</item>
+        <item>Tests that depend on the current time (expiry checks, scheduling, time-limited coupons).</item>
+        <item>Tests where a Celery task would be enqueued but you only want to verify it was triggered.</item>
+        <item>Tests that make HTTP requests to third-party services.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tests of the real integration path — use a staging environment or integration test suite for end-to-end verification with real credentials.</item>
+        <item>Mocking Django ORM methods (objects.filter, objects.create) — use real test data with the db fixture instead.</item>
+        <item>Mocking time.sleep to "speed up" rate-limit tests — patch the rate-limiter directly, not sleep.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="unittest-mock">
+      <p>unittest.mock.patch is the standard tool for replacing callables, objects, and methods during a test. The critical rule: patch at the import site, not the definition site.</p>
+
+      <rule testable="true">
+        <statement>Patch at the import site of the module under test, not at the definition site of the function being patched. If apps.payments.services imports stripe, patch "apps.payments.services.stripe", not "stripe.Charge.create". Always verify mock calls with assert_called_once_with or assert_called_once when the call is part of the contract. Use MagicMock for return values with attributes. Reset mocks between tests automatically (unittest.mock.patch as decorator does this).</statement>
+        <rationale>Python's import system binds names in each module separately. Patching at the definition site (stripe) does not affect the already-imported name in apps.payments.services.stripe. Patching at the import site replaces the name as seen by the code under test. assert_called_once_with verifies both that the call happened and that the arguments are correct — a critical part of the integration contract.</rationale>
+      </rule>
+
+      <example type="good" title="Mocking Stripe at the correct import site">
+        <code lang="python"><![CDATA[
+# tests/unit/test_payments.py
+import pytest
+from unittest.mock import patch, MagicMock
+from apps.payments.services import PaymentService
+
+
+class TestPaymentService:
+    """Tests for PaymentService with mocked Stripe."""
+
+    @patch("apps.payments.services.stripe")  # Correct: import site
+    def test_creates_stripe_charge(self, mock_stripe, order):
+        """Creates Stripe charge with correct parameters."""
+        mock_stripe.Charge.create.return_value = MagicMock(
+            id="ch_123",
+            status="succeeded"
+        )
+
+        result = PaymentService.process_payment(
+            order=order,
+            token="tok_visa"
+        )
+
+        mock_stripe.Charge.create.assert_called_once_with(
+            amount=int(order.total * 100),  # Cents
+            currency="usd",
+            source="tok_visa",
+            metadata={"order_id": str(order.uid)}
+        )
+        assert result.stripe_charge_id == "ch_123"
+
+    @patch("apps.payments.services.stripe")
+    def test_handles_stripe_error(self, mock_stripe, order):
+        """Handles Stripe API errors gracefully."""
+        import stripe
+        mock_stripe.Charge.create.side_effect = stripe.error.CardError(
+            message="Card declined",
+            param="card",
+            code="card_declined"
+        )
+
+        with pytest.raises(PaymentError) as exc_info:
+            PaymentService.process_payment(order=order, token="tok_declined")
+
+        assert "Card declined" in str(exc_info.value)
+]]></code>
+      </example>
+
+      <example type="bad" title="Patching at definition site - does not work">
+        <code lang="python"><![CDATA[
+# Wrong: patching the original stripe module, not the local reference
+@patch("stripe.Charge.create")  # Does NOT affect apps.payments.services.stripe
+def test_creates_charge(self, mock_create, order):
+    PaymentService.process_payment(order=order, token="tok")
+    mock_create.assert_called_once()  # Will fail - real stripe was called
+]]></code>
+        <note>The service imported stripe at load time. Patching stripe.Charge.create after import does not change apps.payments.services.stripe, which is already bound.</note>
+      </example>
+    </section>
+
+    <section name="responses-library">
+      <p>The responses library intercepts outgoing HTTP requests made via the requests library, allowing tests to assert on HTTP calls without making real network connections.</p>
+
+      <rule testable="true">
+        <statement>Use the responses library (pip install responses) to mock HTTP calls made via the requests library. Decorate the test or test class with @responses.activate to intercept calls. Add expected responses with responses.add() before calling the code under test. Assert on responses.calls to verify the request was made with the correct URL, method, and payload.</statement>
+        <rationale>responses intercepts at the transport level, so the production code uses the real requests library unchanged. Tests can verify the full request shape (URL, headers, body) and simulate various HTTP responses (200, 503, timeouts) without network access. This tests the integration contract without requiring a live server.</rationale>
+      </rule>
+
+      <example type="good" title="Mocking HTTP with responses library">
+        <code lang="python"><![CDATA[
+# tests/unit/test_webhooks.py
+import pytest
+import responses
+from apps.integrations.services import WebhookService
+
+
+class TestWebhookService:
+    """Tests for external webhook calls."""
+
+    @responses.activate
+    def test_sends_webhook_notification(self, order):
+        """Sends webhook with correct payload."""
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            json={"status": "received"},
+            status=200
+        )
+
+        result = WebhookService.notify_order_created(order)
+
+        assert result["status"] == "received"
+        assert len(responses.calls) == 1
+
+        request_body = responses.calls[0].request.body
+        assert order.order_number in request_body
+
+    @responses.activate
+    def test_retries_on_failure(self, order):
+        """Retries webhook on temporary failure."""
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            status=503
+        )
+        responses.add(
+            responses.POST,
+            "https://api.partner.com/webhooks/orders",
+            json={"status": "received"},
+            status=200
+        )
+
+        result = WebhookService.notify_order_created(order, max_retries=2)
+
+        assert len(responses.calls) == 2
+        assert result["status"] == "received"
+]]></code>
+      </example>
+    </section>
+
+    <section name="freezegun">
+      <p>freezegun patches datetime.datetime, datetime.date, time.time, and time.localtime to return a fixed point in time, enabling deterministic tests for time-dependent logic.</p>
+
+      <rule testable="true">
+        <statement>Use freezegun.freeze_time as a decorator or context manager to fix time in tests that use datetime.now(), timezone.now(), or datetime.date.today(). Pass an ISO datetime string to freeze_time. Use as a decorator for the entire test or as a context manager for part of the test (e.g., to simulate time passing mid-test). Prefer time-machine library (faster) over freezegun for new tests.</statement>
+        <rationale>Tests that compute relative times at run time are flaky: "coupon valid for 7 days from now" passes today but fails in the future. freeze_time makes the clock deterministic. Context-manager use enables "before/after expiry" scenarios in a single test. time-machine is a faster drop-in replacement if runtime is a concern.</rationale>
+      </rule>
+
+      <example type="good" title="Mocking time with freezegun">
+        <code lang="python"><![CDATA[
+# tests/unit/test_expiration.py
+import pytest
+from freezegun import freeze_time
+from datetime import datetime, timedelta
+from apps.coupons.models import Coupon
+
+
+@pytest.mark.django_db
+class TestCouponExpiration:
+    """Tests for coupon expiration logic."""
+
+    @freeze_time("2025-01-15 12:00:00")
+    def test_coupon_is_valid_before_expiry(self, coupon_factory):
+        """Coupon is valid before expiration date."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 1, 20, 12, 0, 0)
+        )
+
+        assert coupon.is_valid() is True
+
+    @freeze_time("2025-01-25 12:00:00")
+    def test_coupon_is_expired_after_date(self, coupon_factory):
+        """Coupon is invalid after expiration date."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 1, 20, 12, 0, 0)
+        )
+
+        assert coupon.is_valid() is False
+
+    def test_coupon_expires_correctly(self, coupon_factory):
+        """Coupon validity changes over time (context manager)."""
+        coupon = coupon_factory(
+            expires_at=datetime(2025, 6, 1, 0, 0, 0)
+        )
+
+        with freeze_time("2025-05-31"):
+            assert coupon.is_valid() is True
+
+        with freeze_time("2025-06-02"):
+            assert coupon.is_valid() is False
+]]></code>
+      </example>
+    </section>
+
+    <section name="celery-mocking">
+      <p>In test settings, CELERY_TASK_ALWAYS_EAGER=True makes tasks run synchronously. For tests that need to verify a task was enqueued without running it, mock the task's delay method.</p>
+
+      <rule testable="true">
+        <statement>Set CELERY_TASK_ALWAYS_EAGER=True in test settings to run Celery tasks synchronously. For tests that assert only that a task was enqueued (not that it ran), patch the task's delay method: @patch("apps.module.tasks.send_task.delay"). Assert with assert_called_once_with to verify the task was called with the correct arguments. Test the task function itself in a separate test class without mocking.</statement>
+        <rationale>CELERY_TASK_ALWAYS_EAGER makes integration tests simple: the task runs inline and you can assert on its side effects. But for service tests where you only want to verify "the service triggered the right task", patching delay is cleaner: it verifies the contract without actually executing the task's side effects.</rationale>
+      </rule>
+
+      <example type="good" title="Mocking Celery task dispatch">
+        <code lang="python"><![CDATA[
+# tests/unit/test_services.py
+from unittest.mock import patch
+
+
+@pytest.mark.django_db
+class TestOrderServiceCelery:
+    """Tests that Celery tasks are dispatched correctly."""
+
+    @patch("apps.orders.services.send_order_confirmation")
+    def test_sends_confirmation_email(self, mock_send, user, product_factory):
+        """Confirmation email task is triggered with correct order ID."""
+        product = product_factory()
+
+        order = OrderService.create_order(
+            user=user,
+            items=[{"product_id": product.id, "quantity": 1}]
+        )
+
+        mock_send.delay.assert_called_once_with(order_id=order.id)
+
+    @patch("apps.orders.tasks.send_mail")
+    def test_task_sends_email(self, mock_send_mail, order):
+        """The task itself calls send_mail with correct arguments."""
+        from apps.orders.tasks import send_order_confirmation
+
+        send_order_confirmation(order_id=order.id)
+
+        mock_send_mail.assert_called_once()
+        call_kwargs = mock_send_mail.call_args.kwargs
+        assert order.user.email in call_kwargs["recipient_list"]
+        assert order.order_number in call_kwargs["subject"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-tests">
+      <p>Testing async Django views and services requires pytest-asyncio and the async_to_sync adapter for database access in async context.</p>
+
+      <example type="good" title="Testing async Django views">
+        <code lang="python"><![CDATA[
+# tests/integration/test_async_views.py
+import pytest
+from asgiref.sync import sync_to_async
+
+
+@pytest.mark.asyncio
+@pytest.mark.django_db(transaction=True)
+async def test_async_user_lookup(async_client, user_factory):
+    """Test async view with async client."""
+
+    @sync_to_async
+    def create_user():
+        return user_factory()
+
+    user = await create_user()
+
+    response = await async_client.get(f"/api/v1/users/{user.uid}/")
+
+    assert response.status_code == 200
+]]></code>
+      </example>
+    </section>
+
+    <section name="mock-fixtures">
+      <p>Reusable mock fixtures reduce boilerplate when the same mock is needed across many tests.</p>
+
+      <example type="good" title="Reusable mock fixtures in conftest.py">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+import pytest
+from unittest.mock import patch, MagicMock
+
+
+@pytest.fixture
+def mock_stripe():
+    """Mock Stripe module for payment tests."""
+    with patch("apps.payments.services.stripe") as mock:
+        mock.Charge.create.return_value = MagicMock(
+            id="ch_test_123",
+            status="succeeded"
+        )
+        yield mock
+
+
+@pytest.fixture
+def mock_s3():
+    """Mock boto3 S3 client for upload tests."""
+    with patch("apps.documents.services.boto3") as mock:
+        mock.client.return_value.upload_fileobj.return_value = None
+        yield mock
+
+
+# Usage in tests:
+@pytest.mark.django_db
+def test_payment_success(mock_stripe, order):
+    result = PaymentService.process_payment(order=order, token="tok_visa")
+    assert result.stripe_charge_id == "ch_test_123"
+    mock_stripe.Charge.create.assert_called_once()
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Known failure modes in mocking that cause flaky tests or incorrect test results.</p>
+
+      <antipattern>
+        <description>Mocking at the definition site instead of the import site: @patch("stripe.Charge.create") when the service uses import stripe.</description>
+        <reason>Python binds names at import time. The service's local name apps.payments.services.stripe is already bound. Patching the original stripe module does not affect the bound name in the service. Always patch at the import site.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mocking Django ORM methods (objects.filter, objects.create, .save) instead of using real test data.</description>
+        <reason>ORM mocks bypass the database entirely, making tests that assert on "data was saved" meaningless. Use the db fixture and real factories. Real database tests with savepoint rollback are fast enough and catch real bugs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mocking time.sleep to speed up rate-limit tests or retry loops.</description>
+        <reason>Mocking sleep changes test behavior: the retry logic no longer sleeps, but the rate-limiter state machine may not work correctly without real delays. Patch the rate-limiter or retry mechanism directly, not the sleep primitive.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tests computing datetime.now() at module load time for comparison values: EXPIRY = datetime.now() + timedelta(days=7) at module level.</description>
+        <reason>Module-level datetime.now() calls are evaluated once when the module is collected, not per test. The value drifts across long test runs. Move time calculations inside the test function or use freeze_time to pin the clock.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Not verifying that a mock was called, only asserting on the return value it produced.</description>
+        <reason>If the mock is not called but returns a value anyway (because the code path was skipped), the test passes with no real verification. Always use assert_called_once_with (or assert_called) to verify the call happened with the expected arguments.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Mock patch targets use the import site path (apps.module.service.stripe), not definition site (stripe)</check>
+      <check>MagicMock return values have realistic attributes matching the real API response shape</check>
+      <check>Mock calls verified with assert_called_once_with including argument values</check>
+      <check>responses.activate decorator used for all tests making HTTP calls</check>
+      <check>freeze_time used for any test with datetime.now(), timezone.now(), or date.today() logic</check>
+      <check>Celery tasks mocked via task.delay when testing only that they were enqueued</check>
+      <check>CELERY_TASK_ALWAYS_EAGER=True in test settings for task execution tests</check>
+      <check>Django ORM not mocked — real test data used via factories and db fixture</check>
+      <check>time.sleep not mocked — retry/rate-limit logic patched at its abstraction level</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+      <link href="https://docs.python.org/3/library/unittest.mock.html"/>
+      <link href="https://github.com/getsentry/responses"/>
+      <link href="https://github.com/spulec/freezegun"/>
+      <link href="https://github.com/adamchainz/time-machine"/>
+    </see-also>
+  </content>
+</methodology>
