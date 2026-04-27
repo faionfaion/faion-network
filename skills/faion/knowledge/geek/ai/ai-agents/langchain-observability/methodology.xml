@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain-observability">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LangChain observability: LangSmith tracing, custom callbacks, streaming, and AgentExecutor gotchas for debugging production chains.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>langsmith</tag>
+      <tag>observability</tag>
+      <tag>tracing</tag>
+      <tag>callbacks</tag>
+    </tags>
+    <category>observability</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langchain</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="langchain-production-patterns"/>
+      <ref slug="langchain-rag-pipeline"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LangChain Observability</title>
+
+    <summary>LangChain observability requires LangSmith tracing enabled from the start (not retroactively), custom callbacks for structured logging, and streaming for low-latency UX. Production agents running without tracing are nearly impossible to debug retrospectively — the full execution trace including intermediate steps is only captured during the run.</summary>
+
+    <why>
+      <p>LangSmith tracing is opt-in but easy to forget; adding it after deployment misses the history needed for debugging. Once enabled, every chain.invoke() call produces a full trace including input, output, intermediate steps, token counts, and latency. The @traceable decorator wraps non-LangChain functions into the same trace tree, giving end-to-end visibility across hybrid pipelines.</p>
+      <p>Custom callbacks (BaseCallbackHandler subclasses) are the right hook for structured logging, cost tracking, and alerting. They run synchronously in the chain's execution context and receive typed events (on_llm_start, on_llm_end, on_chain_start, on_tool_start) rather than raw text.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any LangChain chain deployed to production where debugging chain failures requires execution traces.</item>
+        <item>Building conversational agents where session-level cost and latency monitoring is required.</item>
+        <item>When LangSmith tracing is required for production observability.</item>
+        <item>Streaming use cases where tokens must be yielded incrementally to the client.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scripts or local experiments where tracing overhead is not worth the setup.</item>
+        <item>Air-gapped environments where LangSmith's SaaS endpoint is unreachable — self-hosted LangSmith is an option but adds operational complexity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="langsmith-tracing">
+      <p>LangSmith auto-instruments all LangChain chains when LANGCHAIN_TRACING_V2 is set. The @traceable decorator adds non-LangChain functions to the same trace. Every run is recorded: input, output, tokens, cost, latency, and intermediate steps.</p>
+
+      <rule>
+        <statement>Enable LangSmith tracing from the start of development, not retroactively; adding it after deployment misses the history needed for debugging.</statement>
+        <rationale>Tracing captures the full execution tree at invocation time. Retroactive tracing cannot reconstruct past failures. The cost of tracing is negligible compared to the cost of debugging a production failure blind.</rationale>
+      </rule>
+
+      <example type="good" title="LangSmith tracing with @traceable decorator">
+        <code lang="python"><![CDATA[
+import os
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langsmith import traceable
+
+# Enable tracing at startup, not retroactively
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_API_KEY"] = "your-api-key"
+os.environ["LANGCHAIN_PROJECT"] = "my-project"
+
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("user", "{input}")
+])
+chain = prompt | llm | StrOutputParser()
+
+# All chain.invoke() calls are now traced automatically
+
+# Wrap non-LangChain logic into the same trace
+@traceable
+def my_function(query: str) -> str:
+    return chain.invoke({"input": query})
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Adding LangSmith tracing only after a production incident occurs to "see what happened".</description>
+        <reason>Tracing captures execution at invocation time. Past runs without tracing cannot be reconstructed. Enable it from day one.</reason>
+      </antipattern>
+    </section>
+
+    <section name="custom-callbacks">
+      <p>BaseCallbackHandler subclasses receive typed lifecycle events from chains, LLMs, and tools. They run synchronously in the chain's execution context. Use them for structured logging, cost tracking, latency measurement, and alerting — not for modifying chain inputs or outputs.</p>
+
+      <rule>
+        <statement>AgentExecutor with verbose=True prints internal reasoning to stdout; in production this leaks intermediate state — disable verbose=True and use callbacks for structured logging instead.</statement>
+        <rationale>Verbose stdout output exposes intermediate reasoning steps to logs that may be accessible to downstream consumers. Callbacks produce structured, filterable events instead of raw stdout.</rationale>
+      </rule>
+
+      <example type="good" title="Custom callback for structured logging">
+        <code lang="python"><![CDATA[
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
+from typing import Any, Dict, List
+import logging
+
+class LoggingCallbackHandler(BaseCallbackHandler):
+    """Custom callback for structured logging."""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs
+    ):
+        self.logger.info(f"LLM started with {len(prompts)} prompts")
+
+    def on_llm_end(self, response: LLMResult, **kwargs):
+        self.logger.info("LLM finished")
+
+    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict, **kwargs):
+        self.logger.info(f"Chain started: {serialized.get('name')}")
+
+    def on_chain_end(self, outputs: Dict, **kwargs):
+        self.logger.info("Chain finished")
+
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs):
+        self.logger.info(f"Tool started: {serialized.get('name')}")
+
+# Attach at LLM construction time (global scope)
+llm_with_callbacks = ChatOpenAI(
+    model="gpt-4o",
+    callbacks=[LoggingCallbackHandler()]
+)
+
+# Or per-invocation (request scope)
+chain.invoke(
+    {"input": "Hello"},
+    config={"callbacks": [LoggingCallbackHandler()]}
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="streaming">
+      <p>LCEL chains support streaming natively via chain.stream() (sync) and chain.astream() (async). Each chunk is a string token from StrOutputParser or a partial dict from other parsers. Streaming requires an LLM that supports it; set streaming=True on the model or use a callback.</p>
+
+      <example type="good" title="Sync and async streaming">
+        <code lang="python"><![CDATA[
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.callbacks import StreamingStdOutCallbackHandler
+
+llm = ChatOpenAI(model="gpt-4o", temperature=0)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant."),
+    ("user", "{input}")
+])
+chain = prompt | llm | StrOutputParser()
+
+# Sync streaming — yields tokens as they arrive
+for chunk in chain.stream({"input": "Tell me a story"}):
+    print(chunk, end="", flush=True)
+
+# Async streaming — use in async contexts (FastAPI, websockets)
+async def stream_response(query: str):
+    async for chunk in chain.astream({"input": query}):
+        yield chunk
+
+# Alternative: streaming via callback on the LLM
+streaming_llm = ChatOpenAI(
+    model="gpt-4o",
+    streaming=True,
+    callbacks=[StreamingStdOutCallbackHandler()]
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-executor-gotchas">
+      <p>AgentExecutor is the standard wrapper for tool-using agents. Its verbose flag, session ID management, and Pydantic error handling are common sources of production surprises.</p>
+
+      <rule>
+        <statement>Session IDs for RunnableWithMessageHistory must be unique per user session; reusing session IDs across users merges conversation histories.</statement>
+        <rationale>RunnableWithMessageHistory stores history keyed by session_id. If two users share a session_id, their messages interleave in each other's history, causing context pollution and potential data leakage.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Pydantic validation errors in PydanticOutputParser are raised as exceptions, not returned as structured errors; catch them explicitly in the chain or use a fallback.</statement>
+        <rationale>An uncaught PydanticOutputParser exception propagates up the chain and returns a 500 to the caller rather than a degraded structured response.</rationale>
+      </rule>
+
+      <example type="good" title="AgentExecutor without verbose in production">
+        <code lang="python"><![CDATA[
+from langchain.agents import create_openai_tools_agent, AgentExecutor
+from langchain_core.tools import tool
+
+@tool
+def get_weather(location: str) -> str:
+    """Get the current weather for a location."""
+    return f"Weather in {location}: Sunny, 72F"
+
+tools = [get_weather]
+
+# max_iterations caps runaway agents; verbose=False keeps logs clean
+agent_executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+    verbose=False,   # never True in production
+    max_iterations=5
+)
+
+response = agent_executor.invoke({"input": "What's the weather in Paris?"})
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Running AgentExecutor with verbose=True in a production service behind an API.</description>
+        <reason>verbose=True prints internal reasoning steps to stdout, leaking intermediate agent state into application logs. Use callbacks for structured, filterable event capture instead.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="langchain-production-patterns"/>
+      <link href="https://smith.langchain.com/"/>
+      <link href="https://python.langchain.com/docs/expression_language/"/>
+    </see-also>
+  </content>
+</methodology>
