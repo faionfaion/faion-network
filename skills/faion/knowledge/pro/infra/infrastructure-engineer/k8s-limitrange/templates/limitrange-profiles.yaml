@@ -1,0 +1,89 @@
+# LimitRange profiles for three environments
+# Apply: kubectl apply -f limitrange-profiles.yaml -n ${NAMESPACE}
+
+# --- DEVELOPMENT (permissive, low defaults) ---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dev-limits
+  namespace: ${NAMESPACE}
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 200m
+      memory: 256Mi
+    defaultRequest:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "2"
+      memory: 4Gi
+---
+# --- STAGING (medium, ratio enforcement) ---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: staging-limits
+  namespace: ${NAMESPACE}
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "4"
+      memory: 8Gi
+    maxLimitRequestRatio:
+      cpu: "10"
+      memory: "4"
+---
+# --- PRODUCTION (strict, higher defaults) ---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: prod-limits
+  namespace: ${NAMESPACE}
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "1"
+      memory: 1Gi
+    defaultRequest:
+      cpu: 250m
+      memory: 256Mi
+    min:
+      cpu: 100m
+      memory: 128Mi
+    max:
+      cpu: "4"
+      memory: 8Gi
+    maxLimitRequestRatio:
+      cpu: "4"      # Limit cannot exceed 4x request
+      memory: "2"   # Limit cannot exceed 2x request
+  - type: Pod
+    max:
+      cpu: "8"
+      memory: 16Gi
+---
+# --- STORAGE LimitRange (add to any namespace with PVC workloads) ---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-limits
+  namespace: ${NAMESPACE}
+spec:
+  limits:
+  - type: PersistentVolumeClaim
+    min:
+      storage: 1Gi
+    max:
+      storage: ${MAX_STORAGE}   # e.g. 100Gi

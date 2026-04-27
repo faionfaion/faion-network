@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-limitrange">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Apply LimitRange to every namespace to set per-container default requests/limits, enforce min/max bounds, and prevent individual containers from monopolizing cluster resources.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>limitrange</tag>
+      <tag>namespace-policy</tag>
+      <tag>resource-governance</tag>
+      <tag>multi-tenancy</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="k8s-resource-requests-limits"/>
+      <ref slug="k8s-resource-quota"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes LimitRange — Per-Container Resource Governance</title>
+
+    <summary>A LimitRange is a namespace-scoped policy that enforces resource constraints at the individual container or pod level. It provides automatic defaults (so containers without explicit resources still get sensible values), minimum/maximum bounds (preventing extremes), and optional limit-to-request ratio caps. Every namespace in a multi-tenant or production cluster MUST have a LimitRange. Without one, containers that omit the resources block receive BestEffort QoS and can consume unlimited node resources.</summary>
+
+    <why>
+      <p>LimitRange solves two distinct problems. First, the defaults problem: developers frequently omit the resources block in container specs. Without a LimitRange, those containers become BestEffort and destabilize the cluster under memory pressure. With a LimitRange default set, omitted resources are filled in automatically by the admission controller. Second, the bounds problem: even when developers set resources, they may set values that are too large (monopolizing a node) or too small (causing immediate OOMKill). LimitRange min/max reject out-of-range specs at admission time, before a pod is ever scheduled.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every namespace in a production or shared cluster — create LimitRange as part of namespace provisioning.</item>
+        <item>When developers frequently forget to set resources on containers (defaults solve this automatically).</item>
+        <item>When a container is being OOMKilled immediately at startup — check if LimitRange max is lower than the required memory.</item>
+        <item>When a single container is consuming an entire node — set LimitRange max.cpu and max.memory.</item>
+        <item>When enforcing commit to a CPU overcommit policy — use maxLimitRequestRatio.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-pod test namespaces where you explicitly manage every container's resources — LimitRange adds admission overhead with no value.</item>
+        <item>When all workloads already have explicit resources and you only need aggregate caps — use ResourceQuota alone.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="limitrange-types">
+      <p>LimitRange supports three resource types: Container (most common), Pod (aggregate), and PersistentVolumeClaim (storage). Each type has independent min/max/default/defaultRequest fields.</p>
+      <rules>
+        <rule>
+          <statement>Create a Container-type LimitRange in every namespace. At minimum, set default and defaultRequest for cpu and memory so containers without explicit resources receive sensible values instead of BestEffort QoS.</statement>
+          <rationale>The admission controller applies LimitRange defaults at pod creation time. This is a backstop for developer omissions and makes cluster behavior predictable regardless of spec completeness.</rationale>
+        </rule>
+        <rule>
+          <statement>Set LimitRange max.cpu and max.memory to prevent single-container monopoly. Recommended: max.cpu = 4-8 (depending on node size), max.memory = 8Gi-16Gi. Specs exceeding max are rejected at admission with a clear error.</statement>
+          <rationale>Without an upper bound, a misconfigured container (e.g., requests: memory: 128Gi) silently creates an unschedulable pod. Bounds make the misconfiguration visible immediately rather than after failed scheduling.</rationale>
+        </rule>
+        <rule>
+          <statement>Set defaultRequest lower than default limit: defaultRequest.cpu = 100-250m, default.cpu = 500m-1000m; defaultRequest.memory = 128-256Mi, default.memory = 256-512Mi. This gives containers that omit resources a Burstable QoS by default.</statement>
+          <rationale>A container that receives defaultRequest = default would get Guaranteed QoS by accident, reserving node resources that may not be needed. Burstable is the correct default for unknown workloads.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="limitrange-ratio">
+      <p>The maxLimitRequestRatio field caps how much a limit can exceed a request for a given resource, preventing extreme overcommit in the namespace.</p>
+      <rules>
+        <rule>
+          <statement>Use maxLimitRequestRatio.cpu to cap CPU overcommit (recommended: 4-10x). Use maxLimitRequestRatio.memory to cap memory overcommit (recommended: 2-4x). Memory overcommit is more dangerous than CPU overcommit because memory pressure causes OOMKill, not throttling.</statement>
+          <rationale>CPU is compressible (throttle, not kill); memory is not. Allowing 10x CPU overcommit is survivable; allowing 10x memory overcommit on a node means the node will OOMKill pods under full utilization.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="environment-profiles">
+      <p>LimitRange values differ meaningfully between development and production environments. Production should be strict; development should be permissive to avoid blocking exploratory work.</p>
+      <list>
+        <item>Development: low defaults (cpu: 200m, memory: 256Mi), generous max (cpu: 2, memory: 4Gi), no maxLimitRequestRatio.</item>
+        <item>Staging: medium defaults (cpu: 500m, memory: 512Mi), moderate max (cpu: 4, memory: 8Gi), ratio 4:1 CPU, 2:1 memory.</item>
+        <item>Production: higher defaults (cpu: 1, memory: 1Gi), strict max (cpu: 4, memory: 8Gi), ratio 4:1 CPU, 2:1 memory.</item>
+      </list>
+    </section>
+
+    <example type="good" title="Standard production LimitRange">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: default-limits
+  namespace: production
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "4"
+      memory: 8Gi
+    maxLimitRequestRatio:
+      cpu: "10"
+      memory: "4"
+]]></code>
+    </example>
+
+    <example type="good" title="Pod-level and storage LimitRange">
+      <code lang="yaml"><![CDATA[
+# Pod-level aggregate cap (all containers combined)
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: pod-limits
+  namespace: production
+spec:
+  limits:
+  - type: Pod
+    max:
+      cpu: "8"
+      memory: 16Gi
+    min:
+      cpu: 100m
+      memory: 128Mi
+---
+# Storage PVC cap
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: storage-limits
+  namespace: production
+spec:
+  limits:
+  - type: PersistentVolumeClaim
+    min:
+      storage: 1Gi
+    max:
+      storage: 100Gi
+]]></code>
+    </example>
+
+    <example type="good" title="Development namespace (relaxed)">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: dev-limits
+  namespace: development
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 200m
+      memory: 256Mi
+    defaultRequest:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "2"
+      memory: 4Gi
+]]></code>
+    </example>
+
+    <example type="good" title="Production strict with maxLimitRequestRatio">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: prod-limits
+  namespace: production
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "1"
+      memory: 1Gi
+    defaultRequest:
+      cpu: 250m
+      memory: 256Mi
+    min:
+      cpu: 100m
+      memory: 128Mi
+    max:
+      cpu: "4"
+      memory: 8Gi
+    maxLimitRequestRatio:
+      cpu: "4"      # Limit cannot exceed 4x request
+      memory: "2"   # Limit cannot exceed 2x request
+  - type: Pod
+    max:
+      cpu: "8"
+      memory: 16Gi
+]]></code>
+    </example>
+
+    <example type="bad" title="LimitRange default exceeds max">
+      <code lang="yaml"><![CDATA[
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: "8"        # WRONG: default exceeds max
+      memory: 32Gi
+    max:
+      cpu: "4"
+      memory: 8Gi
+]]></code>
+      <note>The API server rejects this configuration. Default must be &lt;= max and &gt;= min, and defaultRequest must be &lt;= default.</note>
+    </example>
+
+    <antipattern>
+      <description>Creating a LimitRange but omitting min values, relying only on max.</description>
+      <reason>Without min, containers can set requests of 1m CPU and 1Mi memory, guaranteeing scheduling on a node that cannot actually satisfy meaningful work. Min enforces a floor that makes scheduling decisions honest.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using identical LimitRange values across production and development namespaces.</description>
+      <reason>Production defaults should be higher (reflecting real workload needs and reducing BestEffort accidents); development defaults should be lower (reducing wasted cluster resources for exploratory work). Same values mean one environment is always misconfigured.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Setting default.memory too high so containers with no resources spec immediately exhaust namespace ResourceQuota.</description>
+      <reason>If 20 containers each inherit a 4Gi default limit from LimitRange, and the namespace quota is limits.memory: 20Gi, a single deployment of 6 replicas exhausts the quota. LimitRange defaults must be sized against the namespace's ResourceQuota and expected pod count.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Create LimitRange for every namespace (production, staging, development, team namespaces).</check>
+      <check>Set sensible defaults for containers without explicit resources (prevents BestEffort QoS).</check>
+      <check>Define min/max bounds to prevent extremes (too small = crash, too large = monopoly).</check>
+      <check>Set defaultRequest lower than default limit to produce Burstable QoS by default.</check>
+      <check>Test pod creation without explicit resources — verify defaults are applied.</check>
+      <check>Test rejection of oversized containers (request cpu: 100 should fail).</check>
+      <check>Verify LimitRange defaults are consistent with namespace ResourceQuota capacity.</check>
+      <check>Document LimitRange values and rationale for the team.</check>
+    </checklist>
+
+    <templates>
+      <template path="templates/limitrange-profiles.yaml" purpose="LimitRange templates for development, staging, and production environments."/>
+    </templates>
+
+    <prompt purpose="Generate LimitRange for environment"><![CDATA[
+Generate a LimitRange for a [development/staging/production] namespace with:
+
+Environment: [dev/staging/production]
+Team size: [small/medium/large]
+Workload types: [web services, workers, databases, etc.]
+
+Requirements:
+- Prevent resource hogging by single containers
+- Ensure minimum resources for stability
+- Set sensible defaults for forgetful developers
+- Allow burst for variable workloads
+
+Output: Complete LimitRange YAML with comments explaining each value.
+]]></prompt>
+
+    <prompt purpose="Audit LimitRange consistency with ResourceQuota"><![CDATA[
+Audit this namespace configuration:
+
+LimitRange:
+[PASTE LIMITRANGE YAML]
+
+ResourceQuota:
+[PASTE RESOURCEQUOTA YAML]
+
+Check:
+1. LimitRange defaults align with quota capacity
+2. Max limits don't exceed quota
+3. Defaults won't cause immediate quota exhaustion
+4. Storage limits match actual needs
+5. Object counts are reasonable
+
+Output: Audit report with findings and remediation steps.
+]]></prompt>
+
+    <see-also>
+      <ref slug="k8s-resource-requests-limits"/>
+      <ref slug="k8s-resource-quota"/>
+      <link href="https://kubernetes.io/docs/concepts/policy/limit-range/"/>
+      <link href="https://www.perfectscale.io/blog/kubernetes-resource-quotas-limit-ranges"/>
+    </see-also>
+  </content>
+</methodology>
