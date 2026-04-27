@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-chunking-strategies">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Split documents into appropriately sized chunks before embedding: fixed-size, token-based, semantic, and sentence-based strategies with overlap tuning for RAG quality.</summary>
+    <tags>
+      <tag>chunking</tag>
+      <tag>embeddings</tag>
+      <tag>rag</tag>
+      <tag>text-splitting</tag>
+      <tag>tokenization</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>langchain</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Embedding Chunking Strategies</title>
+
+    <summary>Embedding models have token limits. Long documents must be split into chunks before embedding. The chunking strategy determines retrieval quality: wrong chunk size degrades both precision (too large — diluted context) and recall (too small — lost cross-sentence meaning).</summary>
+
+    <why>
+      <p>Token limits: OpenAI text-embedding-3-large max 8191 tokens; chunks exceeding this are silently truncated, degrading embedding quality. Chunk size directly controls retrieval precision and recall — focused chunks (256-512 tokens) surface targeted answers; larger chunks (1000-2000 tokens) provide more surrounding context for summarization tasks.</p>
+      <p>An ingestion agent tokenizes and counts tokens per chunk before embedding, discards or splits chunks exceeding the model's token limit, and batches remaining chunks into groups of 50-100 for the embedding API call.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any document corpus being ingested into a vector store for RAG retrieval.</item>
+        <item>Documents longer than the embedding model's token limit (8191 for OpenAI models).</item>
+        <item>When retrieval precision matters — chunk size tuning is the primary quality lever.</item>
+        <item>Code search where function boundaries must be preserved.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Short single-sentence texts already within token limits — chunking adds unnecessary overhead.</item>
+        <item>Structured data (tables, databases) where semantic chunking destroys row integrity — use row-level embedding instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fixed-size-chunking">
+      <p>Split text into fixed-size word chunks with overlap. Simple and predictable but ignores sentence and paragraph boundaries.</p>
+
+      <rule>
+        <statement>Always count tokens (not words or characters) before embedding. Use tiktoken for OpenAI models. Use len(text.split()) * 1.3 as a rough heuristic for non-OpenAI models.</statement>
+        <rationale>Word-count chunking can silently exceed token limits when text contains multi-token words or subword tokenization. Silent truncation by the embedding API degrades vector quality without raising an error.</rationale>
+      </rule>
+
+      <example type="good" title="Fixed-size word chunks with overlap">
+        <code lang="python"><![CDATA[
+def chunk_fixed_size(
+    text: str,
+    chunk_size: int = 500,
+    overlap: int = 50
+) -> list[str]:
+    """Split text into fixed-size chunks with overlap."""
+    words = text.split()
+    chunks = []
+    start = 0
+
+    while start < len(words):
+        end = start + chunk_size
+        chunk = " ".join(words[start:end])
+        chunks.append(chunk)
+        start = end - overlap
+
+    return chunks
+]]></code>
+        <note>Word-based overlap preserves cross-chunk context continuity. 10% overlap is typical for most use cases.</note>
+      </example>
+    </section>
+
+    <section name="token-based-chunking">
+      <p>Split text by exact token count using the same tokenizer as the embedding model. More accurate than word-count and prevents silent truncation.</p>
+
+      <example type="good" title="Token-based chunking with tiktoken">
+        <code lang="python"><![CDATA[
+import tiktoken
+
+def chunk_by_tokens(
+    text: str,
+    max_tokens: int = 500,
+    overlap_tokens: int = 50,
+    model: str = "text-embedding-3-large"
+) -> list[str]:
+    """Split text by token count (more accurate)."""
+    encoding = tiktoken.encoding_for_model(model)
+    tokens = encoding.encode(text)
+    chunks = []
+    start = 0
+
+    while start < len(tokens):
+        end = min(start + max_tokens, len(tokens))
+        chunk_tokens = tokens[start:end]
+        chunk_text = encoding.decode(chunk_tokens)
+        chunks.append(chunk_text)
+        start = end - overlap_tokens
+
+    return chunks
+]]></code>
+        <note>tiktoken is the canonical tokenizer for all OpenAI embedding models. Use cl100k_base encoding for text-embedding-3-* and ada-002.</note>
+      </example>
+    </section>
+
+    <section name="semantic-chunking">
+      <p>Split at natural text boundaries (paragraphs, sentences) using LangChain's RecursiveCharacterTextSplitter. Produces semantically coherent chunks that preserve prose structure.</p>
+
+      <example type="good" title="Semantic chunking via RecursiveCharacterTextSplitter">
+        <code lang="python"><![CDATA[
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+def chunk_semantic(
+    text: str,
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200
+) -> list[str]:
+    """Split at natural boundaries (paragraphs, sentences)."""
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
+    return splitter.split_text(text)
+]]></code>
+        <note>Separator order matters: double newlines (paragraphs) are tried first; single characters last. This preserves semantic units when possible.</note>
+      </example>
+    </section>
+
+    <section name="sentence-based-chunking">
+      <p>Group N sentences per chunk with sentence-level overlap. Produces the highest semantic coherence for prose-heavy documents.</p>
+
+      <example type="good" title="Sentence-based chunking with NLTK">
+        <code lang="python"><![CDATA[
+import nltk
+nltk.download('punkt')
+
+def chunk_by_sentences(
+    text: str,
+    sentences_per_chunk: int = 5,
+    overlap_sentences: int = 1
+) -> list[str]:
+    """Split by sentences for better semantic coherence."""
+    sentences = nltk.sent_tokenize(text)
+    chunks = []
+    start = 0
+
+    while start < len(sentences):
+        end = start + sentences_per_chunk
+        chunk = " ".join(sentences[start:end])
+        chunks.append(chunk)
+        start = end - overlap_sentences
+
+    return chunks
+]]></code>
+        <note>NLTK punkt tokenizer handles abbreviations and punctuation correctly. Download once; the model is cached locally.</note>
+      </example>
+    </section>
+
+    <section name="optimal-chunk-sizes">
+      <p>Recommended chunk sizes by use case:</p>
+      <list>
+        <item>Q&amp;A RAG — 256-512 tokens, 20% overlap — focused single-topic answers</item>
+        <item>Document summary — 1000-2000 tokens, 10% overlap — more surrounding context</item>
+        <item>Code search — 100-200 tokens, 50% overlap — preserve function bodies</item>
+        <item>Legal/Medical — 500-1000 tokens, 25% overlap — complete clauses</item>
+      </list>
+
+      <rule>
+        <statement>For Q&amp;A RAG, start with 512 tokens and 10% overlap. Evaluate retrieval precision@5 on a representative test set before changing chunk size.</statement>
+        <rationale>Chunk size is the primary quality lever but must be validated against actual retrieval metrics. Intuitive sizing frequently misses the optimal point by 2x in either direction.</rationale>
+      </rule>
+    </section>
+
+    <section name="token-guard">
+      <p>An ingestion agent must validate token counts before calling the embedding API. Texts exceeding the model limit must be split further or logged and skipped — never silently truncated by passing them raw.</p>
+
+      <example type="good" title="Token guard before embedding API call">
+        <code lang="python"><![CDATA[
+import tiktoken
+
+enc = tiktoken.get_encoding("cl100k_base")
+
+def guard_token_limit(text: str, max_tokens: int = 8000) -> str:
+    """Truncate text to max_tokens if it exceeds the limit."""
+    tokens = enc.encode(text)
+    if len(tokens) <= max_tokens:
+        return text
+    # Truncate and decode
+    return enc.decode(tokens[:max_tokens])
+
+def prepare_chunks_for_embed(chunks: list[str], max_tokens: int = 8000) -> list[str]:
+    """Apply token guard to all chunks before embedding."""
+    guarded = []
+    for chunk in chunks:
+        token_count = len(enc.encode(chunk))
+        if token_count > max_tokens:
+            # Log warning; truncate to limit
+            guarded.append(guard_token_limit(chunk, max_tokens))
+        else:
+            guarded.append(chunk)
+    return guarded
+]]></code>
+        <note>Always apply guard before batch-embedding. Log chunks that required truncation for corpus quality audit.</note>
+      </example>
+
+      <antipattern>
+        <description>Passing raw documents (entire PDFs, large HTML pages) directly to the embedding API without chunking or token counting.</description>
+        <reason>OpenAI silently truncates at 8191 tokens. The resulting vector represents only the beginning of the document. Retrieval on long documents fails silently.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://www.pinecone.io/learn/chunking-strategies/"/>
+      <link href="https://www.sbert.net/"/>
+      <ref slug="embedding-model-selection"/>
+      <ref slug="embedding-caching"/>
+    </see-also>
+  </content>
+</methodology>
