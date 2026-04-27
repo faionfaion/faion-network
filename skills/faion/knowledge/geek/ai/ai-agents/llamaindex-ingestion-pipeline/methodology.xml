@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-ingestion-pipeline">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex IngestionPipeline: document loading, metadata extraction (TitleExtractor, SummaryExtractor), node parsing strategies, and vector store persistence (Chroma, Pinecone).</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>ingestion</tag>
+      <tag>chunking</tag>
+      <tag>vector-store</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>llamaindex</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="llamaindex-basics"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+      <ref slug="llamaindex-indexes-queries"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex Ingestion Pipeline</title>
+
+    <summary>LlamaIndex IngestionPipeline chains document loaders, metadata extractors, and node parsers into a single reusable pipeline. Connect to a persistent vector store (Chroma or Pinecone) via StorageContext to avoid re-embedding on restart. Tune chunking strategy — SentenceSplitter for speed, SemanticSplitterNodeParser for coherence — based on query patterns.</summary>
+
+    <why>
+      <p>Ad-hoc ingestion (load docs → parse → embed inline) works for demos but breaks at scale: no caching, no metadata enrichment, and re-embedding on every restart. IngestionPipeline centralizes transformations and can cache intermediate results, cutting re-ingestion cost for unchanged documents. Persistent vector stores decouple index construction from query serving, which is mandatory for production systems that restart without re-embedding.</p>
+      <p>Metadata extraction (titles, summaries, keywords) at ingestion time enables filtered retrieval and reduces hallucination: the LLM gets structured context alongside raw text, improving faithfulness scores on multi-hop queries.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a production RAG system that must survive restarts without re-embedding the corpus.</item>
+        <item>Corpus requires metadata enrichment (auto-extracted titles, summaries, keywords) for filtered retrieval.</item>
+        <item>Multiple document types from different sources — IngestionPipeline unifies loading, parsing, and embedding in one call.</item>
+        <item>Long documents where chunk boundary choice materially affects answer quality — compare SentenceSplitter vs SemanticSplitter.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototype with fewer than 100 documents — VectorStoreIndex.from_documents() inline is simpler and sufficient.</item>
+        <item>Fully dynamic data with real-time updates — LlamaIndex indexes are append-friendly but not designed for continuous stream ingestion; use a dedicated streaming pipeline.</item>
+        <item>Cost is the hard constraint on a small corpus — metadata extractors (TitleExtractor, SummaryExtractor) fire LLM calls per document; disable them if the corpus is large and metadata is not needed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="document-loading">
+      <p>LlamaIndex provides SimpleDirectoryReader for files and SimpleWebPageReader for URLs. Custom metadata can be attached at Document construction time or via a metadata extractor in the pipeline.</p>
+
+      <rule>
+        <statement>Always attach source metadata (file path, URL, date) at document creation time. Metadata filters at retrieval time require that metadata keys exist on every node; missing keys cause silent retrieval gaps.</statement>
+        <rationale>Metadata is stored per-node in the vector store. If nodes from different ingestion runs have inconsistent keys, metadata filters silently skip nodes lacking the expected key — retrieval appears to work but misses documents.</rationale>
+      </rule>
+
+      <example type="good" title="SimpleDirectoryReader with metadata">
+        <code lang="python"><![CDATA[
+from llama_index.core import SimpleDirectoryReader
+
+documents = SimpleDirectoryReader(
+    input_dir="./documents",
+    recursive=True,
+    required_exts=[".txt", ".md", ".pdf"]
+).load_data()
+
+# Manual metadata on custom documents
+from llama_index.core import Document
+
+documents = [
+    Document(
+        text="Document content here",
+        metadata={
+            "source": "manual",
+            "author": "Jane",
+            "date": "2024-01-01"
+        }
+    )
+]
+]]></code>
+      </example>
+    </section>
+
+    <section name="ingestion-pipeline-metadata">
+      <p>IngestionPipeline chains transformations in order. Metadata extractors run LLM calls — budget them explicitly. Cache the pipeline to skip already-embedded documents on re-run.</p>
+
+      <rule>
+        <statement>Restrict IngestionPipeline metadata extractors to the minimum needed: add TitleExtractor only when document titles are absent; add KeywordExtractor only when keyword filtering will be used at retrieval. Each extractor fires one LLM call per document chunk.</statement>
+        <rationale>SummaryExtractor on a 10 000-document corpus fires 10 000 LLM calls. At gpt-4o pricing (input) that is material cost for data that may not improve retrieval quality. Profile extraction cost before enabling.</rationale>
+      </rule>
+
+      <example type="good" title="IngestionPipeline with selective metadata extraction">
+        <code lang="python"><![CDATA[
+from llama_index.core.extractors import (
+    TitleExtractor,
+    SummaryExtractor,
+    KeywordExtractor,
+)
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser import SentenceSplitter
+
+pipeline = IngestionPipeline(
+    transformations=[
+        SentenceSplitter(chunk_size=1024, chunk_overlap=200),
+        TitleExtractor(),     # only if docs lack titles
+        KeywordExtractor(),   # only if keyword filtering needed
+    ]
+)
+
+nodes = pipeline.run(documents=documents)
+]]></code>
+        <note>SummaryExtractor omitted — adds cost without retrieval benefit in most cases.</note>
+      </example>
+    </section>
+
+    <section name="node-parsing-strategies">
+      <p>The chunking strategy is the single biggest lever for RAG quality. Start with SentenceSplitter; upgrade to SemanticSplitterNodeParser when chunk coherence tests show boundary artifacts.</p>
+
+      <rule>
+        <statement>Start with SentenceSplitter(chunk_size=1024, chunk_overlap=200) as the baseline. Upgrade to SemanticSplitterNodeParser only after measuring that sentence-boundary splits produce incoherent chunks on your corpus. Never start with semantic splitting — it is slower and requires a calibration pass.</statement>
+        <rationale>SemanticSplitterNodeParser calls the embedding model once per sentence pair to detect breakpoints. On a 10 000-page corpus this is expensive. SentenceSplitter is deterministic and fast. The 200-token overlap ensures context continuity at boundaries without full document redundancy.</rationale>
+      </rule>
+
+      <example type="good" title="SentenceSplitter baseline">
+        <code lang="python"><![CDATA[
+from llama_index.core.node_parser import SentenceSplitter
+
+splitter = SentenceSplitter(
+    chunk_size=1024,
+    chunk_overlap=200
+)
+nodes = splitter.get_nodes_from_documents(documents)
+]]></code>
+      </example>
+
+      <example type="good" title="SemanticSplitterNodeParser for coherent chunks">
+        <code lang="python"><![CDATA[
+from llama_index.core.node_parser import SemanticSplitterNodeParser
+from llama_index.core import Settings
+
+semantic_splitter = SemanticSplitterNodeParser(
+    buffer_size=1,
+    breakpoint_percentile_threshold=95,
+    embed_model=Settings.embed_model
+)
+nodes = semantic_splitter.get_nodes_from_documents(documents)
+]]></code>
+        <note>breakpoint_percentile_threshold=95 means only the top 5% most dissimilar adjacent sentences trigger a split — conservative and suitable for long prose.</note>
+      </example>
+
+      <antipattern>
+        <description>Using chunk_size=256 without increasing chunk_overlap proportionally.</description>
+        <reason>At 256 tokens, chunk_overlap=20 (default) covers only ~8% of the chunk — boundary context is nearly absent. At small chunk sizes, set overlap to at least 25% of chunk size.</reason>
+      </antipattern>
+    </section>
+
+    <section name="vector-store-persistence">
+      <p>Persistent vector stores decouple ingestion from serving. StorageContext wraps the vector store and is passed to VectorStoreIndex. Load existing indexes without re-embedding using load_index_from_storage or VectorStoreIndex.from_vector_store.</p>
+
+      <rule>
+        <statement>Always persist indexes to a named vector store (Chroma, Pinecone, Qdrant) for any corpus larger than a demo. Tag snapshots with a version identifier (timestamp or content hash) so agents and evaluation runs can load a specific snapshot.</statement>
+        <rationale>Without persistence, the index is rebuilt on every restart — re-embedding costs scale with corpus size. Version tagging enables reproducible evaluation: an agent can load the exact index snapshot that was evaluated, not a drifted live index.</rationale>
+      </rule>
+
+      <example type="good" title="Chroma persistent index">
+        <code lang="python"><![CDATA[
+import chromadb
+from llama_index.core import VectorStoreIndex, StorageContext
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_collection = chroma_client.get_or_create_collection("documents")
+
+vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+# First run: build index
+index = VectorStoreIndex.from_documents(
+    documents,
+    storage_context=storage_context
+)
+
+# Subsequent runs: load without re-embedding
+index = VectorStoreIndex.from_vector_store(vector_store)
+]]></code>
+      </example>
+
+      <example type="good" title="Pinecone index with metadata filtering">
+        <code lang="python"><![CDATA[
+from pinecone import Pinecone
+from llama_index.vector_stores.pinecone import PineconeVectorStore
+from llama_index.core import VectorStoreIndex, StorageContext
+
+pc = Pinecone(api_key="your-api-key")
+pinecone_index = pc.Index("your-index")
+
+vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
+storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+index = VectorStoreIndex.from_documents(
+    documents,
+    storage_context=storage_context
+)
+]]></code>
+        <note>Pinecone supports namespace-based partitioning — use namespaces to isolate corpus versions without separate indexes.</note>
+      </example>
+
+      <example type="good" title="Load persisted index from disk">
+        <code lang="python"><![CDATA[
+from llama_index.core import load_index_from_storage, StorageContext
+
+storage_context = StorageContext.from_defaults(
+    persist_dir="./storage"
+)
+index = load_index_from_storage(storage_context)
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Attach source metadata (path, date, author) at Document creation — not as a post-processing step.</check>
+      <check>Audit IngestionPipeline extractor cost before enabling SummaryExtractor on large corpora.</check>
+      <check>Start with SentenceSplitter(1024, 200) as baseline; switch to semantic splitting only after measuring boundary quality.</check>
+      <check>Persist indexes to a named vector store; tag snapshots with version identifiers.</check>
+      <check>Load existing indexes with from_vector_store() to avoid re-embedding on restart.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="llamaindex-basics"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+      <link href="https://docs.llamaindex.ai/en/stable/module_guides/loading/ingestion_pipeline/"/>
+    </see-also>
+  </content>
+</methodology>
