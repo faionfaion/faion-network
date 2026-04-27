@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-nat-gateway">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Configure Azure NAT Gateway for managed outbound connectivity from private subnets: static egress IPs, zone redundancy, SNAT port sizing, and monitoring for port exhaustion.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>nat-gateway</tag>
+      <tag>outbound-connectivity</tag>
+      <tag>snat</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-nsg-rules"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure NAT Gateway for Outbound Connectivity</title>
+
+    <summary>NAT Gateway provides managed, zone-redundant outbound internet connectivity for private subnets. It replaces the implicit Load Balancer outbound rules with a predictable static public IP, consistent SNAT behavior, and configurable idle timeout. Every public IP on a NAT Gateway provides ~64,000 SNAT ports — size the IP count against expected concurrent outbound connections.</summary>
+
+    <why>
+      <p>Private subnets (no public IP resources) need outbound internet access for: pulling container images, calling external APIs, OS package updates, sending telemetry. Without NAT Gateway or an alternative egress path, Azure routes outbound traffic through a shared, unpredictable SNAT pool — the IP changes without notice and breaks third-party IP allowlists.</p>
+      <p>Load Balancer outbound rules are the older alternative, but they are per-NIC and SNAT port counts are shared with inbound connections — port exhaustion is silent and causes dropped outbound connections that look like random timeouts to the application. NAT Gateway is the recommended replacement.</p>
+      <p>NAT Gateway has a hard limit of ~64,000 SNAT ports per public IP. High-fanout workloads (web scrapers, batch HTTP, connection poolers that open many short-lived connections) silently drop connections at the edge when this is exhausted. Monitor `SNATConnectionCount` metric.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any private subnet that requires outbound internet access (container registries, OS updates, external APIs).</item>
+        <item>Workloads that must present a consistent egress IP for third-party IP allowlisting (payment gateways, SaaS APIs).</item>
+        <item>High-availability setups requiring zone-redundant outbound — NAT Gateway supports zone-redundant public IPs.</item>
+        <item>AKS node pools in private subnets — nodes need outbound access for node bootstrap and image pull.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Subnets that have no outbound internet requirement — NAT Gateway costs even when idle; skip it for data-tier or internal-only subnets.</item>
+        <item>Virtual WAN spoke VNets — Virtual WAN has its own managed egress; adding a NAT Gateway causes routing conflicts.</item>
+        <item>Subnets with Azure Firewall as the egress path — do not attach NAT Gateway and Firewall UDR to the same subnet; only one egress path should control outbound routing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="snat-sizing">
+      <rule testable="true">
+        <statement>Size NAT Gateway public IP count based on expected peak outbound concurrent connections: each public IP provides ~64,000 SNAT ports. Add one additional public IP per 50,000 expected concurrent outbound connections. For web scrapers, batch HTTP, or connection-heavy workloads exceeding 50,000 concurrent connections, use multiple public IPs (max 16 per NAT Gateway) or a public IP prefix.</statement>
+        <rationale>SNAT port exhaustion silently drops connections — the application sees random timeouts with no Azure error. The default single-IP configuration is sufficient for typical workloads (&lt;10,000 concurrent outbound) but fails for high-fanout patterns.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Standard SKU public IP with zone-redundant allocation (zones: ["1", "2", "3"]) for production NAT Gateways. Basic SKU public IPs are not supported with NAT Gateway.</statement>
+        <rationale>Zone-redundant IP ensures NAT Gateway survives an AZ failure. Basic SKU IPs are incompatible with NAT Gateway and cause a deploy-time error that is confusing to diagnose.</rationale>
+      </rule>
+    </section>
+
+    <section name="nat-gateway-terraform">
+      <example type="good" title="NAT Gateway with zone-redundant IP (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_public_ip" "nat" {
+  name                = "${var.project}-${var.environment}-nat-ip"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  zones               = ["1", "2", "3"]   # Zone-redundant
+  tags                = local.common_tags
+}
+
+resource "azurerm_nat_gateway" "main" {
+  name                    = "${var.project}-${var.environment}-nat"
+  location                = azurerm_resource_group.main.location
+  resource_group_name     = azurerm_resource_group.main.name
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 10
+  zones                   = ["1"]          # Single zone for gateway itself
+  tags                    = local.common_tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "main" {
+  nat_gateway_id       = azurerm_nat_gateway.main.id
+  public_ip_address_id = azurerm_public_ip.nat.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "private" {
+  subnet_id      = azurerm_subnet.private.id
+  nat_gateway_id = azurerm_nat_gateway.main.id
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="NAT Gateway with Basic SKU IP">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_public_ip" "nat" {
+  name              = "nat-ip"
+  allocation_method = "Dynamic"   # Wrong: Dynamic allocation
+  sku               = "Basic"     # Wrong: Basic SKU not supported
+}
+]]></code>
+        <note>NAT Gateway requires Standard SKU and Static allocation. Basic SKU causes a deploy-time error: "NAT Gateway is not supported with Basic SKU public IP."</note>
+      </example>
+    </section>
+
+    <section name="idle-timeout">
+      <rule testable="true">
+        <statement>Set `idle_timeout_in_minutes` based on application connection patterns. Default is 4 minutes; increase to 10-15 minutes for applications that keep long-lived TCP connections idle (database connection pools, websockets, gRPC streams). Do NOT set it to 120 minutes (maximum) by default — connections remain in the SNAT table longer, consuming ports.</statement>
+        <rationale>SNAT port exhaustion is exacerbated by long idle timeouts. Each idle connection holds a SNAT port for the duration of the timeout. Connection pools that recycle connections frequently benefit from shorter timeouts (4-10 min); only set higher for genuinely long-lived streams.</rationale>
+      </rule>
+    </section>
+
+    <section name="monitoring">
+      <rule testable="true">
+        <statement>Configure metric alerts for `SNATConnectionCount` dropping below expected thresholds and for SNAT port utilization approaching 80% of capacity. Enable diagnostic logs on the NAT Gateway to a Log Analytics workspace. Alert on connection drops (`DroppedPackets` metric) as an early warning of SNAT exhaustion.</statement>
+        <rationale>SNAT exhaustion manifests as silent connection drops — no Azure error, no application error code, just timeouts. Without proactive monitoring, high-fanout workloads fail intermittently in production before the issue is identified.</rationale>
+      </rule>
+    </section>
+
+    <section name="nat-checklist">
+      <checklist>
+        <check>Standard SKU public IP with Static allocation.</check>
+        <check>Zone-redundant public IP (zones: ["1", "2", "3"]) for production.</check>
+        <check>IP count sized for expected concurrent outbound connections (64k ports per IP).</check>
+        <check>Idle timeout set to match application connection patterns (default 4 min, max 120 min).</check>
+        <check>NAT Gateway associated with private subnets requiring outbound access.</check>
+        <check>Outbound IP documented for third-party allowlisting.</check>
+        <check>SNATConnectionCount metric alert configured.</check>
+        <check>NAT Gateway NOT attached to subnets with Azure Firewall UDR.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>NAT Gateway has SNAT port exhaustion (~64k per public IP); high-fanout outbound workloads (web scrapers, batch HTTP) silently drop connections at the edge.</description>
+        <reason>Agents configure a single public IP for all workloads. Add one IP per 50,000 expected concurrent connections; use a public IP prefix for large-scale egress.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents attach NAT Gateway to a subnet that also has a UDR pointing to Azure Firewall. Both compete for the default route; behavior is undefined.</description>
+        <reason>Only one egress mechanism should control the default route (0.0.0.0/0) for a subnet. Use either NAT Gateway or Azure Firewall + UDR — not both.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/virtual-network/nat-gateway/nat-overview"/>
+      <link href="https://learn.microsoft.com/azure/virtual-network/nat-gateway/nat-metrics"/>
+      <ref slug="azure-vnet-hub-spoke"/>
+    </see-also>
+  </content>
+</methodology>
