@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feature-flags-types-lifecycle">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Five feature flag categories (release, experiment, ops, permission, kill-switch) with distinct lifespans, ownership, and a mandatory cleanup lifecycle to prevent flag debt.</summary>
+    <tags>
+      <tag>feature-flags</tag>
+      <tag>progressive-rollout</tag>
+      <tag>trunk-based-dev</tag>
+      <tag>technical-debt</tag>
+      <tag>lifecycle</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <ref slug="feature-flags-services-testing"/>
+      <ref slug="trunk-based-dev-patterns"/>
+      <ref slug="cd-pipelines"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flag Types and Lifecycle</title>
+
+    <summary>Feature flags (feature toggles) allow you to modify system behavior without deploying new code. Each flag has a category (release, experiment, ops, permission, kill-switch) that determines its expected lifespan, ownership, and cleanup obligation. Treating all flags identically causes flag debt — the single largest source of maintenance burden in toggle systems.</summary>
+
+    <why>
+      <p>Feature flags enable trunk-based development, progressive rollouts, A/B testing, and instant rollback of features without a redeploy. Without a typed taxonomy, teams accumulate flags with no expiry — 80% of projects have flags older than 6 months still in production code, and cyclomatic complexity explodes as every branching point multiplies.</p>
+      <p>Assigning a category at creation time forces the right default lifespan, owner, and cleanup obligation. Kill switches are permanent by design; release flags are short-lived by design. Encoding this at registration time lets automated agents audit and enforce the contract.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Trunk-based development: hide incomplete features in production so main is always shippable.</item>
+        <item>Progressive feature rollouts (1% to 10% to 50% to 100%) with automatic rollback on error-rate spike.</item>
+        <item>A/B experiments where the experiment platform reads the same flag store as the app.</item>
+        <item>Kill switches for risky integrations (third-party payments, AI calls) that can be flipped without redeploy.</item>
+        <item>Per-tenant features (premium tier, beta access) with attribute-based targeting.</item>
+        <item>Operational circuit breakers and maintenance-mode toggles.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-line config that never changes — env vars suffice; flags add unnecessary indirection.</item>
+        <item>Database schema changes — flags cannot gate ALTER TABLE migrations safely.</item>
+        <item>Permanent business rules that belong in domain logic, not toggles.</item>
+        <item>Pre-production prototypes where the flag infrastructure complexity outweighs the value.</item>
+        <item>Time-critical hot paths where even 1ms of flag-evaluation latency matters — compile out or cache.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flag-taxonomy">
+      <p>Every flag registered in the system MUST declare one of five categories. Category determines default lifespan and cleanup obligation.</p>
+
+      <rule>
+        <statement>Every flag MUST have: name, type, default, owner, expiry. No exceptions. Release and experiment flags default to OFF; kill switches default to ON.</statement>
+        <rationale>Without expiry, flags are never removed. Without owner, nobody removes them. Without a default, agents hardcode True to make tests pass — which leaks features to prod.</rationale>
+      </rule>
+
+      <section name="release-flags">
+        <p>Release flags hide incomplete features in production. Lifespan: short (days to weeks). They allow trunk-based development by keeping the main branch deployable while a feature is still being built. Example: a new checkout flow being developed in parallel with the existing one.</p>
+        <rule>
+          <statement>Release flags MUST have an expiry date set at registration time. A flag without an expiry is a permanent flag and MUST be reclassified as ops or permission.</statement>
+          <rationale>Release flags are by definition temporary — they exist only until the feature is fully shipped. Leaving them open-ended converts them into permanent complexity.</rationale>
+        </rule>
+      </section>
+
+      <section name="experiment-flags">
+        <p>Experiment flags enable A/B testing and data collection. Lifespan: medium (weeks to months). The experiment platform reads the same flag store as the application. Example: testing a new pricing page design against a control.</p>
+        <rule>
+          <statement>Experiment flags MUST be tied to a concrete hypothesis and a success metric. Remove within 30 days of the experiment reaching statistical significance.</statement>
+          <rationale>Experiment flags left running after the result is known continue branching production code without any analytical value.</rationale>
+        </rule>
+      </section>
+
+      <section name="ops-flags">
+        <p>Ops flags control operational aspects: circuit breakers, maintenance mode, rate limiters, fallback behavior. Lifespan: medium to long. Example: maintenance_mode toggle that shows a holding page during a deployment window.</p>
+      </section>
+
+      <section name="permission-flags">
+        <p>Permission flags control feature access for specific user segments — premium tier, beta access, internal employees. Lifespan: long (often permanent as long as the tier exists). Example: premium_export_csv available only to paying users.</p>
+      </section>
+
+      <section name="kill-switches">
+        <p>Kill switches are emergency disables for entire subsystems. Lifespan: permanent (always available). Default is ON (the feature is live) and the switch disables it. Example: disable_payments during a payment processor incident. Require human-in-loop approval to flip.</p>
+        <rule>
+          <statement>Kill switches MUST default to True (enabled) and be guarded by a human-in-loop approval step before flipping in production. Any rollout percentage above 10% also requires human approval.</statement>
+          <rationale>Kill switches exist for emergencies. An agent flipping the wrong one silently could disable payments, auth, or core product features for all users with no alert.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="lifecycle-stages">
+      <p>Every flag passes through a mandatory five-stage lifecycle. Skipping stage 5 (cleanup) is the root cause of flag debt.</p>
+
+      <how-to>
+        <step>PLANNING: define flag name, type, owner, expected lifespan, and document in the flag registry with an expiry date.</step>
+        <step>DEVELOPMENT: implement the new code path behind the flag; default OFF; test both ON and OFF branches before merging.</step>
+        <step>ROLLOUT: enable for internal users first, then gradual percentage increase; monitor error rate and key metrics at each step.</step>
+        <step>FULL ROLLOUT: enable for 100% of users; monitor for issues; validate that the old code path can be safely deleted.</step>
+        <step>CLEANUP (Critical): remove flag checks from code; remove flag configuration; deploy clean code; delete the flag definition from the registry.</step>
+      </how-to>
+
+      <rule>
+        <statement>Quarterly cleanup ritual: every flag past its expiry date MUST be either removed from code (if rollout is at 100%) or formally extended with a new expiry date and written justification.</statement>
+        <rationale>Without a forced ritual, flags accumulate silently. Cyclomatic complexity grows with each untouched flag; engineers stop understanding which branches are live.</rationale>
+      </rule>
+    </section>
+
+    <section name="flag-registry-pattern">
+      <p>A flag registry is a single source of truth for all flags in the system. It records type, owner, creation date, expected cleanup date, current status, and rollout percentage.</p>
+
+      <example type="good" title="Flag registry with cleanup dates">
+        <code lang="python"><![CDATA[
+FLAG_REGISTRY = {
+    "new_checkout": {
+        "type": "release",
+        "owner": "payments-team",
+        "created": "2024-01-15",
+        "expected_cleanup": "2024-02-15",
+        "status": "rolling_out",
+        "rollout_percentage": 50,
+    },
+    "maintenance_mode": {
+        "type": "ops",
+        "owner": "platform-team",
+        "created": "2023-06-01",
+        "expected_cleanup": None,  # Permanent ops flag
+        "status": "permanent",
+    },
+}
+
+
+def audit_stale_flags():
+    """Find flags that should be cleaned up."""
+    from datetime import datetime
+
+    stale_flags = []
+    now = datetime.now()
+
+    for flag_name, info in FLAG_REGISTRY.items():
+        cleanup_date = info.get("expected_cleanup")
+        if cleanup_date:
+            cleanup = datetime.strptime(cleanup_date, "%Y-%m-%d")
+            if cleanup < now:
+                stale_flags.append({
+                    "flag": flag_name,
+                    "owner": info["owner"],
+                    "overdue_days": (now - cleanup).days,
+                })
+
+    return stale_flags
+
+
+if __name__ == "__main__":
+    stale = audit_stale_flags()
+    if stale:
+        print("WARNING: Stale feature flags found!")
+        for flag in stale:
+            print(f"  - {flag['flag']}: {flag['overdue_days']} days overdue (owner: {flag['owner']})")
+]]></code>
+        <note>Run this script in CI weekly; open an issue automatically with the stale list so owners are forced to act.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Flag debt: never removing flags after full rollout.</description>
+        <reason>Each untouched flag keeps a dead code branch alive, doubles the test surface, and increases cyclomatic complexity indefinitely.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Nested flags: multiple flags creating complex compound conditions.</description>
+        <reason>Two nested flags produce four code paths; three produce eight. Untestable in practice and impossible to reason about during incidents.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Flag dependencies: one flag depending on another being enabled.</description>
+        <reason>Creates implicit ordering constraints that are not visible in the registry; changing one flag silently breaks another.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using flags for config: storing configuration values (URLs, thresholds) in a toggle system.</description>
+        <reason>Flags are binary on/off controls. Config management systems (env vars, Vault, AWS Parameter Store) are the right tool for values.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Flag names that drift across versions: new_checkout_v2, new_checkout_v3, checkout_redesign.</description>
+        <reason>Each rename orphans the old toggle in the registry while creating a new one; agents tasked with flag management can no longer correlate history.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <ref slug="feature-flags-services-testing"/>
+      <link href="https://martinfowler.com/articles/feature-toggles.html"/>
+      <link href="https://featureflags.io/"/>
+    </see-also>
+  </content>
+</methodology>
