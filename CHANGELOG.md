@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: github-actions-workflows → 5 slugs (gha-matrix-builds, gha-caching-artifacts, gha-deployment-patterns, gha-security-hardening, gha-workflow-structure)
 - decompose: azure-networking → 6 slugs (azure-vnet-hub-spoke, azure-nsg-rules, azure-nat-gateway, azure-app-gateway-waf, azure-front-door, azure-private-link)
 - decompose: load-balancing → 6 slugs (devops-lb-algorithms, devops-lb-health-checks, devops-lb-ssl-tls, devops-lb-high-availability, devops-lb-haproxy, devops-lb-kubernetes)
 - decompose: aws-architecture-foundations → 6 slugs (aws-well-architected-framework, aws-multi-account-landing-zone, aws-vpc-design, aws-iam-security-foundations, aws-monitoring-observability, aws-cost-optimization)
