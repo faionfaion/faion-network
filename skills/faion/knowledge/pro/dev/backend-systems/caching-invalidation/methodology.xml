@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="caching-invalidation">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Four cache invalidation strategies: TTL-based, event-based, tag-based, and version-based. Selection criteria, key design, and Redis patterns for each approach.</summary>
+    <tags>
+      <tag>caching</tag>
+      <tag>redis</tag>
+      <tag>invalidation</tag>
+      <tag>ttl</tag>
+      <tag>cache-tags</tag>
+    </tags>
+    <category>caching</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>redis</framework>
+    </frameworks>
+    <related>
+      <ref slug="caching-write-patterns"/>
+      <ref slug="caching-stampede-prevention"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cache Invalidation: TTL, Event-Based, Tag-Based, and Version-Based</title>
+
+    <summary>Cache invalidation is the hardest part of caching. Four strategies exist: TTL (time-to-live, simplest), event-based (invalidate on write events), tag-based (invalidate groups via Redis SETs), and version-based (namespace keys with a bumped version number). Every entity needs at least TTL; event-based is required for strong freshness; tags and versions handle cascading invalidation.</summary>
+
+    <why>
+      <p>Stale cache data causes user-visible bugs: a user updates their profile but sees the old name; a product goes out of stock but the cart still shows "in stock". Over-aggressive invalidation wastes the cache entirely. The right strategy depends on the freshness budget — the maximum acceptable stale window — which must be documented per entity type before implementation.</p>
+      <p>TTL drift is a common failure mode: two related keys get different TTLs and reads see a half-stale view. Tag-based invalidation solves the cascading problem (invalidate all products in a category) without KEYS * scans. Version-based invalidation solves the schema-change problem (deploy new code with incompatible cached shapes) without a manual flush.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>TTL-based: all entities as a safety net; standalone for data where bounded staleness is explicitly acceptable (analytics, public catalog).</item>
+        <item>Event-based: entities with a write path you control (user profiles, orders) and a freshness budget under 5 minutes.</item>
+        <item>Tag-based: entities with group membership (products in a category, articles by author) where you need to invalidate an entire group on a single event.</item>
+        <item>Version-based: schema changes across deployments, or any time you need atomic invalidation of all cached instances of an entity type.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Event-based invalidation without a write-path audit — incomplete invalidation leaves stale keys that TTL alone eventually expires.</item>
+        <item>Tag-based invalidation without TTL on the tag sets themselves — orphaned tag keys accumulate and consume memory indefinitely.</item>
+        <item>Version-based invalidation as the sole strategy — old versioned keys are orphaned until their TTL expires, so memory grows linearly with deploys.</item>
+        <item>KEYS * for bulk invalidation in production — O(N), blocks Redis single-thread loop, causes latency spikes under load.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ttl-based">
+      <p>TTL is mandatory on every key. It is both a cache-miss safety net and the last line of defense against stale data accumulation. All other invalidation strategies supplement TTL — they do not replace it.</p>
+
+      <rule testable="true">
+        <statement>Every Redis key set by application code MUST use setex / SET EX / EXPIRE. SET without TTL is forbidden. TTL values MUST include ±10–20% random jitter to prevent synchronized expiry stampedes.</statement>
+        <rationale>A key without TTL is permanent stale data. Synchronized TTLs cause synchronized cache misses which cause synchronized origin load spikes (thundering herd). Jitter distributes expiry across time.</rationale>
+      </rule>
+
+      <example type="good" title="TTL with jitter (Python)">
+        <code lang="python"><![CDATA[
+import secrets
+
+def set_with_jitter(redis_client, key: str, value: str, base_ttl: int, jitter_pct: float = 0.15):
+    """Set key with TTL ± jitter_pct to prevent synchronized expiry."""
+    jitter_range = int(base_ttl * jitter_pct)
+    # secrets.randbelow avoids weak random that might create patterns
+    offset = secrets.randbelow(2 * jitter_range + 1) - jitter_range
+    actual_ttl = max(1, base_ttl + offset)
+    redis_client.setex(key, actual_ttl, value)
+
+# Pattern 1: Time-based (TTL)
+redis_client.setex("key", 3600, "value")  # Expires in 1 hour
+
+# TTL guidelines by entity type
+TTL_MAP = {
+    "user_profile":    1800,   # 30 minutes
+    "product_catalog": 3600,   # 1 hour
+    "static_config":   86400,  # 24 hours
+    "search_results":  300,    # 5 minutes
+    "analytics":       900,    # 15 minutes
+}
+]]></code>
+      </example>
+
+      <note>TTL guidelines: user profile 30 min, product catalog 1 h, static config 24 h, search results 5 min, analytics 15 min. Real-time data should not be cached or TTL &lt; 1 min.</note>
+    </section>
+
+    <section name="event-based">
+      <p>Event-based invalidation deletes cache keys when the underlying data changes. It requires identifying every write path that mutates an entity and wiring a cache delete into each. The most common agent mistake is caching reads without wiring the invalidation into the write paths.</p>
+
+      <rule testable="true">
+        <statement>For every entity with event-based cache invalidation, a write-path audit table MUST exist mapping (file:line, table/collection, mutated_columns) to (expected cache keys to delete). A reviewer agent MUST reject PRs where any write path has an empty invalidation list.</statement>
+        <rationale>LLMs implement cache-aside reads but routinely forget to wire cache.delete() into update/delete RPCs. The write-path audit table makes the invariant machine-checkable rather than relying on human review to catch gaps.</rationale>
+      </rule>
+
+      <example type="good" title="Event-based invalidation with CacheInvalidator (Python)">
+        <code lang="python"><![CDATA[
+import json
+import redis
+
+# Pattern 2: Event-based
+class CacheInvalidator:
+    def __init__(self, redis_client):
+        self.redis = redis_client
+
+    def invalidate(self, pattern: str):
+        """Invalidate keys matching pattern using SCAN (non-blocking unlike KEYS *)."""
+        for key in self.redis.scan_iter(pattern):
+            self.redis.delete(key)
+
+    def invalidate_exact(self, *keys: str):
+        """Invalidate exact keys — O(N keys), not O(N total keys)."""
+        if keys:
+            self.redis.delete(*keys)
+
+    def set_with_tags(self, key: str, value: str, ttl: int, tags: list):
+        pipe = self.redis.pipeline()
+        pipe.setex(key, ttl, value)
+        for tag in tags:
+            pipe.sadd(f"cache:tag:{tag}", key)
+            pipe.expire(f"cache:tag:{tag}", ttl)
+        pipe.execute()
+
+    def invalidate_tags(self, *tags: str):
+        for tag in tags:
+            keys = self.redis.smembers(f"cache:tag:{tag}")
+            if keys:
+                self.redis.delete(*keys)
+                self.redis.delete(f"cache:tag:{tag}")
+
+# Usage — wire into write path
+invalidator = CacheInvalidator(redis_client)
+
+def update_user(user_id: str, data: dict):
+    db.users.update_one({"_id": user_id}, {"$set": data})
+    # Must invalidate all related keys
+    invalidator.invalidate_exact(f"user:{user_id}", f"user:profile:{user_id}")
+]]></code>
+      </example>
+    </section>
+
+    <section name="tag-based">
+      <p>Tag-based invalidation maintains Redis SET keys that map from a logical group tag to the set of cache keys belonging to that group. Invalidating a tag deletes all associated cache keys in one pipeline. Tags solve the "invalidate all products in category:electronics" problem without iterating over keys.</p>
+
+      <rule testable="true">
+        <statement>Tag SET keys MUST be given a TTL equal to the longest TTL of any key they reference. When a tagged key expires, it MUST be removed from its tag sets — either eagerly in the expiry hook or lazily by checking key existence before use.</statement>
+        <rationale>Tag SETs without TTL become permanent sets of stale key names as the actual cached keys expire. Memory usage grows indefinitely. Setting tag TTL to the longest member TTL ensures the tag set is at most as long-lived as its longest member.</rationale>
+      </rule>
+
+      <example type="good" title="Tag-based invalidation (Python)">
+        <code lang="python"><![CDATA[
+import json
+import redis
+
+class TaggedCache:
+    def __init__(self, redis_client: redis.Redis):
+        self.redis = redis_client
+
+    def set_with_tags(self, key: str, value: str, ttl: int, tags: list[str]):
+        pipe = self.redis.pipeline()
+        pipe.setex(key, ttl, value)
+        for tag in tags:
+            tag_key = f"cache:tag:{tag}"
+            pipe.sadd(tag_key, key)
+            pipe.expire(tag_key, ttl)  # TTL on tag SET = TTL of member
+        pipe.execute()
+
+    def invalidate_tags(self, *tags: str):
+        keys_to_delete = set()
+        for tag in tags:
+            tag_key = f"cache:tag:{tag}"
+            keys = self.redis.smembers(tag_key)
+            keys_to_delete.update(keys)
+            keys_to_delete.add(tag_key)
+        if keys_to_delete:
+            self.redis.delete(*keys_to_delete)
+
+    def get_tags(self, key: str) -> set[str]:
+        tags = set()
+        for tag_key in self.redis.scan_iter(match="cache:tag:*", count=100):
+            if self.redis.sismember(tag_key, key):
+                tag = tag_key.split(":", 2)[2]
+                tags.add(tag)
+        return tags
+
+# Usage
+cache = TaggedCache(redis.Redis())
+
+cache.set_with_tags(
+    key="product:123",
+    value=json.dumps(product),
+    ttl=3600,
+    tags=["products", "category:electronics", "brand:apple"]
+)
+
+# Invalidate all products in category
+cache.invalidate_tags("category:electronics")
+# Invalidate multiple tags
+cache.invalidate_tags("products", "brand:apple")
+]]></code>
+        <note>Tag structure: tag:category:electronics → [product:1, product:5, product:9]; tag:user:premium → [user:12, user:45, user:78].</note>
+      </example>
+    </section>
+
+    <section name="version-based">
+      <p>Version-based invalidation encodes a version counter in the cache key. Incrementing the version atomically obsoletes all previously cached data for that entity type — old keys are orphaned and expire via their TTL. This is the safest strategy for deployment-time schema changes.</p>
+
+      <rule testable="true">
+        <statement>Cache keys for versioned entities MUST follow the pattern {entity}:v{version}:{id} where version comes from a Redis counter. Version MUST be incremented atomically via INCR before any new writes use the new schema. Old versioned keys MUST have TTL set so orphaned keys do not accumulate.</statement>
+        <rationale>Without version in the key, a deploy that changes the cached data shape produces deserialization errors or silently corrupt cached values. INCR atomicity prevents race conditions between multiple processes reading the new version before the counter is stable.</rationale>
+      </rule>
+
+      <example type="good" title="Version-based cache keys (Python)">
+        <code lang="python"><![CDATA[
+import json
+import redis
+from typing import Optional
+
+class VersionedCache:
+    def __init__(self, redis_client: redis.Redis):
+        self.redis = redis_client
+
+    def get_version(self, entity: str) -> int:
+        version_key = f"cache:version:{entity}"
+        version = self.redis.get(version_key)
+        return int(version) if version else 0
+
+    def increment_version(self, entity: str) -> int:
+        version_key = f"cache:version:{entity}"
+        return self.redis.incr(version_key)
+
+    def cache_key(self, entity: str, id: str) -> str:
+        version = self.get_version(entity)
+        return f"{entity}:v{version}:{id}"
+
+    def get(self, entity: str, id: str) -> Optional[str]:
+        key = self.cache_key(entity, id)
+        return self.redis.get(key)
+
+    def set(self, entity: str, id: str, value: str, ttl: int = 3600):
+        key = self.cache_key(entity, id)
+        self.redis.setex(key, ttl, value)
+
+# Key naming patterns:
+# {entity}:{version}:{id}          → user:v1:12345
+# {entity}:{operation}:{params}    → search:v1:query=laptop&page=1
+# {entity}:tag:{tag_name}          → user:tag:premium
+
+# Deploy new code with schema change — atomically invalidate all old keys
+cache = VersionedCache(redis.Redis())
+cache.set("user", "123", json.dumps(user_data))
+
+# Deploy: increment version — all user:v0:* keys are now orphaned, expire via TTL
+cache.increment_version("user")
+
+# New reads use user:v1:*, return None (cache miss), fetch fresh data
+user = cache.get("user", "123")  # Returns None on first read after version bump
+]]></code>
+        <note>Version-based invalidation is atomic: all processes reading the incremented version see new keys simultaneously. Old orphaned keys expire via their individual TTLs — no manual flush required.</note>
+      </example>
+
+      <antipattern>
+        <description>Using KEYS * pattern for bulk invalidation in production hot paths.</description>
+        <reason>KEYS is O(N) against total keyspace and blocks Redis single-thread event loop. Use tag-based invalidation with SMEMBERS, version-based with INCR, or SCAN with a cursor for non-blocking iteration.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Setting different TTLs on a key and the tag SETs that reference it.</description>
+        <reason>Tag SETs with shorter TTL than member keys become empty before members expire, making future invalidations miss the stale keys. Tag SETs with longer TTL accumulate expired key names indefinitely, wasting memory.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://redis.io/docs/manual/patterns/"/>
+      <link href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching"/>
+      <ref slug="caching-write-patterns"/>
+      <ref slug="caching-stampede-prevention"/>
+    </see-also>
+  </content>
+</methodology>
