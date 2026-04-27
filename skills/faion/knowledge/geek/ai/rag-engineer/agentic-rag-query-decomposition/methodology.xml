@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agentic-rag-query-decomposition">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Break complex user queries into 2–4 atomic sub-queries that can be answered independently, then retrieve and merge context per sub-query before final synthesis.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>agentic</tag>
+      <tag>query-decomposition</tag>
+      <tag>multi-hop</tag>
+      <tag>planning</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>llama-index</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-self-correction"/>
+      <ref slug="agentic-rag-tool-using"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Agentic RAG — Query Decomposition</title>
+
+    <summary>A planning agent decomposes a complex query into 2–4 atomic sub-queries that can each be answered with a single retrieval call. Independent sub-queries run in parallel; results are merged and passed to the generator. This pattern maps directly to the "plan" node in a LangGraph agentic RAG workflow.</summary>
+
+    <why>
+      <p>Complex questions like "Compare the regulatory approach in the EU and US for LLM-generated content and explain how it affects deployment timelines" cannot be answered by a single vector search — the relevant chunks exist under entirely different topics. Decomposing into sub-queries ("EU LLM regulation", "US LLM regulation", "regulatory impact on deployment timelines") lets each retrieval call be tuned to a single atomic information need, dramatically improving recall.</p>
+      <p>Running independent sub-queries in parallel also reduces wall-clock latency compared to serial iterative retrieval, making decomposition the preferred pattern when the sub-queries are known upfront rather than discovered iteratively.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>The user query contains multiple distinct information needs (comparison, multi-part, "and also" structure).</item>
+        <item>Multi-hop QA: the answer requires combining facts from disjoint documents.</item>
+        <item>Research synthesis where the question has a known structure (e.g., compare A vs B across dimensions C, D, E).</item>
+        <item>Legal compliance or fact-checking where exhaustive coverage of multiple sub-topics is required.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple factual lookups — decomposition adds an extra LLM call with no benefit.</item>
+        <item>Queries with a single clear information need — decompose into one sub-query is a no-op and wastes a round-trip.</item>
+        <item>When the sub-queries are not known upfront but emerge from retrieved context — use iterative retrieval instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decomposition-pattern">
+      <p>The decomposer makes a single LLM call to break the query into 2–4 atomic sub-queries returned as a JSON array. Each sub-query is then independently sent to the vector store. Results are merged and deduplicated before synthesis.</p>
+
+      <rule testable="true">
+        <statement>Sub-query decomposition MUST produce 2–4 sub-queries. If the LLM returns fewer than 2, treat the original query as atomic and fall back to single-pass RAG. If it returns more than 4, keep only the 4 highest-confidence sub-queries.</statement>
+        <rationale>Fewer than 2 sub-queries means the original question was already atomic; more than 4 leads to redundant overlapping retrievals that inflate token usage and context length without improving coverage.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Run independent sub-queries in parallel (e.g., via asyncio.gather or a thread pool). Cache sub-query results within a single agentic run — the same sub-query may recur across planning iterations.</statement>
+        <rationale>Sub-queries are independent by construction; serial execution adds one round-trip latency per sub-query unnecessarily. Caching prevents duplicate retrieval calls when the same sub-query is generated in a later refinement cycle.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Track sub-query coverage: each sub-query MUST retrieve at least 1 high-confidence chunk (score above retrieval threshold). If a sub-query returns zero high-confidence chunks, flag it for query expansion rather than silently dropping it.</statement>
+        <rationale>Silent coverage gaps produce answers that look complete but are missing entire information domains. Explicit flagging surfaces corpus holes for human review or corpus update.</rationale>
+      </rule>
+
+      <example type="good" title="QueryDecomposer class">
+        <code lang="python"><![CDATA[
+from typing import List, Dict
+import openai
+import json
+
+class QueryDecomposer:
+    """Break complex queries into sub-queries."""
+
+    def decompose(self, query: str) -> List[str]:
+        """Decompose into atomic sub-queries."""
+        prompt = f"""
+Decompose this complex query into 2-4 simpler sub-queries that can
+be answered independently:
+
+Query: {query}
+
+Return sub-queries as a JSON array of strings.
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        return result.get("sub_queries", [query])
+
+    def retrieve_for_subqueries(
+        self,
+        sub_queries: List[str],
+        vector_store
+    ) -> Dict[str, List[Dict]]:
+        """Retrieve context for each sub-query."""
+        results = {}
+        for sq in sub_queries:
+            results[sq] = vector_store.search(sq, k=5)
+        return results
+]]></code>
+        <note>Use gpt-4o-mini (or Haiku) for decomposition; it is a classification task that does not require heavy reasoning.</note>
+      </example>
+    </section>
+
+    <section name="langgraph-plan-node">
+      <p>In a LangGraph workflow, query decomposition maps to the "plan" node. The agent state carries the sub-queries list, and the retrieve node fans out over it.</p>
+
+      <example type="good" title="LangGraph plan + retrieve nodes">
+        <code lang="python"><![CDATA[
+from langgraph.graph import Graph, END
+from typing import TypedDict, List, Dict
+
+class AgentState(TypedDict):
+    query: str
+    sub_queries: List[str]
+    context: List[Dict]
+    answer: str
+    verified: bool
+
+def plan(state: AgentState) -> AgentState:
+    """Decompose query."""
+    decomposer = QueryDecomposer()
+    state["sub_queries"] = decomposer.decompose(state["query"])
+    return state
+
+def retrieve(state: AgentState) -> AgentState:
+    """Retrieve for all sub-queries."""
+    all_context = []
+    for sq in state["sub_queries"]:
+        chunks = vector_store.search(sq, k=5)
+        all_context.extend(chunks)
+    state["context"] = all_context
+    return state
+
+workflow = Graph()
+workflow.add_node("plan", plan)
+workflow.add_node("retrieve", retrieve)
+workflow.set_entry_point("plan")
+workflow.add_edge("plan", "retrieve")
+]]></code>
+        <note>The retrieve node extends context from all sub-queries; deduplication should happen before passing to the generator.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow-overview">
+      <p>The full agentic RAG architecture that decomposition fits into: the planner subagent decomposes the query into 2–4 atomic sub-queries; the retriever subagent executes each sub-query against the vector store (in parallel where sub-queries are independent); a sufficiency judge evaluates whether the combined context answers the original question; if not, it generates a gap-filling refined query and triggers another retrieval round (max 3 rounds); the generator subagent synthesizes the final answer; a verifier subagent checks faithfulness against source chunks and flags ungrounded claims.</p>
+
+      <section name="recommended-subagents">
+        <p>Recommended subagents: query-planner (decomposes complex query into atomic sub-queries; returns JSON array), iterative-retriever (retrieves, evaluates sufficiency, and refines query in a bounded loop), rag-generator (synthesizes grounded answer from multi-hop context), faithfulness-verifier (checks each claim in the answer against retrieved sources; flags hallucinations).</p>
+      </section>
+    </section>
+
+    <section name="gotchas">
+      <antipattern>
+        <description>Sub-query decomposition produces overlapping sub-queries (e.g., "EU AI regulation" and "EU AI Act regulations") that retrieve nearly identical chunks.</description>
+        <reason>Overlapping sub-queries inflate context length and token costs without adding information. Use chunk deduplication by ID after retrieval. Consider generating sub-query embeddings and filtering out pairs with cosine similarity above 0.85.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Passing all sub-query results to the generator as separate context blocks without merging.</description>
+        <reason>The generator receives fragmented context and may answer each sub-query independently rather than synthesizing a unified answer. Merge and deduplicate all chunks into a single context list before synthesis.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-self-correction"/>
+      <ref slug="agentic-rag-tool-using"/>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/rag/langgraph_agentic_rag/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/agent/agentic_rag/"/>
+    </see-also>
+  </content>
+</methodology>
