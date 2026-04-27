@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feature-flags-rollout-targeting">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Deterministic percentage rollout via MD5 hash bucketing, plus explicit user-list and group-based targeting. Enables gradual 1%→10%→50%→100% progressions with consistent per-user assignment.</summary>
+    <tags>
+      <tag>feature-flags</tag>
+      <tag>rollout</tag>
+      <tag>targeting</tag>
+      <tag>a-b-testing</tag>
+      <tag>progressive-delivery</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-services-testing"/>
+      <ref slug="ab-testing-implementation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flag Rollout and Targeting</title>
+
+    <summary>Gradual rollouts require deterministic per-user assignment: the same user must consistently see the same variant. The canonical approach combines MD5 hash bucketing for percentage rollout with an explicit allowlist (user IDs) and group membership (beta_testers, employees) evaluated in priority order. Couple rollout percentage changes to error-rate alerts to enable automatic rollback.</summary>
+
+    <why>
+      <p>Non-deterministic rollout (random per-request) causes the same user to see the new feature on one page load and the old feature on the next — a broken experience that makes A/B analytics meaningless and support tickets hard to reproduce. Hash bucketing on (flag_name + user_id) ensures consistent assignment with uniform distribution across the user population.</p>
+      <p>The priority order (explicit list → group membership → percentage) allows teams to pre-enroll internal users and beta testers before the percentage reaches them, without overriding the percentage logic for everyone else.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Gradual feature rollouts where you want 1% → 10% → 50% → 100% progression with monitoring at each step.</item>
+        <item>Beta programs where specific employees or opted-in users always see the new feature before general availability.</item>
+        <item>A/B experiments where each user must consistently see the same variant for the experiment to be statistically valid.</item>
+        <item>Group-based feature access: beta_testers, employees, premium_tier — evaluated before the percentage bucket.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Anonymous traffic where no stable user_id exists — you cannot maintain consistent assignment without a persistent identifier.</item>
+        <item>Features that must be either fully on or fully off for all users simultaneously — use a simple boolean flag instead.</item>
+        <item>High-volume paths where hash computation is too expensive — pre-evaluate at session start and cache in the request context.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="percentage-rollout">
+      <p>The RolloutConfig holds a percentage (0–100), an explicit user_ids set (always enabled), and a groups set (enabled for members). FeatureFlagManagerWithRollout evaluates these in priority order before falling back to the percentage hash.</p>
+
+      <example type="good" title="Deterministic percentage rollout with user and group targeting">
+        <code lang="python"><![CDATA[
+import hashlib
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass
+class RolloutConfig:
+    """Configuration for gradual rollout."""
+    percentage: int = 0        # 0-100
+    user_ids: set[str] = field(default_factory=set)   # Always enabled
+    groups: set[str] = field(default_factory=set)     # Enabled groups
+
+
+class FeatureFlagManagerWithRollout:
+    def __init__(self):
+        self._flags: dict[str, "FeatureFlag"] = {}
+        self._rollouts: dict[str, RolloutConfig] = {}
+
+    def set_rollout(self, flag_name: str, config: RolloutConfig):
+        """Set rollout configuration for a flag."""
+        self._rollouts[flag_name] = config
+
+    def is_enabled(
+        self,
+        flag_name: str,
+        user_id: Optional[str] = None,
+        groups: Optional[set[str]] = None,
+    ) -> bool:
+        """Check if flag is enabled for user.
+
+        Priority: explicit user list → group membership → percentage hash → default.
+        """
+        flag = self._flags.get(flag_name)
+        if not flag:
+            return False
+
+        rollout = self._rollouts.get(flag_name)
+        if not rollout:
+            return flag.default
+
+        # 1. Explicit user allowlist — always enabled regardless of percentage
+        if user_id and user_id in rollout.user_ids:
+            return True
+
+        # 2. Group membership — enabled for matched groups
+        if groups and rollout.groups & groups:
+            return True
+
+        # 3. Percentage rollout via deterministic hash
+        if rollout.percentage > 0 and user_id:
+            return self._is_in_percentage(flag_name, user_id, rollout.percentage)
+
+        return flag.default
+
+    def _is_in_percentage(
+        self,
+        flag_name: str,
+        user_id: str,
+        percentage: int,
+    ) -> bool:
+        """Deterministic percentage check via MD5 hash bucketing."""
+        # Combine flag name and user_id so each flag has independent buckets
+        key = f"{flag_name}:{user_id}"
+        hash_value = int(hashlib.md5(key.encode()).hexdigest(), 16)
+        bucket = hash_value % 100
+        return bucket < percentage
+
+
+# Setup
+flags = FeatureFlagManagerWithRollout()
+
+# Gradual rollout to 25% of users
+flags.set_rollout("new_search", RolloutConfig(
+    percentage=25,
+    user_ids={"admin-1", "test-user"},       # Always enabled
+    groups={"beta_testers", "employees"},    # Groups enabled
+))
+
+# Check with user context
+if flags.is_enabled("new_search", user_id=current_user.id, groups=current_user.groups):
+    return new_search(query)
+else:
+    return old_search(query)
+]]></code>
+        <note>The key f"{flag_name}:{user_id}" ensures that a user in bucket 15 for "new_search" may be in bucket 72 for "new_checkout" — independent assignment per flag.</note>
+      </example>
+    </section>
+
+    <section name="rollout-progression">
+      <p>A safe rollout progression couples each percentage increase to an error-rate check. Automate the progression or require a human sign-off at each step.</p>
+
+      <how-to>
+        <step>Start at 0%: internal QA only, using the explicit user_ids allowlist.</step>
+        <step>1%: deploy to a small slice; establish baseline error rate and latency for new vs old path.</step>
+        <step>10%: monitor for 24 hours; if p99 latency or error rate is within 5% of baseline, proceed.</step>
+        <step>50%: monitor for 48 hours; check product metrics (conversion, engagement) in addition to technical metrics.</step>
+        <step>100%: enable for all; schedule cleanup task within the flag's expected lifespan.</step>
+      </how-to>
+
+      <rule>
+        <statement>Couple each rollout percentage increase to an automated error-rate check. If the new code path shows an error-rate spike above 0.5% over the baseline, automatically revert the percentage to 0 and page the owner.</statement>
+        <rationale>Manual monitoring is unreliable at 2am. An automated rollback gate catches regressions within minutes and prevents a 1% experiment from silently degrading 1% of production traffic for days.</rationale>
+      </rule>
+    </section>
+
+    <section name="launchdarkly-targeting">
+      <p>When using a managed flag service such as LaunchDarkly, the same priority order applies but targeting rules are configured in the UI. The Python SDK call builds a Context object with user attributes and evaluates the remote targeting rules.</p>
+
+      <example type="good" title="LaunchDarkly evaluation with user context">
+        <code lang="python"><![CDATA[
+import ldclient
+from ldclient.config import Config
+from ldclient import Context
+import os
+
+ldclient.set_config(Config(os.getenv("LAUNCHDARKLY_SDK_KEY")))
+ld_client = ldclient.get()
+
+
+def is_enabled(
+    flag_key: str,
+    user_id: str,
+    email: Optional[str] = None,
+    custom_attributes: dict = None,
+) -> bool:
+    """Check feature flag using LaunchDarkly."""
+    context_builder = Context.builder(user_id)
+    context_builder.kind("user")
+
+    if email:
+        context_builder.set("email", email)
+
+    if custom_attributes:
+        for key, value in custom_attributes.items():
+            context_builder.set(key, value)
+
+    context = context_builder.build()
+    # False is the safe default: unknown flag → off
+    return ld_client.variation(flag_key, context, False)
+
+
+def get_variation(
+    flag_key: str,
+    user_id: str,
+    default: str = "control",
+) -> str:
+    """Get string variation for A/B testing."""
+    context = Context.builder(user_id).kind("user").build()
+    return ld_client.variation(flag_key, context, default)
+
+
+# A/B test variant selection
+variant = get_variation("checkout_button_color", user.id)
+if variant == "blue":
+    button_class = "btn-blue"
+elif variant == "green":
+    button_class = "btn-green"
+else:
+    button_class = "btn-default"
+]]></code>
+        <note>Always pass a safe default to ld_client.variation(). If LaunchDarkly is unavailable, the default is returned — ensure the default keeps the old (proven) behavior active.</note>
+      </example>
+    </section>
+
+    <section name="rollout-antipatterns">
+      <antipattern>
+        <description>A/B leakage: a user opens two tabs and sees two variants because the assignment is session-scoped, not user-scoped.</description>
+        <reason>Session-scoped assignment makes analytics treat one user as two. Always key on a stable user identifier (user_id), not session token or cookie.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Global flags without user context: flag applies to all traffic or none.</description>
+        <reason>Without user_id, gradual rollout is impossible. The flag becomes a deploy-time toggle, not a progressive delivery tool.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LaunchDarkly (or any SaaS flag service) outage causes your app outage because is_enabled() blocks on the SDK call.</description>
+        <reason>Always configure a local in-memory cache on the SDK with a stale-while-revalidate policy. The cached evaluation runs even when the flag service is unreachable.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-core-implementation"/>
+      <ref slug="feature-flags-services-testing"/>
+      <ref slug="ab-testing-implementation"/>
+      <link href="https://docs.launchdarkly.com/"/>
+      <link href="https://openfeature.dev/"/>
+    </see-also>
+  </content>
+</methodology>
