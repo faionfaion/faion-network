@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-resource-hierarchy">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Design and configure GCP resource hierarchy (org/folders/projects), naming conventions, required labels, and project setup to enforce governance at scale.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>resource-hierarchy</tag>
+      <tag>organization</tag>
+      <tag>projects</tag>
+      <tag>governance</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-iam-design"/>
+      <ref slug="gcp-billing-cost"/>
+      <ref slug="gcp-org-policies"/>
+      <ref slug="gcp-overview-cli"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Resource Hierarchy Design</title>
+
+    <summary>GCP organizes all resources in a 4-level tree: Organization → Folder → Project → Resource. IAM policies and organization constraints flow downward; projects are the billing boundary and API-enablement boundary. Designing this hierarchy upfront prevents costly restructuring later.</summary>
+
+    <why>
+      <p>The resource hierarchy controls IAM inheritance, cost attribution, and policy enforcement. A well-designed hierarchy lets you apply a security constraint once at the organization level and have it propagate to every project automatically. Poorly designed hierarchies (e.g., mixing environments inside one project, or using more than 3 folder levels) create policy complexity that becomes intractable at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up new GCP organizations or migrating standalone projects into an organization structure.</item>
+        <item>Designing folder and project layouts for new teams, environments, or applications.</item>
+        <item>Planning multi-environment deployments (dev/staging/prod) with clear separation boundaries.</item>
+        <item>Establishing governance and security foundations before teams start creating resources.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single personal project with no organizational requirements — flat project structure is sufficient.</item>
+        <item>Read-only GCP audit tasks — hierarchy restructuring requires Organization Admin and should be done in a planned change window.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="hierarchy-levels">
+      <p>The 4 levels of the GCP resource hierarchy and their roles:</p>
+      <list>
+        <item>Organization (root) — company-wide policies, billing account linkage, break-glass admin access. Policies flow down to all children.</item>
+        <item>Folder (department/team/env) — groups projects by team, environment, or application. Inherits org policies, can add its own.</item>
+        <item>Project (workload boundary) — billing boundary and API-enablement boundary. Inherits folder policies.</item>
+        <item>Resource (VMs, buckets, etc.) — actual cloud services. Inherit project policies.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Keep folder nesting depth at 3 or fewer levels. Deeply nested hierarchies increase policy complexity without adding governance value.</statement>
+        <rationale>Each additional folder level adds an inheritance layer to debug when IAM or org-policy issues occur. Flat hierarchies are easier to reason about and audit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Separate environments (dev/staging/prod) into different projects, not different folders inside one project. Each environment must have its own project.</statement>
+        <rationale>Projects are the billing and API-enablement boundary. Mixing environments in one project makes it impossible to restrict prod APIs from dev workloads or attribute costs separately.</rationale>
+      </rule>
+    </section>
+
+    <section name="folder-structure-patterns">
+      <p>Three proven patterns for folder structure:</p>
+
+      <example type="good" title="Enterprise organization structure">
+        <code lang="text"><![CDATA[
+acme-corp (Organization)
+├── bootstrap/
+│   ├── prj-b-seed            # Terraform state, automation
+│   └── prj-b-cicd            # CI/CD pipelines
+│
+├── common/
+│   ├── prj-c-logging         # Centralized logging
+│   ├── prj-c-monitoring      # Shared monitoring
+│   ├── prj-c-networking-hub  # Hub VPC, interconnect
+│   └── prj-c-security        # Security tools
+│
+├── production/
+│   ├── prj-p-app1            # Production app 1
+│   ├── prj-p-app2            # Production app 2
+│   └── prj-p-data            # Production data platform
+│
+├── staging/
+│   ├── prj-s-app1            # Staging app 1
+│   └── prj-s-data            # Staging data platform
+│
+└── development/
+    ├── prj-d-app1            # Development app 1
+    └── prj-d-sandbox         # Developer sandbox
+]]></code>
+        <note>Bootstrap and common folders hold shared infrastructure. Environment separation (production/staging/development) is at the folder level, not the project level.</note>
+      </example>
+
+      <example type="good" title="Startup organization structure">
+        <code lang="text"><![CDATA[
+startup-io (Organization)
+├── shared/
+│   └── prj-shared-infra      # Shared networking, logging
+│
+├── prod/
+│   └── prj-prod-main         # Production workloads
+│
+└── nonprod/
+    ├── prj-staging           # Staging environment
+    └── prj-dev               # Development environment
+]]></code>
+        <note>Minimal 2-level folder depth. Shared services folder for common resources keeps the hierarchy flat.</note>
+      </example>
+
+      <example type="good" title="Multi-team organization structure">
+        <code lang="text"><![CDATA[
+company-xyz (Organization)
+├── platform/
+│   ├── prj-platform-prod     # Platform team prod
+│   └── prj-platform-dev      # Platform team dev
+│
+├── team-alpha/
+│   ├── prj-alpha-prod        # Team Alpha prod
+│   └── prj-alpha-dev         # Team Alpha dev
+│
+└── team-beta/
+    ├── prj-beta-prod         # Team Beta prod
+    └── prj-beta-dev          # Team Beta dev
+]]></code>
+        <note>Folder per team enables delegated folder admin without granting org-level access to team leads.</note>
+      </example>
+    </section>
+
+    <section name="naming-and-labels">
+      <p>Consistent naming and mandatory labels are the foundation of cost tracking and operational visibility.</p>
+
+      <rule testable="true">
+        <statement>All projects MUST follow the naming pattern: {resource-type}-{environment}-{application}. Project IDs must be globally unique and immutable once created — include a short hex suffix if needed.</statement>
+        <rationale>Project names are mutable but project IDs are not. Using a deterministic prefix scheme (prj-prod-ecommerce) makes the hierarchy navigable without console access and avoids naming conflicts.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Projects MUST carry at minimum three labels: env (prod|staging|dev), team (owning team), cost_center (cost center code). Enforce this via an org policy custom constraint.</statement>
+        <rationale>Labels are the only mechanism for attributing costs to teams and cost centers in BigQuery billing exports. Projects without labels appear as unattributed spend in cost reports.</rationale>
+      </rule>
+
+      <example type="good" title="Standard naming pattern">
+        <code lang="text"><![CDATA[
+{resource-type}-{environment}-{application}-{component}
+
+Examples:
+- prj-prod-ecommerce           # Project
+- vpc-prod-ecommerce           # VPC
+- gke-prod-ecommerce-primary   # GKE cluster
+- sql-prod-ecommerce-main      # Cloud SQL
+- sa-prod-ecommerce-api        # Service account
+- bkt-prod-ecommerce-assets    # Storage bucket
+]]></code>
+      </example>
+
+      <example type="good" title="Required label standards">
+        <code lang="yaml"><![CDATA[
+Required Labels:
+  env: prod|staging|dev
+  team: platform|backend|frontend|data
+  cost_center: cc-NNN
+  managed_by: terraform|manual
+
+Optional Labels:
+  app: application-name
+  component: api|web|worker
+  owner: team-email
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Deeply nested folder hierarchies (4+ levels) to reflect every organizational sub-unit.</description>
+        <reason>Policy inheritance becomes difficult to trace and audit. Each extra level adds one more layer to check when debugging IAM denials or org-policy violations.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No resource labels on projects, VMs, or buckets.</description>
+        <reason>Labels are the only mechanism for cost attribution in BigQuery billing exports and Looker Studio dashboards. Unlabeled resources appear as unattributed spend.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing dev and prod workloads inside the same project.</description>
+        <reason>Projects are the API-enablement and billing boundary. Mixed-environment projects make cost attribution impossible and increase the blast radius of accidental changes.</reason>
+      </antipattern>
+    </section>
+
+    <section name="project-setup">
+      <p>Each new project must be set up with a consistent checklist:</p>
+      <checklist>
+        <check>Standardized naming convention applied; project ID follows naming standards.</check>
+        <check>Required labels attached (env, team, cost-center, managed_by).</check>
+        <check>Only necessary APIs enabled — review with gcloud services list --enabled.</check>
+        <check>Default service account reviewed and disabled if not required.</check>
+        <check>Project linked to correct billing account.</check>
+        <check>auto_create_network set to false in Terraform (no default VPC).</check>
+      </checklist>
+
+      <example type="good" title="Create project with labels via gcloud">
+        <code lang="bash"><![CDATA[
+# Create project in folder
+gcloud projects create prj-prod-app1 \
+  --folder=FOLDER_ID \
+  --name="Production App 1" \
+  --labels="env=prod,team=platform,cost-center=cc-001"
+
+# Link billing account
+gcloud billing projects link prj-prod-app1 \
+  --billing-account=BILLING_ACCOUNT_ID
+
+# Enable required APIs
+gcloud services enable \
+  compute.googleapis.com \
+  container.googleapis.com \
+  cloudsql.googleapis.com \
+  secretmanager.googleapis.com \
+  --project=prj-prod-app1
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform project factory module">
+        <code lang="hcl"><![CDATA[
+resource "google_project" "app" {
+  name            = "Production App 1"
+  project_id      = "prj-prod-app1"
+  folder_id       = google_folder.production.name
+  billing_account = var.billing_account
+
+  labels = {
+    env         = "prod"
+    team        = "platform"
+    cost_center = "cc-001"
+    managed_by  = "terraform"
+  }
+
+  auto_create_network = false  # Disable default VPC
+}
+
+# Enable required APIs
+resource "google_project_service" "apis" {
+  for_each = toset([
+    "compute.googleapis.com",
+    "container.googleapis.com",
+    "cloudsql.googleapis.com",
+    "secretmanager.googleapis.com",
+    "monitoring.googleapis.com",
+    "logging.googleapis.com",
+  ])
+
+  project = google_project.app.project_id
+  service = each.value
+
+  disable_dependent_services = false
+  disable_on_destroy         = false
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="organization-setup-checklist">
+      <checklist>
+        <check>Organization resource created (via Cloud Identity or Workspace).</check>
+        <check>Organization Admin role assigned to designated admins (break-glass only).</check>
+        <check>Organization policies configured (constraints) — resource locations, SA key creation.</check>
+        <check>Billing Account linked to organization.</check>
+        <check>Audit logging enabled at org level.</check>
+        <check>Folder structure reflects organizational boundaries.</check>
+        <check>Environment separation: dev/staging/prod folders created.</check>
+        <check>Shared services folder for common resources (logging, monitoring, networking-hub).</check>
+        <check>Bootstrap folder for IaC and automation (Terraform seed project).</check>
+        <check>Hierarchy kept flat — minimize nesting depth to 3 or fewer.</check>
+      </checklist>
+    </section>
+
+    <section name="verification-commands">
+      <commands>
+        <command name="list-org">gcloud organizations list</command>
+        <command name="list-folders">gcloud resource-manager folders list --organization=ORG_ID</command>
+        <command name="list-projects-in-folder">gcloud projects list --filter="parent.id=FOLDER_ID"</command>
+        <command name="check-billing">gcloud billing projects describe PROJECT_ID</command>
+        <command name="list-enabled-apis">gcloud services list --enabled --project=PROJECT_ID</command>
+      </commands>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="Design organization structure">
+        <![CDATA[
+Design a GCP resource hierarchy for [ORGANIZATION DESCRIPTION]:
+
+Organization Context:
+- Company size: [startup/SMB/enterprise]
+- Teams: [list teams/departments]
+- Environments: [dev/staging/prod/sandbox]
+- Compliance requirements: [GDPR/HIPAA/SOC2/none]
+- Multi-region: [yes/no, which regions]
+
+Requirements:
+1. Design folder structure reflecting organizational boundaries
+2. Propose naming conventions for projects
+3. Identify shared services projects needed
+4. Define IAM inheritance strategy
+5. Recommend organization policies
+
+Deliverables:
+- Visual hierarchy diagram (text-based)
+- Folder and project naming conventions
+- IAM role recommendations per level
+- Organization policies to enforce
+]]>
+      </prompt>
+
+      <prompt purpose="Migrate to organization structure">
+        <![CDATA[
+Help migrate from standalone GCP projects to organization structure:
+
+Current State:
+- Projects: [list existing projects]
+- Billing accounts: [number and purpose]
+- Current IAM: [describe current access model]
+
+Target State:
+- Organization domain: [domain.com]
+- Desired folder structure: [describe]
+- Environment separation: [requirements]
+
+Requirements:
+1. Migration path from standalone to org
+2. Project migration order and dependencies
+3. IAM migration strategy
+4. Billing account consolidation
+5. Minimal disruption approach
+]]>
+      </prompt>
+
+      <prompt purpose="Audit resource hierarchy">
+        <![CDATA[
+Audit GCP resource hierarchy for [ORGANIZATION]:
+
+Audit Areas:
+1. Folder depth and complexity
+2. Naming consistency
+3. IAM policy inheritance issues
+4. Organization policy gaps
+5. Orphaned projects
+6. Billing account assignments
+
+Output:
+- Current state assessment
+- Issues by severity
+- Remediation recommendations
+- Migration plan if restructuring needed
+]]>
+      </prompt>
+
+      <prompt purpose="Design project structure for application">
+        <![CDATA[
+Design project structure for [APPLICATION/PLATFORM]:
+
+Application Context:
+- Type: [web app/data platform/ML/microservices]
+- Components: [list major components]
+- Data sensitivity: [public/internal/confidential]
+- Traffic patterns: [describe load]
+
+Environment Requirements:
+- Development: [requirements]
+- Staging: [requirements]
+- Production: [requirements]
+
+Design Requirements:
+1. Project per environment vs shared
+2. API enablement per project
+3. Network connectivity between projects
+4. Shared resources strategy
+5. Cost attribution approach
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-iam-design"/>
+      <ref slug="gcp-billing-cost"/>
+      <ref slug="gcp-org-policies"/>
+      <ref slug="gcp-overview-cli"/>
+      <link href="https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy"/>
+      <link href="https://cloud.google.com/architecture/landing-zones/decide-resource-hierarchy"/>
+    </see-also>
+  </content>
+</methodology>
