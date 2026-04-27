@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-gateway-security">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Implement authentication, authorization, TLS termination, WAF, CORS, header sanitization, and request validation at the API gateway layer to defend against abuse and data leakage.</summary>
+    <tags>
+      <tag>api-gateway</tag>
+      <tag>security</tag>
+      <tag>authentication</tag>
+      <tag>authorization</tag>
+      <tag>tls</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-resilience"/>
+      <ref slug="security-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>API Gateway Security: Authentication, Authorization, TLS, WAF, and Headers</title>
+
+    <summary>API gateway security layers: TLS termination at the edge, authentication (API keys, JWT, OAuth 2.0, mTLS), authorization (RBAC, scopes), WAF for threat detection, request validation for size and schema, CORS policy enforcement, header sanitization (stripping internal headers before forwarding), and audit logging. Each layer is mandatory — missing one creates an exploitable gap.</summary>
+
+    <why>
+      <p>The gateway is the first line of defense for all backend services. Authentication and authorization at the gateway prevents unauthorized access from reaching backend services at all. TLS termination at the edge means backends do not need individual certificate management. WAF and request size limits prevent volumetric attacks and injection. Header sanitization prevents JWT and internal credential leakage to upstream logs.</p>
+      <p>mTLS, JWT validation, and OAuth introspection configs need cert chains and JWKS URLs that agents easily hallucinate; verify with curl / openssl. Generated CORS configs are usually Access-Control-Allow-Origin: * — must be locked to known domains in production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Configuring authentication mechanisms for public or partner APIs (JWT, OAuth 2.0, API keys).</item>
+        <item>Implementing mTLS for service-to-service or high-security partner integrations.</item>
+        <item>Setting up WAF rules, IP whitelisting, bot detection, or DDoS protection.</item>
+        <item>Enforcing CORS policies and security headers (HSTS, X-Content-Type-Options, CSP).</item>
+        <item>Adding request size limits, schema validation, and input sanitization.</item>
+        <item>Configuring audit logging for compliance (GDPR, HIPAA, PCI-DSS).</item>
+        <item>Stripping internal headers (X-Internal-*, JWTs after validation) before forwarding to backends.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Gateway-level authorization for fine-grained business rules — those belong in the service (e.g., "can this user edit this specific document?"). Gateway handles coarse-grained access (authenticated? has scope?), services handle fine-grained (owns the resource?).</item>
+        <item>Applying WAF rules to internal-only, service-mesh-only APIs — WAF overhead is justified only at the external edge.</item>
+        <item>Performing complex token introspection on every request at high RPS without caching — always cache authorizer results (AWS: 300s TTL; Kong: JWT plugin caches JWKS).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="authentication-patterns">
+      <p>Authentication pattern selection by scenario:</p>
+      <list>
+        <item>API Keys — service-to-service, simple auth, partner integrations. Header: X-API-Key. Store in secrets manager, never in code.</item>
+        <item>JWT (RS256/HS256) — user authentication, stateless, scalable. Header: Authorization: Bearer token. Validate signature, exp, iss, aud claims at gateway.</item>
+        <item>OAuth 2.0 — delegated authorization, user-facing apps. Token validation at gateway; forward claims to backends via headers.</item>
+        <item>mTLS — service mesh, high-security partner integrations. Client certificate validation; never share private keys.</item>
+      </list>
+      <rule testable="true">
+        <statement>Select authentication per client type: public API with quotas → API Keys + OAuth; user-facing app → JWT + OAuth 2.0; service-to-service → mTLS; partner integrations → API Keys + IP whitelist. Never use a single mechanism for all client types if their security postures differ.</statement>
+        <rationale>Mixing authentication types per client posture reduces attack surface. A partner with an IP-whitelisted API key cannot use a stolen JWT from a mobile client to access partner-only routes.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Anonymous routes (/health, /metrics, /public/*) MUST be explicitly listed with no-auth declarations. JWT/API-key plugins applied to a service without explicit anonymous-route exceptions silently fail on health checks, breaking HA probe behavior.</statement>
+        <rationale>Agents add JWT plugins on services but forget anonymous routes; health probes fail; load balancers pull the instance; gateway goes down.</rationale>
+      </rule>
+    </section>
+
+    <section name="authorization">
+      <p>Authorization at the gateway level is coarse-grained:</p>
+      <list>
+        <item>RBAC (Role-Based Access Control) — route access by role claim from JWT or API key metadata</item>
+        <item>Scope-based permissions — OAuth 2.0 scopes checked at gateway (read:users, write:orders)</item>
+        <item>Resource-level authorization — delegated to the service; gateway only checks "is authenticated + has scope"</item>
+      </list>
+      <rule testable="true">
+        <statement>Define an authorization matrix: which routes require which roles/scopes. Implement at the gateway for coarse access (method + path + scope). Delegate resource-level checks (ownership, tenancy, field-level) to backend services — they have the domain model.</statement>
+        <rationale>Gateway authorization without scope checks allows any authenticated user to call any endpoint. Backend-only authorization without gateway checks exposes services to unauthenticated requests if the gateway is bypassed.</rationale>
+      </rule>
+    </section>
+
+    <section name="tls-transport-security">
+      <p>TLS requirements at the gateway:</p>
+      <rule testable="true">
+        <statement>Terminate TLS at the gateway (HTTPS only). Use TLS 1.3 as minimum (accept TLS 1.2 only for legacy client compatibility). Always re-encrypt to upstream when crossing trust boundaries — never run plaintext past the edge in production.</statement>
+        <rationale>Plaintext between gateway and backend exposes JWTs, user data, and session tokens to anyone with network access inside the cluster or data center. mTLS to backends adds defense-in-depth.</rationale>
+      </rule>
+      <checklist>
+        <check>Enable TLS 1.3 minimum (TLS 1.2 only if legacy clients require it)</check>
+        <check>Configure automatic certificate renewal (Let's Encrypt, AWS ACM, Vault PKI)</check>
+        <check>Set HSTS headers: max-age=31536000; includeSubDomains; preload</check>
+        <check>Configure cipher suites to exclude weak ciphers (RC4, 3DES, NULL)</check>
+        <check>Implement certificate pinning for mobile clients if required</check>
+      </checklist>
+    </section>
+
+    <section name="request-security">
+      <p>Input validation and sanitization at gateway:</p>
+      <rule testable="true">
+        <statement>Configure request size limits, schema validation, and input sanitization before requests reach backends. Strip internal headers (X-Internal-*, Authorization after validation, X-Forwarded-* spoofing). Apply SQL injection and XSS protection via WAF managed rule groups rather than custom regex.</statement>
+        <rationale>Backends should not need to defend against malformed requests — that is gateway responsibility. Stripping Authorization headers after validation prevents JWT leakage to backend application logs.</rationale>
+      </rule>
+      <checklist>
+        <check>Set request body size limit (e.g., 10MB default; larger for file upload routes)</check>
+        <check>Enable schema validation against OpenAPI spec for request bodies and parameters</check>
+        <check>Strip internal headers before forwarding (Authorization after validation, X-Internal-*, debug headers)</check>
+        <check>Inject correlation ID header (X-Correlation-ID or X-Request-ID) for tracing</check>
+        <check>Configure CORS allowed origins to explicit domain list (never * in production)</check>
+        <check>Set security response headers: X-Content-Type-Options: nosniff, X-Frame-Options: DENY, X-XSS-Protection</check>
+        <check>Remove backend-revealing headers from responses: Server, X-Powered-By, X-AspNet-Version</check>
+      </checklist>
+    </section>
+
+    <section name="waf-and-ddos">
+      <p>WAF integration and DDoS protection:</p>
+      <rule testable="true">
+        <statement>Integrate WAF at the gateway for external-facing APIs. Use managed rule groups (AWS Managed Rules, Cloudflare WAF, ModSecurity CRS) rather than custom rules — custom regex rules are maintenance burden and often bypass-prone. Always require human review before applying any WAF / mTLS / IAM change — one bad regex blocks all traffic.</statement>
+        <rationale>Managed rule groups are maintained by security teams with threat intelligence; custom rules go stale. A misconfigured WAF rule blocking legitimate traffic is a P0 incident equivalent to a DDoS.</rationale>
+      </rule>
+      <list>
+        <item>WAF rules — SQLi, XSS, RFI, RCE managed rule groups</item>
+        <item>IP whitelisting — for admin endpoints and internal management APIs</item>
+        <item>Bot detection — for public-facing APIs with scraping risk</item>
+        <item>DDoS protection — volumetric protection at CDN/WAF layer (Cloudflare, AWS Shield)</item>
+        <item>IP blacklisting — automated block of repeated offenders</item>
+      </list>
+    </section>
+
+    <section name="audit-logging">
+      <p>Audit logging requirements for compliance:</p>
+      <rule testable="true">
+        <statement>Configure audit logging at the gateway for all authenticated API calls: timestamp, method, path, status, consumer identity (user ID or API key ID — never the key itself), IP, user agent, and request ID. Store in a tamper-evident log sink. Define retention policy based on compliance requirements (GDPR: minimum 6 months; PCI-DSS: 1 year).</statement>
+        <rationale>Without gateway-level audit logs, security incidents cannot be reconstructed. Backend logs see internal calls, not the external identity; gateway logs capture both.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-checklists">
+      <p>Security implementation checklist — authentication:</p>
+      <checklist>
+        <check>Choose authentication mechanisms per client type (API keys, JWT, OAuth 2.0, mTLS)</check>
+        <check>Configure token validation (JWT: signature, exp, iss, aud; OAuth: introspection or JWKS)</check>
+        <check>Set up API key management in secrets manager</check>
+        <check>Implement mTLS for service-to-service or high-security partner channels</check>
+        <check>Explicitly list anonymous routes (/health, /public/*) with no-auth declarations</check>
+      </checklist>
+      <p>Security implementation checklist — transport and request:</p>
+      <checklist>
+        <check>Enable TLS 1.3 minimum, configure HSTS</check>
+        <check>Configure certificate auto-renewal</check>
+        <check>Set request size limits and body validation</check>
+        <check>Strip internal headers before forwarding to backends</check>
+        <check>Lock CORS origins to explicit domain list</check>
+        <check>Configure WAF with managed rule groups</check>
+        <check>Set up IP whitelisting for admin and management endpoints</check>
+        <check>Enable audit logging with consumer identity, request ID, and retention policy</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="authentication-config"><![CDATA[
+Generate authentication configuration for [Gateway name].
+
+Authentication type: [JWT / API Key / OAuth 2.0 / mTLS / combination]
+
+For JWT:
+- Issuer: [URL]
+- JWKS URL: [URL]
+- Audience: [values]
+- Header: Authorization Bearer
+- Claims to forward to backends: [user_id, email, roles]
+
+For API Key:
+- Header name: X-API-Key
+- Key storage: [database / Redis / static]
+
+Routes:
+- /api/v1/* — requires authentication
+- /health — no authentication
+- /public/* — no authentication
+
+Generate complete configuration with error responses and explicit anonymous route declarations.
+]]></prompt>
+      <prompt purpose="security-headers"><![CDATA[
+Generate security header configuration for [Gateway name].
+
+Requirements:
+- HSTS: max-age=31536000, includeSubDomains, preload
+- X-Content-Type-Options: nosniff
+- X-Frame-Options: DENY
+- X-XSS-Protection: 1; mode=block
+- Remove headers: Server, X-Powered-By
+- Strip Authorization header after validation (do not forward to backend logs)
+- Inject X-Correlation-ID with UUID generator
+
+CORS:
+- Allowed origins: [list — never *]
+- Allowed methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
+- Allowed headers: Accept, Authorization, Content-Type, X-Request-ID
+- Credentials: true
+- Max age: 3600
+
+Generate complete middleware/plugin configuration.
+]]></prompt>
+      <prompt purpose="security-audit"><![CDATA[
+Audit this [Gateway] configuration for:
+1. Security vulnerabilities
+2. Missing authentication on any route
+3. CORS misconfiguration (wildcard origins)
+4. Internal header leakage to backends
+5. Missing request size limits
+6. WAF gaps
+
+Configuration:
+[paste config]
+
+Provide specific line numbers and corrected configuration.
+]]></prompt>
+    </section>
+
+    <see-also>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-resilience"/>
+      <ref slug="security-architecture"/>
+      <link href="https://docs.konghq.com/gateway/"/>
+      <link href="https://docs.aws.amazon.com/apigateway/"/>
+      <link href="https://owasp.org/www-project-api-security/"/>
+    </see-also>
+  </content>
+</methodology>
