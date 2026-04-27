@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chunking-semantic">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Split text by detecting semantic similarity drops between consecutive sentences using embeddings; chunks respect concept boundaries rather than fixed character counts.</summary>
+    <tags>
+      <tag>chunking</tag>
+      <tag>semantic-chunking</tag>
+      <tag>embeddings</tag>
+      <tag>rag</tag>
+      <tag>nlp</tag>
+    </tags>
+    <category>chunking</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-document-structure"/>
+      <ref slug="chunking-code-ast"/>
+      <ref slug="chunking-production-service"/>
+      <ref slug="embedding-generation"/>
+    </related>
+    <requires>
+      <ref slug="chunking-basics"/>
+    </requires>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>llama-index</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Semantic Chunking via Embedding Similarity</title>
+
+    <summary>SemanticChunker splits text by computing embeddings for every sentence, then placing chunk boundaries where cosine similarity between adjacent sentences drops below a threshold. Unlike fixed-size splitting, chunks capture coherent concepts rather than arbitrary byte windows.</summary>
+
+    <why>
+      <p>Fixed-size and sentence-count chunkers split at arbitrary positions that may interrupt a single concept, producing chunks that embed ambiguously and degrade retrieval precision. Semantic chunking measures the actual content shift between adjacent sentences using the same embedding model used at query time, so chunk boundaries align with topic transitions rather than token limits.</p>
+      <p>The mechanism is: embed every sentence → compute pairwise cosine similarity for consecutive pairs → insert a boundary when similarity drops below threshold. This is the same signal the embedding model uses at retrieval, making it the most semantically faithful chunking strategy available without access to document structure metadata.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>High-stakes retrieval domains (legal, medical, scientific) where splitting mid-concept degrades answer quality.</item>
+        <item>Prose-heavy corpora (news, blog posts, academic papers) where structural markers (headers, code blocks) are absent or inconsistent.</item>
+        <item>After baseline RecursiveChunker benchmarks show retrieval precision below acceptable threshold and document structure is absent.</item>
+        <item>Any corpus where you already call the embedding API at index time and can absorb one embedding call per sentence.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Quick prototyping — RecursiveChunker from chunking-basics is faster to wire up and sufficient for 10k docs or fewer.</item>
+        <item>Constrained embedding budget — semantic chunking calls the embedding API once per sentence during indexing, not once per chunk; a 10k-doc corpus adds significant API cost.</item>
+        <item>Corpora entirely in languages without NLTK punkt support — sentence tokenization silently degrades, producing sentence boundaries at wrong positions.</item>
+        <item>Structured documents (Markdown, HTML, code) — use chunking-document-structure or chunking-code-ast instead; structure is a stronger signal than similarity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="semantic-chunker-impl">
+      <rule testable="true">
+        <statement>SemanticChunker MUST accept a callable embedding_func, a similarity_threshold (default 0.75), max_chunk_size, and min_chunk_size. Chunks exceeding max_chunk_size MUST be sub-split; chunks below min_chunk_size MUST be merged into the previous chunk. An empty-document edge case (0 or 1 sentences) MUST return a single chunk without calling the embedding function.</statement>
+        <rationale>Without size guards, semantic chunking on long legal documents with high threshold values produces a single giant chunk that exceeds most LLM context windows. The empty-document guard prevents an IndexError on the embeddings list and avoids a wasted API call.</rationale>
+      </rule>
+
+      <example type="good" title="SemanticChunker implementation">
+        <code lang="python"><![CDATA[
+import numpy as np
+from typing import List, Dict
+import nltk
+
+class SemanticChunker:
+    """Chunk based on semantic similarity between sentences."""
+
+    def __init__(
+        self,
+        embedding_func: callable,
+        similarity_threshold: float = 0.75,
+        max_chunk_size: int = 1000,
+        min_chunk_size: int = 100
+    ):
+        self.embedding_func = embedding_func
+        self.similarity_threshold = similarity_threshold
+        self.max_chunk_size = max_chunk_size
+        self.min_chunk_size = min_chunk_size
+
+    def chunk(self, text: str) -> List[Dict]:
+        """Split text based on semantic breaks."""
+        sentences = nltk.sent_tokenize(text)
+
+        if len(sentences) <= 1:
+            return [{"text": text, "sentence_count": len(sentences)}]
+
+        # Get embeddings for all sentences
+        embeddings = [self.embedding_func(s) for s in sentences]
+
+        # Find semantic breakpoints
+        breakpoints = self._find_breakpoints(embeddings)
+
+        # Create chunks
+        chunks = []
+        start_idx = 0
+
+        for break_idx in breakpoints + [len(sentences)]:
+            chunk_sentences = sentences[start_idx:break_idx]
+            chunk_text = " ".join(chunk_sentences)
+
+            # Check size constraints
+            if len(chunk_text.split()) > self.max_chunk_size:
+                # Split oversized chunk
+                sub_chunks = self._split_chunk(chunk_sentences)
+                chunks.extend(sub_chunks)
+            elif len(chunk_text.split()) >= self.min_chunk_size:
+                chunks.append({
+                    "text": chunk_text,
+                    "sentence_count": len(chunk_sentences)
+                })
+            elif chunks:
+                # Merge with previous if too small
+                prev = chunks[-1]
+                prev["text"] += " " + chunk_text
+                prev["sentence_count"] += len(chunk_sentences)
+
+            start_idx = break_idx
+
+        return chunks
+
+    def _find_breakpoints(self, embeddings: List[np.ndarray]) -> List[int]:
+        """Find indices where semantic similarity drops."""
+        breakpoints = []
+
+        for i in range(1, len(embeddings)):
+            similarity = self._cosine_similarity(embeddings[i-1], embeddings[i])
+
+            if similarity < self.similarity_threshold:
+                breakpoints.append(i)
+
+        return breakpoints
+
+    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+        """Calculate cosine similarity."""
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+    def _split_chunk(self, sentences: List[str]) -> List[Dict]:
+        """Split oversized chunk by size."""
+        chunks = []
+        current = []
+        current_size = 0
+
+        for sent in sentences:
+            sent_size = len(sent.split())
+            if current_size + sent_size <= self.max_chunk_size:
+                current.append(sent)
+                current_size += sent_size
+            else:
+                if current:
+                    chunks.append({
+                        "text": " ".join(current),
+                        "sentence_count": len(current)
+                    })
+                current = [sent]
+                current_size = sent_size
+
+        if current:
+            chunks.append({
+                "text": " ".join(current),
+                "sentence_count": len(current)
+            })
+
+        return chunks
+]]></code>
+        <note>embedding_func must return a numpy ndarray. For OpenAI, wrap client.embeddings.create() to return np.array(response.data[0].embedding).</note>
+      </example>
+
+      <antipattern>
+        <description>Calling SemanticChunker without caching embeddings, causing the same sentence to be embedded twice when re-chunking the same document with adjusted thresholds.</description>
+        <reason>Cache sentence embeddings used in SemanticChunker — re-chunking the same doc without cache costs 2x the embedding API calls. For a 10k-doc corpus this adds significant API cost; quantify before using in production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using SemanticChunker on structured documents (Markdown, HTML, code) instead of the structure-aware chunkers.</description>
+        <reason>Structure markers (headers, function boundaries) are a stronger and cheaper boundary signal than embedding similarity. Use MarkdownChunker or CodeChunker for those content types and reserve SemanticChunker for unstructured prose.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-usage">
+      <p>A subagent detects the content type of each document. When the type is unstructured prose and the embedding budget is approved, it instantiates SemanticChunker with threshold 0.75, max_chunk_size 1000, min_chunk_size 100. It validates the size distribution after chunking — log a warning if more than 5% of chunks exceed max_chunk_size — and emits enriched chunk dicts with sentence_count and metadata fields. A second agent can review the distribution and trigger a re-chunk with adjusted threshold if needed.</p>
+
+      <prompt purpose="content-type detection and semantic chunking">
+        <![CDATA[
+Given the document below, identify its content type (markdown/html/python/javascript/prose),
+select the appropriate advanced chunker, apply it, and return chunks as JSON:
+{id, text, type, header_path?, name?, start_line?, metadata}.
+
+Validate: no chunk exceeds 1000 words. Flag any that do.
+
+Document path: {{path}}
+Content:
+<document>{{content}}</document>
+        ]]>
+      </prompt>
+    </section>
+
+    <section name="tooling">
+      <p>Key libraries for semantic chunking:</p>
+      <list>
+        <item>nltk (punkt) — sentence tokenization; install with `pip install nltk` and download punkt model</item>
+        <item>numpy — cosine similarity computation</item>
+        <item>llama-index-core — SemanticSplitterNodeParser (alternative managed implementation): `pip install llama-index-core llama-index-embeddings-openai`</item>
+        <item>Chonkie — pure-Python chunking library with semantic, token, sentence modes; no LangChain dep: `pip install chonkie`</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>SemanticChunker calls embedding_func once per sentence at index time; for a 10k-doc corpus this adds significant API cost — quantify before using in production.</p>
+      <p>Corpora entirely in languages without NLTK punkt support produce sentence boundaries at wrong positions — sentence tokenization silently degrades without raising an error.</p>
+    </section>
+
+    <checklist>
+      <check>Set min_chunk_size guard to prevent near-zero vectors from single-word paragraphs polluting nearest-neighbor results.</check>
+      <check>Cache embeddings computed during indexing to avoid 2x API calls on threshold-adjustment re-runs.</check>
+      <check>Validate chunk size distribution: log warning if more than 5% of chunks exceed max_chunk_size.</check>
+      <check>Verify embedding_func returns a numpy ndarray before passing to SemanticChunker.</check>
+      <check>Quantify per-document sentence count and estimate embedding API cost before committing to production index.</check>
+      <check>Test on at least 20 representative queries spanning all content types before committing threshold value.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-document-structure"/>
+      <ref slug="chunking-production-service"/>
+      <ref slug="embedding-generation"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/node_parsers/semantic_chunking/"/>
+      <link href="https://arxiv.org/abs/2409.04701"/>
+    </see-also>
+  </content>
+</methodology>
