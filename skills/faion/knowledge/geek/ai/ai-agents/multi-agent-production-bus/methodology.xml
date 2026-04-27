@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-production-bus">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Production multi-agent system with a central async message bus supporting direct, broadcast, and request communication; switchable execution strategies (hierarchical, parallel, sequential) at runtime.</summary>
+    <tags>
+      <tag>multi-agent</tag>
+      <tag>message-bus</tag>
+      <tag>async</tag>
+      <tag>production</tag>
+      <tag>orchestration</tag>
+    </tags>
+    <category>orchestration</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="multi-agent-hierarchical"/>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-conversational"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Production Multi-Agent System with Message Bus</title>
+
+    <summary>A central MessageBus handles async agent-to-agent communication via three modes: direct (point-to-point), broadcast (fan-out to all except sender), and request. ProductionMultiAgentSystem wraps the bus with three switchable execution strategies — hierarchical (orchestrator plan + worker dispatch + synthesis), parallel (asyncio.gather fan-out), and sequential (pipeline chain) — selected at run_task() call time.</summary>
+
+    <why>
+      <p>Simple synchronous multi-agent patterns break in production: one slow worker blocks all downstream agents; there is no audit trail of inter-agent messages; cost per run is invisible until the bill arrives; and the coordination logic is tightly coupled to the strategy (hierarchical vs parallel vs sequential). A production system must decouple communication (the bus) from coordination strategy (the run_task() method), maintain a message history for debugging, and support async execution to prevent worker blocking. The three strategies cover the most common production shapes without requiring a rewrite for each use case.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Production systems that need to switch coordination strategy at runtime without rewriting agent code — the strategy parameter selects hierarchical, parallel, or sequential.</item>
+        <item>Systems requiring an audit trail of every inter-agent message (sender, receiver, content, type) for compliance or debugging.</item>
+        <item>Async environments where worker blocking is unacceptable — the bus decouples send from receive, preventing circular waits.</item>
+        <item>Cost-sensitive deployments where per-agent token usage must be attributed and budget-gated.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple two-agent pipelines — the bus adds subscription setup overhead with no value for point-to-point synchronous chains.</item>
+        <item>Prototypes where iteration speed matters more than auditability — set up a plain ManagerAgent or CollaborativeGroup first.</item>
+        <item>Synchronous-only environments where asyncio is unavailable or forbidden — the bus is async-native.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="message-bus-implementation">
+      <p>MessageBus holds a subscribers dict (agent_name → list of async handlers) and a message_history list. subscribe() registers a handler for an agent. send() dispatches by CommunicationType: BROADCAST fans out to all except sender; DIRECT sends to the specific receiver only. All messages are appended to message_history before dispatch.</p>
+
+      <rule testable="true">
+        <statement>All inter-agent messages MUST use structured content (JSON-serializable dict or validated schema). Free-form string messages MUST NOT be sent via the bus in production.</statement>
+        <rationale>Free-form text increases parsing failures at the receiving agent. Structured messages allow schema validation before dispatch and make the message_history machine-readable for cost attribution and replay debugging.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every agent handler MUST be wrapped with asyncio.wait_for(handler(message), timeout=X). Never await a handler without a timeout in a production bus.</statement>
+        <rationale>A single slow or hung agent handler blocks the entire send() coroutine. Without a timeout, one agent can deadlock the bus. Set timeouts at the bus level so individual agent failures degrade gracefully.</rationale>
+      </rule>
+
+      <example type="good" title="MessageBus with broadcast and direct dispatch">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any, Callable
+from enum import Enum
+import logging
+import asyncio
+
+class CommunicationType(Enum):
+    DIRECT = "direct"
+    BROADCAST = "broadcast"
+    REQUEST = "request"
+
+@dataclass
+class Message:
+    sender: str
+    receiver: str
+    content: str
+    msg_type: CommunicationType
+    metadata: Dict = None
+
+class MessageBus:
+    """Central message bus for agent communication."""
+
+    def __init__(self):
+        self.subscribers: Dict[str, List[Callable]] = {}
+        self.message_history: List[Message] = []
+
+    def subscribe(self, agent_name: str, handler: Callable):
+        """Subscribe agent to messages."""
+        if agent_name not in self.subscribers:
+            self.subscribers[agent_name] = []
+        self.subscribers[agent_name].append(handler)
+
+    async def send(self, message: Message):
+        """Send message to recipient(s)."""
+        self.message_history.append(message)
+
+        if message.msg_type == CommunicationType.BROADCAST:
+            # Send to all except sender
+            for agent_name, handlers in self.subscribers.items():
+                if agent_name != message.sender:
+                    for handler in handlers:
+                        await handler(message)
+        else:
+            # Send to specific receiver
+            if message.receiver in self.subscribers:
+                for handler in self.subscribers[message.receiver]:
+                    await handler(message)
+]]></code>
+      </example>
+    </section>
+
+    <section name="execution-strategies">
+      <p>ProductionMultiAgentSystem wraps the bus with three switchable execution strategies. All three share the same _create_plan() and _synthesize_results() helpers — only the dispatch logic differs.</p>
+
+      <example type="good" title="ProductionMultiAgentSystem with three strategies">
+        <code lang="python"><![CDATA[
+class ProductionMultiAgentSystem:
+    """Production-ready multi-agent system."""
+
+    def __init__(
+        self,
+        agents: List[Agent],
+        orchestration_model: str = "gpt-4o"
+    ):
+        self.agents = {a.config.name: a for a in agents}
+        self.orchestration_model = orchestration_model
+        self.message_bus = MessageBus()
+        self.logger = logging.getLogger(__name__)
+
+        # Setup message handlers
+        for name, agent in self.agents.items():
+            self.message_bus.subscribe(
+                name,
+                self._create_handler(agent)
+            )
+
+    def _create_handler(self, agent: Agent):
+        """Create message handler for agent."""
+        async def handler(message: Message):
+            response = agent.respond(message.content)
+            self.logger.info(f"{agent.config.name} responded to {message.sender}")
+            return response
+        return handler
+
+    async def run_task(self, task: str, strategy: str = "hierarchical") -> Dict:
+        """Run a task with specified coordination strategy."""
+        if strategy == "hierarchical":
+            return await self._hierarchical_execution(task)
+        elif strategy == "parallel":
+            return await self._parallel_execution(task)
+        elif strategy == "sequential":
+            return await self._sequential_execution(task)
+        else:
+            raise ValueError(f"Unknown strategy: {strategy}")
+
+    async def _hierarchical_execution(self, task: str) -> Dict:
+        """Execute with hierarchical coordination."""
+        plan = await self._create_plan(task)
+
+        results = []
+        for assignment in plan.get("assignments", []):
+            agent_name = assignment["agent"]
+            subtask = assignment["task"]
+
+            if agent_name in self.agents:
+                result = self.agents[agent_name].respond(subtask)
+                results.append({
+                    "agent": agent_name,
+                    "task": subtask,
+                    "result": result
+                })
+
+        return await self._synthesize_results(task, results)
+
+    async def _parallel_execution(self, task: str) -> Dict:
+        """Execute subtasks in parallel."""
+        plan = await self._create_plan(task)
+
+        async def execute_assignment(assignment):
+            agent_name = assignment["agent"]
+            subtask = assignment["task"]
+            if agent_name in self.agents:
+                return {
+                    "agent": agent_name,
+                    "result": self.agents[agent_name].respond(subtask)
+                }
+            return None
+
+        tasks = [execute_assignment(a) for a in plan.get("assignments", [])]
+        results = await asyncio.gather(*tasks)
+        results = [r for r in results if r]
+
+        return await self._synthesize_results(task, results)
+
+    async def _sequential_execution(self, task: str) -> Dict:
+        """Execute agents in sequence, passing output forward."""
+        current_output = task
+        results = []
+
+        for name, agent in self.agents.items():
+            result = agent.respond(current_output)
+            results.append({"agent": name, "result": result})
+            current_output = result
+
+        return {"results": results, "final": current_output}
+
+    async def _create_plan(self, task: str) -> Dict:
+        """Create execution plan via orchestration model."""
+        agents_info = "\n".join([
+            f"- {name}: {agent.config.role}"
+            for name, agent in self.agents.items()
+        ])
+
+        prompt = f"""Task: {task}
+
+Available agents:
+{agents_info}
+
+Create a plan with task assignments.
+Return JSON: {{"assignments": [{{"agent": "name", "task": "description"}}]}}"""
+
+        response = client.chat.completions.create(
+            model=self.orchestration_model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        return json.loads(response.choices[0].message.content)
+
+    async def _synthesize_results(self, task: str, results: List[Dict]) -> Dict:
+        """Synthesize results from multiple agents."""
+        prompt = f"""Task: {task}
+
+Agent results:
+{json.dumps(results, indent=2)}
+
+Synthesize into a coherent final result."""
+
+        response = client.chat.completions.create(
+            model=self.orchestration_model,
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        return {
+            "individual_results": results,
+            "synthesis": response.choices[0].message.content
+        }
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Context leakage: agents share no memory by default, but accidentally shared global state (e.g. a Python dict) can cause race conditions in async parallel execution.</description>
+        <reason>In _parallel_execution, all execute_assignment coroutines run concurrently. Any mutable Python object shared by reference between agent handlers (not passed as message content) is subject to concurrent writes without locking. Keep all inter-agent data in Message objects routed through the bus.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Deadlocks in async message-bus designs when agents wait on each other circularly.</description>
+        <reason>Agent A sends to agent B and awaits reply; agent B's handler sends back to agent A before returning. With the default single-event-loop asyncio, this creates a deadlock. Use asyncio.wait_for with timeouts and ensure handlers never await a response from the sender.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pattern-selection-guide">
+      <p>Strategy selection guide for production systems:</p>
+      <list>
+        <item>Sequential: linear workflows with low complexity where each agent's output is the next agent's input — cheapest, most predictable.</item>
+        <item>Parallel: independent subtasks with no inter-dependency — highest throughput, requires asyncio.gather with timeout guards.</item>
+        <item>Hierarchical: complex projects with dependent subtasks — medium complexity, produces traceable assignment log, two extra LLM calls (plan + synthesis).</item>
+      </list>
+    </section>
+
+    <section name="production-gotchas">
+      <p>Production-specific failure modes for message-bus systems:</p>
+      <list>
+        <item>Cost explosion: N agents × M strategies = N×M LLM calls; set per-agent and per-run token budgets; abort the run if budget is exceeded.</item>
+        <item>Human-in-loop checkpoint: insert an explicit approval gate before any agent executes irreversible actions (send email, write to DB, deploy code). The orchestrator must pause and surface the proposed action before proceeding.</item>
+        <item>Cascading hallucinations: if a researcher worker fabricates a fact, all downstream workers build on it. Add a fact-check node that validates key claims before passing them to the next stage.</item>
+        <item>Token attribution: in a 10-agent run it is hard to know which agent consumed most tokens. Use agentops or LangSmith tagging per agent role from the start.</item>
+      </list>
+    </section>
+
+    <section name="observability-tools">
+      <p>Essential observability tools for production multi-agent systems:</p>
+      <list>
+        <item>agentops (pip install agentops): cost and trace SDK; tag per agent role to attribute token usage per run.</item>
+        <item>LangSmith (SaaS): traces inter-agent messages; indispensable for debugging orchestration failures.</item>
+        <item>LangGraph Cloud (SaaS): hosted, persistent multi-agent state with checkpointing — use for long-running production runs.</item>
+        <item>CrewAI Enterprise (SaaS): managed crew execution with role-based access control.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="multi-agent-hierarchical"/>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-conversational"/>
+      <link href="https://github.com/geekan/MetaGPT"/>
+      <link href="https://arxiv.org/abs/2308.08155"/>
+      <link href="https://www.anthropic.com/research/building-effective-agents"/>
+    </see-also>
+  </content>
+</methodology>
