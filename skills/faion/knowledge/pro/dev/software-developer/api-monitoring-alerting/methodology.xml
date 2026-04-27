@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-monitoring-alerting">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Design SLO-based alert rules using multi-window burn-rate for API availability and latency. Every alert needs a runbook URL, severity label, and for: 2m minimum. Covers tooling and dashboards.</summary>
+    <tags>
+      <tag>api-monitoring</tag>
+      <tag>alerting</tag>
+      <tag>slo</tag>
+      <tag>prometheus</tag>
+      <tag>burn-rate</tag>
+    </tags>
+    <category>monitoring</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>API Alerting: SLOs, Burn-Rate Rules, and Dashboards</title>
+
+    <summary>Define SLOs before writing any alert rules. All alert thresholds MUST derive from stated SLOs using multi-window multi-burn-rate PromQL (SRE Workbook ch.5). Simple threshold alerts ("5xx &gt; 1%") are noise without an SLO anchor. Every alert MUST have a runbook_url annotation, a severity label (page|ticket), and a for: clause of at least 2 minutes.</summary>
+
+    <why>
+      <p>Most teams add alerts before defining what "good" means. The result is hundreds of alerts that fire on cold-starts, deployments, and downstream blips — the on-call rotation becomes noise-desensitized and misses real incidents. Burn-rate alerting inverts this: define the SLO (e.g., 99.9% availability over 30 days), then alert only when the error budget is burning faster than the SLO can absorb.</p>
+      <p>Multi-window burn-rate (e.g., 2% budget consumed in 1h AND 5% in 6h) dramatically reduces false positive rate compared to single-window point-in-time thresholds. The Google SRE Workbook chapter 5 documents that simple threshold alerts like "error rate &gt; 1% for 5m" fire for brief spikes that do not actually threaten the monthly SLO.</p>
+      <p>Alerts without runbook URLs are noise. An on-call engineer woken at 3am with a "SlowResponses" alert and no runbook has to context-switch into debugging from scratch. A runbook URL in the annotation takes 30 seconds to add and removes 20 minutes of incident response time.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production API service that has defined SLOs and needs alert rules wired to PagerDuty, Opsgenie, or Squadcast.</item>
+        <item>Establishing SLIs and error budgets before a planned launch or scale event.</item>
+        <item>Migrating from threshold-based alert rules to burn-rate alert rules.</item>
+        <item>Onboarding a new microservice into an existing Prometheus + Alertmanager stack.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-product-fit prototypes — alert overhead exceeds value; a single Slack webhook on 5xx is sufficient.</item>
+        <item>Internal tools used by fewer than 10 people daily — alert fatigue from a full burn-rate setup exceeds the incident cost.</item>
+        <item>Services without a defined SLO — do not write alert rules before defining what you are protecting. The SLO is the prerequisite.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>SLO MUST be defined before any alert rule is written. The SLO document MUST specify: target percentage, measurement window (e.g., 99.9% over 30 days), and error budget. Alert thresholds MUST be derived from the error budget using burn-rate windows, not chosen arbitrarily.</statement>
+        <rationale>Alert thresholds plucked from air (5xx &gt; 1%) are arbitrary and generate constant false positives. Tying every threshold to a stated SLO means alerts fire only when the business commitment is actually at risk. SLO numbers are business decisions — require PM or ops sign-off before setting targets.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every Prometheus alert rule MUST have: for: clause of at least 2 minutes (never 0s or absent), a severity label with value page or ticket, and a runbook_url annotation. Alert rules without runbook_url MUST be rejected by CI (promtool check rules + grep check).</statement>
+        <rationale>A for: 0s alert fires on a single bad scrape (one anomalous 15s window). At least 2 minutes means the condition must persist across two scrape cycles. Missing runbook_url turns every alert into a context-free interrupt. Block in CI with the lint script.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Multi-window multi-burn-rate pattern MUST be used for all SLO-protecting alert rules. The page-level rule fires when 2% of the 30-day budget burns in 1h AND 5% in 6h. The ticket-level rule fires when 10% burns in 3d AND 10% in 1d. NEVER use single-window threshold alerts as the primary SLO protection.</statement>
+        <rationale>Single-window alerts have two failure modes: too sensitive (fire on transient spikes that don't threaten the SLO) and too slow (miss slow burns that erode the budget over days). Multi-window burn-rate catches both: it is sensitive to fast burns and accumulates signal for slow ones. Reference: Google SRE Workbook chapter 5.</rationale>
+      </rule>
+    </rules>
+
+    <section name="alert-rules">
+      <example type="good" title="Multi-window burn-rate SLO alert rules">
+        <code lang="yaml"><![CDATA[
+groups:
+  - name: api_slo_alerts
+    rules:
+      # Page: burning 2% of 30-day budget in 1h (fast burn)
+      - alert: ApiAvailabilityFastBurn
+        expr: |
+          (
+            rate(http_requests_total{status_class="5xx"}[1h])
+            / rate(http_requests_total[1h])
+          ) > (14.4 * 0.001)
+          and
+          (
+            rate(http_requests_total{status_class="5xx"}[5m])
+            / rate(http_requests_total[5m])
+          ) > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: "API availability fast burn — SLO at risk"
+          description: "Error rate burning 14.4x the allowed rate. At this pace, 30-day budget exhausted in ~2h."
+          runbook_url: "https://runbooks.example.com/api/availability-fast-burn"
+
+      # Ticket: burning 10% of budget in 3d (slow burn)
+      - alert: ApiAvailabilitySlowBurn
+        expr: |
+          (
+            rate(http_requests_total{status_class="5xx"}[6h])
+            / rate(http_requests_total[6h])
+          ) > (1 * 0.001)
+          and
+          (
+            rate(http_requests_total{status_class="5xx"}[1h])
+            / rate(http_requests_total[1h])
+          ) > (1 * 0.001)
+        for: 15m
+        labels:
+          severity: ticket
+          service: api
+        annotations:
+          summary: "API availability slow burn"
+          description: "Error rate elevated. Budget is draining slowly but will exhaust before month end."
+          runbook_url: "https://runbooks.example.com/api/availability-slow-burn"
+
+      # P95 latency alert tied to SLO target
+      - alert: ApiLatencyP95High
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (route, le)
+          ) > 0.5
+        for: 10m
+        labels:
+          severity: ticket
+          service: api
+        annotations:
+          summary: "P95 latency above 500ms SLO target"
+          description: "Route {{ $labels.route }} P95 latency is {{ $value | humanizeDuration }}."
+          runbook_url: "https://runbooks.example.com/api/high-latency"
+
+      - alert: ApiHighRateLimitHits
+        expr: rate(rate_limit_exceeded_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "High rate of rate limit hits"
+          runbook_url: "https://runbooks.example.com/api/rate-limit-hits"
+]]></code>
+        <note>Burn rates: 14.4 = 2% budget in 1h for 99.9% SLO (0.1% error budget / (1h/30d) / 2%). Every rule has for:, severity, and runbook_url. P95 latency query aggregates by route using route template labels.</note>
+      </example>
+
+      <example type="bad" title="Naive threshold alert without SLO anchor">
+        <code lang="yaml"><![CDATA[
+# DO NOT USE — threshold alert without SLO, no runbook, fires constantly
+- alert: HighErrorRate
+  expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+  for: 5m
+  labels:
+    severity: critical
+  annotations:
+    summary: "High error rate detected"
+    # no runbook_url — on-call has no idea what to do
+]]></code>
+        <note>This fires on any deploy or cold-start blip. No runbook_url means the on-call engineer gets woken with zero context. The threshold 0.01 (1%) is arbitrary — may not matter for the SLO at all. Use burn-rate instead.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive observability instrumentation as a five-stage agentic pipeline:</p>
+      <list>
+        <item>Stage 1 — Discovery agent: inventories endpoints, downstream deps, and existing log statements. Output: service map.</item>
+        <item>Stage 2 — Instrumentation agent: wires OpenTelemetry SDK + auto-instrumentations (FastAPI/Express/Spring) + manual spans for business operations.</item>
+        <item>Stage 3 — Metrics agent: adds RED counters/histograms with bounded label cardinality and a /metrics endpoint.</item>
+        <item>Stage 4 — SLO agent: emits an SLO doc per service (latency/availability/saturation targets) plus PromQL alert rules with multi-window burn-rate. Persist SLO config in .aidocs/product_docs/slo-SERVICE.md. Human sign-off required on SLO targets.</item>
+        <item>Stage 5 — Dashboard agent: generates Grafana JSON for the RED + USE dashboard. Manage as code (jsonnet or grafanactl); commit machine-formatted JSON only.</item>
+      </list>
+
+      <p>Recommended subagents for this pipeline:</p>
+      <list>
+        <item>faion-sdd-executor-agent — opus model for SLO trade-off decisions (target, error budget, burn rate) which are decision-heavy and require PM negotiation.</item>
+        <item>cardinality-lint agent — scan code for Counter(...).labels(user_id=..., request_id=...) patterns and block. Also catches userId / traceId / random UUIDs as metric labels.</item>
+        <item>password-scrubber-agent — run before logs, traces, and metric exemplars are exported; tokens, emails, and card data leak constantly through structured-log middleware.</item>
+        <item>alert-rule-review agent — consumes proposed PromQL and rejects rules without (a) runbook_url annotation, (b) burn-rate windows, (c) severity label, (d) for: minimum 2m.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns">
+      <p>Alert-rule generation prompt:</p>
+      <prompt purpose="alert-rule-generation"><![CDATA[
+For service <name> with SLOs:
+  availability >= 99.9% over 30d
+  p95 latency <= 500ms
+  p99 latency <= 1s
+emit Prometheus alert rules using multi-window multi-burn-rate
+(2% budget over 1h, 5% over 6h). Each rule MUST have:
+  for: >= 2m
+  labels: severity (page|ticket), service
+  annotations: summary, description, runbook_url
+NEVER emit "p99 > 1s for: 5m" — that is noise. Always burn-rate.
+Reference: SRE Workbook ch.5 — Alerting on SLOs.
+]]></prompt>
+
+      <p>OTel + metrics instrumentation generation prompt:</p>
+      <prompt purpose="instrumentation-generation"><![CDATA[
+You are wiring OpenTelemetry to a FastAPI service. Output:
+1. A telemetry.py that initializes TracerProvider, MeterProvider,
+   OTLP HTTP exporter (env: OTEL_EXPORTER_OTLP_ENDPOINT). Resource
+   attributes: service.name, service.version, deployment.environment.
+2. FastAPI auto-instrumentation + httpx auto-instrumentation.
+3. Three Prometheus metrics:
+   - http_requests_total (Counter, labels: method, route, status_class)
+   - http_request_duration_seconds (Histogram, native histogram or
+     buckets tuned for your p99 target)
+   - http_in_flight (Gauge)
+   Labels MUST be bounded; never use user_id, request_id, ip.
+4. A /metrics endpoint exporting Prometheus format.
+5. Two health endpoints:
+   - /healthz: returns 200 if process is up. NO downstream calls.
+   - /readyz: checks DB + Redis + critical external; returns 503 if any fail.
+6. JSON-formatted logs via structlog including trace_id, span_id from OTel context.
+]]></prompt>
+    </section>
+
+    <section name="alerting-checklist">
+      <checklist>
+        <check>Define SLO document (availability %, latency targets, error budget) before any alert rule.</check>
+        <check>Get PM/ops sign-off on SLO targets — these are business decisions.</check>
+        <check>Define multi-window burn-rate alert for error rate (page + ticket severity).</check>
+        <check>Define multi-window burn-rate alert for p95 and p99 latency.</check>
+        <check>Define alert for service unavailability (availability below SLO target).</check>
+        <check>Define alert for dependency failures (downstream health probe failures).</check>
+        <check>Add runbook_url annotation to every alert rule.</check>
+        <check>Add severity label (page|ticket) to every alert rule.</check>
+        <check>Add for: minimum 2m to every alert rule.</check>
+        <check>Run promtool check rules *.rules.yml before commit.</check>
+        <check>Wire alert-rule lint in CI to block rules without runbook_url.</check>
+        <check>Configure alert routing to PagerDuty / Opsgenie / Squadcast.</check>
+        <check>Create operational RED + USE dashboard in Grafana.</check>
+        <check>Create SLO burn-down chart dashboard.</check>
+        <check>Manage dashboard JSON as code (jsonnet or grafanactl), commit machine-formatted only.</check>
+        <check>Test that alerts trigger correctly under synthetic load.</check>
+        <check>Train team on dashboards and runbooks.</check>
+        <check>Persist SLO config in .aidocs/product_docs/slo-SERVICE.md.</check>
+      </checklist>
+    </section>
+
+    <section name="tooling">
+      <p>CLI tools for alerting and SLO management:</p>
+      <list>
+        <item>promtool / prometheus — scraping, alert-rule lint, query (brew install prometheus, https://prometheus.io)</item>
+        <item>grafana / grafanactl — dashboards as code; provision JSON (https://grafana.com/docs)</item>
+        <item>slo-generator (Google) — SLO config to SLI burn-rate alerts (https://github.com/google/slo-generator)</item>
+        <item>pyrra — define SLOs in YAML, generate Prom rules (https://github.com/pyrra-dev/pyrra)</item>
+        <item>sloth — CLI to generate SLI/SLO Prom rules (https://github.com/slok/sloth)</item>
+        <item>mimirtool / cortextool — linting and unit tests for Prom rules (https://grafana.com/docs/mimir)</item>
+        <item>k6 / vegeta — load and canary tests; emit OTel metrics (https://k6.io, https://github.com/tsenart/vegeta)</item>
+      </list>
+
+      <p>Observability platforms (SaaS and OSS):</p>
+      <list>
+        <item>Prometheus + Grafana + Loki + Tempo — default OSS stack; Helm charts and k8s operator.</item>
+        <item>Grafana Cloud — managed PLG stack with free tier.</item>
+        <item>Datadog — full APM/log/RUM/synthetics; agent installable; cost grows fast.</item>
+        <item>New Relic — free 100GB/month tier; OTel-native.</item>
+        <item>Honeycomb — trace-first; best for high-cardinality debug; OTel-native.</item>
+        <item>AWS CloudWatch + X-Ray — default on AWS; OTel exporter available.</item>
+        <item>BetterStack / Uptime Kuma — external synthetic uptime checks.</item>
+        <item>PagerDuty / Opsgenie / Squadcast — alert routing and on-call rotation; APIs scriptable.</item>
+      </list>
+    </section>
+
+    <antipattern>
+      <description>Writing alert rules before defining SLOs.</description>
+      <reason>Thresholds without SLO anchors are arbitrary. They generate constant false positives that desensitize on-call to real incidents. Define what "good" means (SLO), then derive thresholds from the error budget. Always require PM/ops sign-off on SLO targets — they are business commitments.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using simple threshold alerts ("error rate &gt; 1% for 5m") as the primary SLO protection.</description>
+      <reason>Single-window threshold alerts fire on transient spikes (deploy, cold-start, downstream blip) that do not actually threaten the monthly SLO. They also miss slow burns that erode the error budget over days without triggering any alert. Multi-window burn-rate catches both modes. Reference: SRE Workbook ch.5.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Alert rules without runbook_url annotation.</description>
+      <reason>An on-call engineer woken at 3am without a runbook has to reconstruct debugging steps from memory under pressure. Every alert that is worth waking someone for is worth writing a runbook for. Block ruleset commits without runbook_url in CI.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Hand-editing Grafana dashboard JSON files.</description>
+      <reason>Hand-edited JSON produces formatting inconsistencies that generate large diffs and conflicts. Manage dashboards as code via jsonnet or grafanactl pull; commit only machine-formatted JSON. This also enables PR review of dashboard changes and rollback via git revert.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="api-monitoring-health-checks"/>
+      <ref slug="api-monitoring-metrics"/>
+      <ref slug="api-monitoring-logging"/>
+      <link href="https://sre.google/workbook/alerting-on-slos/"/>
+      <link href="https://sre.google/sre-book/monitoring-distributed-systems/"/>
+      <link href="https://github.com/pyrra-dev/pyrra"/>
+      <link href="https://github.com/slok/sloth"/>
+      <link href="https://k6.io/docs/"/>
+    </see-also>
+  </content>
+</methodology>
