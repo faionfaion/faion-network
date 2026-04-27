@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-lb-kubernetes">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Kubernetes load balancing: Service types, Nginx Ingress, Traefik IngressRoute, AWS ALB Controller, and readiness/liveness probe configuration for rolling deployments.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>load-balancing</tag>
+      <tag>ingress</tag>
+      <tag>traefik</tag>
+      <tag>aws-alb</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-lb-algorithms"/>
+      <ref slug="devops-lb-health-checks"/>
+      <ref slug="devops-lb-high-availability"/>
+    </related>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Load Balancing: Services, Ingress, and Probes</title>
+
+    <summary>Kubernetes provides a layered load balancing model: Service (kube-proxy, L4) distributes traffic across pods; Ingress (Nginx, Traefik, AWS ALB Controller) handles L7 routing, TLS, and host/path rules. Readiness probes gate traffic admission during rolling deployments; liveness probes trigger pod restarts on deadlocks.</summary>
+
+    <why>
+      <p>Kubernetes workloads are ephemeral — pods are created and destroyed during deployments, scaling events, and node failures. The Service abstraction provides a stable virtual IP that kube-proxy keeps updated as pod endpoints change. Ingress controllers extend this to L7 routing, consolidating multiple services behind a single external IP with TLS termination, reducing cloud LB costs and operational complexity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All Kubernetes-hosted services that need stable network access — Services are mandatory, not optional.</item>
+        <item>Multiple HTTP services behind a single external IP — use Ingress to avoid provisioning one cloud LB per service.</item>
+        <item>Rolling deployments — readiness probes ensure new pods receive traffic only after they are ready.</item>
+        <item>Cloud-specific routing (AWS ALB with WAF, GCP NEG) via cloud controller annotations.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-HTTP services (raw TCP, UDP, gRPC without HTTP/2 Ingress support) — use Service type LoadBalancer with NLB annotations instead of Ingress.</item>
+        <item>Do not use NodePort in production for external traffic — port range 30000-32767 is not firewall-friendly and bypasses Ingress.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-types">
+      <p>Four Service types with different exposure scopes:</p>
+      <list>
+        <item>ClusterIP (default): Internal-only virtual IP. Accessible only from within the cluster. Use for service-to-service communication.</item>
+        <item>NodePort: Exposes a port on every node (30000-32767). External traffic reaches any node on that port. Use for development or when running without a cloud provider. Not recommended for production.</item>
+        <item>LoadBalancer: Provisions a cloud provider LB. In AWS, creates an NLB or CLB; in GCP, creates a regional TCP/UDP LB. Use for services requiring their own external IP or non-HTTP protocols. Combined with annotations for cloud-specific features.</item>
+        <item>ExternalName: CNAME alias to an external hostname. Use for services that live outside the cluster but should be accessible via internal DNS.</item>
+      </list>
+
+      <example type="good" title="Kubernetes Service types — ClusterIP, NodePort, LoadBalancer">
+        <code lang="yaml"><![CDATA[
+# ClusterIP - Internal only
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+# NodePort - External via node ports (dev only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-nodeport
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
+
+---
+# LoadBalancer - Cloud provider LB
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-loadbalancer
+  annotations:
+    # AWS NLB
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    # GCP internal LB (uncomment for GCP):
+    # cloud.google.com/load-balancer-type: "Internal"
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - port: 443
+      targetPort: 8080
+]]></code>
+        <note>Service type LoadBalancer annotations control which cloud LB product is provisioned. The aws-load-balancer-type: nlb annotation creates an NLB instead of the default CLB. Cross-zone load balancing is disabled by default on NLB — always enable it explicitly.</note>
+      </example>
+    </section>
+
+    <section name="nginx-ingress">
+      <example type="good" title="Nginx Ingress with TLS and path-based routing">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - example.com
+        - api.example.com
+      secretName: example-tls
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+]]></code>
+        <note>cert-manager.io/cluster-issuer annotation triggers automatic Let's Encrypt certificate provisioning. ssl-redirect: true ensures HTTP is redirected to HTTPS. List the more specific /api path before / to prevent catch-all match.</note>
+      </example>
+    </section>
+
+    <section name="traefik">
+      <example type="good" title="Traefik IngressRoute with rate limiting middleware">
+        <code lang="yaml"><![CDATA[
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: web-ingressroute
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`example.com`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: api-service
+          port: 80
+      middlewares:
+        - name: rate-limit
+    - match: Host(`example.com`)
+      kind: Rule
+      services:
+        - name: web-service
+          port: 80
+  tls:
+    secretName: example-tls
+
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+spec:
+  rateLimit:
+    average: 100
+    burst: 50
+]]></code>
+        <note>Traefik uses CRDs (IngressRoute, Middleware) instead of annotations for routing logic. Middlewares are composable — attach rate limiting, auth, or circuit breakers to any route independently.</note>
+      </example>
+    </section>
+
+    <section name="aws-alb-controller">
+      <example type="good" title="AWS ALB Ingress via Load Balancer Controller">
+        <code lang="yaml"><![CDATA[
+# kubernetes/ingress.yaml — Production Ingress with TLS
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-ingress-config
+data:
+  proxy-connect-timeout: "5"
+  proxy-read-timeout: "60"
+  proxy-send-timeout: "60"
+  proxy-body-size: "10m"
+  use-forwarded-headers: "true"
+  enable-real-ip: "true"
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-alb
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: {{ACM_CERT_ARN}}
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=86400
+spec:
+  rules:
+    - host: {{DOMAIN}}
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+]]></code>
+        <note>target-type: ip routes directly to pod IPs (bypasses kube-proxy), providing better performance and enabling HTTP/2 end-to-end. Replace {{ACM_CERT_ARN}} with the actual ACM certificate ARN.</note>
+      </example>
+    </section>
+
+    <section name="probes">
+      <p>Kubernetes probe configuration for load-balanced services:</p>
+      <example type="good" title="Deployment with readiness, liveness, and startup probes">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    spec:
+      containers:
+        - name: web
+          image: myapp:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+]]></code>
+        <note>startupProbe prevents liveness probe from killing slow-starting containers. It allows up to 300s (30 * 10s) for startup. Once startupProbe succeeds, livenessProbe takes over. readinessProbe uses /readyz (checks dependencies); livenessProbe uses /healthz (process alive only).</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Use Ingress (not Service type LoadBalancer) for HTTP/HTTPS services. Provision one cloud LB per Ingress controller, not one per service.</statement>
+        <rationale>Service type LoadBalancer provisions a cloud LB per service — 10 services = 10 cloud LBs = 10x the cost and management overhead. An Ingress controller consolidates all HTTP/HTTPS services behind a single LB with routing rules.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure readiness probes on all Deployments. Never omit them. Set initialDelaySeconds based on measured startup time. Route only to /readyz (not /healthz) for readiness.</statement>
+        <rationale>Without readiness probes, Kubernetes routes traffic to pods the moment they start, before the application has initialised. This causes 502/503 errors during rolling deployments until the application is ready.</rationale>
+      </rule>
+      <rule>
+        <statement>Configure Pod Disruption Budgets (PDB) for all production Deployments to ensure at least 1 (or N-1) pods remain available during voluntary disruptions (node drains, upgrades).</statement>
+        <rationale>Without PDB, a node drain during a cluster upgrade can evict all pods of a Deployment simultaneously, causing a full service outage. PDB guarantees a minimum number of healthy replicas across any voluntary disruption.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Choose Service type (ClusterIP for internal, LoadBalancer for TCP/UDP external, Ingress for HTTP/HTTPS).</check>
+      <check>Configure selectors correctly — mismatched selectors silently route to no pods.</check>
+      <check>Deploy Ingress controller (Nginx, Traefik, or cloud-specific) before creating Ingress resources.</check>
+      <check>Configure TLS via cert-manager or pre-existing Secrets.</check>
+      <check>Set readiness probes with appropriate initialDelaySeconds.</check>
+      <check>Set liveness probes pointing to /healthz (process-only, no dependencies).</check>
+      <check>Set startup probes for applications with variable startup time (JVM, slow migrations).</check>
+      <check>Create Pod Disruption Budgets for all production Deployments.</check>
+      <check>Configure Horizontal Pod Autoscaler for services with variable traffic.</check>
+      <check>Enable cross-zone load balancing annotation for AWS NLB Service type.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Using Service type LoadBalancer for every HTTP service in a cluster.</description>
+      <reason>Each Service type LoadBalancer provisions a separate cloud LB, multiplying cost and management overhead by the number of services. Use an Ingress controller to consolidate all HTTP/HTTPS traffic behind a single LB.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Omitting readiness probes on Deployments with rolling update strategy.</description>
+      <reason>Kubernetes marks pods Ready immediately after the container starts, before the application has initialised. Traffic is routed to unready pods, causing errors during every deployment. Readiness probes gate traffic admission until the application is ready to serve.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/services-networking/service/"/>
+      <link href="https://kubernetes.io/docs/concepts/services-networking/ingress/"/>
+      <link href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/"/>
+    </see-also>
+  </content>
+</methodology>
