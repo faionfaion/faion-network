@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-scaling-availability">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Configure HorizontalPodAutoscaler (v2), PodDisruptionBudget, and KEDA for Kubernetes workload scaling and high-availability guarantees during cluster maintenance and node drains.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>hpa</tag>
+      <tag>autoscaling</tag>
+      <tag>pdb</tag>
+      <tag>availability</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="k8s-deployment-workloads"/>
+      <ref slug="k8s-rolling-update"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Scaling and Availability: HPA and PDB</title>
+
+    <summary>HorizontalPodAutoscaler (autoscaling/v2) automatically scales Deployment replicas based on CPU, memory, or custom metrics. PodDisruptionBudget protects a minimum number of running pods during voluntary disruptions such as node drains or cluster upgrades. Both are required for production deployments: HPA handles load changes, PDB handles maintenance.</summary>
+
+    <why>
+      <p>Without HPA, a traffic spike causes degraded response times and potential pod OOM-kills until a human manually increases replicas. Without PDB, a cluster upgrade or node drain can evict all pods of a Deployment simultaneously — even if minAvailable in the HPA is set correctly, the Kubernetes eviction API does not check replica count by default. PDB is the only mechanism that constrains voluntary disruption.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding autoscaling to a production Deployment or StatefulSet.</item>
+        <item>Protecting a service during cluster maintenance, node drain, or voluntary disruption.</item>
+        <item>Tuning scale-down conservatism to prevent flapping.</item>
+        <item>Setting up event-driven autoscaling with KEDA (queue depth, HTTP request count).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development/staging single-replica Deployments — HPA complexity without HA benefit.</item>
+        <item>Batch jobs and CronJobs — use KEDA or manual scaling on completion events instead.</item>
+        <item>StatefulSets with ordered provisioning where rapid scale-up risks data consistency — review before applying aggressive scale policies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="hpa-configuration">
+      <p>HPA autoscaling/v2 supports multiple simultaneous metrics (CPU, memory, custom, external). The controller polls every 15 seconds (default). Scale-up is aggressive by default (stabilizationWindowSeconds: 0). Scale-down is conservative (stabilizationWindowSeconds: 300) to prevent flapping after a traffic spike.</p>
+
+      <rule>
+        <statement>Configure HPA with minReplicas >= 2 for HA. Set scaleDown.stabilizationWindowSeconds to at least 300 seconds and limit scale-down to max 10% per 60 seconds or max 2 pods per 60 seconds (whichever is smaller). Set scaleUp.stabilizationWindowSeconds to 0 to respond immediately to spikes.</statement>
+        <rationale>Aggressive scale-down after a traffic spike will cause a second spike when load returns. The conservative scale-down window prevents thrashing. Immediate scale-up ensures capacity is added before latency degrades.</rationale>
+      </rule>
+
+      <example type="good" title="HPA v2 with CPU, memory, and advanced behavior">
+        <code lang="yaml"><![CDATA[
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+  # Advanced behavior (2025-2026)
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300    # Wait 5 min before scale down
+      policies:
+        - type: Percent
+          value: 10                       # Max 10% reduction
+          periodSeconds: 60
+        - type: Pods
+          value: 2                        # Max 2 pods
+          periodSeconds: 60
+      selectPolicy: Min                   # Use most conservative
+
+    scaleUp:
+      stabilizationWindowSeconds: 0       # Scale up immediately
+      policies:
+        - type: Percent
+          value: 100                      # Double pods if needed
+          periodSeconds: 15
+        - type: Pods
+          value: 4                        # Or add 4 pods
+          periodSeconds: 15
+      selectPolicy: Max                   # Use most aggressive
+]]></code>
+      </example>
+
+      <section name="hpa-metric-types">
+        <list>
+          <item>CPU — general compute workloads. Target 70% utilization.</item>
+          <item>Memory — memory-bound apps. Target 80% utilization.</item>
+          <item>Custom — request rate, queue depth, application-specific. Use Prometheus Adapter.</item>
+          <item>External — cloud metrics (Datadog, CloudWatch). Requires external metrics API adapter.</item>
+        </list>
+      </section>
+
+      <section name="hpa-verification-commands">
+        <commands>
+          <command name="check-status">kubectl get hpa</command>
+          <command name="describe">kubectl describe hpa &lt;name&gt;</command>
+          <command name="current-metrics">kubectl top pods -l app=&lt;name&gt;</command>
+        </commands>
+      </section>
+
+      <section name="hpa-checklist">
+        <checklist>
+          <check>minReplicas set to >= 2 for HA.</check>
+          <check>maxReplicas set with cluster capacity in mind.</check>
+          <check>Target metrics defined (CPU, memory, custom).</check>
+          <check>scaleTargetRef points to correct Deployment.</check>
+          <check>behavior.scaleDown.stabilizationWindowSeconds set (300s default).</check>
+          <check>behavior.scaleUp.stabilizationWindowSeconds set (0 for fast scale-up).</check>
+          <check>Scale-down policies prevent aggressive reduction.</check>
+          <check>Scale-up policies allow rapid response.</check>
+          <check>Metrics server running in cluster (required for CPU/memory HPA).</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="pdb-configuration">
+      <p>PodDisruptionBudget (policy/v1) defines how many pods of a selected set can be voluntarily disrupted simultaneously. Use minAvailable (minimum pods that must stay up) OR maxUnavailable (maximum pods that can be down) — not both. The Kubernetes eviction API respects PDB before draining a node; if the PDB would be violated, the drain blocks until it can proceed safely.</p>
+
+      <rule>
+        <statement>Create a PodDisruptionBudget for every production Deployment and StatefulSet with replicas >= 2. Set minAvailable to at least 1 (or N-1 for critical services). Never set minAvailable equal to replicas — that makes the PDB impossible to satisfy during a rolling update.</statement>
+        <rationale>Without a PDB, kubectl drain evicts all pods of a Deployment from a node simultaneously, causing a complete outage. PDB also ensures that rolling updates can complete — if minAvailable: replicas is set, the update will deadlock because it cannot remove the old pod without violating the budget.</rationale>
+      </rule>
+
+      <example type="good" title="PDB for production API">
+        <code lang="yaml"><![CDATA[
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-pdb
+spec:
+  minAvailable: 2    # At least 2 pods must remain
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: api
+]]></code>
+        <note>With 3 replicas and minAvailable: 2, only 1 pod can be disrupted at a time. Node drain will proceed one pod at a time, waiting for each evicted pod to be rescheduled before evicting the next.</note>
+      </example>
+
+      <section name="pdb-sizing-guide">
+        <list>
+          <item>2 replicas: minAvailable 1, maxUnavailable 1 — minimum HA.</item>
+          <item>3 replicas: minAvailable 2, maxUnavailable 1 — standard HA.</item>
+          <item>5+ replicas: minAvailable N-1 or 80%, maxUnavailable 1 or 20% — large deployments.</item>
+        </list>
+      </section>
+
+      <section name="pdb-verification-commands">
+        <commands>
+          <command name="check-status">kubectl get pdb</command>
+          <command name="describe">kubectl describe pdb &lt;name&gt;</command>
+          <command name="drain-dry-run">kubectl drain &lt;node&gt; --dry-run</command>
+        </commands>
+      </section>
+
+      <section name="pdb-checklist">
+        <checklist>
+          <check>PDB created for every production Deployment/StatefulSet.</check>
+          <check>minAvailable OR maxUnavailable set (not both).</check>
+          <check>Selector matches target pods.</check>
+          <check>Value allows for rolling updates (minAvailable is less than replicas).</check>
+          <check>PDB verified with kubectl get pdb after creation.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="supporting-resources">
+      <p>Full HPA and PDB templates for production use:</p>
+
+      <example type="good" title="PDB template">
+        <code lang="yaml"><![CDATA[
+# pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ${APP_NAME}-pdb
+  namespace: ${NAMESPACE}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ${APP_NAME}
+]]></code>
+      </example>
+
+      <example type="good" title="HPA template">
+        <code lang="yaml"><![CDATA[
+# hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ${APP_NAME}-hpa
+  namespace: ${NAMESPACE}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ${APP_NAME}
+  minReplicas: ${MIN_REPLICAS:-3}
+  maxReplicas: ${MAX_REPLICAS:-20}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"/>
+      <link href="https://kubernetes.io/docs/tasks/run-application/configure-pdb/"/>
+      <link href="https://keda.sh/"/>
+      <ref slug="k8s-deployment-workloads"/>
+      <ref slug="k8s-rolling-update"/>
+    </see-also>
+  </content>
+</methodology>
