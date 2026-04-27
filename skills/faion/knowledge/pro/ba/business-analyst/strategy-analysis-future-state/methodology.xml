@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="strategy-analysis-future-state">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>business-analyst</domain>
+    <summary>Define the desired future state with measurable goals: each goal must carry metric, baseline, target, unit, and target date. Aspirations without metrics are rejected by the validator gate.</summary>
+    <tags>
+      <tag>strategy-analysis</tag>
+      <tag>future-state</tag>
+      <tag>measurable-goals</tag>
+      <tag>babok</tag>
+      <tag>capability-planning</tag>
+    </tags>
+    <category>strategy</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="strategy-analysis-business-need"/>
+      <ref slug="strategy-analysis-current-state"/>
+      <ref slug="strategy-analysis-gap-analysis"/>
+      <ref slug="strategy-analysis-change-strategy"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Strategy Analysis: Future State Definition</title>
+
+    <summary>The future state describes the desired outcome after the change: vision, measurable goals, required capabilities, target processes, and target technology. Every goal must be falsifiable — it carries a metric, baseline with source, target value, unit, and target date. Goals that fail measurability are rejected before gap analysis begins. The future state is locked by the exec sponsor in a workshop before gap work starts.</summary>
+
+    <why>
+      <p>Future states that copy current states with adjectives ("faster", "better", "more integrated") produce unmeasurable gaps and unprioritizable change strategies. The single biggest cause of failed strategy analyses is aspirations coded as future states: "zero defects", "100% automated", "seamless experience" — when the gap is measured, every gap is huge and prioritization collapses.</p>
+      <p>A measurable future state is the anchor for the entire downstream: gap deltas are computed against it, change-strategy options are evaluated by how well they close it, and the 90-day review checks whether it was actually achieved. Without measurability, none of those steps can be done rigorously.</p>
+      <p>The exec sponsor must lock the future state in a workshop before gap analysis starts. Unlocked future states cause scope mutations mid-project; the strategy document is never re-opened; rationale rots.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>After current-state assessment is complete and signed off — future-state work starts only then to avoid anchoring to a wrong baseline.</item>
+        <item>Any initiative where the business need has been framed as an outcome — the future state operationalizes that outcome into measurable goals.</item>
+        <item>Portfolio planning where each initiative needs a future-state definition so gap analysis and option evaluation are comparable across the portfolio.</item>
+        <item>Regulatory-driven change: the regulator's requirements are the future state; the BA translates them into measurable compliance goals.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Before current-state assessment — defining the future state without knowing the current state produces gaps measured from fiction.</item>
+        <item>When the business need has not been signed off — the future state has no validated anchor; it will shift as the need is re-litigated.</item>
+        <item>Early-stage product discovery — use hypothesis-driven experiments (lean canvas, jobs-to-be-done) to discover what the future state should be before committing to it.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="future-state-elements">
+      <p>The future state is composed of five elements:</p>
+      <list>
+        <item>Vision: what success looks like — a one-sentence aspirational statement (permitted here because the goals below make it falsifiable).</item>
+        <item>Goals: measurable objectives, each with metric, baseline, target, unit, and target date.</item>
+        <item>Capabilities: what the organization will be able to do that it cannot do today.</item>
+        <item>Processes: how work will flow in the future state.</item>
+        <item>Technology: systems and tools required to support the future state.</item>
+      </list>
+    </section>
+
+    <section name="measurability-gate">
+      <p>Every future-state goal must pass the measurability gate before the future state is locked. A goal passes iff it carries: metric (what is measured), baseline (current value), baseline_source (where that value comes from), target (desired value), target_unit, and target_date (ISO date, within 3 years).</p>
+      <rule testable="true">
+        <statement>Every future-state goal MUST carry: metric, baseline, baseline_source, target, target_unit, and target_date. Goals without any of these fields MUST be rejected and returned for re-elicitation. Goals with target_date more than 3 years in the future MUST be flagged as potentially unfalsifiable.</statement>
+        <rationale>Future states fail most often because goals were never measurable. The measurability gate is the single highest-value quality check in strategy analysis; it prevents the gap analysis from being built on fiction.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Solution-shaped goals ("implement chatbot", "deploy ERP") MUST be recast as outcome goals ("self-serve resolution rate >= 40%", "month-end close in 3 business days"). The recast MUST be confirmed by the exec sponsor before the future state is locked.</statement>
+        <rationale>Solution-shaped future-state goals collapse the change-strategy option space before the gap analysis identifies which solutions would actually close the gap.</rationale>
+      </rule>
+      <example type="good" title="Measurable future-state goal">
+        <code lang="yaml"><![CDATA[
+goal: "Reduce customer time-to-resolution"
+metric: "average time-to-resolution (hours)"
+baseline: 8.2
+baseline_source: "CRM analytics export 2026-Q1"
+target: 2.0
+target_unit: "hours"
+target_date: "2027-06-30"
+capability_required: "24/7 self-service deflection"
+measurability_check: "pass"
+]]></code>
+        <note>Every field is present. The target is within 3 years. The goal is outcome-shaped, not solution-shaped.</note>
+      </example>
+      <example type="bad" title="Unmeasurable future-state goal">
+        <code lang="yaml"><![CDATA[
+goal: "Implement AI chatbot for customer service"
+metric: null
+baseline: null
+target: null
+target_date: null
+measurability_check: "fail"
+failure_reason: "solution_shaped, no_metric, no_baseline, no_target_date"
+]]></code>
+        <note>Rejected by the measurability gate. Recast: "Achieve self-serve deflection rate >= 40% by 2027-06-30, baseline 0%, source: CRM analytics 2026-Q1."</note>
+      </example>
+    </section>
+
+    <section name="future-state-validator-script">
+      <p>Wire a future-state measurability validator as a pre-commit hook on the strategy doc. Any goal failing the gate blocks the commit. The validator checks: all required fields present, target_date is ISO format and not in the past, target_date not beyond 3 years (unfalsifiable), and goal text is not solution-shaped.</p>
+      <example type="good" title="future_state_validator.py">
+        <code lang="python"><![CDATA[
+# future_state_validator.py — gate goals on metric / baseline / target / date.
+# Usage: python future_state_validator.py future_state.yaml
+import sys, yaml, datetime as dt
+
+REQUIRED = ("metric", "baseline", "target", "target_date")
+OUT = []
+data = yaml.safe_load(open(sys.argv[1]))
+for g in data.get("goals", []):
+    missing = [k for k in REQUIRED if not g.get(k)]
+    today = dt.date.today()
+    fail = []
+    if missing:
+        fail.append("missing:" + ",".join(missing))
+    td = g.get("target_date")
+    if td:
+        try:
+            d = dt.date.fromisoformat(str(td))
+            if d <= today:
+                fail.append("target_date_in_past")
+            if (d - today).days > 365 * 3:
+                fail.append("target_date_>_3y_unfalsifiable")
+        except ValueError:
+            fail.append("target_date_not_iso")
+    if any(w in str(g.get("goal", "")).lower()
+           for w in ("implement", "deploy", "build", "buy", "migrate")):
+        fail.append("solution_shaped_goal")
+    OUT.append({"goal": g.get("goal"), "fail": fail or None})
+
+print(yaml.safe_dump({"validation": OUT}, sort_keys=False))
+sys.exit(1 if any(r["fail"] for r in OUT) else 0)
+]]></code>
+        <note>Wire as pre-commit hook on strategy doc; pair with Gap Analysis Template — gaps automatically inherit their metric from validated future-state goals (no metric on goal means no metric on gap, no priority, by construction).</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run an opus future-state-agent to propose vision plus measurable goals plus capability map. Pair with a future-state-validator agent that rejects any goal without metric, baseline, target, and target-date. The BA convenes one workshop to lock the future state before gap analysis starts.</p>
+      <prompt purpose="future-state-validator agent prompt">
+        <![CDATA[
+You are the future-state validator. For each proposed goal return:
+{
+  goal, metric, baseline, baseline_source, target,
+  target_unit, target_date, capability_required,
+  measurability_check: "pass" | "fail",
+  failure_reason: null | "no_metric" | "no_baseline" | "no_target_date"
+                   | "not_falsifiable" | "solution_shaped"
+}
+Refuse to retain any goal whose measurability_check = "fail" unless the BA
+passes force=true. If the goal is solution-shaped ("implement chatbot"),
+recast as outcome ("self-serve resolution rate >= 40%").
+        ]]>
+      </prompt>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Future-state copying current-state with adjectives: agents produce "faster", "better", "more integrated" with no metric, no baseline, no date. The validator script rejects these by construction — wire it before any future state is committed.</p>
+      <p>Unrealistic future state: agents produce fantasy goals ("zero defects", "100% automated") when constraints are not fed as input. Pass budget, headcount, and timeline constraints explicitly; the future-state-agent must respect them.</p>
+      <p>Strategic alignment as box-ticking: each initiative claims it supports goal G1; nobody checks. Without explicit traces_to: [GOAL-XXX] plus a corporate-strategy doc, the trace is decorative. Validate every trace with git grep against the actual .aidocs/ catalog.</p>
+    </section>
+
+    <section name="references">
+      <p>IIBA — BABOK Guide v3, Knowledge Area 6, section 6.2 Define Future State. Kaplan &amp; Norton — Strategy Maps (future-state capability mapping discipline). Treacy &amp; Wiersema — The Discipline of Market Leaders (operational excellence, product leadership, customer intimacy archetypes for future-state framing). ISO/IEC/IEEE 29148:2018 Requirements Engineering (goal traceability discipline).</p>
+    </section>
+
+    <see-also>
+      <ref slug="strategy-analysis-business-need"/>
+      <ref slug="strategy-analysis-current-state"/>
+      <ref slug="strategy-analysis-gap-analysis"/>
+      <ref slug="strategy-analysis-change-strategy"/>
+    </see-also>
+  </content>
+</methodology>
