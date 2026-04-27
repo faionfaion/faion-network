@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-project-structure">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Domain-driven Django project layout: apps/ per domain, config/ for settings, core/ for shared code. Scales from small APIs to 100K+ LOC with consistent, predictable file placement.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>project-structure</tag>
+      <tag>architecture</tag>
+      <tag>layout</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-selectors"/>
+      <ref slug="django-coding-standards"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Project Structure</title>
+
+    <summary>Organize a Django project into domain apps under apps/, a shared core/ package, and a config/ package for settings. Each app is self-contained with models, services, selectors, apis, serializers, and tests. This layout scales predictably and aligns with the HackSoft Styleguide and Two Scoops of Django.</summary>
+
+    <why>
+      <p>Domain-driven structure makes it easy to find related code. A business domain (orders, users, products) is complete within one app folder. This avoids the "where does this go?" confusion of layer-based structure (all models in a global models/ folder, all views in a global views/). Consistent placement of files also means any agent or developer can locate code without exploring the full tree.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new Django project that will grow beyond a few hundred lines.</item>
+        <item>Building APIs with multiple business domains (users, orders, products, payments).</item>
+        <item>Team projects where consistent file placement reduces cognitive overhead.</item>
+        <item>Refactoring a legacy flat structure into a domain-based layout.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-file Django scripts or management commands — full app structure is overkill.</item>
+        <item>Django CMS / Wagtail where the framework imposes its own page-tree conventions.</item>
+        <item>Tiny utility apps with one model and no business logic — just add to core/.</item>
+      </list>
+    </when-not-to-use>
+
+    <rule testable="true">
+      <statement>Organize code into domain apps under apps/. Each app represents one business domain. Each app MUST contain: models.py, services.py, selectors.py, apis.py, serializers.py, urls.py, constants.py, admin.py, and a tests/ subdirectory with test_models.py, test_services.py, test_selectors.py, and test_apis.py.</statement>
+      <rationale>Domain-driven structure makes it possible to find all code for a concept in one folder. When an agent or developer needs to change how orders work, they look in apps/orders/ — not scattered across global models/, views/, and serializers/ directories.</rationale>
+    </rule>
+
+    <rule testable="true">
+      <statement>Put shared infrastructure (BaseModel, custom exceptions, pagination, permissions) in core/. Put Django configuration (settings split by environment, root urls.py, celery.py, wsgi.py, asgi.py) in config/. Put test factories in tests/factories/ at the project root.</statement>
+      <rationale>core/ holds code that all apps import; it must not import from apps/ to avoid circular dependencies. config/ separates runtime concerns from domain logic. Centralized factories allow all test modules to reference them without duplication.</rationale>
+    </rule>
+
+    <example type="good" title="Recommended project layout">
+      <code lang="text"><![CDATA[
+project/
+├── config/                    # Django configuration
+│   ├── settings/
+│   │   ├── base.py           # Common settings
+│   │   ├── development.py    # Dev overrides (DEBUG=True)
+│   │   └── production.py     # Prod overrides (security)
+│   ├── urls.py               # Root URL configuration
+│   ├── celery.py             # Celery app (if used)
+│   └── tasks.py              # Django 6.0 native tasks
+│
+├── apps/                      # Domain applications
+│   └── {app_name}/
+│       ├── __init__.py
+│       ├── apps.py           # App configuration
+│       ├── constants.py      # TextChoices, limits, thresholds
+│       ├── models.py         # Models with validation
+│       ├── services.py       # Write operations (or services/)
+│       ├── selectors.py      # Read operations (or selectors/)
+│       ├── apis.py           # API views (or apis/)
+│       ├── serializers.py    # DRF serializers
+│       ├── urls.py           # App URL patterns
+│       ├── admin.py          # Admin configuration
+│       └── tests/
+│           ├── __init__.py
+│           ├── test_models.py
+│           ├── test_services.py
+│           ├── test_selectors.py
+│           └── test_apis.py
+│
+├── core/                      # Shared code
+│   ├── __init__.py
+│   ├── models.py             # BaseModel
+│   ├── exceptions.py         # Custom exceptions
+│   ├── pagination.py         # Custom pagination
+│   └── permissions.py        # Custom permissions
+│
+├── tests/
+│   ├── conftest.py           # pytest fixtures
+│   └── factories/            # Factory Boy factories
+│
+├── manage.py
+├── pyproject.toml            # Dependencies + tools config
+└── requirements/
+    ├── base.txt
+    ├── development.txt
+    └── production.txt
+      ]]></code>
+    </example>
+
+    <example type="bad" title="Layer-based (anti-pattern) layout">
+      <code lang="text"><![CDATA[
+project/
+├── models/
+│   ├── user.py
+│   ├── order.py
+│   └── product.py
+├── views/
+│   ├── user.py
+│   ├── order.py
+│   └── product.py
+└── serializers/
+    ├── user.py
+    ├── order.py
+    └── product.py
+      ]]></code>
+      <note>Layer-based layout scatters one business domain across three directories. Adding a new field to Order means visiting models/order.py, views/order.py, serializers/order.py, and tests in multiple places.</note>
+    </example>
+
+    <section name="app-setup-steps">
+      <p>Standard steps when creating a new Django app in this structure:</p>
+      <how-to>
+        <step>Run python manage.py startapp {name} inside the apps/ directory.</step>
+        <step>Edit apps.py and set name = "apps.{name}" (not just "{name}").</step>
+        <step>Create constants.py with TextChoices and named limits.</step>
+        <step>Create services.py and selectors.py (rename views.py to apis.py).</step>
+        <step>Create serializers.py with separate Input and Output serializers.</step>
+        <step>Create tests/ directory with empty __init__.py and four test files.</step>
+        <step>Add "apps.{name}" to INSTALLED_APPS in config/settings/base.py.</step>
+        <step>Create urls.py and wire it into config/urls.py with include().</step>
+      </how-to>
+    </section>
+
+    <section name="pyproject-toml-config">
+      <p>Standard pyproject.toml tool configuration for the project:</p>
+      <example type="good" title="pyproject.toml for Django project">
+        <code lang="toml"><![CDATA[
+[project]
+name = "myproject"
+version = "1.0.0"
+requires-python = ">=3.12"
+
+[tool.isort]
+profile = "django"
+line_length = 88
+known_first_party = ["apps", "core", "config"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+known_django = ["django", "rest_framework"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict = true
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.development"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = "test_*.py"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["apps"]
+omit = ["*/migrations/*", "*/tests/*"]
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="naming-conventions">
+      <p>Consistent naming rules for all artifacts in the project:</p>
+      <rules>
+        <rule testable="true">
+          <statement>App directories use snake_case plural nouns (users, orders, user_profiles). Model classes use PascalCase singular (User, Order, UserProfile). Service functions use entity_action pattern (user_create, order_process). Selector functions use entity_query pattern (user_list, order_get_by_id). Constants use UPPER_SNAKE_CASE. TextChoices classes use PascalCase (OrderStatus).</statement>
+          <rationale>Consistent naming makes code searchable. A grep for user_create finds all create operations for users. Naming patterns signal intent: user_list is a read operation (selector), order_process is a write operation (service).</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="Service and selector naming patterns">
+        <code lang="python"><![CDATA[
+# services.py — naming: <entity>_<action>
+def user_create(*, email: str, name: str) -> User: ...
+def order_create(*, user: User, items: list[dict]) -> Order: ...
+def order_mark_paid(*, order: Order, transaction_id: str) -> Order: ...
+def user_deactivate(*, user: User) -> User: ...
+def user_send_verification_email(*, user: User) -> None: ...
+def order_process_payment(*, order: Order, payment_method: str) -> PaymentResult: ...
+
+# selectors.py — naming: <entity>_<query>
+def user_get_by_id(*, user_id: int) -> User: ...
+def user_get_by_email(*, email: str) -> User | None: ...
+def user_list(*, is_active: bool = True) -> QuerySet[User]: ...
+def order_list_for_user(*, user: User) -> QuerySet[Order]: ...
+def user_list_with_recent_orders(*, days: int = 30) -> QuerySet[User]: ...
+def order_list_pending_payment() -> QuerySet[Order]: ...
+        ]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Each new domain has its own app directory under apps/.</check>
+      <check>app.py sets name = "apps.{name}" (not bare "{name}").</check>
+      <check>Service functions follow entity_action naming.</check>
+      <check>Selector functions follow entity_query naming.</check>
+      <check>constants.py exists and contains TextChoices and numeric limits.</check>
+      <check>tests/ has four test files mirroring the four layers.</check>
+      <check>core/ is imported by apps but apps/ never import each other directly.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-selectors"/>
+      <ref slug="django-constants"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+      <link href="https://www.feldroy.com/two-scoops-of-django"/>
+    </see-also>
+  </content>
+</methodology>
