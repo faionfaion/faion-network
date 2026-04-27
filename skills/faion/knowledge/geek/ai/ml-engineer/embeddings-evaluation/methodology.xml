@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embeddings-evaluation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Benchmarking and quality evaluation for embedding systems: Recall@K, MRR, nDCG, A/B testing in production, evaluation dataset design, and model comparison methodology.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>evaluation</tag>
+      <tag>benchmarking</tag>
+      <tag>recall</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="embeddings-model-selection"/>
+      <ref slug="embeddings-production-ops"/>
+      <ref slug="rag-evaluation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Embedding Quality Evaluation and Benchmarking</title>
+
+    <summary>MTEB scores are general benchmarks — always benchmark on your specific data. Create an evaluation set of 100-500 real query-document pairs, test at least 3-4 candidate models, measure Recall@K and MRR, then run an A/B test in production before full rollout. Without a domain-specific evaluation, model selection is guesswork.</summary>
+
+    <why>
+      <p>MTEB benchmark scores do not predict real-world performance on domain-specific corpora. A model ranking lower on MTEB may outperform a higher-ranked model on your specific data because the training distribution aligns better. Legal, medical, code, and enterprise corpora frequently diverge from MTEB results by 5-15%. Domain-specific evaluation is the only reliable selection signal.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Selecting an embedding model for a new project (always).</item>
+        <item>Evaluating whether to switch from one model to another.</item>
+        <item>Diagnosing poor retrieval quality in production.</item>
+        <item>Validating a model update before re-embedding the full corpus.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototype with fewer than 50 documents — use any reasonable model and defer evaluation.</item>
+        <item>When you cannot create a query-document evaluation set — fall back to MTEB scores with domain-awareness caveats.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="evaluation-dataset-design">
+      <p>Create an evaluation dataset before benchmarking models:</p>
+      <list>
+        <item>Minimum 100 query-document pairs; 500 preferred for statistical significance.</item>
+        <item>Queries must be representative of real usage — draw from query logs if available.</item>
+        <item>Documents must come from the actual corpus, not synthetic content.</item>
+        <item>Include relevance labels (binary or graded) from domain experts.</item>
+        <item>Include edge cases: short queries, long queries, multilingual, rare entities, acronyms.</item>
+        <item>No data leakage — queries must not appear in model training data.</item>
+        <item>Balanced distribution of relevance — avoid datasets that are all positives.</item>
+      </list>
+    </section>
+
+    <section name="retrieval-metrics">
+      <p>Key retrieval metrics to measure:</p>
+      <list>
+        <item>Recall@1, @5, @10, @100: fraction of relevant documents retrieved in top K. Primary metric for RAG — aim for Recall@10 above 0.7.</item>
+        <item>MRR (Mean Reciprocal Rank): average of 1/rank for the first relevant result. Primary metric for search ranking. Aim for MRR above 0.5.</item>
+        <item>Precision@K: fraction of retrieved documents that are relevant at rank K.</item>
+        <item>nDCG@10 (Normalized Discounted Cumulative Gain): accounts for position and graded relevance. Most complete single metric for ranked retrieval.</item>
+      </list>
+    </section>
+
+    <example type="good" title="Recall@K and MRR calculation">
+      <code lang="python"><![CDATA[
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+def search_similar(
+    query_embedding: list[float],
+    document_embeddings: list[list[float]],
+    top_k: int = 10
+) -> list[tuple[int, float]]:
+    """Find most similar documents by cosine similarity."""
+    query = np.array(query_embedding).reshape(1, -1)
+    docs = np.array(document_embeddings)
+    similarities = cosine_similarity(query, docs)[0]
+    top_indices = np.argsort(similarities)[::-1][:top_k]
+    return [(int(idx), float(similarities[idx])) for idx in top_indices]
+
+def recall_at_k(search_fn, test_data: list[dict], k: int = 10) -> float:
+    """
+    test_data: list of {"query_emb": ..., "relevant_ids": [int, ...]}
+    Returns average Recall@k.
+    """
+    recalls = []
+    for item in test_data:
+        results = search_fn(item["query_emb"], top_k=k)
+        result_ids = set(idx for idx, _ in results)
+        relevant = set(item["relevant_ids"])
+        recalls.append(len(result_ids & relevant) / len(relevant))
+    return float(np.mean(recalls))
+
+def mean_reciprocal_rank(search_fn, test_data: list[dict], k: int = 10) -> float:
+    """Returns average MRR@k."""
+    mrrs = []
+    for item in test_data:
+        results = search_fn(item["query_emb"], top_k=k)
+        for rank, (idx, _) in enumerate(results, 1):
+            if idx in item["relevant_ids"]:
+                mrrs.append(1 / rank)
+                break
+        else:
+            mrrs.append(0)
+    return float(np.mean(mrrs))
+]]></code>
+    </example>
+
+    <section name="model-benchmarking-procedure">
+      <p>Step-by-step benchmarking procedure:</p>
+      <list>
+        <item>Step 1: Create evaluation set — 100-500 real query-document pairs with binary relevance labels.</item>
+        <item>Step 2: Shortlist 3-5 candidate models based on MTEB scores and use case fit.</item>
+        <item>Step 3: For each model, embed the evaluation corpus and queries.</item>
+        <item>Step 4: Measure Recall@1, @5, @10, MRR, and latency p50/p95 for each model.</item>
+        <item>Step 5: Calculate cost per 1M tokens at your expected monthly volume.</item>
+        <item>Step 6: Select the model with the best quality/cost/latency trade-off for your requirements.</item>
+        <item>Step 7: Document the decision and trade-offs accepted.</item>
+      </list>
+    </section>
+
+    <section name="model-selection-checklist">
+      <p>Model selection requirements to document before benchmarking:</p>
+      <list>
+        <item>Primary use case: semantic search / RAG / clustering / classification / similarity / anomaly detection.</item>
+        <item>Budget per month in USD.</item>
+        <item>Latency requirement in ms (p95).</item>
+        <item>Max document length in tokens.</item>
+        <item>Languages required.</item>
+        <item>Privacy requirements: cloud API allowed or on-prem/air-gapped only.</item>
+        <item>GPU availability.</item>
+        <item>Target Recall@10 percentage.</item>
+        <item>Target MRR value.</item>
+        <item>Acceptable quality loss for cost savings.</item>
+      </list>
+    </section>
+
+    <section name="ab-testing-production">
+      <p>A/B testing a new model in production:</p>
+      <list>
+        <item>Control group: current model, treatment group: new model, random user assignment.</item>
+        <item>Calculate required sample size upfront for statistical power (p-value below 0.05, confidence interval calculated).</item>
+        <item>Measure business metrics: click-through rate (CTR), user satisfaction, task completion rate, time to find relevant result.</item>
+        <item>Define early stopping rules to catch regressions before full rollout.</item>
+        <item>Rollback plan: keep old vectors until new model passes A/B gates.</item>
+        <item>Run for at least one full week to capture weekly query patterns.</item>
+      </list>
+    </section>
+
+    <section name="failure-analysis">
+      <p>When retrieval quality is below target:</p>
+      <list>
+        <item>False negatives (relevant docs not retrieved): examine chunk size — try 256-512 tokens for Q&amp;A, 1000-2000 for summarization.</item>
+        <item>False positives (irrelevant docs ranked high): consider adding hybrid search (BM25) to penalize semantically similar but lexically different content.</item>
+        <item>Pattern identification in failures: group failures by query type, document type, length, or vocabulary to identify systematic gaps.</item>
+        <item>Root cause analysis: check if failures cluster around specific topics suggesting domain shift — consider fine-tuning or domain-specific model.</item>
+      </list>
+    </section>
+
+    <section name="evaluation-prompts">
+      <p>Prompt templates for evaluation assistance:</p>
+      <prompt purpose="model-selection">
+<![CDATA[
+I need to select an embedding model for my project. Help me choose the best option.
+
+Use Case: [semantic search / RAG / classification / clustering / etc.]
+Requirements:
+- Expected query volume: [queries/day]
+- Document corpus size: [number of documents]
+- Average document length: [tokens]
+- Languages needed: [list]
+- Maximum acceptable latency: [ms]
+- Monthly budget: [$]
+- Privacy constraints: [cloud API allowed / on-prem only]
+Current Setup:
+- Vector database: [Qdrant/Pinecone/pgvector/etc.]
+- Tech stack: [Python/Node.js/etc.]
+
+Please recommend:
+1. Primary model choice with rationale
+2. Alternative option for comparison
+3. Dimension recommendation
+4. Expected cost estimate
+5. Implementation considerations
+]]>
+      </prompt>
+      <prompt purpose="benchmark-comparison">
+<![CDATA[
+Help me benchmark multiple embedding models for my use case.
+
+Models to Compare:
+1. [Model 1]
+2. [Model 2]
+3. [Model 3]
+
+Evaluation Criteria:
+- Quality: [metrics to measure]
+- Speed: [latency, throughput]
+- Cost: [per token, monthly estimate]
+
+Test Conditions:
+- Test dataset size: [count]
+- Hardware: [specs]
+- Batch sizes to test: [list]
+
+Please provide:
+1. Comprehensive evaluation plan
+2. Metrics to capture
+3. Statistical significance requirements
+4. Visualization recommendations
+5. Decision framework for final selection
+]]>
+      </prompt>
+      <prompt purpose="create-evaluation-dataset">
+<![CDATA[
+Help me create an evaluation dataset for my embedding system.
+
+System Purpose: [describe]
+Available Resources:
+- Existing queries: [yes/no, count]
+- Query logs: [yes/no]
+- User feedback: [yes/no]
+- Domain experts: [yes/no]
+
+Corpus: [document count, types, topics]
+Evaluation Goals: [Recall@K / MRR / nDCG, edge cases]
+
+Please help me:
+1. Design the evaluation dataset structure
+2. Determine optimal dataset size
+3. Create query generation strategy
+4. Define relevance labeling guidelines
+5. Handle edge cases and hard negatives
+6. Establish baseline expectations
+]]>
+      </prompt>
+    </section>
+
+    <section name="maintenance-schedule">
+      <p>Regular evaluation tasks:</p>
+      <list>
+        <item>Weekly: review error rates, check cache hit rates, monitor cost trends.</item>
+        <item>Monthly: evaluate new model releases, review quality metrics, optimize cost if needed, rotate API keys.</item>
+        <item>Quarterly: benchmark against new models, review and update evaluation dataset, assess fine-tuning opportunities, review and update documentation.</item>
+      </list>
+      <p>Before updating a model:</p>
+      <list>
+        <item>Benchmark new model on your evaluation data.</item>
+        <item>Test in staging environment with shadow traffic.</item>
+        <item>Prepare rollback plan (keep old index until new one passes quality gates).</item>
+        <item>Communicate change to stakeholders.</item>
+        <item>After update: re-embed all documents if dimensions changed, monitor quality metrics closely, watch for anomalies in user behavior.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Evaluation dataset has at least 100 real query-document pairs.</check>
+      <check>Queries drawn from actual usage patterns, not synthetic generation.</check>
+      <check>At least 3 candidate models benchmarked before selection.</check>
+      <check>Recall@10, MRR, and latency p50/p95 measured for each candidate.</check>
+      <check>Cost per 1M tokens calculated at expected monthly volume.</check>
+      <check>A/B test plan defined before production rollout.</check>
+      <check>Statistical significance (p-value below 0.05) required for A/B decisions.</check>
+      <check>Rollback plan documented before model update.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Using synthetic benchmarks (LLM-generated query-document pairs) as the primary evaluation signal.</description>
+      <reason>Synthetic queries match model training distributions and produce inflated recall numbers. Real user queries contain typos, ambiguity, and domain jargon that synthetic queries omit. Always validate with real queries.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Comparing models only on latency and cost, skipping quality measurement.</description>
+      <reason>A 10x cheaper model with 20% lower recall can cost more in business terms (missed results, user drop-off) than the savings. Always measure quality first, then optimize within the quality constraint.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="embeddings-model-selection"/>
+      <ref slug="embeddings-production-ops"/>
+      <ref slug="rag-evaluation"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+      <link href="https://www.pinecone.io/learn/chunking-strategies/"/>
+    </see-also>
+  </content>
+</methodology>
