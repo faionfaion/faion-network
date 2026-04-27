@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-quality-queries">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Prevent N+1 queries in Django with select_related, prefetch_related, custom Prefetch, only/defer, and assertNumQueries regression locks.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>queries</tag>
+      <tag>performance</tag>
+      <tag>n-plus-one</tag>
+      <tag>orm</tag>
+    </tags>
+    <category>perf</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-security"/>
+      <ref slug="django-quality-logging"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Query Optimization and N+1 Prevention</title>
+
+    <summary>N+1 queries are the most common performance leak in Django. A single for loop over a queryset without select_related becomes 1 + N database calls. This methodology covers select_related, prefetch_related, custom Prefetch objects, only/defer for large fields, and assertNumQueries to lock query counts as regression tests.</summary>
+
+    <why>
+      <p>N+1 is invisible until you exceed 100 rows. A view that loads 10 orders and accesses order.user.email issues 11 queries. With 1000 orders it issues 1001 queries — the difference between 200ms and 20s response times at typical Django ORM overhead. select_related adds a JOIN (same single-query cost); prefetch_related runs exactly 2 queries regardless of result set size (much cheaper than 1+N). Django Debug Toolbar makes the problem visible during development; nplusone autodetects it in tests.</p>
+      <p>Indexes on frequently filtered fields are the other half: a query that correctly uses select_related but filters on an unindexed column does a full table scan. Both must be addressed together. assertNumQueries in tests locks the query count, catching accidental N+1 reintroduction in code review.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Django view that iterates over a queryset and accesses related objects.</item>
+        <item>List API endpoints returning more than 10 rows — N+1 impact grows linearly with row count.</item>
+        <item>Admin list views that display FK fields (automatic N+1 from list_display).</item>
+        <item>Celery tasks that process batches of model instances with relationships.</item>
+        <item>Any endpoint where performance targets matter (SLA, dashboard, mobile API).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-object detail views accessing only direct fields — no relationship traversal, no N+1 risk.</item>
+        <item>Management commands processing one row at a time where simplicity beats efficiency.</item>
+        <item>Throwaway scripts where correctness matters more than speed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="select-related-prefetch">
+      <p>The fundamental rule: select_related for ForeignKey / OneToOneField (single SQL JOIN), prefetch_related for ManyToManyField / reverse ForeignKey / GenericForeignKey (2 separate SQL queries). Apply at the selector level so views do not need to worry about it.</p>
+
+      <rule testable="true">
+        <statement>Every QuerySet that will be iterated MUST declare select_related() for every ForeignKey/OneToOne field accessed in the loop body, and prefetch_related() for every ManyToMany or reverse FK accessed in the loop body, BEFORE the loop. Do not add these in the view — put them in selector/manager methods so the optimization is centrally owned and reused. One query per view is impossible; targets: list endpoints ≤5 queries, detail endpoints ≤10 queries.</statement>
+        <rationale>select_related adds a JOIN — same query, zero additional round trips. prefetch_related issues exactly 2 queries regardless of result size. Centralizing in selectors means every caller (views, admin, Celery, management commands) gets the optimization automatically. Targets give a concrete, testable threshold for code review.</rationale>
+      </rule>
+
+      <example type="bad" title="N+1 queries — 1 + N calls for N orders">
+        <code lang="python"><![CDATA[
+# PROBLEM: N+1 queries (1 query for orders + 1 per order for user)
+def get_orders_bad():
+    orders = Order.objects.all()
+    for order in orders:
+        print(order.user.email)        # Query per order!
+        print(order.shipping_address)  # Another query per order!
+    return orders
+]]></code>
+        <note>With 500 orders this issues 1001 queries. Debug Toolbar shows the spike.</note>
+      </example>
+
+      <example type="good" title="select_related eliminates FK N+1">
+        <code lang="python"><![CDATA[
+from django.db.models import Prefetch
+from django.utils import timezone
+from datetime import timedelta
+
+# SOLUTION 1: select_related for ForeignKey/OneToOne — single JOIN
+def get_orders_optimized():
+    return Order.objects.select_related(
+        "user",
+        "shipping_address"  # Also ForeignKey
+    ).all()
+    # Now order.user.email and order.shipping_address are free — no extra queries
+
+
+# SOLUTION 2: prefetch_related for ManyToMany / reverse FK
+def get_orders_with_items():
+    return Order.objects.prefetch_related("items").all()
+    # for order in orders: for item in order.items.all() — no extra queries
+
+
+# SOLUTION 3: Combined select_related + prefetch_related + nested prefetch
+def get_orders_full():
+    """Fetch orders with user, address, and all items including their products."""
+    return Order.objects.select_related(
+        "user",
+        "shipping_address"
+    ).prefetch_related(
+        "items",
+        "items__product"  # Nested prefetch: items AND their products in 2 extra queries
+    )
+
+
+# SOLUTION 4: Custom Prefetch for filtered/annotated related objects
+def get_users_with_recent_orders():
+    """Fetch users with only their recent orders (not all orders)."""
+    recent_orders = Prefetch(
+        "orders",
+        queryset=Order.objects.filter(
+            created_at__gte=timezone.now() - timedelta(days=30)
+        ).select_related("shipping_address"),
+        to_attr="recent_orders"  # Access via user.recent_orders (list, not queryset)
+    )
+    return User.objects.prefetch_related(recent_orders)
+
+
+# SOLUTION 5: only/defer for large text/binary fields
+def get_articles_list():
+    """Fetch article list without loading large content body."""
+    return Article.objects.defer("content", "raw_html").all()
+
+def get_article_detail(article_id: int) -> Article:
+    """Fetch single article with all fields."""
+    return Article.objects.get(pk=article_id)
+]]></code>
+      </example>
+    </section>
+
+    <section name="query-counting">
+      <p>Django Debug Toolbar shows query counts in the browser during development. nplusone middleware autodetects N+1 in test runs. assertNumQueries locks the count in regression tests so accidental N+1 reintroduction is caught at CI.</p>
+
+      <rule testable="true">
+        <statement>Every hot endpoint (list views, dashboard, high-traffic API) MUST have an assertNumQueries regression test that locks the exact query count. Use Django Debug Toolbar (dev) to profile new views. Enable nplusone middleware in development settings to autodetect N+1 without manual inspection. Install django-silk for production profiling of top 10 slow requests.</statement>
+        <rationale>assertNumQueries is a zero-cost regression lock: it fails immediately when someone adds an N+1 and the CI catches it before merge. Without it, N+1 regressions are invisible until load testing. Debug Toolbar is the fastest way to see the problem during development — it shows the full query list with duplicates highlighted.</rationale>
+      </rule>
+
+      <example type="good" title="assertNumQueries regression test">
+        <code lang="python"><![CDATA[
+# tests/test_views.py
+import pytest
+from django.test import TestCase
+
+class TestOrderListView(TestCase):
+    def test_order_list_query_count(self):
+        """Lock query count to prevent N+1 regression."""
+        # Create 10 orders with users and items
+        users = [User.objects.create_user(username=f"user{i}") for i in range(10)]
+        for i, user in enumerate(users):
+            order = Order.objects.create(user=user)
+            OrderItem.objects.create(order=order, quantity=1)
+
+        # Baseline: 1 query for orders + 1 for users + 1 for items = 3 total
+        with self.assertNumQueries(3):
+            response = self.client.get("/api/orders/")
+        self.assertEqual(response.status_code, 200)
+
+
+# nplusone middleware in dev settings:
+# MIDDLEWARE += ["nplusone.ext.django.NPlusOneMiddleware"]
+# NPLUSONE_RAISE = True  # Raise exception on N+1 detection in tests
+]]></code>
+      </example>
+
+      <example type="good" title="Selector pattern centralizing query optimization">
+        <code lang="python"><![CDATA[
+# selectors.py — all query optimization in one place
+from django.db.models import QuerySet, Prefetch
+
+def get_order_list(*, user: User) -> QuerySet[Order]:
+    """Return optimized queryset for order list endpoint."""
+    return (
+        Order.objects
+        .filter(user=user)
+        .select_related("user", "shipping_address")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related("product"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
+
+# views.py — thin, no ORM optimization here
+def order_list_view(request):
+    orders = get_order_list(user=request.user)
+    ...
+]]></code>
+      </example>
+    </section>
+
+    <section name="bulk-operations">
+      <p>Bulk creates and updates reduce round trips for batch processing. bulk_create avoids the 1 INSERT per object pattern. update() on querysets avoids the 1 UPDATE per object pattern. F() expressions handle counter updates atomically without read-modify-write races.</p>
+
+      <rule testable="true">
+        <statement>Use bulk_create() when creating multiple model instances in a loop. Use QuerySet.update() or F() expressions when updating the same field on multiple rows. Never iterate with .save() for batch creates or counter increments. Set batch_size in bulk_create to control memory for very large batches.</statement>
+        <rationale>bulk_create issues a single INSERT with multiple values rows — O(1) queries instead of O(N). QuerySet.update() issues a single UPDATE WHERE — O(1) vs O(N). F() expressions are evaluated server-side and are safe from race conditions under concurrent writes.</rationale>
+      </rule>
+
+      <example type="good" title="Bulk operations for batch processing">
+        <code lang="python"><![CDATA[
+from django.db.models import F
+
+# GOOD: bulk_create — 1 INSERT for N items
+def create_order_items(*, order: Order, items: list[dict]) -> None:
+    order_items = [
+        OrderItem(
+            order=order,
+            product_id=item["product_id"],
+            quantity=item["quantity"],
+        )
+        for item in items
+    ]
+    OrderItem.objects.bulk_create(order_items, batch_size=500)
+
+
+# GOOD: F() expression — atomic server-side decrement, 1 UPDATE per product
+def decrease_stock(*, items: list[dict]) -> None:
+    for item in items:
+        Product.objects.filter(pk=item["product_id"]).update(
+            stock=F("stock") - item["quantity"]
+        )
+
+
+# BAD: Individual saves — N queries
+def create_order_items_bad(*, order: Order, items: list[dict]) -> None:
+    for item in items:
+        OrderItem.objects.create(  # 1 INSERT per item
+            order=order,
+            product_id=item["product_id"],
+            quantity=item["quantity"],
+        )
+]]></code>
+      </example>
+    </section>
+
+    <section name="indexes">
+      <p>Indexes on frequently filtered or ordered fields turn full table scans into index lookups. Django supports single-column and composite indexes. CheckConstraints and UniqueConstraints can also carry partial indexes. Database indexes are the single biggest knob after N+1 elimination.</p>
+
+      <rule testable="true">
+        <statement>Add database indexes (models.Index) to every field used in: (1) .filter() clauses in hot paths; (2) .order_by() clauses on large tables; (3) foreign key fields not covered by Django's auto-index. Add composite indexes for common multi-field filter patterns (e.g., is_active + created_at). Verify index usage with EXPLAIN ANALYZE in development.</statement>
+        <rationale>A query on an unindexed field does a sequential scan — O(rows) cost. An index lookup is O(log N). For a 100K-row table the difference is 10,000x. Django's default auto-index covers only the primary key and explicit unique fields; application-specific filter patterns require explicit model indexes.</rationale>
+      </rule>
+
+      <example type="good" title="Model with proper indexes">
+        <code lang="python"><![CDATA[
+from django.db import models
+from django.db.models import CheckConstraint, Q, UniqueConstraint
+from django.core.validators import MinValueValidator
+
+class Product(models.Model):
+    """Product model with proper validation, constraints, and indexes."""
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True)
+    description = models.TextField(blank=True)
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    stock = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Product"
+        verbose_name_plural = "Products"
+        indexes = [
+            models.Index(fields=["slug"]),  # unique implies index, but explicit is clearer
+            models.Index(fields=["is_active", "-created_at"]),  # composite: common filter+sort
+        ]
+        constraints = [
+            CheckConstraint(
+                check=Q(price__gte=0),
+                name="product_price_non_negative"
+            ),
+            CheckConstraint(
+                check=Q(stock__gte=0),
+                name="product_stock_non_negative"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def clean(self) -> None:
+        """Model-level validation beyond field validators."""
+        super().clean()
+        if self.price and self.price > 1000000:
+            from django.core.exceptions import ValidationError
+            raise ValidationError({"price": "Price cannot exceed 1,000,000"})
+
+    @property
+    def is_in_stock(self) -> bool:
+        """Check if product is in stock and available."""
+        return self.stock > 0 and self.is_active
+]]></code>
+      </example>
+    </section>
+
+    <section name="gotchas">
+      <p>Common pitfalls agents encounter with Django query optimization.</p>
+
+      <antipattern>
+        <description>Using select_related on a nullable ForeignKey and iterating without checking None.</description>
+        <reason>select_related with a NULL FK produces an outer join and correctly returns None for the related object. Agents sometimes add .exclude(fk__isnull=True) to avoid None checks, which changes the result set semantics.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using prefetch_related but then filtering the related queryset in Python inside the loop.</description>
+        <reason>Filtering in Python after prefetch breaks the optimization — the filter re-issues queries. Use Prefetch(queryset=...) with the filter applied to the queryset argument instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding select_related to every queryset including those that never access the related object.</description>
+        <reason>Unnecessary JOINs add CPU and memory cost. Profile first with Debug Toolbar, add select_related only where the related field is actually accessed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>prefetch_related on a queryset that has already been evaluated (e.g., list(queryset)).</description>
+        <reason>prefetch_related works at queryset evaluation time. Calling it after list() has no effect. Use prefetch_related_objects() for already-evaluated querysets.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Every queryset iterating FK access uses select_related()</check>
+      <check>Every queryset iterating M2M or reverse FK uses prefetch_related()</check>
+      <check>Hot endpoints have assertNumQueries regression tests</check>
+      <check>Debug Toolbar installed in development settings</check>
+      <check>nplusone middleware active in test settings (NPLUSONE_RAISE=True)</check>
+      <check>Batch creates use bulk_create() not loops with .save()</check>
+      <check>Counter increments use F() expressions not read-modify-write</check>
+      <check>Composite indexes added for common filter+sort patterns</check>
+      <check>Admin list_display FK fields covered by select_related in get_queryset()</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/ref/models/querysets/#select-related"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/models/querysets/#prefetch-related"/>
+      <link href="https://django-debug-toolbar.readthedocs.io/"/>
+      <link href="https://github.com/jmcarp/nplusone"/>
+      <link href="https://github.com/jazzband/django-silk"/>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-logging"/>
+    </see-also>
+  </content>
+</methodology>
