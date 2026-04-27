@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-pytest-fixtures">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>pytest fixtures provide reusable setup/teardown via dependency injection. Covers scopes (function/class/module/session), yield cleanup, factory pattern, composition, and parametrized fixtures.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>fixtures</tag>
+      <tag>testing</tag>
+      <tag>python</tag>
+      <tag>dependency-injection</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="python-pytest-parametrize"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-async"/>
+      <ref slug="python-pytest-setup"/>
+      <ref slug="django-pytest-fixtures"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>pytest Fixtures — Scopes, Yield, Factory, and Composition</title>
+
+    <summary>pytest fixtures are functions decorated with @pytest.fixture that provide reusable setup and teardown logic through dependency injection. They eliminate setUp/tearDown boilerplate and allow fine-grained resource lifecycle control via scopes and yield.</summary>
+
+    <why>
+      <p>Unlike unittest's setUp/tearDown, pytest fixtures are composable — a fixture can declare other fixtures as parameters, forming a dependency graph that pytest resolves automatically. Scopes let you control how often the setup runs: per-test (function), per-class, per-module, or once per session. The yield pattern integrates teardown directly in the fixture body, keeping setup and cleanup co-located. The factory fixture pattern enables flexible data creation without duplicating logic across tests.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any test that needs shared setup — database connections, API clients, sample data.</item>
+        <item>Tests where teardown matters — closing connections, cleaning temp files, flushing caches.</item>
+        <item>Tests needing flexible data — factory fixtures allow per-test customization without repetition.</item>
+        <item>Expensive setup that can be shared — session-scoped fixtures run once for the whole test suite.</item>
+        <item>Composing complex test scenarios from smaller reusable pieces.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off setup that is only used in a single test — inline setup is clearer.</item>
+        <item>autouse=True for fixtures with DB or HTTP side effects — applies to ALL tests in scope, causing surprises.</item>
+        <item>Sharing mutable state between tests via a wide-scoped fixture — use function scope or reset the state explicitly.</item>
+        <item>Fixtures that depend on test execution order — pytest-randomly will expose the dependency as a flake.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fixture-scopes">
+      <p>Scope controls when the fixture is instantiated and torn down. The available scopes in ascending lifetime order:</p>
+      <list>
+        <item>function (default): new instance per test function.</item>
+        <item>class: shared across all methods in a test class.</item>
+        <item>module: shared across all tests in the file.</item>
+        <item>package: shared across all tests in the package directory.</item>
+        <item>session: single instance for the entire test run.</item>
+      </list>
+      <rule testable="true">
+        <statement>Use the smallest fixture scope that keeps test execution time acceptable. Prefer function scope unless a measured performance cost demands widening. A function-scope fixture that takes 50 ms is acceptable; one that takes 3 seconds per test is a candidate for module or session scope.</statement>
+        <rationale>Wider scopes share state between tests. If any test mutates shared state and another test relies on a clean state, a random execution order (pytest-randomly) will expose this as a flake. Function scope is the safe default.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>A wider-scope fixture MUST NOT depend on a narrower-scope fixture. A session-scoped fixture cannot take a function-scoped fixture as a parameter — pytest raises a ScopeMismatch error at collection time.</statement>
+        <rationale>A session fixture lives longer than a function fixture; requesting the shorter-lived resource in the longer-lived context is a lifecycle contract violation.</rationale>
+      </rule>
+    </section>
+
+    <section name="yield-teardown">
+      <p>The yield keyword in a fixture separates setup (before yield) from teardown (after yield). This keeps related code co-located and ensures teardown runs even when a test fails.</p>
+      <example type="good" title="Fixture with yield teardown">
+        <code lang="python"><![CDATA[
+import pytest
+
+@pytest.fixture
+def database():
+    conn = create_connection()
+    yield conn        # test receives conn here
+    conn.close()      # always runs after the test
+
+
+@pytest.fixture
+def redis_client():
+    client = redis.Redis(host="localhost", port=6379, db=15)
+    client.flushdb()  # clean before test
+    yield client
+    client.flushdb()  # clean after test
+    client.close()
+
+
+def test_query(database):
+    result = database.execute("SELECT 1")
+    assert result == 1
+]]></code>
+        <note>Cleanup after yield runs even if the test raises an exception.</note>
+      </example>
+      <antipattern>
+        <description>Returning from a fixture instead of yielding when teardown is needed.</description>
+        <reason>If you return rather than yield, there is no place to put teardown code. Resources leak when tests fail.</reason>
+      </antipattern>
+    </section>
+
+    <section name="factory-pattern">
+      <p>A factory fixture returns a callable instead of a concrete object. The test calls the factory with custom arguments, getting a tailored instance. This avoids creating N near-identical fixtures for N slightly different objects.</p>
+      <example type="good" title="Factory fixture for flexible user creation">
+        <code lang="python"><![CDATA[
+@pytest.fixture
+def user_factory(db):
+    """Factory for creating users with customizable attributes."""
+    created_users = []
+
+    def create(
+        email: str | None = None,
+        name: str = "Test User",
+        is_active: bool = True,
+        **kwargs,
+    ):
+        if email is None:
+            email = f"user{len(created_users) + 1}@example.com"
+        user = User.objects.create(
+            email=email, name=name, is_active=is_active, **kwargs
+        )
+        created_users.append(user)
+        return user
+
+    return create
+
+
+def test_user_list_returns_active_users(user_factory):
+    active_user = user_factory(is_active=True)
+    inactive_user = user_factory(is_active=False)
+
+    result = UserService.list_active_users()
+
+    assert active_user in result
+    assert inactive_user not in result
+]]></code>
+      </example>
+    </section>
+
+    <section name="fixture-composition">
+      <p>Fixtures compose by declaring other fixtures as parameters. pytest resolves the dependency graph and provides each fixture at the correct scope. Composition replaces inheritance for test setup.</p>
+      <example type="good" title="Composed fixtures for user and team scenarios">
+        <code lang="python"><![CDATA[
+@pytest.fixture
+def user(user_factory):
+    """A default user for tests that need a single user."""
+    return user_factory()
+
+
+@pytest.fixture
+def admin_user(user_factory):
+    """An admin user."""
+    return user_factory(email="admin@example.com", is_admin=True)
+
+
+@pytest.fixture
+def team(user_factory, team_factory):
+    """A team with owner and two members."""
+    owner = user_factory(email="owner@example.com")
+    team = team_factory(owner=owner)
+    team.add_member(user_factory(email="member1@example.com"))
+    team.add_member(user_factory(email="member2@example.com"))
+    return team
+]]></code>
+      </example>
+    </section>
+
+    <section name="session-scoped-fixtures">
+      <p>Session-scoped fixtures run once for the entire test suite. Use them for expensive, read-only setup like running migrations or building a compiled artifact. Pair with a function-scoped session/connection fixture that rolls back after each test to maintain test isolation.</p>
+      <example type="good" title="Session-scoped engine + function-scoped session with rollback">
+        <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def database_engine():
+    """Create database engine once for all tests."""
+    engine = create_engine(TEST_DATABASE_URL)
+    run_migrations(engine)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def db_session(database_engine):
+    """Fresh database session for each test with rollback."""
+    connection = database_engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    yield session
+    session.close()
+    transaction.rollback()
+    connection.close()
+]]></code>
+        <note>The session-scoped engine is shared; the function-scoped session guarantees isolation via rollback.</note>
+      </example>
+    </section>
+
+    <section name="parametrized-fixtures">
+      <p>A fixture decorated with params runs once per param value. Every test that uses the fixture is automatically executed for each param. This differs from @pytest.mark.parametrize — it parametrizes at the fixture level rather than the test level.</p>
+      <example type="good" title="Parametrized database backend fixture">
+        <code lang="python"><![CDATA[
+@pytest.fixture(params=["sqlite", "postgresql"])
+def database(request):
+    """Run tests against multiple database backends."""
+    db_type = request.param
+    db = create_database(db_type)
+    yield db
+    db.cleanup()
+
+
+def test_query_performance(database):
+    # Runs twice: once for sqlite, once for postgresql
+    result = database.execute("SELECT * FROM users")
+    assert len(result) >= 0
+]]></code>
+      </example>
+    </section>
+
+    <section name="fixture-checklist">
+      <checklist>
+        <check>Choose the smallest scope that keeps test execution time acceptable.</check>
+        <check>Use yield for any fixture that needs cleanup (connection, file, cache).</check>
+        <check>Keep fixtures focused and single-purpose — one resource per fixture.</check>
+        <check>Use factory pattern when tests need slightly different variants of the same object.</check>
+        <check>Place shared fixtures in conftest.py; domain-specific fixtures in separate files.</check>
+        <check>Avoid circular fixture dependencies.</check>
+        <check>Avoid autouse=True for fixtures with side effects (DB writes, HTTP calls).</check>
+        <check>Verify no test depends on execution order — run with pytest-randomly.</check>
+        <check>Clean up resources in teardown (after yield), not in a separate test teardown.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common fixture mistakes agents make:</p>
+      <list>
+        <item>Returning from a fixture instead of yielding when teardown is needed — resources leak on test failure.</item>
+        <item>Fixture scope mismatch: a function-scope fixture depending on a session-scope fixture works; the reverse raises ScopeMismatch at collection time.</item>
+        <item>Using autouse=True on a fixture that writes to the database — applies to every test in the directory, including unit tests that never expect DB access.</item>
+        <item>tmp_path is per-test (function scope); tmp_path_factory is session-scoped — agents pick the wrong one for cache fixtures.</item>
+        <item>Module globals as shared state — pytest-randomly will expose this as inter-test dependencies.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.pytest.org/en/stable/reference/fixtures.html"/>
+      <link href="https://www.inspiredpython.com/article/five-advanced-pytest-fixture-patterns"/>
+      <ref slug="python-pytest-parametrize"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="django-pytest-fixtures"/>
+    </see-also>
+  </content>
+</methodology>
