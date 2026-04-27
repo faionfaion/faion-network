@@ -1,0 +1,506 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="typescript-react-2026">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Modern TypeScript 5.x and React 19 patterns for 2026: strict mode, server components, server actions, and Next.js 15 App Router.</summary>
+    <tags>
+      <tag>typescript</tag>
+      <tag>react</tag>
+      <tag>nextjs</tag>
+      <tag>server-components</tag>
+      <tag>2026</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>TypeScript &amp; React 2026</title>
+    <summary>Modern patterns for TypeScript 5.x strict mode, React 19 Server Components, Server Actions, and Next.js 15 App Router. Covers the complete stack for building performant, type-safe full-stack applications in 2026.</summary>
+    <why>
+      <p>TypeScript 5.x strict mode catches entire categories of bugs at compile time: unguarded indexed access, missing optional properties, implicit any returns. React 19 Server Components eliminate hydration mismatches and reduce client-side JavaScript by 38% for data-heavy pages. Server Actions replace bespoke API routes and client fetch wrappers with a single function that runs on the server and progressively enhances forms. Next.js 15 App Router with these primitives enables rapid, type-safe full-stack development.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield Next.js 15 + React 19 apps where Server Components and Server Actions are the default architecture.</item>
+        <item>Migrating a Create React App or Vite SPA to Next.js App Router with a clear server/client component split.</item>
+        <item>Tightening an existing TypeScript project's tsconfig.json to 2026 strict baseline.</item>
+        <item>Adding form mutations via Server Actions instead of bespoke API routes + client fetch wrappers.</item>
+        <item>Teams adopting React 19's new hooks (useActionState) and directive-based boundaries ('use client', 'use server').</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>React Native / Expo — Server Components RFC for native is not stable; this methodology is web-only.</item>
+        <item>Static-only marketing sites — Astro or Gatsby produce smaller bundles. Next.js 15 RSC adds runtime weight you don't need.</item>
+        <item>Pages Router projects you intend to keep — most patterns assume App Router and break Pages Router data fetching.</item>
+        <item>Library/SDK packages — verbatimModuleSyntax and allowImportingTsExtensions complicate dual-publish (CJS+ESM).</item>
+        <item>Non-Vercel platforms without robust Node.js/RSC support (e.g., Cloudflare Workers with limited APIs).</item>
+      </list>
+    </when-not-to-use>
+    <section name="typescript-5-strict-configuration">
+      <p>TypeScript 5.x strict configuration for 2026: enable all strict flags, modern module resolution, and TypeScript 5 features.</p>
+      <code lang="json"><![CDATA[
+{
+  "compilerOptions": {
+    // Strict type checking (all enabled)
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
+    // Modern module resolution
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+
+    // TypeScript 5 features
+    "allowImportingTsExtensions": true,
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
+
+    // Interop
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
+]]></code>
+      <note>noUncheckedIndexedAccess makes array[0] return T | undefined, preventing silent out-of-bounds bugs. exactOptionalPropertyTypes requires explicit undefined for optional properties, not spreading undefined implicitly. verbatimModuleSyntax enforces explicit import/export syntax preservation.</note>
+    </section>
+    <section name="typescript-5-features">
+      <p>TypeScript 5.x introduces improved type inference, stable decorators, and const type parameters.</p>
+      <code lang="typescript"><![CDATA[
+// Improved type inference for generics
+function createConfig<const T extends readonly string[]>(items: T): T {
+  return items;
+}
+
+const config = createConfig(['a', 'b', 'c']);
+// Type: readonly ['a', 'b', 'c'] not string[]
+
+// Stable Decorators (TC39 form, not experimentalDecorators)
+function logged(target: any, context: ClassMethodDecoratorContext) {
+  return function (...args: any[]) {
+    console.log(`Calling ${String(context.name)}`);
+    return target.apply(this, args);
+  };
+}
+
+class UserService {
+  @logged
+  createUser(data: UserData): User {
+    // implementation
+  }
+}
+
+// Mapped types for transformation
+type Partial<T> = { [K in keyof T]?: T[K] | null };
+type Immutable<T> = { readonly [K in keyof T]: Immutable<T[K]> };
+
+// Template literal types
+type EventName = `on${Capitalize<string>}`;
+type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+type APIEndpoint = `/api/${string}`;
+
+// Conditional types
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+type ArrayElement<T> = T extends (infer U)[] ? U : never;
+
+// Satisfies operator (TS 4.9+)
+const config = {
+  port: 3000,
+  host: 'localhost',
+} satisfies ServerConfig;
+// Type is inferred, but validated against ServerConfig
+]]></code>
+      <note>Use const type parameters to preserve literal types. Use satisfies to validate against a type without widening inference. Always use unknown instead of any.</note>
+    </section>
+    <section name="react-19-server-components">
+      <p>React 19 Server Components enable direct database access, zero JavaScript for data-only sections, and automatic type safety.</p>
+      <code lang="typescript"><![CDATA[
+// Server Component (default in app/)
+async function ProductPage({ id }: { id: string }) {
+  // Direct database access (no API needed)
+  const product = await db.products.findById(id);
+
+  return (
+    <div>
+      {/* Server component — no JS sent to client */}
+      <ProductInfo product={product} />
+      {/* Client boundary — interactive widget */}
+      <AddToCartButton productId={id} />
+    </div>
+  );
+}
+
+// Client boundary
+'use client';
+
+import { useState } from 'react';
+
+function AddToCartButton({ productId }: { productId: string }) {
+  const [loading, setLoading] = useState(false);
+  // Interactive client code
+}
+
+// Parallel data fetching (Server Components)
+async function Dashboard() {
+  const [users, products, orders] = await Promise.all([
+    fetchUsers(),
+    fetchProducts(),
+    fetchOrders(),
+  ]);
+
+  return (
+    <DashboardView
+      users={users}
+      products={products}
+      orders={orders}
+    />
+  );
+}
+
+// Data fetching pattern
+async function UserProfile({ userId }: Props) {
+  const user = await fetch(`/api/users/${userId}`).then(r =&gt; r.json());
+  return &lt;Profile user={user} /&gt;;
+}
+]]></code>
+      <note>Server Components are the default; add 'use client' only at interactive boundaries. Server Components can import Client Components, but not vice versa. Children of Client Components inherit client context.</note>
+    </section>
+    <section name="react-19-server-actions">
+      <p>Server Actions replace bespoke API routes and client fetch wrappers. Forms automatically enhance progressively with JS disabled support.</p>
+      <code lang="typescript"><![CDATA[
+// actions.ts
+'use server';
+
+import { db } from '@/lib/db';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+export async function createUser(prevState: any, formData: FormData) {
+  const validatedFields = UserSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+
+  if (!validatedFields.success) {
+    return { error: validatedFields.error.flatten().fieldErrors };
+  }
+
+  try {
+    await db.users.create(validatedFields.data);
+    revalidatePath('/users');
+    return { success: true };
+  } catch (error) {
+    return { error: 'Failed to create user' };
+  }
+}
+
+// Component with useActionState (React 19, not useFormState)
+'use client';
+
+import { useActionState, useFormStatus } from 'react-dom';
+import { createUser } from './actions';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    &lt;button disabled={pending}&gt;
+      {pending ? 'Saving...' : 'Save'}
+    &lt;/button&gt;
+  );
+}
+
+function UserForm() {
+  const [state, formAction] = useActionState(createUser, { error: null });
+
+  return (
+    &lt;form action={formAction}&gt;
+      {state.error && &lt;p className="error"&gt;{state.error}&lt;/p&gt;}
+      &lt;input name="name" required /&gt;
+      &lt;input name="email" type="email" required /&gt;
+      &lt;SubmitButton /&gt;
+    &lt;/form&gt;
+  );
+}
+]]></code>
+      <note>Server Actions validate input with Zod. Use useActionState (React 19), not useFormState. Always test the no-JS path. Use revalidatePath or revalidateTag after mutations to refresh cached data.</note>
+    </section>
+    <section name="nextjs-15-app-router">
+      <p>Next.js 15 App Router folder structure, metadata API, parallel routes, and intercepting routes.</p>
+      <code lang="text"><![CDATA[
+app/
+├── layout.tsx          # Root layout
+├── page.tsx            # Home page (/)
+├── loading.tsx         # Loading UI (Suspense boundary)
+├── error.tsx           # Error boundary
+├── not-found.tsx       # 404 page
+│
+├── (marketing)/        # Route group (no URL segment)
+│   ├── about/
+│   │   └── page.tsx    # /about
+│   └── blog/
+│       └── page.tsx    # /blog
+│
+├── dashboard/
+│   ├── layout.tsx      # Dashboard layout
+│   ├── page.tsx        # /dashboard
+│   ├── settings/
+│   │   └── page.tsx    # /dashboard/settings
+│   └── @analytics/     # Parallel route
+│       └── page.tsx
+│
+└── api/
+    └── users/
+        └── route.ts    # API route handler
+]]></code>
+      <code lang="typescript"><![CDATA[
+// Static metadata
+export const metadata = {
+  title: 'My App',
+  description: 'App description',
+};
+
+// Dynamic metadata
+export async function generateMetadata({ params }: Props) {
+  const product = await getProduct(params.id);
+  return {
+    title: product.name,
+    openGraph: { images: [product.image] },
+  };
+}
+
+// Parallel routes layout
+export default function DashboardLayout({
+  children,
+  analytics,
+  notifications,
+}: {
+  children: React.ReactNode;
+  analytics: React.ReactNode;
+  notifications: React.ReactNode;
+}) {
+  return (
+    &lt;div className="dashboard"&gt;
+      &lt;main&gt;{children}&lt;/main&gt;
+      &lt;aside&gt;
+        {analytics}
+        {notifications}
+      &lt;/aside&gt;
+    &lt;/div&gt;
+  );
+}
+]]></code>
+      <note>Route groups with parentheses don't add URL segments. Parallel routes (@name) enable rendering multiple segments in a single layout. Intercepting routes use (..) notation to catch internal navigation (e.g., photo modal).</note>
+    </section>
+    <section name="server-client-boundaries">
+      <p>Rules for importing across 'use client' and 'use server' boundaries. Import server modules only from server files. Misplaced directives leak secrets and break the component tree.</p>
+      <rules>
+        <rule>
+          <statement>Server Components can import Client Components. Client Components CANNOT import Server Components.</statement>
+          <rationale>Client Components cannot call server-only code at runtime. Importing a Server Component into a Client Component is a build error or runtime failure.</rationale>
+        </rule>
+        <rule>
+          <statement>Mark sensitive modules with import 'server-only' to fail at build time if imported from a client file.</statement>
+          <rationale>Prevents secrets and database credentials from leaking into client bundles. Without this guard, a client module can accidentally import a DB layer and expose it to browsers.</rationale>
+        </rule>
+        <rule>
+          <statement>Add 'use client' only at component boundaries, not entire layouts. Unnecessary 'use client' flips the whole subtree to client.</statement>
+          <rationale>Server Components save bandwidth and allow direct database access. Overuse of 'use client' defeats the benefits and increases JavaScript sent to the browser.</rationale>
+        </rule>
+        <rule>
+          <statement>Co-locate Server Actions next to their consumers (actions.ts in the route folder), not in a global lib/actions/.</statement>
+          <rationale>Easier to delete features when code is co-located. Reduces accidental reuse of dead actions. Per-route actions also prevent exporting server functions that have no UI consumer.</rationale>
+        </rule>
+      </rules>
+      <p>Common boundary violation: a client component imports a database module directly, leaking secrets to the browser. Use 'server-only' import guard to catch this at build time. Another: 'use client' on a layout that contains server-only sections, converting the entire subtree to client. Use thin boundaries (single component wrapping interactive widgets) instead.</p>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Flipping noUncheckedIndexedAccess and reflexively asserting with ! on indexed access (e.g., array[0]!).</description>
+        <reason>noUncheckedIndexedAccess returns T | undefined from array[0]. The ! assertion suppresses the type check and reintroduces runtime crashes. Proper handling requires length checks or optional chaining.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+const firstUser = users[0]!; // WRONG: suppresses the undefined check
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+const firstUser = users[0];
+if (!firstUser) return null;
+// firstUser is now safely typed as User
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Adding 'use client' to entire layouts to "make hooks work" instead of creating a thin client boundary.</description>
+        <reason>This flips the whole tree to client, losing Server Component benefits and increasing JavaScript sent to the browser.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+// BAD: entire layout becomes client
+'use client';
+
+export default function DashboardLayout({ children }: Props) {
+  const [open, setOpen] = useState(false);
+  return <div>{children}</div>;
+}
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// GOOD: server layout with thin client sidebar
+export default function DashboardLayout({ children }: Props) {
+  return (
+    &lt;div&gt;
+      &lt;ServerNav /&gt;
+      &lt;ClientSidebar /&gt; {/* 'use client' only here */}
+      {children}
+    &lt;/div&gt;
+  );
+}
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting revalidatePath or revalidateTag after mutations in Server Actions. UI shows stale data.</description>
+        <reason>Next.js caches fetches by default. After a mutation, the cache must be invalidated, or the next fetch returns cached stale data.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+export async function createUser(prevState: any, formData: FormData) {
+  await db.users.create({...});
+  // WRONG: no revalidatePath — UI shows stale data
+}
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+export async function createUser(prevState: any, formData: FormData) {
+  await db.users.create({...});
+  revalidatePath('/users'); // Refresh cached data
+}
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Using useFormState (React 18 name) instead of useActionState (React 19). Hook will be removed in future versions.</description>
+        <reason>useFormState is the legacy name. React 19 renamed it to useActionState. Using the old name targets code for removal.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+import { useFormState } from 'react-dom'; // WRONG: React 18 name
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+import { useActionState } from 'react-dom'; // CORRECT: React 19 name
+]]></code>
+        </example>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <rules>
+        <rule>
+          <statement>Default every component to a Server Component. Add 'use client' only when the component uses hooks, browser APIs, or event handlers.</statement>
+          <rationale>Server Components reduce JavaScript, allow direct database access, and eliminate hydration mismatches. Client Components add weight and complexity. Every unnecessary client component increases the bundle size sent to the browser.</rationale>
+        </rule>
+        <rule>
+          <statement>Put DB/SDK calls behind import 'server-only'. Importing them from a client file errors at build time, not in production.</statement>
+          <rationale>Prevents secrets and connection strings from leaking into client bundles. Without this guard, a typo that imports DB from a client file silently ships secrets to the browser.</rationale>
+        </rule>
+        <rule>
+          <statement>Use useActionState (React 19) for forms with Server Actions. Wrap submit with &lt;SubmitButton&gt; using useFormStatus for pending state.</statement>
+          <rationale>useActionState provides action state and form submission handling. useFormStatus shows pending/disabled state while the action runs. useFormState is the React 18 name and will be removed.</rationale>
+        </rule>
+        <rule>
+          <statement>Co-locate Server Actions next to their consumers (actions.ts in the route folder), not in a global lib/actions/.</statement>
+          <rationale>Easier to delete features. Reduces accidental reuse of dead actions. Per-route actions prevent exporting server functions that have no UI consumer.</rationale>
+        </rule>
+        <rule>
+          <statement>Flip one TypeScript strict flag at a time across the whole repo. Never use // @ts-expect-error to suppress.</statement>
+          <rationale>Gradual flag adoption prevents cascading errors. Suppressions hide real bugs and make review impossible. Separate flag-flip PRs from feature work.</rationale>
+        </rule>
+        <rule>
+          <statement>Use parallel Promise.all for data loading in Server Components. Sequential await chains kill TTFB.</statement>
+          <rationale>Parallel requests reduce time-to-first-byte. Sequential requests make TTFB O(N) instead of O(1). Parallel fetches are the performance standard in 2026.</rationale>
+        </rule>
+        <rule>
+          <statement>Prefer satisfies over type annotations for config objects. satisfies preserves literal types while validating the shape.</statement>
+          <rationale>Literal types enable better autocomplete and type narrowing than inferred generic types. Example: const config = {...} satisfies Config infers the literal object type while validating.</rationale>
+        </rule>
+        <rule>
+          <statement>Always test the no-JS path for Server Actions. Ensure forms work without JavaScript enabled (progressive enhancement).</statement>
+          <rationale>Server Actions with forms degrade gracefully to standard POST without JS. Missing this test ships broken forms to low-bandwidth users.</rationale>
+        </rule>
+        <rule>
+          <statement>Call revalidatePath or revalidateTag after mutations in Server Actions. Without it, the UI shows stale cached data.</statement>
+          <rationale>Next.js caches fetches by default. Mutations must invalidate the cache or subsequent reads return stale data. Forgetting this is the most common bug.</rationale>
+        </rule>
+      </rules>
+    </section>
+    <section name="agent-workflow">
+      <p>Recommended workflow for agents working with TypeScript 5 strict + React 19 + Next.js 15.</p>
+      <p>Use a planner agent to classify each component as server-default vs client-leaf, then a coder agent to add 'use client' only at the boundary. A type-tightener agent runs tsc --noEmit after every file change to catch directive errors early. For Server Actions, pair a Zod-schema agent (defines validated input) with a UI agent that wires useActionState and a SubmitButton using useFormStatus.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for disciplined, gated migration of files with tsc + lint + test on each step. faion-feature-executor for adding a new route (page.tsx + loading.tsx + error.tsx + action + form). A custom rsc-boundary-auditor to scan imports across 'use client'/'use server' boundaries and flag leaks. A custom tsconfig-tightener to turn on one strict flag, fix errors, open a single-flag PR.</p>
+      <p>Prompt patterns: Read skills/faion/knowledge/free/dev/javascript-developer/typescript-react-2026/README.md. Convert app/dashboard/page.tsx to a Server Component. Move only the interactive widgets to 'use client' files. Validate: no client component imports from a server-only module. Add Server Action createUser with Zod validation. Use useActionState (React 19) — NOT useFormState. Wrap submit in SubmitButton using useFormStatus. Provide a no-JS test plan for the form.</p>
+    </section>
+    <section name="agent-gotchas">
+      <p>Common mistakes LLMs make with TypeScript 5 + React 19:</p>
+      <list>
+        <item>LLMs trained on React 18 emit useFormState, class components, and useEffect-based fetching even in App Router projects. Pin context with explicit "React 19" reminders or custom prompt prefix.</item>
+        <item>Agents add 'use client' to entire layouts to "make hooks work" instead of creating a thin client boundary. That flips the whole tree to client. Require boundary justifications in PR comments.</item>
+        <item>noUncheckedIndexedAccess makes array[0] return T | undefined; agents reflexively !-assert away the union and reintroduce runtime crashes. Forbid ! on indexed access in lint rules.</item>
+        <item>Server Actions throw HTTP redirects via redirect() — caught by a generic try/catch they look like errors. Document the redirect()-throws-HTTP pattern in prompts.</item>
+        <item>Decorators (still proposal-based) — the README's example uses the new TC39 form, not legacy experimentalDecorators. Mixing the two in one repo confuses agents and breaks the build.</item>
+        <item>Caching: agents forget revalidatePath/revalidateTag after mutations; UI shows stale data. Add an integration test that mutates then re-fetches and assert fresh data.</item>
+        <item>Agents duplicate validation in multiple Server Actions instead of creating a shared Zod schema and reusing it. Create a schemas/ folder and reference from all actions.</item>
+      </list>
+    </section>
+    <section name="testing-strategy">
+      <p>Test the no-JS path for Server Actions and validate RSC boundaries with linting.</p>
+      <checklist>
+        <check>Server Action validation schema covers every form field (Zod)</check>
+        <check>Form works without JS enabled (test in headless mode)</check>
+        <check>Client Components don't import 'server-only' modules (lint with eslint-plugin-react-server-components)</check>
+        <check>Mutations call revalidatePath or revalidateTag</check>
+        <check>useActionState (not useFormState) is used for form state</check>
+        <check>No 'use client' on entire layouts — only at component boundaries</check>
+        <check>Type check passes: tsc --noEmit</check>
+        <check>No 'use client' boundary violations detected by madge --circular</check>
+        <check>Decorators use TC39 form, not experimentalDecorators (for new projects)</check>
+      </checklist>
+    </section>
+    <section name="cli-tools">
+      <p>Recommended tools for TypeScript + React 19 + Next.js 15 development:</p>
+      <list>
+        <item>create-next-app: Bootstrap Next 15 + RSC; `npx create-next-app@latest`.</item>
+        <item>tsc --noEmit: Type-check only (fast feedback without build).</item>
+        <item>next lint: App-Router-aware ESLint configuration.</item>
+        <item>eslint-plugin-react-server-components: Lint 'use client'/'use server' boundaries for import violations.</item>
+        <item>@next/codemod: Next 14→15 migration codemods; `npx @next/codemod@canary upgrade latest`.</item>
+        <item>madge: Detect circular imports across server/client boundaries; `npx madge --circular --extensions ts,tsx src`.</item>
+        <item>ts-reset: Library-quality lib.d.ts overrides; `npm i -D @total-typescript/ts-reset`.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://react.dev/blog/2024/12/05/react-19"/>
+      <link href="https://react.dev/reference/rsc/server-components"/>
+      <link href="https://react.dev/reference/react/useActionState"/>
+      <link href="https://nextjs.org/docs/app"/>
+      <link href="https://www.typescriptlang.org/docs/handbook/release-notes/typescript-5-0.html"/>
+      <link href="https://www.joshwcomeau.com/react/server-components/"/>
+      <link href="https://vercel.com/blog/whats-new-in-react-19"/>
+    </see-also>
+  </content>
+</methodology>
