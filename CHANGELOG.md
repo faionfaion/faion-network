@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: rust-testing, shadcn-ui, storybook-setup)
 - decompose: llamaindex-patterns → 5 slugs (llamaindex-hybrid-retrieval, llamaindex-ingestion-pipeline, llamaindex-chat-engine, llamaindex-sql-query, llamaindex-production-gotchas)
 - decompose: graph-rag-advanced-retrieval → 3 slugs (graph-rag-indexing, graph-rag-retrieval, graph-rag-production)
 - decompose: reranking-basics → 3 slugs (reranking-two-stage, reranking-pipeline-integration, reranking-diversity-mmr)
