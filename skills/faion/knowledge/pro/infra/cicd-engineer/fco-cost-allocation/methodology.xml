@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fco-cost-allocation">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Assign metadata tags to all cloud resources for accurate cost attribution to teams, services, and environments; enforce tagging at creation time via SCPs/policies to achieve chargeback accountability.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>cost-allocation</tag>
+      <tag>tagging</tag>
+      <tag>chargeback</tag>
+      <tag>cloud-governance</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-cost-visibility"/>
+      <ref slug="finops-governance"/>
+      <ref slug="fco-waste-elimination"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Cost Allocation and Tagging Strategy</title>
+
+    <summary>Cost allocation assigns cloud spend to the teams, services, and environments that generate it. Without a mandatory tagging taxonomy enforced at resource creation time, cost accountability is impossible — teams cannot optimize what they cannot see. A 300-person engineering org that implemented cost allocation reduced total spend by 20% in 6 months, not by technical optimization, but by making each team responsible for its own bill.</summary>
+
+    <why>
+      <p>Unattributed cloud cost breeds a "tragedy of the commons" — no team feels responsible for the shared bill, so optimization efforts stall in politics. When each team sees its own line item, behavior changes immediately. The ML team sees $180,000/month and moves training to Spot. The Platform team sees $150,000/month and rightsizes Kubernetes nodes. Neither optimization happens without visibility.</p>
+      <p>The technical prerequisite is a tagging taxonomy enforced at creation time. Tags applied retroactively after years of untagged resources are incomplete and unreliable. Service Control Policies (AWS) or Azure Policy blocking resource creation without required tags is the only enforcement mechanism that achieves 98%+ compliance.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Organizations with more than one team sharing cloud accounts where cost accountability is unclear.</item>
+        <item>Before implementing chargeback or showback models — tagging must precede attribution.</item>
+        <item>When cloud spend exceeds $50,000/month and no team-level breakdowns exist.</item>
+        <item>When implementing budget alerts and wanting to notify the correct team owner.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-person teams or single-service accounts where the entire bill is already attributed to one owner — tagging overhead exceeds value.</item>
+        <item>Temporary scratch accounts for R&amp;D that are destroyed within days — enforce time-to-live instead of full tagging policy.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mandatory-tags">
+      <p>Mandatory tag taxonomy (minimum required for effective cost allocation):</p>
+      <list>
+        <item>environment: prod, staging, dev, sandbox — enables prod vs non-prod cost split</item>
+        <item>service or application: payment-api, ml-pipeline, search — enables service-level attribution</item>
+        <item>team or owner: platform, ml, data, payments — enables team-level chargeback</item>
+        <item>business-unit: engineering, data, product — enables BU-level rollup</item>
+        <item>cost-center: CC-100, CC-200 — maps to finance GL codes for billing</item>
+      </list>
+
+      <rule testable="true">
+        <statement>All cloud resources MUST be tagged with environment, team, service, and cost-center at creation time. Resource creation MUST be blocked via SCP (AWS), Azure Policy, or GCP Organization Policy if any required tag is absent.</statement>
+        <rationale>Retroactive tagging achieves at best 60-70% coverage; some resource types cannot be tagged after creation. Enforcement at creation time is the only mechanism that achieves 98%+ compliance. Warning-based approaches without blocking achieve 40-60% compliance at best.</rationale>
+      </rule>
+    </section>
+
+    <section name="enforcement">
+      <example type="good" title="AWS SCP: block resource creation without required tags">
+        <code lang="json"><![CDATA[{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireTagsOnEC2AndRDS",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "rds:CreateDBInstance",
+        "s3:CreateBucket"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/Environment": "true",
+          "aws:RequestTag/Team": "true",
+          "aws:RequestTag/Service": "true",
+          "aws:RequestTag/CostCenter": "true"
+        }
+      }
+    }
+  ]
+}]]></code>
+        <note>This SCP must be applied at the Organization root or target OU. Test in a non-prod OU first — it WILL block legitimate deployments that lack tags.</note>
+      </example>
+
+      <example type="good" title="Tag taxonomy YAML (IaC enforcement)">
+        <code lang="yaml"><![CDATA[required_tags:
+  - key: Environment
+    values: [prod, staging, dev, sandbox]
+  - key: Team
+    values: [platform, payments, search, ml, data]
+  - key: Service
+    values: [api, web, worker, db, cache]
+  - key: CostCenter
+    values: [CC-100, CC-200, CC-300]
+
+optional_tags:
+  - key: Project
+    description: "Time-bound project name"
+  - key: Compliance
+    values: [PCI, HIPAA, SOC2]
+  - key: DataClass
+    values: [public, internal, confidential, restricted]]]></code>
+      </example>
+
+      <example type="bad" title="Warning-only tagging policy">
+        <code lang="text"><![CDATA[# Week 1: Warning email sent to resource owner (untagged EC2)
+# Week 2: Owner on vacation, no response
+# Week 3: Escalation to team lead
+# Week 4: Exception granted "will tag later"
+# Month 6: Resource still untagged, attributed to "unknown"
+# Result: 40% of $500,000/month bill unattributed]]></code>
+        <note>Warning-only enforcement without automated blocking achieves 40-60% compliance. Hard enforcement via SCPs achieves 98%+.</note>
+      </example>
+    </section>
+
+    <section name="chargeback-model">
+      <p>A chargeback/showback model distributes attributed cloud costs back to teams for financial accountability:</p>
+      <list>
+        <item>Direct costs: resources tagged to a team — fully attributed to that team</item>
+        <item>Shared costs: shared services (VPN, monitoring, DNS) — distribute by usage percentage or headcount</item>
+        <item>Unattributed costs: untagged resources — distribute proportionally or hold in "overhead" bucket</item>
+        <item>Showback: teams see their costs but are not actually charged (awareness model)</item>
+        <item>Chargeback: costs are actually charged to team budgets (accountability model)</item>
+      </list>
+
+      <p>Real case outcome: 300-person engineering organization, $500,000/month, no tagging. After 6-month implementation:</p>
+      <list>
+        <item>Total spend reduced to $400,000/month (20% reduction) via team accountability</item>
+        <item>98% resource tagging compliance achieved</item>
+        <item>Team-level accountability established with monthly cost reports to team leads</item>
+        <item>Proactive optimization culture: teams started optimizing before being asked</item>
+      </list>
+    </section>
+
+    <section name="remediation-process">
+      <p>Remediation process for untagged resources (when retroactive tagging is required):</p>
+      <list>
+        <item>Week 1: Automated warning email to resource owner (identified from CloudTrail creator)</item>
+        <item>Week 2: Escalation to team lead if no response</item>
+        <item>Week 3: Escalation to engineering manager</item>
+        <item>Week 4: Resource terminated (non-prod) or exception approval required (prod)</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Measure untagged resource percentage weekly and report to engineering leadership. The target is below 5% of resources untagged. If the weekly measurement shows the percentage is stable above 5%, escalate the enforcement mechanism from warning-only to blocking.</statement>
+        <rationale>Weekly measurement creates accountability pressure. If the metric is not reviewed and acted upon, it becomes meaningless data. The 5% target is achievable with proper enforcement and represents the minimum threshold for meaningful cost attribution.</rationale>
+      </rule>
+    </section>
+
+    <section name="attribution-by-cost-type">
+      <p>Monthly cost attribution example (real case after tagging implementation):</p>
+      <list>
+        <item>Platform team: $150,000 → rightsized Kubernetes nodes → $110,000</item>
+        <item>ML team: $180,000 → moved training to Spot → $68,000</item>
+        <item>Data team: $120,000 → optimized Redshift queries and reserved capacity → $90,000</item>
+        <item>Payments team: $30,000 → already efficient, no action needed</item>
+        <item>Search team: $20,000 → consolidated clusters → $12,000</item>
+      </list>
+      <p>Total: $500,000 → $280,000 (44% reduction). None of these optimizations happened before cost attribution made each team responsible.</p>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="tagging-strategy-design"><![CDATA[Design a cost allocation tagging strategy for our organization:
+
+Organization structure:
+- Teams: [list teams]
+- Environments: [prod, staging, dev, etc.]
+- Products/services: [list]
+- Cost centers: [list or describe structure]
+
+Current state:
+- Estimated untagged resources: [X]%
+- Existing tags: [list any current tags]
+- Compliance requirements: [PCI, HIPAA, etc.]
+
+Please provide:
+1. Recommended tag taxonomy (required and optional tags)
+2. Tag naming conventions
+3. Validation rules for each tag
+4. Enforcement strategy (SCPs, policies)
+5. Remediation workflow for untagged resources
+6. Dashboard/reporting structure by tags
+7. Implementation timeline]]></prompt>
+
+      <prompt purpose="chargeback-model-design"><![CDATA[Design a chargeback model for cloud costs:
+
+Organization: [description]
+Monthly cloud spend: $[amount]
+Teams to charge: [list]
+Shared services: [list services that are shared]
+
+Requirements:
+- [Any specific requirements]
+
+Please provide:
+1. Direct cost allocation method for team-owned resources
+2. Shared cost allocation method (% split, usage-based, etc.)
+3. Handling of untagged/unallocated costs
+4. Suggested invoice format per team
+5. Dispute resolution process
+6. Governance model]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Define mandatory tag taxonomy (environment, team, service, cost-center at minimum)</check>
+      <check>Implement tag enforcement via SCP (AWS), Azure Policy, or GCP Org Policy</check>
+      <check>Audit existing resources for untagged items before enforcement rollout</check>
+      <check>Set up automated weekly untagged resource report</check>
+      <check>Target: below 5% untagged resources by end of quarter</check>
+      <check>Enable Cost Explorer / Cost Management with tag-based grouping</check>
+      <check>Set up team-level cost dashboards shared with team leads</check>
+      <check>Implement anomaly detection alerts routed to resource tag owner</check>
+      <check>Schedule monthly cost review meeting with team leads</check>
+      <check>Define chargeback or showback model and communicate to teams</check>
+      <check>Establish dispute resolution process for cost attribution questions</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="finops-cost-visibility"/>
+      <ref slug="finops-governance"/>
+      <ref slug="fco-waste-elimination"/>
+      <link href="https://www.finops.org/"/>
+    </see-also>
+  </content>
+</methodology>
