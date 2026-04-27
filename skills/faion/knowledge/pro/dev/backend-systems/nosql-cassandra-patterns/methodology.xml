@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nosql-cassandra-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Cassandra and DynamoDB wide-column modeling: partition key selection, clustering order, time-bucketed partitions, materialized views, and hot-partition prevention.</summary>
+    <tags>
+      <tag>cassandra</tag>
+      <tag>dynamodb</tag>
+      <tag>wide-column</tag>
+      <tag>partition-key</tag>
+      <tag>time-series</tag>
+    </tags>
+    <category>nosql</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>cassandra</framework>
+    </frameworks>
+    <related>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="nosql-neo4j-patterns"/>
+      <ref slug="database-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cassandra Wide-Column Modeling Patterns</title>
+
+    <summary>Cassandra and DynamoDB schemas are driven entirely by query patterns. Partition keys determine data distribution and must have high cardinality to avoid hot nodes. Clustering columns determine sort order within a partition. Time-bucketed partition keys prevent unbounded partitions in time-series workloads. Materialized views and duplicate tables serve different access patterns without application-side joins.</summary>
+
+    <why>
+      <p>Cassandra distributes data across nodes using consistent hashing on the partition key. All rows with the same partition key live on the same set of replica nodes. A poor partition key — one with low cardinality, skewed write distribution, or monotonically increasing values — funnels all writes to one node (hot partition), while other nodes sit idle. Hot partitions cause latency spikes, compaction backlog, and eventual node death under sustained write load.</p>
+      <p>Unlike relational databases, Cassandra has no query planner and no joins. Every query must hit at most one partition (or a small, bounded set of partitions). This means the table schema must be designed for each query pattern, not for entities. One query pattern often requires one dedicated table — denormalization is not a trade-off, it is a requirement.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Write-heavy time-series workloads (IoT sensor data, metrics, logs, events) at high throughput.</item>
+        <item>Horizontally scalable storage where Postgres or MongoDB cannot sustain the write rate.</item>
+        <item>Multi-region active-active deployments where last-write-wins or LWT (lightweight transactions) are acceptable.</item>
+        <item>Known, stable access patterns — Cassandra schema design assumes you will not add arbitrary ad-hoc queries later.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Ad-hoc or analytical queries — ALLOW FILTERING is an antipattern and a performance hazard; use a warehouse instead.</item>
+        <item>Strong-consistency multi-row transactions — Cassandra LWT (BATCH with IF conditions) is expensive and not equivalent to ACID transactions.</item>
+        <item>Small datasets or low write rates where Postgres handles the workload without distributed overhead.</item>
+        <item>Workloads where access patterns are unknown or evolve frequently — schema changes in Cassandra require duplicate tables and migration runs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="partition-key-design">
+      <rule testable="true">
+        <statement>The partition key MUST have high cardinality (at least thousands of distinct values) and MUST distribute writes evenly across the cluster. Monotonically increasing partition keys (timestamps, auto-increment IDs) MUST be combined with a high-cardinality prefix (sensor_id, user_id, tenant_id) to prevent sequential writes hitting a single token range. Partition size MUST stay under 100 MB and under ~100k rows; validate with nodetool tablehistograms before deploying.</statement>
+        <rationale>Cassandra places all rows sharing a partition key on the same replica set. A single large partition cannot be split post-creation; it must be re-keyed. Unbounded time-series partitions grow until the node runs out of memory during compaction. Time-bucketing (composite partition key: entity_id + date) caps partition size and keeps it predictable.</rationale>
+      </rule>
+
+      <example type="good" title="Time-series with composite partition key (sensor + date)">
+        <code lang="cql"><![CDATA[
+-- Time-series with partition key strategy
+-- Partition key: (sensor_id, date) -- high cardinality, bounded per day
+-- Clustering key: timestamp DESC -- latest-first sort
+CREATE TABLE sensor_readings (
+    sensor_id text,
+    date date,
+    timestamp timestamp,
+    value double,
+    PRIMARY KEY ((sensor_id, date), timestamp)
+) WITH CLUSTERING ORDER BY (timestamp DESC);
+
+-- Query: Get latest readings for sensor on specific date
+-- Hits exactly one partition: (sensor_id='temp-001', date='2024-01-15')
+SELECT * FROM sensor_readings
+WHERE sensor_id = 'temp-001' AND date = '2024-01-15'
+LIMIT 100;
+]]></code>
+        <note>The composite partition key (sensor_id, date) bounds partition size to one day of readings per sensor. Without the date bucket, a sensor running for years creates a single ever-growing partition.</note>
+      </example>
+
+      <antipattern>
+        <description>Hot partition: using a single low-cardinality value as the partition key (e.g., status='active', region='us-east', or a single tenant_id for a multi-tenant table).</description>
+        <reason>All writes for that value route to the same replica set. One node becomes a bottleneck while the rest of the cluster is idle. Symptoms: p99 write latency spikes, compaction backlog, eventual timeout errors on that node.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using a raw timestamp or auto-increment ID as the sole partition key.</description>
+        <reason>Monotonically increasing keys map to sequential token ranges. All recent writes hit the same node (the one owning the current token range). This is called a "write hotspot" and is a classic Cassandra deployment failure mode.</reason>
+      </antipattern>
+    </section>
+
+    <section name="access-pattern-tables">
+      <rule testable="true">
+        <statement>Each distinct query access pattern MUST have a dedicated table (or materialized view) designed for that query. Do NOT add secondary indexes (Cassandra secondary indexes require a full cluster scan on read). Do NOT use ALLOW FILTERING in production queries. When two access patterns need the same data, write to both tables or use a materialized view.</statement>
+        <rationale>Cassandra's secondary indexes are node-local and require coordinator fan-out to all nodes on read — they perform worse than a full table scan at scale. ALLOW FILTERING is syntactic sugar for "scan every row in every partition that matches the partition key constraints" — it degrades to O(total rows) and blocks coordinator threads.</rationale>
+      </rule>
+
+      <example type="good" title="User activity with time-bucketed partitions and materialized view">
+        <code lang="cql"><![CDATA[
+-- Primary table: query by (user_id, year_month)
+CREATE TABLE user_activity (
+    user_id uuid,
+    year_month text,  -- '2024-01' -- monthly bucket
+    activity_time timestamp,
+    activity_type text,
+    details map<text, text>,
+    PRIMARY KEY ((user_id, year_month), activity_time)
+) WITH CLUSTERING ORDER BY (activity_time DESC);
+
+-- Materialized view: different access pattern — query by activity_type
+CREATE MATERIALIZED VIEW activity_by_type AS
+    SELECT * FROM user_activity
+    WHERE activity_type IS NOT NULL
+      AND user_id IS NOT NULL
+      AND year_month IS NOT NULL
+      AND activity_time IS NOT NULL
+    PRIMARY KEY ((activity_type, year_month), activity_time, user_id);
+]]></code>
+        <note>The materialized view serves "all users who performed activity_type X in month Y" without a secondary index or ALLOW FILTERING. Cassandra writes to both the base table and the MV atomically.</note>
+      </example>
+
+      <example type="bad" title="ALLOW FILTERING in production — do not do this">
+        <code lang="cql"><![CDATA[
+-- DO NOT use ALLOW FILTERING in production
+SELECT * FROM user_activity
+WHERE activity_type = 'login'
+ALLOW FILTERING;
+-- This scans every partition in the cluster.
+-- Latency grows linearly with total data volume.
+]]></code>
+        <note>ALLOW FILTERING is acceptable only in dev/analytics environments with small datasets. In production it is a reliability hazard.</note>
+      </example>
+    </section>
+
+    <section name="consistency-and-lwt">
+      <rule testable="true">
+        <statement>Use lightweight transactions (LWT: INSERT IF NOT EXISTS, UPDATE IF) only when true compare-and-swap semantics are required. LWT uses Paxos internally and has 4x the latency of a regular write; avoid it on hot paths. For counters, use Cassandra counter columns (COUNTER type) rather than read-modify-write. Use conditional writes (ConditionExpression in DynamoDB) anywhere the application logic says "read-then-write".</statement>
+        <rationale>Cassandra defaults to eventual consistency (ONE or LOCAL_QUORUM tunable). Read-modify-write without LWT has a race condition under concurrent writes: two agents can read the same value and both apply their update, causing lost writes. The COUNTER column type uses server-side delta accumulation to avoid this race.</rationale>
+      </rule>
+
+      <example type="good" title="LWT for idempotent insert (prevent duplicates)">
+        <code lang="cql"><![CDATA[
+-- Insert only if the row does not already exist (idempotent create)
+INSERT INTO user_accounts (user_id, email, created_at)
+VALUES (uuid(), 'user@example.com', toTimestamp(now()))
+IF NOT EXISTS;
+
+-- [applied] = true means the insert succeeded
+-- [applied] = false means the row already existed (idempotent behavior)
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM mistakes when generating Cassandra schemas:</p>
+      <list>
+        <item>Agents add secondary indexes thinking they are equivalent to SQL indexes — they are not. Secondary indexes in Cassandra require a full-cluster read fan-out and degrade performance under load. Require agents to cite the query and show why a dedicated table or materialized view is not sufficient before accepting a secondary index.</item>
+        <item>Agents use ALLOW FILTERING in queries. Add "never use ALLOW FILTERING in production" to the system prompt and treat it as a blocking code review finding.</item>
+        <item>Agents choose partition keys based on entity identity, not write distribution. Require agents to estimate the number of distinct partition key values and the write rate per partition before approving any schema.</item>
+        <item>Agents propose Cassandra for workloads that need multi-row ACID transactions. Cassandra BATCH is not a transaction — it provides atomicity only for a single partition and logged batches for cross-partition (at high cost). Route transactional workloads to PostgreSQL.</item>
+        <item>Agents forget that Cassandra schema changes (adding columns) are online but changing partition or clustering keys requires creating a new table and migrating data. This is a hard operational constraint that must be surfaced in design review.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Write access-pattern list (query shape, filters, sort, QPS) before designing any table.</check>
+      <check>Verify partition key has high cardinality (&gt;1000 distinct values) and even write distribution.</check>
+      <check>Avoid raw timestamps or auto-increment IDs as sole partition key — add entity prefix.</check>
+      <check>Validate partition size stays under 100 MB / 100k rows in load testing.</check>
+      <check>Create a dedicated table or materialized view for each distinct access pattern.</check>
+      <check>Never use ALLOW FILTERING or secondary indexes in production queries.</check>
+      <check>Use COUNTER columns for increment/decrement; avoid read-modify-write.</check>
+      <check>Reserve LWT (IF NOT EXISTS / IF condition) for compare-and-swap operations only; measure p99 latency impact.</check>
+      <check>Run nodetool tablehistograms before production deployment to spot partition skew.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://cassandra.apache.org/doc/latest/cassandra/data_modeling/"/>
+      <link href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html"/>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="database-design"/>
+    </see-also>
+  </content>
+</methodology>
