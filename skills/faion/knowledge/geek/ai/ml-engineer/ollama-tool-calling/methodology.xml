@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ollama-tool-calling">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Implement tool/function calling and structured JSON output with Ollama. Requires Llama 3.1+ with 32k+ context. Covers tool schema definition, execution loop, and Pydantic structured outputs.</summary>
+    <tags>
+      <tag>ollama</tag>
+      <tag>tool-calling</tag>
+      <tag>structured-output</tag>
+      <tag>function-calling</tag>
+    </tags>
+    <category>local-llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ollama-python-client"/>
+      <ref slug="ollama-agent-integration"/>
+      <ref slug="tool-use-function-calling"/>
+      <ref slug="structured-output"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Ollama Tool Calling and Structured Outputs</title>
+
+    <summary>Ollama supports OpenAI-compatible tool/function calling and JSON schema structured outputs. Tool calling requires Llama 3.1 8B or higher with num_ctx set to at least 32768. Structured output uses the format parameter with a Pydantic-derived JSON schema.</summary>
+
+    <why>
+      <p>Tool calling enables local LLMs to invoke external functions (database queries, API calls, calculations) based on conversation context — the same capability that makes cloud LLMs useful for agents. Structured outputs constrain the model to produce valid JSON matching a known schema, eliminating post-processing and parse errors in pipelines. Both features are critical for replacing cloud LLM calls with local alternatives in agent architectures.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a local agent that needs to call external tools or APIs without cloud API costs.</item>
+        <item>Extracting structured data (entities, classifications, analysis) from text with schema validation.</item>
+        <item>Replacing cloud LLM tool-calling in CI pipelines or privacy-sensitive workflows.</item>
+        <item>Testing agent tool-calling logic locally before deploying against cloud models.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Models smaller than 13B — tool calling reliability degrades significantly; Llama 3.1 8B is the practical minimum.</item>
+        <item>Context window below 32k — the model returns text instead of JSON tool calls silently.</item>
+        <item>Complex multi-tool chains where frontier cloud models (GPT-4o, Claude) produce significantly more reliable results.</item>
+        <item>Structured output schemas with deeply nested objects — compliance varies by model; test thoroughly before production.</item>
+      </list>
+    </when-not-to-use>
+
+    <warning>Tool calling fails silently if context window is too small: the model returns plain text instead of JSON tool calls. Always set num_ctx to at least 32768 for tool use. Validate that tool_calls is present in the response before processing.</warning>
+
+    <section name="tool-calling">
+      <example type="good" title="Tool calling with execution loop">
+        <code lang="python"><![CDATA[
+import ollama
+import json
+
+# Define tools using JSON Schema
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name, e.g., 'London'"
+                    },
+                    "unit": {
+                        "type": "string",
+                        "enum": ["celsius", "fahrenheit"],
+                        "description": "Temperature unit"
+                    }
+                },
+                "required": ["location"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_database",
+            "description": "Search the product database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "limit": {"type": "integer", "description": "Max results to return"}
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+
+# Tool implementations
+def get_weather(location: str, unit: str = "celsius") -> dict:
+    return {"location": location, "temperature": 22, "unit": unit}
+
+def search_database(query: str, limit: int = 10) -> list:
+    return [{"id": 1, "name": f"Result for: {query}"}]
+
+TOOL_HANDLERS = {
+    "get_weather": get_weather,
+    "search_database": search_database
+}
+
+def chat_with_tools(user_message: str, model: str = "llama3.1:8b") -> str:
+    """Chat with tool calling support."""
+    messages = [{"role": "user", "content": user_message}]
+
+    response = ollama.chat(
+        model=model,
+        messages=messages,
+        tools=tools,
+        options={"num_ctx": 32768}  # REQUIRED: tool calling fails below 32k
+    )
+
+    # Check if model wants to call a tool
+    if response["message"].get("tool_calls"):
+        for tool_call in response["message"]["tool_calls"]:
+            func_name = tool_call["function"]["name"]
+            func_args = tool_call["function"]["arguments"]
+
+            if func_name in TOOL_HANDLERS:
+                result = TOOL_HANDLERS[func_name](**func_args)
+                messages.append(response["message"])
+                messages.append({
+                    "role": "tool",
+                    "content": json.dumps(result)
+                })
+
+        # Get final response with tool results
+        final_response = ollama.chat(model=model, messages=messages, tools=tools)
+        return final_response["message"]["content"]
+
+    return response["message"]["content"]
+
+result = chat_with_tools("What's the weather in Tokyo?")
+print(result)
+]]></code>
+        <note>Always set num_ctx to 32768 in options; tool calls fail silently at smaller context sizes.</note>
+      </example>
+
+      <example type="bad" title="Tool calling without context window override">
+        <code lang="python"><![CDATA[
+# Missing num_ctx — tool calls will fail silently on most models
+response = ollama.chat(
+    model="llama3.1:8b",
+    messages=messages,
+    tools=tools
+    # No options={"num_ctx": 32768}
+)
+# model returns plain text instead of tool_calls JSON
+]]></code>
+        <note>Without num_ctx override, Ollama uses the Modelfile default (often 2048 or 4096), which is insufficient for tool schemas.</note>
+      </example>
+    </section>
+
+    <section name="structured-outputs">
+      <p>Structured outputs use the format parameter with a JSON Schema (or Pydantic model_json_schema()). The model is constrained to produce JSON matching that schema. Compliance varies by model — test your specific model+schema combination before production.</p>
+
+      <example type="good" title="Structured output with Pydantic schema">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+import ollama
+import json
+
+class ProductReview(BaseModel):
+    sentiment: str   # positive, negative, neutral
+    score: float     # 0.0 to 1.0
+    summary: str
+    pros: list[str]
+    cons: list[str]
+
+def analyze_review(review_text: str, model: str = "llama3.1:8b") -> ProductReview:
+    """Analyze a review and return structured data."""
+    response = ollama.chat(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a review analyzer. Return your analysis as JSON."
+            },
+            {
+                "role": "user",
+                "content": f"Analyze this review:\n\n{review_text}"
+            }
+        ],
+        format=ProductReview.model_json_schema()
+    )
+
+    data = json.loads(response["message"]["content"])
+    return ProductReview(**data)
+
+review = """
+Great laptop! Fast performance, beautiful display, and excellent battery life.
+The keyboard could be better though, and it runs a bit hot under load.
+Overall, very satisfied with my purchase.
+"""
+
+analysis = analyze_review(review)
+print(f"Sentiment: {analysis.sentiment}")
+print(f"Score: {analysis.score}")
+print(f"Pros: {analysis.pros}")
+print(f"Cons: {analysis.cons}")
+]]></code>
+      </example>
+
+      <example type="bad" title="Relying on prompt-only JSON without format parameter">
+        <code lang="python"><![CDATA[
+# Fragile: model may return markdown code fences, trailing text, or invalid JSON
+response = ollama.chat(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Return JSON: {sentiment, score}"}]
+    # Missing: format=schema
+)
+# Frequently returns ```json\n{...}\n``` which json.loads() rejects
+]]></code>
+        <note>Without the format parameter, models frequently wrap JSON in markdown code fences or add explanatory text, causing parse failures.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Always set options={"num_ctx": 32768} when using tool calling — the default context size causes silent failures where the model returns text instead of JSON tool calls.</statement>
+        <rationale>Tool schemas consume hundreds to thousands of tokens; models truncate context silently and fall back to plain text output without warning.</rationale>
+      </rule>
+      <rule>
+        <statement>Use models Llama 3.1 8B or larger for tool calling; validate that response["message"].get("tool_calls") is truthy before processing tool results.</statement>
+        <rationale>Smaller models produce inconsistent tool call JSON; checking presence before iteration prevents KeyError and silent data loss.</rationale>
+      </rule>
+      <rule>
+        <statement>Pass Pydantic model_json_schema() as the format parameter for structured outputs rather than relying on system prompt instructions alone.</statement>
+        <rationale>The format parameter enables constrained decoding; prompt-only instructions are unreliable and produce unparseable output ~20% of the time.</rationale>
+      </rule>
+      <rule>
+        <statement>Test structured output compliance for your exact model+schema combination before committing to it in production — compliance rates vary across models and schema complexity.</statement>
+        <rationale>A schema that works reliably with llama3.1:8b may fail 10-30% of the time with a different model version or quantization.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Selected tool-compatible model (Llama 3.1+, Mistral, Qwen 2.5)</check>
+      <check>Defined tool schemas with complete JSON Schema (type, properties, required)</check>
+      <check>Set num_ctx to 32768 or higher in options</check>
+      <check>Implemented tool execution handlers for all declared tools</check>
+      <check>Added tool result formatting (role: "tool", content: json.dumps(result))</check>
+      <check>Validated tool_calls presence before processing</check>
+      <check>Tested with prompts that should and should not trigger tools</check>
+      <check>For structured outputs: validated compliance across 20+ samples</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.ollama.com/capabilities/tool-calling"/>
+      <link href="https://ollama.com/blog/structured-outputs"/>
+      <ref slug="ollama-python-client"/>
+      <ref slug="structured-output"/>
+      <ref slug="tool-use-function-calling"/>
+    </see-also>
+  </content>
+</methodology>
