@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-elk-index-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Manage Elasticsearch indices with ILM policies, index templates, rollover aliases, shard strategy, and field mappings to automate hot/warm/cold lifecycle and control storage costs.</summary>
+    <tags>
+      <tag>elasticsearch</tag>
+      <tag>ilm</tag>
+      <tag>index-management</tag>
+      <tag>logging</tag>
+      <tag>devops</tag>
+    </tags>
+    <category>logging</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-logstash-pipeline"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Elasticsearch Index Lifecycle Management and Templates</title>
+
+    <summary>Index templates define field mappings and settings for all matching indices before they are created. ILM (Index Lifecycle Management) automates the hot-rollover-warm-cold-delete lifecycle. Rollover aliases provide a write-stable endpoint that persists across index generations. Together these three primitives replace all manual index management.</summary>
+
+    <why>
+      <p>Without ILM, engineers manually delete old indices, causing accidental data loss or cluster-red states from disk exhaustion. Without index templates, each new daily index inherits Elasticsearch defaults — typically too many shards and wrong field types (string fields default to both text and keyword, wasting storage). Rollover aliases decouple the write target from the physical index name, enabling zero-downtime index rotation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production Elasticsearch cluster receiving time-series logs with a defined retention period.</item>
+        <item>Setting up a new log source that will grow beyond a single index over time.</item>
+        <item>Migrating from daily index naming (logs-2025.01.15) to size-based rollover.</item>
+        <item>Reducing storage costs by moving aging data to warm/cold tiers automatically.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development or throwaway clusters with no retention requirement — plain indices without ILM are simpler.</item>
+        <item>Static datasets (imported once, never updated) — snapshot/restore is a better fit than ILM lifecycle management.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="index-concepts">
+      <p>Core index management primitives.</p>
+      <list>
+        <item>Index Template: pre-defines settings (shards, replicas, refresh_interval) and mappings (field types) applied automatically to any new index matching the pattern.</item>
+        <item>ILM (Index Lifecycle Management): policy with phases (hot, warm, cold, delete) that triggers actions (rollover, shrink, forcemerge, allocate, delete) based on age or size.</item>
+        <item>Rollover: creates a new index when current index exceeds max_size, max_age, or max_docs thresholds; write alias automatically points to the new index.</item>
+        <item>Alias: abstract name mapping to one or more physical indices; write alias (is_write_index: true) marks the active write target for rollover.</item>
+      </list>
+    </section>
+
+    <section name="index-template">
+      <p>Create index templates before the first document arrives. Use priority to resolve conflicts when multiple templates match.</p>
+      <rule testable="true">
+        <statement>Every log source MUST have an index template with explicit field mappings before ingestion starts. The template MUST set number_of_shards, number_of_replicas, index.lifecycle.name, index.lifecycle.rollover_alias, and index.refresh_interval. keyword fields MUST NOT also be mapped as text unless full-text search on that field is required.</statement>
+        <rationale>Elasticsearch auto-mapping creates dual text+keyword mappings for all string fields, doubling fielddata memory usage and index size. Incorrect shard counts cannot be changed after index creation without reindex.</rationale>
+      </rule>
+      <example type="good" title="Index template for application logs">
+        <code lang="json"><![CDATA[
+PUT _index_template/logs-template
+{
+  "index_patterns": ["logs-*"],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 3,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-policy",
+      "index.lifecycle.rollover_alias": "logs",
+      "index.refresh_interval": "30s"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp":    { "type": "date" },
+        "message":       { "type": "text" },
+        "level":         { "type": "keyword" },
+        "service":       { "type": "keyword" },
+        "host":          { "type": "keyword" },
+        "environment":   { "type": "keyword" },
+        "trace_id":      { "type": "keyword" },
+        "span_id":       { "type": "keyword" },
+        "user_id":       { "type": "keyword" },
+        "request_id":    { "type": "keyword" },
+        "duration_ms":   { "type": "long" },
+        "status_code":   { "type": "integer" },
+        "error": {
+          "properties": {
+            "type":        { "type": "keyword" },
+            "message":     { "type": "text" },
+            "stack_trace": { "type": "text" }
+          }
+        },
+        "http": {
+          "properties": {
+            "method": { "type": "keyword" },
+            "path":   { "type": "keyword" },
+            "status": { "type": "integer" }
+          }
+        },
+        "geo": {
+          "properties": {
+            "country":  { "type": "keyword" },
+            "city":     { "type": "keyword" },
+            "location": { "type": "geo_point" }
+          }
+        }
+      }
+    }
+  }
+}
+]]></code>
+        <note>refresh_interval of 30s is safe for logging; default 1s adds unnecessary I/O overhead on write-heavy clusters.</note>
+      </example>
+    </section>
+
+    <section name="ilm-policy">
+      <p>ILM policy defines what happens to an index at each lifecycle phase. Create the policy before the template that references it.</p>
+      <example type="good" title="ILM policy with hot/warm/cold/delete phases">
+        <code lang="json"><![CDATA[
+PUT _ilm/policy/logs-policy
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": {
+            "max_size": "50gb",
+            "max_age": "1d",
+            "max_docs": 100000000
+          },
+          "set_priority": { "priority": 100 }
+        }
+      },
+      "warm": {
+        "min_age": "7d",
+        "actions": {
+          "shrink":     { "number_of_shards": 1 },
+          "forcemerge": { "max_num_segments": 1 },
+          "allocate":   { "require": { "data": "warm" } },
+          "set_priority": { "priority": 50 }
+        }
+      },
+      "cold": {
+        "min_age": "30d",
+        "actions": {
+          "allocate":   { "require": { "data": "cold" } },
+          "set_priority": { "priority": 0 }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+]]></code>
+        <note>forcemerge to 1 segment in warm phase reduces per-segment overhead dramatically; the read-only status of warm indices makes this safe.</note>
+      </example>
+    </section>
+
+    <section name="rollover-alias">
+      <p>Bootstrap the first index with the write alias before ILM starts. ILM rollover action requires the alias to exist.</p>
+      <example type="good" title="Bootstrap initial index with rollover alias">
+        <code lang="json"><![CDATA[
+PUT logs-000001
+{
+  "aliases": {
+    "logs": {
+      "is_write_index": true
+    }
+  }
+}
+]]></code>
+        <note>ILM will create logs-000002, logs-000003 etc on rollover; always write to the alias "logs", never to the physical index name.</note>
+      </example>
+      <antipattern>
+        <description>Writing directly to the physical index name (e.g., logs-000001) instead of the rollover alias.</description>
+        <reason>When ILM rolls over, the write alias moves to the new index but any code referencing the old index name continues writing stale data to a read-only index, producing 403 errors.</reason>
+      </antipattern>
+    </section>
+
+    <section name="setup-checklist">
+      <p>Pre-deployment index management checklist.</p>
+      <list>
+        <item>Define field mappings for all known fields with explicit types before ingestion begins.</item>
+        <item>Create ILM policy referencing correct node attributes (data: hot / warm / cold) matching cluster node configuration.</item>
+        <item>Create index template attaching the ILM policy and rollover alias.</item>
+        <item>Bootstrap the first index (000001) with the rollover alias as write index.</item>
+        <item>Verify ILM policy is running: GET logs-000001/_ilm/explain.</item>
+        <item>Monitor disk usage on hot nodes; ILM stops rolling over if hot nodes exceed 85% disk usage.</item>
+        <item>Review slow log settings: set index.search.slowlog.threshold.query.warn to 10s and index.indexing.slowlog.threshold.index.warn to 10s.</item>
+      </list>
+    </section>
+
+    <section name="performance-tuning">
+      <p>Index-level performance knobs for write-heavy logging workloads.</p>
+      <list>
+        <item>Bulk indexing: batch 500–5000 documents per request; single-document indexing under heavy load saturates the indexing thread pool.</item>
+        <item>Refresh interval: increase from default 1s to 30s for write-heavy indices; real-time search is not needed for log analysis.</item>
+        <item>Replicas during initial load: set number_of_replicas to 0 during bulk import; re-enable after. Replication doubles write I/O.</item>
+        <item>Mapping explosion prevention: set index.mapping.total_fields.limit (default 1000) and avoid dynamic mapping for high-cardinality nested objects.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Create ILM policy with hot/warm/cold/delete phases before first write.</check>
+      <check>Create index template with explicit field mappings, shard count, and ILM attachment.</check>
+      <check>Bootstrap first physical index (000001) with rollover alias set as write index.</check>
+      <check>Verify node attributes (node.attr.data: hot/warm/cold) match ILM allocate actions.</check>
+      <check>Confirm ILM is active via GET &lt;index&gt;/_ilm/explain.</check>
+      <check>Set refresh_interval to 30s for write-heavy indices.</check>
+      <check>Monitor heap usage — fielddata and query caches grow with number of unique keyword field values.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-logstash-pipeline"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index-templates.html"/>
+    </see-also>
+  </content>
+</methodology>
