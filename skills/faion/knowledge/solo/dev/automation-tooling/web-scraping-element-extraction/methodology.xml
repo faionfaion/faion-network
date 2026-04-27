@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="web-scraping-element-extraction">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Extract text, attributes, and table data from DOM elements using Puppeteer and Playwright selectors, with data cleaning helpers for text, prices, and dates.</summary>
+    <tags>
+      <tag>web-scraping</tag>
+      <tag>dom-extraction</tag>
+      <tag>puppeteer</tag>
+      <tag>playwright</tag>
+      <tag>data-cleaning</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+      <framework>playwright</framework>
+    </frameworks>
+    <related>
+      <ref slug="web-scraping-pagination"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="web-scraping-agentic-workflow"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="playwright-automation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Web Scraping — Element Extraction and Data Cleaning</title>
+
+    <summary>Extract text, attributes, and table data from DOM elements using Puppeteer ($eval/$$eval) and Playwright (locator API). Normalize extracted strings with text, price, and date helpers before persisting.</summary>
+
+    <why>
+      <p>Raw DOM extraction returns noisy strings full of whitespace, currency symbols, and locale-dependent date formats. Normalizing immediately at extraction time prevents downstream corruption in datasets and avoids re-scraping to fix field types later.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Extracting product names, prices, image URLs, or listing data from a scraped page.</item>
+        <item>Pulling structured rows from HTML tables (price tables, comparison grids, report exports).</item>
+        <item>Collecting all attribute values (href, src, data-*) from a set of matched elements.</item>
+        <item>Cleaning raw text before writing to a JSONL dataset or database.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the page is JS-rendered and the DOM is not yet settled — wait for network idle or a sentinel element first.</item>
+        <item>When the site offers a structured API — parsing JSON is faster and more stable than DOM extraction.</item>
+        <item>When you need cross-page aggregation — that belongs in pagination logic, not extraction.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-extraction">
+      <rule testable="true">
+        <statement>Use $eval for single-value extraction and $$eval for multi-element extraction. Prefer Playwright locator API (locator().allTextContents(), locator().count()) over raw $$eval in new Playwright code.</statement>
+        <rationale>$eval / $$eval execute in page context and return serializable values. The Playwright locator API is retrying and auto-waits, making it more robust than $$eval for dynamic pages.</rationale>
+      </rule>
+
+      <example type="good" title="Single-value and multi-value Puppeteer extraction">
+        <code lang="javascript"><![CDATA[
+// Single value
+const title = await page.$eval('h1', el => el.textContent);
+const href = await page.$eval('a.link', el => el.href);
+
+// Multiple values (Puppeteer)
+const items = await page.$$eval('.product', products =>
+  products.map(p => ({
+    name: p.querySelector('.name')?.textContent,
+    price: p.querySelector('.price')?.textContent,
+    image: p.querySelector('img')?.src
+  }))
+);
+
+// Playwright locator approach
+const texts = await page.locator('.item').allTextContents();
+const count = await page.locator('.item').count();
+]]></code>
+      </example>
+
+      <example type="good" title="Table extraction">
+        <code lang="javascript"><![CDATA[
+const tableData = await page.$$eval('table tbody tr', rows =>
+  rows.map(row => {
+    const cells = row.querySelectorAll('td');
+    return {
+      col1: cells[0]?.textContent?.trim(),
+      col2: cells[1]?.textContent?.trim(),
+      col3: cells[2]?.textContent?.trim()
+    };
+  })
+);
+]]></code>
+      </example>
+
+      <example type="good" title="Attribute extraction">
+        <code lang="javascript"><![CDATA[
+// Single attribute
+const src = await page.$eval('img', el => el.getAttribute('src'));
+
+// All attributes as object
+const attrs = await page.$eval('#element', el =>
+  Object.fromEntries(
+    [...el.attributes].map(attr => [attr.name, attr.value])
+  )
+);
+]]></code>
+      </example>
+
+      <example type="good" title="Puppeteer vs Playwright quick reference">
+        <code lang="text"><![CDATA[
+Task                | Puppeteer                              | Playwright
+--------------------|----------------------------------------|------------------------------------------
+Extract text        | page.$eval(sel, el => el.textContent)  | page.textContent(sel)
+Extract all         | page.$$eval(sel, fn)                   | page.locator(sel).allTextContents()
+Count elements      | (await page.$$(sel)).length            | await page.locator(sel).count()
+Check existence     | await page.$(sel) !== null             | await page.locator(sel).count() > 0
+Wait for element    | page.waitForSelector(sel)              | page.waitForSelector(sel)
+]]></code>
+      </example>
+    </section>
+
+    <section name="data-cleaning">
+      <rule testable="true">
+        <statement>Normalize extracted strings immediately: strip whitespace, collapse runs, remove non-printable chars. Parse prices to float and dates to ISO 8601 before storing. Return null on parse failure rather than crashing.</statement>
+        <rationale>Downstream code should never have to guess whether a field is "  $1,234.56 \n" or 1234.56. Normalizing at extraction time is cheaper than a later data-repair pass.</rationale>
+      </rule>
+
+      <example type="good" title="Text normalization helper">
+        <code lang="javascript"><![CDATA[
+function normalizeText(text) {
+  return text
+    ?.trim()
+    ?.replace(/\s+/g, ' ')           // collapse whitespace
+    ?.replace(/[\r\n\t]/g, '')       // remove line breaks
+    ?.replace(/[^\x20-\x7E]/g, '');  // remove non-printable chars
+}
+
+const title = normalizeText(await page.$eval('h1', el => el.textContent));
+]]></code>
+      </example>
+
+      <example type="good" title="Price parsing — string to float">
+        <code lang="javascript"><![CDATA[
+function parsePrice(text) {
+  const match = text?.match(/[\d,]+\.?\d*/);
+  return match ? parseFloat(match[0].replace(/,/g, '')) : null;
+}
+
+const price = parsePrice(await page.$eval('.price', el => el.textContent));
+// "$1,234.56" → 1234.56
+]]></code>
+      </example>
+
+      <example type="good" title="Date parsing — text to ISO 8601">
+        <code lang="javascript"><![CDATA[
+function parseDate(text) {
+  const date = new Date(text);
+  return isNaN(date) ? null : date.toISOString();
+}
+
+const publishedDate = parseDate(await page.$eval('.date', el => el.textContent));
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Storing raw extracted strings like "  $1,234.56\n" as the price field in your dataset.</description>
+        <reason>Every consumer must re-implement the same normalization; parse failures surface unpredictably at query time rather than at ingestion.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using page.$eval without a null/optional-chain guard on the returned element property.</description>
+        <reason>If the selector matches but the property is undefined (e.g., img without src), the extraction silently returns undefined and corrupts the row.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="web-scraping-pagination"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="web-scraping-agentic-workflow"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="playwright-automation"/>
+    </see-also>
+  </content>
+</methodology>
