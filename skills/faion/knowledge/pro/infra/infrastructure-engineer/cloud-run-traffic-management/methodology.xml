@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-traffic-management">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run traffic management: blue-green deployments, canary rollouts, gradual traffic shifting, rollback procedures, revision tagging, and Cloud Build CI/CD integration.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>traffic-management</tag>
+      <tag>blue-green</tag>
+      <tag>canary</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-monitoring"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run Traffic Management</title>
+
+    <summary>Cloud Run supports revision-based traffic splitting: deploy a new revision without traffic, test it via a tagged URL, then gradually shift traffic using update-traffic commands. Revisions are immutable; rollback is instant via --to-revisions pointing to a prior revision. Tags give stable preview URLs independent of traffic allocation.</summary>
+
+    <why>
+      <p>Cloud Run's traffic model separates deployment from release. A new revision can be deployed with --no-traffic, tested at its tagged URL (green---my-app.run.app), and only promoted to production traffic when validated. This decoupling enables blue-green, canary, and A/B patterns without downtime or redeployment. Rollback takes seconds — point 100% traffic to a prior revision, no rebuild required.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Releasing a new version of a Cloud Run service with zero-downtime.</item>
+        <item>Testing a new revision before routing production traffic to it.</item>
+        <item>Implementing canary releases with gradual traffic percentages.</item>
+        <item>Rolling back a bad deployment to a prior revision instantly.</item>
+        <item>Running A/B tests across two revisions of the same service.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cloud Run Jobs — Jobs do not have HTTP traffic; use task execution and retry controls instead.</item>
+        <item>Service deployment configuration — see cloud-run-deployment for gcloud flags and Terraform.</item>
+        <item>Autoscaling and concurrency tuning — see cloud-run-autoscaling.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="revision-tags">
+      <rule>
+        <statement>Every production deployment MUST use --no-traffic --tag=green (or a semantically versioned tag) to deploy the new revision without receiving traffic. The tagged URL (https://green---service-hash.run.app) MUST be tested before shifting traffic. Tags persist across deployments and provide stable preview URLs for the lifetime of the tagged revision.</statement>
+        <rationale>Deploying with --no-traffic means zero production impact if the new revision has a bug. The tagged URL gives a dedicated test surface that is identical to production (same container, same env, same secrets) but isolated from live traffic. Without tags, the only way to test a new revision is to send it live traffic.</rationale>
+      </rule>
+
+      <example type="good" title="Deploy without traffic and test via tag URL">
+        <code lang="bash"><![CDATA[
+# Step 1: Deploy new revision with tag, no traffic
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:v2 \
+    --region=us-central1 \
+    --no-traffic \
+    --tag=green
+
+# Step 2: Test via tagged URL
+curl https://green---my-app-xxxxx-uc.a.run.app/health
+
+# Step 3: Shift 100% traffic to green
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=green=100
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Deploying directly to production with 100% traffic without a staging or tagged-revision test step.</description>
+        <reason>A bad deployment immediately affects all users. The time to detect and rollback is measured in minutes (monitoring alert + human response), during which errors accumulate. Tagged deployments reduce impact to zero until validated.</reason>
+      </antipattern>
+    </section>
+
+    <section name="blue-green">
+      <rule>
+        <statement>Blue-green deployments on Cloud Run: deploy the new revision (green) with --no-traffic --tag=green, validate health at the tagged URL, then shift 100% traffic in one atomic update-traffic call. Keep the previous revision available without deleting it for at least one deployment cycle — this enables instant rollback.</statement>
+        <rationale>The one-atomic-shift approach means there is no period where traffic splits between old and new. For services where mixed-version requests would cause data inconsistency (schema migrations, API contract changes), blue-green is safer than canary. The old revision stays warm via min-instances or traffic routing and can absorb 100% traffic again within seconds via --to-revisions.</rationale>
+      </rule>
+
+      <example type="good" title="Full blue-green deployment workflow">
+        <code lang="bash"><![CDATA[
+# 1. Deploy green revision without traffic
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:v2.0.0 \
+    --region=us-central1 \
+    --no-traffic \
+    --tag=green
+
+# 2. Test green revision via tag URL
+curl https://green---my-app-xxxxx-uc.a.run.app
+curl https://green---my-app-xxxxx-uc.a.run.app/health
+
+# 3. Shift 100% traffic to green (atomic)
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=green=100
+
+# 4. (Optional) Rollback to previous if issues found
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-revisions=my-app-00005-abc=100
+]]></code>
+      </example>
+    </section>
+
+    <section name="canary">
+      <rule>
+        <statement>Canary deployments: deploy new revision with a canary tag, route a small percentage of traffic (5-10%), monitor error rate and latency for at least 10 minutes, then increment traffic in stages (5% → 25% → 50% → 100%). Automate rollback if error rate exceeds a threshold. Do NOT run canary for longer than 24 hours — operational complexity increases with duration.</statement>
+        <rationale>A 5% canary limits blast radius to 5% of users. Cloud Run's traffic splitting is weighted by revision percentage, not by sticky session, so each request is independently routed. This gives a statistically significant sample without session affinity complexity. Monitoring error rate and p99 latency during each stage provides the signal to proceed or rollback.</rationale>
+      </rule>
+
+      <example type="good" title="Canary deployment with gradual traffic shift">
+        <code lang="bash"><![CDATA[
+# Deploy canary revision
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:v2 \
+    --region=us-central1 \
+    --tag=canary
+
+# Route 5% of traffic to canary
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=canary=5
+
+# Monitor for 10+ minutes, then increase to 25%
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=canary=25
+
+# Continue: 50%
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-tags=canary=50
+
+# Full rollout
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-latest
+]]></code>
+      </example>
+
+      <example type="good" title="Rollback canary: revert to stable revision">
+        <code lang="bash"><![CDATA[
+# List revisions to find the stable one
+gcloud run revisions list --service=my-app --region=us-central1
+
+# Roll back to a named revision (100% traffic)
+gcloud run services update-traffic my-app \
+    --region=us-central1 \
+    --to-revisions=my-app-00005-abc=100
+]]></code>
+      </example>
+    </section>
+
+    <section name="revision-management">
+      <example type="good" title="Revision lifecycle management">
+        <code lang="bash"><![CDATA[
+# List all revisions with traffic allocation
+gcloud run revisions list --service=my-app --region=us-central1
+
+# Delete old revisions (except those serving traffic)
+gcloud run revisions list --service=my-app --region=us-central1 \
+    --format="value(name)" | tail -n +6 | \
+    xargs -I {} gcloud run revisions delete {} --region=us-central1 --quiet
+]]></code>
+        <note>Revisions accumulate over time. Cloud Run retains all revisions; delete old ones that are not serving traffic to reduce noise in the revision list. Never delete a revision serving any % of traffic.</note>
+      </example>
+
+      <antipattern>
+        <description>Using --to-latest in canary rollout instead of --to-tags=canary=N.</description>
+        <reason>--to-latest routes 100% traffic to the newest revision immediately, bypassing canary validation. Always use --to-tags with explicit percentages during staged rollouts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cicd-integration">
+      <example type="good" title="Cloud Build pipeline with tagged blue-green deploy">
+        <code lang="yaml"><![CDATA[
+steps:
+  - name: 'python:3.12'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        pip install -r requirements.txt
+        pytest tests/
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+
+  # Deploy without traffic (green)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--no-traffic'
+      - '--tag=green'
+
+  # Shift 100% traffic to green after smoke test
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update-traffic'
+      - '${_SERVICE}'
+      - '--region=${_REGION}'
+      - '--to-tags=green=100'
+
+substitutions:
+  _REGION: us-central1
+  _REPO: my-repo
+  _SERVICE: my-service
+]]></code>
+      </example>
+    </section>
+
+    <section name="traffic-checklist">
+      <checklist>
+        <check>Tag assigned to new revision before traffic shift.</check>
+        <check>No-traffic deployment used for new revisions in production.</check>
+        <check>New revision tested via tagged URL before receiving live traffic.</check>
+        <check>Traffic split configured (canary percentage set explicitly).</check>
+        <check>Rollback plan documented (specific revision name noted).</check>
+        <check>Monitoring alerts configured for error rate and latency during rollout.</check>
+        <check>Old revision retained (not deleted) until new revision is stable.</check>
+        <check>Final traffic shift verified (100% to new revision confirmed).</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-monitoring"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <link href="https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration"/>
+      <link href="https://cloud.google.com/run/docs/managing/revisions"/>
+    </see-also>
+  </content>
+</methodology>
