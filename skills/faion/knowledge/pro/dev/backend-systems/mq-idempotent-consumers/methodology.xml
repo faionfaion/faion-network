@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mq-idempotent-consumers">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Build idempotent message queue consumers: idempotency key per message, Redis-based deduplication, ack-after-commit ordering, transactional outbox pattern, and AI-agent gotchas.</summary>
+    <tags>
+      <tag>idempotency</tag>
+      <tag>message-queues</tag>
+      <tag>deduplication</tag>
+      <tag>transactional-outbox</tag>
+      <tag>reliability</tag>
+    </tags>
+    <category>messaging</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="mq-patterns"/>
+      <ref slug="mq-broker-implementations"/>
+      <ref slug="mq-reliability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Idempotent Message Queue Consumers</title>
+
+    <summary>At-least-once delivery means messages arrive more than once. Idempotent consumers produce the same side-effect on every delivery of the same message. The pattern requires: an idempotency key on every message, a deduplication store (Redis or DB unique index), ack-after-commit ordering, and the transactional outbox pattern to prevent phantom events when a DB transaction rolls back.</summary>
+
+    <why>
+      <p>Exactly-once delivery is mostly a marketing claim. Even brokers that advertise it (Kafka EOS, RabbitMQ publisher confirms) require application-level cooperation and specific configuration. Building idempotency into the consumer is cheaper, more portable, and survives broker failures and retries that bypass EOS guarantees.</p>
+      <p>The transactional outbox pattern solves a distinct but related problem: agents frequently publish a queue message inside a DB transaction, then the transaction rolls back. The consumer receives a phantom event — an order that does not exist in the database. The outbox pattern makes publish-and-commit atomic.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any consumer that performs a side-effect (DB write, external API call, email send) under at-least-once delivery semantics.</item>
+        <item>Consumers that receive retried messages from a DLQ replay.</item>
+        <item>Saga orchestrators where the same step may be triggered by multiple events.</item>
+        <item>Producers that must guarantee a message is published iff a DB transaction commits.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Read-only consumers (analytics aggregation, logging) where duplicate processing produces no harmful side-effect — idempotency adds overhead without benefit.</item>
+        <item>Exactly-once streams with full Kafka EOS and read_committed isolation where broker-level deduplication is already enforced — adding Redis dedup is redundant.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="idempotency-key">
+      <rule testable="true">
+        <statement>Every published message MUST carry an idempotency_key field — a stable, unique identifier for the event (not the message envelope). The consumer uses this key to deduplicate. If the producer cannot generate a natural key (e.g., from the business entity ID + event type + timestamp), it MUST generate a UUID and embed it in the message body, not the broker envelope.</statement>
+        <rationale>Broker message IDs (RabbitMQ delivery_tag, SQS MessageId) change on retry. A stable idempotency_key that survives redelivery is the only reliable deduplication anchor.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Consumers MUST verify idempotency before any side-effect and after the deduplication check passes. The deduplication store MUST be set atomically before the side-effect begins (optimistic lock), not after the side-effect completes, to prevent concurrent duplicate processing.</statement>
+        <rationale>Setting the dedup marker after the side-effect creates a race window: two workers receive the same message simultaneously, both see "not seen", both execute the side-effect. The atomic reserve-before-execute pattern closes this window.</rationale>
+      </rule>
+    </section>
+
+    <section name="idempotent-consumer-skeleton">
+      <example type="good" title="Idempotent consumer with Redis deduplication">
+        <code lang="python"><![CDATA[
+# consumers/idempotent.py
+import json
+import hashlib
+import redis
+import logging
+
+log = logging.getLogger(__name__)
+r = redis.Redis(decode_responses=True)
+DEDUP_TTL = 7 * 24 * 3600  # 7 days
+
+def handle(message_bytes: bytes, process):
+    msg = json.loads(message_bytes)
+    key = msg.get("idempotency_key") or hashlib.sha256(message_bytes).hexdigest()
+    dedup_key = f"mq:dedup:{key}"
+
+    # Reserve the slot atomically; if already taken, skip.
+    if not r.set(dedup_key, "1", nx=True, ex=DEDUP_TTL):
+        log.info("duplicate message, skipping", extra={"key": key})
+        return "ack"
+
+    try:
+        process(msg)
+        return "ack"
+    except TransientError:
+        r.delete(dedup_key)   # Allow retry to re-process.
+        return "nack-requeue"
+    except Exception:
+        log.exception("terminal failure, sending to DLQ", extra={"key": key})
+        return "nack-dlq"
+]]></code>
+        <note>The nx=True flag on Redis SET is the atomic reservation. On TransientError, delete the key to allow the retry to proceed through the dedup check. On terminal failure, keep the key and route to DLQ.</note>
+      </example>
+
+      <antipattern>
+        <description>Setting the deduplication marker after the side-effect instead of before.</description>
+        <reason>Two workers receiving the same message simultaneously both pass the "not seen" check and both execute the side-effect. nx=True before execution is the only way to prevent concurrent duplicate execution.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using a TTL shorter than the maximum message retention period of the broker plus the DLQ replay window.</description>
+        <reason>A 1-hour dedup TTL on a queue with 4-day message retention means replayed DLQ messages are no longer deduplicated after 1 hour. Set TTL to at least the broker retention period plus the expected replay lag.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ack-ordering">
+      <rule testable="true">
+        <statement>Consumers MUST ack (acknowledge) a message only after the side-effect is committed to the database or durable store. Acking before commit is the primary source of message loss: the broker considers the message processed; if the DB write fails, no retry occurs.</statement>
+        <rationale>The ack signals "I am done with this message and you can delete it." If the DB commit fails after ack, the message is gone and the business operation is lost silently.</rationale>
+      </rule>
+
+      <example type="good" title="Ack after commit">
+        <code lang="python"><![CDATA[
+def consume(ch, method, properties, body):
+    message = json.loads(body)
+    try:
+        with db.transaction():
+            record = create_order_record(message)
+            db.commit()  # commit first
+        # ack only after commit succeeds
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+    except Exception:
+        # nack without requeue — routes to DLQ
+        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        raise
+]]></code>
+        <note>If db.commit() raises, we fall into the except block and nack. The message retries. Never swap the order.</note>
+      </example>
+
+      <example type="bad" title="Ack before commit (data loss)">
+        <code lang="python"><![CDATA[
+def consume(ch, method, properties, body):
+    message = json.loads(body)
+    ch.basic_ack(delivery_tag=method.delivery_tag)  # ack first — WRONG
+    with db.transaction():
+        create_order_record(message)
+        db.commit()  # if this fails, message is gone forever
+]]></code>
+        <note>The broker has removed the message; any failure after the ack is a silent data loss.</note>
+      </example>
+    </section>
+
+    <section name="transactional-outbox">
+      <rule testable="true">
+        <statement>Producers MUST NOT publish a message directly inside a DB transaction if the business operation and the publish must be atomic. Instead, write the message to an outbox table inside the same transaction, and have a separate relay process publish from the outbox and delete on broker confirm. This is the transactional outbox pattern.</statement>
+        <rationale>A message published inside a DB transaction before commit can reach the consumer before the DB commit completes. If the DB rolls back, the consumer sees a phantom event — an order that does not exist. Conversely, a message published after a DB commit may not be published if the process crashes between commit and publish. The outbox pattern makes the two operations atomic.</rationale>
+      </rule>
+
+      <example type="good" title="Transactional outbox — write and relay">
+        <code lang="python"><![CDATA[
+# Step 1: write to outbox inside the business transaction
+def create_order(order_data: dict):
+    with db.transaction():
+        order = Order.create(**order_data)
+        # Write message to outbox in the same transaction
+        Outbox.create(
+            idempotency_key=f"order_created:{order.id}",
+            topic="orders",
+            payload=json.dumps({
+                "idempotency_key": f"order_created:{order.id}",
+                "event": "order_created",
+                "order_id": str(order.id),
+            }),
+            published=False
+        )
+        db.commit()
+    # Transaction committed; outbox relay picks up from here
+
+# Step 2: relay process (runs as a separate cron or loop)
+def relay_outbox():
+    pending = Outbox.filter(published=False).order_by('created_at')[:100]
+    for record in pending:
+        try:
+            broker.publish(record.topic, json.loads(record.payload))
+            record.update(published=True)
+        except Exception:
+            log.exception("relay failed for %s", record.idempotency_key)
+]]></code>
+        <note>The relay publishes and then marks published=True. If the relay crashes between publish and mark, the broker receives the message twice — but the consumer's idempotency check handles the duplicate.</note>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>AI agent-specific pitfalls when working with message queue consumers:</p>
+
+      <antipattern>
+        <description>LLMs default to auto_ack=True because SDK examples use it. This silently loses messages on consumer crash.</description>
+        <reason>Force auto_ack=False in every consumer. The cost of an extra ack call is negligible; the cost of silent message loss is a production incident.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents publish inside the DB transaction before commit, producing phantom events when the transaction rolls back.</description>
+        <reason>Use the transactional outbox pattern. Never publish directly inside a DB transaction.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents claim Kafka EOS (exactly-once semantics) gives exactly-once without enabling the required configs: enable.idempotence=true, transactional producer, and read_committed isolation on the consumer.</description>
+        <reason>Force a config audit before accepting exactly-once claims. Kafka EOS requires coordinated config on both producer and consumer; a single misconfigured setting silently reverts to at-least-once.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Schemas drift: agents add fields to message payloads without bumping the schema version, causing old consumers to crash on deserialization.</description>
+        <reason>Block field additions without a migration note and a version bump in the schema registry. Require backward-compatible schema changes: add optional fields only, never remove or rename existing fields without a version fence.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended agentic workflow for implementing a new queue consumer:</p>
+      <how-to>
+        <step>Write the contract first: topic name, schema (Avro/Protobuf/JSON Schema), partition key, ordering requirement, retry policy, DLQ target, idempotency key field, replay strategy.</step>
+        <step>Implement the producer with publisher confirms (RabbitMQ) or acks=all (Kafka). Embed idempotency_key in every message.</step>
+        <step>Implement the consumer: idempotency check before side-effect, side-effect inside a DB transaction, ack after commit, nack-to-DLQ on terminal failure.</step>
+        <step>Write an integration test using testcontainers (Kafka, RabbitMQ) that publishes, consumes, verifies side-effect, then replays the same message and verifies no duplicate side-effect.</step>
+        <step>Write a chaos test: kill the broker mid-flight, restart, verify zero loss and zero duplicate side-effects.</step>
+      </how-to>
+
+      <prompt purpose="consumer audit">
+        <![CDATA[Audit consumer.go: confirm idempotency key, ack-after-commit ordering, DLQ on terminal failure, max-retry ceiling. Output JSON {findings: [{file:line, rule, severity}]}.]]>
+      </prompt>
+
+      <prompt purpose="new async path">
+        <![CDATA[Add an async path: producer publishes <event_name> on <topic>, consumer in <service> processes it.
+Deliver: (1) contract.md (schema, partition key, ordering, retry policy, DLQ, idempotency key, replay strategy),
+(2) producer code (with confirms/acks, structured log per publish),
+(3) consumer code (idempotent, ctx-driven shutdown, metrics: consumed/failed/dlq/lag),
+(4) integration test (testcontainers Kafka/RabbitMQ),
+(5) chaos test (broker restart mid-flight).
+Forbid: auto-ack, infinite retry without DLQ, consumer that mutates DB without idempotency check.]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="mq-patterns"/>
+      <ref slug="mq-broker-implementations"/>
+      <ref slug="mq-reliability"/>
+      <link href="https://microservices.io/patterns/data/transactional-outbox.html"/>
+      <link href="https://docs.confluent.io/platform/current/clients/producer.html#idempotent-producer"/>
+    </see-also>
+  </content>
+</methodology>
