@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="guardrails-concepts">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Core LLM guardrail concepts: input/output/dialog/retrieval/execution rail types, embedded vs programmable guardrails, block/filter/transform/warn/log strategies, and architecture patterns.</summary>
+    <tags>
+      <tag>guardrails</tag>
+      <tag>llm-safety</tag>
+      <tag>content-moderation</tag>
+      <tag>prompt-injection</tag>
+      <tag>pii</tag>
+    </tags>
+    <category>safety</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="guardrails-nemo"/>
+      <ref slug="guardrails-ai-framework"/>
+      <ref slug="guardrails-custom-pipeline"/>
+      <ref slug="guardrails-testing"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LLM Guardrails — Concepts, Types, and Architecture</title>
+
+    <summary>Guardrails (or "rails") are specific mechanisms for controlling LLM behavior. They transform unpredictable generative models into reliable, safe, and compliant systems by preventing harmful content, enforcing topic boundaries, validating output format and structure, detecting prompt injection attacks, filtering PII and sensitive data, and reducing hallucinations.</summary>
+
+    <why>
+      <p>Without guardrails, LLM applications produce non-deterministic output that may expose the business to liability, leak PII, follow injected instructions from untrusted users, or generate hallucinations presented as fact. Guardrails impose a safety envelope at runtime without requiring model retraining.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any customer-facing LLM application where uncontrolled output could harm users or expose the business to liability.</item>
+        <item>Regulated domains: healthcare, finance, legal — where hallucinations or off-topic responses have compliance consequences.</item>
+        <item>Agent pipelines that execute tool calls or write to external systems — execution rails prevent unauthorized actions.</item>
+        <item>Multi-turn conversations where topic drift or persona breaking is a risk.</item>
+        <item>Applications handling PII — input/output rails must mask before logging and processing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal developer tooling where trust is high and false positives waste time.</item>
+        <item>Latency-critical paths under 50ms budget — LLM-as-judge guardrails add 500ms+ and break the budget.</item>
+        <item>Guardrails add no value if the base model already refuses the content class (e.g., Claude refusing CSAM).</item>
+        <item>Prototyping and local experimentation — premature guardrails slow iteration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rail-types">
+      <p>Guardrail types map to the position in the pipeline where they intercept content.</p>
+      <rules>
+        <rule>
+          <statement>Input Rails filter and validate user input before the LLM receives it. Use for: PII masking, injection detection, length limits.</statement>
+          <rationale>Stopping bad input before the LLM call is cheaper and more reliable than filtering after — it prevents the model from generating a response to a dangerous prompt entirely.</rationale>
+        </rule>
+        <rule>
+          <statement>Output Rails validate and filter LLM responses before they reach the user. Use for: content moderation, format validation, hallucination checking.</statement>
+          <rationale>The LLM may produce outputs that comply with the prompt but violate policy. Output rails are the last defense before the user sees the response.</rationale>
+        </rule>
+        <rule>
+          <statement>Dialog Rails control conversation flow across turns. Use for: topic boundaries, persona enforcement.</statement>
+          <rationale>Multi-turn conversations allow gradual manipulation not detectable in a single turn. Dialog rails track state and detect drift over the conversation history.</rationale>
+        </rule>
+        <rule>
+          <statement>Retrieval Rails filter RAG chunks before they reach the LLM context. Use for: relevance filtering, sensitive data removal.</statement>
+          <rationale>Injecting irrelevant or sensitive documents into context can cause hallucinations or leak confidential data into the response.</rationale>
+        </rule>
+        <rule>
+          <statement>Execution Rails validate tool calls and action parameters before execution. Use for: permission checks, parameter validation.</statement>
+          <rationale>An agent that can call tools is an agent that can cause side effects. Execution rails are the only gate between an LLM decision and a real-world action.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="embedded-vs-programmable">
+      <p>Guardrail implementation divides into two fundamental approaches with different performance and maintainability characteristics.</p>
+      <rules>
+        <rule>
+          <statement>Embedded Guardrails are built into the model through training (RLHF, Constitutional AI). They are part of the model's base behavior. Examples: Claude's safety training, Llama Guard classification.</statement>
+          <rationale>Embedded guardrails operate at inference speed with no additional latency. They cannot be disabled per-request but also cannot be easily bypassed by application-layer prompt injection.</rationale>
+        </rule>
+        <rule>
+          <statement>Programmable Guardrails are external rule-based systems operating at runtime. Examples: NeMo Guardrails, Guardrails AI, custom validators. These are configurable, auditable, and domain-specific.</statement>
+          <rationale>Programmable guardrails are the appropriate layer for business-specific rules (PII regex, topic boundaries, schema validation) that cannot be baked into a general-purpose model.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="strategies">
+      <p>Each guardrail fires one of five actions when it detects a violation. Choose the action by violation severity.</p>
+      <rules>
+        <rule>
+          <statement>Block: Reject input or output entirely. Use for dangerous content and injection attacks.</statement>
+          <rationale>Some violations have no safe fallback — returning any content risks harm or liability.</rationale>
+        </rule>
+        <rule>
+          <statement>Filter: Remove problematic parts. Use for PII, URLs, code blocks.</statement>
+          <rationale>When the surrounding content is legitimate but specific fragments must be removed, filtering preserves value while enforcing policy.</rationale>
+        </rule>
+        <rule>
+          <statement>Transform: Modify to acceptable form. Use for rephrasing, summarizing, masking.</statement>
+          <rationale>Some content can be made safe through transformation without losing all value. PII masking is the canonical example.</rationale>
+        </rule>
+        <rule>
+          <statement>Warn: Flag for review without blocking. Use for borderline content and low-confidence detections.</statement>
+          <rationale>High false positive rates destroy user trust. Warning surfaces ambiguous cases for human review without blocking legitimate users.</rationale>
+        </rule>
+        <rule>
+          <statement>Log: Record without blocking. Use for analytics and audit trails.</statement>
+          <rationale>Not all violations require immediate action. Logging builds the dataset needed to tune thresholds and detect coordinated attacks.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="architecture-patterns">
+      <p>Three canonical pipeline architectures cover most LLM application shapes.</p>
+      <rule>
+        <statement>Basic Pipeline: User Input → Input Rails → LLM → Output Rails → Response. Input rails block or modify before the LLM call; output rails block or modify before the user sees the response.</statement>
+        <rationale>The minimal safe shape for any LLM application. Both stages are required — input rails alone cannot catch all unsafe outputs, and output rails alone cannot prevent prompt injection.</rationale>
+      </rule>
+      <rule>
+        <statement>RAG with Guardrails: Input Rails → Query → Retrieval Rails (filtering chunks) → LLM (with filtered context) → Output Rails → Response. Retrieval rails run between the vector search and the LLM call.</statement>
+        <rationale>RAG pipelines introduce a second untrusted input stream (retrieved documents) that can contain injection content or sensitive data. Retrieval rails must sanitize chunks before they enter the LLM context window.</rationale>
+      </rule>
+      <rule>
+        <statement>Multi-Agent with Guardrails: Input Rails on the Router Agent; Execution Rails on each Worker Agent before tool calls; Output Rails on the aggregated response. Each agent in the mesh runs its own execution rail.</statement>
+        <rationale>In multi-agent systems, a compromised worker agent can relay blocked content or execute unauthorized tool calls. Per-agent execution rails are the only way to enforce boundaries across the mesh.</rationale>
+      </rule>
+    </section>
+
+    <section name="performance">
+      <p>Guardrail latency compounds. A tiered strategy is mandatory for production pipelines with latency budgets.</p>
+      <rule>
+        <statement>Apply tiered checking in order: regex rules first (under 1ms), fast classifier second (10-50ms), LLM-as-judge only for borderline cases (500ms+). Stop at the first tier that fires a violation.</statement>
+        <rationale>LLM-as-judge is the most accurate guardrail but adds 500ms-2s per call. Running it on every request breaks most latency budgets. Reserving it for ambiguous cases after cheaper tiers pass reduces median latency by 10-100x.</rationale>
+      </rule>
+      <rule>
+        <statement>Run input and context guardrails in parallel where possible. Use async execution to prevent guardrail latency stacking in the input stage.</statement>
+        <rationale>PII detection and injection detection are independent checks. Running them concurrently cuts input processing time roughly in half compared to sequential execution.</rationale>
+      </rule>
+    </section>
+
+    <section name="framework-selection">
+      <p>Framework choice depends primarily on the type of validation needed, not on feature count.</p>
+      <rule>
+        <statement>Use NeMo Guardrails for complex conversational flows and multi-turn dialog control. Use Guardrails AI for output validation and schema enforcement. Use Llama Guard for safety classification. Use custom implementation for specific requirements, maximum control, or lightweight deployments.</statement>
+        <rationale>Each framework has a primary strength. Selecting the wrong framework requires workarounds that undermine both the framework and the application architecture. A hybrid approach (one framework per layer) is valid and often necessary.</rationale>
+      </rule>
+      <rule>
+        <statement>Use case to framework mapping: customer support bot → NeMo Guardrails (dialog control); data extraction → Guardrails AI (schema validation); content moderation → Llama Guard + rules; code generation → custom validators + sandboxing; medical or legal → all layers + human review; internal tools → lighter validation with logging only.</statement>
+        <rationale>Matching the framework to the use case avoids over-engineering for simple cases and under-protection for complex ones.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-monitoring">
+      <p>Security hardening and observability are not optional post-deployment additions — they must be designed in.</p>
+      <rule>
+        <statement>Prompt injection defense requires four layers: input sanitization (remove/escape special characters), instruction hierarchy (system prompts take precedence), output validation (check for instruction echoing), and isolation (separate user content from instructions).</statement>
+        <rationale>No single layer defeats all injection techniques. Adversarial inputs exploit the boundary between trusted instructions and untrusted user content; defense-in-depth is the only reliable approach.</rationale>
+      </rule>
+      <rule>
+        <statement>Never log raw user input or raw LLM output. Log sanitized versions with violation metadata: timestamp, request_id, guardrail_type, result (pass/fail/warn), latency_ms, violation_details, user_id (hashed).</statement>
+        <rationale>Raw logs likely contain PII and sensitive data. Logging PII creates a new compliance surface. Structured metadata provides all the observability needed for tuning and incident response.</rationale>
+      </rule>
+      <rule>
+        <statement>Alert when block rate exceeds 10% (investigate for false positives or attacks), false positive rate exceeds 1% (tune thresholds), latency p99 exceeds 3s (optimize pipeline), or violation type distribution changes suddenly (new attack pattern).</statement>
+        <rationale>These thresholds identify either security incidents (attack spikes) or operational degradation (false positive regression, latency blowup) before they become user-facing issues.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>LLM-based guardrails introduce failure modes specific to agentic workflows.</p>
+      <rule>
+        <statement>Agents can be convinced to relay blocked content indirectly — output rails must check the final response, not just per-turn outputs.</statement>
+        <rationale>A multi-step agent may retrieve blocked content in an intermediate step and reformat it to pass output rails. End-to-end output inspection is required.</rationale>
+      </rule>
+      <rule>
+        <statement>LLM-based guardrails are subject to the same prompt injection attacks they are meant to prevent. Never trust user-supplied context in the guardrail prompt.</statement>
+        <rationale>If a guardrail uses an LLM to classify user input, the user input is in the guardrail prompt — making the guardrail itself a target for injection. Isolate user content with strict delimiters.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate guardrail logic from business logic — rails should be swappable without touching agent prompts.</statement>
+        <rationale>Guardrail requirements change with regulatory and threat landscapes. Coupling rails to agent prompts creates a maintenance burden and testing surface that grows with every prompt update.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <ref slug="guardrails-nemo"/>
+      <ref slug="guardrails-ai-framework"/>
+      <ref slug="guardrails-custom-pipeline"/>
+      <ref slug="guardrails-testing"/>
+      <link href="https://arxiv.org/abs/2310.10501"/>
+      <link href="https://arxiv.org/abs/2312.06674"/>
+    </see-also>
+  </content>
+</methodology>
