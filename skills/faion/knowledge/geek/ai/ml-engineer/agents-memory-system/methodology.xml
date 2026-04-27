@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents-memory-system">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Design agent memory: short-term conversation context, long-term vector store, episodic task memory, context overflow prevention via summarization and relevance filtering.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>memory</tag>
+      <tag>vector-store</tag>
+      <tag>context-management</tag>
+      <tag>embeddings</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="agents-react-pattern"/>
+      <ref slug="agents-safety-guardrails"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>langgraph</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Agent Memory System — Short-Term, Long-Term, and Context Management</title>
+
+    <summary>Autonomous agents running long tasks overflow their context window without explicit memory management. A three-tier memory architecture — short-term conversation buffer, long-term vector store, episodic task log — keeps agents grounded across sessions. Summarize conversation history every N steps; use cosine similarity recall to inject only relevant past experiences rather than raw history.</summary>
+
+    <why>
+      <p>Context overflow is one of the three most common autonomous agent failure modes (alongside infinite loops and tool hallucination). Without memory management, a long-running agent either hits the context limit and fails silently, or loops because it forgot it already tried an approach. A structured memory system converts experience into recall-able facts, enabling cross-session learning and preventing repeated mistakes.</p>
+      <p>The three-tier split mirrors human working memory: short-term holds the active task context (last 10-20 exchanges), long-term persists compressed knowledge in a vector store (episodes, facts, tools learned), episodic records task outcomes for future planning. Each tier has a distinct eviction policy: short-term evicts by count; long-term never evicts; episodic evicts by age or relevance score.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Long-running agents that execute more than 20 steps in a single session.</item>
+        <item>Agents that handle recurring similar tasks and should learn from past runs.</item>
+        <item>Agents that must remember user preferences or domain knowledge across sessions.</item>
+        <item>Multi-session research or content generation workflows where context exceeds 50K tokens.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn agents completing in under 10 steps — memory overhead exceeds value.</item>
+        <item>Tasks where all necessary context fits in one context window — adding memory layers introduces complexity with no benefit.</item>
+        <item>Strict reproducibility requirements — memory recall is non-deterministic, which conflicts with auditing needs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="memory-tiers">
+      <p>The agent memory system has three tiers with different storage backends, eviction policies, and access patterns:</p>
+
+      <list>
+        <item>Short-term: conversation buffer, last N exchanges, in-memory list. Evicted FIFO when count exceeds max. Always included in context verbatim.</item>
+        <item>Long-term: vector store (Qdrant, Chroma, pgvector). Persists compressed summaries and facts. Recalled by cosine similarity against the current query. Include only top-k results above relevance threshold.</item>
+        <item>Episodic: task outcome log. Records "Task X → Result Y" entries. Used by planning agents to avoid strategies that previously failed.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Agents MUST summarize conversation history every N steps (N = 10-20) when running loops longer than the summarization threshold. The summary MUST preserve all task-relevant facts, active tool states, and key decisions; it MUST drop redundant exchanges and intermediate reasoning steps.</statement>
+        <rationale>Without summarization, context grows linearly with steps. At 20 steps of ReAct with verbose tool outputs, most 128K-token models hit their limit. Summarization compresses 80% of history into 10% of tokens while preserving the facts needed for the next steps.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Long-term memory recall MUST use a relevance threshold (cosine similarity >= 0.7 by default). The agent MUST NOT inject all stored memories into the context — only the top-k (k=3-5) memories above threshold. The recall query MUST be the current task or goal text, not a generic "what do I know" query.</statement>
+        <rationale>Injecting all memories into every prompt defeats the purpose of the memory system and can overflow the context window. Thresholded top-k recall injects only the facts that are semantically relevant to the current task, keeping the context lean.</rationale>
+      </rule>
+
+      <example type="good" title="Hybrid memory implementation">
+        <code lang="python"><![CDATA[
+from datetime import datetime
+import numpy as np
+from typing import List, Dict, Callable, Optional
+
+class Memory:
+    """Agent memory with short-term and long-term storage."""
+
+    def __init__(
+        self,
+        embedding_func: Callable,
+        max_short_term: int = 10,
+        relevance_threshold: float = 0.7
+    ):
+        self.embedding_func = embedding_func
+        self.max_short_term = max_short_term
+        self.relevance_threshold = relevance_threshold
+        self.short_term: List[Dict] = []
+        self.long_term: List[Dict] = []  # Use vector DB in production
+
+    def add(self, content: str, metadata: Dict = None):
+        """Add memory entry."""
+        entry = {
+            "content": content,
+            "timestamp": datetime.now().isoformat(),
+            "metadata": metadata or {},
+            "embedding": self.embedding_func(content)
+        }
+        self.short_term.append(entry)
+        if len(self.short_term) > self.max_short_term:
+            old_entry = self.short_term.pop(0)
+            self.long_term.append(old_entry)
+
+    def recall(self, query: str, k: int = 5) -> List[Dict]:
+        """Recall relevant memories by cosine similarity."""
+        query_embedding = self.embedding_func(query)
+        all_memories = self.short_term + self.long_term
+        if not all_memories:
+            return []
+        similarities = []
+        for memory in all_memories:
+            sim = np.dot(query_embedding, memory["embedding"]) / (
+                np.linalg.norm(query_embedding) *
+                np.linalg.norm(memory["embedding"])
+            )
+            similarities.append((memory, sim))
+        relevant = [
+            (m, s) for m, s in similarities
+            if s >= self.relevance_threshold
+        ]
+        relevant.sort(key=lambda x: x[1], reverse=True)
+        return [m for m, _ in relevant[:k]]
+
+    def summarize_recent(self) -> str:
+        """Summarize recent memories for context injection."""
+        if not self.short_term:
+            return "No recent memories."
+        recent = self.short_term[-5:]
+        return "\n".join([m["content"] for m in recent])
+]]></code>
+        <note>In production, replace self.long_term list with Qdrant or pgvector for scalable cosine search. The in-memory version is suitable for development and short sessions.</note>
+      </example>
+
+      <antipattern>
+        <description>Storing all conversation history in the system prompt without summarization or relevance filtering.</description>
+        <reason>History grows linearly with iterations. At 30+ steps the system prompt alone exceeds most model context limits. The agent then silently truncates or fails. Summarize every 10-20 steps and recall only what is relevant.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using CrewAI agent "memory" without configuring a persistent vector store across runs.</description>
+        <reason>CrewAI agent memory is not persistent across runs by default. Without a configured vector store backend, the agent loses all learned context when the process restarts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="context-management-prompts">
+      <p>Two prompt patterns are required for memory-augmented agents: a summarization prompt called every N steps to compress history, and a memory recall prompt to format retrieved memories for injection into the next step.</p>
+
+      <prompt purpose="Conversation history summarization">
+        <![CDATA[
+Summarize the conversation history to reduce context size while preserving essential information.
+
+## Current Context Length
+{current_tokens} tokens (limit: {max_tokens})
+
+## Conversation History
+{conversation}
+
+## Summarization Guidelines
+1. Preserve all task-relevant information
+2. Keep tool call results that are still needed
+3. Maintain key decisions and their rationale
+4. Remove redundant or outdated information
+5. Keep recent exchanges intact
+
+## Output Format
+{
+  "summary": "Condensed history",
+  "preserved_facts": ["Key facts to remember"],
+  "active_context": ["Current task state"],
+  "dropped_content": "What was removed and why"
+}
+]]>
+      </prompt>
+
+      <prompt purpose="Memory recall for current task">
+        <![CDATA[
+Recall relevant information from memory to inform the current task.
+
+## Current Task
+{task}
+
+## Available Memories
+{memory_summaries}
+
+## Recall Guidelines
+1. Identify memories relevant to current task
+2. Extract actionable information
+3. Note any contradictions with current context
+4. Highlight lessons learned
+
+## Output
+{
+  "relevant_memories": [
+    {
+      "content": "Memory content",
+      "relevance": "Why this is relevant",
+      "application": "How to apply this"
+    }
+  ],
+  "no_relevant_memories": true/false
+}
+]]>
+      </prompt>
+    </section>
+
+    <checklist>
+      <check>Short-term memory capped at 10-20 entries with FIFO eviction to long-term.</check>
+      <check>Long-term storage uses a real vector DB in production (Qdrant, pgvector, Chroma).</check>
+      <check>Recall uses cosine similarity with threshold >= 0.7 and top-k = 3-5.</check>
+      <check>Summarization triggered every N steps (N configured per agent type).</check>
+      <check>Episodic memory records task outcome ("Task: X → Result: Y") after each run.</check>
+      <check>Memory store is initialized once per agent and reused across sessions.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2303.11366"/>
+      <ref slug="agents-react-pattern"/>
+    </see-also>
+  </content>
+</methodology>
