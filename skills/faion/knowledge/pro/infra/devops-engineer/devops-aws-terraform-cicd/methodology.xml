@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-aws-terraform-cicd">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Terraform project structure for AWS: S3+DynamoDB backend, per-environment directories, variables, KMS keys, outputs, and GitHub Actions OIDC CI/CD pipeline for plan/apply per environment.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>terraform</tag>
+      <tag>cicd</tag>
+      <tag>github-actions</tag>
+      <tag>iac</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <ref slug="devops-aws-service-selection"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Terraform Project Structure and GitHub Actions CI/CD for AWS</title>
+
+    <summary>Terraform projects for AWS follow a per-environment directory layout under infrastructure/environments/. State lives in S3 with DynamoDB locking. GitHub Actions deploys via OIDC (no long-lived credentials). The pipeline plans against all environments on pull request and applies sequentially after merge to main, requiring an explicit GitHub Environment approval gate for production.</summary>
+
+    <why>
+      <p>Per-environment directories (dev/staging/prod) prevent blast-radius incidents from cross-environment state sharing. S3 remote state with DynamoDB locking prevents concurrent Terraform runs from corrupting state. OIDC authentication eliminates static AWS access keys from GitHub Secrets — the runner assumes a role via a short-lived token. Sequential apply with matrix strategy prevents a failed prod apply from being retried before dev is validated. Provider default_tags enforce cost allocation tagging on every resource without per-resource tag blocks.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new AWS project with Terraform and needing a production-ready project structure.</item>
+        <item>Adding CI/CD automation to an existing Terraform codebase without long-lived credentials.</item>
+        <item>Setting up multi-environment infrastructure (dev/staging/prod) with isolated state per environment.</item>
+        <item>Enforcing cost allocation tagging and provider version pinning across a team.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-environment throwaway projects — use local state and manual apply.</item>
+        <item>Projects using Terragrunt for DRY configuration — directory layout differs from this pattern.</item>
+        <item>AWS CDK or Pulumi projects — different deployment model entirely.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-structure">
+      <p>The canonical Terraform project structure separates environments, shared modules, and provider configuration. Each environment directory is a standalone Terraform root module. Shared modules live under infrastructure/modules/. Provider and backend configuration is shared under infrastructure/shared/.</p>
+
+      <rule testable="true">
+        <statement>Terraform projects MUST use per-environment directories (infrastructure/environments/dev, /staging, /prod). Each environment MUST have its own main.tf, variables.tf, and terraform.tfvars. State backend MUST use S3 with a DynamoDB lock table. Provider default_tags MUST include Project, Environment, and ManagedBy="terraform" applied to all resources.</statement>
+        <rationale>Per-environment directories ensure that a Terraform error in dev cannot affect prod state. S3+DynamoDB backend prevents concurrent apply runs from corrupting state. Default_tags ensure every resource is tagged for cost allocation without per-resource tag blocks.</rationale>
+      </rule>
+
+      <example type="good" title="Project directory layout">
+        <code lang="text"><![CDATA[
+infrastructure/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── terraform.tfvars
+│   ├── staging/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── terraform.tfvars
+│   └── prod/
+│       ├── main.tf
+│       ├── variables.tf
+│       └── terraform.tfvars
+├── modules/
+│   ├── networking/
+│   ├── compute/
+│   ├── database/
+│   └── monitoring/
+├── shared/
+│   ├── backend.tf
+│   └── providers.tf
+└── README.md
+]]></code>
+      </example>
+    </section>
+
+    <section name="backend-config">
+      <p>The S3 backend uses per-environment state keys (environments/${var.environment}/terraform.tfstate). The DynamoDB lock table is shared across environments. Encryption is mandatory. Provider version is pinned to ~> 5.0 for the AWS provider.</p>
+
+      <example type="good" title="Terraform backend with S3 and DynamoDB locking">
+        <code lang="hcl"><![CDATA[
+# shared/backend.tf
+terraform {
+  required_version = ">= 1.7"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "myproject-terraform-state"
+    key            = "environments/${var.environment}/terraform.tfstate"
+    region         = "eu-central-1"
+    encrypt        = true
+    dynamodb_table = "terraform-locks"
+  }
+}
+
+provider "aws" {
+  region = var.region
+
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = var.environment
+      ManagedBy   = "terraform"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="variables">
+      <p>Variables are declared in variables.tf with validation blocks. The environment variable is validated against the allowed values. Region defaults to eu-central-1. tfvars files are environment-specific and committed to the repository (no secrets in tfvars).</p>
+
+      <example type="good" title="Variables with validation and environment-specific tfvars">
+        <code lang="hcl"><![CDATA[
+# variables.tf
+variable "project" {
+  description = "Project name"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment (dev, staging, prod)"
+  type        = string
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "eu-central-1"
+}
+
+variable "domain" {
+  description = "Domain name"
+  type        = string
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "availability_zones" {
+  description = "Availability zones"
+  type        = list(string)
+  default     = ["eu-central-1a", "eu-central-1b", "eu-central-1c"]
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.serverless"
+}
+
+variable "db_min_capacity" {
+  description = "Aurora Serverless v2 min ACU"
+  type        = number
+  default     = 0.5
+}
+
+variable "db_max_capacity" {
+  description = "Aurora Serverless v2 max ACU"
+  type        = number
+  default     = 16
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Environment-specific tfvars">
+        <code lang="hcl"><![CDATA[
+# environments/dev/terraform.tfvars
+project     = "myproject"
+environment = "dev"
+region      = "eu-central-1"
+domain      = "dev.example.com"
+
+db_min_capacity = 0.5
+db_max_capacity = 2
+
+# environments/prod/terraform.tfvars
+project     = "myproject"
+environment = "prod"
+region      = "eu-central-1"
+domain      = "example.com"
+
+db_min_capacity = 2
+db_max_capacity = 32
+]]></code>
+      </example>
+    </section>
+
+    <section name="kms-keys">
+      <p>Per-service KMS keys separate the blast radius of a key compromise. Each key has deletion_window_in_days=30 and enable_key_rotation=true. The root account policy is always present. Key aliases are created for each service key.</p>
+
+      <example type="good" title="Per-service KMS keys with rotation enabled">
+        <code lang="hcl"><![CDATA[
+# kms.tf
+resource "aws_kms_key" "rds" {
+  description             = "${local.name} RDS encryption"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_key" "secrets" {
+  description             = "${local.name} Secrets Manager"
+  deletion_window_in_days = 30
+  enable_key_rotation     = true
+}
+
+resource "aws_kms_alias" "rds" {
+  name          = "alias/${local.name}-rds"
+  target_key_id = aws_kms_key.rds.key_id
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="outputs">
+      <p>Outputs expose infrastructure endpoints for consumption by application deployment pipelines. Sensitive values (database endpoint) are marked sensitive=true to prevent leakage in CI logs.</p>
+
+      <example type="good" title="Terraform outputs with sensitive flag">
+        <code lang="hcl"><![CDATA[
+# outputs.tf
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.vpc.vpc_id
+}
+
+output "alb_dns_name" {
+  description = "ALB DNS name"
+  value       = module.alb.dns_name
+}
+
+output "api_endpoint" {
+  description = "API Gateway endpoint"
+  value       = module.api_gateway.api_endpoint
+}
+
+output "database_endpoint" {
+  description = "Database endpoint"
+  value       = module.aurora.cluster_endpoint
+  sensitive   = true
+}
+
+output "cloudfront_domain" {
+  description = "CloudFront domain"
+  value       = module.cloudfront.cloudfront_distribution_domain_name
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="github-actions-cicd">
+      <p>The GitHub Actions workflow uses OIDC to assume an AWS IAM role — no long-lived access keys. The plan job runs on every PR for all three environments in a matrix. The apply job runs after merge to main, sequentially (max-parallel=1), and requires a GitHub Environment approval gate for production.</p>
+
+      <rule testable="true">
+        <statement>GitHub Actions workflows for Terraform MUST use aws-actions/configure-aws-credentials with role-to-assume (OIDC), never with aws-access-key-id/aws-secret-access-key. The apply job MUST use max-parallel: 1 in the matrix strategy to prevent concurrent applies. The prod environment MUST be protected with a required reviewer in GitHub Environment settings.</statement>
+        <rationale>OIDC eliminates long-lived AWS credentials from GitHub Secrets, reducing the blast radius of a secret leak to the duration of one token (15 minutes). max-parallel=1 prevents race conditions between environment applies sharing the same state bucket. Required reviewer for prod ensures a human reviews the plan before production infrastructure changes.</rationale>
+      </rule>
+
+      <example type="good" title="GitHub Actions with OIDC, matrix plan, and sequential apply">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/terraform.yml
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths: ['infrastructure/**']
+  pull_request:
+    branches: [main]
+    paths: ['infrastructure/**']
+
+env:
+  TF_VERSION: "1.7"
+  AWS_REGION: "eu-central-1"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform plan -out=tfplan
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/environments/${{ matrix.environment }}/tfplan
+
+  apply:
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+      max-parallel: 1
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Download Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ matrix.environment }}
+          path: infrastructure/environments/${{ matrix.environment }}
+
+      - name: Terraform Init
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+        run: terraform apply -auto-approve tfplan
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Per-environment directories under infrastructure/environments/.</check>
+      <check>S3 backend with per-environment state key path.</check>
+      <check>DynamoDB lock table configured in backend.</check>
+      <check>backend "s3" has encrypt=true.</check>
+      <check>Provider version pinned to ~> 5.0 for AWS provider.</check>
+      <check>Provider default_tags includes Project, Environment, ManagedBy="terraform".</check>
+      <check>environment variable has validation block with allowed values.</check>
+      <check>No secrets in terraform.tfvars files committed to repo.</check>
+      <check>KMS keys have enable_key_rotation=true and deletion_window_in_days=30.</check>
+      <check>Sensitive outputs (database endpoint) marked sensitive=true.</check>
+      <check>GitHub Actions uses OIDC (role-to-assume), not static credentials.</check>
+      <check>Permissions block includes id-token: write for OIDC.</check>
+      <check>Apply job uses max-parallel: 1.</check>
+      <check>Production GitHub Environment has required reviewer configured.</check>
+      <check>Terraform plan artifacts uploaded and downloaded (not re-run at apply).</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <ref slug="devops-aws-service-selection"/>
+      <link href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs"/>
+      <link href="https://aws.amazon.com/serverless/patterns/"/>
+    </see-also>
+  </content>
+</methodology>
