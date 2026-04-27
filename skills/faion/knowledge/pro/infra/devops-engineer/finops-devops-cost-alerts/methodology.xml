@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-devops-cost-alerts">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Configure budget alerts at 50/75/90/100% thresholds, automate anomaly investigation, and use structured LLM prompts for cost analysis, rightsizing, commitment, and executive reporting workflows.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>budget-alerts</tag>
+      <tag>anomaly-detection</tag>
+      <tag>cost-reporting</tag>
+      <tag>llm-prompts</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-devops-cost-tagging"/>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-cost-visibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>FinOps Budget Alerts, Anomaly Investigation, and Cost Reporting</title>
+
+    <summary>Budget alerts at 50/75/90/100% thresholds prevent surprise overspend by notifying teams before the billing period closes. Anomaly detection catches intra-period spikes (new deployment, configuration error, traffic event) within hours. Structured LLM prompts accelerate cost analysis, rightsizing review, commitment planning, and executive reporting — reducing FinOps analyst time per cycle from days to hours.</summary>
+
+    <why>
+      <p>Cloud bills are retrospective by default — you see what you spent after the month closes. Budget alerts and anomaly detection shift this to near-real-time: teams learn about a cost spike within hours, while the causal deployment or configuration is still fresh and reversible. Without alerts, a misconfigured NAT Gateway or forgotten GPU instance runs for 30 days before anyone notices.</p>
+      <p>LLM prompts in FinOps workflows compress the analyst bottleneck: a structured cost analysis prompt that takes a billing CSV as input and returns ranked optimization opportunities in 60 seconds replaces 2 hours of pivot-table work. The value compounds across weekly reviews.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up any cloud account — budget alerts at all four thresholds should be Day 1 infrastructure, not an afterthought.</item>
+        <item>Monthly billing review — use LLM prompts to generate the initial analysis, then verify the top recommendations manually.</item>
+        <item>A cost spike appears in anomaly detection — use the investigation prompt to structure the root-cause analysis.</item>
+        <item>Preparing quarterly commitment reviews (Savings Plans / RIs) — use the commitment prompt to structure the analysis.</item>
+        <item>Generating executive or team-level cost reports — prompts produce consistent format across reporting periods.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Replacing human judgment for commitment purchases — LLM prompts surface candidates and trade-offs; a human must approve multi-thousand-dollar commitments.</item>
+        <item>Auto-remediating anomalies without an approval step — auto-termination of a resource identified by anomaly detection can cause an incident if misclassified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="budget-alerts">
+      <rule testable="true">
+        <statement>Every cloud account, subscription, or project with measurable spend MUST have budget alerts at 50%, 75%, 90%, and 100% of monthly budget. The 50% and 75% alerts notify the team lead. The 90% and 100% alerts escalate to engineering leadership. Alerts MUST be "actual spend" for 50-90% and both "actual" and "forecasted" for 100% (catch overspend before it happens).</statement>
+        <rationale>Four-threshold alerting gives increasing urgency signal: 50% is informational, 75% is attention, 90% is action required, 100% is escalation. Forecasted alerts at 100% give 5-10 days lead time to intervene before actual overspend.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Budget Terraform with 4 thresholds">
+        <code lang="hcl"><![CDATA[
+resource "aws_budgets_budget" "monthly" {
+  name              = "monthly-budget"
+  budget_type       = "COST"
+  limit_amount      = "10000"
+  limit_unit        = "USD"
+  time_unit         = "MONTHLY"
+  time_period_start = "2026-01-01_00:00"
+
+  cost_filter {
+    name   = "TagKeyValue"
+    values = ["project$${var.project_name}"]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 50
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = var.alert_emails
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 75
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = var.alert_emails
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 90
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = concat(var.alert_emails, var.escalation_emails)
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = concat(var.alert_emails, var.escalation_emails)
+  }
+}
+]]></code>
+        <note>Tag-filtered budget per project. Use consolidated billing account-level budget as a backstop. Azure and GCP equivalents: azurerm_consumption_budget_resource_group and google_billing_budget.</note>
+      </example>
+
+      <example type="good" title="Azure Budget Terraform">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_consumption_budget_resource_group" "monthly" {
+  name              = "monthly-budget"
+  resource_group_id = azurerm_resource_group.main.id
+  amount            = 10000
+  time_grain        = "Monthly"
+
+  time_period {
+    start_date = "2026-01-01T00:00:00Z"
+    end_date   = "2026-12-31T23:59:59Z"
+  }
+
+  filter {
+    tag {
+      name   = "project"
+      values = [var.project_name]
+    }
+  }
+
+  notification {
+    enabled        = true
+    threshold      = 50.0
+    operator       = "GreaterThan"
+    contact_emails = var.alert_emails
+  }
+
+  notification {
+    enabled        = true
+    threshold      = 90.0
+    operator       = "GreaterThan"
+    contact_emails = concat(var.alert_emails, var.escalation_emails)
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="anomaly-investigation">
+      <rule testable="true">
+        <statement>Enable native anomaly detection on all cloud accounts: AWS Cost Anomaly Detection, Azure Cost Management alerts, GCP Billing budget alerts with threshold type CURRENT_SPEND. Set anomaly alert threshold to 20% above 7-day moving average for services over $500/month. When an anomaly triggers, investigate within 4 hours using the structured investigation checklist: check CloudTrail/Activity Log for resource changes, review usage metrics for the anomalous service, identify the deployment or configuration event that caused it.</statement>
+        <rationale>4-hour investigation window limits blast radius: a misconfigured data transfer route or forgotten GPU instance costs $50-500/hour. Acting within 4 hours caps overspend; waiting until end-of-month can mean $10k+ surprises.</rationale>
+      </rule>
+
+      <example type="good" title="Anomaly investigation template">
+        <code lang="text"><![CDATA[
+## Cost Anomaly Investigation
+
+Anomaly Details:
+- Date detected:
+- Provider:
+- Service:
+- Account/Subscription:
+- Expected daily cost:
+- Actual daily cost:
+- Variance %:
+
+Resource Changes (from CloudTrail/Activity Log):
+| Resource | Change Type | Timestamp | Changed By |
+
+Root Cause (check one):
+[ ] New deployment  [ ] Configuration change  [ ] Traffic spike
+[ ] Data transfer increase  [ ] Storage growth  [ ] Pricing change
+[ ] Attack/abuse
+
+Resolution:
+| Action | Owner | Status | Completion Date |
+
+Prevention:
+[ ] Add monitoring/alert
+[ ] Update budget
+[ ] Implement guardrail
+[ ] Update runbook
+]]></code>
+        <note>Complete this template within 4 hours of anomaly alert. Store in incident postmortem system. Review prevention checklist before closing.</note>
+      </example>
+    </section>
+
+    <section name="llm-prompts-cost-analysis">
+      <p>LLM prompts for FinOps work best when they receive structured data (CSV exports, usage tables, resource lists) alongside a specific output format request. The prompts below cover the most common recurring FinOps analyst tasks.</p>
+
+      <prompt purpose="Analyze monthly cloud bill for optimization opportunities">
+        <![CDATA[
+Analyze this cloud bill data and identify optimization opportunities:
+
+Provider: {AWS/Azure/GCP}
+Monthly Spend: ${amount}
+Period: {month/year}
+
+Top services by cost:
+{service_breakdown}
+
+Usage patterns:
+{usage_data}
+
+Please provide:
+1. Cost breakdown analysis
+2. Anomalies or unusual spending
+3. Top 5 optimization opportunities with estimated savings
+4. Recommended actions prioritized by impact vs effort
+5. Questions to investigate further
+]]>
+      </prompt>
+
+      <prompt purpose="Analyze instance utilization for rightsizing">
+        <![CDATA[
+Analyze these EC2/VM instances and provide rightsizing recommendations:
+
+Instance data:
+| Instance ID | Type | vCPUs | Memory | Avg CPU % | Avg Mem % | Peak CPU % | Peak Mem % | Monthly Cost |
+{instance_table}
+
+Consider:
+- Minimum 20% headroom for peaks
+- Instance family alternatives (compute, memory, general)
+- ARM-based options where applicable
+
+Provide:
+1. Instances that should be downsized
+2. Instances that should use different families
+3. Estimated savings for each recommendation
+4. Migration risks and considerations
+5. Priority order for implementation
+]]>
+      </prompt>
+
+      <prompt purpose="Savings Plans commitment recommendation">
+        <![CDATA[
+Analyze this usage data and recommend Savings Plans commitments:
+
+Current state:
+- Monthly On-Demand compute spend: ${amount}
+- Existing Savings Plans: {current_commitments}
+- Current coverage: {percentage}%
+
+Usage pattern (last 6 months):
+| Month | Total Compute | Min Daily | Max Daily | Avg Daily |
+{usage_table}
+
+Recommend:
+1. Optimal hourly commitment amount
+2. Compute SP vs EC2 Instance SP split
+3. 1-year vs 3-year term recommendation
+4. Expected savings and break-even analysis
+5. Ramp-up strategy (if starting fresh)
+6. Risk assessment
+]]>
+      </prompt>
+
+      <prompt purpose="Investigate cost spike anomaly">
+        <![CDATA[
+Investigate this cost anomaly:
+
+Anomaly details:
+- Date: {date}
+- Service: {service}
+- Account: {account}
+- Expected cost: ${expected}
+- Actual cost: ${actual}
+- Variance: {percentage}%
+
+Recent changes:
+{cloudtrail_or_activity_log}
+
+Resource inventory changes:
+{resource_changes}
+
+Please:
+1. Identify likely root cause
+2. Determine if legitimate or concerning
+3. Calculate total impact
+4. Recommend immediate actions
+5. Suggest preventive measures
+6. Provide investigation checklist if more info needed
+]]>
+      </prompt>
+
+      <prompt purpose="Generate executive FinOps summary">
+        <![CDATA[
+Generate an executive summary from this FinOps data:
+
+Period: {month/quarter}
+
+Spending:
+- Total: ${amount}
+- vs Budget: {percentage}%
+- vs Previous period: {percentage}%
+
+Key metrics:
+- Tag compliance: {percentage}%
+- Commitment coverage: {percentage}%
+- Waste identified: ${amount}
+
+Top initiatives:
+{initiatives_and_status}
+
+Format as:
+1. One-paragraph executive summary
+2. Key metrics dashboard (table)
+3. Wins this period (bullets)
+4. Risks and concerns (bullets)
+5. Recommended actions for leadership
+6. Forecast for next period
+]]>
+      </prompt>
+
+      <prompt purpose="Create team-level cost report">
+        <![CDATA[
+Create a team-specific cost report:
+
+Team: {team_name}
+Period: {month}
+
+Spending by service:
+{service_breakdown}
+
+Spending by environment:
+{environment_breakdown}
+
+Compared to:
+- Budget: {percentage}%
+- Previous month: {percentage}%
+- Team average: {percentage}%
+
+Top resources:
+{top_resources}
+
+Format as:
+1. Summary (2-3 sentences)
+2. Cost breakdown table
+3. Month-over-month trends
+4. Optimization opportunities specific to this team
+5. Action items with owners
+6. Upcoming changes that may affect costs
+]]>
+      </prompt>
+
+      <prompt purpose="Generate cost optimization automation script">
+        <![CDATA[
+Generate a script to identify and remediate this cost issue:
+
+Issue: {description}
+Provider: {AWS/Azure/GCP}
+Resources affected: {resource_types}
+
+Requirements:
+- Language: {Python/Bash/Terraform}
+- Dry-run mode required
+- Logging to {destination}
+- Notification via {Slack/email/PagerDuty}
+
+Current approach (if any):
+{current_process}
+
+Generate:
+1. Script with full comments
+2. Required IAM permissions
+3. Scheduling recommendation (cron/Lambda/Cloud Functions)
+4. Testing approach
+5. Rollback procedure
+]]>
+      </prompt>
+
+      <prompt purpose="FinOps maturity assessment">
+        <![CDATA[
+Assess FinOps maturity based on these inputs:
+
+Current capabilities:
+- Cost visibility: {description}
+- Cost allocation: {description}
+- Optimization: {description}
+- Forecasting: {description}
+- Governance: {description}
+
+Team structure:
+{team_description}
+
+Tools in use:
+{tools_list}
+
+Pain points:
+{pain_points}
+
+Assess against FinOps Foundation maturity model:
+1. Current maturity level (Crawl/Walk/Run) by capability
+2. Gaps and improvement areas
+3. Recommended next steps (prioritized)
+4. Resource requirements
+5. Quick wins vs long-term investments
+]]>
+      </prompt>
+    </section>
+
+    <section name="review-cadence">
+      <rule testable="true">
+        <statement>Establish the following review cadence: daily anomaly alert review (5 min triage), weekly team cost review (use team cost report prompt + actual CUR/billing data), monthly FinOps team analysis (executive summary prompt), quarterly commitment optimization review (Savings Plan/RI prompt), annually strategy and tooling review. Log each review outcome and action items in a shared FinOps tracker.</statement>
+        <rationale>Regular cadence prevents FinOps from becoming a reactive firefight. Daily triage catches spikes; weekly reviews catch drift; monthly summaries maintain executive visibility; quarterly reviews optimize commitments before terms renew.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Enable AWS Cost Anomaly Detection for services over $500/month with 20% threshold.</check>
+      <check>Deploy budget alerts at 50%, 75%, 90%, 100% for every account/subscription/project.</check>
+      <check>Configure separate escalation path (engineering lead) for 90%+ alerts.</check>
+      <check>Enable billing exports: AWS CUR, Azure Cost Management, GCP BigQuery export.</check>
+      <check>Set up anomaly investigation runbook linked from alert notifications.</check>
+      <check>Prepare LLM prompt templates pre-filled with account/project context for reuse in weekly reviews.</check>
+      <check>Establish weekly team cost review meeting with team cost report prompt as first input.</check>
+      <check>Run monthly executive summary using the executive summary prompt on actual billing data.</check>
+      <check>Quarterly: run Savings Plan commitment prompt against last 6 months of usage data.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="finops-devops-cost-tagging"/>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-devops-cost-commitments"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://www.finops.org/framework/"/>
+      <link href="https://docs.aws.amazon.com/cost-management/latest/userguide/getting-started-ad.html"/>
+      <link href="https://learn.microsoft.com/en-us/azure/cost-management-billing/"/>
+      <link href="https://cloud.google.com/billing/docs/how-to/budgets"/>
+    </see-also>
+  </content>
+</methodology>
