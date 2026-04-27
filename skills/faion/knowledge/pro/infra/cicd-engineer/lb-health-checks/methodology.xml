@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-health-checks">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement liveness, readiness, and deep health check endpoints for load balancers in Python, Node.js, and Go; configure check intervals and thresholds.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>health-checks</tag>
+      <tag>kubernetes</tag>
+      <tag>haproxy</tag>
+      <tag>nginx</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-nginx-production"/>
+      <ref slug="lb-kubernetes-ingress"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer Health Check Implementation</title>
+
+    <summary>Health checks are the mechanism by which LBs remove dead backends from rotation. Implement three endpoints: /health (basic process alive), /health/live (Kubernetes liveness), /health/ready (readiness + deep dependency probe). Configure check intervals between 10-30s with tuned healthy/unhealthy thresholds per backend type.</summary>
+
+    <why>
+      <p>Health check tuning is the number one footgun in LB configuration: too aggressive thresholds flap services in and out; too lax keeps dead backends in rotation. The distinction between liveness (is the process alive?) and readiness (can it serve traffic?) is critical for Kubernetes: liveness failure triggers pod restart, readiness failure removes from LB pool without restart. Deep health checks that probe dependencies (database, cache, queues) prevent the silent failure mode where a 200 OK is returned even when all backends are effectively dead.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Implementing a new backend service that will sit behind a load balancer.</item>
+        <item>Adding Kubernetes liveness and readiness probes to an existing service.</item>
+        <item>Debugging flapping services being incorrectly removed from the LB pool.</item>
+        <item>Hardening a service so the LB accurately reflects dependency health.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>TCP-only services — use tcp-check in HAProxy or TCP probe in Kubernetes; HTTP health endpoints are not applicable.</item>
+        <item>Stateless functions (FaaS/Lambda) — the platform manages health; custom endpoints add no value.</item>
+        <item>Database load balancing — use database-protocol health checks (mysql-check, pgsql-check) not HTTP endpoints.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="health-check-types">
+      <p>Choose the check type based on the protocol and complexity of the health assertion:</p>
+      <list>
+        <item>TCP — basic connectivity; use option tcp-check in HAProxy or TCPSocket probe in K8s.</item>
+        <item>HTTP — application health via GET /health returning 200; the standard for web services.</item>
+        <item>HTTPS — SSL-enabled services; verify SSL cert is valid as part of the check.</item>
+        <item>Script — complex logic requiring custom shell script; use for services with non-HTTP health APIs.</item>
+        <item>gRPC — gRPC services; use grpc.health.v1.Health/Check; native in HAProxy and K8s gRPC probe.</item>
+      </list>
+    </section>
+
+    <section name="python-flask-health-endpoints">
+      <example type="good" title="Python Flask — liveness, readiness, deep dependency checks">
+        <code lang="python"><![CDATA[
+from flask import Flask, jsonify
+import psycopg2
+import redis
+import os
+
+app = Flask(__name__)
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+REDIS_URL = os.environ.get('REDIS_URL')
+
+@app.route('/health')
+def health():
+    """Basic health check - process is running"""
+    return jsonify({"status": "healthy"}), 200
+
+@app.route('/health/live')
+def liveness():
+    """Liveness probe - is the process alive?
+    Kubernetes restarts pod if this fails.
+    """
+    return jsonify({"status": "alive"}), 200
+
+@app.route('/health/ready')
+def readiness():
+    """Readiness probe - can we serve traffic?
+    LB removes from pool if this fails.
+    """
+    checks = {
+        "database": check_database(),
+        "cache": check_cache(),
+        "dependencies": check_dependencies()
+    }
+
+    all_healthy = all(checks.values())
+    status_code = 200 if all_healthy else 503
+
+    return jsonify({
+        "status": "ready" if all_healthy else "not ready",
+        "checks": checks
+    }), status_code
+
+def check_database():
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute('SELECT 1')
+        cur.close()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+def check_cache():
+    try:
+        r = redis.Redis.from_url(REDIS_URL)
+        r.ping()
+        return True
+    except Exception:
+        return False
+
+def check_dependencies():
+    # Check external APIs, message queues, etc.
+    return True
+]]></code>
+        <note>Return 503 (not 500) when dependencies are unavailable — 503 signals the LB to remove the backend from rotation without triggering error-rate alerts.</note>
+      </example>
+    </section>
+
+    <section name="nodejs-health-endpoints">
+      <example type="good" title="Node.js Express — async readiness with dependency probes">
+        <code lang="javascript"><![CDATA[
+const express = require('express');
+const { Pool } = require('pg');
+const Redis = require('ioredis');
+
+const app = express();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const redis = new Redis(process.env.REDIS_URL);
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
+app.get('/health/live', (req, res) => {
+  res.json({ status: 'alive' });
+});
+
+app.get('/health/ready', async (req, res) => {
+  const checks = {
+    database: await checkDatabase(),
+    cache: await checkCache(),
+  };
+
+  const allHealthy = Object.values(checks).every(v => v);
+  const status = allHealthy ? 200 : 503;
+
+  res.status(status).json({
+    status: allHealthy ? 'ready' : 'not ready',
+    checks
+  });
+});
+
+async function checkDatabase() {
+  try {
+    await pool.query('SELECT 1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkCache() {
+  try {
+    await redis.ping();
+    return true;
+  } catch {
+    return false;
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="go-health-endpoints">
+      <example type="good" title="Go — context-timeout-bounded readiness probe">
+        <code lang="go"><![CDATA[
+package main
+
+import (
+    "context"
+    "database/sql"
+    "encoding/json"
+    "net/http"
+    "time"
+
+    "github.com/go-redis/redis/v8"
+    _ "github.com/lib/pq"
+)
+
+type HealthResponse struct {
+    Status string            `json:"status"`
+    Checks map[string]bool   `json:"checks,omitempty"`
+}
+
+var db *sql.DB
+var rdb *redis.Client
+
+func healthHandler(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(HealthResponse{Status: "healthy"})
+}
+
+func livenessHandler(w http.ResponseWriter, r *http.Request) {
+    json.NewEncoder(w).Encode(HealthResponse{Status: "alive"})
+}
+
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+    ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+    defer cancel()
+
+    checks := map[string]bool{
+        "database": checkDatabase(ctx),
+        "cache":    checkCache(ctx),
+    }
+
+    allHealthy := true
+    for _, v := range checks {
+        if !v {
+            allHealthy = false
+            break
+        }
+    }
+
+    status := "ready"
+    httpStatus := http.StatusOK
+    if !allHealthy {
+        status = "not ready"
+        httpStatus = http.StatusServiceUnavailable
+    }
+
+    w.WriteHeader(httpStatus)
+    json.NewEncoder(w).Encode(HealthResponse{
+        Status: status,
+        Checks: checks,
+    })
+}
+
+func checkDatabase(ctx context.Context) bool {
+    return db.PingContext(ctx) == nil
+}
+
+func checkCache(ctx context.Context) bool {
+    return rdb.Ping(ctx).Err() == nil
+}
+]]></code>
+        <note>Always bound readiness probe with a context timeout (5s here); without it a hanging DB connection blocks the health endpoint indefinitely, causing the LB to mark the pod as unhealthy when it is actually healthy.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Health check intervals MUST be tuned per service: HTTP /healthz returning 200 only when the service is actually ready to handle traffic; readiness is NOT the same as liveness. Liveness failure restarts the pod; readiness failure removes it from the LB pool without restart.</statement>
+        <rationale>Using the same endpoint for both probes causes restart loops: a slow dependency (DB migration in progress) triggers liveness failure and kills the pod mid-startup, which is almost never the intended behavior.</rationale>
+      </rule>
+      <rule>
+        <statement>Deep health checks MUST probe actual dependencies (database, cache, queues) and return 503 when any critical dependency is unavailable. Shallow checks that always return 200 defeat the purpose of health checking.</statement>
+        <rationale>Silent 200-always endpoints keep failed backends in rotation. The LB distributes traffic to backends that cannot actually serve requests, resulting in user-visible errors masked from the LB's perspective.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Health check endpoint defined (/health or /healthz).</check>
+      <check>Liveness probe separate from readiness probe.</check>
+      <check>Readiness probe probes all critical dependencies (DB, cache, queues).</check>
+      <check>Check interval set between 10-30s (balance sensitivity and stability).</check>
+      <check>Healthy threshold: 2 consecutive successes before marking healthy.</check>
+      <check>Unhealthy threshold: 3 consecutive failures before marking unhealthy (HAProxy) or 2 for cloud LBs.</check>
+      <check>Backup servers configured to absorb traffic when primaries fail.</check>
+      <check>HAProxy: option httpchk configured; http-check expect status 200.</check>
+      <check>Nginx: max_fails and fail_timeout set appropriately.</check>
+      <check>Kubernetes: livenessProbe and readinessProbe both declared in pod spec.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Wiring /healthz to an endpoint that returns 200 even when the database is down.</description>
+      <reason>The LB keeps the backend in rotation and routes traffic that will fail at the application layer. Users see errors; the LB sees healthy backends. Push for deep health checks via dependency probe that return 503 when dependencies are unavailable.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://docs.haproxy.org/"/>
+      <link href="https://nginx.org/en/docs/"/>
+      <link href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/"/>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-kubernetes-ingress"/>
+    </see-also>
+  </content>
+</methodology>
