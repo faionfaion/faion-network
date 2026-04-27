@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nosql-mongodb-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>MongoDB document design patterns: embedding vs referencing, bucket pattern for time-series, indexing strategies, and schema evolution with schemaVersion.</summary>
+    <tags>
+      <tag>mongodb</tag>
+      <tag>nosql</tag>
+      <tag>document-store</tag>
+      <tag>data-modeling</tag>
+      <tag>indexing</tag>
+    </tags>
+    <category>nosql</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>mongodb</framework>
+    </frameworks>
+    <related>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+      <ref slug="nosql-neo4j-patterns"/>
+      <ref slug="database-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>MongoDB Document Design Patterns</title>
+
+    <summary>Design MongoDB schemas around access patterns, not entity diagrams. Choose embedding for 1:few relationships accessed together, referencing for 1:many or many:many. Use the bucket pattern for time-series. Always index query fields and add a schemaVersion field for evolution.</summary>
+
+    <why>
+      <p>MongoDB's document model allows flexible schemas and nested structures, but performance is determined by how well the schema matches query patterns. A schema designed for entities (relational thinking) forces cross-document lookups that MongoDB cannot join efficiently. Designing for queries — embedding frequently co-accessed data, referencing independently-queried entities — yields single-document reads and eliminates application-side joins.</p>
+      <p>The 16 MB document size cap and index cardinality constraints make unbounded embedded arrays the most common failure mode. The bucket pattern, TTL indexes, and explicit array caps prevent documents from growing past the limit while keeping time-series queries fast.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Hierarchical or nested data structures where parent and children are always accessed together (1:few embedding).</item>
+        <item>High-volume document workloads with flexible or evolving schemas.</item>
+        <item>Time-series or sensor data where the bucket pattern aggregates measurements per time window.</item>
+        <item>Full-text search requirements co-located with document data (text indexes).</item>
+        <item>Session storage, content management, catalog systems with heterogeneous attributes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Strong-consistency multi-document transactions that touch many collections — Postgres handles this without two-phase commit overhead.</item>
+        <item>Ad-hoc analytical queries with unknown access patterns — warehouse/lakehouse is a better fit.</item>
+        <item>Small datasets (&lt;100 GB, low QPS) where Postgres + JSONB provides the same flexibility without an extra engine.</item>
+        <item>Reporting and BI surfaces — operational MongoDB stores should not serve analytical queries directly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="document-design">
+      <rule testable="true">
+        <statement>Write the access-pattern list (query shape, filters, sort, QPS, latency budget) BEFORE choosing embedding vs referencing. Embedding is correct when the child is always fetched with the parent and the child count is bounded (&lt;100). Referencing is correct when the child is queried independently, the list is unbounded, or many-to-many relationships exist.</statement>
+        <rationale>The embedding vs referencing decision determines whether reads are single-document (fast) or require multiple round-trips (slow). Without a written access-pattern list, agents default to relational normalization and propose cross-collection lookups that MongoDB cannot perform in one query.</rationale>
+      </rule>
+
+      <example type="good" title="Embedding for 1:few — user with addresses">
+        <code lang="javascript"><![CDATA[
+// Pattern 1: Embedding for 1:Few relationships
+// Good when child data is always accessed with parent
+{
+  _id: ObjectId("..."),
+  name: "John Doe",
+  email: "john@example.com",
+  addresses: [
+    { type: "home", street: "123 Main St", city: "NYC", zip: "10001" },
+    { type: "work", street: "456 Office Ave", city: "NYC", zip: "10002" }
+  ],
+  preferences: {
+    theme: "dark",
+    notifications: true,
+    language: "en"
+  }
+}
+]]></code>
+        <note>Addresses array is bounded and always loaded with the user. Single-document read, no join needed.</note>
+      </example>
+
+      <example type="good" title="Referencing for 1:many — order references user, embeds items">
+        <code lang="javascript"><![CDATA[
+// Pattern 2: Referencing for 1:Many or Many:Many
+// Orders collection - reference user, embed items
+{
+  _id: ObjectId("..."),
+  userId: ObjectId("user_id_here"),
+  status: "pending",
+  items: [
+    { productId: ObjectId("..."), name: "Widget", price: 29.99, qty: 2 },
+    { productId: ObjectId("..."), name: "Gadget", price: 49.99, qty: 1 }
+  ],
+  shipping: {
+    address: { street: "123 Main St", city: "NYC" },
+    method: "express",
+    cost: 9.99
+  },
+  totals: {
+    subtotal: 109.97,
+    tax: 8.80,
+    shipping: 9.99,
+    total: 128.76
+  },
+  createdAt: ISODate("2024-01-15T10:30:00Z")
+}
+]]></code>
+        <note>userId is a reference (user has many orders). Items are embedded (always loaded with the order, bounded per order). Totals are denormalized for fast display without recalculation.</note>
+      </example>
+
+      <example type="good" title="Bucket pattern for time-series sensor data">
+        <code lang="javascript"><![CDATA[
+// Pattern 3: Bucket pattern for time-series
+// Store multiple measurements in one document
+{
+  sensorId: "temp-001",
+  date: ISODate("2024-01-15"),
+  measurements: [
+    { ts: ISODate("2024-01-15T00:00:00Z"), value: 22.5 },
+    { ts: ISODate("2024-01-15T00:05:00Z"), value: 22.7 }
+    // up to ~200 measurements per document
+  ],
+  summary: {
+    count: 288,
+    min: 21.2,
+    max: 24.8,
+    avg: 22.9
+  }
+}
+]]></code>
+        <note>One document per sensor per day. Summary fields pre-aggregated. Queries by (sensorId, date) hit a single document. Cap the measurements array explicitly — do not let it grow unboundedly.</note>
+      </example>
+
+      <antipattern>
+        <description>Unbounded embedded arrays — appending events, log entries, or tags to the same document indefinitely.</description>
+        <reason>MongoDB documents have a 16 MB size cap. Once hit, writes fail. Queries that load the full document become progressively slower. Use referencing, the bucket pattern, or capped collections instead. Document the array cap in the schema file.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Over-embedding: duplicating deeply nested sub-documents that are updated independently.</description>
+        <reason>When an embedded sub-document changes frequently and is referenced from many parent documents, every update requires touching multiple parents. This creates write amplification and consistency risks. Reference instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="indexing">
+      <rule testable="true">
+        <statement>Every field that appears in a query filter, sort, or range scan MUST have an index. Compound indexes must match the query's field order (equality fields first, range fields last, sort fields last). Add a TTL index on any collection that stores sessions, caches, or ephemeral data; set expireAfterSeconds at creation time.</statement>
+        <rationale>Missing indexes cause collection scans (COLLSCAN in explain output), which degrade from O(index entries) to O(total documents) as the collection grows. TTL indexes automate cleanup; agents forget to add expiry logic otherwise.</rationale>
+      </rule>
+
+      <example type="good" title="Compound, partial, text, TTL, and wildcard indexes">
+        <code lang="javascript"><![CDATA[
+// Compound index for common query pattern (equality first, range last)
+db.orders.createIndex({ userId: 1, createdAt: -1 });
+
+// Partial index for active records only — smaller index, faster writes
+db.orders.createIndex(
+  { createdAt: 1 },
+  { partialFilterExpression: { status: "pending" } }
+);
+
+// Text index for search
+db.products.createIndex({ name: "text", description: "text" });
+
+// TTL index for automatic expiration after 1 hour
+db.sessions.createIndex({ createdAt: 1 }, { expireAfterSeconds: 3600 });
+
+// Wildcard index for flexible/dynamic schema fields
+db.logs.createIndex({ "metadata.$**": 1 });
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Missing indexes on query fields — especially on high-cardinality fields used in filters on large collections.</description>
+        <reason>A COLLSCAN on a 10M-document collection can take seconds. MongoDB's explain()'s IXSCAN vs COLLSCAN is the definitive test; run it before every production query.</reason>
+      </antipattern>
+    </section>
+
+    <section name="schema-evolution">
+      <rule testable="true">
+        <statement>Every MongoDB collection document MUST include a schemaVersion integer field. Migration agents that change document shape MUST increment schemaVersion and write both a forward migration script and a backward (rollback) script. The version field must be indexed if queries use it to filter during incremental migrations.</statement>
+        <rationale>Without schemaVersion, agents cannot distinguish old-shape from new-shape documents during rolling migrations. Incremental background migrations read schemaVersion to skip already-migrated documents and process the rest in batches without locking the collection.</rationale>
+      </rule>
+
+      <example type="good" title="schemaVersion on every document">
+        <code lang="javascript"><![CDATA[
+// Every document carries schemaVersion
+{
+  _id: ObjectId("..."),
+  schemaVersion: 2,
+  // ... fields for version 2 shape
+}
+
+// Migration: upgrade v1 -> v2 in batches
+db.users.find({ schemaVersion: 1 }).forEach(doc => {
+  db.users.updateOne(
+    { _id: doc._id, schemaVersion: 1 },
+    { $set: { schemaVersion: 2, newField: defaultValue },
+      $unset: { oldField: "" } }
+  );
+});
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM mistakes when generating MongoDB schemas:</p>
+      <list>
+        <item>LLMs default to relational thinking and propose joins or cross-collection $lookup operations — explicitly forbid joins in the system prompt and require denormalization rationale per duplicated field.</item>
+        <item>Agents pick _id based on entity ID, not query locality. MongoDB's default ObjectId encodes insertion time and provides insertion-order locality on a single shard; overwriting _id with a string breaks this. Make this an explicit checklist item.</item>
+        <item>Agents over-trust eventual consistency for "small" updates (counters, balances). Force them to flag any read-modify-write and route it through atomic operators ($inc, $set with filter) or multi-document transactions.</item>
+        <item>Mongo $where and $expr with JavaScript are red flags — they disable index use. Block them in code review prompts.</item>
+        <item>Human-in-loop checkpoint: schema approval before any migration script runs in a non-dev environment. Agent must produce dry-run output (estimated documents touched, index build time) and wait for /approve before executing.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Write access-pattern list (query shape, QPS, latency budget) before schema design.</check>
+      <check>Determine embed vs reference per relationship based on query co-access and cardinality.</check>
+      <check>Add schemaVersion field to every collection's documents.</check>
+      <check>Cap all embedded arrays explicitly; document the cap in the schema file.</check>
+      <check>Create compound indexes matching query field order (equality → range → sort).</check>
+      <check>Add TTL indexes on session, cache, and ephemeral collections at creation time.</check>
+      <check>Run explain() on every production query before deploying; reject COLLSCAN results.</check>
+      <check>Write forward and backward migration scripts for every schemaVersion bump.</check>
+      <check>Validate document size stays well under 16 MB cap under worst-case embedded array growth.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.mongodb.com/docs/manual/data-modeling/"/>
+      <ref slug="nosql-redis-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+      <ref slug="nosql-neo4j-patterns"/>
+      <ref slug="database-design"/>
+    </see-also>
+  </content>
+</methodology>
