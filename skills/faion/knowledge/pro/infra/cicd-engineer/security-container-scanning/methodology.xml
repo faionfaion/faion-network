@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-container-scanning">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Scan container images for CVEs in CI using Trivy or Grype; generate SBOM with Syft; sign images with Cosign/Sigstore. Block on CRITICAL+HIGH before any push to registry.</summary>
+    <tags>
+      <tag>container-security</tag>
+      <tag>trivy</tag>
+      <tag>sbom</tag>
+      <tag>cosign</tag>
+      <tag>sigstore</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="security-sast"/>
+      <ref slug="security-supply-chain"/>
+      <ref slug="security-policy-as-code"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Container Security Scanning and Image Signing</title>
+
+    <summary>87% of production container images contain at least one major vulnerability (2024 Cloud Native Security Report). Scan every image build in CI with Trivy (all-in-one: OS, library, IaC, secrets) or Grype (SBOM-focused); generate a CycloneDX SBOM per build; sign with Sigstore cosign keyless OIDC. Block on CRITICAL+HIGH before any registry push.</summary>
+
+    <why>
+      <p>Container images bundle the OS, runtime, and application dependencies — any layer can carry CVEs. Scanning at build time catches them before they reach any environment. Trivy is the dominant CI-native tool: it scans container images, filesystems, IaC configs, and secrets in one invocation, and emits SARIF that drops into GitHub Code Scanning.</p>
+      <p>SBOM generation (CycloneDX or SPDX) per build creates an auditable bill of materials that compliance frameworks (SLSA, NIST SSDF) and downstream tooling can consume. Image signing with Sigstore cosign creates a tamper-evident transparency log entry without managing signing keys in CI — use keyless OIDC signing instead.</p>
+      <p>Container scanners flag base-image CVEs the app doesn't actually use; reachability-aware SCA (Snyk, Endor Labs) reduces this, but Trivy's `ignore-unfixed` flag is the pragmatic starting point: ignore CVEs with no upstream fix available.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every project that builds and pushes a container image — scan before the push step.</item>
+        <item>Generating an SBOM for compliance (FedRAMP, SOC2, NIST SSDF) or supply chain audit.</item>
+        <item>Signing images for admission control verification (Kyverno verifyImages, OPA, Cosign policy).</item>
+        <item>Scanning IaC configs (Dockerfile, K8s manifests, Terraform) for misconfigurations in the same pipeline.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Projects that do not use containers — apply filesystem SAST/SCA instead.</item>
+        <item>Using container scanning as a substitute for SAST — it finds known CVEs in packages, not application-level vulnerabilities in your own code.</item>
+        <item>Blocking on every MEDIUM finding at the start — begin with CRITICAL+HIGH only.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Every image build in CI MUST run `trivy image` (or equivalent) and MUST exit non-zero on CRITICAL or HIGH vulnerabilities before the image is pushed to any registry.</statement>
+        <rationale>Pushing a vulnerable image to a registry makes it available for deployment; blocking at build time prevents vulnerable images from ever entering the artifact store.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Generate a CycloneDX SBOM per build and store as an immutable artifact attached to the release. Do not mix CycloneDX and SPDX formats in the same pipeline — pick one and stick to it.</statement>
+        <rationale>SBOM format mixing breaks downstream consumers (Dependency-Track, SIEM integrations) that are format-specific. Immutable storage ensures the SBOM matches the exact image used in production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use Sigstore cosign keyless OIDC signing in CI. Never commit cosign private keys to the repository — even in secrets.</statement>
+        <rationale>Keyless signing uses the CI provider's OIDC identity token to attest the image via Rekor's transparency log; there is no key to rotate, leak, or lose. Committing keys to repos (even encrypted) creates a permanent audit trail of mishandled secrets.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Trivy image scan with SARIF upload">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/trivy.yml
+name: Container Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build -t myapp:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'myapp:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+]]></code>
+    </example>
+
+    <example type="good" title="SBOM generation with Syft and Grype scan">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/sbom-scan.yml
+name: SBOM and Vulnerability Scan
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sbom-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build -t myapp:latest .
+
+      # Generate SBOM
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: myapp:latest
+          artifact-name: sbom.spdx.json
+          output-file: sbom.spdx.json
+
+      # Scan SBOM
+      - name: Scan SBOM
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype sbom:sbom.spdx.json --fail-on high
+]]></code>
+    </example>
+
+    <example type="good" title="Cosign keyless image signing">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/sign-image.yml
+name: Build and Sign
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-sign:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+
+      - name: Sign Image
+        run: |
+          cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+]]></code>
+      <note>The `id-token: write` permission enables keyless OIDC signing via Sigstore — no key material to manage.</note>
+    </example>
+
+    <example type="good" title="Trivy configuration file">
+      <code lang="yaml"><![CDATA[
+# trivy.yaml
+severity:
+  - CRITICAL
+  - HIGH
+
+exit-code: 1
+
+ignore-unfixed: true
+
+ignorefile: .trivyignore
+
+cache-dir: .trivy-cache
+
+db:
+  skip-update: false
+
+vulnerability:
+  type:
+    - os
+    - library
+
+secret:
+  config: trivy-secret.yaml
+
+misconfiguration:
+  terraform:
+    vars:
+      - terraform.tfvars
+]]></code>
+    </example>
+
+    <example type="good" title="Trivy ignore file with expiry dates">
+      <code lang="text"><![CDATA[
+# .trivyignore
+# Ignore specific CVEs
+CVE-2023-12345
+CVE-2023-67890
+
+# Ignore with expiration — forces review at deadline
+CVE-2024-11111 exp:2024-12-31
+
+# Ignore by package
+pkg:npm/lodash@4.17.20
+]]></code>
+    </example>
+
+    <example type="bad" title="Floating to latest scanner tag">
+      <code lang="yaml"><![CDATA[
+# DO NOT — floating scanner tag causes silent behavior changes
+- uses: aquasecurity/trivy-action@master
+]]></code>
+      <note>Pin to a specific release tag or SHA; `@master` means a Trivy update with new rule packs can silently start failing your CI without any code change.</note>
+    </example>
+
+    <section name="tool-selection">
+      <list>
+        <item>Trivy (Aqua Security) — all-in-one: container OS+library, filesystem, IaC config, secrets. Best for CI/CD pipelines. Emits SARIF. Self-contained binary, no daemon required.</item>
+        <item>Grype (Anchore) — focused container+SBOM scanning. Pairs naturally with Syft for SBOM generation. Best when SBOM-centric workflows are primary.</item>
+        <item>Clair (Red Hat) — layer-by-layer registry-integrated scanning. Best for organizations running their own registry that want server-side scanning at push time.</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="harden-dockerfile"><![CDATA[
+Review and harden this Dockerfile for security:
+
+```dockerfile
+[paste Dockerfile]
+```
+
+Provide:
+1. Security issues found
+2. Hardened Dockerfile with comments
+3. Multi-stage build optimization if applicable
+4. Base image recommendations
+5. Runtime security context suggestions
+]]></prompt>
+
+      <prompt purpose="analyze-container-scan"><![CDATA[
+Analyze these container vulnerability scan results:
+
+[paste Trivy/Grype output]
+
+Provide:
+1. Risk assessment (exploitability, severity context)
+2. Base image vs application dependency breakdown
+3. Remediation priority order
+4. Upgrade recommendations (with compatibility notes)
+5. Vulnerabilities that can be ignored (with justification)
+]]></prompt>
+
+      <prompt purpose="create-trivyignore"><![CDATA[
+Based on these vulnerability findings, create a .trivyignore file:
+
+[paste vulnerability list]
+
+For each ignored vulnerability, include:
+- CVE ID
+- Reason for ignoring (no fix available, false positive, mitigated elsewhere)
+- Expiration date if temporary
+- Risk acceptance owner
+
+Format: .trivyignore with comments
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Choose scanner: Trivy (comprehensive, fast), Grype (focused, SBOM-friendly), or Clair (registry integration).</check>
+      <check>Integrate image scan during build step in CI pipeline — before any push to registry.</check>
+      <check>Set vulnerability thresholds: block on CRITICAL+HIGH, expose MEDIUM as informational.</check>
+      <check>Generate CycloneDX SBOM per build and store as immutable artifact.</check>
+      <check>Sign images with Sigstore cosign using keyless OIDC — no key material in secrets.</check>
+      <check>Verify signatures in admission controller (Kyverno verifyImages or OPA).</check>
+      <check>Maintain .trivyignore with expiry dates; no permanent ignores without justification.</check>
+      <check>Update vulnerability databases regularly; monitor for new CVEs in production images.</check>
+      <check>Track base image age and plan regular base image updates.</check>
+    </checklist>
+
+    <section name="ai-agent-gotchas">
+      <p>Container CVE noise: agents recommend "upgrade base image" without checking whether upstream maintainers have shipped a fix yet — verify availability first before opening a PR.</p>
+      <p>Signing key handling: cosign keys committed to repo by accident — always use keyless OIDC signing in CI. If keys were committed, rotate immediately and purge from git history.</p>
+      <p>SBOM format mixing: CycloneDX vs SPDX — tools downstream (Dependency-Track, SIEM) are format-specific. Pick one and enforce it in CI with a format check.</p>
+    </section>
+
+    <see-also>
+      <link href="https://trivy.dev/"/>
+      <link href="https://github.com/anchore/grype"/>
+      <link href="https://docs.sigstore.dev/cosign/overview/"/>
+      <link href="https://cyclonedx.org/"/>
+      <ref slug="security-supply-chain"/>
+      <ref slug="security-policy-as-code"/>
+    </see-also>
+  </content>
+</methodology>
