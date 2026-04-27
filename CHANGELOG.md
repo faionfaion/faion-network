@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: graph-rag-advanced-retrieval → 3 slugs (graph-rag-indexing, graph-rag-retrieval, graph-rag-production)
 - decompose: nosql-patterns → 4 slugs (nosql-mongodb-patterns, nosql-redis-patterns, nosql-cassandra-patterns, nosql-neo4j-patterns)
 - decompose: go-standard-layout → 4 slugs (go-layout-directory-structure, go-layout-layer-rules, go-layout-agentic-workflow, go-layout-toolchain)
 - decompose: langchain-patterns → 3 slugs (langchain-rag-pipeline, langchain-production-patterns, langchain-observability)

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graph-rag-production">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Production Graph RAG: LlamaIndex integration, graph database selection (Neo4j/FalkorDB/Kuzu), Microsoft graphrag CLI usage, known limitations, and agent gotchas for deployment at scale.</summary>
+    <tags>
+      <tag>graph-rag</tag>
+      <tag>production</tag>
+      <tag>llamaindex</tag>
+      <tag>neo4j</tag>
+      <tag>microsoft-graphrag</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>llamaindex</framework>
+      <framework>neo4j</framework>
+    </frameworks>
+    <requires>
+      <ref slug="graph-rag-indexing"/>
+      <ref slug="graph-rag-retrieval"/>
+    </requires>
+  </metadata>
+
+  <content>
+    <title>Graph RAG Production: LlamaIndex, Graph Databases, and Deployment Gotchas</title>
+
+    <summary>Moving Graph RAG to production requires selecting the right graph database backend (Neo4j for scale, FalkorDB for speed, Kuzu for embedded), deciding between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI, managing indexing costs ($4-20/million tokens), and handling the known failure modes that affect agents operating on live graph indexes.</summary>
+
+    <why>
+      <p>Development-stage Graph RAG (NetworkX in-memory) does not survive production requirements: concurrent query access, graph persistence across restarts, and corpus sizes where in-memory graphs exhaust RAM. Production Graph RAG requires choosing a graph database that fits the deployment environment, controlling LLM extraction costs at indexing time, and hardening the retrieval pipeline against the known failure modes of graph-based systems (non-deterministic community IDs, LlamaIndex OpenAI coupling, Microsoft graphrag config mutation).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Graph RAG indexing and retrieval are working in development (NetworkX) and the corpus exceeds memory capacity or requires concurrent access.</item>
+        <item>Choosing between LlamaIndex KnowledgeGraphIndex and Microsoft graphrag CLI for the production pipeline.</item>
+        <item>Selecting a graph database backend for a new deployment environment.</item>
+        <item>Debugging agent failures involving graph traversal errors, stale summaries, or community ID instability.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Still in exploration phase — use NetworkX in-memory until the approach is validated on a sample corpus.</item>
+        <item>Corpus fits in memory and is accessed by a single process — NetworkX is simpler and faster.</item>
+        <item>No budget for Neo4j or managed graph DB — evaluate Kuzu (embedded, zero server cost) first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="llamaindex-production">
+      <p>LlamaIndex KnowledgeGraphIndex provides a high-level abstraction over graph construction and retrieval. It integrates with Neo4j as the storage backend and supports include_text=True to return both the graph context and the source chunk. Use response_mode=tree_summarize for global questions.</p>
+
+      <rule testable="true">
+        <statement>When using LlamaIndex KnowledgeGraphIndex, set max_triplets_per_chunk to at least 10 and verify extraction coverage on a sample of dense chunks. LlamaIndex is tightly coupled to the OpenAI API format — migrating to Anthropic requires a custom LLM adapter; do not assume provider portability.</statement>
+        <rationale>The default max_triplets_per_chunk silently truncates dense academic or legal text at chunk extraction time, producing an incomplete graph without any error. OpenAI API coupling is not documented prominently; discovering it after a large index has been built on OpenAI keys and then switching providers is expensive.</rationale>
+      </rule>
+
+      <example type="good" title="LlamaIndex with Neo4j graph store">
+        <code lang="python"><![CDATA[
+from llama_index.core import KnowledgeGraphIndex, SimpleDirectoryReader
+from llama_index.llms.openai import OpenAI
+from llama_index.graph_stores.neo4j import Neo4jGraphStore
+
+llm = OpenAI(model="gpt-4o")
+graph_store = Neo4jGraphStore(
+    username="neo4j",
+    password="password",
+    url="bolt://localhost:7687",
+    database="neo4j"
+)
+
+documents = SimpleDirectoryReader("./docs").load_data()
+
+index = KnowledgeGraphIndex.from_documents(
+    documents,
+    llm=llm,
+    graph_store=graph_store,
+    max_triplets_per_chunk=10,
+)
+
+query_engine = index.as_query_engine(
+    include_text=True,
+    response_mode="tree_summarize",
+)
+
+response = query_engine.query("What are the main themes?")
+]]></code>
+        <note>Neo4j must be running before index construction. For Anthropic LLMs, use llama_index.llms.anthropic.Anthropic with a wrapper that maps the OpenAI response format.</note>
+      </example>
+    </section>
+
+    <section name="microsoft-graphrag-cli">
+      <p>The Microsoft graphrag CLI provides a complete pipeline: document ingestion, entity/relationship extraction, community detection, hierarchical summarization, and both local and global query modes. It is the reference implementation of the GraphRAG paper. It is expensive to run at scale: $4-20 per million tokens for indexing (one LLM extraction call per chunk). The CLI rewrites config files on first run — agents running it in CI must checkpoint the generated config to avoid re-indexing from scratch.</p>
+
+      <rule testable="true">
+        <statement>When running Microsoft graphrag CLI in automated pipelines: checkpoint the generated config after the first run, pin the graphrag version, and track indexing cost by counting chunks before running. Do not run graphrag index without a cost estimate when the corpus exceeds 10,000 chunks.</statement>
+        <rationale>graphrag CLI rewrites config on first run and the config format changes between minor versions. A version bump mid-pipeline can force a full re-index. At $0.004/chunk (gpt-4o extraction), 100k chunks = $400 per index run; cost visibility before execution is mandatory.</rationale>
+      </rule>
+
+      <commands>
+        <command name="graphrag-index">graphrag index --root ./graphrag-workspace</command>
+        <command name="graphrag-query-local">graphrag query --root ./graphrag-workspace --method local --query "Who is person X?"</command>
+        <command name="graphrag-query-global">graphrag query --root ./graphrag-workspace --method global --query "What are the main themes?"</command>
+      </commands>
+    </section>
+
+    <section name="graph-database-selection">
+      <p>The choice of graph database depends on deployment constraints: whether a server is acceptable, whether concurrent access is needed, and what query language the team knows. Neo4j is the production standard with Cypher query language. FalkorDB is Redis-compatible and faster than Neo4j for small graphs while supporting vector search. Kuzu is an embedded graph database (no server, like SQLite for graphs) suited for single-process deployments.</p>
+
+      <section name="graph-db-comparison">
+        <p>Neo4j AuraDB (SaaS): managed, free tier to 200k nodes, Cypher, Python SDK, agent-friendly via Bolt/HTTP. Neo4j self-hosted: Docker, production-ready, same API. FalkorDB (OSS): Redis-compatible wire protocol, graph + vector support, faster than Neo4j for graphs under 1M nodes. Kuzu (OSS): embedded Python database, no server needed, suited for single-process Graph RAG pipelines. Amazon Neptune (SaaS): expensive, integrates with AWS stack, supports Gremlin and SPARQL in addition to openCypher.</p>
+      </section>
+
+      <rule testable="true">
+        <statement>For single-process Graph RAG pipelines with no concurrent access requirement, prefer Kuzu (embedded, zero server cost) over Neo4j. For multi-process or multi-user deployments, use Neo4j self-hosted (Docker) or Neo4j AuraDB. Do not use Amazon Neptune unless already committed to the AWS ecosystem — cost is 5-10x Neo4j AuraDB for equivalent workloads.</statement>
+        <rationale>Kuzu eliminates the operational overhead of running and maintaining a graph database server for workloads that do not need concurrent access. For most RAG indexing pipelines that index once and read from a single query process, the embedded pattern is the simplest and cheapest path.</rationale>
+      </rule>
+    </section>
+
+    <section name="known-limitations-and-gotchas">
+      <p>These are the production failure modes observed in deployed Graph RAG systems. Each one has caused silent data quality degradation or runtime errors in agent pipelines.</p>
+
+      <list>
+        <item>Entity extraction quality is LLM-dependent; hallucinated entities pollute the graph permanently. There is no built-in deduplication — "OpenAI" and "openai" create two separate nodes unless normalized before insert.</item>
+        <item>Community detection (Louvain) is non-deterministic; re-running on the same corpus can produce different communities. Do not use community IDs as persistent identifiers — use content hashes of sorted node sets.</item>
+        <item>LlamaIndex KnowledgeGraphIndex is tightly coupled to the OpenAI API format; migrating to Anthropic requires a custom LLM adapter.</item>
+        <item>Graph traversal for relationship queries can hit exponential path counts on densely connected graphs. Cap hop depth to 3 via nx.shortest_path with cutoff=3.</item>
+        <item>Microsoft graphrag CLI rewrites config files on first run; agents running it in CI must checkpoint the generated config to avoid re-indexing from scratch on version bumps.</item>
+        <item>Hierarchical summaries go stale when documents are updated — re-summarization must be triggered on any corpus change, not only on new document additions.</item>
+        <item>LlamaIndex KnowledgeGraphIndex max_triplets_per_chunk silently truncates dense chunks — verify extraction coverage before promoting the index.</item>
+      </list>
+    </section>
+
+    <section name="use-cases">
+      <p>Validated production use cases for Graph RAG: research paper corpora (citation networks, author relationships), legal documents (case law connections, precedent chains), medical records (patient history, drug interactions), corporate knowledge bases (org charts, project dependencies), news analysis (event timelines, actor relationships).</p>
+      <p>For each use case, the LLM extraction prompt should include domain-specific entity types. Medical: DRUG, CONDITION, PROCEDURE, PATIENT. Legal: CASE, STATUTE, PARTY, COURT. Corporate: PERSON, ORG, PROJECT, PRODUCT.</p>
+    </section>
+
+    <antipattern>
+      <description>Building a production Graph RAG system on top of NetworkX without a persistence layer.</description>
+      <reason>NetworkX graphs are in-memory only. A process restart loses the entire graph and forces a full re-index. Any production deployment needs a persistent graph store (Neo4j, Kuzu, FalkorDB) so the graph survives restarts and can be accessed by multiple query processes.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Running entity extraction without entity normalization before graph insert.</description>
+      <reason>LLM extraction produces variant spellings of the same entity across chunks ("OpenAI", "openai", "Open AI"). Without normalization (lowercase, strip punctuation, resolve aliases), each variant becomes a separate node in the graph and relationship paths between them are broken.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="graph-rag-indexing"/>
+      <ref slug="graph-rag-retrieval"/>
+      <link href="https://github.com/microsoft/graphrag"/>
+      <link href="https://arxiv.org/abs/2404.16130"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/index_structs/knowledge_graph/"/>
+      <link href="https://neo4j.com/developer/rag/"/>
+    </see-also>
+  </content>
+</methodology>
