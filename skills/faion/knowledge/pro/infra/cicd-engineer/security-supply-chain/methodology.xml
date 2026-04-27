@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-supply-chain">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Harden the software supply chain: secret scanning (Gitleaks) on every commit, SCA with OSV/Trivy, automated dependency updates, SBOM generation, SLSA provenance attestation.</summary>
+    <tags>
+      <tag>supply-chain</tag>
+      <tag>secret-scanning</tag>
+      <tag>sca</tag>
+      <tag>slsa</tag>
+      <tag>sbom</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="security-sast"/>
+      <ref slug="security-container-scanning"/>
+      <ref slug="security-policy-as-code"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Supply Chain Security: Secrets, SCA, SBOM, and SLSA</title>
+
+    <summary>Supply chain attacks target dependencies, build tooling, and secrets in CI rather than the application code itself. Defend with: secret scanning on every commit and history rewrite when leaks hit main; SCA (Software Composition Analysis) for dependency CVEs; SBOM generation per build; lock files for all dependency manifests; SLSA provenance attestation. Automate dependency updates with Dependabot or Renovate with a capped auto-merge policy.</summary>
+
+    <why>
+      <p>The software supply chain is now the dominant attack vector: 2024 State of the Software Supply Chain reports a 7x increase in supply chain attacks over the past three years. Secrets committed to Git are harvested within minutes by automated scanners. Vulnerable transitive dependencies introduce CVEs the app team never explicitly chose. SBOM mandates (US Executive Order 14028, EU Cyber Resilience Act) require knowing every component in the build.</p>
+      <p>Secret scanners miss bespoke patterns and re-flag rotated secrets endlessly — maintain an explicit allow-list of patterns rather than disabling rules globally. SCA vulnerability data lags: NVD and OSV databases lag, especially for ecosystem-specific advisories; use multiple sources (osv-scanner, Snyk, GitHub Dependabot) to reduce blind spots. Reachability-aware SCA (Endor Labs, Snyk Reachability) reduces false positives 70-90% for library CVEs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every project with external dependencies — SCA is the minimum viable supply chain control.</item>
+        <item>Any repo where developers commit secrets (API keys, tokens, certs) accidentally — secret scanning pre-commit + CI is non-negotiable.</item>
+        <item>Projects that ship artifacts externally or to regulated industries — SBOM generation and SLSA attestation are increasingly mandatory.</item>
+        <item>Standing up a "security PR bot" that auto-opens fix PRs for known-vulnerable dependencies.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Replacing code review for novel dependency selection — SCA catches known CVEs, not design choices like overly broad transitive dependency trees.</item>
+        <item>Auto-merging dependency updates that include major version bumps — require human review for breaking changes even if CI passes.</item>
+        <item>One-off scripts with no external dependencies — overhead exceeds value.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Secret scanning MUST run on every commit via a pre-commit hook (Gitleaks or detect-secrets) AND in CI on the full history (`git fetch --unshallow`). When a secret lands on main, rewrite history with `git filter-repo` and rotate the credential immediately.</statement>
+        <rationale>Pre-commit catches secrets before they reach the remote. CI with full history catches secrets introduced by force-pushes, merge commits, or squash merges that bypass the hook. Rotation without history rewrite leaves the secret in the public git object store indefinitely.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use lock files (package-lock.json, poetry.lock, go.sum, Cargo.lock) for all dependency manifests. Commit lock files. Never add lock files to .gitignore.</statement>
+        <rationale>Lock files pin the exact resolved dependency tree including transitive dependencies, preventing silent upgrades to vulnerable versions during CI installs. Without lock files, `npm install` today and tomorrow may resolve different packages.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>License policy: deny by default; maintain an allowlist of approved licenses (MIT, Apache-2.0, BSD-3-Clause, MPL-2.0). Review and reject GPL-3.0 and AGPL-3.0 for commercial projects unless legal sign-off is explicit.</statement>
+        <rationale>SCA tools struggle with vendored or unknown-license code; an explicit allowlist forces review rather than silent acceptance of copyleft licenses that can create legal obligations.</rationale>
+      </rule>
+    </rules>
+
+    <section name="secret-scanning">
+      <example type="good" title="Gitleaks pre-commit hook">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+]]></code>
+      </example>
+
+      <example type="good" title="Gitleaks GitHub Actions CI scan with full history">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/gitleaks.yml
+name: Gitleaks
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history scan
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+]]></code>
+      </example>
+
+      <example type="good" title="detect-secrets baseline initialization">
+        <code lang="bash"><![CDATA[
+# Create baseline (ignores existing secrets — document each exception)
+detect-secrets scan > .secrets.baseline
+
+# Audit baseline — review each entry and mark as false positive or true positive
+detect-secrets audit .secrets.baseline
+]]></code>
+      </example>
+
+      <example type="bad" title="Disabling entire secret scanner rule categories">
+        <code lang="yaml"><![CDATA[
+# .gitleaks.toml — DO NOT disable entire rule categories
+[allowlist]
+  regexes = [
+    # WRONG: disabling all high-entropy strings because of false positives
+    '''[A-Za-z0-9+/]{40,}'''
+  ]
+]]></code>
+        <note>Disabling entropy-based rules globally defeats the scanner. Instead, allowlist specific file paths (test fixtures, known-safe files) or specific string patterns tied to the false-positive context.</note>
+      </example>
+    </section>
+
+    <section name="sca-dependency-scanning">
+      <p>Software Composition Analysis scans dependency manifests and lock files against vulnerability databases (OSV, NVD, GitHub Advisory).</p>
+
+      <example type="good" title="osv-scanner in CI">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/osv-scan.yml
+name: OSV Scan
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  osv-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google/osv-scanner-action@v1
+        with:
+          scan-args: |-
+            --lockfile=package-lock.json
+            --lockfile=requirements.txt
+            --output=results.json
+]]></code>
+      </example>
+
+      <example type="good" title="Trivy filesystem SCA scan">
+        <code lang="yaml"><![CDATA[
+# Trivy filesystem scan for library vulnerabilities
+- name: Trivy Dependency Scan
+  uses: aquasecurity/trivy-action@master
+  with:
+    scan-type: 'fs'
+    scan-ref: '.'
+    format: 'sarif'
+    output: 'trivy-sca.sarif'
+    severity: 'CRITICAL,HIGH'
+    vuln-type: 'library'
+
+- name: Upload SARIF
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: trivy-sca.sarif
+]]></code>
+      </example>
+
+      <example type="good" title="Automated dependency updates with Dependabot">
+        <code lang="yaml"><![CDATA[
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    # Auto-merge only patch and minor updates
+    # Major updates require human review
+    groups:
+      dev-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+]]></code>
+      </example>
+    </section>
+
+    <section name="sbom-slsa">
+      <p>SBOM (Software Bill of Materials) and SLSA (Supply-chain Levels for Software Artifacts) provide a verifiable record of what is in the build and where it came from.</p>
+
+      <example type="good" title="SBOM generation and SLSA provenance in CI">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/sbom-slsa.yml
+name: SBOM and Provenance
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build -t myapp:${{ github.ref_name }} .
+
+      # Generate CycloneDX SBOM
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: myapp:${{ github.ref_name }}
+          artifact-name: sbom-${{ github.ref_name }}.cdx.json
+          output-file: sbom.cdx.json
+          format: cyclonedx-json
+
+      - name: Attach SBOM to Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.ref_name }}
+          path: sbom.cdx.json
+
+      # SLSA provenance attestation
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Attest SBOM
+        run: |
+          cosign attest --yes \
+            --predicate sbom.cdx.json \
+            --type cyclonedx \
+            myapp:${{ github.ref_name }}
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="analyze-security-finding"><![CDATA[
+Analyze this security finding for incident response:
+
+Finding:
+[paste finding details]
+
+Context:
+- Environment: [dev/staging/prod]
+- Application: [name]
+- Exposure: [internal/external]
+
+Provide:
+1. Severity assessment
+2. Potential impact
+3. Immediate actions needed
+4. Root cause analysis approach
+5. Long-term remediation
+6. Detection improvements
+]]></prompt>
+
+      <prompt purpose="map-compliance-controls"><![CDATA[
+Map these compliance controls to security automation:
+
+Framework: [SOC2/PCI-DSS/HIPAA/CIS]
+Controls:
+- [control 1]
+- [control 2]
+- [control 3]
+
+For each control provide:
+1. Automated tool/check
+2. Configuration needed
+3. Evidence collection method
+4. Audit frequency
+5. Gap if automation not possible
+]]></prompt>
+
+      <prompt purpose="generate-compliance-evidence"><![CDATA[
+Generate compliance evidence report from these security scan results:
+
+Framework: [compliance framework]
+Period: [date range]
+Scans: [list of scan types and tools]
+
+Results:
+[paste scan summaries]
+
+Generate:
+1. Executive summary
+2. Control-by-control status
+3. Vulnerability statistics
+4. Remediation status
+5. Exceptions and risk acceptances
+6. Recommendations
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Add secret scanning pre-commit hook (Gitleaks or detect-secrets) to all repositories.</check>
+      <check>Add secret scanning CI job with full git history scan (`fetch-depth: 0`).</check>
+      <check>Commit lock files for all dependency managers; never add to .gitignore.</check>
+      <check>Add SCA scan (osv-scanner, Trivy FS, or Snyk) to CI pipeline.</check>
+      <check>Configure Dependabot or Renovate for automated dependency updates.</check>
+      <check>Enable auto-merge only for patch/minor updates; require human review for major.</check>
+      <check>Generate CycloneDX SBOM per build and attach to releases as immutable artifact.</check>
+      <check>Define license policy: allowlist approved licenses, block GPL-3.0/AGPL-3.0 for commercial projects.</check>
+      <check>Implement SLSA provenance attestation for published artifacts (cosign attest).</check>
+      <check>Maintain an exception register for accepted risks with expiry dates.</check>
+      <check>Map security controls to compliance frameworks (SOC2, PCI-DSS, NIST SSDF).</check>
+    </checklist>
+
+    <section name="devsecops-maturity">
+      <p>Maturity levels for supply chain + overall DevSecOps programme:</p>
+      <list>
+        <item>Level 1 (Foundation): SAST in CI blocking on Critical; container scanning blocking on Critical; secrets scanning pre-commit; basic SCA.</item>
+        <item>Level 2 (Intermediate): SAST + DAST coverage; container scanning with SBOM; policy as code in audit mode; automated dependency updates; security dashboard.</item>
+        <item>Level 3 (Advanced): Full pipeline security gates; policy as code enforcement; runtime security monitoring; supply chain signing; automated remediation PRs; SLSA Level 2+.</item>
+        <item>Level 4 (Optimized): AI-assisted vulnerability triage with reachability analysis; predictive security analytics; auto-healing; full SLSA Level 3; continuous compliance automation.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Auto-fix bots regress functionality: dependency upgrade PRs can cross a major version breaking the API silently — require full test pass and human review before merging any auto-fix dependency PR.</p>
+      <p>Secret scanner false positives: high-entropy strings flagged as keys. Agents should whitelist specific patterns explicitly (test fixture values, known public keys), not disable entire rule categories globally.</p>
+      <p>Vulnerability data lag: NVD and OSV databases lag. Use multiple sources and flag when an advisory exists in one DB but not another to surface data quality issues.</p>
+    </section>
+
+    <see-also>
+      <link href="https://slsa.dev/"/>
+      <link href="https://www.sigstore.dev/"/>
+      <link href="https://osv.dev/"/>
+      <link href="https://github.com/gitleaks/gitleaks"/>
+      <link href="https://google.github.io/osv-scanner/"/>
+      <link href="https://csrc.nist.gov/Projects/ssdf"/>
+      <ref slug="security-sast"/>
+      <ref slug="security-container-scanning"/>
+    </see-also>
+  </content>
+</methodology>
