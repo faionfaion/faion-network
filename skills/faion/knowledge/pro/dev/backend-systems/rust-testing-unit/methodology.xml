@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing-unit">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Unit test Rust services with mockall trait mocks and tokio::test; colocate tests in #[cfg(test)] mod, control async runtime flavor explicitly.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>testing</tag>
+      <tag>mockall</tag>
+      <tag>unit-test</tag>
+      <tag>tokio</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <frameworks>
+      <framework>tokio</framework>
+    </frameworks>
+    <related>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Rust Unit Testing with mockall and tokio::test</title>
+
+    <summary>Unit tests in Rust live inside a #[cfg(test)] mod tests block colocated with the production code. Trait dependencies are mocked with mockall::mock!; async tests use #[tokio::test] with an explicit runtime flavor. Black-box tests go to the tests/ directory at crate root. Never mix the two.</summary>
+
+    <why>
+      <p>Rust's built-in test runner runs #[test] (and #[tokio::test]) functions in the same crate, giving tests full access to private items when colocated. mockall generates mock structs that satisfy trait bounds, enabling isolation of a unit from its I/O or database dependencies without spawning real services. Controlling the tokio runtime flavor (current_thread vs multi_thread) prevents subtle concurrency bugs from hiding behind the default.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rust services using Axum/Actix/Tonic where you need fast feedback with mockall mocks.</item>
+        <item>Async-heavy code (tokio runtime) where the test harness must use #[tokio::test] with controlled time (tokio::time::pause) to avoid wall-clock dependence.</item>
+        <item>Any service method that depends on a trait (database, HTTP client, clock) that can be mocked cheaply.</item>
+        <item>Library crates where doc-tests, and cargo test --doc, should run on every PR.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trivial scripts where assert! inside main() is enough — the harness costs more than the test.</item>
+        <item>Code where mocks dominate signal — if every dep is mocked, the test asserts the mock setup, not behavior. Prefer integration tests with real components.</item>
+        <item>Pure serde round-trips where proptest is the right tool, not hand-written #[test]s.</item>
+        <item>Cross-compile targets where running tests on the host does not reflect the target. Use cross + Docker, or skip and rely on CI.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Colocate unit tests with production code in #[cfg(test)] mod tests { use super::*; }. Black-box tests that call only the public API go to tests/ at the crate root. Do not mix the two placements.</statement>
+        <rationale>Colocated tests access private items; tests/ tests verify the public contract. Mixing them produces a confusing import surface and prevents the compiler from enforcing visibility boundaries.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Mock trait dependencies with mockall::mock! or #[automock]. Do NOT mock plain structs or types that have a cheap real implementation (chrono, serde_json::Value). When a free function must be mocked, prefer a generic parameter or a function-pointer field over a single-method trait.</statement>
+        <rationale>mockall cycles — auto-mocking a trait that returns a type defined in the same crate with feature flags or async signatures — fail to compile. The README example handles this by mock!-ing a concrete Database rather than a trait.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always specify the tokio runtime flavor explicitly: #[tokio::test(flavor = "current_thread")] for tests that do not spawn tasks; #[tokio::test(flavor = "multi_thread", worker_threads = 2)] when the unit under test calls spawn or spawn_blocking. Never rely on the default flavor.</statement>
+        <rationale>#[tokio::test(flavor = "multi_thread")] masks Send/Sync bugs that current_thread would surface. Default flavor is current_thread; agents call spawn_blocking and the test panics under load only in CI.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use tokio::time::pause to control virtual time in time-sensitive tests. Never use std::thread::sleep or tokio::time::sleep to "give the task time" — use tokio::join!, tokio::time::pause, or wait on a channel instead.</statement>
+        <rationale>sleep-driven async waits are flaky in CI. tokio::time::pause advances the virtual clock deterministically, giving sub-millisecond tests with full time coverage.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use expect("descriptive message") instead of unwrap() in test assertions. The message is the next agent's starting point when a test fails.</statement>
+        <rationale>unwrap() in a test produces a panic without context. expect("user repository should return user") identifies the intent immediately.</rationale>
+      </rule>
+    </rules>
+
+    <section name="unit-test-pattern">
+      <p>The canonical unit test for a service method: create a MockDatabase, set expectations with .expect_*().with(eq(...)).times(N).returning(|_| ...), construct the service passing the mock, call the method, assert the result. Declare the mock via mock! { ... } or #[automock] on the trait, inside the #[cfg(test)] module.</p>
+
+      <example type="good" title="Unit test with mockall — happy path and error paths">
+        <code lang="rust"><![CDATA[
+// src/services/users.rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::predicate::*;
+    use mockall::mock;
+
+    mock! {
+        Database {}
+
+        impl Database {
+            async fn fetch_user_by_id(&self, id: i32) -> Result<Option<User>, sqlx::Error>;
+            async fn fetch_user_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error>;
+            async fn insert_user(&self, name: &str, email: &str, password_hash: &str) -> Result<User, sqlx::Error>;
+        }
+    }
+
+    fn create_test_user() -> User {
+        User {
+            id: 1,
+            name: "John Doe".into(),
+            email: "john@example.com".into(),
+            password_hash: "hash".into(),
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id_returns_user() {
+        let mut mock_db = MockDatabase::new();
+        mock_db
+            .expect_fetch_user_by_id()
+            .with(eq(1))
+            .times(1)
+            .returning(|_| Ok(Some(create_test_user())));
+
+        let service = UserService::new(&mock_db);
+        let result = service.get_by_id(1).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().name, "John Doe");
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id_not_found() {
+        let mut mock_db = MockDatabase::new();
+        mock_db
+            .expect_fetch_user_by_id()
+            .with(eq(999))
+            .times(1)
+            .returning(|_| Ok(None));
+
+        let service = UserService::new(&mock_db);
+        let result = service.get_by_id(999).await;
+
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_create_rejects_duplicate_email() {
+        let mut mock_db = MockDatabase::new();
+        mock_db
+            .expect_fetch_user_by_email()
+            .with(eq("john@example.com"))
+            .times(1)
+            .returning(|_| Ok(Some(create_test_user())));
+
+        let service = UserService::new(&mock_db);
+        let result = service.create("John", "john@example.com", "password").await;
+
+        assert!(matches!(result, Err(AppError::Conflict(_))));
+    }
+}
+]]></code>
+        <note>mock! on a concrete struct — not on a trait — avoids compile errors from async signature feature flags. Each test sets expectations independently: no shared state.</note>
+      </example>
+
+      <antipattern>
+        <description>Two #[tokio::test]s sharing a lazy_static mock state — passing locally, failing under cargo test -- --test-threads=N.</description>
+        <reason>Tests run in parallel by default. Shared mutable global state (lazy_static, once_cell) produces order-dependent failures. Force per-test setup via a fixture struct or local variable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing #[tokio::test] with #[test] on async blocks compiled under different runtime flavors (current_thread vs multi_thread) in the same test binary.</description>
+        <reason>Flakes under contention because the runtime scheduler interleaves tasks across the two flavors unpredictably in the same process.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Defining a one-method trait just to get mockall to mock a free function.</description>
+        <reason>A function-pointer field or generic parameter is cleaner. Trait gymnastics multiply compile time and produce confusing mock! macro error messages.</reason>
+      </antipattern>
+    </section>
+
+    <section name="doctest-pattern">
+      <p>Top-of-crate //! rustdoc with a # Examples section that compiles and runs under cargo test --doc is the cheapest end-to-end check. Agents add code blocks to private fn rustdoc; those blocks do NOT run. Only public items under pub fn, pub struct, etc. are valid doctest targets. Promote to integration test or move to a public example module instead.</p>
+
+      <rule testable="true">
+        <statement>Only add doctests to public items (pub fn, pub struct, pub trait). Doc examples on private functions are silently ignored by cargo test --doc. When an agent adds a doctest to a private fn, flag it in review and promote to a #[test] or integration test.</statement>
+        <rationale>Doctest on private items silently provides no coverage, misleading both developers and coverage reporters.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Every service method with a trait dep has at least one #[tokio::test] for the happy path.</check>
+      <check>Error paths (not found, conflict, db error) have dedicated test functions.</check>
+      <check>mockall::mock! or #[automock] used; no mock structs hand-rolled.</check>
+      <check>Runtime flavor specified explicitly on every #[tokio::test].</check>
+      <check>No lazy_static or once_cell shared across test functions.</check>
+      <check>tokio::time::pause used for any test touching time; no sleep calls.</check>
+      <check>All assertions use expect("message") not unwrap().</check>
+      <check>Doctests only on public items.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+      <link href="https://docs.rs/mockall"/>
+      <link href="https://docs.rs/tokio/latest/tokio/time/fn.pause.html"/>
+      <link href="https://doc.rust-lang.org/book/ch11-00-testing.html"/>
+    </see-also>
+  </content>
+</methodology>
