@@ -1,0 +1,326 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="arch-pattern-clean">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Clean Architecture: concentric dependency rings pointing inward so domain and use cases stay free of framework, DB, and UI concerns.</summary>
+    <tags>
+      <tag>clean-architecture</tag>
+      <tag>domain-driven</tag>
+      <tag>dependency-inversion</tag>
+      <tag>layered-architecture</tag>
+      <tag>testability</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="arch-pattern-hexagonal"/>
+      <ref slug="arch-pattern-onion"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Clean Architecture (Uncle Bob)</title>
+
+    <summary>Dependencies point inward through concentric circles: Domain (Entities) at the center, then Application (Use Cases), then Interface Adapters, then Frameworks and Drivers at the outside. Inner circles know nothing about outer circles.</summary>
+
+    <why>
+      <p>Robert C. Martin (2012) formalised the dependency rule: source-code dependencies must point inward toward high-level policy. This makes domain logic and use cases independently testable without a running database, web framework, or UI. Swapping PostgreSQL for SQLite, replacing Express with Fastify, or exposing a CLI alongside REST touches only the outermost ring.</p>
+      <p>LLMs understand and respect explicit layer boundaries, making Clean Architecture a natural fit for agentic development: agents generate domain entities and use-cases first, then adapters, and architecture tests verify the dependency direction mechanically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Domains with non-trivial business rules where leaking persistence or UI concerns into core logic will create technical debt within a year.</item>
+        <item>Projects that must support multiple UI surfaces (REST API + CLI + background workers) sharing the same business logic.</item>
+        <item>Long-lived applications where the framework or database is expected to change at least once during the product lifetime.</item>
+        <item>Teams that need comprehensive unit-test coverage of business logic without spinning up infrastructure.</item>
+        <item>Systems with heavy regulatory or audit requirements where invariants and policies must be clearly locatable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CRUD-only admin tools or internal scripts — the domain layer will be empty and layering adds overhead without benefit.</item>
+        <item>Prototypes or MVPs where V1 is intentionally throwaway — premature layering slows delivery.</item>
+        <item>Microservices where the entire domain fits in 200 lines — apply the pattern at the system boundary instead.</item>
+        <item>Languages or runtimes where dependency-injection cost is prohibitive (Python or JS without DI containers can simulate it, but the boilerplate is real).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="layers">
+      <p>Layers from inside out:</p>
+      <list>
+        <item>Domain Layer (Entities) — pure business objects and repository interfaces. No framework dependencies, no ORM, no logging, no clock. Inject everything via ports.</item>
+        <item>Application Layer (Use Cases) — orchestrates domain objects to fulfill business operations. Depends only on Domain. Defines DTO contracts and application-level interfaces (IEmailService, etc.).</item>
+        <item>Interface Adapters (Controllers, Presenters, Gateways) — translates between the outside world and the application layer. Contains repository implementations, web controllers, and serialisers.</item>
+        <item>Frameworks and Drivers (DB, Web, UI) — outermost ring: Express/Django/FastAPI, PostgreSQL ORM, React, etc. Nothing in here bleeds inward.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every import MUST point inward: Domain imports nothing; Application imports only Domain; Infrastructure imports Application and Domain; Presentation imports Application and Domain but NOT Infrastructure.</statement>
+        <rationale>Enforcing this mechanically (via import-linter, dependency-cruiser, ArchUnit) prevents the well-known "service calls ORM directly" drift that erases the architecture over time.</rationale>
+      </rule>
+
+      <example type="good" title="Dependency table">
+        <code lang="text"><![CDATA[
+Layer          | Can depend on          | Cannot depend on
+---------------|------------------------|----------------------------------
+Domain         | nothing external       | Application, Infrastructure, Presentation
+Application    | Domain                 | Infrastructure, Presentation
+Infrastructure | Application, Domain    | Presentation
+Presentation   | Application, Domain    | Infrastructure
+]]></code>
+      </example>
+    </section>
+
+    <section name="folder-structure">
+      <p>Canonical TypeScript folder layout:</p>
+      <code lang="text"><![CDATA[
+src/
+├── domain/
+│   ├── entities/           # Business objects (User.ts, Order.ts)
+│   ├── value-objects/      # Immutable domain concepts (Money.ts, Email.ts)
+│   └── repositories/       # Interfaces only (IUserRepository.ts)
+│
+├── application/
+│   ├── use-cases/          # Business operations (CreateUser.ts, PlaceOrder.ts)
+│   ├── dto/                # Data transfer objects (UserDTO.ts)
+│   └── interfaces/         # Port definitions (IEmailService.ts)
+│
+├── infrastructure/
+│   ├── persistence/        # Repository implementations (PostgresUserRepository.ts)
+│   ├── services/           # External service adapters (SendGridEmailService.ts)
+│   └── config/             # Environment, DI container (container.ts)
+│
+└── presentation/
+    ├── api/                # REST/GraphQL controllers (UserController.ts)
+    ├── cli/                # Command-line interface
+    └── web/                # Web UI (if server-rendered)
+]]></code>
+    </section>
+
+    <section name="entity-pattern">
+      <p>Domain entities must be rich, not anemic. Behaviour belongs on the entity; services exist only for cross-entity logic that has no natural home.</p>
+
+      <rule testable="true">
+        <statement>Entities MUST encapsulate their own invariants, raise domain events, and expose behaviour methods. Static factory methods (create, reconstitute) replace public constructors so construction always goes through invariant checks.</statement>
+        <rationale>The Anaemic Domain Model anti-pattern puts all logic in services and reduces entities to getters/setters. This defeats the purpose of Clean Architecture: there is no domain to protect.</rationale>
+      </rule>
+
+      <example type="good" title="Rich domain entity (TypeScript)">
+        <code lang="typescript"><![CDATA[
+// src/domain/entities/Order.ts
+export class Order {
+  private readonly id: string;
+  private items: OrderItem[];
+  private status: OrderStatus;
+  private readonly events: DomainEvent[] = [];
+
+  private constructor(id: string, items: OrderItem[], status: OrderStatus) {
+    if (items.length === 0) throw new Error('Order must have at least one item');
+    this.id = id;
+    this.items = items;
+    this.status = status;
+  }
+
+  static create(id: string, items: OrderItem[]): Order {
+    return new Order(id, items, OrderStatus.PENDING);
+  }
+
+  static reconstitute(id: string, items: OrderItem[], status: OrderStatus): Order {
+    return new Order(id, items, status);
+  }
+
+  get total(): Money {
+    return this.items.reduce((sum, item) => sum.add(item.subtotal), Money.zero());
+  }
+
+  place(): void {
+    if (this.status !== OrderStatus.PENDING) throw new Error('Can only place pending orders');
+    this.status = OrderStatus.PLACED;
+    this.events.push(new OrderPlaced(this.id, this.total));
+  }
+
+  cancel(): void {
+    if (this.status === OrderStatus.SHIPPED) throw new Error('Cannot cancel shipped orders');
+    this.status = OrderStatus.CANCELLED;
+  }
+
+  pullEvents(): DomainEvent[] {
+    const events = [...this.events];
+    this.events.length = 0;
+    return events;
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Use case (Application layer)">
+        <code lang="typescript"><![CDATA[
+// src/application/use-cases/PlaceOrder.ts
+export class PlaceOrder {
+  constructor(
+    private readonly orderRepository: IOrderRepository,
+    private readonly paymentService: IPaymentService,
+    private readonly inventoryService: IInventoryService
+  ) {}
+
+  async execute(request: PlaceOrderRequest): Promise<OrderResponse> {
+    await this.inventoryService.reserveItems(request.items);
+    const order = Order.create(
+      crypto.randomUUID(),
+      request.items.map(i => new OrderItem(i.productId, i.quantity, i.price))
+    );
+    await this.paymentService.charge(request.customerId, order.total);
+    order.place();
+    await this.orderRepository.save(order);
+    return OrderResponse.fromOrder(order);
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Anaemic entity — logic in service instead of entity">
+        <code lang="typescript"><![CDATA[
+// BAD: entity is a data bag
+class Order { customerId: string; items: any[]; status: string; }
+
+// BAD: business logic in service
+class OrderService {
+  place(order: Order) {
+    if (order.status !== 'PENDING') throw new Error('...');
+    order.status = 'PLACED'; // direct mutation, no event
+  }
+}
+]]></code>
+        <note>Logic in services that mutates entity state bypasses invariant checks and makes the domain untestable in isolation.</note>
+      </example>
+    </section>
+
+    <section name="testing-strategy">
+      <p>Layer-by-layer testing approach for Clean Architecture:</p>
+      <list>
+        <item>Domain — unit tests with zero mocks. Pure functions, no setup required.</item>
+        <item>Application — unit tests mocking repositories and external service interfaces. Fast, no I/O.</item>
+        <item>Infrastructure — integration tests against real databases (testcontainers) or real external services in isolation.</item>
+        <item>Presentation — integration tests against the full application stack assembled in-memory, or E2E with a running server.</item>
+      </list>
+    </section>
+
+    <section name="architecture-enforcement">
+      <p>Architecture rules decay silently if not enforced automatically. Run a linter on every PR.</p>
+
+      <example type="good" title="import-linter config (Python)">
+        <code lang="ini"><![CDATA[
+# .importlinter
+[importlinter]
+root_package = app
+
+[importlinter:contract:layers]
+name = Clean Architecture layers
+type = layers
+layers =
+    app.presentation
+    app.infrastructure
+    app.application
+    app.domain
+
+[importlinter:contract:domain-isolated]
+name = Domain has no outward deps
+type = forbidden
+source_modules =
+    app.domain
+forbidden_modules =
+    app.application
+    app.infrastructure
+    app.presentation
+    django
+    sqlalchemy
+    fastapi
+]]></code>
+        <note>Run `lint-imports` in CI; fail the build on violation.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Putting business logic in controllers (fat controller).</description>
+        <reason>Controllers are in the Presentation ring; business logic belongs in Use Cases or Entities so it can be reused by CLI, queue workers, and scheduled jobs without HTTP overhead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing ORM models directly from the domain layer.</description>
+        <reason>ORMs are an infrastructure detail. Domain must depend on nothing application-level — no logging, no ORM, no clock. Inject everything via ports.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Exposing domain entities via the API (JSON-serialising them directly).</description>
+        <reason>Domain entities change on business rules; API contracts change on consumer needs. Explicit DTOs at adapter boundaries prevent API breakage when the domain evolves.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping repository interfaces and calling the ORM directly from use cases.</description>
+        <reason>Use cases become untestable without a real database, and swapping persistence requires touching business logic.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended multi-agent workflow for implementing Clean Architecture:</p>
+      <list>
+        <item>Domain-modeler agent: analyzes requirements, drafts entities, value objects, and aggregate boundaries with ubiquitous-language glossary.</item>
+        <item>Scaffold agent: generates the layer structure, repository interfaces per aggregate, and port interfaces per use case.</item>
+        <item>Implementation agent (faion-feature-executor): implements one vertical slice (use case + adapters + tests) at a time.</item>
+        <item>Audit agent (faion-improver): periodic dependency-direction sweep and anaemic-model check.</item>
+      </list>
+
+      <prompt purpose="domain-modeling"><![CDATA[
+INPUT: requirements <doc> and domain glossary.
+TASK: Identify aggregates, entities, value objects. For each aggregate output:
+- invariants (must always hold)
+- commands (state-changing operations)
+- queries (read-only, may bypass aggregate)
+- repository port signature
+Reject any "Manager"/"Service"/"Helper" naming; force domain-specific names.
+]]></prompt>
+
+      <prompt purpose="dependency-audit"><![CDATA[
+ROLE: dependency-direction critic
+TASK: Run an architecture test that fails if domain/ imports
+infrastructure/ or presentation/. Output the violations with line numbers
+and propose the minimal refactor (move method, extract interface, invert).
+]]></prompt>
+    </section>
+
+    <section name="pattern-selection">
+      <p>Choose Clean Architecture when:</p>
+      <list>
+        <item>Domain has business logic worth protecting (not pure CRUD).</item>
+        <item>You might change the UI framework or database in future.</item>
+        <item>You need comprehensive unit testing without infrastructure.</item>
+        <item>Team understands SOLID principles.</item>
+      </list>
+
+      <p>Escalate to Hexagonal when multiple input channels are required. Add DDD tactical patterns when the domain becomes very complex with multiple subdomains.</p>
+    </section>
+
+    <checklist>
+      <check>Domain layer has zero imports from Application, Infrastructure, or Presentation.</check>
+      <check>All external dependencies (DB, cache, email, clock) are accessed via interface ports.</check>
+      <check>Repository interfaces live in Domain; implementations live in Infrastructure.</check>
+      <check>Use cases return DTOs, not raw domain entities.</check>
+      <check>Controllers are thin — no business logic, only HTTP translation.</check>
+      <check>Architecture test (import-linter / dependency-cruiser / ArchUnit) runs in CI.</check>
+      <check>Domain and Application layers are covered by fast unit tests (no DB required).</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html"/>
+      <link href="https://www.oreilly.com/library/view/clean-architecture-a/9780134494272/"/>
+      <link href="https://import-linter.readthedocs.io/"/>
+      <link href="https://github.com/sverweij/dependency-cruiser"/>
+      <ref slug="arch-pattern-hexagonal"/>
+      <ref slug="arch-pattern-ddd"/>
+    </see-also>
+  </content>
+</methodology>
