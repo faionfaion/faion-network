@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-service-layer">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Django service layer pattern: write operations in keyword-only service functions with transaction.atomic(), full_clean(), and domain exceptions. Keeps views thin and logic testable in isolation.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>service-layer</tag>
+      <tag>architecture</tag>
+      <tag>transactions</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="django-project-structure"/>
+      <ref slug="django-selectors"/>
+      <ref slug="django-coding-standards"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Service Layer Pattern</title>
+
+    <summary>All write operations (create, update, delete, side effects) belong in service functions, not in views, serializers, or model save() overrides. Services take keyword-only arguments, wrap multi-model writes in transaction.atomic(), call full_clean() before save(), and raise domain exceptions instead of HTTP exceptions. This makes business logic independently testable and reusable across views, tasks, admin actions, and management commands.</summary>
+
+    <why>
+      <p>Views that contain business logic cannot be tested without mocking HTTP requests. Services are independently testable without any HTTP machinery. Keyword-only arguments (the * enforcer) prevent accidental argument-order bugs when signatures evolve. Transactions ensure atomicity — either all model writes succeed or none do. full_clean() fires model-level validation that Model.objects.create() skips. Domain exceptions (NotFoundError, ValidationError) decouple business logic from HTTP status codes, making services reusable in Celery tasks, management commands, and admin actions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any write operation that modifies one or more models.</item>
+        <item>Business logic that spans multiple models (create order + create order items).</item>
+        <item>Operations with side effects (send email, queue background task, write to audit log).</item>
+        <item>Admin actions, Celery tasks, and management commands that implement business rules.</item>
+        <item>Any logic that needs to be called from more than one entry point (view + task + management command).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trivial wrappers that do nothing but Model.objects.create() — add no value, just boilerplate.</item>
+        <item>Read-only operations — those belong in selectors.</item>
+        <item>View-only glue (getting request data, setting HTTP headers) — that stays in the view.</item>
+        <item>Function-style scripts / management commands that orchestrate existing services — those call services, they are not services themselves.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Service functions MUST use keyword-only arguments (asterisk before first param). This means def user_create(*, email: str, name: str) -> User, never def user_create(email: str, name: str) -> User.</statement>
+        <rationale>Keyword-only arguments prevent caller bugs when signature changes. Adding a new parameter never accidentally shifts existing positional arguments. Call sites are also self-documenting: user_create(email=e, name=n) instead of user_create(e, n).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Services that write to multiple models MUST wrap all writes in a single transaction.atomic() block. The transaction boundary belongs at the service function body — never in the view, never nested in a sub-service without explicit intention.</statement>
+        <rationale>Multi-model writes without transactions risk partial failure: the first model saves, the second fails, and the database is in an inconsistent state. transaction.atomic() rolls back all writes if any exception is raised inside the block.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Services MUST call model.full_clean() before model.save() for any newly constructed model instance. This applies to Model(...) + save() patterns; Model.objects.create() shortcuts are forbidden for new instances that need validation.</statement>
+        <rationale>Model.objects.create() bypasses the clean() method. Model validation defined in clean() (multi-field rules, cross-field constraints) only fires when full_clean() is called explicitly. Agents commonly trust clean() to fire and ship invalid data when using create().</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Services MUST raise domain exceptions (ApplicationError, NotFoundError, ValidationError, PermissionDeniedError from core/exceptions.py) not DRF or HTTP exceptions. The view layer is responsible for mapping domain exceptions to HTTP status codes.</statement>
+        <rationale>Domain exceptions don't know about HTTP. Services reused in Celery tasks, management commands, and admin actions should not carry HTTP semantics. The view's exception handler catches domain exceptions and returns the appropriate status code and error format.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Side effects triggered by a service (Celery tasks, background Django tasks) MUST be dispatched after the transaction commits, using transaction.on_commit(). Never dispatch inside the atomic block because the task may execute before the transaction commits.</statement>
+        <rationale>A Celery task dispatched inside an atomic block can run before the DB transaction commits, causing the task to see stale or non-existent data. transaction.on_commit() guarantees the task only runs after the DB write is visible.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Service with transaction, full_clean, keyword args">
+      <code lang="python"><![CDATA[
+# apps/orders/services.py
+from django.db import transaction
+
+from apps.orders.models import Order, OrderItem
+from apps.orders.constants import OrderStatus
+from apps.products import selectors as product_selectors
+from core.exceptions import ValidationError
+
+
+def order_create(
+    *,
+    user: "User",
+    items: list[dict],
+    shipping_address: str,
+) -> Order:
+    """
+    Create a new order with items.
+
+    Args:
+        user: The user placing the order
+        items: List of {"product_id": int, "quantity": int}
+        shipping_address: Delivery address
+
+    Returns:
+        Created Order instance
+
+    Raises:
+        ValidationError: If any product is unavailable
+    """
+    # Validate before transaction
+    product_ids = [item["product_id"] for item in items]
+    products = product_selectors.product_list_by_ids(product_ids=product_ids)
+
+    if len(products) != len(product_ids):
+        raise ValidationError("Some products not found")
+
+    with transaction.atomic():
+        order = Order(
+            user=user,
+            shipping_address=shipping_address,
+            status=OrderStatus.PENDING,
+        )
+        order.full_clean()  # fires clean() — REQUIRED
+        order.save()
+
+        for item in items:
+            product = next(p for p in products if p.id == item["product_id"])
+            order_item = OrderItem(
+                order=order,
+                product=product,
+                quantity=item["quantity"],
+                unit_price=product.price,
+            )
+            order_item.full_clean()
+            order_item.save()
+
+        order.calculate_total()
+
+    # Dispatch AFTER commit — not inside atomic()
+    from config.tasks import send_order_confirmation
+    transaction.on_commit(lambda: send_order_confirmation.enqueue(order_id=order.id))
+
+    return order
+      ]]></code>
+    </example>
+
+    <example type="bad" title="Business logic in view (anti-pattern)">
+      <code lang="python"><![CDATA[
+# BAD — Logic in view, no transaction, no validation
+class CreateOrderView(APIView):
+    def post(self, request):
+        items = request.data.get('items', [])
+        if not items:
+            return Response({'error': 'No items'}, status=400)
+
+        user = request.user
+        total = 0
+        order = Order.objects.create(user=user)  # BAD: no full_clean()
+
+        for item in items:
+            product = Product.objects.get(id=item['product_id'])
+            total += product.price * item['quantity']
+            OrderItem.objects.create(  # BAD: no transaction, partial failure possible
+                order=order,
+                product=product,
+                quantity=item['quantity'],
+            )
+
+        order.total = total
+        order.save()
+        send_mail('Confirmation', '...', 'noreply@example.com', [user.email])  # BAD: side effect in view
+
+        return Response({'id': order.id, 'total': total})
+      ]]></code>
+      <note>No transaction means partial failure possible. No full_clean() means model validation skipped. Side effect in view means it cannot be called from tasks or admin actions.</note>
+    </example>
+
+    <example type="good" title="Thin view delegating to service">
+      <code lang="python"><![CDATA[
+# GOOD — Thin view, delegates everything to service
+class OrderCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Validate input shape
+        serializer = OrderCreateRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Call service (all business logic lives here)
+        order = order_create(
+            user=request.user,
+            items=serializer.validated_data["items"],
+            shipping_address=serializer.validated_data["shipping_address"],
+        )
+
+        # 3. Return serialized response
+        return Response(
+            OrderResponse(order).data,
+            status=status.HTTP_201_CREATED,
+        )
+      ]]></code>
+    </example>
+
+    <example type="good" title="Update service with explicit update_fields">
+      <code lang="python"><![CDATA[
+def user_update(
+    *,
+    user: User,
+    name: str | None = None,
+    bio: str | None = None,
+) -> User:
+    """Update user profile fields."""
+    fields_to_update = []
+
+    if name is not None:
+        user.name = name
+        fields_to_update.append("name")
+
+    if bio is not None:
+        user.bio = bio
+        fields_to_update.append("bio")
+
+    if fields_to_update:
+        user.full_clean()
+        user.save(update_fields=[*fields_to_update, "updated_at"])
+
+    return user
+      ]]></code>
+      <note>Always use update_fields in save() to avoid overwriting fields set by other code paths between fetch and save.</note>
+    </example>
+
+    <section name="exception-hierarchy">
+      <p>Define a custom exception hierarchy in core/exceptions.py so services can raise domain exceptions without importing DRF or HTTP semantics:</p>
+      <example type="good" title="core/exceptions.py">
+        <code lang="python"><![CDATA[
+# core/exceptions.py
+from rest_framework.views import exception_handler
+from rest_framework.response import Response
+from rest_framework import status
+
+
+class ApplicationError(Exception):
+    """Base exception for business logic errors."""
+
+    def __init__(self, message: str, extra: dict = None):
+        super().__init__(message)
+        self.message = message
+        self.extra = extra or {}
+
+
+class NotFoundError(ApplicationError):
+    """Resource not found."""
+    pass
+
+
+class ValidationError(ApplicationError):
+    """Business validation failed."""
+    pass
+
+
+class PermissionDeniedError(ApplicationError):
+    """User lacks permission for this action."""
+    pass
+
+
+# core/exception_handlers.py
+def custom_exception_handler(exc, context):
+    """Handle both DRF and custom exceptions."""
+    response = exception_handler(exc, context)
+
+    if response is not None:
+        return response
+
+    if isinstance(exc, NotFoundError):
+        return Response(
+            {"error": exc.message, "extra": exc.extra},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if isinstance(exc, ValidationError):
+        return Response(
+            {"error": exc.message, "extra": exc.extra},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if isinstance(exc, PermissionDeniedError):
+        return Response(
+            {"error": exc.message},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    return None
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common mistakes agents make when applying the service layer pattern:</p>
+      <list>
+        <item>Model.objects.create() skips clean() — only Model() + full_clean() + save() runs validation. Agents trust clean() to fire and ship invalid data.</item>
+        <item>transaction.atomic() inside an already-atomic block is a savepoint, not a no-op — exception inside re-raises but only rolls back the inner block. Subtle when nested across services.</item>
+        <item>Service that returns a model and a list of side effects — agents return tuples; better to return the model and emit events via transaction.on_commit.</item>
+        <item>Services calling other services: nested calls are fine, but each starts its own transaction unless the outer wraps explicitly. Agents miss this and lose atomicity.</item>
+        <item>Mixing service signature styles (some keyword-only, some positional) breaks inspect.signature-based tooling (Celery autodiscovery, FastAPI-style DI).</item>
+        <item>Importing a model at module level in services.py for an app whose models.py imports services.py creates circular imports. Use apps.get_model or string FK.</item>
+        <item>Generic DRF ModelViewSet auto-creates CRUD without a service — agents add a service after the fact and end up with parallel paths.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Service function uses * to enforce keyword-only arguments.</check>
+      <check>Multi-model writes are wrapped in transaction.atomic().</check>
+      <check>full_clean() called before save() for all new model instances.</check>
+      <check>Service raises domain exceptions, not DRF or HTTP exceptions.</check>
+      <check>Side effects dispatched via transaction.on_commit(), not inside atomic().</check>
+      <check>update_fields specified in save() for partial updates.</check>
+      <check>No business logic in views, serializers, or model save().</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-project-structure"/>
+      <ref slug="django-selectors"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide#services"/>
+      <link href="https://docs.djangoproject.com/en/6.0/topics/db/transactions/"/>
+    </see-also>
+  </content>
+</methodology>
