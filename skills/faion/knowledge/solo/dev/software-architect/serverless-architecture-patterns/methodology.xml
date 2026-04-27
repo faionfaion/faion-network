@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="serverless-architecture-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Core serverless architecture patterns: API backend, event processing, saga/Step Functions, fan-out, CQRS, edge computing, plus anti-patterns to avoid.</summary>
+    <tags>
+      <tag>serverless</tag>
+      <tag>patterns</tag>
+      <tag>event-driven</tag>
+      <tag>step-functions</tag>
+      <tag>lambda</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-cold-start-optimization"/>
+      <ref slug="serverless-iac-and-templates"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Serverless Architecture Patterns</title>
+
+    <summary>Six core serverless patterns — API backend, event processing, saga/orchestration, fan-out/fan-in, CQRS with event sourcing, and edge computing — plus the most common anti-patterns and real-world examples from e-commerce, data pipelines, SaaS multi-tenant, and document processing use cases.</summary>
+
+    <why>
+      <p>Serverless functions are stateless and event-driven by nature. Selecting the right composition pattern determines reliability, scalability, and debuggability. Misapplying patterns (synchronous chains, lambdaliths, missing idempotency) creates cascading failures and cost overruns that are difficult to untangle in production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Composing Lambda functions into multi-step workflows requiring retry and error handling.</item>
+        <item>Building event-driven pipelines across SQS, SNS, EventBridge, and Kinesis.</item>
+        <item>Designing parallel processing with fan-out to multiple workers.</item>
+        <item>Implementing CQRS or event sourcing with separate read/write paths.</item>
+        <item>Reviewing existing serverless architecture for anti-patterns.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield non-serverless design — these patterns are Lambda/FaaS specific.</item>
+        <item>Simple CRUD endpoints without event-driven requirements — a plain API Gateway + Lambda suffices without pattern overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-patterns">
+      <p>Pattern 1 — API Backend: Client → API Gateway → Lambda → DynamoDB. API Gateway handles routing, throttling, and caching. Lambda functions are scoped per domain (not per HTTP verb). DynamoDB for data persistence.</p>
+
+      <p>Pattern 2 — Event Processing: S3 Upload → EventBridge → Lambda → Process → Store Result, with SNS for fan-out notifications. Asynchronous processing triggered by events; fan-out to multiple processors via SNS/SQS.</p>
+
+      <p>Pattern 3 — Saga/Orchestration (Step Functions): API → Step Functions → Lambda A → Lambda B → Lambda C, with Compensating Transactions on failure. Coordinates multi-step workflows with built-in retry, error handling, state management, and human approval steps.</p>
+
+      <p>Pattern 4 — Fan-Out/Fan-In: Event → SNS → multiple SQS queues → Lambda workers → Aggregator. Parallel processing of tasks; SQS provides buffering and retry.</p>
+
+      <p>Pattern 5 — CQRS with Event Sourcing: Command → Lambda → EventBridge → Event Store; EventBridge fans out to Lambda projectors that write to Read DB and Search Index. Separate read/write paths with event-driven projections.</p>
+
+      <p>Pattern 6 — Edge Computing: User → CloudFront → Lambda@Edge → Origin (with cache). Low-latency global distribution, A/B testing, and personalization at the edge.</p>
+    </section>
+
+    <section name="function-design-rules">
+      <rule testable="true">
+        <statement>Each Lambda function MUST have a single responsibility scoped to one business capability or bounded context, NOT to one HTTP verb. A products function owns all product operations; separate functions own cart and orders domains.</statement>
+        <rationale>Functions scoped per HTTP verb cannot scale paths independently, share permissions inappropriately, and create deployment coupling. Domain scoping allows independent scaling, tailored IAM policies, and isolated failure domains.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Every Lambda handler invoked from SQS, EventBridge, or async Lambda invocations MUST be idempotent. Implement with a deterministic idempotency key stored in DynamoDB with TTL, or use the aws-lambda-powertools idempotency decorator.</statement>
+        <rationale>Lambda retries are at-least-once across SQS, EventBridge, and async invokes. Non-idempotent handlers produce duplicate charges, duplicate emails, and corrupted state on retry.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>AWS clients (DynamoDB, S3, Secrets Manager, etc.) MUST be initialized at module scope outside the handler function, NOT inside the handler. Imports and expensive initializations also belong at module scope.</statement>
+        <rationale>Module-scope initialization runs once per container (warm invocation reuses the instance). Handler-scope initialization runs on every invocation, adding TLS handshake time, connection setup, and import time to every request.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Synchronous Lambda-to-Lambda chains MUST NOT span more than one hop without Step Functions or an async messaging layer (SQS, EventBridge) in between.</statement>
+        <rationale>Synchronous chains compound latency additively, cascade timeouts (Lambda A times out waiting for Lambda B), and make error attribution impossible. Each hop also incurs invocation cost while waiting.</rationale>
+      </rule>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>The Lambdalith: stuffing the entire application into one Lambda function with a giant if/elif router for all routes and HTTP methods.</description>
+        <reason>Cannot scale routes independently. One failure affects everything. All routes share the same permissions and timeout. Deployment cycle touches every path on every change.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Nano-Functions: over-fragmenting into tiny single-operation functions (one per HTTP verb, one per database operation).</description>
+        <reason>Debugging nightmare with deep call stacks. High latency from function-to-function synchronous calls. Business logic cohesion is lost across dozens of tiny units.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Synchronous Chains: Lambda A → sync → Lambda B → sync → Lambda C → sync → Lambda D, all blocking.</description>
+        <reason>Latency compounds linearly (100ms + 100ms + 100ms = 400ms+). Timeouts cascade. Cost doubles because Lambda A bills while waiting for B, C, D. Hard to trace and debug.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No DLQ: async Lambda invocations and SQS consumers without a Dead Letter Queue configured.</description>
+        <reason>Failed events silently disappear. There is no way to replay, inspect, or alert on failures. Critical business events (orders, payments) are lost permanently on repeated failure.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No Idempotency: Lambda handler that charges a payment or sends a confirmation email without an idempotency key, despite being triggered from SQS or EventBridge.</description>
+        <reason>Lambda retries the same event on failure. Without idempotency the user is double-charged, double-notified, or data is duplicated.</reason>
+      </antipattern>
+    </section>
+
+    <section name="real-world-examples">
+      <p>E-Commerce API: CloudFront → API Gateway → per-domain Lambdas (Products, Cart, Orders) → DynamoDB tables → EventBridge for post-order processing (Inventory, Payments via Stripe, Email). DynamoDB single-table design with PK/SK pattern: PRODUCT#123 / METADATA, USER#456 / CART, ORDER#789 / ITEM#1. Estimated monthly cost for 5M invocations at 200ms: Lambda ~$10, API Gateway ~$17, DynamoDB ~$40, CloudFront ~$9, total ~$76.</p>
+
+      <p>Real-Time Data Pipeline: IoT Devices (10K/s) → Kinesis Data Streams → Lambda (Transform/Filter) → three paths: (1) Kinesis Firehose → S3 raw data, (2) Lambda Aggregator → Timestream metrics → EventBridge → Lambda Alerting → SNS/PagerDuty, (3) Kinesis Analytics → Grafana dashboard. Lambda configured with BatchSize=1000, MaximumBatchingWindowInSeconds=5, ParallelizationFactor=10.</p>
+
+      <p>SaaS Multi-Tenant: Route 53 → CloudFront → S3 static SPA + API Gateway REST + AppSync GraphQL → Lambda Authorizer (JWT + tenant context) → Core API / Webhooks / Real-time Lambdas → DynamoDB single-table with PK=TENANT#xxx tenant partitioning → EventBridge → Billing/Analytics/Audit Lambdas. API Gateway Usage Plans enforce per-tier rate limits (Free: 10 RPS / 1000 req/day; Pro: 100 RPS / 100K req/day).</p>
+
+      <p>Document Processing Pipeline: Client → API Gateway → Lambda Upload Handler → S3 → Step Functions → parallel: Lambda Text Extract (Textract) + Lambda Classify (Comprehend) + Lambda Summarize (Bedrock) → Lambda Store Results → DynamoDB + OpenSearch + S3 processed → EventBridge → Lambda Notify → SES/SNS/WebSocket. Step Functions handles retry, parallel state, and error compensation.</p>
+
+      <p>AI/ML Inference API: API Gateway → Lambda Routing → weighted alias split (90% Model v1 with provisioned concurrency / 10% Model v2 canary) → S3 model files. Model loaded outside handler at module scope via ONNX Runtime. Lambda config: MemorySize=3008, arm64, ProvisionedConcurrentExecutions=5.</p>
+    </section>
+
+    <section name="idempotency-example">
+      <example type="good" title="Idempotent handler with Powertools">
+        <code lang="python"><![CDATA[
+from aws_lambda_powertools.utilities.idempotency import idempotent
+from aws_lambda_powertools.utilities.idempotency import DynamoDBPersistenceLayer
+
+persistence_layer = DynamoDBPersistenceLayer(table_name='IdempotencyTable')
+
+@idempotent(persistence_store=persistence_layer)
+def handler(event, context):
+    # Safe from duplicate executions — same event_id returns cached result
+    order = event['order']
+    charge_payment(order['amount'])
+    send_confirmation(order['email'])
+    save_order(order)
+]]></code>
+        <note>Idempotency key defaults to the full event; configure key_jmespath if a narrower key is needed (e.g., event.order_id).</note>
+      </example>
+
+      <example type="bad" title="Non-idempotent payment handler">
+        <code lang="python"><![CDATA[
+def handler(event, context):
+    order = event['order']
+    charge_payment(order['amount'])  # May be called twice on Lambda retry!
+    send_confirmation(order['email'])
+    save_order(order)
+]]></code>
+        <note>On SQS retry the user is charged twice, double-emailed, and the order is duplicated.</note>
+      </example>
+    </section>
+
+    <section name="sync-chain-example">
+      <example type="bad" title="Synchronous Lambda chain">
+        <code lang="text"><![CDATA[
+# DON'T DO THIS
+Lambda A --sync--> Lambda B --sync--> Lambda C --sync--> Lambda D
+
+Problems:
+- Latency compounds: 100ms + 100ms + 100ms + 100ms = 400ms+
+- Timeout risk: If Lambda A timeout is 30s, chain can timeout
+- Error handling: Failures cascade unpredictably
+- Cost: Paying for Lambda A to wait for B, C, D
+]]></code>
+        <note>Use Step Functions or async patterns (SQS, EventBridge) between multi-step Lambdas.</note>
+      </example>
+    </section>
+
+    <section name="agent-prompts">
+      <prompt purpose="event-driven-design"><![CDATA[
+Design an event-driven serverless architecture for:
+
+Use case: [description]
+Event sources: [S3 uploads, API calls, IoT devices, etc.]
+Processing requirements:
+- Order guarantee needed: [yes/no]
+- Exactly-once processing: [yes/no]
+- Processing latency: [real-time/near-real-time/batch]
+- Throughput: [events/second]
+
+Please provide:
+1. Event flow diagram
+2. Choice of messaging service (SQS vs SNS vs EventBridge vs Kinesis)
+3. Event schema design
+4. Error handling and retry strategy
+5. Dead-letter queue configuration
+6. Idempotency approach
+]]></prompt>
+
+      <prompt purpose="step-functions-workflow"><![CDATA[
+Design a Step Functions workflow for:
+
+Process: [description]
+Steps:
+1. [Step 1 description]
+2. [Step 2 description]
+3. [Step 3 description]
+
+Requirements:
+- Error handling: [retry strategy]
+- Timeout: [max duration]
+- Human approval: [yes/no, at which step]
+- Parallel processing: [which steps]
+
+Please provide:
+1. State machine definition (ASL JSON)
+2. Lambda functions for each task
+3. Error handling and retry configuration
+4. IAM policies
+5. SAM/CDK template
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Define bounded contexts; map functions to business capabilities, not HTTP verbs.</check>
+      <check>Avoid nano-functions (too granular) and lambdaliths (too monolithic). Target: 1 function = 1 responsibility.</check>
+      <check>Right-size memory allocation and configure appropriate timeout for each function.</check>
+      <check>Separate business logic from handler; initialize connections outside handler.</check>
+      <check>Choose event source per use case: API Gateway for HTTP, SQS for buffering, SNS for fan-out, EventBridge for routing, Kinesis for ordered streams, S3 for file events, EventBridge Scheduler for cron.</check>
+      <check>Define event schemas (CloudEvents or custom) and plan for event versioning.</check>
+      <check>Design for idempotency: use idempotency keys with DynamoDB TTL or Powertools idempotency decorator.</check>
+      <check>Configure dead-letter queues (DLQ) on all async SQS and EventBridge consumers.</check>
+      <check>Use Step Functions for workflows exceeding 15 minutes or requiring compensating transactions.</check>
+      <check>Never implement synchronous Lambda-to-Lambda chains spanning more than one hop.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.jeremydaly.com/serverless-microservice-patterns-for-aws/"/>
+      <link href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html"/>
+      <link href="https://docs.powertools.aws.dev/lambda/python/latest/utilities/idempotency/"/>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-iac-and-templates"/>
+    </see-also>
+  </content>
+</methodology>
