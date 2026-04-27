@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-deployment-workloads">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Choose Deployment vs StatefulSet correctly, configure resources, health probes, pod anti-affinity, and topology spread for production Kubernetes workloads.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>deployment</tag>
+      <tag>statefulset</tag>
+      <tag>health-probes</tag>
+      <tag>production</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="k8s-rolling-update"/>
+      <ref slug="k8s-scaling-availability"/>
+      <ref slug="k8s-security-hardening"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Deployment and StatefulSet Workloads</title>
+
+    <summary>Kubernetes orchestrates containerized applications via Deployment (stateless) and StatefulSet (stateful) resources. Every production workload requires correct resource requests/limits, all three health probes (startup, liveness, readiness), pod anti-affinity, and topology spread constraints to achieve zero-downtime updates and high availability.</summary>
+
+    <why>
+      <p>Choosing the wrong workload resource leads to instability: using Deployment for a database means lost data when pods restart; using StatefulSet for a stateless API adds unnecessary ordering overhead. Missing resource limits causes OOM kills and noisy-neighbor problems. Missing probes causes traffic to reach unready pods or leaves hung processes running indefinitely. Missing anti-affinity risks all replicas landing on the same node, defeating HA.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deciding whether a workload needs Deployment or StatefulSet.</item>
+        <item>Writing or reviewing a new Kubernetes manifest for production.</item>
+        <item>Auditing an existing workload for missing probes or resource limits.</item>
+        <item>Setting up pod scheduling constraints (anti-affinity, topology spread).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Rolling update strategy tuning — covered in k8s-rolling-update.</item>
+        <item>HPA / PDB autoscaling — covered in k8s-scaling-availability.</item>
+        <item>Canary or progressive delivery — covered in k8s-canary-progressive.</item>
+        <item>Security hardening (PSS, NetworkPolicy) — covered in k8s-security-hardening.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="workload-selection">
+      <p>Deployments manage ReplicaSets and enable declarative rolling updates. Pods get random names and are interchangeable — correct for stateless APIs, frontends, and workers. StatefulSets give each pod a stable ordinal identity (pod-0, pod-1, ...), a dedicated PersistentVolume, and ordered startup/shutdown — required for databases and distributed systems where node identity must survive restarts.</p>
+
+      <rule>
+        <statement>Use Deployment for stateless workloads (web APIs, workers, frontends). Use StatefulSet when pods require stable network identity, per-pod persistent storage, or ordered startup/shutdown.</statement>
+        <rationale>Deploying a database as a Deployment means all replicas share the same PVC or fight over a single data directory. Deploying a stateless API as a StatefulSet forces sequential rollouts that are slower with no benefit.</rationale>
+      </rule>
+
+      <section name="workload-selection-table">
+        <list>
+          <item>Web API — Deployment: stateless, scale horizontally.</item>
+          <item>Worker queue consumer — Deployment: stateless, parallel processing.</item>
+          <item>Frontend / Next.js — Deployment: stateless, fast rollouts.</item>
+          <item>PostgreSQL — StatefulSet: persistent identity and storage.</item>
+          <item>Redis cluster — StatefulSet: ordered startup, stable network IDs.</item>
+          <item>Elasticsearch — StatefulSet: each node needs unique identity.</item>
+          <item>Kafka — StatefulSet: broker IDs must be stable.</item>
+        </list>
+      </section>
+
+      <example type="good" title="StatefulSet for PostgreSQL with headless service">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: database
+spec:
+  clusterIP: None          # Headless service for StatefulSet
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: database
+spec:
+  serviceName: postgres    # Must match headless service name
+  replicas: 3
+  podManagementPolicy: OrderedReady    # Sequential startup (0, 1, 2)
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0         # Update all pods (set > 0 for staged rollout)
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+    spec:
+      serviceAccountName: postgres
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: postgres
+              containerPort: 5432
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "$(POSTGRES_USER)"]
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: postgres
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 60
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 100Gi
+]]></code>
+        <note>Headless service (clusterIP: None) is required so each pod gets a stable DNS entry: postgres-0.postgres.database.svc.cluster.local.</note>
+      </example>
+    </section>
+
+    <section name="health-probes">
+      <p>Kubernetes uses three probes. Startup probe: blocks liveness and readiness until the application initialises — prevents premature restarts during slow starts. Liveness probe: detects hung processes and triggers a container restart. Readiness probe: removes a pod from Service endpoints when it cannot serve traffic (dependency failure, cache warming). All three must be configured for production.</p>
+
+      <rule>
+        <statement>Configure all three probes — startup, liveness, readiness — on every production container. Never omit the startup probe for applications that take more than 5 seconds to initialise.</statement>
+        <rationale>Without a startup probe, the liveness probe fires during initialisation and triggers an unnecessary restart loop. Without a readiness probe, the Service sends traffic to a pod that is still warming up or whose database connection has failed. Without a liveness probe, a hung process accumulates forever on a node.</rationale>
+      </rule>
+
+      <section name="probe-timing-guidelines">
+        <list>
+          <item>Startup: periodSeconds 5-10, failureThreshold 30-60 (gives 2.5-10 minutes for slow apps).</item>
+          <item>Liveness: periodSeconds 10-30, timeoutSeconds 5, failureThreshold 3.</item>
+          <item>Readiness: periodSeconds 5-10, timeoutSeconds 3, failureThreshold 3.</item>
+          <item>Use separate /health/live and /health/ready endpoints — readiness checks dependencies, liveness does not.</item>
+        </list>
+      </section>
+
+      <example type="good" title="All three probes on a web API container">
+        <code lang="yaml"><![CDATA[
+startupProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  periodSeconds: 5
+  failureThreshold: 60    # 60 * 5s = 5 minutes max startup
+
+livenessProbe:
+  httpGet:
+    path: /health/live
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health/ready
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+]]></code>
+        <note>The readiness endpoint should check database connectivity and any required services. The liveness endpoint should return 200 as long as the process is running — never check external dependencies in liveness.</note>
+      </example>
+
+      <antipattern>
+        <description>Using the same endpoint for liveness and readiness with the same timing, or checking database connectivity in the liveness probe.</description>
+        <reason>A database outage will trigger liveness failures and restart all pods, making the situation worse. Liveness should only check that the process itself is not hung.</reason>
+      </antipattern>
+    </section>
+
+    <section name="resource-configuration">
+      <p>Every container must declare both resource requests (used by the scheduler to find a suitable node) and limits (enforced by the kernel). CPU limits throttle — a process will not be OOM-killed for CPU overuse. Memory limits cause OOM kills — size them generously. The ratio of limit to request is the burstability headroom; recommended starting point: limit = 2x request for CPU, 1.5-2x for memory.</p>
+
+      <rule>
+        <statement>Always define both requests and limits for CPU and memory on every container. Never use the latest image tag in production — pin to a specific version with SHA digest for immutability.</statement>
+        <rationale>Containers without requests cannot be scheduled predictably. Containers without limits can starve neighbours. The latest tag means two identical pods on the same node may run different code after a node restart.</rationale>
+      </rule>
+
+      <example type="good" title="Production API resource block">
+        <code lang="yaml"><![CDATA[
+image: registry.example.com/api:1.2.3@sha256:abc123...
+imagePullPolicy: IfNotPresent
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+]]></code>
+      </example>
+
+      <example type="bad" title="Missing limits and latest tag">
+        <code lang="yaml"><![CDATA[
+image: myapp:latest
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  # No limits — pod can consume all node resources
+]]></code>
+        <note>latest tag plus missing limits is the most common cause of production cluster instability.</note>
+      </example>
+    </section>
+
+    <section name="scheduling-constraints">
+      <p>By default Kubernetes places pods wherever resources are available. For HA, replicas must be spread across nodes and availability zones. podAntiAffinity prevents co-location of replicas on the same node. topologySpreadConstraints distributes pods evenly across zones.</p>
+
+      <rule>
+        <statement>Configure podAntiAffinity (preferredDuringSchedulingIgnoredDuringExecution, weight 100, topologyKey kubernetes.io/hostname) and topologySpreadConstraints (maxSkew 1, topologyKey topology.kubernetes.io/zone, whenUnsatisfiable ScheduleAnyway) on every Deployment with replicas >= 2.</statement>
+        <rationale>Without anti-affinity, the scheduler may place all three replicas on the same node; a single node failure takes down the service. topologySpreadConstraints prevents a zone outage from taking more than 50% of pods.</rationale>
+      </rule>
+
+      <example type="good" title="Anti-affinity and topology spread">
+        <code lang="yaml"><![CDATA[
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+          topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: api
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <list>
+        <item>No resource limits — OOM kills, noisy neighbours. Fix: always set requests and limits.</item>
+        <item>Missing probes — traffic to unready pods, stuck pods. Fix: configure all three probes.</item>
+        <item>Using latest tag — unpredictable deployments. Fix: use specific versions with digest.</item>
+        <item>Secrets in ConfigMaps — security risk. Fix: use Secrets, external vault.</item>
+        <item>No anti-affinity — all pods on one node. Fix: configure podAntiAffinity.</item>
+        <item>Wrong workload type — Deployment for DB or StatefulSet for API. Fix: use workload selection table above.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>replicas set appropriately (minimum 2 for HA).</check>
+      <check>revisionHistoryLimit set (default: 10, recommended: 5).</check>
+      <check>Resource requests defined for CPU and memory.</check>
+      <check>Resource limits defined for CPU and memory.</check>
+      <check>Container image uses specific tag with SHA digest (no latest).</check>
+      <check>Startup probe configured for slow-starting apps.</check>
+      <check>Liveness probe configured.</check>
+      <check>Readiness probe configured.</check>
+      <check>Probe endpoints return appropriate status codes.</check>
+      <check>serviceAccountName specified (not default).</check>
+      <check>podAntiAffinity configured for HA.</check>
+      <check>topologySpreadConstraints for zone distribution.</check>
+      <check>StatefulSet: headless Service created (clusterIP: None).</check>
+      <check>StatefulSet: volumeClaimTemplates defined for persistent storage.</check>
+      <check>StatefulSet: terminationGracePeriodSeconds adequate (30-60s minimum for DBs).</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"/>
+      <link href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/"/>
+      <ref slug="k8s-rolling-update"/>
+      <ref slug="k8s-scaling-availability"/>
+      <ref slug="k8s-security-hardening"/>
+    </see-also>
+  </content>
+</methodology>
