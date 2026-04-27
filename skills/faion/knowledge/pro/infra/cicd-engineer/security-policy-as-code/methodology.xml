@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-policy-as-code">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Codify and enforce Kubernetes admission policies using Kyverno or OPA/Gatekeeper. Start in audit mode, write unit tests with kyverno test / conftest, then enable enforcement.</summary>
+    <tags>
+      <tag>policy-as-code</tag>
+      <tag>kyverno</tag>
+      <tag>opa</tag>
+      <tag>kubernetes</tag>
+      <tag>admission-control</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="security-container-scanning"/>
+      <ref slug="security-supply-chain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Policy as Code: OPA, Kyverno, and Admission Control</title>
+
+    <summary>Policy as Code codifies compliance and security requirements in version-controlled, testable artifacts enforced by admission controllers. 96% of technical decision-makers say Policy as Code is vital for secure, scalable cloud operations. Use Kyverno (YAML, Kubernetes-native, easier) or OPA/Gatekeeper (Rego, multi-system, steeper curve). Always start in audit mode; write unit tests; enforce only after fixing existing violations.</summary>
+
+    <why>
+      <p>Without admission control, any workload can be deployed with privileged containers, root users, unlimited resources, or images from untrusted registries — regardless of what SAST and container scanning found. Policy as Code closes this gap by evaluating every kubectl apply / helm install against a set of rules before the resource enters etcd. Policies live in Git, go through PR review, and get version-controlled just like application code.</p>
+      <p>Policy-as-code drift is the primary failure mode: policies authored at the platform team level become out of sync with what app teams actually deploy. Prevent this with a contract-test approach: app team PRs include fixture manifests that run through the policy engine in CI, ensuring policies and apps evolve together.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Kubernetes clusters running multi-team workloads where each team should not be able to override security baselines.</item>
+        <item>Compliance mandates that require no privileged containers, no root users, trusted registries only, required resource limits.</item>
+        <item>Multi-system policy enforcement beyond Kubernetes (OPA with Terraform, API gateway, CI/CD gates via Conftest).</item>
+        <item>Image signing verification — Kyverno verifyImages validates Sigstore cosign signatures at admission time.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-Kubernetes workloads — use native IAM policies, network ACLs, or Terraform Sentinel instead.</item>
+        <item>Replacing application-level security — admission control governs the platform, not the app's own auth/authz.</item>
+        <item>Enforcing policies before audit mode has been run and violations remediated — enforcement without a clean baseline blocks legitimate workloads.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Deploy policy engine in audit mode first. Review all audit violations and remediate existing resources before switching validationFailureAction to Enforce.</statement>
+        <rationale>Enabling enforcement before fixing existing violations blocks all pending deployments in all teams simultaneously, causing incidents and eroding trust in the security programme.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every policy MUST have unit tests: `kyverno test` for Kyverno policies, `conftest verify` for OPA/Rego. Tests MUST run in CI alongside application tests.</statement>
+        <rationale>Policy author hallucinations are common — LLMs emit Kyverno YAML that uses non-existent fields or wrong API versions. Without automated tests, broken policies reach the cluster silently.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Version-control all policies in Git. Apply policies to the cluster via GitOps (ArgoCD, Flux) — never with kubectl apply from a local machine.</statement>
+        <rationale>Manual kubectl apply bypasses PR review, audit trail, and rollback capability. A GitOps sync loop ensures cluster state always matches the repository.</rationale>
+      </rule>
+    </rules>
+
+    <section name="kyverno-core-policies">
+      <p>The baseline Kyverno policy set that every production cluster should enforce:</p>
+
+      <example type="good" title="Kyverno baseline security ClusterPolicy">
+        <code lang="yaml"><![CDATA[
+# kyverno/policies/baseline-security.yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: baseline-security
+  annotations:
+    policies.kyverno.io/title: Baseline Security Policy
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Enforces baseline security requirements for all pods.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-privileged
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: "false"
+            =(initContainers):
+              - securityContext:
+                  privileged: "false"
+
+    - name: require-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must run as non-root user."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+              - securityContext:
+                  runAsNonRoot: true
+
+    - name: deny-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Privilege escalation is not allowed."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+            =(initContainers):
+              - securityContext:
+                  allowPrivilegeEscalation: false
+
+    - name: drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Containers must drop all capabilities."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+            =(initContainers):
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+
+    - name: require-readonly-rootfs
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Root filesystem must be read-only."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+]]></code>
+      </example>
+
+      <example type="good" title="Kyverno require resource limits">
+        <code lang="yaml"><![CDATA[
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "CPU and memory limits are required."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+]]></code>
+      </example>
+
+      <example type="good" title="Kyverno restrict image registries and disallow latest tag">
+        <code lang="yaml"><![CDATA[
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Images must be from trusted registries."
+        pattern:
+          spec:
+            containers:
+              - image: "gcr.io/* | docker.io/myorg/* | ghcr.io/myorg/*"
+            =(initContainers):
+              - image: "gcr.io/* | docker.io/myorg/* | ghcr.io/myorg/*"
+
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-latest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Using 'latest' tag is not allowed. Specify a version tag."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+            =(initContainers):
+              - image: "!*:latest"
+]]></code>
+      </example>
+    </section>
+
+    <section name="opa-rego-policies">
+      <p>OPA/Rego policies for multi-system enforcement (Kubernetes via Gatekeeper, Terraform via Conftest, CI gates):</p>
+
+      <example type="good" title="OPA Rego — no privileged containers">
+        <code lang="rego"><![CDATA[
+# policies/kubernetes/no-privileged.rego
+package kubernetes.admission
+
+import rego.v1
+
+deny contains msg if {
+    input.request.kind.kind == "Pod"
+    some container in input.request.object.spec.containers
+    container.securityContext.privileged == true
+    msg := sprintf("Container '%s' must not run as privileged", [container.name])
+}
+
+deny contains msg if {
+    input.request.kind.kind == "Pod"
+    some container in input.request.object.spec.initContainers
+    container.securityContext.privileged == true
+    msg := sprintf("Init container '%s' must not run as privileged", [container.name])
+}
+]]></code>
+      </example>
+
+      <example type="good" title="OPA Rego — trusted registry enforcement">
+        <code lang="rego"><![CDATA[
+# policies/kubernetes/trusted-registry.rego
+package kubernetes.admission
+
+import rego.v1
+
+trusted_registries := {
+    "gcr.io/my-project",
+    "docker.io/myorg",
+    "ghcr.io/myorg"
+}
+
+deny contains msg if {
+    input.request.kind.kind == "Pod"
+    some container in input.request.object.spec.containers
+    not any_trusted_registry(container.image)
+    msg := sprintf("Container '%s' uses untrusted registry: %s", [container.name, container.image])
+}
+
+any_trusted_registry(image) if {
+    some registry in trusted_registries
+    startswith(image, registry)
+}
+]]></code>
+      </example>
+
+      <example type="good" title="OPA Rego unit tests">
+        <code lang="rego"><![CDATA[
+# policies/kubernetes/no-privileged_test.rego
+package kubernetes.admission
+
+import rego.v1
+
+test_deny_privileged_container if {
+    result := deny with input as {
+        "request": {
+            "kind": {"kind": "Pod"},
+            "object": {
+                "spec": {
+                    "containers": [{
+                        "name": "nginx",
+                        "securityContext": {"privileged": true}
+                    }]
+                }
+            }
+        }
+    }
+    count(result) > 0
+}
+
+test_allow_non_privileged_container if {
+    result := deny with input as {
+        "request": {
+            "kind": {"kind": "Pod"},
+            "object": {
+                "spec": {
+                    "containers": [{
+                        "name": "nginx",
+                        "securityContext": {"privileged": false}
+                    }]
+                }
+            }
+        }
+    }
+    count(result) == 0
+}
+]]></code>
+      </example>
+
+      <example type="good" title="OPA Gatekeeper ConstraintTemplate">
+        <code lang="yaml"><![CDATA[
+# gatekeeper/templates/k8srequiredlabels.yaml
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredlabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            labels:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+
+        violation[{"msg": msg, "details": {"missing_labels": missing}}] {
+          provided := {label | input.review.object.metadata.labels[label]}
+          required := {label | label := input.parameters.labels[_]}
+          missing := required - provided
+          count(missing) > 0
+          msg := sprintf("Missing required labels: %v", [missing])
+        }
+---
+# gatekeeper/constraints/require-labels.yaml
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: require-team-label
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Namespace", "Pod"]
+    excludedNamespaces: ["kube-system", "gatekeeper-system"]
+  parameters:
+    labels:
+      - "team"
+      - "environment"
+]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-opa-policy"><![CDATA[
+Write an OPA Rego policy that enforces [requirement].
+
+Context:
+- Target: [Kubernetes/Terraform/CI/API]
+- Input format: [describe input JSON structure]
+- Requirement: [detailed policy requirement]
+
+Include:
+1. Package declaration
+2. Default deny rule
+3. Allow/deny rules with clear logic
+4. Helper functions if needed
+5. Unit tests
+6. Documentation comments
+]]></prompt>
+
+      <prompt purpose="convert-to-kyverno"><![CDATA[
+Convert these security requirements to Kyverno policies:
+
+Requirements:
+1. [requirement 1]
+2. [requirement 2]
+3. [requirement 3]
+
+For each policy include:
+- Policy metadata and annotations
+- Match/exclude criteria
+- Validation or mutation rules
+- Meaningful error messages
+- Background scan configuration
+]]></prompt>
+
+      <prompt purpose="debug-rego"><![CDATA[
+Debug this Rego policy that isn't working as expected:
+
+```rego
+[paste policy]
+```
+
+Input that should [pass/fail]:
+```json
+[paste input]
+```
+
+Expected behavior: [describe]
+Actual behavior: [describe]
+
+Provide:
+1. Issue identification
+2. Fixed policy
+3. Explanation of the fix
+4. Test cases to verify
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Choose policy engine: OPA/Gatekeeper (complex multi-system policies) or Kyverno (Kubernetes-native, YAML, easier).</check>
+      <check>Deploy policy engine to cluster in audit mode first (validationFailureAction: Audit).</check>
+      <check>Review all audit violations and fix existing non-compliant resources before enforcement.</check>
+      <check>Write unit tests: `kyverno test` for Kyverno, `conftest verify` for OPA/Rego.</check>
+      <check>Add policy CI tests: fixture manifests that pass/fail the policy engine, run in PR pipeline.</check>
+      <check>Document all policies with examples of compliant and non-compliant resources.</check>
+      <check>Version-control all policies; apply via GitOps (ArgoCD/Flux) — never manual kubectl apply.</check>
+      <check>Review policy violations weekly; update policies based on new threats.</check>
+      <check>Maintain an exception register with expiry dates; no permanent waivers.</check>
+      <check>Enable enforcement gradually per namespace — start with non-production namespaces.</check>
+    </checklist>
+
+    <section name="core-policies-checklist">
+      <p>Minimum policy set for every production Kubernetes cluster:</p>
+      <list>
+        <item>No privileged containers.</item>
+        <item>No root user (runAsNonRoot: true).</item>
+        <item>No privilege escalation (allowPrivilegeEscalation: false).</item>
+        <item>Drop all capabilities; add only what is needed.</item>
+        <item>Read-only root filesystem where possible.</item>
+        <item>CPU and memory limits required.</item>
+        <item>Trusted registries only (no Docker Hub public images).</item>
+        <item>No latest tag.</item>
+        <item>No secrets in environment variables (use mounted secrets or External Secrets Operator).</item>
+        <item>NetworkPolicies required per namespace.</item>
+        <item>No hostNetwork, no hostPort.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Policy author hallucinations: LLMs emit Kyverno that uses fields that don't exist or wrong API versions; always require `kyverno test` in CI before merging any policy PR.</p>
+      <p>Policy-as-code drift: policies authored at the platform team level become out of sync with what app teams actually deploy. Use a contract-test approach where app team PRs include fixture manifests validated against the policy engine.</p>
+    </section>
+
+    <see-also>
+      <link href="https://kyverno.io/"/>
+      <link href="https://www.openpolicyagent.org/docs/"/>
+      <link href="https://www.conftest.dev/"/>
+      <ref slug="security-container-scanning"/>
+      <ref slug="security-supply-chain"/>
+    </see-also>
+  </content>
+</methodology>
