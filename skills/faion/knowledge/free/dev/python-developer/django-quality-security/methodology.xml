@@ -1,0 +1,476 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-quality-security">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Django production security baseline: HTTPS, HSTS, CSP, CSRF, rate limiting, input validation, brute-force protection, and check --deploy gate.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>security</tag>
+      <tag>csp</tag>
+      <tag>rate-limiting</tag>
+      <tag>production</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-queries"/>
+      <ref slug="django-quality-logging"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Production Security Baseline</title>
+
+    <summary>Security is not optional in production Django. HTTPS, HSTS, CSRF cookies, Content Security Policy, rate limiting on auth endpoints, input validation via forms/serializers, and python manage.py check --deploy are the minimum. Each setting prevents a specific attack class and must be enforced before launch.</summary>
+
+    <why>
+      <p>Each security header and setting prevents a specific attack class: DEBUG=False prevents stack traces from leaking in 500 responses; HTTPS with SECURE_SSL_REDIRECT prevents credential sniffing; HSTS prevents SSL stripping / downgrade attacks; secure session and CSRF cookies prevent cookie theft over HTTP; X-Frame-Options DENY prevents clickjacking; Content Security Policy prevents XSS script injection; rate limiting prevents brute-force credential stuffing; input validation prevents SQL injection and data corruption.</p>
+      <p>python manage.py check --deploy is Django's built-in production-readiness audit. It catches misconfigurations automatically on every deploy. Running it in CI (--fail-level WARNING) blocks deployment of a misconfigured settings file. These are not negotiable — they are the industry baseline.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Security hardening before public launch of any Django application.</item>
+        <item>Any Django project handling user authentication or sensitive data.</item>
+        <item>Adding public-facing endpoints to an existing internal Django app.</item>
+        <item>Post-incident security remediation (CSP violations, brute-force incidents).</item>
+        <item>Quarterly security audit of production settings.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes — full security stack costs more than the prototype is worth.</item>
+        <item>Internal admin-only tools behind VPN — much of the security stack is external-facing; relax CSP and rate limiting for trusted networks.</item>
+        <item>Pure data pipelines without HTTP — CSP and rate limiting do not apply.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="https-headers">
+      <p>The production settings file enforces HTTPS transport and security headers. Every item below is tested by python manage.py check --deploy. Running without any of these items in production is a security incident waiting to happen.</p>
+
+      <rule testable="true">
+        <statement>Production Django MUST set: DEBUG=False, SECURE_SSL_REDIRECT=True, SESSION_COOKIE_SECURE=True, CSRF_COOKIE_SECURE=True, SECURE_BROWSER_XSS_FILTER=True, SECURE_CONTENT_TYPE_NOSNIFF=True, X_FRAME_OPTIONS="DENY", SECURE_HSTS_SECONDS=31536000, SECURE_HSTS_INCLUDE_SUBDOMAINS=True, SECURE_HSTS_PRELOAD=True. Run python manage.py check --deploy --fail-level WARNING before every deploy. Block deployment if any WARNING or ERROR is reported.</statement>
+        <rationale>Each setting is a separate attack mitigation: HTTPS prevents credential sniffing, HSTS prevents downgrade attacks, secure cookies prevent session theft over HTTP, XSS filter enables browser-level protection, NOSNIFF prevents MIME-type confusion, DENY prevents clickjacking. check --deploy catches misconfigurations without manual audit. Blocking on WARNING ensures the baseline is enforced in CI.</rationale>
+      </rule>
+
+      <example type="good" title="Production security settings">
+        <code lang="python"><![CDATA[
+# config/settings/production.py
+from .base import *  # noqa: F401, F403
+
+DEBUG = False
+
+# HTTPS + transport security
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Cookie security
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# HTTP security headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# HSTS — preload requires prior HSTS headers; start with 300 seconds and ramp up
+SECURE_HSTS_SECONDS = 31536000  # 1 year after testing with 300
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Content Security Policy (Django 6.0+ native)
+MIDDLEWARE.insert(1, "django.middleware.csp.ContentSecurityPolicyMiddleware")
+CONTENT_SECURITY_POLICY = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "'nonce-<CSP_NONCE_SENTINEL>'"],
+    "style-src": ["'self'", "'nonce-<CSP_NONCE_SENTINEL>'"],
+    "img-src": ["'self'", "data:", "https:"],
+    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'"],
+    "frame-ancestors": ["'none'"],
+    "form-action": ["'self'"],
+}
+
+# Report-only mode for testing CSP without breaking existing scripts
+# CONTENT_SECURITY_POLICY_REPORT_ONLY = True  # Enable during migration phase
+
+# Before deploy: python manage.py check --deploy --fail-level WARNING
+]]></code>
+      </example>
+
+      <example type="good" title="CSP nonce in Django 6.0+ templates">
+        <code lang="html"><![CDATA[
+<!-- template.html — using Django 6.0+ native CSP nonce -->
+{% load csp %}
+
+<script nonce="{{ request.csp_nonce }}">
+    // This script is allowed by CSP nonce
+    console.log("Nonce-protected script");
+</script>
+
+<style nonce="{{ request.csp_nonce }}">
+    /* This style is allowed by CSP nonce */
+    .safe-style { color: blue; }
+</style>
+]]></code>
+      </example>
+    </section>
+
+    <section name="rate-limiting">
+      <p>Rate limiting prevents brute-force attacks on login endpoints, password reset, and public APIs. Django REST Framework projects should use DRF throttle classes (DEFAULT_THROTTLE_CLASSES) rather than django-ratelimit decorators to avoid double-counting and to integrate with DRF's exception handling.</p>
+
+      <rule testable="true">
+        <statement>All authentication endpoints (login, password reset, registration, token refresh) MUST have rate limiting of at most 5 attempts per minute per IP. Public API endpoints MUST have per-user and per-IP throttle limits. Use DRF's DEFAULT_THROTTLE_CLASSES for DRF projects (not django-ratelimit decorators — stacking both double-counts). Use django-axes for account lockout after failed login attempts (not just rate limiting — lockout persists across IPs for username-based attacks).</statement>
+        <rationale>A rate limit of 5/min prevents 7200 brute-force attempts per day (versus unlimited with no rate limit). django-axes adds account lockout: even if attackers rotate IPs to bypass per-IP rate limits, repeated failures on the same username lock the account. DRF throttle classes are preferred in DRF projects because they integrate with DRF's 429 response format and can be configured per view class.</rationale>
+      </rule>
+
+      <example type="good" title="DRF throttle classes (preferred for DRF APIs)">
+        <code lang="python"><![CDATA[
+# config/settings/base.py
+REST_FRAMEWORK = {
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "login": "5/min",  # Custom scope for login endpoint
+    },
+}
+
+
+# Custom throttle for login endpoint
+# throttles.py
+from rest_framework.throttling import AnonRateThrottle
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = "login"
+
+
+# views.py
+from rest_framework.views import APIView
+
+class LoginView(APIView):
+    throttle_classes = [LoginRateThrottle]
+
+    def post(self, request):
+        # ... login logic
+        pass
+]]></code>
+      </example>
+
+      <example type="good" title="django-ratelimit for non-DRF views">
+        <code lang="python"><![CDATA[
+from django_ratelimit.decorators import ratelimit
+from django.http import JsonResponse
+
+
+@ratelimit(key="ip", rate="5/m", method="POST", block=True)
+def login_view(request):
+    """Login with rate limiting: 5 attempts per minute per IP."""
+    # ... login logic
+    pass
+
+
+@ratelimit(key="user", rate="100/h", method="GET")
+def api_endpoint(request):
+    """API with per-user rate limit (non-blocking — check limited flag)."""
+    if getattr(request, "limited", False):
+        return JsonResponse(
+            {"error": "Rate limit exceeded. Try again later."},
+            status=429
+        )
+    # ... normal handling
+]]></code>
+      </example>
+    </section>
+
+    <section name="input-validation">
+      <p>All user input MUST be validated before being used in database queries, file operations, or business logic. Django forms and DRF serializers are the correct validation layer. Raw SQL must never accept unvalidated input.</p>
+
+      <rule testable="true">
+        <statement>All user input MUST pass through a Django form or DRF serializer before being used in any operation. Never build SQL queries from user input (use ORM always). Validate file uploads for type, size, and content (not just extension). Use specific regex validators for structured inputs (usernames, phone numbers). Call .full_clean() on model instances before save() in service functions to trigger model-level validation.</statement>
+        <rationale>Django's ORM prevents SQL injection when used correctly. Forms and serializers document the expected shape of input and reject unexpected fields (protecting against mass assignment). File content validation prevents polyglot files (.jpg with PHP payload). .full_clean() runs model validators and clean() methods, catching invariant violations before they reach the database.</rationale>
+      </rule>
+
+      <example type="good" title="Comprehensive form validation">
+        <code lang="python"><![CDATA[
+from django import forms
+from django.core.validators import RegexValidator, MinLengthValidator
+from django.core.exceptions import ValidationError
+import re
+
+
+class UserRegistrationForm(forms.Form):
+    """User registration with comprehensive validation."""
+
+    username = forms.CharField(
+        min_length=3,
+        max_length=30,
+        validators=[
+            RegexValidator(
+                regex=r'^[\w.@+-]+$',
+                message="Username may only contain letters, numbers, and @/./+/-/_"
+            )
+        ]
+    )
+
+    email = forms.EmailField()
+
+    password = forms.CharField(
+        min_length=12,
+        widget=forms.PasswordInput,
+        validators=[MinLengthValidator(12)]
+    )
+
+    def clean_username(self):
+        username = self.cleaned_data["username"]
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("This username is already taken.")
+        return username.lower()
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+
+        # Check password complexity
+        if not re.search(r"[A-Z]", password):
+            raise ValidationError("Password must contain uppercase letter.")
+        if not re.search(r"[a-z]", password):
+            raise ValidationError("Password must contain lowercase letter.")
+        if not re.search(r"\d", password):
+            raise ValidationError("Password must contain a digit.")
+        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+            raise ValidationError("Password must contain special character.")
+
+        return password
+]]></code>
+      </example>
+    </section>
+
+    <section name="exception-handling">
+      <p>Bare except: statements hide security-relevant bugs. Specific exception handling documents intent and ensures failures are logged and surfaced correctly.</p>
+
+      <rule testable="true">
+        <statement>NEVER use bare except: or except Exception: in production code. Always catch specific exceptions (User.DoesNotExist, ValidationError, Timeout, etc.). Always log exceptions with logger.error(..., exc_info=True) to include the traceback. Never silently pass on exceptions — re-raise or return a meaningful error. Use exc_info=True on ERROR-level logs to include the full traceback for debugging.</statement>
+        <rationale>Bare except hides programming errors (AttributeError, KeyError, NameError) that should never be swallowed. Specific exceptions document the failure mode and let different callers handle different error types appropriately. exc_info=True includes the traceback in logs, critical for diagnosing production incidents. Silent failures corrupt state silently — bugs become visible only when downstream systems fail.</rationale>
+      </rule>
+
+      <example type="good" title="Specific exception handling">
+        <code lang="python"><![CDATA[
+import logging
+from django.http import Http404
+from rest_framework.exceptions import ValidationError
+import requests
+from requests.exceptions import Timeout, HTTPError, ConnectionError
+
+logger = logging.getLogger(__name__)
+
+
+# Good: specific model exception
+def get_user_or_404(user_id: int) -> User:
+    try:
+        return User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        raise Http404(f"User {user_id} not found")
+
+
+# Good: multiple specific exceptions
+def validate_and_process(data: dict) -> dict:
+    try:
+        validated = validate_data(data)
+        return process_data(validated)
+    except (ValidationError, ValueError) as e:
+        logger.warning("Validation failed: %s", e)
+        raise ValidationError({"detail": str(e)})
+    except ProcessingError as e:
+        logger.error("Processing failed: %s", e, exc_info=True)
+        raise
+
+
+# Good: HTTP requests with specific exceptions
+def fetch_external_data(url: str, timeout: int = 30) -> dict:
+    """Fetch data from external API with proper error handling."""
+    try:
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except Timeout:
+        logger.warning("Request to %s timed out", url)
+        raise ExternalServiceError("External service timeout")
+    except HTTPError as e:
+        logger.error("HTTP error from %s: %s", url, e.response.status_code)
+        raise ExternalServiceError(f"Service returned {e.response.status_code}")
+    except ConnectionError:
+        logger.error("Connection failed to %s", url, exc_info=True)
+        raise ExternalServiceError("Unable to connect to external service")
+]]></code>
+      </example>
+
+      <example type="bad" title="Bare except — hides bugs and security issues">
+        <code lang="python"><![CDATA[
+# WRONG — hides all errors including programming bugs
+try:
+    do_something()
+except:  # NEVER!
+    pass
+
+# WRONG — too broad, catches SystemExit, KeyboardInterrupt
+try:
+    do_something()
+except Exception:
+    logger.error("Error occurred")  # No traceback, no context, no re-raise
+]]></code>
+      </example>
+    </section>
+
+    <section name="sensitive-data">
+      <p>Sensitive data must never appear in logs, version control, or error responses. Environment variables manage secrets. Django's check system validates secret key safety.</p>
+
+      <rule testable="true">
+        <statement>SECRET_KEY, database credentials, API keys, and passwords MUST be loaded from environment variables (via django-environ or os.environ). Never hardcode secrets in settings files or commit them to version control. Never log passwords, tokens, credit card numbers, or PII. Add Sentry's before_send filter to scrub PII from error reports. Add a custom system check to validate that SECRET_KEY is not the default "django-insecure-*" value.</statement>
+        <rationale>Secrets in version control are exposed to every developer with repo access and are effectively permanent (git history). Environment variables keep secrets outside code. PII in logs violates GDPR and creates liability. The SECRET_KEY check catches the most common misconfiguration in Django tutorials where developers forget to replace the default.</rationale>
+      </rule>
+
+      <example type="good" title="Custom system check for secret key safety">
+        <code lang="python"><![CDATA[
+# checks.py
+from django.core.checks import Error, Warning, register, Tags
+
+
+@register(Tags.security)
+def check_secret_key_not_default(app_configs, **kwargs):
+    """Ensure SECRET_KEY is not the default insecure value."""
+    from django.conf import settings
+
+    errors = []
+
+    if settings.SECRET_KEY == "django-insecure-change-me":
+        errors.append(
+            Error(
+                "SECRET_KEY is set to an insecure default value.",
+                hint="Generate a new SECRET_KEY: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'",
+                id="security.E001",
+            )
+        )
+
+    return errors
+
+
+@register(Tags.security, deploy=True)
+def check_sentry_configured(app_configs, **kwargs):
+    """Ensure Sentry is configured for production error tracking."""
+    from django.conf import settings
+
+    warnings = []
+
+    if not getattr(settings, "SENTRY_DSN", None):
+        warnings.append(
+            Warning(
+                "SENTRY_DSN is not configured.",
+                hint="Configure Sentry for production error tracking.",
+                id="monitoring.W001",
+            )
+        )
+
+    return warnings
+
+
+@register()
+def check_cache_configured(app_configs, **kwargs):
+    """Warn if using local memory cache in production."""
+    from django.conf import settings
+
+    warnings = []
+
+    if not settings.DEBUG:
+        cache_backend = settings.CACHES.get("default", {}).get("BACKEND", "")
+        if "LocMemCache" in cache_backend:
+            warnings.append(
+                Warning(
+                    "Using LocMemCache in production.",
+                    hint="Configure Redis or Memcached for production caching.",
+                    id="caching.W001",
+                )
+            )
+
+    return warnings
+
+
+# apps.py — register checks at app startup
+class MyAppConfig(AppConfig):
+    name = "myapp"
+
+    def ready(self):
+        from . import checks  # noqa: F401
+]]></code>
+      </example>
+    </section>
+
+    <section name="gotchas">
+      <p>Common agent pitfalls with Django security configuration.</p>
+
+      <antipattern>
+        <description>Setting SECURE_HSTS_SECONDS=31536000 immediately on a new domain without testing with a shorter value first.</description>
+        <reason>HSTS is a one-way ratchet — browsers cache HSTS for the duration. If HTTPS breaks, users cannot reach the site until the HSTS TTL expires. Start with SECURE_HSTS_SECONDS=300 in staging, ramp to 3600, then 31536000 over weeks.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using django-ratelimit decorators AND DRF throttle classes on the same endpoint.</description>
+        <reason>Both count separately, so a user hitting the limit on one may not be blocked by the other until double-threshold. Pick one per project: django-ratelimit for non-DRF views, DRF throttles for DRF views.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>django-axes and django-ratelimit without configuring X-Forwarded-For proxy trust.</description>
+        <reason>Without AXES_IPWARE_PROXY_COUNT (axes) or RATELIMIT_USE_CACHE + trusted proxy config (ratelimit), all traffic behind a load balancer appears to come from the same IP, causing false lockouts of all users when one attacker triggers limits. Always test behind a proxy in staging.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>CSP nonces with cached responses (Cloudflare, Nginx proxy cache).</description>
+        <reason>CSP nonces must be unique per request. Cached responses serve the same nonce to all users, breaking CSP protection. Disable caching for pages with nonce-based CSP, or use CSP hashes for static inline scripts instead of nonces.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>debug_toolbar middleware leaking into production because DEBUG check is skipped.</description>
+        <reason>Debug Toolbar exposes SQL queries, template variables, and settings through its web UI. Its middleware must be guarded by if DEBUG: in MIDDLEWARE configuration and restricted to INTERNAL_IPS.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>DEBUG=False in production settings</check>
+      <check>SECURE_SSL_REDIRECT=True, SECURE_HSTS_SECONDS set (start at 300 → ramp to 31536000)</check>
+      <check>SESSION_COOKIE_SECURE=True and CSRF_COOKIE_SECURE=True</check>
+      <check>X_FRAME_OPTIONS="DENY" or "SAMEORIGIN"</check>
+      <check>CSP middleware configured (Django 6.0+ native or django-csp)</check>
+      <check>Rate limiting on all auth endpoints (login, password reset, registration)</check>
+      <check>django-axes installed and configured with AXES_IPWARE_PROXY_COUNT</check>
+      <check>All user input validated via forms or serializers before use</check>
+      <check>Secrets loaded from environment variables (no hardcoded values)</check>
+      <check>Custom system checks registered for SECRET_KEY and Sentry DSN</check>
+      <check>python manage.py check --deploy --fail-level WARNING passes in CI</check>
+      <check>No print() or bare except: in production code (ruff T20 + ruff catches)</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/stable/topics/security/"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/checks/"/>
+      <link href="https://docs.djangoproject.com/en/dev/ref/csp/"/>
+      <link href="https://django-axes.readthedocs.io/"/>
+      <link href="https://django-ratelimit.readthedocs.io/"/>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/Django_Security_Cheat_Sheet.html"/>
+      <ref slug="django-quality-linting"/>
+      <ref slug="django-quality-logging"/>
+    </see-also>
+  </content>
+</methodology>
