@@ -1,0 +1,437 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="typescript-strict-mode">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Enable strict: true plus four extras (noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch) and validate IO with Zod.</summary>
+    <tags>
+      <tag>typescript</tag>
+      <tag>strict-mode</tag>
+      <tag>type-safety</tag>
+      <tag>tsconfig</tag>
+      <tag>zod</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>TypeScript Strict Mode</title>
+
+    <summary>TypeScript strict mode is a compiler flag group (`strict: true` + four recommended extras) that eliminates implicit `any`, enforces null safety, catches unchecked index access, and requires explicit return types. The canonical 2026 baseline adds `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, and `noFallthroughCasesInSwitch` on top of `strict: true`. IO boundaries are validated with Zod; `unknown` replaces `any` throughout.</summary>
+
+    <why>
+      <p>Strict mode is the cheapest static gate against a class of runtime bugs: null dereferences, unchecked array access, implicit any leaking through service layers. LLM-authored code is particularly prone to `any` leaks and non-null assertion abuse; strict mode plus ESLint rules `no-explicit-any` and `no-non-null-assertion` makes these compile-fail instead of runtime-fail.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All new TypeScript projects — strict mode is the only sane production default.</item>
+        <item>JS-to-TS migrations — adopt incrementally per directory.</item>
+        <item>Library / SDK development — `.d.ts` strictness is part of the API contract.</item>
+        <item>Critical paths (auth, billing, IAM) where null/undefined bugs are unacceptable.</item>
+        <item>LLM-authored codebases — strict is the cheapest static gate against hallucinated APIs.</item>
+        <item>Migrating a JS codebase — adopt strict in stages (`strict: true` → `noImplicitAny` → `strictNullChecks` per directory).</item>
+        <item>Multi-team monorepos where shared types are the integration contract.</item>
+        <item>Critical paths (auth, billing, IAM, parsing) where null/undefined bugs are unacceptable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes / spike branches — strict mode doubles iteration cost.</item>
+        <item>Bridging legacy JS with thousands of `noImplicitAny` violations — adopt per-file via `// @ts-check` first.</item>
+        <item>Heavily dynamic plugin systems where types fight extension hooks — use Zod parse boundaries instead.</item>
+        <item>Codebases with poorly typed third-party libs lacking `@types/*` — add typed adapters first.</item>
+        <item>Codebases that depend on poorly typed third-party libs without `@types/*` — `skipLibCheck: true` + targeted `unknown` adapters first.</item>
+        <item>Highly dynamic plugin systems where types fight extension hooks; structural alternatives (Zod schemas + parse boundaries) cleaner.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strict-flag-group">
+      <rule>
+        <statement>Enable strict: true plus four extras — noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch. This is the 2026 baseline.</statement>
+        <rationale>strict: true enables 7 checks; the four extras catch unchecked array indexing, property-set vs omit confusion, missing return paths, and switch fallthrough.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="json"><![CDATA[
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+]]></code>
+      </example>
+      <reference path="templates/tsconfig.json">Full strict tsconfig template.</reference>
+    </section>
+
+    <section name="no-unchecked-indexed-access">
+      <p>Array indexing returns T | undefined instead of T. Catches silent out-of-bounds bugs.</p>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+function getFirst<T>(items: T[]): T | undefined {
+  return items[0]
+}
+
+function getFirstRequired<T>(items: T[]): T {
+  const first = items[0]
+  if (first === undefined) throw new Error("Array is empty")
+  return first
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="exact-optional-property-types">
+      <p>Setting an optional property to undefined is rejected; you must either omit the property or declare the type as T | undefined explicitly.</p>
+      <example type="bad">
+        <code lang="typescript"><![CDATA[
+interface Config { timeout?: number }
+const c: Config = { timeout: undefined } // Error with exactOptionalPropertyTypes
+]]></code>
+      </example>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+interface Config { timeout?: number }
+const c: Config = {} // OK — property omitted
+
+interface ConfigExplicit { timeout?: number | undefined }
+const c2: ConfigExplicit = { timeout: undefined } // OK — explicit
+]]></code>
+      </example>
+    </section>
+
+    <section name="type-narrowing">
+      <rule>
+        <statement>Use type guards (is X), discriminated unions, and instanceof/in narrowing. Never use as to bypass narrowing.</statement>
+        <rationale>Narrowing is verified by the compiler; as casts bypass strictness and hide real bugs.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+function isString(value: unknown): value is string {
+  return typeof value === "string"
+}
+
+type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: Error }
+
+function handleResult<T>(result: Result<T>): T {
+  if (result.success) return result.data
+  throw result.error
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="branded-types">
+      <rule>
+        <statement>Use branded types for IDs and other string/number values that must not be mixed. This prevents passing OrderId where UserId is expected.</statement>
+        <rationale>Without branding, all string IDs are structurally identical; passing the wrong ID is a silent runtime bug.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+type UserId = string & { readonly __brand: "UserId" }
+type OrderId = string & { readonly __brand: "OrderId" }
+
+function createUserId(id: string): UserId { return id as UserId }
+function getUser(id: UserId): User { /* ... */ }
+
+const userId = createUserId("user-123")
+const orderId = createOrderId("order-456")
+getUser(userId)  // OK
+getUser(orderId) // Error: OrderId not assignable to UserId
+]]></code>
+      </example>
+    </section>
+
+    <section name="as-const">
+      <rule>
+        <statement>Use as const for literal objects and arrays that serve as enum sources or discriminant values.</statement>
+        <rationale>Without as const, TypeScript widens "INCREMENT" to string; as const preserves the literal type for discriminated unions.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+const ACTIONS = { INCREMENT: "INCREMENT", DECREMENT: "DECREMENT" } as const
+type ActionType = typeof ACTIONS[keyof typeof ACTIONS]
+// Type: "INCREMENT" | "DECREMENT"
+]]></code>
+      </example>
+    </section>
+
+    <section name="assertion-functions">
+      <rule>
+        <statement>Use assertDefined() and assert() with asserts return type to narrow without non-null assertion (!).</statement>
+        <rationale>! suppresses the error without communicating intent; assertion functions throw with a message and narrow the type for downstream code.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+function assertDefined<T>(
+  value: T | null | undefined,
+  message?: string
+): asserts value is T {
+  if (value == null) throw new Error(message ?? "Value is null or undefined")
+}
+
+const user: User | null = getUser()
+assertDefined(user, "User must exist")
+console.log(user.name) // user is User here
+]]></code>
+      </example>
+    </section>
+
+    <section name="zod-io-boundaries">
+      <rule>
+        <statement>Validate all external data (HTTP request bodies, env vars, JSON files, localStorage) with Zod at the boundary. Downstream code receives fully typed values.</statement>
+        <rationale>External data is always unknown at runtime; Zod converts it to typed values and provides actionable error messages on parse failure.</rationale>
+      </rule>
+    </section>
+
+    <section name="any-and-as-casts">
+      <antipattern>
+        <description>Using any or as any / as unknown as Foo to silence a type error</description>
+        <reason>Bypasses strict mode entirely for that value; downstream code loses type checking. Use unknown + type guards instead.</reason>
+      </antipattern>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+// Instead of: const user = data as User
+function isUser(data: unknown): data is User {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "id" in data &&
+    "email" in data
+  )
+}
+if (isUser(data)) { /* data is User */ }
+]]></code>
+      </example>
+    </section>
+
+    <section name="non-null-assertion-overuse">
+      <antipattern>
+        <description>Chaining non-null assertions: user!.name!.first!</description>
+        <reason>Hides real null bugs; if any value in the chain is null at runtime, you get an unhandled TypeError with no useful message.</reason>
+      </antipattern>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+const name = user?.name?.first ?? "Unknown"
+]]></code>
+      </example>
+    </section>
+
+    <section name="ts-ignore-rot">
+      <antipattern>
+        <description>Using @ts-ignore to silence errors that accumulate over time</description>
+        <reason>@ts-ignore never expires; when the underlying issue is fixed the suppression stays. Use @ts-expect-error — it errors out when no longer needed.</reason>
+      </antipattern>
+      <rule>
+        <statement>Prefer @ts-expect-error over @ts-ignore. Always add a comment and a ticket reference explaining why.</statement>
+        <rationale>@ts-expect-error auto-fails when the suppressed error is fixed, serving as a ratchet against accumulation.</rationale>
+      </rule>
+    </section>
+
+    <section name="wide-return-types">
+      <antipattern>
+        <description>Returning Promise&lt;any&gt; from a service function</description>
+        <reason>Consumer types collapse to any; the entire downstream chain loses strictness.</reason>
+      </antipattern>
+      <rule>
+        <statement>Declare explicit return types on all exported functions. Do not rely on inference for public API shapes.</statement>
+        <rationale>Explicit return types catch the case where an implementation change broadens the returned type silently.</rationale>
+      </rule>
+    </section>
+
+    <section name="partial-overuse">
+      <antipattern>
+        <description>Using Partial&lt;T&gt; as a default for update payloads or config objects</description>
+        <reason>Reduces strictness to "everything optional"; callers can pass empty objects with no error. Model update types explicitly with only the mutable fields.</reason>
+      </antipattern>
+      <reference path="templates/strict-ratchet.sh">CI script to prevent new strict errors being introduced.</reference>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <list>
+        <item>**Migration debt.** Toggling `strict: true` on a 50K-line codebase yields thousands of errors; agents can't fix in one PR. Use `--noEmitOnError false` + per-file `// @ts-strict-ignore` (with a sunset deadline) and migrate incrementally.</item>
+        <item>**`any` leaks via untyped libs.** A single `import { foo } from 'untyped-pkg'` poisons downstream types. Always wrap with a typed adapter and `@types/*` declaration.</item>
+        <item>**`noUncheckedIndexedAccess`** trips agents who don't handle `T | undefined` after array indexing. Real bug catches; ergonomics suffer until adopted.</item>
+        <item>**`exactOptionalPropertyTypes`** breaks libraries that pass `undefined` for optional props (React especially). Audit lib compatibility before flipping.</item>
+        <item>**`strictPropertyInitialization`** fights DI frameworks (Nest.js, TypeORM); use `!` definite-assignment or `init` patterns.</item>
+        <item>**Type assertions (`as`)** silently bypass strictness; LLMs reach for `as` to "fix" type errors. Lint rule `@typescript-eslint/no-unsafe-*` catches; but enforcement needed.</item>
+        <item>**`@ts-ignore` rot.** Ignored errors accumulate with no expiry. Use `@ts-expect-error` (errors out when no longer needed) and require a comment.</item>
+        <item>**Module resolution drift.** `verbatimModuleSyntax`, `isolatedModules`, `moduleResolution: "bundler"` are version-sensitive; mismatched bundler/TS combos produce confusing errors.</item>
+        <item>**Decorator types.** Strict mode + experimental decorators (Nest, TypeORM) needs `experimentalDecorators` + `emitDecoratorMetadata`; agents don't always wire correctly.</item>
+        <item>**Performance.** Large strict projects with project references compile slower than non-strict. Use `tsc --build` + incremental + `--pretty false` in CI.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive strict-mode work in 4 stages: (1) a **migration-planner** subagent runs `tsc --strict --noEmit` on the codebase, buckets errors by file/rule, and emits a phased plan (per-rule or per-directory); (2) a **per-file-fixer** subagent works one file at a time, eliminating `any` / `!` / `as` non-trivially (refactoring, not silencing); (3) a **type-guard-author** subagent creates `is*` guards and Zod / valibot parsers at IO boundaries (req/res, JSON, env); (4) a **lint-rule-tightener** subagent ratchets ESLint rules (`no-explicit-any: error`, `no-non-null-assertion: error`) once green. Always run `tsc --noEmit &amp;&amp; eslint . --max-warnings 0` in CI; LLMs commonly add code that compiles but lints dirty.</p>
+      <list>
+        <item>`faion-sdd-executor-agent` (`agents/faion-sdd-executor-agent.md`) — quality gate runs `pnpm typecheck &amp;&amp; pnpm lint &amp;&amp; pnpm test`.</item>
+        <item>A purpose-built **strict-migration-agent** (worth creating): given a `tsc` error list, groups by rule and proposes file-level fixes (with diff suggestions).</item>
+        <item>A **any-hunter-agent** (worth creating): grep-driven; finds `any`, `as any`, `@ts-ignore`, `@ts-expect-error` and ranks by blast radius.</item>
+        <item>A **zod-boundary-agent** (worth creating): for any function consuming external data (HTTP, fs, env), proposes a Zod schema + `parse()` so downstream code can be strictly typed.</item>
+        <item>A **type-test-agent** that runs `tsd` / `expect-type` to assert public API types stay stable across releases.</item>
+        <item>`password-scrubber-agent` (`agents/password-scrubber-agent.md`) — scrub secrets from `.env`, fixture types before commit.</item>
+      </list>
+      <prompt purpose="per-file-fix"><![CDATA[
+File: src/users/service.ts. tsc --strict reports 12 errors.
+For each error:
+1. Identify root cause (real bug vs missing annotation)
+2. Refactor — do NOT add `as`, `!`, or `any`
+3. Prefer `unknown` + type guard over `any`
+4. Use Zod for runtime IO validation
+Output the full updated file.
+Constraints: no @ts-ignore, no @ts-expect-error.
+Verify: pnpm tsc --noEmit src/users/service.ts.
+]]></prompt>
+      <prompt purpose="boundary-parsing"><![CDATA[
+For function loadConfig() that reads process.env, define a
+ConfigSchema with zod:
+- DATABASE_URL: z.string().url()
+- PORT: z.coerce.number().int().positive().default(3000)
+- LOG_LEVEL: z.enum(['debug','info','warn','error']).default('info')
+loadConfig() returns z.infer<typeof ConfigSchema>; throws on
+parse error with helpful message. Add tests for missing/invalid.
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`tsc` — TypeScript compiler / typechecker. https://www.typescriptlang.org</item>
+        <item>`tsx` / `ts-node` — Run TS directly. https://github.com/privatenumber/tsx</item>
+        <item>`@typescript-eslint/parser` + `eslint-plugin` — Lint TS rules. https://typescript-eslint.io</item>
+        <item>`tsd` — Test types. https://github.com/SamVerschueren/tsd</item>
+        <item>`expect-type` — Type-level assertions. https://github.com/mmkal/expect-type</item>
+        <item>`type-coverage` — Measure % of fully typed code. https://github.com/plantain-00/type-coverage</item>
+        <item>`ts-prune` — Find unused exports. https://github.com/nadeesha/ts-prune</item>
+        <item>`ts-reset` — Tighter built-in types. https://github.com/total-typescript/ts-reset</item>
+        <item>`zod` / `valibot` / `arktype` — Runtime + static schemas. https://zod.dev</item>
+        <item>`tsconfig-paths` — Path alias resolution. https://github.com/dividab/tsconfig-paths</item>
+        <item>`eslint-plugin-total-functions` — Detect total-function violations. https://github.com/danielnixon/eslint-plugin-total-functions</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>TypeScript Language Server (OSS) — Editor + agent in-loop diagnostics.</item>
+        <item>GitHub Actions (SaaS) — `tsc --noEmit` as required check.</item>
+        <item>GitLab CI / CircleCI (SaaS) — Same.</item>
+        <item>Codecov (SaaS) — Pair with `type-coverage --detail` for type-coverage gates.</item>
+        <item>`arethetypeswrong/cli` (OSS) — Audits dual ESM/CJS type exports.</item>
+        <item>Stainless / Speakeasy (SaaS) — Generate strictly typed SDKs from OpenAPI.</item>
+        <item>TypeScript Playground (SaaS) — Reproduce isolated type bugs with shareable URL.</item>
+        <item>Stryker (OSS) — Mutation testing helps surface tests that don't actually exercise types.</item>
+      </list>
+    </section>
+
+    <section name="strictness-ratchet-script">
+      <p>See `templates.md` and `examples.md` for `tsconfig.json`, type-guard patterns, Zod boundaries. Add a strictness ratchet (≤50 lines):</p>
+      <example type="good" title="strict-ratchet.sh">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# strict-ratchet.sh — error count must not increase between runs.
+# Stores baseline in .strict-baseline; run in CI on PRs.
+set -euo pipefail
+BASE=".strict-baseline"
+COUNT=$(npx tsc --noEmit --pretty false 2>&1 | grep -c "error TS" || true)
+echo "current strict errors: $COUNT"
+if [ ! -f "$BASE" ]; then
+  echo "$COUNT" > "$BASE"
+  echo "baseline written"
+  exit 0
+fi
+PREV=$(cat "$BASE")
+if (( COUNT > PREV )); then
+  echo "FAIL — strict errors increased ($PREV -> $COUNT)"
+  npx tsc --noEmit --pretty false 2>&1 | grep "error TS" | head -50
+  exit 1
+fi
+if (( COUNT < PREV )); then
+  echo "$COUNT" > "$BASE"
+  echo "ratchet tightened ($PREV -> $COUNT) — commit .strict-baseline"
+fi
+echo "OK"
+]]></code>
+        <note>Wire into CI; commit `.strict-baseline` decreases as a sign of progress.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>**`strict: true` + the four extras** (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns`, `noFallthroughCasesInSwitch`) — the canonical 2026 baseline.</item>
+        <item>**`unknown` over `any`** at every IO boundary; convert via Zod / valibot parsers.</item>
+        <item>**`as const` for literal preservation.** `const ROLES = ['admin','user'] as const` + `type Role = (typeof ROLES)[number]`.</item>
+        <item>**Branded types** for IDs: `type UserId = string &amp; { __brand: 'UserId' }`. Prevents passing OrderId where UserId expected.</item>
+        <item>**Discriminated unions** over optional flag bags — exhaustive switch + `assertNever(x)` makes new cases fail-closed.</item>
+        <item>**Type guards (`is X`)** colocated with the type; agents reuse them.</item>
+        <item>**`Result&lt;T, E&gt;` / `Either`** at boundaries for predictable error flow; `neverthrow` library or hand-rolled.</item>
+        <item>**`satisfies` for object literals** — ensures shape conformance without widening.</item>
+        <item>**Path aliases (`@/`)** consistent across `tsconfig.json`, bundler, test runner. Drift = obscure module resolution errors.</item>
+        <item>**`ts-reset`** to tighten built-ins (`JSON.parse` returns `unknown`, `.filter(Boolean)` strips falsy types).</item>
+        <item>**Project references** for monorepos — incremental builds, type-isolation between packages.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>**`as` cast as the fix-all.** Agent encounters TS error and inserts `as any` / `as unknown as Foo`. Lint rule `@typescript-eslint/no-explicit-any` + `consistent-type-assertions` catch.</item>
+        <item>**Non-null assertion (`!`) abuse.** Agent writes `user.profile!.email`; one nullable field flushed downstream. Force agents to refactor with explicit guards.</item>
+        <item>**`@ts-ignore` instead of `@ts-expect-error`.** Latter errors when the underlying issue is fixed; former rots silently. Prefer `expect-error` + comment + ticket.</item>
+        <item>**Wide return types.** Agent returns `Promise&lt;any&gt;` from a service; consumer types collapse. Force explicit return type annotations on exported functions.</item>
+        <item>**`Object` vs `object` vs `Record&lt;string, unknown&gt;`.** Agent uses `Object` (deprecated). Lint catches.</item>
+        <item>**`Function` type.** Agent uses `cb: Function`; loses signature. Force `(x: T) =&gt; U` shapes.</item>
+        <item>**Discriminated union without exhaustiveness check.** Agent adds new variant; old switch statement silently doesn't handle it. Force `default: assertNever(x)`.</item>
+        <item>**`Partial&lt;T&gt;` everywhere.** Reduces strictness back to "everything optional". Agents reach for it instead of explicit modeling.</item>
+        <item>**Generic constraints missing.** Agent writes `function f&lt;T&gt;(x: T)` then tries `x.foo`; TS errors. Adds `T extends { foo: string }` properly only when prompted.</item>
+        <item>**Re-exporting types from JS.** Agent re-exports a runtime value as a type; bundler emits unused import. Use `import type { ... }` + `verbatimModuleSyntax`.</item>
+        <item>**`exactOptionalPropertyTypes` surprise.** Agent writes `{ name: undefined }` to "skip" name; rejected because property-set ≠ omit. Use spread or omit explicitly.</item>
+        <item>**`strict` flag in `extends` config.** Agent extends `@tsconfig/strictest` then overrides with `strict: false`; doesn't realize it cascades. Verify final flags via `tsc --showConfig`.</item>
+        <item>**Type-only imports tree-shaken differently.** Agent imports a type but bundler leaves the runtime import → larger bundle. Use `import type`.</item>
+        <item>**Zod-typed prop drilled as inferred type.** Agent passes Zod schema where consumer expects `z.infer&lt;typeof S&gt;`. TS error opaque; fix with `z.infer` at the boundary, not at every call site.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/tsconfig.json" purpose="Full strict tsconfig with all recommended flags."/>
+      <template path="templates/strict-ratchet.sh" purpose="CI script: fail if strict error count increases vs stored baseline."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.typescriptlang.org/tsconfig#strict"/>
+      <link href="https://www.totaltypescript.com"/>
+      <link href="https://www.totaltypescript.com/tutorials/beginners-typescript"/>
+      <link href="https://effectivetypescript.com"/>
+      <link href="https://zod.dev"/>
+      <link href="https://github.com/total-typescript/ts-reset"/>
+      <link href="https://typescript-eslint.io"/>
+      <link href="https://arethetypeswrong.github.io"/>
+    </see-also>
+  </content>
+</methodology>
