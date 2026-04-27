@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-devops-cost-kubernetes">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Cut Kubernetes cluster costs 48-60% by using workload-specific node pools, Vertical Pod Autoscaler, Spot node pools for batch, and Committed Use Discounts on the stable baseline node count.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>kubernetes</tag>
+      <tag>cost-optimization</tag>
+      <tag>node-pools</tag>
+      <tag>vpa</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-devops-cost-commitments"/>
+      <ref slug="finops-devops-cost-tagging"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Cost Optimization: Node Pools, VPA, and Spot</title>
+
+    <summary>Kubernetes clusters default to uniform over-provisioned node pools with no autoscaling and no workload-aware placement — the result is 25% average CPU and 40% average memory utilization. Four levers reduce this to 55% CPU / 65% memory utilization and cut cluster costs by 48-60%: workload-specific node pools (CPU-intensive, memory-intensive, general), Vertical Pod Autoscaler for right-pod-sizing, Spot node pools for batch/preemptible work, and Committed Use Discounts on the stable baseline.</summary>
+
+    <why>
+      <p>A 500-node GKE cluster at 25% CPU utilization spends 75% of its node costs on unused capacity. Unlike VM rightsizing (which targets one instance at a time), Kubernetes optimization operates at three levels: the pod level (VPA, resource requests/limits), the node pool level (machine type matching, autoscaling), and the pricing level (Spot, CUDs). Applying all three levers simultaneously yields compounding savings that VM-level FinOps alone cannot achieve.</p>
+      <p>Kubernetes FinOps requires awareness of the bin-packing relationship between pod resource requests and node capacity. Misconfigured requests (too high: wastes node space; too low: OOM evictions) are the root cause of the utilization gap. VPA solves this automatically once it has observed production traffic.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Kubernetes cluster average CPU utilization below 40% or memory below 50% — the cluster is significantly underutilized and Spot/VPA/node-pool splits will have high impact.</item>
+        <item>Single node pool for all workloads — replacing with workload-specific pools reduces node count 30-50%.</item>
+        <item>Batch workloads (ML training, data processing, CI/CD runners) co-located with services — separate Spot node pool saves 70-90% on batch compute without affecting services.</item>
+        <item>Pod resource requests set to static values from initial deployment without production tuning — VPA in recommendation mode will show the gap.</item>
+        <item>Cluster running 24/7 at stable size — Committed Use Discounts (GKE) or Reserved Node Groups (EKS) cover the baseline at 37-40% discount.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Clusters under 10 nodes — optimization overhead (VPA, multiple node pools) exceeds savings on small clusters.</item>
+        <item>VPA in Auto mode on stateful workloads (databases) — pod restarts during request adjustments cause brief unavailability.</item>
+        <item>Spot node pools for services with no pod disruption budget or no horizontal replicas — a single-pod service on a Spot node will have downtime on preemption.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="node-pool-strategy">
+      <p>A single uniform node pool forces all pods onto the same machine type, wasting memory on CPU-intensive workloads and CPU on memory-intensive ones. Workload-specific node pools with autoscaling enable bin-packing efficiency: CPU-intensive workloads get compute-optimized nodes, memory-intensive workloads get high-memory nodes, general workloads get cost-optimized e2 nodes.</p>
+
+      <rule testable="true">
+        <statement>Replace single-pool Kubernetes clusters with at minimum three node pools: cpu-intensive (compute-optimized: c2/c3 on GCP, c5/c6 on AWS), memory-intensive (high-memory: n2-highmem on GCP, r5/r6 on AWS), and general (cost-optimized: e2 on GCP, m5/t3 on AWS). Enable Cluster Autoscaler on all pools. Configure PodAffinity or NodeSelector to route workloads to matching pools.</statement>
+        <rationale>GKE benchmark: 500 uniform n2-standard-8 nodes at 25% CPU → 280 nodes across workload-specific pools at 55% CPU. Monthly savings: $57,600 (48%). The split allows each pool to autoscale independently based on its actual workload type.</rationale>
+      </rule>
+
+      <example type="good" title="GKE: workload-specific node pools with autoscaling">
+        <code lang="yaml"><![CDATA[
+nodePools:
+  - name: cpu-intensive
+    machineType: c2-standard-8
+    autoscaling:
+      minNodeCount: 10
+      maxNodeCount: 100
+  - name: memory-intensive
+    machineType: n2-highmem-4
+    autoscaling:
+      minNodeCount: 20
+      maxNodeCount: 150
+  - name: general
+    machineType: e2-standard-4
+    autoscaling:
+      minNodeCount: 50
+      maxNodeCount: 300
+]]></code>
+        <note>Start with generous autoscaling bounds. After 2 weeks of production traffic, review actual maxNodeCount reached and tighten.</note>
+      </example>
+
+      <example type="bad" title="Single-pool cluster: one-size-fits-all">
+        <code lang="yaml"><![CDATA[
+nodePools:
+  - name: default
+    machineType: n2-standard-8
+    nodeCount: 500
+]]></code>
+        <note>No autoscaling, no workload matching, 25% CPU utilization. 500 nodes at $120k/month when 280 specialized nodes at $62k would serve the same workload.</note>
+      </example>
+    </section>
+
+    <section name="spot-node-pools">
+      <p>Spot (preemptible) node pools offer 60-91% discount for workloads that tolerate interruption. Batch processing, ML training, and CI/CD runners are ideal candidates. Use taints to prevent non-Spot-tolerant workloads from scheduling onto the Spot pool.</p>
+
+      <rule testable="true">
+        <statement>Create a dedicated Spot node pool for batch, ML training, and CI/CD workloads. Taint the pool with `cloud.google.com/gke-spot=true:NoSchedule` (GCP) or `kubernetes.io/arch=spot:NoSchedule` (EKS Spot). Add corresponding Toleration to batch job specs. Ensure batch jobs have pod disruption budgets and restart policies set to OnFailure to handle preemption gracefully.</statement>
+        <rationale>The taint ensures services never land on the Spot pool accidentally. The toleration ensures batch jobs explicitly opt in. OnFailure restart policy handles the 2-minute preemption notice by allowing the scheduler to replace the pod on an On-Demand node if no Spot capacity is available.</rationale>
+      </rule>
+
+      <example type="good" title="GKE Spot node pool for batch workloads">
+        <code lang="yaml"><![CDATA[
+nodePools:
+  - name: batch-spot
+    machineType: e2-standard-8
+    preemptible: true
+    autoscaling:
+      minNodeCount: 0
+      maxNodeCount: 200
+    taints:
+      - key: cloud.google.com/gke-spot
+        value: "true"
+        effect: NoSchedule
+]]></code>
+        <note>minNodeCount: 0 — pool scales to zero when no batch jobs are queued. Saves 100% of node cost during off-hours.</note>
+      </example>
+    </section>
+
+    <section name="vertical-pod-autoscaler">
+      <p>VPA analyzes historical CPU and memory usage per container and recommends (or automatically applies) adjusted resource requests and limits. Use Recommendation mode first to see the gap between current requests and actual usage before enabling Auto mode.</p>
+
+      <rule testable="true">
+        <statement>Deploy VPA in Recommendation mode on all deployments for 7 days before any other optimization. Review VPA recommendations for pods where current requests exceed actual usage by 50%+ — these are the highest-impact rightsizing candidates. Enable VPA Auto mode only on stateless deployments (not databases, not single-replica stateful sets) after validating Recommendation mode for 7 days.</statement>
+        <rationale>Recommendation mode shows the gap without risk. Auto mode restarts pods to apply new requests — acceptable for stateless services, potentially disruptive for stateful ones. 7-day observation captures weekly traffic patterns before committing to new limits.</rationale>
+      </rule>
+
+      <example type="good" title="VPA in Auto mode for stateless API service">
+        <code lang="yaml"><![CDATA[
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: api-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-server
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+      - containerName: api
+        minAllowed:
+          cpu: 100m
+          memory: 128Mi
+        maxAllowed:
+          cpu: 2
+          memory: 4Gi
+]]></code>
+        <note>minAllowed prevents VPA from setting requests so low that the pod has no headroom. maxAllowed prevents runaway resource requests on a usage spike.</note>
+      </example>
+
+      <antipattern>
+        <description>Applying VPA Auto mode to PostgreSQL, Redis, or Kafka pods.</description>
+        <reason>VPA Auto mode restarts pods to apply new resource requests. Stateful services cannot tolerate unplanned restarts — use VPA Recommendation mode only for stateful workloads; apply changes manually during maintenance windows.</reason>
+      </antipattern>
+    </section>
+
+    <section name="committed-use-discounts">
+      <p>Once node pool autoscaling is tuned, identify the stable baseline node count (the minNodeCount that runs continuously). Purchase Committed Use Discounts (GCP) or Reserved Node Groups (EKS managed groups) on this baseline for 37-40% savings.</p>
+
+      <rule testable="true">
+        <statement>After 30 days of running workload-specific node pools with autoscaling, identify the stable baseline: the minimum node count observed over the 30-day window for each pool. Purchase 1-year Committed Use Discounts covering 80% of this baseline. Leave 20% on On-Demand to absorb measurement error. Review and adjust commitments quarterly.</statement>
+        <rationale>CUDs commit to vCPU and memory amounts, not specific instance types — more flexible than VM-level RIs. Purchasing after 30 days of autoscaling ensures the baseline reflects actual workload requirements post-optimization, not the original over-provisioned size.</rationale>
+      </rule>
+
+      <example type="good" title="GKE CUD on stable baseline nodes">
+        <code lang="text"><![CDATA[
+30-day autoscaling observation:
+  cpu-intensive pool: min 8 nodes, max 95 nodes
+  memory-intensive pool: min 15 nodes, max 140 nodes
+  general pool: min 45 nodes, max 280 nodes
+
+CUD commitment (80% of min baseline):
+  cpu-intensive: 6 x c2-standard-8 (6 x 8 vCPU = 48 vCPU)
+  memory-intensive: 12 x n2-highmem-4 (12 x 4 vCPU = 48 vCPU)
+  general: 36 x e2-standard-4 (36 x 4 vCPU = 144 vCPU)
+
+1-year CUD discount: 37% on committed vCPU+memory
+Monthly savings on committed portion: ~$8,400
+]]></code>
+        <note>Remaining nodes (20% baseline + all autoscaling burst) pay On-Demand. Total cluster monthly: $62,400 vs original $120,000 (-48%).</note>
+      </example>
+    </section>
+
+    <section name="results-benchmark">
+      <example type="good" title="500-node GKE cluster: full optimization results">
+        <code lang="text"><![CDATA[
+Before optimization:
+  Average node count: 500 (n2-standard-8, uniform pool)
+  CPU utilization: 25%
+  Memory utilization: 40%
+  Monthly spend: $120,000
+
+After optimization:
+  Workload-specific pools with autoscaling → avg 280 nodes
+  VPA right-sizing pods → CPU 55%, Memory 65%
+  Spot pool for batch (max 200 nodes, min 0) → batch costs -80%
+  CUD on 150-node stable baseline → -37% on committed nodes
+  Monthly spend: $62,400
+
+Savings: $57,600/month (48%)
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Deploy VPA in Recommendation mode on all deployments — review after 7 days for pods with 50%+ over-requested resources.</check>
+      <check>Split single node pool into workload-specific pools: CPU-intensive, memory-intensive, general with autoscaling.</check>
+      <check>Create Spot/preemptible node pool for batch, ML, and CI/CD with taint and minNodeCount: 0.</check>
+      <check>Add Tolerations to batch job specs and confirm services do NOT have Spot tolerations.</check>
+      <check>Set pod disruption budgets on all production deployments to protect against Spot preemption.</check>
+      <check>Enable VPA Auto mode on stateless deployments after 7-day observation period.</check>
+      <check>After 30 days of autoscaling data, calculate stable baseline node counts per pool.</check>
+      <check>Purchase Committed Use Discounts / Reserved Node Groups on 80% of stable baseline.</check>
+      <check>Monitor cluster efficiency weekly: CPU/memory utilization, node count vs baseline, Spot vs On-Demand split.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-devops-cost-commitments"/>
+      <ref slug="finops-devops-cost-tagging"/>
+      <link href="https://cloud.google.com/kubernetes-engine/docs/concepts/cost-optimization"/>
+      <link href="https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html"/>
+      <link href="https://kubernetes.io/docs/concepts/workloads/autoscaling/"/>
+      <link href="https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler"/>
+    </see-also>
+  </content>
+</methodology>
