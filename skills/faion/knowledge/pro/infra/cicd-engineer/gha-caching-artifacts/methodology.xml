@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gha-caching-artifacts">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions dependency caching and artifact management: cache key patterns per ecosystem, cache vs artifact semantics, retention policies, and Docker layer caching with Buildx.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>caching</tag>
+      <tag>artifacts</tag>
+      <tag>ci</tag>
+      <tag>performance</tag>
+    </tags>
+    <category>ci</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>github-actions</tool>
+    </tools>
+    <related>
+      <ref slug="gha-matrix-builds"/>
+      <ref slug="gha-workflow-structure"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitHub Actions Caching and Artifacts</title>
+
+    <summary>Cache dependency folders using actions/cache@v4 with lockfile-hash keys and ecosystem-specific restore-keys. Upload build outputs as artifacts with explicit retention-days. Never confuse caches (speed up builds, 7-day default) with artifacts (store outputs, 90-day default). Use type=gha cache for Docker Buildx layer caching.</summary>
+
+    <why>
+      <p>Dependency installation is the single biggest wall-clock contributor to CI job duration on most stacks. On npm, pip, and Go, reinstalling from scratch on every run adds 30-120 seconds. A cache hit drops that to under 5 seconds. The actions/cache@v4 service (rewritten Feb 2025) stores the cache externally and restores in parallel with checkout, making it effectively free when it hits.</p>
+      <p>Caches and artifacts solve different problems. Caches are ephemeral speed aids shared across runs; artifacts are named outputs associated with a specific run. Conflating them leads to stale dependency bugs (treating a build artifact as a cache) or storage bill surprises (uploading 90-day artifacts for intermediate results that only need 7 days).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any job that installs package dependencies (npm, pip, go mod, cargo, bundler).</item>
+        <item>Jobs that build Docker images — use type=gha cache for layer reuse across runs.</item>
+        <item>Build outputs that must be shared across jobs in the same run (use artifacts, not cache).</item>
+        <item>Test reports, coverage files, compiled binaries that need to be downloadable after the run.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Caching mutable state between runs where correctness depends on the latest state — caches are best-effort, not guaranteed to hit.</item>
+        <item>Storing secrets or credentials in artifacts — artifacts are accessible to anyone with repo read access.</item>
+        <item>Using artifacts for large binaries that are deployed via a registry — push to a container registry or S3 instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Cache keys MUST include hashFiles('**/lockfile') so the cache is invalidated when dependencies change. Never use a bare runner.os key without a content hash.</statement>
+        <rationale>A cache key without a lockfile hash will restore a stale node_modules or site-packages that does not match the current lockfile, causing hard-to-diagnose test failures and version drift.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set retention-days: 7 on intermediate build artifacts. Reserve the 90-day default only for release artifacts that must be downloadable post-deployment.</statement>
+        <rationale>Every run's artifacts consume storage billed to the org. 7-day retention for intermediate outputs keeps storage costs proportional to actual usage.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use actions/cache@v4 (not v3). The v4 service was rewritten in Feb 2025; v3 silently fails to restore on new runner images. Verify cache hits in the job log after upgrading.</statement>
+        <rationale>The v3 → v4 API change broke existing restore logic silently. You lose the entire performance benefit of caching without any error to diagnose.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For Docker Buildx: use cache-from: type=gha and cache-to: type=gha,mode=max. Do not use a manual actions/cache step for Docker layers.</statement>
+        <rationale>type=gha is the native GHA cache backend for Buildx; it handles layer deduplication correctly. Manual cache steps for Docker layers corrupt layer ordering.</rationale>
+      </rule>
+    </rules>
+
+    <section name="cache-patterns">
+      <p>Each ecosystem has a canonical path and key pattern. Use restore-keys as a fallback for partial cache hits when the lockfile changes.</p>
+
+      <example type="good" title="npm — built-in cache via setup-node">
+        <code lang="yaml"><![CDATA[
+- uses: actions/setup-node@v4
+  with:
+    node-version: '20'
+    cache: 'npm'   # built-in: caches ~/.npm, key = runner.os + package-lock.json hash
+]]></code>
+        <note>Prefer the built-in cache parameter on setup-node/setup-python/setup-go over a manual actions/cache step — it handles the path and key correctly for each package manager.</note>
+      </example>
+
+      <example type="good" title="pip — manual cache with restore-keys">
+        <code lang="yaml"><![CDATA[
+- uses: actions/cache@v4
+  with:
+    path: ~/.cache/pip
+    key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+    restore-keys: |
+      ${{ runner.os }}-pip-
+]]></code>
+      </example>
+
+      <example type="good" title="Go — module and build cache">
+        <code lang="yaml"><![CDATA[
+- uses: actions/cache@v4
+  with:
+    path: |
+      ~/go/pkg/mod
+      ~/.cache/go-build
+    key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+    restore-keys: |
+      ${{ runner.os }}-go-
+]]></code>
+      </example>
+
+      <example type="good" title="Rust — cargo cache">
+        <code lang="yaml"><![CDATA[
+- uses: actions/cache@v4
+  with:
+    path: |
+      ~/.cargo/bin/
+      ~/.cargo/registry/index/
+      ~/.cargo/registry/cache/
+      ~/.cargo/git/db/
+      target/
+    key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    restore-keys: |
+      ${{ runner.os }}-cargo-
+]]></code>
+      </example>
+
+      <example type="good" title="Docker Buildx layer cache">
+        <code lang="yaml"><![CDATA[
+- uses: docker/setup-buildx-action@v3
+- uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: true
+    tags: ${{ steps.meta.outputs.tags }}
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+]]></code>
+        <note>mode=max caches every layer including intermediate ones; the default mode=min only caches the final image layers.</note>
+      </example>
+
+      <example type="bad" title="Cache key without lockfile hash">
+        <code lang="yaml"><![CDATA[
+- uses: actions/cache@v4
+  with:
+    path: ~/.npm
+    key: ${{ runner.os }}-node   # BAD: never invalidated when dependencies change
+]]></code>
+        <note>This key never changes, so a malicious PR could poison the cache and the main branch restores it on the next run.</note>
+      </example>
+    </section>
+
+    <section name="artifact-patterns">
+      <p>Artifacts are uploaded with upload-artifact@v4 and downloaded with download-artifact@v4. Use pattern: glob to download multiple artifacts at once.</p>
+
+      <example type="good" title="Upload build artifact with short retention">
+        <code lang="yaml"><![CDATA[
+- uses: actions/upload-artifact@v4
+  with:
+    name: build
+    path: dist/
+    retention-days: 7
+]]></code>
+      </example>
+
+      <example type="good" title="Upload test results always (even on failure)">
+        <code lang="yaml"><![CDATA[
+- uses: actions/upload-artifact@v4
+  if: always()
+  with:
+    name: test-results-${{ matrix.node }}
+    path: |
+      coverage/
+      junit.xml
+    retention-days: 30
+]]></code>
+        <note>if: always() ensures test results are uploaded even when the test step fails — critical for debugging.</note>
+      </example>
+
+      <example type="good" title="Download artifact in downstream job">
+        <code lang="yaml"><![CDATA[
+- uses: actions/download-artifact@v4
+  with:
+    name: build
+    path: dist/
+]]></code>
+      </example>
+    </section>
+
+    <section name="cache-vs-artifacts">
+      <p>Cache and artifacts are complementary, not interchangeable.</p>
+      <list>
+        <item>Cache: speed up builds, 7-day default retention, shared across runs, same workflow. Use for: node_modules, pip packages, go modules, cargo registry.</item>
+        <item>Artifact: store outputs, 90-day default retention, tied to specific run, cross-workflow accessible. Use for: dist/, test reports, compiled binaries, coverage files.</item>
+        <item>A cache miss is not an error — the job must still succeed by reinstalling dependencies. An artifact download failure IS an error — the downstream job cannot proceed.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Every cache key includes hashFiles('**/lockfile') — never a bare OS key.</check>
+      <check>restore-keys provided as fallback for partial cache hits.</check>
+      <check>actions/cache@v4 used (not v3); cache hits verified in job log after setup.</check>
+      <check>Intermediate artifacts have retention-days: 7; release artifacts use the 90-day default.</check>
+      <check>Matrix job artifacts include matrix variables in the name to avoid collisions.</check>
+      <check>Docker builds use cache-from: type=gha / cache-to: type=gha,mode=max.</check>
+      <check>Artifacts containing sensitive outputs are not uploaded to public repos without access controls.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/actions/cache"/>
+      <link href="https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows"/>
+      <ref slug="gha-matrix-builds"/>
+      <ref slug="gha-deployment-patterns"/>
+    </see-also>
+  </content>
+</methodology>
