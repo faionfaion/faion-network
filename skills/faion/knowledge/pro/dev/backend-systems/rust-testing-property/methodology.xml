@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing-property">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Property-based testing for Rust with proptest: generate random inputs against invariants, record failing seeds, replay locally, and cover edge cases hand-written tables miss.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>property-testing</tag>
+      <tag>proptest</tag>
+      <tag>quickcheck</tag>
+      <tag>invariants</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <related>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Property-Based Testing in Rust with proptest</title>
+
+    <summary>Property-based tests with proptest (or quickcheck) generate hundreds of random inputs and verify that a function satisfies an invariant for all of them — finding edge cases that hand-written example tables miss. Failing inputs are automatically shrunk to a minimal reproducer; the seed is recorded so failures can be replayed locally.</summary>
+
+    <why>
+      <p>Hand-written unit tests cover the cases the author thought of. proptest covers the cases the author forgot. For parsers, codecs, serialization round-trips, and any pure function with an invariant ("output is always sorted", "encode then decode is identity", "result is never negative"), proptest generates hundreds of inputs in milliseconds and shrinks failures to a minimal example automatically.</p>
+      <p>The seeded RNG means a CI failure can be reproduced locally with PROPTEST_SEED=&lt;hex&gt; cargo test without any configuration ceremony. This makes property tests as diagnosable as example-based tests.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pure functions with invariants: parsers, codecs, math utilities, serialization round-trips.</item>
+        <item>Any function where the output must satisfy a property for all valid inputs (encode/decode identity, sort stability, non-negative result).</item>
+        <item>Code where the input space is large or irregular and hand-written tables are brittle.</item>
+        <item>Replacing large hand-written parameterized test tables with a single proptest! block.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tests that require precise control over a single specific input — use a regular #[test] example.</item>
+        <item>Integration tests involving I/O or databases — proptest's generation model does not compose well with async I/O setup/teardown.</item>
+        <item>Benchmarks — use criterion; proptest's overhead per iteration is not suitable for perf measurement.</item>
+        <item>Hot-path benchmarks where assert_eq! on f64 is the pattern — use approx::assert_relative_eq! regardless of test type.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Any Rust crate containing parsers, codecs, serialization, or pure mathematical functions MUST have at least one proptest! block covering the primary invariant (e.g., decode(encode(x)) == x, sorted output is monotone, result is in [0, 1]).</statement>
+        <rationale>Hand-written tables cover the happy path and the author's mental model of edge cases. proptest covers the cases the author did not think of, which are exactly the cases that produce production bugs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Record and commit failing proptest seeds. When a CI run fails, extract the PROPTEST_SEED from the output and add it as a regression test: proptest::test_runner::Config { failure_persistence: Some(Box::new(FileFailurePersistence::WithSource("regression"))) }. Do not discard seeds.</statement>
+        <rationale>A seed that reproduced a bug is a regression test for free. Discarding it means the same bug can reappear undetected.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Never use assert_eq! to compare f64 values in tests. Use approx::assert_relative_eq!(a, b, epsilon = 1e-9) or approx::assert_abs_diff_eq!. This applies to both example-based and property-based tests.</statement>
+        <rationale>assert_eq! on f64 fails when floating-point arithmetic produces representation differences (e.g., 0.1 + 0.2 != 0.3). approx comparisons express the actual tolerance requirement.</rationale>
+      </rule>
+    </rules>
+
+    <section name="proptest-pattern">
+      <p>The proptest! macro expands to a loop that runs the body N times (default 256) with generated inputs. Use prop::collection, prop::string, and the Strategy trait to compose input generators. The proptest_derive crate adds #[derive(Arbitrary)] for custom types.</p>
+
+      <example type="good" title="Round-trip property test for a codec">
+        <code lang="rust"><![CDATA[
+use proptest::prelude::*;
+
+// Invariant: decode(encode(input)) == input for all valid inputs
+proptest! {
+    #[test]
+    fn encode_decode_roundtrip(s in "[a-zA-Z0-9 ]{0,100}") {
+        let encoded = encode(&s);
+        let decoded = decode(&encoded).expect("decode should succeed for valid encoded input");
+        prop_assert_eq!(decoded, s);
+    }
+
+    #[test]
+    fn sorted_output_is_monotone(mut v in prop::collection::vec(0i32..=1000, 0..50)) {
+        v.sort();
+        for window in v.windows(2) {
+            prop_assert!(window[0] <= window[1]);
+        }
+    }
+}
+]]></code>
+        <note>prop_assert_eq! (not assert_eq!) inside proptest! blocks — it triggers shrinking on failure instead of panicking immediately.</note>
+      </example>
+
+      <example type="bad" title="Using assert_eq! on f64 in a property test">
+        <code lang="rust"><![CDATA[
+proptest! {
+    #[test]
+    fn sum_is_symmetric(a in 0.0f64..1.0, b in 0.0f64..1.0) {
+        assert_eq!(a + b, b + a); // may flake on NaN or denormals
+    }
+}
+]]></code>
+        <note>Use approx::assert_relative_eq!(a + b, b + a, epsilon = 1e-12) instead. The direct assert_eq! on f64 is technically correct here for addition commutativity but establishes a wrong pattern that breaks on subtraction, multiplication, or cross-platform runs.</note>
+      </example>
+
+      <antipattern>
+        <description>Discarding failing proptest seeds from CI output instead of committing them as regression tests.</description>
+        <reason>A seed that reproduced a real bug is a free regression test. Discarding it means the same edge case can reappear in a later refactor undetected.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using proptest for tests that require a specific fixed input to demonstrate behavior.</description>
+        <reason>proptest randomizes inputs; you cannot rely on a specific value being generated. Use a regular #[test] with a fixed example for behavior documentation, and add proptest for invariant coverage on top.</reason>
+      </antipattern>
+    </section>
+
+    <section name="quickcheck-alternative">
+      <p>quickcheck is the older property-testing library. It uses the Arbitrary trait to generate inputs and requires less configuration than proptest but has weaker shrinking and no built-in seed persistence. Prefer proptest for new code; quickcheck is acceptable in crates that already use it.</p>
+    </section>
+
+    <checklist>
+      <check>Every parser and codec has a round-trip proptest! invariant.</check>
+      <check>prop_assert_eq! used inside proptest! blocks (not assert_eq!).</check>
+      <check>No assert_eq! on f64 anywhere in the test suite — approx crate used instead.</check>
+      <check>Failing seeds from CI are committed as regression entries.</check>
+      <check>Custom types use #[derive(Arbitrary)] via proptest_derive or a manual Strategy impl.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <link href="https://altsysrq.github.io/proptest-book/"/>
+      <link href="https://docs.rs/proptest"/>
+    </see-also>
+  </content>
+</methodology>
