@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-constants">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Use TextChoices/IntegerChoices for all enum fields; centralize limits and thresholds in constants.py. Eliminates magic strings and numbers, prevents typo bugs, and makes refactoring safe.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>constants</tag>
+      <tag>textchoices</tag>
+      <tag>enums</tag>
+    </tags>
+    <category>code-quality</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="django-project-structure"/>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-coding-standards"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Constants and TextChoices</title>
+
+    <summary>Use Django's TextChoices (string enums) and IntegerChoices (int enums) for all status fields, type fields, and other string/integer enumerations. Centralize numeric limits and thresholds in a constants.py module per app. Never use magic strings or numbers in model fields, services, or views — always reference named constants.</summary>
+
+    <why>
+      <p>Magic strings like "pending" scattered across models, services, and tests are typo-prone and invisible to refactoring tools. If "pending" becomes "awaiting_payment", a search-and-replace may miss a string in a test or template. TextChoices creates a Python enum that is refactorable, IDE-completable, and self-documenting. Centralizing numeric limits (MAX_ITEMS_PER_ORDER = 100) in constants.py means one change location, consistent enforcement everywhere, and visible limits in code review. TextChoices also integrates with Django's migration framework — changing a value causes an automatic migration.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any CharField or IntegerField with a fixed set of allowed values (status, type, category, role).</item>
+        <item>Business limits repeated across services and tests (max items, max length, page size).</item>
+        <item>Configuration thresholds that may change over time (retry delays, rate limits).</item>
+        <item>Any string literal used to filter querysets (filter(status="pending") must become filter(status=OrderStatus.PENDING)).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Free-text fields where any string is valid (name, description, address) — those are not enums.</item>
+        <item>Boolean flags with only two states — use BooleanField, not a two-value TextChoices.</item>
+        <item>External API values that change independently — map them in a translation layer, not a Django enum.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>All CharField and IntegerField with choices MUST use TextChoices or IntegerChoices subclasses. The field definition uses choices=ClassName.choices and default=ClassName.VALUE. Raw strings in choices= are forbidden.</statement>
+        <rationale>TextChoices integrates with Django's migration framework, provides .choices for field definitions, .values for filtering, and .labels for display. Raw string choices scatter values across the codebase and cannot be refactored with rename tools.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Each app MUST have a constants.py containing all TextChoices/IntegerChoices classes and named numeric limits for that domain. Limits MUST be UPPER_SNAKE_CASE. No numeric literals or string literals for business constraints anywhere in services, selectors, or models — always import from constants.py.</statement>
+        <rationale>Centralizing limits makes them visible, documented, and changeable in one place. A developer changing MAX_ORDERS_PER_USER from 50 to 100 edits one line. Without named constants, they must grep for 50 across the entire codebase and hope no other field has that value.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use TextChoices for string status fields, not raw str tuples. Access enum values as ClassName.VALUE not as string literals. Compare enum values to each other (status == OrderStatus.PENDING) not to strings (status == "pending").</statement>
+        <rationale>Comparing against enum values is refactoring-safe and IDE-completable. Comparing against string literals creates invisible dependencies on exact string values that are invisible to rename tools. TextChoices.VALUE is also easier to discover via autocomplete.</rationale>
+      </rule>
+    </rules>
+
+    <example type="bad" title="Magic strings and numbers (anti-pattern)">
+      <code lang="python"><![CDATA[
+# BAD — magic strings in model
+class Order(models.Model):
+    status = models.CharField(max_length=20, default='pending')
+
+# BAD — magic string in service
+def order_cancel(*, order: Order) -> Order:
+    if order.status in ['completed', 'cancelled']:
+        raise ValidationError("Cannot cancel")
+    order.status = 'cancelled'
+    order.save()
+    return order
+
+# BAD — magic number
+def order_create(*, user: User, items: list) -> Order:
+    if user.orders.count() >= 50:  # what does 50 mean? where else is it used?
+        raise ValidationError("Too many orders")
+      ]]></code>
+    </example>
+
+    <example type="good" title="TextChoices and named constants">
+      <code lang="python"><![CDATA[
+# apps/orders/constants.py
+from django.db import models
+
+
+class OrderStatus(models.TextChoices):
+    """Order lifecycle states.
+
+    Flow: PENDING -> PROCESSING -> SHIPPED -> DELIVERED
+                  |-> CANCELLED
+    """
+
+    PENDING = "pending", "Pending Payment"
+    PROCESSING = "processing", "Processing"
+    SHIPPED = "shipped", "Shipped"
+    DELIVERED = "delivered", "Delivered"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class PaymentMethod(models.TextChoices):
+    """Supported payment methods."""
+
+    CARD = "card", "Credit Card"
+    PAYPAL = "paypal", "PayPal"
+    BANK = "bank", "Bank Transfer"
+
+
+# Pagination
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+
+# Business limits
+MAX_ORDERS_PER_USER = 50
+MAX_ITEMS_PER_ORDER = 100
+
+
+# apps/orders/models.py
+class Order(BaseModel):
+    status = models.CharField(
+        max_length=20,
+        choices=OrderStatus.choices,
+        default=OrderStatus.PENDING,
+    )
+
+
+# apps/orders/services.py
+from .constants import MAX_ORDERS_PER_USER, OrderStatus
+
+
+def order_cancel(*, order: Order, reason: str) -> Order:
+    if order.status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED]:
+        raise ValidationError(f"Order in status {order.status} cannot be cancelled")
+    order.status = OrderStatus.CANCELLED
+    order.save(update_fields=["status", "updated_at"])
+    return order
+
+
+def order_create(*, user: User, items: list) -> Order:
+    if user.orders.count() >= MAX_ORDERS_PER_USER:
+        raise ValidationError(f"Maximum {MAX_ORDERS_PER_USER} orders allowed")
+      ]]></code>
+    </example>
+
+    <section name="textchoices-features">
+      <p>TextChoices provides several useful attributes that agents frequently miss:</p>
+
+      <example type="good" title="TextChoices attributes and usage">
+        <code lang="python"><![CDATA[
+# TextChoices provides:
+OrderStatus.choices        # [('pending', 'Pending Payment'), ...]  — for field definition
+OrderStatus.values         # ['pending', 'processing', ...]         — for filtering
+OrderStatus.labels         # ['Pending Payment', 'Processing', ...]  — for display
+OrderStatus.names          # ['PENDING', 'PROCESSING', ...]          — enum member names
+OrderStatus.PENDING.label  # 'Pending Payment'                       — single label lookup
+OrderStatus.PENDING.value  # 'pending'                               — single value lookup
+
+# Querying:
+Order.objects.filter(status=OrderStatus.PENDING)             # GOOD
+Order.objects.filter(status__in=OrderStatus.values)          # all statuses
+Order.objects.exclude(status=OrderStatus.CANCELLED)          # exclude cancelled
+
+# Response display:
+order.get_status_display()  # returns 'Pending Payment' for .PENDING
+        ]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using .label lookup via dict(STATUS_CHOICES).get(status) instead of the .label attribute on TextChoices members.</description>
+        <reason>dict lookup requires constructing a dict from tuples on every call. TextChoices members have .label directly: OrderStatus.PENDING.label returns "Pending Payment" without any dict construction.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Switching from string TextChoices to integer IntegerChoices after data is in production.</description>
+        <reason>The stored values change type, requiring a data migration for all existing rows. Choose the type at design time. Use TextChoices for readability in Django admin and migrations; use IntegerChoices only when storage size matters at very large scale.</reason>
+      </antipattern>
+    </section>
+
+    <section name="constants-module-layout">
+      <p>Standard constants.py layout for a Django app:</p>
+      <example type="good" title="constants.py structure">
+        <code lang="python"><![CDATA[
+# apps/{app_name}/constants.py
+from django.db import models
+
+
+# --- Enumerations ---
+
+class {EntityStatus}(models.TextChoices):
+    """
+    {Entity} lifecycle states.
+
+    Flow: DRAFT -> PENDING -> PROCESSING -> COMPLETED
+                           |-> CANCELLED
+    """
+
+    DRAFT = "draft", "Draft"
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    COMPLETED = "completed", "Completed"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class {EntityType}(models.TextChoices):
+    """{Entity} category types."""
+
+    TYPE_A = "type_a", "Type A"
+    TYPE_B = "type_b", "Type B"
+
+
+# --- Pagination ---
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+
+# --- Business limits ---
+MAX_{ENTITIES}_PER_USER = 100
+MAX_ITEMS_PER_{ENTITY} = 50
+
+# --- Validation ---
+{ENTITY}_NAME_MAX_LENGTH = 255
+{ENTITY}_DESCRIPTION_MAX_LENGTH = 5000
+        ]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>All CharField/IntegerField with choices use TextChoices/IntegerChoices classes.</check>
+      <check>No raw string or integer literals in choices= field arguments.</check>
+      <check>constants.py exists in every app with business limits and enum definitions.</check>
+      <check>Services and selectors reference OrderStatus.PENDING not "pending".</check>
+      <check>Business limits (MAX_ORDERS_PER_USER) imported from constants.py, not hardcoded.</check>
+      <check>No magic numbers in model field constraints — use named constants.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-project-structure"/>
+      <ref slug="django-service-layer"/>
+      <link href="https://docs.djangoproject.com/en/6.0/ref/models/fields/#enumeration-types"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide"/>
+    </see-also>
+  </content>
+</methodology>
