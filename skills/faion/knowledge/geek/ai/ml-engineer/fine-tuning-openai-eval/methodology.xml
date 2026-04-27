@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-eval">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Evaluate OpenAI fine-tuned models: LLM-as-judge scoring, A/B comparison, format compliance, failure analysis, and quality gates before production deployment.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>openai</tag>
+      <tag>evaluation</tag>
+      <tag>llm-as-judge</tag>
+      <tag>model-comparison</tag>
+    </tags>
+    <category>ml</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-dpo"/>
+      <ref slug="fine-tuning-openai-deployment"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>OpenAI Fine-Tuning Evaluation</title>
+
+    <summary>Before routing production traffic to a fine-tuned model, evaluate it against the base model on a held-out test set using automated LLM-as-judge scoring and A/B comparison. Eval must pass quality gates on accuracy, format compliance, and human preference rate before deployment is approved.</summary>
+
+    <why>
+      <p>Fine-tuned model behavior on out-of-distribution inputs is unpredictable; eval on real traffic samples (not just synthetic data) is required. A model that scores well on the training distribution can regress on edge cases or slightly different phrasings. The training loss curve is not a sufficient proxy for production quality — it measures fit to training data, not real-world utility.</p>
+      <p>Human checkpoint before routing live traffic to a new fine-tuned model is mandatory. Automated eval catches regressions; human review catches failures that automated metrics miss (tone, brand voice, safety).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>After every fine-tuning job completes, before any production traffic is routed to the new model.</item>
+        <item>When deciding whether to increase epoch count or add more training data.</item>
+        <item>When comparing multiple fine-tuned model candidates (different hyperparameters, different data versions).</item>
+        <item>Periodic regression testing after retraining on updated datasets.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Evaluating base models without fine-tuning context — use standard benchmarks instead.</item>
+        <item>Replacing human review entirely — automated eval catches metric regressions, not all failure modes.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="quality-gates">
+      <p>Minimum quality gates before deploying a fine-tuned model to production:</p>
+      <list>
+        <item>Test accuracy above baseline (fine-tuned model must outperform base on the target task).</item>
+        <item>Format compliance above 95% (structured output tasks).</item>
+        <item>Human preference rate above 60% (prefer fine-tuned over base in blind comparison).</item>
+        <item>No regressions on held-out test cases from previous model versions.</item>
+      </list>
+      <rule>
+        <statement>Always hold out a separate test set (not used in training or validation) for final evaluation. Run both base model and fine-tuned model on the identical test set before comparing. Use temperature=0 for deterministic comparison.</statement>
+        <rationale>Training and validation splits assess fit; only a truly held-out test set measures generalization. Temperature=0 eliminates stochastic variance from the comparison, making differences attributable to the model rather than sampling noise.</rationale>
+      </rule>
+    </section>
+
+    <section name="llm-as-judge">
+      <p>Use GPT-4o as the evaluator model for automated scoring of fine-tuned model outputs. Score on a 1-5 scale with explicit rubric criteria.</p>
+      <example type="good" title="ModelEvaluator — LLM-as-judge">
+        <code lang="python"><![CDATA[from openai import OpenAI
+from typing import List, Dict, Tuple
+from dataclasses import dataclass
+import json
+
+@dataclass
+class EvalResult:
+    score: float
+    details: Dict
+    examples: List[Dict]
+
+class ModelEvaluator:
+    """Evaluate fine-tuned model performance."""
+
+    def __init__(
+        self,
+        model_name: str,
+        evaluator_model: str = "gpt-4o"
+    ):
+        self.client = OpenAI()
+        self.model_name = model_name
+        self.evaluator_model = evaluator_model
+
+    def evaluate(
+        self,
+        test_data: List[Dict],
+        eval_prompt_template: str
+    ) -> EvalResult:
+        """Run evaluation on test data."""
+
+        scores = []
+        examples = []
+
+        for test_case in test_data:
+            # Get model response
+            response = self._get_model_response(test_case)
+
+            # Evaluate
+            score, explanation = self._evaluate_response(
+                test_case, response, eval_prompt_template
+            )
+
+            scores.append(score)
+            examples.append({
+                "input": test_case,
+                "output": response,
+                "score": score,
+                "explanation": explanation
+            })
+
+        avg_score = sum(scores) / len(scores) if scores else 0
+
+        return EvalResult(
+            score=avg_score,
+            details={
+                "total": len(test_data),
+                "avg_score": avg_score,
+                "min_score": min(scores) if scores else 0,
+                "max_score": max(scores) if scores else 0,
+                "distribution": {i: scores.count(i) for i in range(1, 6)}
+            },
+            examples=examples
+        )
+
+    def _get_model_response(self, test_case: Dict) -> str:
+        messages = [
+            m for m in test_case["messages"]
+            if m["role"] != "assistant"
+        ]
+
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            temperature=0
+        )
+
+        return response.choices[0].message.content
+
+    def _evaluate_response(
+        self,
+        test_case: Dict,
+        response: str,
+        template: str
+    ) -> Tuple[int, str]:
+        expected = next(
+            (m["content"] for m in test_case["messages"] if m["role"] == "assistant"),
+            ""
+        )
+        user_input = next(
+            (m["content"] for m in test_case["messages"] if m["role"] == "user"),
+            ""
+        )
+
+        eval_prompt = template.format(
+            input=user_input,
+            expected=expected,
+            actual=response
+        )
+
+        eval_response = self.client.chat.completions.create(
+            model=self.evaluator_model,
+            messages=[{"role": "user", "content": eval_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        result = json.loads(eval_response.choices[0].message.content)
+        return result["score"], result.get("explanation", "")]]></code>
+      </example>
+    </section>
+
+    <section name="ab-comparison">
+      <p>A/B comparison runs both base model and fine-tuned model on the same test queries and uses a judge model to determine the winner.</p>
+      <example type="good" title="A/B model comparison">
+        <code lang="python"><![CDATA[from openai import OpenAI
+import json
+from typing import List, Dict
+
+client = OpenAI()
+
+def compare_models(
+    base_model: str,
+    fine_tuned_model: str,
+    test_queries: List[str],
+    system_prompt: str = "You are a helpful assistant."
+) -> Dict:
+    """A/B compare base vs fine-tuned model."""
+
+    comparisons = []
+
+    for query in test_queries:
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": query}
+        ]
+
+        # Get both responses
+        base_response = client.chat.completions.create(
+            model=base_model,
+            messages=messages,
+            temperature=0
+        )
+
+        ft_response = client.chat.completions.create(
+            model=fine_tuned_model,
+            messages=messages,
+            temperature=0
+        )
+
+        base_output = base_response.choices[0].message.content
+        ft_output = ft_response.choices[0].message.content
+
+        # Judge comparison
+        judge_prompt = f"""Compare Response A and Response B for this query.
+
+Query: {query}
+
+Response A:
+{base_output}
+
+Response B:
+{ft_output}
+
+Evaluate both responses on:
+1. Accuracy
+2. Helpfulness
+3. Clarity
+4. Completeness
+
+Return JSON:
+{{"winner": "A" or "B" or "tie", "a_score": 1-5, "b_score": 1-5, "reason": "Why the winner is better"}}"""
+
+        judgment = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": judge_prompt}],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        result = json.loads(judgment.choices[0].message.content)
+        comparisons.append({
+            "query": query,
+            "base": base_output,
+            "fine_tuned": ft_output,
+            "winner": result["winner"],
+            "reason": result["reason"]
+        })
+
+    # Summarize
+    wins = {"A": 0, "B": 0, "tie": 0}
+    for c in comparisons:
+        wins[c["winner"]] += 1
+
+    return {
+        "comparisons": comparisons,
+        "summary": {
+            "base_wins": wins["A"],
+            "fine_tuned_wins": wins["B"],
+            "ties": wins["tie"],
+            "fine_tuned_win_rate": wins["B"] / len(comparisons)
+        }
+    }
+
+# Usage
+results = compare_models(
+    base_model="gpt-4o-mini",
+    fine_tuned_model="ft:gpt-4o-mini:my-org::abc123",
+    test_queries=[
+        "How do I reset my password?",
+        "What's your refund policy?",
+        "The app isn't working"
+    ]
+)
+
+print(f"Fine-tuned win rate: {results['summary']['fine_tuned_win_rate']:.1%}")]]></code>
+      </example>
+    </section>
+
+    <section name="eval-prompts">
+      <p>Standard evaluation prompts for automated quality assessment:</p>
+      <prompt purpose="general-quality-eval"><![CDATA[Compare the actual response to the expected response for this query.
+
+Query: {query}
+
+Expected Response:
+{expected}
+
+Actual Response:
+{actual}
+
+Rate the actual response from 1-5:
+- 5: Equivalent or better than expected
+- 4: Minor differences, same quality level
+- 3: Noticeable differences but acceptable
+- 2: Significant quality gap
+- 1: Wrong, incomplete, or unhelpful
+
+Return JSON:
+{"score": N, "explanation": "Brief explanation of rating"}]]></prompt>
+      <prompt purpose="format-compliance-eval"><![CDATA[Evaluate if this response follows the required format.
+
+Required Format:
+{format_spec}
+
+Response:
+{response}
+
+Check for:
+1. Structure compliance
+2. Required sections present
+3. Proper formatting (markdown, JSON, etc.)
+4. Length requirements
+
+Return JSON:
+{
+  "compliance_score": 1-5,
+  "issues": ["list of format issues"],
+  "compliant": true/false
+}]]></prompt>
+      <prompt purpose="factual-accuracy-eval"><![CDATA[Evaluate the factual accuracy of this response.
+
+Query: {query}
+
+Response:
+{response}
+
+Reference Information:
+{reference}
+
+Check for:
+1. Factual errors or inaccuracies
+2. Missing critical information
+3. Misleading statements
+4. Unsupported claims
+
+Return JSON:
+{
+  "accuracy_score": 1-5,
+  "errors": ["list of factual errors"],
+  "missing_info": ["list of missing information"],
+  "explanation": "Overall assessment"
+}]]></prompt>
+      <prompt purpose="failure-analysis"><![CDATA[Analyze these failure cases from model evaluation.
+
+Failed Examples:
+{failures}
+
+For each failure:
+1. Identify root cause
+2. Suggest training data improvements
+3. Recommend prompt engineering fixes
+
+Return JSON:
+{
+  "analysis": [
+    {
+      "example_id": N,
+      "root_cause": "Why it failed",
+      "training_fix": "What training data to add",
+      "prompt_fix": "How to improve prompt"
+    }
+  ],
+  "summary": "Overall patterns in failures"
+}]]></prompt>
+    </section>
+
+    <section name="evaluation-methods">
+      <p>Automated evaluation methods by task type:</p>
+      <list>
+        <item>LLM-as-judge (GPT-4o): general quality, tone, helpfulness — use for open-ended responses.</item>
+        <item>Exact match: classification, entity extraction — binary correct/incorrect.</item>
+        <item>Format compliance: structured output (JSON schema validation, regex pattern matching).</item>
+        <item>ROUGE/BLEU: text generation with reference outputs — less reliable than LLM judge for quality.</item>
+        <item>Manual review: 20-50 sampled outputs for human preference judgment.</item>
+      </list>
+      <p>Model selection for evaluation tasks: use gpt-4o for quality and A/B evaluation; use gpt-4o-mini for bulk format compliance checks; use temperature=0 for all evaluation calls (deterministic).</p>
+    </section>
+
+    <antipattern>
+      <description>Evaluating only on the training distribution.</description>
+      <reason>A fine-tuned model memorizes training patterns. Eval on a test set drawn from the same distribution as training overestimates production quality. Evaluate on real traffic samples or distribution-shifted examples to measure actual generalization.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using the fine-tuned model itself as the eval judge.</description>
+      <reason>The fine-tuned model has learned biases from training data — it will score its own output style higher. Always use a different model (typically gpt-4o) as the judge to avoid circular evaluation.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Skipping human review before production deployment.</description>
+      <reason>Automated metrics catch metric-level regressions (accuracy, format, win rate). They miss subjective failures: inappropriate tone for brand context, subtle safety violations, outputs that are technically correct but user-hostile. Human checkpoint is mandatory before routing live traffic.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-deployment"/>
+      <link href="https://platform.openai.com/docs/guides/evaluation-best-practices"/>
+      <link href="https://github.com/openai/evals"/>
+    </see-also>
+  </content>
+</methodology>
