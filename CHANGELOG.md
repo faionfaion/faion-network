@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: finops-cloud-cost-optimization → 5 slugs (fco-rightsizing, fco-commitment-pricing, fco-spot-instances, fco-cost-allocation, fco-waste-elimination)
 - decompose: terraform-modules → 5 slugs (terraform-modules-structure, terraform-modules-versioning, terraform-modules-composition, terraform-modules-security, terraform-modules-prompts)
 - decompose: image-analysis-vision → 5 slugs (vision-provider-selection, vision-document-extraction, vision-classification-moderation, vision-accessibility, vision-agentic-pipeline)
 - decompose: local-llm-ollama → 6 slugs (ollama-setup-models, ollama-python-client, ollama-tool-calling, ollama-deployment, ollama-prompt-engineering, ollama-agent-integration)

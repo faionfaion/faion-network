@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fco-rightsizing">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Match cloud instance sizes to actual workload requirements using utilization metrics; CPU/memory rightsizing saves 20-40%, Graviton migration 20-40% additional.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>rightsizing</tag>
+      <tag>cloud-cost</tag>
+      <tag>compute-optimization</tag>
+      <tag>graviton</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="fco-commitment-pricing"/>
+      <ref slug="fco-spot-instances"/>
+      <ref slug="fco-waste-elimination"/>
+      <ref slug="finops-cost-visibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Instance Rightsizing</title>
+
+    <summary>Rightsizing matches instance sizes to actual workload requirements. Most teams overprovision to ensure systems do not crash during peak hours, leaving CPU utilization below 30% and memory below 40%. A systematic 4-week analysis followed by phased downsizing consistently delivers 20-40% compute savings with zero performance impact.</summary>
+
+    <why>
+      <p>Cloud spending reached $723.4B in 2025, yet organizations waste 32% ($200B+) on unused resources. The single largest source of waste is overprovisioned compute: instances upgraded "just in case" run at 10-15% utilization for months. Rightsizing attacks this directly — the same application runs identically on a smaller instance when actual utilization is well below the ceiling.</p>
+      <p>Graviton (ARM) and AMD processor families offer an additional 10-40% cost reduction on top of any size reduction, often with latency improvements, because the newer microarchitectures are more efficient per dollar.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any cloud environment that has been running for 4+ weeks and has not been rightsized in the past quarter.</item>
+        <item>Instances upgraded "just in case" for an anticipated traffic spike that never arrived.</item>
+        <item>B2B SaaS or microservices platforms with 10+ instances where even 10% savings is significant at scale.</item>
+        <item>Before purchasing Reserved Instances — rightsize first, then commit to correct sizing.</item>
+        <item>Post-migration: newly migrated workloads are commonly oversized due to lift-and-shift conservatism.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Instances with highly variable or spiky CPU (peak exceeds 70%) — downsizing risks throttling under load.</item>
+        <item>Latency-sensitive production services where a 5-10% CPU headroom matters — require load testing first.</item>
+        <item>Fewer than 4 weeks of monitoring data — insufficient to distinguish baseline from anomaly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rightsizing-indicators">
+      <p>Key indicators that an instance is a rightsizing candidate:</p>
+      <list>
+        <item>CPU utilization consistently below 30% (4-week average)</item>
+        <item>Memory utilization consistently below 40% (4-week average)</item>
+        <item>Network I/O consistently low relative to instance network capacity</item>
+        <item>Instance type was upgraded "just in case" without a load test justifying the upgrade</item>
+      </list>
+    </section>
+
+    <section name="savings-by-approach">
+      <p>Rightsizing savings by approach (industry benchmarks, 2025-2026):</p>
+      <list>
+        <item>CPU/Memory rightsizing: 20-40% reduction on compute line</item>
+        <item>Graviton/ARM migration (AWS): 20-40% additional savings with performance gains</item>
+        <item>AMD processor migration: 10-20% savings vs Intel equivalent</item>
+        <item>Storage rightsizing (GP2 to GP3 EBS): approximately 20% per volume with no downtime</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Before rightsizing any production instance, collect at minimum 4 weeks of CPU and memory utilization data, identify peak values (not just averages), and implement the change in non-production first with a 48-hour validation window before promoting to production.</statement>
+        <rationale>Averages hide spikes. A 15% average CPU with a 95th-percentile of 85% is NOT a rightsizing candidate. The 4-week window captures weekly patterns including batch jobs, end-of-month processing, and marketing campaigns.</rationale>
+      </rule>
+    </section>
+
+    <section name="phased-implementation">
+      <p>Phased rightsizing reduces risk by validating in lower environments first. The SmartNews case study showed 50% main compute savings and 15% ML savings via Spot + Graviton combined.</p>
+
+      <p>A B2B SaaS startup with 50+ microservices found 4-week CloudWatch analysis revealing m5.xlarge running at 12% CPU / 28% memory and m5.2xlarge at 8% CPU / 22% memory — both strong rightsizing candidates.</p>
+
+      <example type="good" title="Phased rightsizing: 3-month plan">
+        <code lang="text"><![CDATA[Phase 1 - Non-prod environments (Week 1-2):
+  - Downsize all dev instances by 50%
+  - Validate no performance impact over 48 hours
+  - Expected savings: $8,000/month
+
+Phase 2 - Low-risk production (Week 3-4):
+  - Rightsize batch processors and background workers
+  - Implement auto-scaling policies
+  - Expected savings: $12,000/month
+
+Phase 3 - Critical production (Week 5+):
+  - Rightsize carefully with rollback plans documented
+  - Convert to Graviton instances where viable
+  - Expected savings: $15,000/month
+
+Results (real case): $85,000/month → $50,000/month (41% reduction)
+Average CPU utilization: 11% → 45%]]></code>
+        <note>Always document rollback: monitor CloudWatch for 24 hours post-change with alert thresholds at CPU &gt; 70%, Memory &gt; 80%.</note>
+      </example>
+
+      <example type="bad" title="Rightsizing without baseline data">
+        <code lang="text"><![CDATA[# Week 1: Noticed high monthly bill
+# Week 1: Immediately downsized all m5.2xlarge → m5.large
+# Week 2: Production outage during end-of-month batch job
+# Week 2: Emergency rollback, 4 hours downtime]]></code>
+        <note>No utilization data collected. The batch job ran once a month and required the full m5.2xlarge for 6 hours — invisible in a spot check.</note>
+      </example>
+    </section>
+
+    <section name="storage-rightsizing">
+      <p>Storage rightsizing is often overlooked but offers quick wins with zero application downtime:</p>
+
+      <rule testable="true">
+        <statement>Migrate all EBS GP2 volumes to GP3 during the next maintenance window; GP3 costs 20% less and provides higher baseline IOPS (3,000 vs 100 for GP2) without requiring size changes.</statement>
+        <rationale>GP3 is strictly better than GP2 in both price and baseline performance. The migration requires no instance restart and no application changes.</rationale>
+      </rule>
+
+      <example type="good" title="GP2 to GP3 migration (AWS CLI)">
+        <code lang="bash"><![CDATA[# Find all GP2 volumes
+aws ec2 describe-volumes \
+  --filters Name=volume-type,Values=gp2 \
+  --query 'Volumes[*].{ID:VolumeId,Size:Size}' \
+  --output table
+
+# Modify a single volume (no downtime)
+aws ec2 modify-volume \
+  --volume-id vol-0abc123 \
+  --volume-type gp3
+
+# Bulk migration script
+aws ec2 describe-volumes \
+  --filters Name=volume-type,Values=gp2 \
+  --query 'Volumes[*].VolumeId' \
+  --output text | xargs -I{} \
+  aws ec2 modify-volume --volume-id {} --volume-type gp3]]></code>
+        <note>Savings: approximately 20% per volume. For a 100TB environment this is material.</note>
+      </example>
+    </section>
+
+    <section name="database-rightsizing">
+      <p>Database instance rightsizing requires extra caution because IOPS provisioning affects latency directly:</p>
+      <list>
+        <item>Analyze RDS/database instance utilization for CPU, memory, and IOPS separately</item>
+        <item>Consider Aurora Serverless v2 for variable workloads — scales in 0.5 ACU increments</item>
+        <item>Review provisioned IOPS vs actual IOPS consumed; over-provisioned IOPS is expensive</item>
+        <item>Implement read replicas for read-heavy workloads before rightsizing the primary</item>
+      </list>
+    </section>
+
+    <section name="quick-wins">
+      <p>Quick-win rightsizing commands for immediate cost reduction:</p>
+
+      <example type="good" title="Find old-generation instances (AWS CLI)">
+        <code lang="bash"><![CDATA[# Find instances using old generation (m4, c4, r4)
+aws ec2 describe-instances \
+  --query 'Reservations[].Instances[?starts_with(InstanceType, `m4`) || starts_with(InstanceType, `c4`) || starts_with(InstanceType, `r4`)].{ID:InstanceId,Type:InstanceType,State:State.Name}' \
+  --output table
+
+# Savings by migrating to current generation: 10-40%
+# m4 → m6i: ~20% savings + better performance
+# c4 → c6i: ~30% savings
+# r4 → r6i: ~25% savings]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Enable CloudWatch/Stackdriver detailed monitoring on all instances</check>
+      <check>Collect 4+ weeks of CPU and memory utilization data before any changes</check>
+      <check>Identify instances with average CPU below 30% and memory below 40%</check>
+      <check>Create rightsizing recommendations report per environment</check>
+      <check>Implement downsizing in non-prod first and validate for 48 hours</check>
+      <check>Validate performance metrics after each rightsizing step</check>
+      <check>Document savings achieved per phase</check>
+      <check>Audit EBS volumes and migrate GP2 to GP3 (no downtime)</check>
+      <check>Identify unattached EBS volumes and delete or snapshot</check>
+      <check>Review snapshot retention policies and implement lifecycle rules</check>
+      <check>Analyze RDS instance utilization (CPU, memory, IOPS) separately</check>
+      <check>Schedule quarterly rightsizing reviews (workloads change over time)</check>
+    </checklist>
+
+    <section name="prompts">
+      <prompt purpose="rightsizing-analysis"><![CDATA[Analyze these instance utilization metrics for rightsizing opportunities:
+
+Instance ID: [ID]
+Instance Type: [current type]
+vCPU: [count]
+Memory: [GB]
+
+Metrics (last 30 days):
+- Avg CPU: [X]%
+- Peak CPU: [X]%
+- Avg Memory: [X]%
+- Peak Memory: [X]%
+- Network I/O: [pattern]
+
+Please recommend:
+1. Whether this instance should be rightsized (yes/no with confidence)
+2. Recommended instance type if yes
+3. Estimated monthly savings
+4. Risk assessment (low/medium/high)
+5. Any architectural changes to consider]]></prompt>
+    </section>
+
+    <see-also>
+      <ref slug="fco-commitment-pricing"/>
+      <ref slug="fco-spot-instances"/>
+      <ref slug="fco-waste-elimination"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://aws.amazon.com/aws-cost-management/aws-cost-optimization-hub/"/>
+    </see-also>
+  </content>
+</methodology>
