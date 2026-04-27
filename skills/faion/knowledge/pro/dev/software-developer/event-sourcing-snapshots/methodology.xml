@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-snapshots">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Snapshot strategy for event-sourced aggregates: every-N-events rule, cache-only semantics, correctness hazards when event schema changes, and mandatory rebuild on bump.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>snapshots</tag>
+      <tag>performance</tag>
+      <tag>aggregate</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="event-sourcing-versioning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Snapshot Strategy</title>
+
+    <summary>Snapshots periodically save the derived aggregate state so that reconstruction skips replaying the entire event history. Snapshots are a performance cache ONLY — the system MUST be able to reconstruct correct state from event offset 0 at any time. Snapshots must be invalidated and rebuilt whenever the event schema changes.</summary>
+
+    <why>
+      <p>Aggregates with long event histories (100k+ events per stream, multi-year accounts, high-frequency trading records) make every command slow because loading the aggregate means replaying thousands of events. Snapshots reduce this to: load snapshot + replay only events newer than snapshot version.</p>
+      <p>The critical correctness constraint: snapshots are NOT truth. Events are truth. A snapshot is a cached projection of state at a particular version. If you add, remove, or rename fields in event classes, old snapshots encode the old state shape and will produce wrong aggregates when combined with new events. Always be able to reconstruct from event 0.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Aggregate streams with more than 50–100 events per instance where command latency is measurably impacted by replay.</item>
+        <item>Long-running aggregates (multi-year accounts, high-frequency order streams) where the event count grows unbounded.</item>
+        <item>After profiling confirms that aggregate reconstruction is the bottleneck — do not add snapshots speculatively.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Short-lived aggregates with small event counts — replay is cheap, snapshot overhead (storage, invalidation) costs more than it saves.</item>
+        <item>Systems without a tested "rebuild snapshot from events" path — stale snapshots + schema-changed events produce silently wrong state.</item>
+        <item>Treating snapshots as the truth to skip event replay entirely — this breaks event-versioning and schema migration.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="snapshot-rules">
+      <rule>
+        <statement>Snapshots MUST be treated as a performance cache only. The system MUST be able to reconstruct correct aggregate state from the event log at offset 0 without any snapshot present.</statement>
+        <rationale>If snapshots are treated as truth, a stale or corrupt snapshot cannot be corrected without data loss. Rebuilding from events is always the fallback; "snapshot exists" must never skip event replay entirely.</rationale>
+      </rule>
+      <rule>
+        <statement>When event class fields are added, removed, or renamed (schema bump), ALL snapshots for affected aggregate types MUST be invalidated and rebuilt before deploying the new event version.</statement>
+        <rationale>A snapshot encodes state derived from the old event schema. Applying new events (with different field semantics) on top of an old-schema snapshot produces incorrect reconstructed state. This is a correctness bug, not a performance issue.</rationale>
+      </rule>
+      <rule>
+        <statement>Take snapshots every N events (recommended N = 50–100). Store (stream_id, snapshot_version, serialized_state). On aggregate load: fetch latest snapshot, then replay only events with version &gt; snapshot_version.</statement>
+        <rationale>Too-frequent snapshots add storage and write overhead. Too-infrequent snapshots don't reduce replay cost enough. 50–100 events is a well-tested default for most domain aggregates.</rationale>
+      </rule>
+    </section>
+
+    <section name="snapshot-implementation">
+      <example type="good" title="Snapshot-aware aggregate load (Python)">
+        <code lang="python"><![CDATA[
+from dataclasses import asdict, dataclass
+from typing import Optional, List
+import json
+from uuid import UUID
+
+
+class OrderRepository:
+    def __init__(self, event_store, snapshot_store):
+        self.event_store = event_store
+        self.snapshot_store = snapshot_store
+        self.SNAPSHOT_EVERY = 50
+
+    def load(self, order_id: UUID) -> "Order":
+        # try snapshot first
+        snapshot = self.snapshot_store.load(stream_id=str(order_id))
+        if snapshot:
+            order = Order.from_snapshot(snapshot["state"])
+            since_version = snapshot["version"]
+        else:
+            order = Order(id=order_id)
+            since_version = 0
+
+        # replay only events newer than snapshot
+        events = self.event_store.load(
+            stream_id=str(order_id),
+            from_version=since_version,
+        )
+        for event in events:
+            order._apply(event, is_new=False)
+
+        return order
+
+    def save(self, order: "Order", expected_version: int) -> None:
+        events = order.collect_pending_events()
+        if not events:
+            return
+
+        # optimistic concurrency: fail on conflict
+        self.event_store.append(
+            stream_id=str(order.id),
+            events=events,
+            expected_version=expected_version,
+        )
+
+        # snapshot every N events
+        if order.version % self.SNAPSHOT_EVERY == 0:
+            self.snapshot_store.save(
+                stream_id=str(order.id),
+                version=order.version,
+                state=order.to_snapshot_dict(),
+            )
+
+
+# On Order aggregate — snapshot serialization methods
+# (add to the Order class from event-sourcing-aggregate)
+class OrderSnapshotMixin:
+    def to_snapshot_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "customer_id": str(self.customer_id),
+            "status": self.status.value,
+            "items": [
+                {
+                    "product_id": str(i.product_id),
+                    "product_name": i.product_name,
+                    "quantity": i.quantity,
+                    "unit_price": str(i.unit_price),
+                }
+                for i in self.items
+            ],
+            "shipping_address": self.shipping_address,
+            "tracking_number": self.tracking_number,
+            "version": self.version,
+        }
+
+    @classmethod
+    def from_snapshot(cls, state: dict) -> "Order":
+        from decimal import Decimal
+        from uuid import UUID
+        order = cls(
+            id=UUID(state["id"]),
+            customer_id=UUID(state["customer_id"]),
+            status=OrderStatus(state["status"]),
+            items=[
+                OrderItem(
+                    product_id=UUID(i["product_id"]),
+                    product_name=i["product_name"],
+                    quantity=i["quantity"],
+                    unit_price=Decimal(i["unit_price"]),
+                )
+                for i in state["items"]
+            ],
+            shipping_address=state.get("shipping_address"),
+            tracking_number=state.get("tracking_number"),
+            version=state["version"],
+        )
+        return order
+]]></code>
+        <note>load() always replays events newer than the snapshot. save() snapshots every 50 events. Snapshots never bypass event replay — they only reduce its range.</note>
+      </example>
+
+      <antipattern>
+        <description>Persisting a snapshot and then skipping event replay entirely when loading — "if snapshot exists, return snapshot state directly".</description>
+        <reason>This makes the snapshot the source of truth. When event schema changes, the snapshot encodes old field semantics. The system silently returns wrong aggregate state for any aggregate whose last snapshot predates the schema bump.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Taking a snapshot on every save instead of every N events.</description>
+        <reason>A snapshot per event doubles the write load and provides no replay benefit — you still load one snapshot and zero events. Snapshot at N=50–100 to amortize the overhead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Deploying a new event class version (renamed/removed fields) without first invalidating existing snapshots.</description>
+        <reason>Old snapshots encode state built from old event semantics. Applying new events on top produces wrong state. Always invalidate snapshots as part of the schema-bump migration and rebuild before going live.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="event-sourcing-versioning"/>
+      <link href="https://martendb.io/events/projections/"/>
+    </see-also>
+  </content>
+</methodology>
