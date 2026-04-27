@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Multi-language testing playbook: pytest, Jest/Vitest, Go testing, Playwright, Cypress. Arrange-Act-Assert, isolated tests, 80% branch coverage minimum.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>pytest</tag>
+      <tag>vitest</tag>
+      <tag>playwright</tag>
+      <tag>tdd</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>javascript</language>
+      <language>go</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Testing (Multi-Language)</title>
+
+    <summary>Comprehensive testing patterns for pytest (Python), Jest/Vitest (JavaScript/TypeScript), Go's testing package, Playwright (E2E), and Cypress. Every test follows Arrange-Act-Assert. Tests are isolated, idempotent, and can run in any order. Coverage threshold: 80% branches minimum.</summary>
+
+    <why>
+      <p>Untested code accumulates hidden regressions. A consistent naming convention (test_{what}_{when}_{expected}) and fixture pattern (factory or builder, not inline literals) makes tests readable and cheap to maintain as models grow. The test pyramid prevents slow E2E tests from dominating CI feedback loops.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Unit testing pure functions and services with mocks for external dependencies.</item>
+        <item>Configuring pytest, Jest, or Vitest for a new project.</item>
+        <item>Setting up fixture factories, parametrization, and async test support.</item>
+        <item>Implementing TDD with red-green-refactor cycles.</item>
+        <item>Adding E2E tests with Playwright or Cypress.</item>
+        <item>A task whose acceptance criteria include "tests pass" — the agent must write or update tests as part of the implementation, not as an afterthought.</item>
+        <item>Cross-language repos (Python services + JS frontend + Go workers) where one orchestrating agent needs language-specific testing patterns.</item>
+        <item>Establishing a coverage floor (`fail_under = 80`) and wiring it into CI so PRs from agents block on regressions.</item>
+        <item>Bootstrapping a new repo with the canonical pytest/jest/vitest/playwright config in one shot.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Integration tests with real databases (see integration-testing methodology instead).</item>
+        <item>Load and performance testing (use k6, Locust, or go test -bench=).</item>
+        <item>Visual regression testing (use Percy or Chromatic).</item>
+        <item>One-off scripts and notebooks that are inherently exploratory (a few asserts in the script itself are enough).</item>
+        <item>Pure infra-as-code (terraform/k8s manifests) where the test signal is `plan`/`apply` outcome, not unit testing.</item>
+        <item>When the codebase has no testable seams (god objects, no DI, untyped globals) — fix that first; tests bolted on top become brittle and an agent will spend tokens chasing them.</item>
+        <item>Visual regression flows — defer to Playwright screenshot diffs / Percy / Chromatic, not unit-test frameworks.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pytest-configuration">
+      <rule>
+        <statement>Configure pytest in pyproject.toml under [tool.pytest.ini_options]. Set fail_under = 80 in [tool.coverage.report] to enforce minimum branch coverage.</statement>
+        <rationale>A coverage threshold without branch coverage enforcement misses conditional logic. 80% branches is a practical minimum for production code.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-v", "--strict-markers", "--tb=short", "-ra"]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks integration tests",
+]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 80
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="pytest-naming">
+      <rule>
+        <statement>Name tests as test_{what}_{when}_{expected}. Example: test_user_create_with_invalid_email_raises_validation_error. Never use generic names like test_1 or test_it_works.</statement>
+        <rationale>Descriptive names make failure output self-documenting. Agents reading failing CI output can understand the intent without reading the test body.</rationale>
+      </rule>
+    </section>
+
+    <section name="pytest-fixtures-and-factories">
+      <rule>
+        <statement>Use the lowest fixture scope that provides isolation. Default to function scope. Use class scope for shared setup within a test class. Use session scope only for expensive one-time resources (containers, compiled models).</statement>
+        <rationale>Higher scopes create state leakage. A session-scoped fixture that mutates state will cause ordering-dependent test failures.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+@pytest.fixture
+def user_factory(db):
+    created = []
+    def _create(**kwargs):
+        defaults = {"name": "Test User", "email": f"user{len(created)}@example.com"}
+        defaults.update(kwargs)
+        user = User(**defaults)
+        db.add(user)
+        created.append(user)
+        return user
+    yield _create
+    for u in created:
+        db.delete(u)
+      ]]></code>
+        <note>Factory pattern creates unique data per call and cleans up on teardown.</note>
+      </example>
+    </section>
+
+    <section name="pytest-parametrize-and-mocking">
+      <rule>
+        <statement>Use @pytest.mark.parametrize with pytest.param(..., id=...) for readable parametrized test names. Use pytest-mock's mocker.patch for external dependencies; never patch internal business logic.</statement>
+        <rationale>Named parametrize IDs produce readable test output. Patching business logic produces tests that prove the mock, not the code.</rationale>
+      </rule>
+    </section>
+
+    <section name="vitest-vs-jest">
+      <rule>
+        <statement>Prefer Vitest for new projects. It is API-compatible with Jest, faster (Vite-native), and supports ESM without configuration. Use Jest only if the project has an existing Jest setup not worth migrating.</statement>
+        <rationale>Vitest's Vite-based transform is 3-10x faster than Jest's Babel/ts-jest pipeline for TypeScript projects.</rationale>
+      </rule>
+    </section>
+
+    <section name="js-test-structure">
+      <rule>
+        <statement>Follow Arrange-Act-Assert inside each test. Use describe blocks for grouping by unit and nested describe for scenarios. Never nest more than two describe levels.</statement>
+        <rationale>Flat, readable test structures reduce cognitive load. Deep nesting obscures which condition is being tested.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => { service = new UserService(); });
+
+  describe('createUser', () => {
+    it('should create user with valid data', () => {
+      const user = service.createUser({ name: 'John', email: 'john@example.com' });
+      expect(user.id).toBeDefined();
+      expect(user.name).toBe('John');
+    });
+
+    it('should throw for invalid email', () => {
+      expect(() => service.createUser({ name: 'John', email: 'invalid' }))
+        .toThrow('Invalid email');
+    });
+  });
+});
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="js-module-mocking">
+      <rule>
+        <statement>Mock entire modules with vi.mock() at the top of the file. Use vi.spyOn() for partial module mocks. Reset mocks between tests with clearMocks: true in config.</statement>
+        <rationale>Module-level mocks are hoisted by Vitest/Jest. Not resetting between tests causes state leakage across test cases.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+vi.mock('@/services/api', () => ({
+  fetchData: vi.fn().mockResolvedValue({ data: 'mocked' }),
+}));
+
+// Partial mock preserving original implementation
+vi.mock('@/utils/helpers', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, formatDate: vi.fn().mockReturnValue('2024-01-01') };
+});
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="js-async-testing">
+      <rule>
+        <statement>Use async/await for all async tests. Avoid the callback done pattern except for legacy callback APIs. Use vi.useFakeTimers() to test timeout and interval logic without real waits.</statement>
+        <rationale>Callback-style async tests are prone to missing the done() call, which produces false passes. async/await makes failures explicit.</rationale>
+      </rule>
+    </section>
+
+    <section name="go-table-driven-tests">
+      <rule>
+        <statement>Use table-driven tests for all functions with multiple input cases. Each case must have a name field. Use t.Run(tt.name, ...) to run subtests so failures are identifiable by case name.</statement>
+        <rationale>Go's idiomatic test pattern. Named subtests produce readable failure output: TestValidateEmail/missing_at_symbol instead of TestValidateEmail (loop index 2).</rationale>
+      </rule>
+      <example type="good">
+        <code lang="go"><![CDATA[
+func TestValidateEmail(t *testing.T) {
+    tests := []struct {
+        name    string
+        email   string
+        wantErr bool
+    }{
+        {name: "valid email", email: "user@example.com", wantErr: false},
+        {name: "missing at symbol", email: "invalid", wantErr: true},
+        {name: "empty string", email: "", wantErr: true},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := ValidateEmail(tt.email)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("ValidateEmail(%q) error = %v, wantErr %v",
+                    tt.email, err, tt.wantErr)
+            }
+        })
+    }
+}
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="go-mocking-via-interfaces">
+      <rule>
+        <statement>Define repository and service interfaces in Go. Test with hand-written mock structs implementing those interfaces. Never use a mocking framework unless the team has standardized on one (testify/mock or mockery).</statement>
+        <rationale>Go interfaces are lightweight. Hand-written mocks are explicit, type-safe, and require no build-time code generation. Mocking frameworks add build complexity.</rationale>
+      </rule>
+    </section>
+
+    <section name="go-running-tests">
+      <list>
+        <item>go test ./... -- run all tests</item>
+        <item>go test -race ./... -- detect data races</item>
+        <item>go test -cover ./... -- show coverage percentage</item>
+        <item>go test -bench=. ./... -- run benchmarks</item>
+        <item>go test -run TestUserService/Create/with_valid_data -- run specific subtest</item>
+        <item>go test -timeout 30s ./... -- enforce timeout</item>
+      </list>
+    </section>
+
+    <section name="e2e-when-to-use">
+      <rule>
+        <statement>Use E2E tests for critical user flows: authentication, checkout, key feature workflows. Target 10% of the test suite. Run on CI at PR time only — never in the fast unit-test loop.</statement>
+        <rationale>E2E tests are slow (browser launch, DOM interaction) and occasionally flaky. Keeping them to 10% preserves CI speed.</rationale>
+      </rule>
+    </section>
+
+    <section name="e2e-page-object-pattern">
+      <rule>
+        <statement>Encapsulate page interactions in Page Object classes. Tests call page methods (loginPage.login(email, password)) not raw Playwright locators. This makes tests resilient to selector changes.</statement>
+        <rationale>When selectors change, update one Page Object instead of every test that touches that element.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="typescript"><![CDATA[
+// pages/LoginPage.ts
+import { Page, Locator } from '@playwright/test';
+
+export class LoginPage {
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly submitButton: Locator;
+
+  constructor(readonly page: Page) {
+    this.emailInput = page.locator('[data-testid="email-input"]');
+    this.passwordInput = page.locator('[data-testid="password-input"]');
+    this.submitButton = page.locator('[data-testid="submit-button"]');
+  }
+
+  async goto() { await this.page.goto('/login'); }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+}
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="e2e-selector-rule">
+      <rule>
+        <statement>Select elements by data-testid attribute, not CSS classes, IDs, or text content. CSS classes change during design iterations; data-testid is stable and intent-explicit.</statement>
+        <rationale>Tests that select by class break on every design change. data-testid attributes are written for testing and change only when test intent changes.</rationale>
+      </rule>
+    </section>
+
+    <section name="e2e-running-playwright">
+      <list>
+        <item>npx playwright test -- run all tests</item>
+        <item>npx playwright test --headed -- run with visible browser</item>
+        <item>npx playwright test --debug -- step-through debugger</item>
+        <item>npx playwright test --ui -- interactive UI mode</item>
+        <item>npx playwright codegen http://localhost:3000 -- generate tests by clicking</item>
+      </list>
+    </section>
+
+    <section name="aaa-test-structure">
+      <rule>
+        <statement>Every test must follow Arrange-Act-Assert: set up state, perform one action, assert one outcome. A test that asserts multiple outcomes should be split into multiple tests.</statement>
+        <rationale>Single-outcome tests produce precise failure messages. Multi-outcome tests mask which assertion failed and why.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+def test_user_creation():
+    # Arrange
+    service = UserService()
+    user_data = {"name": "John", "email": "john@example.com"}
+
+    # Act
+    user = service.create(user_data)
+
+    # Assert
+    assert user.id is not None
+    assert user.name == "John"
+      ]]></code>
+      </example>
+    </section>
+
+    <section name="test-isolation">
+      <rule>
+        <statement>Tests must not share state. Each test must be able to run in any order and produce the same result. Use autouse fixtures to reset state rather than relying on test ordering.</statement>
+        <rationale>Order-dependent tests hide bugs that only surface in CI when test discovery order differs from local run order.</rationale>
+      </rule>
+    </section>
+
+    <section name="coverage-practices">
+      <rule>
+        <statement>Set coverage thresholds at the current measured value, then raise incrementally. Never set 100% from day one — it drives test-gaming (adding assertions that execute code without verifying behavior).</statement>
+        <rationale>100% coverage targets produce tests that assert constants, mock everything, and exercise code paths without validating outcomes.</rationale>
+      </rule>
+      <rule>
+        <statement>Exclude generated code, __init__.py files, and TYPE_CHECKING blocks from coverage. Track branch coverage, not just line coverage.</statement>
+        <rationale>Line coverage misses conditional branches. A function can be 100% line-covered with one test that never hits the else branch.</rationale>
+      </rule>
+    </section>
+
+    <section name="tdd-red-green-refactor">
+      <rule>
+        <statement>Write a failing test (RED) before writing any implementation. Write the minimum code to make it pass (GREEN). Refactor both code and test with the safety net in place (REFACTOR). Never skip the red step.</statement>
+        <rationale>Skipping RED means the test may never have been failing, which means it may not actually test what it claims. A test that never fails is a test that provides no safety.</rationale>
+      </rule>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <list>
+        <item>pytest fixtures with `@pytest.fixture(scope="session")` + `db` fixture from pytest-django frequently leak state across tests when an agent autogenerates them; one bad fixture corrupts an entire test session.</item>
+        <item>pytest-asyncio with `asyncio_mode = "auto"` + sync fixtures cause hangs that look like infinite test runs to an agent watching stdout.</item>
+        <item>Coverage tools miss code reachable only via subprocesses or Celery workers; agents over-trust 100% coverage badges.</item>
+        <item>Mocking the wrong layer (mocking `requests.get` when the code uses `httpx.AsyncClient`) is the #1 LLM mistake — tests "pass" but exercise nothing.</item>
+        <item>Flaky tests get re-run by the agent, which masks real concurrency/race bugs.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A planning subagent reads the spec/test-plan, enumerates acceptance criteria, and emits a list of `test_*` IDs with one-line behaviors. An implementation subagent writes both code and tests. A test-runner subagent executes the suite, parses output (pytest's `--junitxml` is parser-friendly), and feeds failures back. Pre-commit hooks run a fast subset; full suite runs in CI. The orchestrator never marks a task done until red-green-refactor cycles complete and coverage ≥ floor.</p>
+      <list>
+        <item>`faion-sdd-executor-agent` — owns the task lifecycle, gates on test pass.</item>
+        <item>`faion-feature-executor` — sequential task runner with quality gates including test validation.</item>
+        <item>A purpose-built `test-writer` subagent — given a function signature + docstring, produces parametrized pytest cases (or jest/vitest cases for JS).</item>
+        <item>A `flaky-detector` subagent — re-runs the suite N times, identifies tests with non-deterministic outcomes.</item>
+      </list>
+      <prompt purpose="enumerate-test-cases"><![CDATA[
+For each public function in <module>, list 3-7 test cases:
+  - happy path
+  - boundary values
+  - invalid inputs / errors
+  - empty / null / zero
+  - one rare edge case
+Format: test name, inputs, expected outcome.
+]]></prompt>
+      <prompt purpose="parse-pytest-failures"><![CDATA[
+Run `pytest --junitxml=/tmp/r.xml -q -p no:cacheprovider`. Parse failures.
+For each failure, return: test name, assertion line, actual, expected,
+likely root cause (code bug / test bug / fixture bug / flake).
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`pytest` — Python test runner. `pip install pytest` · https://docs.pytest.org/</item>
+        <item>`pytest-cov` — Coverage with branch tracking. `pip install pytest-cov`</item>
+        <item>`pytest-xdist` — Parallel runs (`-n auto`). `pip install pytest-xdist`</item>
+        <item>`pytest-mock` — `mocker` fixture wrapping unittest.mock. `pip install pytest-mock`</item>
+        <item>`pytest-asyncio` — Async test support. `pip install pytest-asyncio`</item>
+        <item>`hypothesis` — Property-based fuzzing. `pip install hypothesis`</item>
+        <item>`jest` / `vitest` — JS unit runners. `npm i -D vitest` · https://vitest.dev/</item>
+        <item>`playwright` / `cypress` — Browser E2E. `npm i -D @playwright/test`</item>
+        <item>`go test` — Go built-in. `go test ./...`</item>
+        <item>`cargo test` / `cargo nextest` — Rust runners. `cargo install cargo-nextest`</item>
+        <item>`mutmut` / `cosmic-ray` — Mutation testing for Python. `pip install mutmut`</item>
+        <item>`stryker` — Mutation testing for JS/TS. `npm i -D @stryker-mutator/core`</item>
+        <item>`coverage` — Standalone Python coverage. `pip install coverage`</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Codecov (SaaS, agent-friendly) — Upload coverage XML; PR-comment integration.</item>
+        <item>Coveralls (SaaS, agent-friendly) — Same niche, simpler config.</item>
+        <item>GitHub Actions / GitLab CI (SaaS, agent-friendly) — Native test runners; matrix across versions.</item>
+        <item>BuildKite / CircleCI (SaaS, agent-friendly) — Parallelized test sharding via API.</item>
+        <item>Allure / ReportPortal (OSS, partial agent-friendly) — Rich test reports; agents can post results via REST.</item>
+        <item>Sentry (SaaS, agent-friendly) — Test-failure → issue mapping in production.</item>
+      </list>
+    </section>
+
+    <section name="ci-dispatcher-script">
+      <p>See `templates.md` for pytest/jest/Playwright configs. Minimal CI agent script:</p>
+      <example type="good" title="Language-agnostic test dispatcher">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# run-tests.sh — language-agnostic dispatcher
+set -euo pipefail
+if [ -f pyproject.toml ]; then
+  poetry run pytest --junitxml=test-results.xml \
+    --cov=src --cov-report=xml --cov-fail-under=80 -q
+elif [ -f package.json ]; then
+  if grep -q '"vitest"' package.json; then npx vitest run --coverage
+  else npx jest --ci --coverage --coverageThreshold='{"global":{"lines":80}}'
+  fi
+elif [ -f go.mod ]; then
+  go test -race -coverprofile=cover.out ./... \
+    && go tool cover -func=cover.out | tail -1
+elif [ -f Cargo.toml ]; then
+  cargo nextest run --no-fail-fast
+else
+  echo "no recognized stack" >&2; exit 2
+fi
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Test naming: `test_&lt;unit&gt;_&lt;condition&gt;_&lt;expected&gt;` so an agent reading failure logs immediately understands intent.</item>
+        <item>One logical assertion per test (multiple `assert` lines OK if they describe one outcome).</item>
+        <item>Use factories (`factory_boy` / `pytest-factoryboy` / `@faker-js/faker`) over hand-built fixtures — agents can extend factories without re-reading the schema.</item>
+        <item>Mark slow tests (`@pytest.mark.slow`) and split CI: fast suite on every push, full suite nightly.</item>
+        <item>Always set `--strict-markers` and `--strict-config` so unknown markers fail loudly — prevents typo'd `@pytest.mark.skip` patterns.</item>
+        <item>Coverage with branch (`branch = true` for Python, `--coverage --coverage-reporter=lcov` for JS); line coverage alone hides untested branches.</item>
+        <item>For async code, always provide an event loop fixture; never let pytest-asyncio guess.</item>
+        <item>For DB tests, use transactional rollback (`pytest-django`'s `db` fixture) instead of teardown queries — orders of magnitude faster.</item>
+        <item>Fail-fast off in CI (`pytest --maxfail=0`) so the agent sees all failures in one pass; fail-fast on in pre-commit (one test = one fix iteration).</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs love testing implementation details (mock the function the code calls and assert it was called) instead of behavior. Prompt: "Test outcomes, not call sequences. Mock only at I/O boundaries."</item>
+        <item>LLM-generated tests almost always re-import the function under test inside the test file, then mock the wrong path (`from foo.bar import baz` mocks `tests.test_foo.baz` not `foo.bar.baz`). Pin patch targets to the module under test, not the test file.</item>
+        <item>An agent re-running a flaky test until it passes hides race conditions. Configure `pytest --reruns 0` in CI; only allow reruns in a separate "flake repair" agent loop.</item>
+        <item>pytest's collection silently skips files that error during import. An agent looking at "0 failures" must also check "0 errors" and "X collected" — otherwise broken tests appear green.</item>
+        <item>`--cov-fail-under` must be set per-module for large repos; a single global threshold lets new code drift down.</item>
+        <item>LLM-generated parametrize lists frequently duplicate cases or omit the boundary the bug actually lives at. Prompt for boundary values explicitly (-1, 0, 1, max, max+1, None, "").</item>
+        <item>Snapshot tests (jest `toMatchSnapshot`) accumulate stale snapshots when an agent re-runs with `-u`. Block `--ci -u` combinations in pre-commit.</item>
+        <item>Mutation testing budget: an agent running `mutmut run` on a large repo can spend 10k+ tokens on output. Run mutation tests on changed files only.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.pytest.org/en/latest/"/>
+      <link href="https://pytest-cov.readthedocs.io/"/>
+      <link href="https://hypothesis.readthedocs.io/"/>
+      <link href="https://vitest.dev/"/>
+      <link href="https://playwright.dev/docs/test-intro"/>
+      <link href="https://martinfowler.com/articles/practical-test-pyramid.html"/>
+      <link href="https://testing.googleblog.com/"/>
+    </see-also>
+  </content>
+</methodology>
