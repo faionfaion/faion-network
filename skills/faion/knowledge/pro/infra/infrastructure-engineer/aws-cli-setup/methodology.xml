@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-cli-setup">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Install and configure AWS CLI v2 with named profiles, credential files, and environment variables for multi-account and multi-region workflows.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cli</tag>
+      <tag>credentials</tag>
+      <tag>profiles</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-iam-practical-patterns"/>
+      <ref slug="aws-ec2-provisioning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS CLI v2 Setup and Profile Management</title>
+
+    <summary>Install AWS CLI v2 on Linux, configure named profiles and credential files, and manage authentication via environment variables for multi-account, multi-region workflows. Profile-per-environment isolation prevents credential leaks between dev and production.</summary>
+
+    <why>
+      <p>AWS CLI v2 is the primary operational surface for every AWS infrastructure task. Proper profile separation (default, production, development) prevents accidental operations in the wrong account. Environment-variable overrides let CI/CD pipelines inject temporary credentials without touching the shared credentials file. Understanding the credential resolution order prevents hard-to-debug authentication errors.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new developer workstation or CI runner for AWS access.</item>
+        <item>Adding a new AWS account (dev, staging, prod) to an existing workflow.</item>
+        <item>Configuring assume-role profiles for cross-account access.</item>
+        <item>Debugging authentication failures (wrong profile, expired tokens).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>EC2 instances and ECS tasks — use IAM instance roles/task roles; no CLI credentials file needed.</item>
+        <item>Lambda functions — use execution roles; never embed credentials.</item>
+        <item>Production automation — prefer IAM roles with STS AssumeRole over long-lived access keys.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="installation">
+      <rule testable="true">
+        <statement>Install AWS CLI v2 (not v1) on Linux by downloading the official zip from awscli.amazonaws.com and running the bundled installer. Verify with `aws --version` showing `aws-cli/2.x`.</statement>
+        <rationale>AWS CLI v2 supports SSO, IMDSv2, and all current API features. v1 is no longer recommended and lacks SSO integration.</rationale>
+      </rule>
+
+      <example type="good" title="AWS CLI v2 Linux install">
+        <code lang="bash"><![CDATA[
+# Install AWS CLI v2 (Linux)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify
+aws --version
+]]></code>
+      </example>
+    </section>
+
+    <section name="profile-management">
+      <rule testable="true">
+        <statement>Use named profiles (one per account/environment) rather than overwriting the default profile. Always specify --profile or set AWS_PROFILE when running commands against non-default accounts.</statement>
+        <rationale>Named profiles prevent accidental operations in the wrong account. A default profile pointing to production is a common source of destructive incidents.</rationale>
+      </rule>
+
+      <example type="good" title="Configure and use named profiles">
+        <code lang="bash"><![CDATA[
+# Configure default profile
+aws configure
+# Input: Access Key ID, Secret Access Key, Region, Output format
+
+# Configure named profile
+aws configure --profile production
+
+# List profiles
+aws configure list-profiles
+
+# Use specific profile
+aws s3 ls --profile production
+export AWS_PROFILE=production
+]]></code>
+      </example>
+    </section>
+
+    <section name="environment-variables">
+      <p>Environment variables take precedence over credential files. Use them in CI/CD pipelines to inject temporary STS credentials without touching the shared file.</p>
+
+      <example type="good" title="Authentication via environment variables">
+        <code lang="bash"><![CDATA[
+# Authentication
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_SESSION_TOKEN="your-session-token"
+
+# Region
+export AWS_DEFAULT_REGION="us-east-1"
+export AWS_REGION="us-east-1"
+
+# Output format
+export AWS_DEFAULT_OUTPUT="json"  # json | text | table | yaml
+]]></code>
+      </example>
+    </section>
+
+    <section name="credentials-and-config-files">
+      <p>The credentials file (~/.aws/credentials) holds access keys. The config file (~/.aws/config) holds region, output format, and role-assumption chains. For cross-account access, define a profile with role_arn and source_profile so STS AssumeRole happens transparently.</p>
+
+      <example type="good" title="~/.aws/credentials with named profiles">
+        <code lang="ini"><![CDATA[
+# ~/.aws/credentials
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+
+[production]
+aws_access_key_id = PROD_ACCESS_KEY
+aws_secret_access_key = PROD_SECRET_KEY
+
+[development]
+role_arn = arn:aws:iam::123456789012:role/DevRole
+source_profile = default
+]]></code>
+      </example>
+
+      <example type="good" title="~/.aws/config with region and role assumption">
+        <code lang="ini"><![CDATA[
+# ~/.aws/config
+[default]
+region = us-east-1
+output = json
+
+[profile production]
+region = eu-west-1
+output = table
+
+[profile development]
+region = us-west-2
+role_arn = arn:aws:iam::123456789012:role/DevRole
+source_profile = default
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Storing long-lived access keys for production in the credentials file on a developer workstation.</description>
+        <reason>If the workstation is compromised, production keys are exposed. Use assume-role chains with short-lived STS tokens from a base set of dev credentials.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using the default profile for both dev and production accounts.</description>
+        <reason>A mistyped command with no --profile flag will execute in whichever account the default points to. Named profiles plus AWS_PROFILE in shell prompts prevent this.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>AWS CLI v2 installed and `aws --version` returns `aws-cli/2.x`.</check>
+      <check>Named profile per account (default = sandbox or dev only).</check>
+      <check>Production credentials use role assumption, not long-lived keys.</check>
+      <check>CI/CD uses environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SESSION_TOKEN), not credentials file.</check>
+      <check>AWS_DEFAULT_REGION set so commands don't require --region flag.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/cli/latest/userguide/"/>
+      <link href="https://docs.aws.amazon.com/cli/latest/reference/"/>
+      <ref slug="aws-iam-practical-patterns"/>
+    </see-also>
+  </content>
+</methodology>
