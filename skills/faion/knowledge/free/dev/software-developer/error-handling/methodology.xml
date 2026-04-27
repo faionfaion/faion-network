@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="error-handling">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>RFC 7807 Problem Details: standardize API errors with type, title, status, detail, traceId, errors[]. One shape, one content-type (application/problem+json), one framework handler.</summary>
+    <tags>
+      <tag>rfc-7807</tag>
+      <tag>error-handling</tag>
+      <tag>api-design</tag>
+      <tag>problem-details</tag>
+      <tag>rest</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+
+  <content>
+    <title>Error Handling with RFC 7807 Problem Details</title>
+
+    <summary>A methodology for standardizing API error responses following RFC 7807 Problem Details: every error returns `type` (URI), `title`, `status`, `detail`, `instance`, `traceId`, and an optional `errors[]` array for field-level validation failures. All endpoints share one shape, one content-type (`application/problem+json`), and one error-handler entry point.</summary>
+
+    <why>
+      <p>Inconsistent error shapes force every API client to handle each endpoint's unique format. RFC 7807 provides a machine-readable envelope that clients can parse generically, observability tools can index by `traceId`, and on-call engineers can trace across services. A single framework-level handler also prevents raw exception messages and stack traces from leaking to clients in production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New REST API where consistent client-side error handling matters.</item>
+        <item>Refactoring mixed error shapes (`{error:"..."}`, `{detail:"..."}`, HTML) into one envelope.</item>
+        <item>Public-facing APIs where error shape is part of the published contract.</item>
+        <item>Multi-service architectures where clients must not memorize per-service formats.</item>
+        <item>API gateway / BFF setups translating downstream errors.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>gRPC — use `google.rpc.Status` + `google.rpc.error_details` instead.</item>
+        <item>GraphQL — errors live in the response `errors[]` array per spec.</item>
+        <item>Internal-only low-stability APIs where the envelope overhead outweighs benefit.</item>
+        <item>Streaming endpoints (SSE, WebSocket) — error frames follow their own conventions.</item>
+        <item>Static asset / file download endpoints — return raw HTTP status, no body.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="shape">
+      <rule testable="true">
+        <statement>Every error response must include type (URI), title (short string), and status (integer matching HTTP status). detail, instance, traceId, and errors[] are optional but strongly recommended.</statement>
+        <rationale>RFC 7807 requires type, title, status as the minimum. Without them, clients cannot build generic error-handling logic.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set Content-Type to application/problem+json, not application/json.</statement>
+        <rationale>RFC 7807 mandates the problem+json media type. Clients (e.g., Spring RestClient with ProblemDetail) detect typed handling via the suffix. Using application/json silently degrades to generic parsing.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The status field in the body must exactly match the HTTP response status code.</statement>
+        <rationale>RFC 7807 requires they match. Mismatches appear when re-wrapping downstream errors: the outer HTTP code is 502 while the body says 400.</rationale>
+      </rule>
+    </section>
+
+    <section name="traceid">
+      <rule testable="true">
+        <statement>Always populate traceId. Map from the W3C traceparent header if present; otherwise generate a UUID.</statement>
+        <rationale>Without traceId, supporting a customer requires log scraping by timestamp across all services. With traceId, one string resolves the incident.</rationale>
+      </rule>
+    </section>
+
+    <section name="5xx-masking">
+      <rule testable="true">
+        <statement>For 5xx errors, detail must be a generic static string. Never interpolate exception messages, stack traces, SQL, internal paths, or PII.</statement>
+        <rationale>Raw exception messages leak implementation details, internal hostnames, and sometimes credentials. Provide traceId for internal lookup instead.</rationale>
+      </rule>
+    </section>
+
+    <section name="errors-extension">
+      <rule testable="true">
+        <statement>Use errors[] only for validation failures (4xx). Each item must have field, code (machine-readable slug), and message (human-readable).</statement>
+        <rationale>errors[] is a custom extension beyond RFC 7807. Using it for non-validation errors (401, 403, 404) over-structures simple responses and surprises clients expecting the spec shape.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Treat type URIs as part of the API contract. Once published, changing them is a breaking change.</statement>
+        <rationale>Clients may dispatch on the type URI to handle specific error classes. Renaming validation-error to validation silently breaks those clients.</rationale>
+      </rule>
+    </section>
+
+    <section name="framework-handler">
+      <rule testable="true">
+        <statement>Register a single framework-level exception handler. Handlers must not call response.json() with a shape that differs from ProblemDetail.</statement>
+        <rationale>Per-route error shapes re-create the inconsistency the methodology exists to solve. One handler, one shape, one content-type.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-examples">
+      <example type="good" title="FastAPI ProblemDetail model and exception handler">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
+import uuid
+
+class ProblemDetail(BaseModel):
+    type: str
+    title: str
+    status: int
+    detail: str | None = None
+    instance: str | None = None
+    trace_id: str | None = None
+    errors: list[dict] | None = None
+
+app = FastAPI()
+
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    return JSONResponse(
+        status_code=400,
+        headers={"Content-Type": "application/problem+json"},
+        content=ProblemDetail(
+            type="https://api.example.com/errors/validation-error",
+            title="Validation Error",
+            status=400,
+            detail="Request validation failed",
+            instance=str(request.url.path),
+            trace_id=request.headers.get("traceparent", str(uuid.uuid4())),
+            errors=[
+                {"field": e["loc"][-1], "code": e["type"], "message": e["msg"]}
+                for e in exc.errors()
+            ]
+        ).model_dump()
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        headers={"Content-Type": "application/problem+json"},
+        content=ProblemDetail(
+            type="https://api.example.com/errors/internal-error",
+            title="Internal Server Error",
+            status=500,
+            detail="An unexpected error occurred",
+            instance=str(request.url.path),
+            trace_id=request.headers.get("traceparent", str(uuid.uuid4())),
+        ).model_dump()
+    )
+]]></code>
+        <note>Content-Type is set explicitly. 5xx detail is static. traceId reads from W3C traceparent header.</note>
+      </example>
+      <example type="good" title="Contract test helper with JSON Schema">
+        <code lang="python"><![CDATA[
+import jsonschema, requests
+
+SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "required": ["type", "title", "status"],
+    "properties": {
+        "type": {"type": "string"},
+        "title": {"type": "string"},
+        "status": {"type": "integer", "minimum": 100, "maximum": 599},
+        "detail": {"type": "string"},
+        "instance": {"type": "string"},
+        "traceId": {"type": "string"},
+        "errors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["field", "code", "message"],
+                "properties": {
+                    "field": {"type": "string"},
+                    "code": {"type": "string"},
+                    "message": {"type": "string"},
+                }
+            }
+        }
+    }
+}
+
+def assert_problem_detail(resp):
+    assert resp.headers["content-type"].startswith("application/problem+json")
+    assert 400 <= resp.status_code < 600
+    jsonschema.validate(resp.json(), SCHEMA)
+]]></code>
+        <note>Reusable assertion helper for contract tests. Checks content-type, status range, and schema.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Interpolating exception messages, stack traces, SQL text, or internal paths into the detail field for 5xx errors.</description>
+        <reason>Exposes implementation details, internal hostnames, and sometimes credentials to external clients. Use a static detail string and provide traceId for internal lookup.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Returning Content-Type: application/json instead of application/problem+json.</description>
+        <reason>Clients that detect the +json media type suffix (e.g., Spring ProblemDetail) fall back to generic parsing. RFC 7807 mandates the problem+json type; the methodology's consistency guarantee depends on it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>HTTP status code on the response does not match the status field in the body.</description>
+        <reason>RFC 7807 requires both to match. Mismatch appears when wrapping downstream errors: the HTTP envelope says 502 while the body says 400, confusing clients and monitoring tools.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using errors[] for non-validation error types (401, 403, 404, 429).</description>
+        <reason>errors[] is a field-level extension for validation failures. Single-cause errors carry all necessary information in detail. Adding an empty errors[] array confuses clients expecting the spec shape.</reason>
+      </antipattern>
+      <antipattern>
+        <description>type field contains a non-URI string such as "validation" or "not_found".</description>
+        <reason>RFC 7807 requires type to be a URI. Non-URI values are technically non-conforming. More importantly, they cannot link to documentation pages that explain the error, recovery steps, and errors[] shape.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Skipping traceId on successful error handling (only populating it on 500).</description>
+        <reason>Tracing 400-class errors is equally important for debugging client-integration issues. Always populate traceId from W3C traceparent or generate a UUID.</reason>
+      </antipattern>
+      <antipattern>
+        <description>errors[].code contains a translated or localized string.</description>
+        <reason>code is machine-readable and must be stable. Translate errors[].message for users, but keep code as an invariant slug (email_invalid, not "Email invalide").</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>For each endpoint: (1) define a small set of error `type` slugs (e.g., `validation-error`, `not-found`, `unauthorized`, `rate-limited`, `internal-error`), (2) host a docs page per slug at `/errors/[slug]`, (3) implement a framework-level exception handler that returns Problem Details with `Content-Type: application/problem+json`, (4) propagate `traceparent` from request → response, (5) add a contract test asserting the error shape on each error class. Validate via `schemathesis` or a custom Pydantic/Zod schema check in CI.</p>
+      <p>Recommended subagents: faion-api-developer owns the contract definition and per-error documentation pages (draft the type URIs, error slugs, and the semantic meaning of each); faion-code-agent implements per-framework exception handlers (DRF custom handler, FastAPI RequestValidationError override, Express middleware, gin handler); faion-test-agent writes contract tests asserting Problem Details shape and headers; faion-software-architect decides which errors are exposed vs suppressed (5xx detail leaks, PII masking, etc.); faion-sdd-execution drives the rollout as a feature with a backwards-compat phase.</p>
+    </section>
+
+    <section name="limitations-and-tradeoffs">
+      <p>README is schema-only: no language-specific implementation, no integration with FastAPI/DRF/Express/Gin. traceId is shown but no guidance on how to populate it (W3C traceparent header, OTel context, etc.). errors[] is a custom extension to RFC 7807 — clients written to the spec may not parse it. Document explicitly. type is supposed to be a URL pointing to docs; without that infra (/errors/[slug] page hosted), it's a dead string. No anti-fingerprint guidance — detail should not leak stack traces, internal paths, SQL errors, or PII. instance is sometimes a path, sometimes a request ID — RFC says URI of the specific occurrence; agents pick whichever. Doesn't cover localization (title in user's language vs always English). No content-type discussion (application/problem+json is the spec; application/json is technically wrong).</p>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Define error type URIs at the API design stage, not retroactively. The type is part of the contract.</item>
+        <item>Document each error type in a dedicated page at `/errors/[slug]` with recovery steps, example causes, and expected action by the client.</item>
+        <item>Use consistent field naming across all frameworks (not `detail` vs `description` vs `message`).</item>
+        <item>Propagate traceId through distributed traces using W3C traceparent format.</item>
+        <item>Test the error shape in contract tests, not just happy path.</item>
+        <item>Version the Problem Details format (X-Problem-Details-Version header) if you need to evolve it.</item>
+        <item>Log the full exception server-side; return only traceId and generic detail to the client.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools-and-validation">
+      <p>schemathesis — property tests against OpenAPI; checks error responses match spec. dredd — API contract testing against OpenAPI/Blueprint. oasdiff — detect breaking changes including error response shape. httpie / curl -i — manual probe; inspect Content-Type and body structure. jq — assert JSON shape in shell and parse error chains. ajv (CLI) — JSON Schema validation against captured response. bunyan / pino (Node) + slog (Go) + structlog (Python) — structured error logging matching traceId for correlating errors with spans. otel-cli — inject + propagate W3C traceparent in tests and trace production errors.</p>
+    </section>
+
+    <templates>
+      <template path="templates/problem-details.schema.yaml" purpose="JSON Schema 2020-12 for validating Problem Details responses in CI"/>
+    </templates>
+
+    <see-also>
+      <link href="https://tools.ietf.org/html/rfc7807"/>
+      <link href="https://spring.io/blog/2022/09/21/spring-framework-6-0-goes-native"/>
+    </see-also>
+  </content>
+</methodology>
