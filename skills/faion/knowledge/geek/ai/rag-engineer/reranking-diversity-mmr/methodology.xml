@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reranking-diversity-mmr">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Maximal Marginal Relevance (MMR) reranking balances relevance to the query with diversity among selected documents, preventing redundant context in RAG.</summary>
+    <tags>
+      <tag>reranking</tag>
+      <tag>mmr</tag>
+      <tag>diversity</tag>
+      <tag>rag</tag>
+      <tag>retrieval</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="reranking-two-stage"/>
+      <ref slug="reranking-pipeline-integration"/>
+      <ref slug="hybrid-search-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Diversity-Aware Reranking with Maximal Marginal Relevance (MMR)</title>
+
+    <summary>Maximal Marginal Relevance (MMR) reranking selects documents that are both relevant to the query and dissimilar to already-selected documents. Unlike pure relevance reranking, MMR prevents returning multiple nearly identical passages that waste the LLM context window without adding new information.</summary>
+
+    <why>
+      <p>Standard cross-encoder reranking optimizes purely for relevance to the query. When a document is chunked from a large corpus, the top-k relevant chunks often come from the same source document or discuss overlapping facts. Sending 5 near-duplicate passages to the LLM wastes context window tokens and may cause the model to ignore subtle but important distinctions. MMR trades a small relevance loss for large diversity gain, resulting in a context window that covers more distinct aspects of the topic.</p>
+      <p>The MMR formula is: MMR(d) = lambda * relevance(query, d) - (1 - lambda) * max_sim(d, selected). The lambda parameter controls the relevance/diversity tradeoff. lambda=1.0 is pure relevance (standard reranking). lambda=0.0 is pure diversity (maximum coverage, ignoring relevance). lambda=0.5 is the balanced default.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Corpora where documents cluster around a few popular topics and top-k results are near-duplicates of each other.</item>
+        <item>Long-context RAG where the LLM receives 5-10 passages and redundancy wastes context budget.</item>
+        <item>Question-answering over documents that repeat the same fact multiple times (e.g., legal contracts, news archives).</item>
+        <item>When user complaints indicate the LLM gives repetitive answers that seem to all say the same thing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When query asks for a single precise fact — diversity hurts precision in this case; use pure relevance reranking.</item>
+        <item>When the corpus is already highly diverse and there is no redundancy problem — MMR adds cost without benefit.</item>
+        <item>When document embeddings were discarded after indexing — MMR requires embeddings at rerank time (recomputation doubles cost).</item>
+        <item>Latency-critical paths — MMR requires an embedding call for every candidate document in addition to the relevance scoring step.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mmr-algorithm">
+      <p>MMR is a greedy iterative selection algorithm. At each step, it selects the candidate that maximizes the MMR score — the tradeoff between relevance to the query and minimum similarity to already-selected documents. This ensures each new selection adds novel information not already covered by the current result set.</p>
+
+      <rule testable="true">
+        <statement>MMR requires document embeddings at rerank time, not just relevance scores. If the pipeline discards embeddings after indexing (to save memory), embeddings must be recomputed for the candidate pool before MMR can run. This doubles embedding cost for the candidate pool.</statement>
+        <rationale>MMR uses cosine similarity between candidate embeddings and already-selected document embeddings to compute the diversity term. Without embeddings, only the relevance term is available, which reduces MMR to standard reranking.</rationale>
+      </rule>
+
+      <example type="good" title="MMR reranking implementation with numpy">
+        <code lang="python"><![CDATA[
+import numpy as np
+from typing import List, Dict
+
+def maximal_marginal_relevance(
+    query_embedding: np.ndarray,
+    document_embeddings: np.ndarray,
+    relevance_scores: np.ndarray,
+    lambda_param: float = 0.5,
+    top_k: int = 5
+) -> List[int]:
+    """
+    MMR reranking for diversity.
+    Balances relevance with diversity.
+
+    Args:
+        query_embedding: 1D array of query embedding
+        document_embeddings: 2D array (n_docs, embedding_dim)
+        relevance_scores: 1D array of relevance scores from cross-encoder or vector similarity
+        lambda_param: 0.0 = pure diversity, 1.0 = pure relevance, 0.5 = balanced
+        top_k: number of documents to select
+
+    Returns:
+        List of selected document indices in selection order
+    """
+    selected = []
+    remaining = list(range(len(relevance_scores)))
+
+    # Normalize embeddings
+    query_norm = query_embedding / np.linalg.norm(query_embedding)
+    doc_norms = document_embeddings / np.linalg.norm(
+        document_embeddings, axis=1, keepdims=True
+    )
+
+    while len(selected) < top_k and remaining:
+        mmr_scores = []
+
+        for idx in remaining:
+            # Relevance to query
+            relevance = relevance_scores[idx]
+
+            # Max similarity to already selected docs
+            if selected:
+                similarities = np.dot(doc_norms[selected], doc_norms[idx])
+                max_sim = np.max(similarities)
+            else:
+                max_sim = 0
+
+            # MMR score
+            mmr = lambda_param * relevance - (1 - lambda_param) * max_sim
+            mmr_scores.append((idx, mmr))
+
+        # Select highest MMR
+        best_idx = max(mmr_scores, key=lambda x: x[1])[0]
+        selected.append(best_idx)
+        remaining.remove(best_idx)
+
+    return selected
+]]></code>
+        <note>lambda_param=0.5 is the standard starting point. Tune toward 0.3 for more diversity (long-context RAG), toward 0.7 for more relevance (precise fact retrieval).</note>
+      </example>
+    </section>
+
+    <section name="diverse-rerank-integration">
+      <p>The diverse_rerank function combines cross-encoder relevance scoring with MMR selection. It first scores all candidates for relevance, then applies MMR to select the final top-k with diversity. This produces results that are both relevant and non-redundant.</p>
+
+      <example type="good" title="Full diverse_rerank integrating cross-encoder + MMR">
+        <code lang="python"><![CDATA[
+def diverse_rerank(
+    query: str,
+    documents: List[str],
+    reranker,
+    embedding_service,
+    lambda_param: float = 0.5,
+    top_k: int = 5
+) -> List[Dict]:
+    """
+    Rerank with diversity consideration.
+
+    Args:
+        query: search query string
+        documents: list of candidate document texts
+        reranker: cross-encoder reranker (sentence-transformers CrossEncoder)
+        embedding_service: service with .embed() and .embed_batch() methods
+        lambda_param: diversity/relevance tradeoff (0.5 = balanced)
+        top_k: number of diverse results to return
+
+    Returns:
+        List of dicts with document, score, index
+    """
+    # Get relevance scores
+    pairs = [[query, doc] for doc in documents]
+    relevance_scores = reranker.predict(pairs)
+
+    # Get embeddings for diversity calculation
+    query_emb = embedding_service.embed(query)
+    doc_embs = embedding_service.embed_batch(documents)
+
+    # MMR selection
+    selected_indices = maximal_marginal_relevance(
+        query_emb, doc_embs, relevance_scores,
+        lambda_param=lambda_param,
+        top_k=top_k
+    )
+
+    return [
+        {
+            "document": documents[idx],
+            "score": float(relevance_scores[idx]),
+            "index": idx
+        }
+        for idx in selected_indices
+    ]
+]]></code>
+        <note>embedding_service.embed_batch() must return a 2D numpy array of shape (n_docs, embedding_dim). Normalize to unit length before passing to maximal_marginal_relevance if your embedding service does not normalize by default.</note>
+      </example>
+
+      <antipattern>
+        <description>Running MMR with embeddings from a different model than the one used for initial vector retrieval (e.g., retrieval with text-embedding-3-large, MMR diversity term with a different local embedding model).</description>
+        <reason>The diversity similarity matrix is computed in the embedding space. Mixing embedding models produces similarity values on incompatible scales, making the diversity term unreliable. Use the same embedding model for both retrieval and MMR diversity computation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using lambda_param=0.0 (pure diversity) in a RAG pipeline where query relevance must be maintained.</description>
+        <reason>Pure diversity selection ignores relevance entirely. The selected documents may be maximally spread across the embedding space but none of them may actually answer the query. Keep lambda above 0.3 to maintain meaningful relevance.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Use MMR when top-k results from standard reranking are near-duplicates. A simple heuristic: if cosine similarity between the top-2 results exceeds 0.92, the corpus has a redundancy problem that MMR should address.</statement>
+        <rationale>Near-duplicate passages (similarity &gt; 0.92) waste context window tokens without adding new information. MMR resolves this by penalizing documents too similar to already-selected ones.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>When evaluating MMR quality, measure both relevance (e.g., NDCG of the MMR result set vs. ground truth) and diversity (average pairwise similarity between selected documents). A good MMR configuration reduces average pairwise similarity by 20-40% with less than 5% NDCG drop.</statement>
+        <rationale>Optimizing MMR lambda without measuring the relevance/diversity tradeoff is tuning blind. The 20-40% diversity gain target ensures meaningful redundancy reduction while the 5% NDCG tolerance prevents sacrificing answer quality.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <ref slug="reranking-two-stage"/>
+      <ref slug="reranking-pipeline-integration"/>
+      <link href="https://www.cs.cmu.edu/~jgc/publication/The_Use_MMR_Diversity_Based_LTMIR_1998.pdf"/>
+    </see-also>
+  </content>
+</methodology>
