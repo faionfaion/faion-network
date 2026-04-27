@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-cost-visibility">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>FinOps INFORM phase: resource tagging strategy, cost allocation to teams/products, real-time dashboards, and baseline metrics. Foundation for all subsequent optimization.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>cost-allocation</tag>
+      <tag>tagging</tag>
+      <tag>dashboards</tag>
+      <tag>visibility</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-governance"/>
+      <ref slug="finops-cloud-cost-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>FinOps Cost Visibility: Tagging, Allocation, and Dashboards</title>
+
+    <summary>The INFORM phase establishes the visibility foundation for all FinOps work. It covers mandatory tagging strategy, cost allocation to business units, real-time dashboard setup, and baseline metrics. Without 95%+ tag coverage, all downstream reports are estimates dressed as facts.</summary>
+
+    <why>
+      <p>Cost visibility is the prerequisite for optimization. Without it, teams cannot identify waste, cannot attribute spend to products, and cannot hold owners accountable. Tagging hygiene is the most common FinOps failure mode: anomaly detection, rightsizing, and chargeback all break when resources lack owner, environment, and cost-center tags.</p>
+      <p>Showback (visibility without financial consequences) must come before chargeback (actual cost transfer). Introducing chargeback without first building trust through showback breaks engineering culture — teams optimize for budget instead of features.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a FinOps practice — INFORM is always phase one.</item>
+        <item>Tag compliance below 95% — reports are unreliable until this is resolved.</item>
+        <item>No per-team or per-product cost breakdown exists.</item>
+        <item>Cost anomalies are detected only when the invoice arrives.</item>
+        <item>Pre-chargeback: building the showback foundation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Flat-fee infrastructure where there is no elastic cost to allocate.</item>
+        <item>Crisis cost-cutting — apply blunt instruments (shut down non-prod) first, then build visibility.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tagging-strategy">
+      <rule>
+        <statement>Define and enforce four mandatory tag keys on every cloud resource: project (product or project name), environment (prod/staging/dev/test/sandbox), owner (responsible team), cost-center (financial code). Tag enforcement MUST be implemented as a policy (SCP for AWS, Organization Policy for GCP, Azure Policy) — not just documentation.</statement>
+        <rationale>Alerting and reporting on untagged resources after the fact is too slow. Policy enforcement at resource creation time is the only way to achieve and maintain 95%+ coverage at scale.</rationale>
+      </rule>
+
+      <example type="good" title="AWS SCP enforcing mandatory tags at creation">
+        <code lang="json"><![CDATA[
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireTags",
+      "Effect": "Deny",
+      "Action": [
+        "ec2:RunInstances",
+        "rds:CreateDBInstance",
+        "s3:CreateBucket"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "Null": {
+          "aws:RequestTag/project": "true",
+          "aws:RequestTag/environment": "true",
+          "aws:RequestTag/owner": "true"
+        }
+      }
+    }
+  ]
+}
+]]></code>
+        <note>Prevents resource creation without mandatory tags. Combine with a grace-period alert (7 days) for pre-existing resources.</note>
+      </example>
+
+      <example type="good" title="Tagging policy YAML definition">
+        <code lang="yaml"><![CDATA[
+# finops-tagging-policy.yaml
+mandatory_tags:
+  - key: project
+    description: "Project or product name"
+    pattern: "^[a-z][a-z0-9-]{2,32}$"
+    examples:
+      - "ecommerce-platform"
+      - "data-pipeline"
+
+  - key: environment
+    description: "Deployment environment"
+    allowed_values: [prod, staging, dev, test, sandbox]
+
+  - key: owner
+    description: "Team responsible for the resource"
+    pattern: "^[a-z][a-z0-9-]{2,20}-team$"
+    examples:
+      - "platform-team"
+      - "ml-team"
+
+  - key: cost-center
+    description: "Financial cost center code"
+    pattern: "^CC-[0-9]{4,6}$"
+
+recommended_tags:
+  - key: application
+  - key: component
+  - key: data-classification
+    allowed_values: [public, internal, confidential, restricted]
+  - key: managed-by
+    allowed_values: [terraform, pulumi, cloudformation, manual]
+
+enforcement:
+  grace_period_days: 7
+  non_compliance_action: alert
+  notification_channel: "#finops-alerts"
+]]></code>
+      </example>
+
+      <example type="good" title="GCP labels via Terraform">
+        <code lang="hcl"><![CDATA[
+resource "google_compute_instance" "app_server" {
+  name         = "app-server-prod"
+  machine_type = "e2-standard-4"
+
+  labels = {
+    project         = "ecommerce"
+    environment     = "prod"
+    owner           = "platform-team"
+    cost-center     = "cc-1234"
+    managed-by      = "terraform"
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Enable AWS cost allocation tags via CLI">
+        <code lang="bash"><![CDATA[
+aws ce update-cost-allocation-tags-status \
+  --cost-allocation-tags-status \
+    "TagKey=project,Status=Active" \
+    "TagKey=environment,Status=Active" \
+    "TagKey=owner,Status=Active" \
+    "TagKey=cost-center,Status=Active"
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Documenting a tagging standard without policy enforcement.</description>
+        <reason>Teams follow documentation inconsistently under deadline pressure. Only policy enforcement at resource creation achieves 95%+ coverage needed for reliable reporting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tagging unattached or orphan resources weeks after creation by guessing owner from CloudTrail.</description>
+        <reason>Original creators may have left; stale CloudTrail data misleads. Cross-reference HRIS or Backstage service catalog before assigning owner tags retroactively.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cost-allocation">
+      <rule>
+        <statement>Implement cost allocation in this sequence: (1) enable cost allocation tags in the cloud provider, (2) set up account/project hierarchy aligned to business units, (3) configure showback reports by team/project, (4) establish chargeback only after teams have seen and validated showback for at least one quarter.</statement>
+        <rationale>Skipping showback and jumping to chargeback breaks trust. Teams resist costs they cannot verify; showback gives them time to validate attribution accuracy before financial consequences attach.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Cost Explorer query by service and environment">
+        <code lang="python"><![CDATA[
+import boto3
+
+ce = boto3.client('ce')
+
+response = ce.get_cost_and_usage(
+    TimePeriod={'Start': '2025-01-01', 'End': '2025-01-31'},
+    Granularity='MONTHLY',
+    Metrics=['UnblendedCost'],
+    GroupBy=[
+        {'Type': 'DIMENSION', 'Key': 'SERVICE'},
+        {'Type': 'TAG', 'Key': 'environment'}
+    ],
+    Filter={
+        'Tags': {'Key': 'environment', 'Values': ['prod']}
+    }
+)
+
+for group in response['ResultsByTime'][0]['Groups']:
+    service = group['Keys'][0]
+    env = group['Keys'][1]
+    cost = float(group['Metrics']['UnblendedCost']['Amount'])
+    print(f"{service} ({env}): ${cost:.2f}")
+]]></code>
+      </example>
+
+      <example type="good" title="BigQuery monthly cost by project and service (GCP)">
+        <code lang="sql"><![CDATA[
+SELECT
+  project.id AS project_id,
+  service.description AS service,
+  ROUND(SUM(cost), 2) AS total_cost,
+  ROUND(SUM(IFNULL(credits.amount, 0)), 2) AS credits,
+  ROUND(SUM(cost) + SUM(IFNULL(credits.amount, 0)), 2) AS net_cost
+FROM
+  `billing_export.gcp_billing_export_v1_*`
+LEFT JOIN
+  UNNEST(credits) AS credits
+WHERE
+  invoice.month = '202501'
+GROUP BY
+  project_id, service
+ORDER BY
+  net_cost DESC
+LIMIT 20;
+]]></code>
+      </example>
+    </section>
+
+    <section name="dashboards-and-baseline">
+      <rule>
+        <statement>Set up cost dashboards at two levels: (1) executive dashboard with KPIs (total spend, budget vs actual, waste %, trend), (2) team-level dashboards with per-service breakdown, environment split, week-over-week trend, and optimization opportunities. Configure daily/weekly automated cost reports and cost anomaly detection from day one.</statement>
+        <rationale>Anomaly detection algorithms in cloud-native tools (AWS Cost Anomaly Detection, Azure Cost Management) are noisy on monthly cycles and miss slow burns. Supplement with absolute dollar delta AND relative percent delta alerts — either alone produces noise.</rationale>
+      </rule>
+
+      <p>Baseline metrics to document before any optimization work:</p>
+      <list>
+        <item>Current monthly cloud spend by service and team.</item>
+        <item>Current waste percentage (unused/idle resources).</item>
+        <item>Cost allocation accuracy (% of spend tagged).</item>
+        <item>Top 10 cost drivers by service.</item>
+        <item>Cost per unit of work baselines (API calls, transactions, inferences).</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist">
+      <checklist>
+        <check>Define mandatory tag keys (project, environment, owner, cost-center).</check>
+        <check>Document tag naming conventions and allowed values.</check>
+        <check>Implement tag enforcement policies (SCP/Org Policy/Azure Policy).</check>
+        <check>Create tag compliance reports and set up alerts for untagged resources.</check>
+        <check>Review and remediate untagged resources weekly during rollout.</check>
+        <check>Enable cost allocation tags in cloud provider console.</check>
+        <check>Set up cost allocation account/project structure aligned to business units.</check>
+        <check>Configure showback reports by team and project.</check>
+        <check>Enable detailed billing exports (CUR for AWS, BigQuery export for GCP).</check>
+        <check>Set up cost management tool (native or third-party).</check>
+        <check>Create executive dashboard with KPIs.</check>
+        <check>Build team-level cost dashboards.</check>
+        <check>Configure daily/weekly cost reports.</check>
+        <check>Implement cost anomaly detection.</check>
+        <check>Set up forecast vs actual tracking.</check>
+        <check>Document current monthly cloud spend as baseline.</check>
+        <check>Calculate current waste percentage.</check>
+        <check>Identify top 10 cost drivers.</check>
+        <check>Establish cost per unit of work baselines.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="analyze-billing-data"><![CDATA[
+Analyze the following cloud billing data and provide:
+
+1. Top 5 cost drivers by service
+2. Unusual spending patterns or anomalies
+3. Month-over-month trends
+4. Potential optimization opportunities
+5. Risk areas requiring attention
+
+Data format: [CSV/JSON billing export]
+
+Focus on actionable insights with estimated savings potential.
+]]></prompt>
+
+      <prompt purpose="review-tagging-strategy"><![CDATA[
+Review and improve this tagging strategy:
+
+Current tags:
+[Paste current tag schema]
+
+Compliance rate: [X]%
+Main issues: [list]
+
+Requirements:
+- Cost allocation accuracy: >95%
+- Support for chargeback
+- Environment identification
+- Owner accountability
+
+Provide:
+1. Assessment of current strategy
+2. Recommended tag schema
+3. Enforcement approach
+4. Migration plan for existing resources
+5. Governance process
+]]></prompt>
+
+      <prompt purpose="diagnose-cost-spike"><![CDATA[
+Help diagnose a sudden cost increase:
+
+Baseline: $[X]/day
+Current: $[Y]/day (increase of [Z]%)
+Start date of increase: [date]
+
+Available data:
+[Paste daily cost breakdown by service]
+
+Changes around that time:
+[List any known deployments, config changes]
+
+Investigate:
+1. Which service(s) caused the increase?
+2. What specific resources are responsible?
+3. Is this expected (scaling) or unexpected (waste/misconfiguration)?
+4. Immediate actions to take
+5. Prevention measures for the future
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://www.finops.org/framework/"/>
+      <link href="https://docs.aws.amazon.com/cur/"/>
+      <link href="https://cloud.google.com/billing/docs/how-to/export-data-bigquery"/>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-governance"/>
+    </see-also>
+  </content>
+</methodology>
