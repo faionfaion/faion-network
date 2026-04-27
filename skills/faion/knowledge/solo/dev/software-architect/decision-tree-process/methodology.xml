@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decision-tree-process">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Six-phase decision process: problem definition, options generation, trade-off analysis, validation, ADR documentation, and implementation planning. Includes anti-patterns and review schedules.</summary>
+    <tags>
+      <tag>decision-process</tag>
+      <tag>architecture-decisions</tag>
+      <tag>trade-off-analysis</tag>
+      <tag>adr</tag>
+      <tag>decision-matrix</tag>
+    </tags>
+    <category>decision</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="decision-tree-architecture-style"/>
+      <ref slug="decision-tree-tech-stack"/>
+      <ref slug="decision-tree-cloud-provider"/>
+      <ref slug="decision-tree-build-vs-buy"/>
+      <ref slug="architecture-decision-records"/>
+      <ref slug="trade-off-analysis"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Architecture Decision Process</title>
+
+    <summary>Six-phase process for making architecture decisions systematically: (1) problem definition, (2) options generation, (3) trade-off analysis, (4) technical and stakeholder validation, (5) ADR documentation, (6) implementation planning. This is the meta-process; the domain-specific trees (architecture-style, tech-stack, cloud-provider, build-vs-buy) are inputs to phase 2.</summary>
+
+    <why>
+      <p>Architecture decisions are among the most impactful choices in software development. Poor decisions lead to 40% higher development costs (Gartner 2024) and 60% longer time-to-market. Technical debt from bad architecture decisions compounds for years. A structured process makes reasoning explicit, auditable, and reversible when new information arrives.</p>
+      <p>The six-phase process exists because ad-hoc decisions suffer from: scope creep (unclear problem), premature commitment (not enough options), hidden trade-offs (no analysis), stakeholder surprise (no validation), institutional amnesia (no documentation), and drift (no review schedule). Each phase closes one of these failure modes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any significant architecture choice — style, technology, database, cloud provider, build vs buy.</item>
+        <item>Decisions that are hard or expensive to reverse (one-way doors): cloud provider, architecture style, core frameworks.</item>
+        <item>Cross-team decisions where stakeholder alignment and documentation are essential.</item>
+        <item>Any decision where "why did we choose this?" will be asked in 12+ months.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trivial reversible decisions (library choice, CLI tool) — lightweight ADR or comment in PR is sufficient.</item>
+        <item>Decisions already made and working well — run the process only at planned review intervals.</item>
+        <item>Time-critical emergencies where speed matters more than process — decide, act, document retroactively.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="phase1-problem-definition">
+      <p>Phase 1: Identify the decision and gather sufficient context before generating options. The most common mistake is jumping to options before the problem is clearly bounded.</p>
+
+      <rule testable="true">
+        <statement>Before listing any options, the decision MUST be stated as a single answerable question. The scope MUST include explicit out-of-scope items. The reversibility MUST be assessed: one-way door (high rigor required) or two-way door (lightweight process acceptable).</statement>
+        <rationale>Vague problem statements produce vague options and vague trade-off analyses. A single answerable question forces clarity and makes the decision auditable — either you answered it or you did not.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Decision stated as a single clear question (what exactly needs to be decided?).</check>
+        <check>Trigger identified (new feature, scaling issue, tech debt, incident).</check>
+        <check>Reversibility assessed: one-way door or two-way door.</check>
+        <check>Scope boundaries defined: in-scope and explicitly out-of-scope.</check>
+        <check>Business context gathered: problem, stakeholders, budget, timeline.</check>
+        <check>Technical context gathered: current architecture, existing constraints, team skills.</check>
+        <check>Requirements context gathered: functional, non-functional, compliance.</check>
+      </checklist>
+    </section>
+
+    <section name="phase2-options-generation">
+      <p>Phase 2: Generate a comprehensive options list before filtering. Premature filtering is the leading cause of "we never considered X" regret.</p>
+
+      <rule testable="true">
+        <statement>Options generation MUST include "do nothing" as an explicit option with documented costs. The list MUST include at least one unconventional approach. Elimination of options MUST be documented with reason. The shortlist MUST contain 2-5 options for analysis.</statement>
+        <rationale>Without "do nothing" as an option, teams systematically overestimate the value of change. Without unconventional options, teams miss breakthrough solutions. Without elimination rationale, the ADR is incomplete and future reviewers cannot reconstruct the reasoning.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Brainstormed all viable options including "do nothing".</check>
+        <check>Included at least one unconventional approach.</check>
+        <check>Researched each option: adoption, maturity, community, known limitations.</check>
+        <check>Documented why clearly unsuitable options were eliminated.</check>
+        <check>Shortlisted 2-5 viable options for analysis.</check>
+        <check>For each shortlisted option: description, pros, cons, fit, cost (initial + TCO), complexity.</check>
+      </checklist>
+    </section>
+
+    <section name="phase3-tradeoff-analysis">
+      <p>Phase 3: Score options against weighted criteria. The weighted matrix forces explicit weighting of criteria and makes trade-offs visible to all stakeholders.</p>
+
+      <rule testable="true">
+        <statement>The decision matrix MUST have criteria weights that sum to 100%. Weights MUST involve stakeholder input, not solo architect judgment. Each score MUST be evidence-based (benchmark, case study, direct experience) — not intuition. The matrix MUST identify at least one conflict between criteria (e.g., cost vs performance).</statement>
+        <rationale>Un-weighted criteria implicitly weight everything equally, which is almost never correct. Stakeholder-derived weights prevent the architect from making a values decision that belongs to the business. Evidence-based scores prevent rationalization after the fact.</rationale>
+      </rule>
+
+      <example type="good" title="Weighted decision matrix template">
+        <code lang="text"><![CDATA[
+## Decision: <Title>
+
+### Evaluation Criteria
+
+Criteria        | Weight | Rationale
+----------------|--------|------------------------------------------
+<Criteria 1>    | X%     | <Why this weight>
+<Criteria 2>    | X%     | <Why this weight>
+<Criteria 3>    | X%     | <Why this weight>
+<Criteria 4>    | X%     | <Why this weight>
+<Criteria 5>    | X%     | <Why this weight>
+Total           | 100%   |
+
+### Scoring Guide
+1 = Poor / Does not meet requirements
+2 = Below average / Partially meets requirements
+3 = Average / Meets basic requirements
+4 = Good / Exceeds requirements
+5 = Excellent / Best in class
+
+### Decision Matrix
+
+Criteria        | Weight | Option A | Option B | Option C
+----------------|--------|----------|----------|----------
+<Criteria 1>    | X%     | [1-5]    | [1-5]    | [1-5]
+<Criteria 2>    | X%     | [1-5]    | [1-5]    | [1-5]
+<Criteria 3>    | X%     | [1-5]    | [1-5]    | [1-5]
+Weighted Total  | 100%   | X.X      | X.X      | X.X
+
+Calculation:
+Option A: (C1 * W1) + (C2 * W2) + ... = X.X
+Option B: (C1 * W1) + (C2 * W2) + ... = X.X
+
+Recommendation: <Selected option>
+Rationale: <Key reasons>
+        ]]></code>
+      </example>
+
+      <checklist>
+        <check>Criteria defined and weighted (total = 100%).</check>
+        <check>Stakeholders involved in weighting.</check>
+        <check>Each score is evidence-based.</check>
+        <check>At least one criteria conflict identified and documented.</check>
+        <check>Long-term implications assessed: future architecture, technical debt, one-way vs two-way door.</check>
+        <check>Rollback plan defined for each option.</check>
+      </checklist>
+    </section>
+
+    <section name="phase4-validation">
+      <p>Phase 4: Validate technically (POC for high-impact decisions) and with stakeholders before committing.</p>
+
+      <rule testable="true">
+        <statement>High-impact decisions (significant cost, significant architectural change, or irreversible) MUST include a time-boxed POC with explicit success criteria before the decision is finalized. POC scope MUST be minimal: test only the critical integration points and performance-critical paths.</statement>
+        <rationale>Analysis alone cannot surface unknown unknowns. POCs reveal integration incompatibilities, performance surprises, and team capability gaps that no matrix can predict. Time-boxing prevents POC scope creep.</rationale>
+      </rule>
+
+      <checklist>
+        <check>For high-impact: POC scope and success criteria defined.</check>
+        <check>For high-impact: POC time-boxed (typically 1-2 weeks).</check>
+        <check>Critical integration points tested.</check>
+        <check>Actual performance measured (not estimated).</check>
+        <check>Architecture review completed: alignment with principles, new patterns introduced, security implications.</check>
+        <check>Stakeholder presentation given: decision, rationale, trade-offs considered.</check>
+        <check>All objections documented and addressed (or documented as accepted risks).</check>
+      </checklist>
+    </section>
+
+    <section name="phase5-documentation">
+      <p>Phase 5: Create an Architecture Decision Record (ADR) and communicate the decision. The ADR is the institutional memory that prevents re-litigating the same decision in 12 months.</p>
+
+      <rule testable="true">
+        <statement>Every significant architecture decision MUST be documented as an ADR stored in version control (docs/adr/ or architecture/decisions/). The ADR MUST include: context, decision, alternatives considered, consequences (positive and negative), and the decision path (which options were eliminated and why).</statement>
+        <rationale>Without version-controlled ADRs, the reasoning behind decisions is lost when team members change. Teams relitigate the same decisions repeatedly, sometimes making the same mistakes. The ADR makes "why did we choose this?" answerable in seconds.</rationale>
+      </rule>
+
+      <example type="good" title="MADR template">
+        <code lang="text"><![CDATA[
+# ADR-XXXX: <Title>
+
+## Status
+<Proposed | Accepted | Deprecated | Superseded by ADR-YYYY>
+
+## Context
+<What is the issue that motivates this decision or change?>
+
+## Decision Drivers
+- <Driver 1>
+- <Driver 2>
+
+## Considered Options
+1. <Option 1>
+2. <Option 2>
+3. <Option 3>
+
+## Decision Outcome
+Chosen option: "<Option X>", because <justification>.
+
+### Consequences
+Good:
+- <Positive consequence 1>
+Bad:
+- <Negative consequence 1>
+
+### Confirmation
+<How will we confirm that the decision is implemented correctly?>
+
+## Pros and Cons of the Options
+
+### <Option 1>
+- Good, because <argument>
+- Bad, because <argument>
+        ]]></code>
+      </example>
+
+      <example type="good" title="Y-Statement ADR (lightweight)">
+        <code lang="text"><![CDATA[
+# ADR-XXXX: <Title>
+
+## Decision
+In the context of <use case/user story>,
+facing <concern>,
+we decided for <option>
+and against <other options>,
+to achieve <quality/goal>,
+accepting <downside/trade-off>.
+
+## Considered Alternatives
+1. <Alternative 1>: <Brief description and why rejected>
+2. <Alternative 2>: <Brief description and why rejected>
+        ]]></code>
+        <note>Y-Statement is appropriate for lower-impact decisions. Use MADR for high-impact or cross-team decisions.</note>
+      </example>
+
+      <checklist>
+        <check>ADR created with all mandatory sections.</check>
+        <check>ADR stored in version control.</check>
+        <check>Affected teams notified.</check>
+        <check>Architecture diagrams updated.</check>
+        <check>Implementation tickets created.</check>
+        <check>Knowledge sharing scheduled.</check>
+      </checklist>
+    </section>
+
+    <section name="phase6-implementation-planning">
+      <p>Phase 6: Plan migration (if applicable) and define measurable success criteria.</p>
+
+      <checklist>
+        <check>Migration approach chosen: big bang vs incremental vs strangler fig.</check>
+        <check>Feature flags strategy defined (if applicable).</check>
+        <check>Rollback plan defined: trigger conditions, rollback procedure, data migration needs.</check>
+        <check>Success criteria defined with measurable outcomes (performance targets, cost targets).</check>
+        <check>Monitoring plan defined: metrics to track, alerts to set, review date.</check>
+      </checklist>
+    </section>
+
+    <section name="decision-anti-patterns">
+      <p>Anti-patterns to actively detect and avoid during the decision process:</p>
+
+      <antipattern>
+        <description>Analysis Paralysis: taking too long to decide, requiring more data before any choice.</description>
+        <reason>Set decision deadlines. Accept "good enough" for reversible (two-way door) decisions. Reserve full rigor for one-way doors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>HiPPO (Highest Paid Person's Opinion): deferring to seniority or authority rather than data.</description>
+        <reason>Use the weighted matrix. Document dissenting opinions. Authority is not evidence.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Resume-Driven Development: choosing a technology for personal resume benefit rather than project fit.</description>
+        <reason>Focus on business needs. Document explicitly why the technology fits the problem, not why it is interesting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cargo Culting: copying an architecture decision from a well-known company without validating fit.</description>
+        <reason>Netflix/Uber/Airbnb patterns were built for their scale and team size. Validate that the same context applies before adopting.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Undocumented Decisions: deciding without writing an ADR.</description>
+        <reason>Institutional knowledge is lost when team members leave. The decision will be re-litigated, possibly making the same mistake.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Premature Optimization: solving performance or scale problems that do not yet exist.</description>
+        <reason>Start simple. Optimize when data supports it. Shopify's 2.8M-line monolith serves millions of merchants.</reason>
+      </antipattern>
+    </section>
+
+    <section name="decision-review-schedule">
+      <p>Architecture decisions must be revisited periodically. The review frequency depends on decision impact:</p>
+
+      <example type="good" title="Decision review schedule">
+        <code lang="text"><![CDATA[
+Decision Impact | Review Frequency
+----------------|------------------
+High (architecture style, cloud provider) | Annually
+Medium (frameworks, databases)            | 18 months
+Low (libraries, tools)                    | As needed
+        ]]></code>
+      </example>
+
+      <checklist>
+        <check>Is the original context still valid?</check>
+        <check>Have requirements changed?</check>
+        <check>Have better options emerged?</check>
+        <check>Is the decision delivering expected outcomes?</check>
+        <check>Should this decision be revisited or superseded?</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-adr"><![CDATA[
+Help me write an Architecture Decision Record.
+
+Decision: <What was decided>
+
+Context: <Background information, what prompted this decision>
+
+Options Considered:
+1. <Option 1>
+2. <Option 2>
+3. <Option 3>
+
+Decision Rationale: <Why we chose what we chose>
+
+Known Trade-offs: <What we're accepting>
+
+Please generate a complete ADR in MADR format, including:
+- Status
+- Context
+- Decision Drivers
+- Considered Options with pros/cons
+- Decision Outcome
+- Consequences (positive and negative)
+]]></prompt>
+
+      <prompt purpose="decision-review"><![CDATA[
+Review this architecture decision and identify potential issues.
+
+Decision: <Paste the decision or ADR>
+
+Context:
+- Team size: <Size>
+- Stage: <Startup/Growth/Enterprise>
+- Industry: <Industry>
+
+Please analyze:
+1. Are there any red flags or anti-patterns?
+2. What assumptions might be wrong?
+3. What risks weren't considered?
+4. What alternatives should have been explored?
+5. What questions should we have asked?
+6. Is this decision reversible, and what's the cost to change later?
+]]></prompt>
+
+      <prompt purpose="trade-off-analysis"><![CDATA[
+Help me analyze the trade-offs for <decision>.
+
+Options:
+1. <Option 1>
+2. <Option 2>
+
+Quality Attributes to Consider:
+- Performance
+- Scalability
+- Security
+- Maintainability
+- Cost
+- Time to market
+- <Add any others relevant>
+
+Constraints:
+- <Constraint 1>
+- <Constraint 2>
+
+Please provide:
+1. Trade-off matrix showing how each option affects each quality attribute
+2. Sensitivity analysis - which trade-offs matter most for our context
+3. Risk assessment for each option
+4. Recommendation with confidence level
+]]></prompt>
+
+      <prompt purpose="technical-debt-assessment"><![CDATA[
+Evaluate whether this technical decision will create technical debt.
+
+Proposed Decision: <Description>
+
+Context:
+- Why we're considering this: <Drivers>
+- Time pressure: <Deadline>
+- Alternative approaches: <What else we could do>
+
+Questions:
+1. Is this creating technical debt, or is it a reasonable trade-off?
+2. If it's debt, what's the "interest rate" (ongoing cost)?
+3. When should we pay it back?
+4. What's the cost of paying it back later vs doing it right now?
+5. What guardrails can we put in place to prevent it from getting worse?
+]]></prompt>
+    </section>
+
+    <section name="tools">
+      <p>CLI tools useful for walking and encoding decision trees programmatically:</p>
+      <example type="good" title="YAML-encoded tree walker in Python">
+        <code lang="python"><![CDATA[
+# walk_tree.py — walk a YAML-encoded decision tree against inputs.
+import sys, yaml
+
+def walk(node, inputs, path):
+    if 'leaf' in node:
+        return node['leaf'], path + [node.get('label', 'leaf')]
+    q = node['question']
+    val = inputs.get(node['var'])
+    branches = node['branches']
+    branch = branches.get(str(val), branches.get('default'))
+    if branch is None:
+        raise SystemExit(f"no branch for {node['var']}={val} at {q}")
+    return walk(branch, inputs, path + [f"{q} -> {val}"])
+
+if __name__ == "__main__":
+    tree = yaml.safe_load(open(sys.argv[1]))
+    inputs = dict(arg.split("=", 1) for arg in sys.argv[2:])
+    leaf, path = walk(tree, inputs, [])
+    print("LEAF:", leaf)
+    for step in path:
+        print("  ", step)
+        ]]></code>
+      </example>
+      <example type="good" title="YAML tree definition example">
+        <code lang="yaml"><![CDATA[
+# tree.yaml — example architecture-style tree.
+question: "Team size?"
+var: team_size
+branches:
+  "small": { leaf: "Monolith" }
+  "medium": { leaf: "Modular Monolith" }
+  "large":
+    question: "DevOps maturity?"
+    var: devops
+    branches:
+      "high": { leaf: "Microservices" }
+      "default": { leaf: "Modular Monolith" }
+        ]]></code>
+        <note>Version tree YAML files in-repo. Treat updates as ADRs themselves — the tree changing is an architectural decision.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="decision-tree-architecture-style"/>
+      <ref slug="decision-tree-tech-stack"/>
+      <ref slug="decision-tree-cloud-provider"/>
+      <ref slug="decision-tree-build-vs-buy"/>
+      <ref slug="architecture-decision-records"/>
+      <ref slug="trade-off-analysis"/>
+      <link href="https://resources.sei.cmu.edu/library/asset-view.cfm?assetid=513908"/>
+      <link href="https://adr.github.io/"/>
+    </see-also>
+  </content>
+</methodology>
