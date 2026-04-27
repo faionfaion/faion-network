@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-nsg-rules">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Configure Azure Network Security Groups with deny-by-default rules, service tags, flow logs, and naming conventions. Stateful 5-tuple packet filtering for subnet and NIC-level protection.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>nsg</tag>
+      <tag>network-security</tag>
+      <tag>firewall</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-app-gateway-waf"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure Network Security Groups (NSG)</title>
+
+    <summary>NSGs perform stateful packet inspection using a 5-tuple (source IP, source port, destination IP, destination port, protocol). Rules are evaluated by priority (100–4095); first match wins. The architectural principle is deny-by-default: add explicit allow rules for required traffic and close everything else with a priority-4096 DenyAll rule.</summary>
+
+    <why>
+      <p>NSGs are the primary subnet and NIC-level traffic gate in Azure. Without an explicit deny-all rule at lowest priority, Azure's built-in default rules allow VNet-to-VNet and outbound internet traffic. This means newly deployed VMs can be reached laterally from other subnets in the same VNet and can reach the internet — both unexpected for a hardened environment. A properly configured NSG with deny-by-default and explicit allow rules eliminates implicit trust between subnets.</p>
+      <p>Flow logs are the only way to diagnose east-west incidents after the fact. Without flow logs enabled on every NSG and sent to Log Analytics, tracing an intrusion or debugging a connectivity failure is effectively impossible.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every subnet in a production VNet (except GatewaySubnet which cannot have an NSG).</item>
+        <item>Any subnet holding compute (VMs, AKS nodes, App Service Integration) or PaaS endpoints.</item>
+        <item>When implementing zero-trust east-west controls between tiers (web, app, data).</item>
+        <item>Compliance requirements (HIPAA, PCI-DSS, SOC2) mandating network segmentation evidence.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>GatewaySubnet — Azure blocks NSG association; use route tables instead.</item>
+        <item>AzureFirewallSubnet — Firewall has its own rule engine; NSG is not supported there.</item>
+        <item>POC environments where full deny-by-default adds friction without security value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="deny-by-default">
+      <rules>
+        <rule testable="true">
+          <statement>Every NSG MUST include an explicit DenyAll inbound rule at priority 4096 with source *, destination *, protocol *, port *. The rule MUST be named following the convention `DenyAllInbound`. Do NOT rely on Azure's implicit default deny — it is invisible in the rule list and easily confused by agents reviewing the Terraform plan.</statement>
+          <rationale>Azure's default rules (priority 65000+) allow VNet-to-VNet and outbound internet. Making the deny explicit ensures it appears in audit logs, Terraform plans, and NSG flow logs. It also prevents accidental removal of the invisible default deny by IaC drift correction tools.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Allow rules MUST specify exact source address prefixes (subnet CIDR or service tag) and exact destination ports. Wildcards (*) in both source and destination on an allow rule are forbidden. The only exception is the AzureLoadBalancer service tag on inbound rules for health probe traffic.</statement>
+          <rationale>NSG rules based on legacy "Allow 80, 443 from 0.0.0.0/0" examples are the most common misconfiguration seen in Azure environments. Exact CIDRs or service tags limit blast radius when a rule is erroneously widened.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="naming-convention">
+      <p>NSG rule names follow a deterministic pattern for auditability and IaC readability:</p>
+      <example type="good" title="NSG rule naming convention">
+        <code lang="text"><![CDATA[
+Pattern: {Allow|Deny}{Direction}{Protocol}{Description}
+
+Good names:
+  AllowInboundHTTPS          - allow inbound TCP/443 from App Gateway subnet
+  AllowInboundHTTP           - allow inbound TCP/80 from App Gateway subnet
+  AllowOutboundSQL           - allow outbound TCP/5432 to data subnet
+  AllowAzureLoadBalancer     - allow LB health probes (service tag)
+  DenyAllInbound             - explicit deny-all catchall at priority 4096
+
+Bad names:
+  rule1                      - no semantic content
+  allow-https                - no direction
+  MyRule                     - no direction, no protocol
+]]></code>
+      </example>
+    </section>
+
+    <section name="nsg-terraform-examples">
+      <example type="good" title="Private subnet NSG with deny-by-default (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_network_security_group" "private" {
+  name                = "${var.project}-${var.environment}-private-nsg"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+
+  # Allow HTTPS from Application Gateway subnet only
+  security_rule {
+    name                       = "AllowInboundHTTPS"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "10.0.2.0/24"  # App Gateway subnet
+    destination_address_prefix = "*"
+  }
+
+  # Allow Azure Load Balancer health probes
+  security_rule {
+    name                       = "AllowAzureLoadBalancer"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+
+  # Explicit deny-all at lowest priority
+  security_rule {
+    name                       = "DenyAllInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  tags = local.common_tags
+}
+
+resource "azurerm_subnet_network_security_group_association" "private" {
+  subnet_id                 = azurerm_subnet.private.id
+  network_security_group_id = azurerm_network_security_group.private.id
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Three-tier NSG template: web, app, data">
+        <code lang="hcl"><![CDATA[
+# Web tier: only App Gateway can reach it
+resource "azurerm_network_security_group" "web" {
+  name                = "${var.project}-${var.environment}-web-nsg"
+  location            = azurerm_resource_group.spoke.location
+  resource_group_name = azurerm_resource_group.spoke.name
+
+  security_rule {
+    name                       = "AllowAppGatewayHTTPS"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "10.1.0.0/24"  # appgw subnet
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "AllowAzureLoadBalancer"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "DenyAllInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  tags = local.common_tags
+}
+
+# App tier: only web tier can reach port 8080
+resource "azurerm_network_security_group" "app" {
+  name                = "${var.project}-${var.environment}-app-nsg"
+  location            = azurerm_resource_group.spoke.location
+  resource_group_name = azurerm_resource_group.spoke.name
+
+  security_rule {
+    name                       = "AllowWebTier"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8080"
+    source_address_prefix      = "10.1.1.0/24"  # web subnet
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "AllowAzureLoadBalancer"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "AzureLoadBalancer"
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "DenyAllInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  tags = local.common_tags
+}
+
+# Data tier: only app tier on PostgreSQL port
+resource "azurerm_network_security_group" "data" {
+  name                = "${var.project}-${var.environment}-data-nsg"
+  location            = azurerm_resource_group.spoke.location
+  resource_group_name = azurerm_resource_group.spoke.name
+
+  security_rule {
+    name                       = "AllowAppTierPostgreSQL"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "5432"
+    source_address_prefix      = "10.1.2.0/24"  # app subnet
+    destination_address_prefix = "*"
+  }
+  security_rule {
+    name                       = "DenyAllInbound"
+    priority                   = 4096
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+  tags = local.common_tags
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="flow-logs">
+      <rule testable="true">
+        <statement>NSG flow logs MUST be enabled (version 2) on every NSG in production. Logs MUST be sent to a Storage Account AND to Log Analytics via Traffic Analytics. Retention MUST be at least 30 days. Network Watcher MUST be enabled in the same region.</statement>
+        <rationale>Without flow logs, east-west incidents are undiagnosable. Version 2 includes byte and packet counts. Traffic Analytics correlates flows with topology for anomaly detection. Flow logs are the evidence required by SOC2 and PCI-DSS for network traffic logging.</rationale>
+      </rule>
+      <example type="good" title="NSG flow logs with Traffic Analytics (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_network_watcher_flow_log" "private" {
+  name                 = "${var.project}-${var.environment}-private-nsg-flow"
+  network_watcher_name = "NetworkWatcher_${var.location}"
+  resource_group_name  = "NetworkWatcherRG"
+
+  network_security_group_id = azurerm_network_security_group.private.id
+  storage_account_id        = azurerm_storage_account.logs.id
+  enabled                   = true
+  version                   = 2
+
+  retention_policy {
+    enabled = true
+    days    = 30
+  }
+
+  traffic_analytics {
+    enabled               = true
+    workspace_id          = azurerm_log_analytics_workspace.main.workspace_id
+    workspace_region      = azurerm_log_analytics_workspace.main.location
+    workspace_resource_id = azurerm_log_analytics_workspace.main.id
+    interval_in_minutes   = 10
+  }
+
+  tags = local.common_tags
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="nsg-checklist">
+      <checklist>
+        <check>Default deny rule at lowest priority (4096) on every NSG.</check>
+        <check>Allow rules use specific ports and protocols — no wildcards on both source and destination.</check>
+        <check>Source and destination use service tags where possible (AzureLoadBalancer, Internet, VirtualNetwork).</check>
+        <check>Management ports (22, 3389) restricted to Bastion subnet CIDR only, never 0.0.0.0/0.</check>
+        <check>NSG flow logs enabled (version 2) and sent to Log Analytics.</check>
+        <check>NSG associated with all subnets (except GatewaySubnet and AzureFirewallSubnet).</check>
+        <check>Rules documented with naming convention AllowInbound/DenyAll pattern.</check>
+        <check>HTTP/3 (UDP/443) included for Front Door or App Gateway frontends if applicable.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>LLMs generate NSG rules based on legacy "Allow 80, 443" examples and forget HTTP/3 (UDP/443 / QUIC). For Front Door and App Gateway frontends, UDP/443 must also be allowed.</description>
+        <reason>Front Door and modern clients negotiate QUIC (HTTP/3) over UDP/443. An NSG that only allows TCP/443 silently falls back to TCP but breaks QUIC performance.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents drop `network_security_group_id` reference inside the subnet block in Terraform instead of using a separate `azurerm_subnet_network_security_group_association` resource.</description>
+        <reason>Inline NSG associations in the subnet block and separate association resources conflict. On plan re-apply the NSG association flaps — intermittent connectivity failures with no error message.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents propose Service Tags (Storage, Sql) for tight allow-rules then forget those tags are regional; cross-region traffic is not covered by the regional tag.</description>
+        <reason>The `Storage` service tag covers Storage endpoints in the same region. Traffic to a Storage account in another region is not matched and is dropped by the DenyAll rule.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-nsg-rules"><![CDATA[
+Generate NSG rules for a {tier_type} subnet in Azure with these requirements:
+
+Tier: {web / app / data / management}
+Traffic Sources:
+- {source_1}: {protocol}:{port}
+- {source_2}: {protocol}:{port}
+
+Security Requirements:
+- Follow Azure NSG best practices
+- Use service tags where applicable
+- Include explicit deny-all rule at priority 4096
+- Document each rule purpose
+
+Output:
+1. Terraform azurerm_network_security_group resource
+2. Rule priority assignments
+3. Justification for each rule
+]]></prompt>
+      <prompt purpose="audit-nsg-rules"><![CDATA[
+Audit the following NSG rules for security issues:
+
+{paste NSG rules here}
+
+Check for:
+- Overly permissive rules (0.0.0.0/0, any/any)
+- Missing deny-all rules
+- Rules allowing management ports from internet
+- Redundant or conflicting rules
+- Missing service tags (using IPs instead)
+
+Output:
+1. Risk assessment for each rule
+2. Recommended fixes
+3. Updated Terraform code
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/virtual-network/network-security-groups-overview"/>
+      <link href="https://learn.microsoft.com/azure/security/fundamentals/network-best-practices"/>
+      <link href="https://learn.microsoft.com/azure/network-watcher/"/>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-app-gateway-waf"/>
+    </see-also>
+  </content>
+</methodology>
