@@ -7,6 +7,7 @@
 - decompose: web-scraping → 4 slugs (web-scraping-element-extraction, web-scraping-pagination, web-scraping-resilience, web-scraping-agentic-workflow)
 - decompose: feature-flags → 4 slugs (feature-flags-types-lifecycle, feature-flags-core-implementation, feature-flags-rollout-targeting, feature-flags-services-testing)
 - decompose: message-queues → 4 slugs (mq-patterns, mq-broker-implementations, mq-idempotent-consumers, mq-reliability)
+- decompose: docker-containerization → 4 slugs (docker-image-optimization, docker-security-hardening, docker-language-templates, docker-llm-prompts)
 - decompose: ssl-tls-setup → 4 slugs (cicd-tls-renewal-automation, cicd-cert-rotation-pipeline, cicd-tls-validation-gate, cicd-mtls-deployment)
 - decompose: gitops → 5 slugs (gitops-core-principles, gitops-repository-structure, gitops-flux, gitops-progressive-delivery, gitops-secrets-security)
 - decompose: platform-engineering → 5 slugs (devops-platform-idp-core, devops-platform-golden-paths, devops-platform-backstage, devops-platform-crossplane, devops-platform-policy-finops)

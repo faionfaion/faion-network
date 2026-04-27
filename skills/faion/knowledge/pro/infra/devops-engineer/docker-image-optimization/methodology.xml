@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker-image-optimization">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Minimize Docker image size and build time via multi-stage builds, layer caching, .dockerignore, and minimal base image selection.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>image-optimization</tag>
+      <tag>multi-stage-build</tag>
+      <tag>layer-caching</tag>
+      <tag>containerization</tag>
+    </tags>
+    <category>docker</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="docker-security-hardening"/>
+      <ref slug="docker-language-templates"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Docker Image Optimization</title>
+
+    <summary>Reduce production Docker image size 70-90% and accelerate CI builds by applying multi-stage builds, strategic layer ordering, cache mounts, .dockerignore, and the smallest viable base image. These techniques compound: a 900 MB Python image becomes 50-120 MB with correct choices.</summary>
+
+    <why>
+      <p>Large images slow down every deployment: registry push, pull on every node, container startup, and vulnerability surface. Multi-stage builds discard the build toolchain before the image is tagged. Layer caching eliminates redundant network fetches for unchanged dependencies. .dockerignore keeps the build context lean so the Docker daemon does not hash and transfer gigabytes on every build. Choosing the right base image (slim, alpine, distroless) addresses the remaining bulk. Each technique is independent and additive.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production image — apply multi-stage builds by default.</item>
+        <item>CI pipelines where build time exceeds 2 minutes — cache mounts and layer ordering cut most of that.</item>
+        <item>Images exceeding 300 MB — switch base image variant first, then apply multi-stage.</item>
+        <item>Repos with large node_modules, __pycache__, .venv, or target/ that end up in build context.</item>
+        <item>Security-sensitive workloads where a smaller attack surface is required.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development-only images where fast iteration matters more than size — keep the full image and use bind mounts.</item>
+        <item>Throwaway one-shot scripts where build overhead is not paid repeatedly.</item>
+        <item>When the runtime requires build tools at runtime (e.g., native C extensions rebuilt on startup) — stay single-stage but document why.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="base-image-selection">
+      <p>Base image choice is the single biggest size lever. The table below shows the Python family; similar ratios apply to Node, Java, and Go.</p>
+
+      <rule testable="true">
+        <statement>Production Dockerfiles MUST use a -slim or -alpine variant (or distroless for Go/static binaries) as the final stage base image. The full base image (e.g., python:3.12, node:20) MUST NOT appear in the final stage — it may appear in an intermediate build stage only.</statement>
+        <rationale>The full Python 3.12 image is ~900 MB; the slim variant is ~120 MB; distroless is ~50 MB. Using the full image in production triples registry storage, slows pulls on cold nodes, and ships a shell and package manager that attackers can exploit.</rationale>
+      </rule>
+
+      <section name="image-size-comparison">
+        <p>Reference size table for common base images (2025-2026 measurements):</p>
+        <list>
+          <item>python:3.12 — ~900 MB — development only</item>
+          <item>python:3.12-slim — ~120 MB — production default</item>
+          <item>python:3.12-alpine — ~50 MB — size-critical apps</item>
+          <item>node:20 — ~1 GB — development only</item>
+          <item>node:20-slim — ~200 MB — production default</item>
+          <item>node:20-alpine — ~130 MB — size-critical apps</item>
+          <item>gcr.io/distroless/python3 — ~50 MB — maximum security</item>
+          <item>gcr.io/distroless/static-debian12 — ~2 MB — Go static binaries</item>
+        </list>
+      </section>
+
+      <rule testable="true">
+        <statement>Dockerfiles MUST pin a specific version tag (e.g., python:3.12.1-slim) rather than a floating tag (python:latest or python:3-slim). The pinned tag MUST include the patch version.</statement>
+        <rationale>Floating tags cause silent base image updates that change the environment without a Dockerfile change, making builds non-reproducible and security scans unreliable.</rationale>
+      </rule>
+    </section>
+
+    <section name="multi-stage-builds">
+      <p>Multi-stage builds use multiple FROM instructions in one Dockerfile. Only the final stage is tagged and pushed. Intermediate stages carry build toolchains, compilers, and dev dependencies that are discarded via COPY --from.</p>
+
+      <rule testable="true">
+        <statement>Every production Dockerfile for compiled languages (Go, Rust, Java) and for interpreted languages with binary extensions (Python with C deps, Node with native modules) MUST use at least two stages: a build stage using the full SDK image and a production stage using the minimal runtime image. COPY --from=builder MUST transfer only the compiled artifacts, not the source tree or build tools.</statement>
+        <rationale>Multi-stage builds reduce final image size 70-90% by leaving compilers, headers, and intermediate objects in the discarded build layer. Without this, every Go binary ships with the Go toolchain (~300 MB).</rationale>
+      </rule>
+
+      <example type="good" title="Multi-stage Go binary with distroless final stage">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/server ./cmd/server
+
+# Stage 2: Production (distroless — no shell, no package manager)
+FROM gcr.io/distroless/static-debian12
+
+COPY --from=builder /app/server /server
+
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+        <note>Final image is ~3 MB. The Go toolchain (~300 MB) never appears in the pushed image.</note>
+      </example>
+
+      <example type="bad" title="Single-stage Dockerfile shipping the build toolchain">
+        <code lang="dockerfile"><![CDATA[
+FROM golang:1.22
+
+WORKDIR /app
+COPY . .
+RUN go build -o server .
+
+EXPOSE 8080
+CMD ["./server"]
+]]></code>
+        <note>Ships ~300 MB of Go toolchain with a binary that is ~10 MB. No USER directive, runs as root.</note>
+      </example>
+    </section>
+
+    <section name="layer-caching">
+      <p>Docker rebuilds every layer after the first changed instruction. Placing dependency installation before source COPY maximizes cache hits: dependencies change rarely; source changes on every commit.</p>
+
+      <rule testable="true">
+        <statement>Dockerfiles MUST order COPY and RUN instructions from least-frequently-changed to most-frequently-changed. Specifically: COPY dependency manifest files (requirements.txt, package.json, go.mod) MUST precede the dependency install RUN, which MUST precede COPY . . (full source copy).</statement>
+        <rationale>If COPY . . comes before pip install, every source change invalidates the entire dependency layer, causing a full re-download. Correct ordering confines cache misses to the changed files only.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>CI pipelines using BuildKit MUST enable cache mounts for package managers: --mount=type=cache,target=/root/.cache/pip for pip, --mount=type=cache,target=/root/.npm for npm. The DOCKER_BUILDKIT=1 environment variable MUST be set.</statement>
+        <rationale>Cache mounts persist the package manager cache between builds without embedding it in the image layer. This is orthogonal to layer caching and reduces network fetches on cache miss from minutes to seconds.</rationale>
+      </rule>
+
+      <example type="good" title="Dependency-first layer order with BuildKit cache mount">
+        <code lang="dockerfile"><![CDATA[
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Dependencies first — cache hit on every non-requirements change
+COPY requirements.txt .
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
+
+# Source after — cache miss only when source changes
+COPY . .
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>COPY . . before dependency install: any source file change invalidates the dependency layer.</description>
+        <reason>Re-downloads all packages on every source change, turning 2-second rebuilds into 3-minute rebuilds.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Separate RUN commands for each apt-get install line.</description>
+        <reason>Each RUN creates a new layer; chaining with &amp;&amp; combines them into one layer and allows removing the apt cache in the same step (rm -rf /var/lib/apt/lists/*). Separate layers bloat the image and cannot clean up from a prior layer.</reason>
+      </antipattern>
+    </section>
+
+    <section name="dockerignore">
+      <p>The .dockerignore file controls what the Docker daemon sends to the build context. A missing or minimal .dockerignore transfers the entire working directory — including .git, node_modules, and .venv — on every build.</p>
+
+      <rule testable="true">
+        <statement>Every repository with a Dockerfile MUST have a .dockerignore at the same level. The .dockerignore MUST exclude at minimum: .git, node_modules, __pycache__, *.pyc, .venv, venv, target, vendor, dist, build, .coverage, htmlcov, .pytest_cache, .env, .env.*, Dockerfile*, docker-compose*, .DS_Store.</statement>
+        <rationale>Without .dockerignore, COPY . . transfers node_modules (~500 MB for large JS projects) or .venv (~300 MB for Python) into the build context on every invocation, even when those directories are subsequently excluded from the image by a .gitignore-like pattern. The daemon must still hash every file.</rationale>
+      </rule>
+
+      <example type="good" title="Universal .dockerignore">
+        <code lang="text"><![CDATA[
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Dependencies (installed inside container)
+node_modules
+__pycache__
+*.pyc
+.venv
+venv
+vendor
+target
+
+# Build outputs
+dist
+build
+out
+*.egg-info
+.next
+.nuxt
+
+# IDE and editor
+.idea
+.vscode
+*.swp
+
+# Testing and coverage
+.coverage
+htmlcov
+.pytest_cache
+.tox
+coverage
+
+# Environment and secrets
+.env
+.env.*
+*.local
+.secrets
+
+# Docker files
+Dockerfile*
+docker-compose*
+.docker
+.dockerignore
+
+# CI/CD configuration
+.github
+.gitlab-ci.yml
+Jenkinsfile
+
+# OS files
+.DS_Store
+Thumbs.db
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Base image uses -slim, -alpine, or distroless variant in final stage.</check>
+      <check>Version tag is pinned to full patch version (e.g., python:3.12.1-slim).</check>
+      <check>Multi-stage build separates build and runtime stages.</check>
+      <check>Dependency manifests are COPY'd before COPY . . (layer order correct).</check>
+      <check>RUN commands are chained with &amp;&amp; where applicable.</check>
+      <check>apt-get cache removed in same RUN layer: rm -rf /var/lib/apt/lists/*</check>
+      <check>DOCKER_BUILDKIT=1 set in CI; cache mounts used for pip/npm.</check>
+      <check>.dockerignore present and excludes .git, node_modules, .venv, .env.*</check>
+      <check>Final image size verified with: docker images IMAGE --format "{{.Size}}"</check>
+    </checklist>
+
+    <commands>
+      <command name="check-image-size">docker images IMAGE --format "{{.Size}}"</command>
+      <command name="list-image-layers">docker history IMAGE</command>
+      <command name="build-with-buildkit">DOCKER_BUILDKIT=1 docker build -t myapp .</command>
+    </commands>
+
+    <see-also>
+      <ref slug="docker-security-hardening"/>
+      <ref slug="docker-language-templates"/>
+      <link href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"/>
+      <link href="https://docs.docker.com/build/buildkit/"/>
+    </see-also>
+  </content>
+</methodology>
