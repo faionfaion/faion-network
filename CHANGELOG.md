@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: django-quality, django-testing, documentation)
 - refactor: 3/3 free-tier Django methodologies migrated to methodology.xml (batch: django-imports, django-models, django-pytest)
 - refactor: 3/3 python-developer methodologies migrated to methodology.xml (batch: python-fastapi, python-modern-2026, python-overview)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: best-practices-2026, bun-runtime, code-coverage)
