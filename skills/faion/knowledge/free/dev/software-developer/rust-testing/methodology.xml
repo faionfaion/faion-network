@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Rust testing patterns: co-located mockall unit tests, axum integration tests via tower::ServiceExt, proptest property tests, cargo nextest in CI, fakes over mocks for trait-heavy code.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>testing</tag>
+      <tag>mockall</tag>
+      <tag>tokio</tag>
+      <tag>proptest</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Rust Testing</title>
+
+    <summary>Testing patterns for Rust services: unit tests with `mockall` in `#[cfg(test)] mod tests` co-located with the SUT, async tests via `#[tokio::test]`, integration tests against real `axum::Router` via `tower::ServiceExt`, and property tests with `proptest`. Key rule: prefer fakes over mocks for trait-heavy code; always `await` joined async task handles; run `cargo nextest` in CI.</summary>
+
+    <why>
+      <p>Rust's type system eliminates whole classes of bugs at compile time but cannot catch logic errors, missed edge cases, or async task panics. Typed tests fail closed — refactors that shift function signatures break tests immediately, before CI. `cargo nextest` parallelizes at the process level (not thread level), making suites 10-60% faster and isolating test-global-state leaks.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rust services where correctness is non-negotiable (auth, billing, infra control planes) — `cargo test` + `mockall` + `proptest` give compile-time + property-level guarantees beyond what dynamic-language tests reach.</item>
+        <item>Async services on `tokio` — `#[tokio::test]` is the de-facto runner; agents writing axum/tonic services need consistent test shape.</item>
+        <item>Library crates publishing to crates.io — doctest discipline (`/// # Examples`) prevents silent doc rot.</item>
+        <item>Refactor work where the borrow checker shifts function signatures — typed tests fail closed; LLM regressions surface immediately.</item>
+        <item>Codebases enforcing `cargo deny` + coverage threshold via `cargo llvm-cov` in CI.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Hot iteration prototypes — Rust's slow incremental compile + test startup punishes small loops; write the impl first.</item>
+        <item>Pure FFI shims to C libs — testing requires the linked C side; integration tests pay double cost. Prefer a thin Rust wrapper + tests on the wrapper.</item>
+        <item>Code where mocks dominate the test (`mockall` everywhere) — that's a sign the design is over-coupled. Refactor toward trait-based seams or use real implementations behind `#[cfg(test)]`.</item>
+        <item>Macro-heavy crates where the test of value is `trybuild` (compile-fail tests), not runtime assertions.</item>
+        <item>Embedded `no_std` targets — `cargo test` needs std; use `defmt-test` / on-target runners instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="unit-tests">
+      <p>Co-located unit tests with mockall, async test patterns via #[tokio::test], and assert_matches assertions.</p>
+
+      <rule>
+        <statement>Place unit tests in `#[cfg(test)] mod tests` in the same file as the SUT. Use `tests/*.rs` only for integration tests against the public API.</statement>
+        <rationale>Co-located tests have direct access to private functions and types. The fastest dev loop keeps test code next to the code under test.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin the tokio runtime flavor explicitly: `#[tokio::test(flavor = "multi_thread", worker_threads = 2)]` for code that calls `spawn_blocking`.</statement>
+        <rationale>`current_thread` flavor deadlocks if the SUT spawns a blocking task. Explicit flavor prevents silent runtime behavior differences between test and production code.</rationale>
+      </rule>
+      <rule>
+        <statement>Always `await` joined async task handles. `tokio::spawn` panics are silent unless the handle is awaited.</statement>
+        <rationale>A background task panicking with the handle dropped causes tests to pass while actual logic failed. This is the single most confusing Rust async test failure mode.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="rust"><![CDATA[#[cfg(test)]
+mod tests {
+    use super::*;
+    use mockall::predicate::*;
+    use assert_matches::assert_matches;
+
+    fn create_test_user() -> User {
+        User { id: 1, email: "test@example.com".into(), ..Default::default() }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn test_get_by_id_returns_user() {
+        let mut mock_db = MockDatabase::new();
+        mock_db.expect_fetch_user_by_id()
+            .with(eq(1))
+            .times(1)
+            .returning(|_| Ok(Some(create_test_user())));
+
+        let service = UserService::new(Arc::new(mock_db));
+        let result = service.get_by_id(1).await;
+
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_get_by_id_not_found() {
+        let mut mock_db = MockDatabase::new();
+        mock_db.expect_fetch_user_by_id()
+            .returning(|_| Ok(None));
+
+        let service = UserService::new(Arc::new(mock_db));
+        let result = service.get_by_id(999).await;
+
+        assert_matches!(result, Err(AppError::NotFound(_)));
+    }
+}]]></code>
+        <note>`assert_matches!` provides pattern-matching assertions that give meaningful failure messages. `times(1)` verifies the mock is called exactly once.</note>
+      </example>
+      <rule>
+        <statement>Prefer a simple in-memory fake implementation over mockall when the trait has &gt;5 methods or state-dependent behavior.</statement>
+        <rationale>mockall-generated mocks with complex expectations become harder to read than the production code. A 30-line `FakeDb` is more maintainable than 30 mock expectations.</rationale>
+      </rule>
+    </section>
+
+    <section name="integration-tests">
+      <p>Integration tests in tests/*.rs against real axum::Router via tower::ServiceExt, with testcontainers for real databases.</p>
+
+      <rule>
+        <statement>Test HTTP endpoints by calling the `axum::Router` directly via `tower::ServiceExt::oneshot`, without starting a real TCP server.</statement>
+        <rationale>Direct router testing is faster, avoids port conflicts, and still exercises middleware, routing, extractors, and response serialization — the full HTTP stack minus TCP.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="rust"><![CDATA[// tests/api_tests.rs
+use axum::{body::Body, http::{Request, StatusCode}};
+use tower::ServiceExt;
+use serde_json::json;
+
+#[tokio::test]
+async fn test_create_user_returns_201() {
+    let app = create_test_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/users")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    json!({"name": "Alice", "email": "alice@example.com", "password": "pass123"})
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let user: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(user["email"], "alice@example.com");
+}]]></code>
+      </example>
+      <rule>
+        <statement>Use `testcontainers` for integration tests that touch a database. Avoid SQLite-as-Postgres substitutes.</statement>
+        <rationale>SQLite silently accepts SQL that Postgres rejects (type casting, RETURNING clauses, JSON operators). Real Postgres catches dialect bugs that SQLite misses.</rationale>
+      </rule>
+    </section>
+
+    <section name="property-tests">
+      <p>proptest! macro usage, strategy constraints, and run count configuration for invariant verification.</p>
+
+      <rule>
+        <statement>Set at least 256 cases in CI (`PROPTEST_CASES=256`); bump to 1024 for critical invariants like serialization round-trips and parse safety.</statement>
+        <rationale>The default 16-32 cases find obvious failures but miss edge cases that appear at higher run counts. Critical paths deserve higher budgets.</rationale>
+      </rule>
+      <rule>
+        <statement>Always constrain input strategies (e.g., `0..=1024usize` for byte lengths). Unbounded strategies produce counterexamples that take minutes to shrink.</statement>
+        <rationale>Proptest's shrinker minimizes counterexamples after finding them. Without bounds, a 1MB random string found as a counterexample requires extensive shrinking time.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="rust"><![CDATA[use proptest::prelude::*;
+
+proptest! {
+    // Round-trip invariant: parse(serialize(x)) == x
+    #[test]
+    fn round_trip_serialization(input in any::<ValidAst>()) {
+        let serialized = serialize(&input);
+        let parsed = parse(&serialized).expect("should parse serialized output");
+        prop_assert_eq!(input, parsed);
+    }
+
+    // No-panic invariant: parse never panics on arbitrary bytes
+    #[test]
+    fn parse_never_panics(data in prop::collection::vec(any::<u8>(), 0..=1024)) {
+        // We don't care about the result, only that it doesn't panic
+        let _ = parse_bytes(&data);
+    }
+}]]></code>
+        <note>Two fundamental invariants: round-trip correctness and panic safety on arbitrary input. These catch the most valuable bugs.</note>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <p>Common failures: unwrap() in SUT, mock ordering bugs, async drops, snapshot abuse, and env var collisions.</p>
+
+      <antipattern>
+        <description>`unwrap()` called inside the SUT code path under test (not in the test body).</description>
+        <reason>`unwrap()` in tests is fine — it's the expected failure mode for test assertions. `unwrap()` in the SUT means the code panics on errors instead of returning Result. Use `?` in production code.</reason>
+      </antipattern>
+      <antipattern>
+        <description>mockall `.times(1)` placed before `.returning(...)` in the wrong order.</description>
+        <reason>The order of mockall expectation builder calls matters. `.times(1)` after `.returning(...)` specifies the call count. Placed before, it has different semantics. Agents copy from old examples and produce silent under/over-call errors.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`tokio::spawn` called in a test without awaiting the returned handle.</description>
+        <reason>The test runtime exits before the spawned task completes; assertions inside the task never run. Always await `JoinHandle` or use `JoinSet`.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running `cargo insta accept` in CI to auto-accept all snapshots.</description>
+        <reason>Auto-accepting snapshots locks in any regression as the "expected" value. `cargo insta review` must be run locally; CI should reject unapproved snapshot changes.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`std::env::set_var` called inside a test without a serial mutex.</description>
+        <reason>Environment variable mutations are process-wide. Parallel test threads calling `set_var` for the same key collide, causing non-deterministic failures. Use `serial_test::serial` or refactor the SUT to accept config via DI.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`tokio::time::sleep` in tests using real wall clock time.</description>
+        <reason>Real sleep is flaky on loaded CI runners. Use `tokio::time::pause()` + `tokio::time::advance(Duration)` for deterministic time control in async tests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Compile-time tests are slow. Adding 50 test cases compiles 50 binaries by default. Use `cargo nextest` (10-60% faster, parallel by default) or share a test harness crate.</item>
+        <item>`mockall` macro-generated mocks confuse rust-analyzer + LLMs. Agents read the mock impl, not the trait, and "fix" the wrong code. Pin to one mocking approach per crate.</item>
+        <item>Async test deadlocks. `#[tokio::test(flavor = "current_thread")]` deadlocks if the SUT spawns a blocking task. Use `flavor = "multi_thread", worker_threads = 2` for code that does `spawn_blocking`.</item>
+        <item>Test isolation across `mod tests`. `static` state inside the SUT (lazy_static, OnceLock) leaks across tests. `cargo test -- --test-threads=1` works around but disables parallelism.</item>
+        <item>`tokio::test` swallows panics in spawned tasks. Tests pass while a background task panicked. Always `await` joined handles or use `tokio::task::JoinSet` and assert.</item>
+        <item>Property tests with bad shrinkers. `proptest!` finds a 200-byte counterexample but minimization runs forever. Constrain inputs early (`Strategy::filter`).</item>
+        <item>Snapshot tests via `insta`. Flaky on platforms with different float formatting; agents commit unreviewed snapshots and bug locked in.</item>
+        <item>Coverage tools. `tarpaulin` underreports for async; `cargo llvm-cov` is more accurate but needs nightly toolchain features for branch coverage.</item>
+        <item>Doctest brittleness. Code in doc comments compiles + runs; refactor a public API and 50 doctests break silently if not run in CI.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Rust tests in 4 stages: (1) a trait-mapper subagent reads the SUT and identifies trait boundaries → emits `mockall` mock declarations or test doubles via `#[cfg(test)] impl Trait for FakeX`; (2) a unit-test-author subagent writes `#[test]` / `#[tokio::test]` cases following Arrange/Act/Assert; (3) an integration-test-author writes `tests/*.rs` against real `axum::Router` via `tower::ServiceExt`; (4) a coverage-triage subagent runs `cargo llvm-cov --lcov` and reports per-module misses. Always run `cargo test --all-features --workspace` + `cargo clippy --all-targets --all-features -- -D warnings` before commit; LLMs commonly add tests that compile but trigger clippy lints.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent (`agents/faion-sdd-executor-agent.md`) — quality gate: `cargo nextest run` + `cargo clippy -D warnings` + coverage threshold. A purpose-built rust-mock-author-agent (worth creating): given a trait, emit a `mockall::mock!` block + canonical test setup for happy/error paths. A proptest-strategy-agent (worth creating): given a struct, propose `Arbitrary` impls + property invariants (round-trip, idempotency, monotonicity). A trybuild-agent for proc-macro crates: scaffold compile-fail tests with expected `stderr` snippets. password-scrubber-agent (`agents/password-scrubber-agent.md`) — scrub `tests/fixtures/`, `.env.test`, `config/test.toml` before commit.</p>
+      <prompt purpose="unit-test-scaffold"><![CDATA[You are a Rust 1.7x engineer using tokio + mockall + assert_matches.
+For src/services/users.rs::UserService::create, generate
+#[cfg(test)] mod tests covering:
+1. happy path: returns User
+2. duplicate email: AppError::Conflict
+3. db failure: AppError::Internal
+Use mockall for Database trait. async via #[tokio::test].
+Run: cargo nextest run -p users.
+Do NOT use unwrap() in production code paths under test.]]></prompt>
+      <prompt purpose="property-test-scaffold"><![CDATA[For crate `parser`, write proptest! cases covering:
+- round-trip: parse(serialize(x)) == x for all valid AST
+- no-panic: parse never panics on arbitrary &[u8] input
+Constrain Vec<u8> length to 0..=1024. Use 1024 cases.
+Run: cargo test --release prop_.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`cargo test` — bundled test runner. Docs: `cargo --help test`.</item>
+        <item>`cargo nextest` — faster, parallel runner with retries. Install: `cargo install cargo-nextest`.</item>
+        <item>`cargo llvm-cov` — coverage via LLVM source-based instrumentation. Install: `cargo install cargo-llvm-cov`.</item>
+        <item>`cargo tarpaulin` — coverage (Linux x86_64). Install: `cargo install cargo-tarpaulin`.</item>
+        <item>`cargo mutants` — mutation testing — find tests that pass when code is broken. Install: `cargo install cargo-mutants`.</item>
+        <item>`cargo deny` — dep audit (licenses, advisories) — gate alongside tests. Install: `cargo install cargo-deny`.</item>
+        <item>`cargo audit` — RustSec advisory check. Install: `cargo install cargo-audit`.</item>
+        <item>`cargo bench` / `criterion` — benchmarks; treat as separate gate. Docs: https://bheisler.github.io/criterion.rs.</item>
+        <item>`cargo expand` — show macro expansions when mocks misbehave. Install: `cargo install cargo-expand`.</item>
+        <item>`insta` — snapshot testing. Install: `cargo add insta --dev`.</item>
+        <item>`proptest` — property-based testing. Install: `cargo add proptest --dev`.</item>
+        <item>`mockall` — trait mocking. Install: `cargo add mockall --dev`.</item>
+        <item>`wiremock` — HTTP stubbing. Install: `cargo add wiremock --dev`.</item>
+        <item>`testcontainers` — real Postgres/Redis in tests. Install: `cargo add testcontainers --dev`.</item>
+        <item>`trybuild` — compile-fail tests for proc-macros. Install: `cargo add trybuild --dev`.</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <list>
+        <item>GitHub Actions (OSS / SaaS, agent-friendly): `dtolnay/rust-toolchain` + `Swatinem/rust-cache` + `cargo nextest`.</item>
+        <item>Codecov / Coveralls (SaaS, agent-friendly): parses `lcov.info` from `cargo llvm-cov`.</item>
+        <item>crates.io (SaaS, agent-friendly): publish gating via `cargo publish --dry-run` in CI.</item>
+        <item>docs.rs (SaaS): builds doctests on publish — CI must run `cargo test --doc`.</item>
+        <item>Snyk / RustSec (SaaS / OSS, agent-friendly): advisory feed for `cargo audit`.</item>
+        <item>Testcontainers Cloud (SaaS, agent-friendly): reduces local Docker pressure when crate uses Postgres/Kafka.</item>
+        <item>GitLab CI / Buildkite (SaaS, agent-friendly): same matrix patterns as GH Actions.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>`#[cfg(test)] mod tests` co-located with SUT — fastest dev loop. Use `tests/` only for integration tests against the public API.</item>
+        <item>`cargo nextest` over `cargo test` in CI — orders of magnitude faster on multi-core, retries flaky tests, JUnit XML for dashboards.</item>
+        <item>`assert_matches!(result, Err(AppError::Conflict(_)))` — pattern-matching assertions over `assert_eq` on Debug strings.</item>
+        <item>Prefer fakes over mocks for trait-heavy code. A 30-line in-memory `impl Database for FakeDb` is more maintainable than 30 mockall expectations.</item>
+        <item>Always `await` joined async tasks. `tokio::spawn` panics are silent unless joined.</item>
+        <item>Pin tokio runtime flavor explicitly (`#[tokio::test(flavor = "multi_thread", worker_threads = 2)]`) so tests don't depend on default.</item>
+        <item>`insta` for complex assertions (JSON shape, error messages) — review snapshots in PRs as code.</item>
+        <item>Run doctests in CI (`cargo test --doc`) — public API doc rot is a real bug source.</item>
+        <item>`testcontainers` over `sqlx-mock` for repository tests — real Postgres catches dialect bugs.</item>
+        <item>`cargo mutants` weekly on the critical-path crate; tune kill rate &gt;70%.</item>
+        <item>Workspace test isolation: `[workspace.metadata.cargo-machete]` to detect unused dev-deps; agents tend to leak prod deps into dev-deps.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>`unwrap()` inside test bodies is fine. `unwrap()` inside the SUT under test is a bug. LLMs blur the line.</item>
+        <item>Mocking the wrong direction. Agent mocks the consumer instead of the dependency; SUT becomes a no-op. Force prompt to name the SUT and what's mocked.</item>
+        <item>`mockall` `expect_*` ordering. Setting `.times(1)` after `.returning(...)` works; placing `.times(1)` before changes meaning. Agents copy from old crates and produce silent under/over-call.</item>
+        <item>Async drops. `#[tokio::test]` exits before `tokio::spawn` completes; assertion never runs. Use `JoinSet` or `await` the handle.</item>
+        <item>Borrow-checker workaround tests. Agent uses `unsafe { std::mem::transmute }` in tests to satisfy the compiler. Reject — refactor SUT instead.</item>
+        <item>Hidden global state. `OnceLock` initialized in test #1 leaks to test #2. Detect with `cargo test -- --test-threads=1` then fix the SUT (DI the dep instead of `static`).</item>
+        <item>`assert!(left == right)` with no message — failure shows nothing. Always `assert_eq!` or `assert!(cond, "context: {x:?}")`.</item>
+        <item>`tokio::time::sleep` in tests. Real wall clock; flaky in CI. Use `tokio::time::pause()` + `advance(...)` or `tokio_test::block_on`.</item>
+        <item>`std::env::set_var` in tests. Process-wide; collides with parallel tests. Wrap in serial mutex (`serial_test::serial`) or refactor SUT to take config.</item>
+        <item>`cargo test --release` when code has `#[cfg(debug_assertions)]` paths — agent doesn't realize behaviors diverge. Document which profile each test targets.</item>
+        <item>Insta snapshots committed without review. `cargo insta accept` runs in CI → tests "pass" by accepting the bug. Force `cargo insta review` locally only.</item>
+        <item>Proptest run count too low (`PROPTEST_CASES=16`) — finds nothing. Default 256 in CI; bump to 1024 for critical invariants.</item>
+        <item>Mockall + generic methods. `mock!` doesn't auto-generate generic method mocks; LLMs hallucinate the syntax. Use `expect_call` with concrete monomorphization.</item>
+        <item>`.expect_*().returning(|_| Ok(...))` with non-`Send` capture in `#[tokio::test(flavor="multi_thread")]` — compile error agents misdiagnose. Wrap state in `Arc&lt;Mutex&lt;...&gt;&gt;`.</item>
+      </list>
+    </section>
+
+    <section name="coverage-gate-script">
+      <p>Coverage-gate script (≤50 lines) enforces line + branch coverage thresholds via `cargo llvm-cov`. Run after `cargo nextest run` in CI.</p>
+      <example type="good" title="rust-coverage-gate.sh">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# rust-coverage-gate.sh — enforce line + branch coverage thresholds.
+# Usage: rust-coverage-gate.sh LINE BRANCH
+set -euo pipefail
+LINE="${1:-70}"
+BRANCH="${2:-60}"
+cargo llvm-cov --workspace --lcov --output-path lcov.info >/dev/null
+python3 - "$LINE" "$BRANCH" <<'PY'
+import re, sys
+line_t, branch_t = float(sys.argv[1]), float(sys.argv[2])
+with open("lcov.info") as f: data = f.read()
+lf = sum(int(x) for x in re.findall(r"^LF:(\d+)", data, re.M))
+lh = sum(int(x) for x in re.findall(r"^LH:(\d+)", data, re.M))
+bf = sum(int(x) for x in re.findall(r"^BRF:(\d+)", data, re.M))
+bh = sum(int(x) for x in re.findall(r"^BRH:(\d+)", data, re.M))
+line = (lh / lf * 100) if lf else 100.0
+branch = (bh / bf * 100) if bf else 100.0
+print(f"line={line:.1f}% branch={branch:.1f}%")
+fails = []
+if line < line_t:   fails.append(f"line {line:.1f} < {line_t}")
+if branch < branch_t: fails.append(f"branch {branch:.1f} < {branch_t}")
+if fails: print("FAIL:", "; ".join(fails)); sys.exit(1)
+print("OK")
+PY]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/rust-coverage-gate.sh" purpose="CI script enforcing line + branch coverage thresholds via cargo llvm-cov."/>
+    </templates>
+
+    <see-also>
+      <link href="https://doc.rust-lang.org/book/ch11-00-testing.html"/>
+      <link href="https://docs.rs/tokio/latest/tokio/attr.test.html"/>
+      <link href="https://docs.rs/mockall"/>
+      <link href="https://proptest-rs.github.io/proptest/"/>
+      <link href="https://nexte.st"/>
+      <link href="https://github.com/taiki-e/cargo-llvm-cov"/>
+      <link href="https://github.com/sourcefrog/cargo-mutants"/>
+      <link href="https://docs.rs/testcontainers"/>
+      <link href="https://insta.rs"/>
+    </see-also>
+  </content>
+</methodology>
