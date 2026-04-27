@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-networking-vpc">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>GCP networking: custom VPC with three-tier subnets, firewall rules (least privilege), Cloud NAT, global HTTPS load balancer, Cloud Armor WAF, VPC Service Controls perimeter, and networking checklists.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>vpc</tag>
+      <tag>networking</tag>
+      <tag>firewall</tag>
+      <tag>cloud-armor</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-compute-gke"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Networking and VPC</title>
+
+    <summary>GCP networking best practices: custom VPC with four subnet tiers (public, private, GKE, database), least-privilege firewall rules with IAP-only SSH, Cloud NAT for private outbound, global HTTPS load balancer with managed SSL, Cloud Armor WAF with OWASP rules and rate limiting, and VPC network checklist.</summary>
+
+    <why>
+      <p>GCP's default VPC enables public IPs on every subnet, which violates least-privilege networking. A custom VPC with Private Google Access, Cloud NAT, and VPC Flow Logs gives full control without internet exposure. Cloud Armor provides the WAF layer that neither IAM nor VPC-SC covers — application-layer attack protection (XSS, SQLi) and rate limiting.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating a new GCP project that will host workloads (VM, GKE, Cloud Run, Cloud SQL).</item>
+        <item>Replacing the default VPC with a production-ready custom network.</item>
+        <item>Setting up a global HTTPS load balancer with managed SSL certificates.</item>
+        <item>Adding WAF protection (XSS, SQLi, rate limiting) via Cloud Armor.</item>
+        <item>Auditing firewall rules for public exposure or missing IAP restrictions.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>IAM and service account design — use gcp-security-iam instead.</item>
+        <item>Compute Engine or GKE cluster creation — use gcp-compute-gke for those specifics.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="vpc-design">
+      <rule>
+        <statement>Always create a custom VPC (subnet-mode=custom). Never use the default VPC in production. Enable Private Google Access on all subnets that need GCP API access without public IPs. Enable VPC Flow Logs on all subnets for traffic monitoring.</statement>
+        <rationale>The default VPC auto-creates subnets in every region with overly broad firewall rules. Custom VPC with explicit subnets gives per-region control, prevents accidental public exposure, and avoids IP range conflicts in multi-project Shared VPC.</rationale>
+      </rule>
+
+      <example type="good" title="Custom VPC with four subnet tiers">
+        <code lang="bash"><![CDATA[
+# Create custom VPC
+gcloud compute networks create my-vpc \
+    --subnet-mode=custom \
+    --bgp-routing-mode=regional
+
+# Public subnet (for NAT, bastion if needed)
+gcloud compute networks subnets create public-subnet \
+    --network=my-vpc \
+    --region=us-central1 \
+    --range=10.0.1.0/24 \
+    --enable-flow-logs \
+    --logging-aggregation-interval=interval-5-sec \
+    --logging-flow-sampling=0.5
+
+# Private subnet (application workloads)
+gcloud compute networks subnets create private-subnet \
+    --network=my-vpc \
+    --region=us-central1 \
+    --range=10.0.10.0/24 \
+    --enable-private-ip-google-access \
+    --enable-flow-logs
+
+# GKE subnet with secondary ranges
+gcloud compute networks subnets create gke-subnet \
+    --network=my-vpc \
+    --region=us-central1 \
+    --range=10.0.20.0/24 \
+    --secondary-range=pods=10.1.0.0/16,services=10.2.0.0/20 \
+    --enable-private-ip-google-access \
+    --enable-flow-logs
+
+# Database subnet
+gcloud compute networks subnets create database-subnet \
+    --network=my-vpc \
+    --region=us-central1 \
+    --range=10.0.30.0/24 \
+    --enable-private-ip-google-access
+]]></code>
+      </example>
+    </section>
+
+    <section name="firewall-rules">
+      <rule>
+        <statement>Use network tags for all firewall rules. Restrict SSH to IAP source range (35.235.240.0/20) only — never allow 0.0.0.0/0 on port 22. Add explicit deny-all-ingress at priority 65534 to make the default implicit deny visible and auditable.</statement>
+        <rationale>Tag-based firewall rules scope permissions to the workloads that need them rather than entire subnets. IAP tunneling removes the need for a bastion host or VPN for SSH access. Explicit deny rules appear in VPC Flow Logs and firewall insights, making security audit straightforward.</rationale>
+      </rule>
+
+      <example type="good" title="Least-privilege firewall rules with IAP SSH">
+        <code lang="bash"><![CDATA[
+# Deny all ingress by default (explicit)
+gcloud compute firewall-rules create deny-all-ingress \
+    --network=my-vpc \
+    --direction=INGRESS \
+    --action=DENY \
+    --rules=all \
+    --priority=65534
+
+# Allow IAP for SSH (no public SSH)
+gcloud compute firewall-rules create allow-iap-ssh \
+    --network=my-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:22 \
+    --source-ranges=35.235.240.0/20 \
+    --target-tags=allow-iap-ssh \
+    --priority=1000
+
+# Allow health checks from GCP load balancers
+gcloud compute firewall-rules create allow-health-check \
+    --network=my-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:8080 \
+    --source-ranges=130.211.0.0/22,35.191.0.0/16 \
+    --target-tags=allow-health-check \
+    --priority=1000
+
+# Allow internal traffic (private subnet to database)
+gcloud compute firewall-rules create allow-app-to-db \
+    --network=my-vpc \
+    --direction=INGRESS \
+    --action=ALLOW \
+    --rules=tcp:5432 \
+    --source-ranges=10.0.10.0/24 \
+    --target-tags=database \
+    --priority=1000
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Allowing 0.0.0.0/0 on port 22 or using a bastion host with a public IP for SSH access.</description>
+        <reason>Public SSH exposes the endpoint to brute-force and exploit attempts. IAP tunneling provides the same SSH access through HTTPS (port 443) without a public IP or bastion, authenticated by Google Identity.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cloud-nat">
+      <example type="good" title="Cloud Router and Cloud NAT for outbound internet">
+        <code lang="bash"><![CDATA[
+# Create Cloud Router
+gcloud compute routers create my-router \
+    --network=my-vpc \
+    --region=us-central1
+
+# Create Cloud NAT
+gcloud compute routers nats create my-nat \
+    --router=my-router \
+    --region=us-central1 \
+    --nat-all-subnet-ip-ranges \
+    --auto-allocate-nat-external-ips \
+    --enable-logging \
+    --log-filter=ERRORS_ONLY
+]]></code>
+      </example>
+    </section>
+
+    <section name="global-load-balancer">
+      <example type="good" title="Global HTTPS load balancer with managed SSL">
+        <code lang="bash"><![CDATA[
+# Reserve global static IP
+gcloud compute addresses create web-ip --global
+
+# Create health check
+gcloud compute health-checks create http web-health \
+    --port=8080 \
+    --request-path=/health
+
+# Create backend service
+gcloud compute backend-services create web-backend \
+    --protocol=HTTP \
+    --port-name=http \
+    --health-checks=web-health \
+    --global \
+    --enable-logging \
+    --logging-sample-rate=1.0
+
+# Add MIG to backend
+gcloud compute backend-services add-backend web-backend \
+    --instance-group=web-mig \
+    --instance-group-region=us-central1 \
+    --global
+
+# Create URL map
+gcloud compute url-maps create web-map \
+    --default-service=web-backend
+
+# Create managed SSL certificate
+gcloud compute ssl-certificates create web-cert \
+    --domains=example.com,www.example.com \
+    --global
+
+# Create HTTPS proxy
+gcloud compute target-https-proxies create web-https-proxy \
+    --url-map=web-map \
+    --ssl-certificates=web-cert
+
+# Create forwarding rule
+gcloud compute forwarding-rules create web-https-rule \
+    --global \
+    --address=web-ip \
+    --target-https-proxy=web-https-proxy \
+    --ports=443
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloud-armor-waf">
+      <example type="good" title="Cloud Armor WAF policy with OWASP rules and rate limiting">
+        <code lang="bash"><![CDATA[
+# Create security policy
+gcloud compute security-policies create my-policy \
+    --description="WAF policy"
+
+# Add OWASP XSS rules
+gcloud compute security-policies rules create 1000 \
+    --security-policy=my-policy \
+    --expression="evaluatePreconfiguredExpr('xss-v33-stable')" \
+    --action=deny-403
+
+# Add OWASP SQLi rules
+gcloud compute security-policies rules create 1001 \
+    --security-policy=my-policy \
+    --expression="evaluatePreconfiguredExpr('sqli-v33-stable')" \
+    --action=deny-403
+
+# Rate limiting (100 req/min per IP)
+gcloud compute security-policies rules create 2000 \
+    --security-policy=my-policy \
+    --expression="true" \
+    --action=throttle \
+    --rate-limit-threshold-count=100 \
+    --rate-limit-threshold-interval-sec=60 \
+    --conform-action=allow \
+    --exceed-action=deny-429 \
+    --enforce-on-key=IP
+
+# Apply to backend
+gcloud compute backend-services update web-backend \
+    --security-policy=my-policy \
+    --global
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Apply Cloud Armor to every public-facing backend service. Start with OWASP preconfigured rules (xss-v33-stable, sqli-v33-stable) and add IP-based rate limiting. Layer Cloud Armor with VPC-SC and IAM for defense in depth.</statement>
+        <rationale>Cloud Armor operates at Google's edge (before traffic reaches the VPC) and blocks layer-7 attacks that IAM and VPC firewalls cannot see. OWASP preconfigured rules require no tuning and cover the most common attack patterns.</rationale>
+      </rule>
+    </section>
+
+    <section name="network-checklist">
+      <checklist>
+        <check>Run workloads in private subnets (no public IPs).</check>
+        <check>Use VPC-native GKE clusters.</check>
+        <check>Configure firewall rules with least privilege (network tags).</check>
+        <check>Restrict SSH to IAP (Identity-Aware Proxy) only.</check>
+        <check>Enable VPC Flow Logs for traffic monitoring.</check>
+        <check>Use Private Google Access for GCP APIs.</check>
+        <check>Implement VPC Service Controls for data exfiltration prevention.</check>
+        <check>Configure Cloud NAT for outbound traffic.</check>
+        <check>Use Cloud Armor for WAF protection on public backends.</check>
+        <check>Enable Cloud DNS Security (DNSSEC).</check>
+        <check>Use internal load balancers for internal traffic.</check>
+        <check>Configure firewall insights for optimization.</check>
+      </checklist>
+    </section>
+
+    <section name="vpc-setup-checklist">
+      <checklist>
+        <check>Plan IP address ranges (avoid overlaps with other projects).</check>
+        <check>Create custom VPC (not default).</check>
+        <check>Configure subnets per region/tier (public, private, GKE, database).</check>
+        <check>Enable Private Google Access on private subnets.</check>
+        <check>Configure Cloud NAT for outbound traffic.</check>
+        <check>Set up Cloud Router for BGP.</check>
+        <check>Enable VPC Flow Logs.</check>
+        <check>Configure firewall rules (deny by default).</check>
+        <check>Set up Shared VPC for multi-project architectures.</check>
+        <check>Document network architecture.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://cloud.google.com/vpc/docs/best-practices"/>
+      <link href="https://cloud.google.com/armor/docs/waf-rules"/>
+      <link href="https://cloud.google.com/vpc-service-controls/docs/overview"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-compute-gke"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="gcp-terraform-templates"/>
+    </see-also>
+  </content>
+</methodology>
