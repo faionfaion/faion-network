@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-sql-query">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex NLSQLTableQueryEngine: natural language to SQL over SQLAlchemy databases, schema-aware table retrieval, and SQL safety constraints for agent-driven structured data queries.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>nl-to-sql</tag>
+      <tag>structured-data</tag>
+      <tag>sql</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>llamaindex</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-agents-eval"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex NL-to-SQL with NLSQLTableQueryEngine</title>
+
+    <summary>NLSQLTableQueryEngine translates natural language questions into SQL via an LLM, executes against a SQLAlchemy-connected database, and returns the answer with the generated SQL for inspection. Restrict include_tables to only relevant tables. Always use a read-only database connection. For large schemas, use ObjectIndex-based table schema retrieval to narrow the LLM's schema context before SQL generation.</summary>
+
+    <why>
+      <p>NLSQLTableQueryEngine removes the need for users or agents to know SQL syntax while keeping queries grounded in actual database state. The LLM generates SQL from schema descriptions, executes it, and synthesizes a natural language answer — enabling structured data Q&amp;A with the same interface as document RAG.</p>
+      <p>The primary risk is SQL safety: the generated SQL executes against a live database without validation. A poorly formed or adversarial query can cause destructive operations if the database user has write permissions. The pattern requires strict access control at the database connection level, not at the LLM prompt level.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Business users need to query a relational database without writing SQL — NLSQLTableQueryEngine is the standard LlamaIndex pattern.</item>
+        <item>Agent needs to combine document RAG with structured data queries in one pipeline — route SQL queries to NLSQLTableQueryEngine and document queries to VectorStoreIndex.</item>
+        <item>Schema is known upfront and changes infrequently — the LLM needs stable table descriptions for reliable SQL generation.</item>
+        <item>Debugging or auditing agent SQL — the engine returns the generated SQL in response.metadata["sql_query"] for logging.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Database schema is large (50+ tables) or changes frequently — dedicated text-to-SQL services (Vanna, SQLAI) handle schema evolution better.</item>
+        <item>Write operations are required — NLSQLTableQueryEngine does not prevent destructive SQL; never use with a read-write connection for agent-driven queries.</item>
+        <item>Query patterns are known and fixed — parameterized SQL queries are cheaper and safer than LLM-generated SQL for static workloads.</item>
+        <item>The database is large and complex/dynamic — dedicated text-to-SQL services handle schema evolution better than a general-purpose LLM.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-setup">
+      <p>Connect via SQLAlchemy, wrap with SQLDatabase, restrict to relevant tables, create query engine. Log the generated SQL for every query.</p>
+
+      <rule>
+        <statement>Always pass include_tables to NLSQLTableQueryEngine or SQLDatabase with only the tables relevant to the query domain. Never expose the full schema — each additional table increases SQL generation errors and token cost.</statement>
+        <rationale>The LLM generates SQL from schema descriptions. Exposing 50 tables when the query domain touches 3 floods the LLM's context with irrelevant columns and foreign keys, increasing the probability of incorrect JOIN generation or column hallucination.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always connect NLSQLTableQueryEngine with a read-only database user. Never use a connection with INSERT, UPDATE, DELETE, or DROP privileges for agent-driven queries. NLSQLTableQueryEngine does not sanitize or validate generated SQL before execution.</statement>
+        <rationale>An adversarial or malformed NL query can produce destructive SQL (DELETE FROM users WHERE ...). The engine executes it without validation. Read-only connection privileges are the only reliable safety gate.</rationale>
+      </rule>
+
+      <example type="good" title="NLSQLTableQueryEngine with table restriction">
+        <code lang="python"><![CDATA[
+from llama_index.core import SQLDatabase
+from llama_index.core.query_engine import NLSQLTableQueryEngine
+from sqlalchemy import create_engine
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Read-only connection
+engine = create_engine(
+    "postgresql://readonly_user:password@localhost:5432/mydb"
+)
+
+sql_database = SQLDatabase(
+    engine,
+    include_tables=["users", "orders"]  # restrict to relevant tables only
+)
+
+query_engine = NLSQLTableQueryEngine(
+    sql_database=sql_database,
+    tables=["users", "orders"],
+)
+
+response = query_engine.query("How many orders were placed last month?")
+print(response.response)
+
+# Log the generated SQL for auditing
+sql_query = response.metadata.get("sql_query")
+logger.info("Generated SQL: %s", sql_query)
+]]></code>
+        <note>response.metadata["sql_query"] contains the exact SQL executed — log it for debugging and compliance.</note>
+      </example>
+
+      <example type="bad" title="Full schema exposure with write-capable connection">
+        <code lang="python"><![CDATA[
+# DO NOT do this
+engine = create_engine("postgresql://admin:password@localhost/mydb")
+sql_database = SQLDatabase(engine)  # exposes ALL tables
+query_engine = NLSQLTableQueryEngine(sql_database=sql_database)
+]]></code>
+        <note>Admin connection with all tables: one adversarial query can delete data. No recovery path.</note>
+      </example>
+    </section>
+
+    <section name="schema-retrieval-for-large-dbs">
+      <p>For databases with many tables, use ObjectIndex to embed table schema descriptions and retrieve only the relevant schema subset before SQL generation. This keeps the schema context small even when the database has many tables.</p>
+
+      <rule>
+        <statement>Use SQLTableRetrieverQueryEngine with an ObjectIndex over table schemas when the database has more than 15 tables. The index retrieves only the top-k most relevant table schemas for each query, preventing schema context overflow.</statement>
+        <rationale>Passing all table schemas to the LLM at once hits token limits on large databases and degrades SQL quality. ObjectIndex embeds each table's schema description and retrieves only the top-k relevant tables per query — the same RAG pattern applied to schema metadata.</rationale>
+      </rule>
+
+      <example type="good" title="Schema-aware table retrieval for large databases">
+        <code lang="python"><![CDATA[
+from llama_index.core import VectorStoreIndex
+from llama_index.core.objects import SQLTableNodeMapping, ObjectIndex
+from llama_index.core.query_engine import SQLTableRetrieverQueryEngine
+
+# Build schema index
+table_node_mapping = SQLTableNodeMapping(sql_database)
+table_schema_index = ObjectIndex.from_objects(
+    objects=table_node_mapping.get_objects(),
+    index_cls=VectorStoreIndex,
+)
+
+# Query engine retrieves relevant table schemas per query
+query_engine = SQLTableRetrieverQueryEngine(
+    sql_database=sql_database,
+    table_retriever=table_schema_index.as_retriever(similarity_top_k=3),
+)
+
+response = query_engine.query(
+    "How many orders were placed last month?"
+)
+print(response.response)
+]]></code>
+        <note>similarity_top_k=3 retrieves the 3 most relevant table schemas — sufficient for most queries without flooding the LLM context.</note>
+      </example>
+    </section>
+
+    <section name="agent-routing-sql-vs-rag">
+      <p>In a hybrid agent pipeline, route queries to NLSQLTableQueryEngine or VectorStoreIndex based on query type. SQL queries ask for counts, aggregations, or specific structured records; document queries ask for explanations or unstructured content.</p>
+
+      <example type="good" title="Agent routing SQL vs document queries">
+        <code lang="python"><![CDATA[
+from llama_index.core.tools import QueryEngineTool, ToolMetadata
+from llama_index.core.agent import ReActAgent
+from llama_index.core import Settings
+
+sql_tool = QueryEngineTool(
+    query_engine=sql_query_engine,
+    metadata=ToolMetadata(
+        name="database",
+        description=(
+            "Use for questions about counts, aggregations, or specific "
+            "records in the relational database (users, orders, products)."
+        ),
+    ),
+)
+
+docs_tool = QueryEngineTool(
+    query_engine=vector_index.as_query_engine(),
+    metadata=ToolMetadata(
+        name="documentation",
+        description=(
+            "Use for questions about product features, policies, or "
+            "explanations that require reading documentation."
+        ),
+    ),
+)
+
+agent = ReActAgent.from_tools(
+    tools=[sql_tool, docs_tool],
+    llm=Settings.llm,
+    verbose=True,
+    max_iterations=10,
+)
+
+response = agent.chat(
+    "How many orders were placed last month and what is our refund policy?"
+)
+]]></code>
+        <note>Tool descriptions must be unambiguous — the agent selects the tool based on description matching the query semantics.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Use a read-only database connection for all NLSQLTableQueryEngine queries.</check>
+      <check>Restrict include_tables to only the tables relevant to the query domain.</check>
+      <check>Log response.metadata["sql_query"] for every query for audit and debugging.</check>
+      <check>Use SQLTableRetrieverQueryEngine with ObjectIndex for databases with more than 15 tables.</check>
+      <check>Never rely on prompt instructions to prevent destructive SQL — enforce at the DB connection level.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-agents-eval"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/query_engine/SQLQueryEngine/"/>
+    </see-also>
+  </content>
+</methodology>
