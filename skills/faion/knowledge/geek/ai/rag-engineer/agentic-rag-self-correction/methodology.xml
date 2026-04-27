@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agentic-rag-self-correction">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>RAG pipeline with answer verification: a faithfulness verifier checks each claim against source chunks and triggers additional retrieval or human escalation when claims are ungrounded.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>agentic</tag>
+      <tag>self-correction</tag>
+      <tag>faithfulness</tag>
+      <tag>hallucination</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>ragas</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-tool-using"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Agentic RAG — Self-Correction Loop</title>
+
+    <summary>A self-correcting RAG pipeline generates an answer, then runs a faithfulness verifier that checks each claim against the retrieved source chunks. If ungrounded claims are found, the verifier's feedback drives additional retrieval and re-generation, up to max_corrections attempts. When the verifier flags more than 2 ungrounded claims, the answer is escalated to human review rather than surfaced to the user.</summary>
+
+    <why>
+      <p>Standard RAG generates answers that look plausible but contain hallucinated details not present in the retrieved context. Hallucination rates of 15–20% are common in single-pass RAG; agentic self-correction drops this to 5–10% by making the generator accountable to the verifier rather than to the user. The key mechanism: the verifier's feedback drives a targeted re-retrieval rather than a blind retry — each correction pass actually adds missing evidence.</p>
+      <p>The self-correction pattern is especially valuable for fact-checking, compliance, and legal use cases where a single ungrounded claim can be costly. It reduces hallucinations at the cost of 1–2 extra LLM round-trips per correction cycle.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Fact-checking or compliance verification where exhaustive source coverage is required.</item>
+        <item>Legal or regulatory content where ungrounded claims have real consequences.</item>
+        <item>Any RAG pipeline where hallucination rate needs to drop below 10%.</item>
+        <item>Structured data (SQL/tables) must be combined with unstructured document retrieval and cross-verified.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Latency-critical queries (under 2s SLA) — correction cycles add 3–5x latency.</item>
+        <item>Creative generation tasks where faithfulness to source is not the goal.</item>
+        <item>High-volume low-stakes queries where the cost of correction cycles exceeds the cost of occasional hallucinations.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="self-correction-pattern">
+      <p>The self-correcting RAG loop: (1) retrieve context, (2) generate answer, (3) verify faithfulness, (4) if invalid, use verifier feedback to retrieve additional context, (5) regenerate, (6) repeat up to max_corrections. If still not verified, return the answer with verified=False for human review.</p>
+
+      <rule testable="true">
+        <statement>The faithfulness verifier MUST use a different model (or at minimum a different temperature/run) from the generator. When faithfulness_verifier returns more than 2 ungrounded claims, do NOT surface the answer to the user — either retrieve more context or escalate to human review.</statement>
+        <rationale>The same model tends to confirm its own outputs — a generator that hallucinated will call its own answer faithful. Using a different model (or temperature) for verification breaks this confirmation bias and catches the hallucinations the generator missed.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cap self-correction at max_corrections (recommended 2). When the cap is reached without a verified answer, log all iteration traces and route to human review.</statement>
+        <rationale>Self-correction loops can amplify hallucinations if the verification LLM uses the same model as the generator. A hard cap prevents runaway cost and surfaces persistent failures for corpus review.</rationale>
+      </rule>
+
+      <example type="good" title="SelfCorrectingRAG with verification loop">
+        <code lang="python"><![CDATA[
+from typing import List, Dict, Tuple
+import openai
+import json
+
+class SelfCorrectingRAG:
+    """RAG with answer verification and correction."""
+
+    def __init__(self, vector_store, max_corrections: int = 2):
+        self.vector_store = vector_store
+        self.max_corrections = max_corrections
+
+    def answer(self, query: str) -> Dict:
+        """Generate answer with self-correction."""
+        context = self.vector_store.search(query, k=10)
+
+        for attempt in range(self.max_corrections + 1):
+            answer = self._generate(query, context)
+            is_valid, feedback = self._verify(query, answer, context)
+
+            if is_valid:
+                return {
+                    "answer": answer,
+                    "attempts": attempt + 1,
+                    "verified": True
+                }
+
+            additional = self.vector_store.search(feedback, k=5)
+            context.extend(additional)
+
+        return {
+            "answer": answer,
+            "attempts": self.max_corrections + 1,
+            "verified": False
+        }
+
+    def _generate(self, query: str, context: List[Dict]) -> str:
+        """Generate answer from context."""
+        context_text = "\n\n".join([c["text"] for c in context])
+
+        prompt = f"""
+Context:
+{context_text}
+
+Query: {query}
+
+Answer based ONLY on the context above. If information is missing, say so.
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        return response.choices[0].message.content
+
+    def _verify(self, query: str, answer: str, context: List[Dict]) -> Tuple[bool, str]:
+        """Verify answer quality and identify gaps."""
+        context_text = "\n\n".join([c["text"] for c in context])
+
+        prompt = f"""
+Query: {query}
+Answer: {answer}
+Context: {context_text}
+
+Verify:
+1. Is answer supported by context?
+2. Are there factual errors?
+3. Is information missing?
+
+Return JSON:
+{{"valid": true/false, "feedback": "what to search for if invalid"}}
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0
+        )
+
+        result = json.loads(response.choices[0].message.content)
+        return result.get("valid", False), result.get("feedback", "")
+]]></code>
+        <note>Generator uses gpt-4o; verifier uses gpt-4o-mini at temperature 0 — different model breaks confirmation bias.</note>
+      </example>
+    </section>
+
+    <section name="langgraph-verify-node">
+      <p>In a LangGraph workflow, the verify node calls the faithfulness verifier. A conditional edge routes back to "plan" for another retrieval-generation cycle, or to END when verified or the iteration cap is hit.</p>
+
+      <example type="good" title="LangGraph verify node and conditional edge">
+        <code lang="python"><![CDATA[
+def verify(state: AgentState) -> AgentState:
+    """Verify answer quality."""
+    # Faithfulness verification logic
+    state["verified"] = True
+    return state
+
+def should_refine(state: AgentState) -> str:
+    """Route: refine or finish."""
+    return "finish" if state["verified"] else "refine"
+
+workflow.add_node("verify", verify)
+workflow.add_conditional_edges(
+    "verify",
+    should_refine,
+    {"finish": END, "refine": "plan"}
+)
+]]></code>
+        <note>Always add an iteration counter to state to prevent unbounded refinement loops.</note>
+      </example>
+    </section>
+
+    <section name="gotchas">
+      <antipattern>
+        <description>Using the same model instance for generation and verification.</description>
+        <reason>Models confirm their own hallucinations. The verifier must be independent: different model family, or at minimum different temperature and system prompt. Use Haiku for verification, Opus/Sonnet for generation.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Surfacing an answer to the user when verified=False after max_corrections.</description>
+        <reason>An unverified answer after exhausting correction cycles is evidence of a corpus gap or a genuinely unanswerable question. Route to human review rather than silently serving a low-confidence answer.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Self-correction loops that retrieve more context without updating the generation prompt to reference the new chunks.</description>
+        <reason>Adding chunks to the context list without re-indexing them in the prompt means the generator sees the same prompt body and produces the same answer. Always rebuild the context block from scratch on each iteration.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-tool-using"/>
+      <link href="https://docs.ragas.io"/>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/rag/langgraph_agentic_rag/"/>
+      <link href="https://arxiv.org/abs/2312.10997"/>
+    </see-also>
+  </content>
+</methodology>
