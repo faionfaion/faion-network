@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: local-llm-ollama → 6 slugs (ollama-setup-models, ollama-python-client, ollama-tool-calling, ollama-deployment, ollama-prompt-engineering, ollama-agent-integration)
 - decompose: finops → 5 slugs (finops-framework, finops-cost-visibility, finops-governance, finops-ai-ml-costs, finops-agentic-workflow)
 - decompose: model-context-protocol → 5 slugs (mcp-architecture, mcp-server-implementation, mcp-client-integration, mcp-security, mcp-dev-prompts)
 - decompose: github-actions-workflows → 5 slugs (gha-matrix-builds, gha-caching-artifacts, gha-deployment-patterns, gha-security-hardening, gha-workflow-structure)
