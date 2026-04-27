@@ -1,0 +1,501 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Layered backend patterns for Express and modern Node.js: controllers, services, middleware, error handling, and Pino logging.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>express</tag>
+      <tag>backend</tag>
+      <tag>patterns</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Node.js Patterns</title>
+    <summary>Backend patterns for Express and modern Node.js, covering application structure, middleware ordering, controller/service layer separation, centralized error handling, and Pino request logging.</summary>
+    <why>
+      <p>Layered architecture (routes → controllers → services → models) scales from prototypes to enterprise APIs. Centralized error handling prevents scattered try/catch boilerplate and ensures consistent error responses. Request-scoped logging (request ID, duration) is critical for debugging distributed systems. TypeScript with explicit types at layer boundaries catches bugs at compile time.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new TypeScript Express API with controllers, services, middleware, errors, and Pino logger.</item>
+        <item>Refactoring an existing JS/TS Node service into a layered structure with central error handling.</item>
+        <item>Adding a new domain (resource) to an existing Express app while following the project's module layout.</item>
+        <item>Wiring request-scoped logging (request ID, duration) into an existing Express server.</item>
+        <item>Teams seeking a scalable, testable backend structure that resists feature bloat.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure CLI/script Node code with no HTTP layer — routing/controller scaffolding is overhead.</item>
+        <item>Edge-runtime targets (Cloudflare Workers, Vercel Edge, Deno Deploy) — Express is Node-only; use Hono instead.</item>
+        <item>High-throughput WebSocket-first services — Express middleware chain is slow; use uWebSockets.js or Fastify.</item>
+        <item>Frontend-only React projects — no Node server is owned.</item>
+        <item>Single-file scripts where latency/startup matter more than modularity.</item>
+      </list>
+    </when-not-to-use>
+    <section name="express-application-structure">
+      <p>A scalable Express layout with separation of concerns: routes → controllers → services → models, plus middleware, types, and utilities.</p>
+      <code lang="text"><![CDATA[
+src/
+├── app.ts               # Express app setup
+├── server.ts            # Server entry point
+├── config/
+│   └── env.ts           # Environment variables
+├── routes/
+│   ├── index.ts         # Route aggregator
+│   ├── users.ts
+│   └── products.ts
+├── controllers/
+│   ├── users.controller.ts
+│   └── products.controller.ts
+├── services/
+│   ├── users.service.ts
+│   └── products.service.ts
+├── middleware/
+│   ├── auth.ts
+│   ├── errorHandler.ts
+│   └── validate.ts
+├── models/
+│   └── user.model.ts
+├── types/
+│   └── express.d.ts     # Express type extensions
+└── utils/
+    ├── logger.ts
+    ├── errors.ts
+    └── asyncHandler.ts
+]]></code>
+      <note>Each layer has a single responsibility: routes define endpoints, controllers orchestrate requests, services contain business logic, models represent data. This structure scales linearly with feature count.</note>
+    </section>
+    <section name="express-setup">
+      <p>Initialize Express with security headers (helmet), CORS, body parsing, compression, and request logging. Error handler must be registered last.</p>
+      <code lang="typescript"><![CDATA[
+// app.ts
+import express, { type Express } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import { errorHandler } from './middleware/errorHandler';
+import { requestLogger } from './middleware/requestLogger';
+import routes from './routes';
+
+export function createApp(): Express {
+  const app = express();
+
+  // Security
+  app.use(helmet());
+  app.use(cors({ origin: process.env.CORS_ORIGIN }));
+
+  // Parsing
+  app.use(express.json({ limit: '10kb' }));
+  app.use(express.urlencoded({ extended: true }));
+
+  // Compression
+  app.use(compression());
+
+  // Logging
+  app.use(requestLogger);
+
+  // Routes
+  app.use('/api/v1', routes);
+
+  // Health check
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Error handling (MUST be last)
+  app.use(errorHandler);
+
+  return app;
+}
+]]></code>
+      <note>Middleware order is critical: security → parsing → compression → logging → routes → error handler. Helmet must come before routes to add headers. Error handler MUST be last to catch all errors.</note>
+    </section>
+    <section name="middleware-pattern">
+      <p>Middleware for authentication, request-scoped logging, and validation. Use TypeScript declaration merging to extend Express types.</p>
+      <code lang="typescript"><![CDATA[
+// middleware/auth.ts
+import { type RequestHandler } from 'express';
+import { verifyToken } from '../utils/jwt';
+import { UnauthorizedError } from '../utils/errors';
+
+export const authenticate: RequestHandler = async (req, _res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new UnauthorizedError('Missing authorization header');
+    }
+
+    const token = authHeader.slice(7);
+    const payload = await verifyToken(token);
+
+    req.user = payload;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+// types/express.d.ts — Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: TokenPayload;
+      id?: string;
+    }
+  }
+}
+]]></code>
+      <note>Always use async/await with next(error) in middleware. Exceptions thrown are automatically caught by Express. Single type augmentation file prevents merge conflicts in monorepos.</note>
+    </section>
+    <section name="controller-pattern">
+      <p>Controllers orchestrate request → validation → service call → response. Delegate business logic to services, keep controllers thin.</p>
+      <code lang="typescript"><![CDATA[
+// controllers/users.controller.ts
+import { type Request, type Response, type NextFunction } from 'express';
+import * as usersService from '../services/users.service';
+import { CreateUserSchema, UpdateUserSchema } from '../schemas/users';
+
+export async function getUsers(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const users = await usersService.findAll();
+    res.json({ data: users });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = CreateUserSchema.parse(req.body);
+    const user = await usersService.create(data);
+    res.status(201).json({ data: user });
+  } catch (error) {
+    next(error);
+  }
+}
+]]></code>
+      <note>Controllers parse/validate input, call service methods, and return responses. Always wrap async operations in try/catch and pass errors to next(). Return void for type safety.</note>
+    </section>
+    <section name="error-handling">
+      <p>Custom error classes (AppError, NotFoundError, UnauthorizedError) with status codes and operational flags. Central error handler for consistent responses.</p>
+      <code lang="typescript"><![CDATA[
+// utils/errors.ts
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public code: string = 'INTERNAL_ERROR',
+    public isOperational: boolean = true,
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = 'Resource not found') {
+    super(message, 404, 'NOT_FOUND');
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = 'Unauthorized') {
+    super(message, 401, 'UNAUTHORIZED');
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(
+    message = 'Validation failed',
+    public errors: Record&lt;string, string[]&gt; = {},
+  ) {
+    super(message, 400, 'VALIDATION_ERROR');
+  }
+}
+
+// middleware/errorHandler.ts
+import { type ErrorRequestHandler } from 'express';
+import { AppError } from '../utils/errors';
+import { ZodError } from 'zod';
+import { logger } from '../utils/logger';
+
+export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  // Log error
+  logger.error(err);
+
+  // Zod validation error
+  if (err instanceof ZodError) {
+    res.status(400).json({
+      error: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      details: err.flatten().fieldErrors,
+    });
+    return;
+  }
+
+  // Known operational error
+  if (err instanceof AppError && err.isOperational) {
+    res.status(err.statusCode).json({
+      error: err.message,
+      code: err.code,
+    });
+    return;
+  }
+
+  // Unknown error - don't leak details
+  res.status(500).json({
+    error: 'Internal server error',
+    code: 'INTERNAL_ERROR',
+  });
+};
+]]></code>
+      <note>Distinguish operational errors (expected, safe to return to client) from programmer errors (crash and let systemd restart). Use Error.captureStackTrace() to preserve stack traces.</note>
+    </section>
+    <section name="logging-with-pino">
+      <p>Fast structured logging with Pino. Configure once in utils/logger.ts, inject request-scoped IDs and duration via middleware.</p>
+      <code lang="typescript"><![CDATA[
+// utils/logger.ts
+import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  transport: process.env.NODE_ENV === 'development'
+    ? { target: 'pino-pretty', options: { colorize: true } }
+    : undefined,
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+});
+
+// Request logger middleware
+import { type RequestHandler } from 'express';
+import { randomUUID } from 'crypto';
+
+export const requestLogger: RequestHandler = (req, res, next) => {
+  const requestId = randomUUID();
+  req.id = requestId;
+
+  const start = Date.now();
+
+  res.on('finish', () => {
+    logger.info({
+      requestId,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      duration: Date.now() - start,
+    });
+  });
+
+  next();
+};
+]]></code>
+      <note>Pino outputs JSON in production (parseable by log aggregators), and pretty-printed in development. Always log via request.log or logger methods, never console.log.</note>
+    </section>
+    <section name="async-handler-wrapper">
+      <p>Eliminate boilerplate try/catch blocks in every controller. Wrap async handlers to automatically forward errors to the error middleware.</p>
+      <code lang="typescript"><![CDATA[
+// utils/asyncHandler.ts
+import type { RequestHandler } from 'express';
+
+export const asyncHandler =
+  &lt;P, ResB, ReqB, ReqQ&gt;(
+    fn: (
+      req: Parameters&lt;RequestHandler&lt;P, ResB, ReqB, ReqQ&gt;&gt;[0],
+      res: Parameters&lt;RequestHandler&lt;P, ResB, ReqB, ReqQ&gt;&gt;[1],
+      next: Parameters&lt;RequestHandler&lt;P, ResB, ReqB, ReqQ&gt;&gt;[2],
+    ) =&gt; Promise&lt;unknown&gt;,
+  ): RequestHandler&lt;P, ResB, ReqB, ReqQ&gt; =&gt;
+  (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+
+// Use as:
+router.get('/', asyncHandler(getUsers));
+// Instead of:
+router.get('/', async (req, res, next) => {
+  try {
+    const users = await getUsers(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+]]></code>
+      <note>asyncHandler() prevents the need for try/catch boilerplate in every controller. Exceptions are automatically forwarded to the error middleware.</note>
+    </section>
+    <section name="antipatterns">
+      <antipattern>
+        <description>Placing error handler middleware before routes. Error handlers must be last in the middleware chain to catch all errors.</description>
+        <reason>Errors thrown in routes never reach an error handler placed earlier. The request hangs or Express sends a generic response.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+app.use(errorHandler); // WRONG: placed too early
+app.use('/api/v1', routes);
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+app.use('/api/v1', routes);
+app.use(errorHandler); // CORRECT: last middleware
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Duplicating validation logic in controllers instead of using a shared validate middleware or asyncHandler wrapper.</description>
+        <reason>Validation boilerplate spreads across controllers, diverging error handling and making it hard to enforce consistent error shapes.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+export async function createUser(req, res, next) {
+  try {
+    const data = CreateUserSchema.parse(req.body); // Repeated in every controller
+    const user = await usersService.create(data);
+    res.status(201).json({ data: user });
+  } catch (error) {
+    next(error);
+  }
+}
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+export const createUser = asyncHandler(async (req, res) => {
+  const data = CreateUserSchema.parse(req.body);
+  const user = await usersService.create(data);
+  res.status(201).json({ data: user });
+});
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Importing process.env variables throughout the codebase instead of resolving once in config/env.ts.</description>
+        <reason>Scattered process.env accesses are hard to test, type, and refactor. Configuration changes require searching the entire codebase.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+// In many files:
+const dbUrl = process.env.DATABASE_URL;
+const apiKey = process.env.API_KEY;
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// config/env.ts (once)
+import { z } from 'zod';
+
+const envSchema = z.object({
+  DATABASE_URL: z.string(),
+  API_KEY: z.string(),
+});
+
+export const config = envSchema.parse(process.env);
+
+// In modules:
+import { config } from './config/env';
+const dbUrl = config.DATABASE_URL;
+]]></code>
+        </example>
+      </antipattern>
+      <antipattern>
+        <description>Not creating a pure createApp() function. Binding listen() inside createApp() prevents testing without binding a real port.</description>
+        <reason>Tests must bind a port for each test file, slowing test suites and risking port conflicts. Separating app factory from server startup enables fast, deterministic tests.</reason>
+        <example type="bad">
+          <code lang="typescript"><![CDATA[
+export function createApp() {
+  const app = express();
+  // ... setup ...
+  app.listen(3000); // Cannot test without binding port
+  return app;
+}
+]]></code>
+        </example>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+// app.ts — pure factory
+export function createApp(): Express {
+  const app = express();
+  // ... setup ...
+  return app;
+}
+
+// server.ts — startup only
+const app = createApp();
+app.listen(process.env.PORT || 3000);
+
+// test.ts — supertest, no port binding
+const app = createApp();
+await request(app).get('/health').expect(200);
+]]></code>
+        </example>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <rules>
+        <rule>
+          <statement>Middleware order is mandatory: security (helmet, cors) → parsing (json, urlencoded) → compression → logging → routes → error handler.</statement>
+          <rationale>Helmet must protect before serving routes. Error handler must come last to catch all errors. Compression after logging reduces log payload.</rationale>
+        </rule>
+        <rule>
+          <statement>Create a pure createApp() function that returns Express without calling listen(). Separate server startup into server.ts.</statement>
+          <rationale>Enables fast supertest-based tests that don't bind ports. Improves test parallelization and prevents port-conflict flakes.</rationale>
+        </rule>
+        <rule>
+          <statement>Resolve configuration once in config/env.ts using Zod validation. Import the frozen config object, never process.env directly.</statement>
+          <rationale>Centralized config is type-safe, testable, and refactorable. Catches missing env vars on startup, not in a random handler at 3am.</rationale>
+        </rule>
+        <rule>
+          <statement>Use Error.captureStackTrace in custom error subclasses. Preserve error.isOperational flag to distinguish programmer errors from expected failures.</statement>
+          <rationale>Stack traces aid debugging. Operational errors are safe to return to clients; programmer errors should crash the process and let systemd restart.</rationale>
+        </rule>
+        <rule>
+          <statement>Every controller handler must have try/catch or use asyncHandler wrapper to forward errors to the error middleware.</statement>
+          <rationale>Forgetting try/catch leaves unhandled promise rejections that crash the server silently.</rationale>
+        </rule>
+        <rule>
+          <statement>Log with request.log or the injected logger, never console.log. Include requestId and duration in request finish logs.</statement>
+          <rationale>Structured logging with request IDs enables distributed tracing. Duration metrics reveal performance issues. console.log is lost in JSON-only environments.</rationale>
+        </rule>
+        <rule>
+          <statement>Use Pino transports for production (Loki, Datadog) and pino-pretty for development. Avoid losing logs during shutdown via logger.flush().</statement>
+          <rationale>Transports integrate with log aggregators. Async flush prevents losing in-flight logs on process exit.</rationale>
+        </rule>
+      </rules>
+    </section>
+    <section name="cli-tools">
+      <p>Recommended tools for Node.js backend development:</p>
+      <list>
+        <item>tsx: Run TypeScript directly in dev without build step; `npm i -D tsx` · https://tsx.is.</item>
+        <item>node --watch: Native dev reload (Node 22+); https://nodejs.org/api/cli.html#--watch.</item>
+        <item>pino-pretty: Dev log pretty printing; `npm i -D pino-pretty`.</item>
+        <item>supertest: HTTP integration tests without binding ports; `npm i -D supertest`.</item>
+        <item>clinic.js: Perf flamegraphs and event-loop diagnostics; https://clinicjs.org.</item>
+        <item>0x: Single-process flamegraph for profiling; `npx 0x dist/server.js`.</item>
+        <item>autocannon: Load test endpoints; `npx autocannon http://localhost:3000/api/v1/...`.</item>
+        <item>OpenTelemetry Node SDK: Auto-instrument Express for distributed tracing; `npm i @opentelemetry/auto-instrumentations-node`.</item>
+      </list>
+    </section>
+    <see-also>
+      <link href="https://expressjs.com/en/guide/error-handling.html"/>
+      <link href="https://github.com/goldbergyoni/nodebestpractices"/>
+      <link href="https://getpino.io/"/>
+      <link href="https://nodejs.org/api/cli.html#--watch"/>
+      <link href="https://opentelemetry.io/docs/languages/js/getting-started/nodejs/"/>
+    </see-also>
+  </content>
+</methodology>
