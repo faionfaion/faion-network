@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-db-index-tuning">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Tune HNSW index parameters (M, ef_construct, ef_search), configure quantization (scalar/product/binary), and profile workloads to hit latency and recall targets in production vector databases.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>hnsw</tag>
+      <tag>quantization</tag>
+      <tag>performance</tag>
+      <tag>index-tuning</tag>
+    </tags>
+    <category>setup</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>sql</language>
+      <language>yaml</language>
+    </languages>
+    <related>
+      <ref slug="vector-db-setup-dev"/>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-databases"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Vector Database Index and Quantization Tuning</title>
+
+    <summary>Configure HNSW index parameters (M, ef_construct, ef_search), choose a quantization strategy (scalar int8, product, binary), and select workload profiles (read-heavy, write-heavy, balanced) to hit defined latency and recall SLAs without over-provisioning memory.</summary>
+
+    <why>
+      <p>HNSW index parameters have a direct, measurable effect on recall, query latency, index build time, and RAM usage. Default values (M=16, ef_construct=100) work for most workloads but leave significant optimization potential on the table. At 10M+ vectors, a wrong choice of quantization type can mean the difference between fitting in RAM (scalar int8, 4x reduction) and requiring expensive disk-backed search. Likewise, ef_search tuning alone can halve query latency with less than 1% recall loss.</p>
+      <p>Limitations to account for: HNSW index build time is O(n log n) — initial indexing of 10M+ vectors takes hours and blocks queries. Qdrant scalar quantization reduces memory 4x but introduces 1–2% recall loss; agents must account for this in quality targets. pgvector HNSW index does not support online updates without re-indexing; high-write workloads degrade index quality.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Query latency exceeds the p95 target after initial collection setup.</item>
+        <item>Memory usage approaches the instance limit as the vector count grows.</item>
+        <item>Recall metrics fall below the defined threshold after enabling quantization.</item>
+        <item>Switching between workload profiles (batch indexing to live search).</item>
+        <item>Scaling beyond 1M vectors where default parameters cause index quality degradation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 100K vectors — default parameters are fine; tuning overhead is not justified.</item>
+        <item>Using a fully managed service (Pinecone Serverless) — the service manages index internals.</item>
+        <item>Recall has not been measured — tune recall first, then latency.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="hnsw-parameters">
+      <p>HNSW has three primary knobs: M (graph connectivity), ef_construct (build quality), and ef_search (query quality).</p>
+
+      <section name="parameter-table">
+        <list>
+          <item>M (connections per node): 16 default; use 32-64 for high-recall requirements. Higher M = better recall and slower build; more memory per node.</item>
+          <item>ef_construct (build quality): 100-200 for production. Higher = better index quality and slower build. Set once at collection creation.</item>
+          <item>ef_search (search quality): start at 50, increase for recall. Higher = better recall and slower queries. Tunable at query time without rebuild.</item>
+          <item>nlist (IVF, number of clusters): sqrt(n) to 4*sqrt(n). Only relevant for IVFFlat index type.</item>
+          <item>nprobe (IVF, clusters to search): nlist/10 to nlist/4. Higher = better recall; do not use IVFFlat for production (use HNSW).</item>
+        </list>
+      </section>
+
+      <rule>
+        <statement>Always use HNSW index type for production workloads in pgvector and Milvus; never use IVFFlat as the primary production index. For Qdrant, HNSW is the only available index type.</statement>
+        <rationale>IVFFlat requires a full two-pass scan (clustering then search within cluster). HNSW provides sub-linear search time with predictable latency at any scale. IVFFlat recall degrades unpredictably with filtered queries.</rationale>
+      </rule>
+
+      <example type="good" title="Qdrant HNSW parameter profiles">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import HnswConfigDiff
+
+# High recall configuration (research, accuracy-critical RAG)
+high_recall_config = HnswConfigDiff(
+    m=32,              # More connections = better recall
+    ef_construct=200,  # Higher quality index build
+)
+
+# Balanced configuration (default — most production RAG)
+balanced_config = HnswConfigDiff(
+    m=16,
+    ef_construct=100,
+)
+
+# Memory-efficient configuration (large collections, memory-constrained)
+memory_efficient_config = HnswConfigDiff(
+    m=8,               # Fewer connections = less memory
+    ef_construct=50,
+    on_disk=True,      # Store HNSW graph on disk
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Qdrant search with tuned ef_search">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import SearchParams, QuantizationSearchParams
+
+# High accuracy search (documentation lookup, legal, medical)
+results = client.search(
+    collection_name="documents",
+    query_vector=query_embedding,
+    limit=10,
+    search_params=SearchParams(
+        hnsw_ef=200,  # Higher = better recall, slower
+        quantization=QuantizationSearchParams(
+            rescore=True,       # Rescore with original vectors
+            oversampling=2.0,   # Retrieve 2x candidates for rescoring
+        )
+    ),
+)
+
+# Fast search (lower accuracy — typeahead, suggestions)
+results = client.search(
+    collection_name="documents",
+    query_vector=query_embedding,
+    limit=10,
+    search_params=SearchParams(
+        hnsw_ef=50,  # Lower = faster, less accurate
+    ),
+)
+]]></code>
+      </example>
+
+      <example type="good" title="pgvector HNSW index creation and tuning">
+        <code lang="sql"><![CDATA[
+-- Create HNSW index (production — always prefer over IVFFlat)
+CREATE INDEX ON documents
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);
+
+-- Set search quality (higher = better recall, slower)
+SET hnsw.ef_search = 100;
+
+-- Set maintenance memory for index builds (run before CREATE INDEX)
+SET maintenance_work_mem = '1GB';
+
+-- postgresql.conf tuning for pgvector workloads
+-- shared_buffers = 4GB              -- 25% of RAM
+-- effective_cache_size = 12GB       -- 75% of RAM
+-- maintenance_work_mem = 2GB        -- For index builds
+-- work_mem = 256MB                  -- For queries
+]]></code>
+      </example>
+    </section>
+
+    <section name="quantization">
+      <p>Quantization compresses vector data at the cost of recall. Choose based on available memory and acceptable recall loss.</p>
+
+      <section name="quantization-tradeoffs">
+        <list>
+          <item>Scalar quantization (int8): 4x memory reduction; 1-2% recall loss. Recommended starting point.</item>
+          <item>Product quantization (PQ): 8-32x memory reduction; 3-5% recall loss. Use when memory is severely constrained.</item>
+          <item>Binary quantization: 32x memory reduction; 5-10% recall loss. Use only for approximate search at extreme scale.</item>
+          <item>On-disk payload: variable memory reduction; slower payload access (no recall impact).</item>
+          <item>On-disk vectors: significant memory reduction; slower search. Use for cold/archive collections.</item>
+        </list>
+      </section>
+
+      <rule>
+        <statement>Enable scalar quantization (int8) with always_ram=true from day one when a Qdrant collection is expected to exceed 500K vectors. Switching quantization type after data load requires a full re-index of the collection.</statement>
+        <rationale>Retrofitting quantization on a live collection causes a multi-hour re-indexing job that degrades query performance and risks OOM on memory-constrained instances.</rationale>
+      </rule>
+
+      <example type="good" title="Qdrant scalar and binary quantization config">
+        <code lang="python"><![CDATA[
+from qdrant_client.models import (
+    ScalarQuantization, ScalarQuantizationConfig,
+    BinaryQuantization, BinaryQuantizationConfig,
+)
+
+# Scalar quantization (4x memory reduction, ~2% recall loss)
+scalar_config = ScalarQuantization(
+    scalar=ScalarQuantizationConfig(
+        type="int8",
+        quantile=0.99,
+        always_ram=True,  # Keep quantized vectors in RAM for fast search
+    )
+)
+
+# Binary quantization (32x memory reduction, ~5-10% recall loss)
+binary_config = BinaryQuantization(
+    binary=BinaryQuantizationConfig(
+        always_ram=True,
+    )
+)
+
+# Apply to existing collection
+client.update_collection(
+    collection_name="documents",
+    quantization_config=scalar_config,
+)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Enabling on-disk vectors (on_disk=True in HnswConfigDiff) while keeping quantization disabled on a collection that receives real-time RAG queries.</description>
+        <reason>On-disk vectors without quantization forces full disk reads for every query result rescore step. Enable scalar quantization first to keep the quantized vectors in RAM; move only the full-precision vectors to disk.</reason>
+      </antipattern>
+    </section>
+
+    <section name="workload-profiles">
+      <p>Tune parameters based on the dominant workload pattern:</p>
+
+      <example type="good" title="Read-heavy workload profile (RAG, search)">
+        <code lang="yaml"><![CDATA[
+# Optimize for low latency reads
+hnsw:
+  ef_search: 100-200
+  m: 32
+quantization:
+  enabled: true
+  type: scalar
+caching:
+  query_cache: enabled
+]]></code>
+      </example>
+
+      <example type="good" title="Write-heavy workload profile (indexing pipeline)">
+        <code lang="yaml"><![CDATA[
+# Optimize for write throughput
+batch_size: 500
+async_indexing: true
+optimizers:
+  indexing_threshold: 50000
+  flush_interval_sec: 30
+]]></code>
+        <note>Use gRPC (port 6334) instead of REST for bulk upserts — 2-4x throughput improvement.</note>
+      </example>
+
+      <example type="good" title="Balanced workload profile (default monitoring)">
+        <code lang="yaml"><![CDATA[
+# Default settings with monitoring
+hnsw:
+  ef_search: 100
+  m: 16
+monitoring:
+  latency_alerts: true
+  throughput_alerts: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="milvus-index">
+      <p>Milvus index creation after data load:</p>
+
+      <example type="good" title="Milvus HNSW index creation">
+        <code lang="python"><![CDATA[
+from pymilvus import Collection
+
+collection = Collection(name="documents")
+
+# Create HNSW index
+index_params = {
+    "metric_type": "COSINE",
+    "index_type": "HNSW",
+    "params": {"M": 16, "efConstruction": 200},
+}
+collection.create_index(field_name="embedding", index_params=index_params)
+
+# Load to memory before querying
+collection.load()
+]]></code>
+        <note>Milvus requires an explicit load() call to bring the collection into memory before it can serve queries.</note>
+      </example>
+    </section>
+
+    <section name="tuning-checklist">
+      <checklist>
+        <check>HNSW index type used (not IVFFlat) for pgvector and Milvus production collections.</check>
+        <check>M, ef_construct set at collection creation; not changed after data load.</check>
+        <check>ef_search profiled against recall benchmark; value documented.</check>
+        <check>Quantization type chosen based on available RAM and maximum acceptable recall loss.</check>
+        <check>Scalar quantization enabled from collection creation if dataset exceeds 500K vectors.</check>
+        <check>maintenance_work_mem set to at least 1GB before pgvector index builds.</check>
+        <check>VACUUM ANALYZE scheduled after bulk inserts into pgvector tables.</check>
+        <check>Index quality monitored after heavy delete operations; rebuild scheduled if degraded.</check>
+        <check>Payload/filter field indexes created on all fields used in query filters.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="vector-db-setup-dev"/>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-databases"/>
+      <link href="https://qdrant.tech/documentation/concepts/indexing/"/>
+      <link href="https://github.com/pgvector/pgvector"/>
+    </see-also>
+  </content>
+</methodology>
