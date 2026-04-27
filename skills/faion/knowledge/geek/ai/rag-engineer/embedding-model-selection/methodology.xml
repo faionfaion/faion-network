@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embedding-model-selection">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Choose the right embedding model for a RAG workload by matching provider, dimensions, token limits, cost, and language requirements to the use case.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>rag</tag>
+      <tag>model-selection</tag>
+      <tag>vector-search</tag>
+      <tag>openai</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Embedding Model Selection for RAG</title>
+
+    <summary>Text embeddings are numerical vector representations of text that capture semantic meaning. Selecting the correct model requires balancing quality, cost, token limits, language coverage, and inference latency against the specific RAG workload.</summary>
+
+    <why>
+      <p>Switching embedding models after ingestion invalidates the entire vector index — full re-ingestion is required. Choosing too small a model degrades retrieval quality; choosing too large a model wastes cost and storage. Picking the wrong dimension count causes permanent index mismatches. The selection decision is made once and is expensive to reverse.</p>
+      <p>Embedding drift: switching models (e.g., text-embedding-3-small to text-embedding-3-large) invalidates the entire vector index — full re-ingestion required. Dimension mismatch: storing vectors in a collection with a different dimension than the model output causes silent corruption or hard errors.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any task requiring semantic similarity between texts (RAG retrieval, deduplication, clustering, classification without labeled data).</item>
+        <item>Building the ingestion step of a RAG pipeline — every chunk must be embedded before storage.</item>
+        <item>Multilingual search where query and document languages may differ (use multilingual models).</item>
+        <item>Cost optimization decisions: choosing between API-based and local embedding models.</item>
+        <item>Starting a new vector index — before any ingestion begins.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Exact keyword matching is sufficient — embeddings add cost and latency with no semantic benefit.</item>
+        <item>The corpus is fewer than 500 texts that will never change — a one-time TF-IDF matrix is simpler and cheaper.</item>
+        <item>You need real-time streaming embeddings at sub-10ms latency — API round-trips make this infeasible; need a local model.</item>
+        <item>The domain is highly specialized (chemistry, genomics) and no domain-adapted model exists — embeddings will produce poor semantic similarity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="model-comparison">
+      <p>Model comparison by provider, dimensions, token limit, cost, and quality:</p>
+
+      <rule>
+        <statement>Use text-embedding-3-large for production RAG requiring best quality; use text-embedding-3-small or a local BGE model for cost-sensitive workloads; use a multilingual model (embed-multilingual-v3.0 or bge-m3) when query and document languages differ.</statement>
+        <rationale>text-embedding-3-large ($0.13/1M tokens, 256-3072 dims, 8191 token max) provides best retrieval quality. text-embedding-3-small ($0.02/1M tokens) gives good quality at 15x lower cost. Local models (bge-large-en-v1.5, e5-large-v2) are free but require GPU for production scale; CPU inference at production scale is only viable with the smallest models (all-MiniLM-L6-v2 ~5ms/text on CPU vs bge-large-en-v1.5 ~200ms).</rationale>
+      </rule>
+
+      <section name="model-table">
+        <p>Full model reference:</p>
+        <list>
+          <item>text-embedding-3-large — OpenAI — 3072 dims (256-3072 configurable) — 8191 token max — $0.13/1M — Best quality — Fast</item>
+          <item>text-embedding-3-small — OpenAI — 1536 dims (256-1536 configurable) — 8191 token max — $0.02/1M — Good quality — Fast</item>
+          <item>text-embedding-ada-002 — OpenAI — 1536 dims — 8191 token max — $0.10/1M — Good quality — Fast</item>
+          <item>mistral-embed — Mistral — 1024 dims — 8192 token max — $0.10/1M — Good quality — Fast</item>
+          <item>embed-english-v3.0 — Cohere — 1024 dims — 512 token max — $0.10/1M — Very Good — Fast</item>
+          <item>embed-multilingual-v3.0 — Cohere — 1024 dims — 512 token max — $0.10/1M — Very Good multilingual — Fast</item>
+          <item>bge-large-en-v1.5 — Local — 1024 dims — 512 token max — Free — Very Good — Medium speed</item>
+          <item>bge-m3 — Local — 1024 dims — 8192 token max — Free — Excellent multilingual — Slow</item>
+          <item>all-MiniLM-L6-v2 — Local — 384 dims — 256 token max — Free — Adequate — Very Fast</item>
+          <item>e5-large-v2 — Local — 1024 dims — 512 token max — Free — Very Good similarity — Medium speed</item>
+          <item>gte-large — Local — 1024 dims — 512 token max — Free — Very Good — Medium speed</item>
+          <item>nomic-embed-text-v1.5 — Local — 768 dims — 8192 token max — Free — Good — Fast</item>
+        </list>
+      </section>
+
+      <section name="use-case-selection">
+        <p>Recommended model by use case:</p>
+        <list>
+          <item>Production RAG → text-embedding-3-large — Best quality, scalable API.</item>
+          <item>Cost-sensitive → text-embedding-3-small or local BGE — Good quality, low cost.</item>
+          <item>Multilingual → embed-multilingual-v3.0 or bge-m3 — 100+ languages.</item>
+          <item>Long documents → bge-m3 or nomic-embed-text — 8K token context window.</item>
+          <item>Air-gapped/Private → sentence-transformers (local) — No API calls required.</item>
+          <item>Real-time search → all-MiniLM-L6-v2 — Fast CPU inference.</item>
+          <item>Semantic similarity → e5-large-v2 — Trained specifically for similarity tasks.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="dimension-selection">
+      <rule>
+        <statement>For text-embedding-3-large, use dimensions=1024 instead of the default 3072. For text-embedding-3-small, use dimensions=512. Store the model name and dimension count in chunk metadata at ingestion time.</statement>
+        <rationale>text-embedding-3-large with dimensions=1024 preserves 95% retrieval quality at 67% lower storage cost. text-embedding-3-large with dimensions=256 is NOT the same as text-embedding-3-small — they produce different vector spaces and cannot be mixed in the same collection. Storing model name and version in chunk metadata enables migration planning when you need to switch models.</rationale>
+      </rule>
+
+      <example type="good" title="Reduced dimension embedding call">
+        <code lang="python"><![CDATA[
+# text-embedding-3-large at 1024 dims — 67% less storage, ~95% quality
+from openai import OpenAI
+
+client = OpenAI()
+
+def get_embedding(text: str, model: str = "text-embedding-3-large", dimensions: int = 1024) -> list[float]:
+    response = client.embeddings.create(
+        input=text,
+        model=model,
+        dimensions=dimensions,
+    )
+    return response.data[0].embedding
+]]></code>
+        <note>OpenAI embeddings API returns response.data[i].embedding as a plain Python list, not numpy — agents passing to Qdrant/Chroma must not call .tolist() (it's already a list).</note>
+      </example>
+
+      <example type="bad" title="Mixing vector spaces in the same collection">
+        <code lang="python"><![CDATA[
+# WRONG: text-embedding-3-large with dimensions=256 is NOT text-embedding-3-small
+# They produce different vector spaces and cannot share a collection
+collection.add(
+    embeddings=[get_embedding(text, "text-embedding-3-large", dimensions=256)],  # BAD
+    ...
+)
+# Later:
+collection.add(
+    embeddings=[get_embedding(text, "text-embedding-3-small")],  # BAD — different space
+    ...
+)
+]]></code>
+        <note>Silent corruption — cosine similarity scores become meaningless across mixed vectors.</note>
+      </example>
+    </section>
+
+    <section name="provider-tools">
+      <p>CLI tools and services for embedding providers:</p>
+      <list>
+        <item>openai — OpenAI Embeddings API — pip install openai — batch up to 2048 texts per call</item>
+        <item>cohere — Cohere Embed v3 API — pip install cohere — strong multilingual; 512 token max</item>
+        <item>voyageai — Voyage AI embeddings — pip install voyageai — best domain-specific quality for code, legal, medical</item>
+        <item>sentence-transformers — Local SBERT/BGE/E5 models — pip install sentence-transformers — first run downloads model (30-120s in CI/CD)</item>
+        <item>fastembed — Fast local embeddings via ONNX — pip install fastembed — CPU-optimized; model downloads on first use (~130MB); pre-download in containers</item>
+        <item>tiktoken — OpenAI tokenizer for token counting — pip install tiktoken — required before calling OpenAI embed API</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Model selection is a configuration-time decision; agents do not switch models at runtime. The agent selects model and dimensions once, stores both in chunk metadata, and uses them consistently across all ingestion and query operations.</p>
+
+      <rule>
+        <statement>An ingestion agent MUST store model name and dimension count in every chunk's metadata. A query agent MUST use the same model and dimensions as the ingestion agent — never mix models within a single vector collection.</statement>
+        <rationale>Without model provenance in metadata, it is impossible to plan or execute re-ingestion migrations. Cross-model mixing produces silently wrong similarity scores.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Switching the embedding model mid-pipeline because a newer model was released, without re-indexing the entire corpus.</description>
+        <reason>The new vectors occupy a different latent space. Cosine similarity between old and new vectors is meaningless. All retrieval results become wrong without full re-ingestion.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cohere's embed-multilingual-v3.0 called with texts exceeding 512 tokens without pre-chunking.</description>
+        <reason>Cohere silently truncates server-side at 512 tokens. The resulting vector represents only the first 512 tokens, not the full text.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+      <link href="https://huggingface.co/spaces/mteb/leaderboard"/>
+      <link href="https://www.sbert.net/"/>
+      <link href="https://docs.voyageai.com/docs/embeddings"/>
+      <link href="https://docs.cohere.com/docs/cohere-embed"/>
+      <ref slug="embedding-chunking-strategies"/>
+      <ref slug="embedding-caching"/>
+      <ref slug="embedding-cost-optimization"/>
+    </see-also>
+  </content>
+</methodology>
