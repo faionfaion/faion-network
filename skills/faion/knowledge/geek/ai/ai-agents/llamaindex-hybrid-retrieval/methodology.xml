@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-hybrid-retrieval">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex hybrid retrieval: QueryFusionRetriever combining vector+keyword search, cross-encoder reranking, AutoMergingRetriever for hierarchical nodes, and similarity thresholding.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>retrieval</tag>
+      <tag>reranking</tag>
+      <tag>rag</tag>
+      <tag>hybrid-search</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>llamaindex</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-ingestion-pipeline"/>
+      <ref slug="rerank-before-reasoning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex Hybrid Retrieval and Reranking</title>
+
+    <summary>Use QueryFusionRetriever to combine vector and keyword retrievers with reciprocal rank fusion, then apply a cross-encoder reranker to shrink the candidate set. For hierarchical corpora, wire AutoMergingRetriever to promote parent nodes when enough children match. Apply SimilarityPostprocessor before the cross-encoder to pre-filter low-relevance candidates.</summary>
+
+    <why>
+      <p>Pure vector retrieval misses exact-match queries; pure keyword retrieval misses paraphrase queries. Combining both with reciprocal rank fusion (RRF) consistently outperforms either alone on mixed corpora. Cross-encoder reranking then scores each candidate pair (query, passage) jointly, catching semantic relevance that embedding cosine distance cannot express. The net effect: retrieve more broadly, then compress to a high-precision top-k before sending to the LLM.</p>
+      <p>AutoMergingRetriever addresses the chunking paradox: small chunks improve precision but lose context. Hierarchical parsing stores multiple granularities; when many children of the same parent match, the retriever substitutes the parent — restoring context without blowing the token budget on every query.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Corpora mixing technical terms (exact-match) and natural language questions (semantic) — hybrid retrieval is the default.</item>
+        <item>Top-k precision matters more than recall — add SentenceTransformerRerank after retrieval.</item>
+        <item>Long documents split into fine-grained chunks where individual chunks lack context — use HierarchicalNodeParser + AutoMergingRetriever.</item>
+        <item>Multi-hop or multi-perspective queries where a single query may miss relevant phrasing — QueryFusionRetriever with num_queries=2-3.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Small corpora (&lt;500 nodes) — vector search alone is sufficient and cheaper.</item>
+        <item>Latency budget under 200 ms — cross-encoder reranking adds 100-500 ms on CPU; skip or use Cohere Rerank API.</item>
+        <item>Index was not built with HierarchicalNodeParser — AutoMergingRetriever fails silently without parent nodes.</item>
+        <item>Cost is the primary constraint — QueryFusionRetriever with num_queries=4 fires 4 LLM calls per user query; set num_queries=2 or disable query expansion entirely.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-retrieval-config">
+      <p>The baseline retriever config: vector search with similarity threshold to pre-filter, then a small top-k.</p>
+
+      <rule>
+        <statement>Always set similarity_cutoff on SimilarityPostprocessor before passing nodes to a cross-encoder reranker. Pre-filtering reduces reranker input size by 50-80%, cutting latency proportionally.</statement>
+        <rationale>Cross-encoders score every (query, passage) pair; running them on 50 low-similarity candidates wastes computation. The similarity threshold is cheap — one dot-product per candidate — and eliminates noise before the expensive step.</rationale>
+      </rule>
+
+      <example type="good" title="Vector retriever with similarity threshold">
+        <code lang="python"><![CDATA[
+from llama_index.core.postprocessor import SimilarityPostprocessor
+
+retriever = index.as_retriever(
+    similarity_top_k=10,
+    node_postprocessors=[
+        SimilarityPostprocessor(similarity_cutoff=0.7)
+    ]
+)
+]]></code>
+        <note>Cutoff 0.7 on cosine similarity (0-1 range) removes obvious misses before reranking.</note>
+      </example>
+    </section>
+
+    <section name="hybrid-fusion-retriever">
+      <p>QueryFusionRetriever merges results from multiple sub-retrievers using RRF. It can also generate query variants via LLM to improve recall.</p>
+
+      <rule>
+        <statement>Set num_queries=2 for production QueryFusionRetriever. Values of 3 or 4 rarely improve recall enough to justify the extra LLM calls. Use use_async=True and wrap in asyncio.Semaphore when hitting rate limits.</statement>
+        <rationale>Each query variant fires a separate LLM call for generation and a separate embedding+retrieval pass. The first expansion catches near-synonyms; additional variants show diminishing returns on most corpora.</rationale>
+      </rule>
+
+      <example type="good" title="Hybrid vector+keyword fusion retriever">
+        <code lang="python"><![CDATA[
+from llama_index.core import VectorStoreIndex, Settings
+from llama_index.core.retrievers import (
+    QueryFusionRetriever,
+    KeywordTableSimpleRetriever,
+)
+from llama_index.core.postprocessor import SentenceTransformerRerank
+from llama_index.core.query_engine import RetrieverQueryEngine
+
+reranker = SentenceTransformerRerank(
+    model="cross-encoder/ms-marco-MiniLM-L-12-v2", top_n=5
+)
+
+vector_retriever = index.as_retriever(similarity_top_k=20)
+keyword_retriever = KeywordTableSimpleRetriever(index)
+
+fusion_retriever = QueryFusionRetriever(
+    retrievers=[vector_retriever, keyword_retriever],
+    similarity_top_k=20,
+    num_queries=2,
+    mode="reciprocal_rerank",
+    use_async=True,
+)
+
+query_engine = RetrieverQueryEngine(
+    retriever=fusion_retriever,
+    node_postprocessors=[reranker],
+)
+
+response = query_engine.query("What are the key findings?")
+for node in response.source_nodes:
+    print(f"Score {node.score:.3f}: {node.text[:100]}")
+]]></code>
+        <note>Retrieve 20 candidates from both retrievers, merge with RRF, cross-encode to top 5.</note>
+      </example>
+
+      <antipattern>
+        <description>Setting num_queries=4 because "more queries means better recall".</description>
+        <reason>4 LLM calls fire per user query. On a corpus with reasonable coverage, queries 3 and 4 repeat near-synonyms already covered by query 2. Cost quadruples with marginal recall gain.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using QueryFusionRetriever without use_async=True in an async agent loop.</description>
+        <reason>Without async, each query variant fires synchronously, blocking the event loop. At num_queries=2 this adds two sequential round-trips to the LLM before retrieval even starts.</reason>
+      </antipattern>
+    </section>
+
+    <section name="auto-merging-retriever">
+      <p>AutoMergingRetriever requires hierarchical node parsing at ingestion. At query time it checks: if leaf nodes from the same parent exceed a threshold, substitute the parent. This restores context without storing redundant text.</p>
+
+      <rule>
+        <statement>Build hierarchical indexes with chunk_sizes=[2048, 512, 128] in HierarchicalNodeParser. Pass the same storage_context to AutoMergingRetriever as was used during ingestion. Validate that parent nodes exist after parsing before deploying.</statement>
+        <rationale>AutoMergingRetriever silently falls back to leaf nodes if parent nodes are absent — no error is raised, but context merging never happens. Validating node relationships after ingestion catches this before it reaches production.</rationale>
+      </rule>
+
+      <example type="good" title="Hierarchical ingestion + AutoMergingRetriever">
+        <code lang="python"><![CDATA[
+from llama_index.core.node_parser import HierarchicalNodeParser
+from llama_index.core.retrievers import AutoMergingRetriever
+from llama_index.core import VectorStoreIndex, StorageContext
+
+# Ingestion
+hierarchical_parser = HierarchicalNodeParser.from_defaults(
+    chunk_sizes=[2048, 512, 128]
+)
+nodes = hierarchical_parser.get_nodes_from_documents(documents)
+storage_context = StorageContext.from_defaults()
+index = VectorStoreIndex(nodes, storage_context=storage_context)
+
+# Retrieval
+base_retriever = index.as_retriever(similarity_top_k=12)
+auto_merging_retriever = AutoMergingRetriever(
+    base_retriever,
+    storage_context=index.storage_context,
+    verbose=True,
+)
+]]></code>
+        <note>similarity_top_k=12 on leaf nodes gives the merger enough candidates to trigger parent substitution.</note>
+      </example>
+
+      <antipattern>
+        <description>Changing chunking strategy post-ingestion and expecting AutoMergingRetriever to work.</description>
+        <reason>Parent-child node relationships are baked in at ingestion. Changing chunk_sizes requires a full re-index; there is no migration path.</reason>
+      </antipattern>
+    </section>
+
+    <section name="reranker-options">
+      <p>LlamaIndex supports multiple reranker backends. Choose based on latency, cost, and deployment constraints.</p>
+
+      <rule>
+        <statement>For production throughput on CPU, prefer Cohere Rerank API over local SentenceTransformerRerank. For offline or on-premise deployments, SentenceTransformerRerank with a GPU is acceptable. Never run local cross-encoder on CPU in a latency-sensitive path.</statement>
+        <rationale>SentenceTransformerRerank adds 100-500 ms per query on CPU. Cohere Rerank is an API call with sub-100 ms p50 and no GPU dependency. FlagEmbedding reranker (llama-index-postprocessor-flag-embedding-reranker) offers a middle ground: lighter model, faster on CPU.</rationale>
+      </rule>
+
+      <example type="good" title="Cohere Rerank as drop-in postprocessor">
+        <code lang="python"><![CDATA[
+from llama_index.postprocessor.cohere_rerank import CohereRerank
+
+reranker = CohereRerank(api_key="your-api-key", top_n=5)
+
+query_engine = index.as_query_engine(
+    similarity_top_k=20,
+    node_postprocessors=[reranker],
+)
+]]></code>
+        <note>CohereRerank is a direct swap for SentenceTransformerRerank with no model download required.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Set similarity_cutoff before cross-encoder reranker to pre-filter candidates.</check>
+      <check>Use num_queries=2 for QueryFusionRetriever in production; never 4.</check>
+      <check>Validate parent nodes exist after HierarchicalNodeParser before deploying AutoMergingRetriever.</check>
+      <check>Choose reranker backend based on latency budget: Cohere API for low-latency, local model for offline.</check>
+      <check>Use use_async=True on QueryFusionRetriever in async agent loops.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="llamaindex-indexes-queries"/>
+      <ref slug="llamaindex-ingestion-pipeline"/>
+      <ref slug="rerank-before-reasoning"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/retrievers/"/>
+    </see-also>
+  </content>
+</methodology>
