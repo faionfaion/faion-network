@@ -1,0 +1,674 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="video-generation-production-service">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production patterns for AI video generation: multi-provider service with retry/fallback, FastAPI job endpoint, priority queue, ffmpeg video processing utilities, and webhook integration.</summary>
+    <tags>
+      <tag>video-generation</tag>
+      <tag>production</tag>
+      <tag>fastapi</tag>
+      <tag>queue</tag>
+      <tag>ffmpeg</tag>
+    </tags>
+    <category>ai</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+    </frameworks>
+    <related>
+      <ref slug="video-generation-provider-selection"/>
+      <ref slug="video-generation-async-api"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AI Video Generation Production Service</title>
+
+    <summary>Production video generation services require a multi-provider abstraction with automatic retry and fallback, an async job API (FastAPI or similar) for caller decoupling, a priority queue for high-volume workloads, and ffmpeg utilities for clip assembly and processing. All generated video URLs must be downloaded immediately since provider URLs expire in 24-72h.</summary>
+
+    <why>
+      <p>Direct provider API calls are insufficient for production: single-provider failures bring down the pipeline; callers block on 60-300s generation times; high-volume workloads hit provider concurrency limits; and all video URLs expire, requiring immediate download. A production service adds a provider abstraction layer with retry and fallback, an async HTTP API that returns a job ID immediately, a priority queue with configurable concurrency, and local video storage so the downstream pipeline always has a stable artifact path regardless of provider URL expiry.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a content pipeline that generates more than a few videos per day.</item>
+        <item>Exposing video generation as an internal API endpoint for other services or agents.</item>
+        <item>Requiring fallback across multiple providers (Runway, Luma, Replicate) for reliability.</item>
+        <item>Processing concurrent video generation requests at volume with priority ordering.</item>
+        <item>Assembling multi-clip sequences with audio overlay using ffmpeg.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single one-off video generation in a script — use the direct API calls from video-generation-async-api instead; this service adds unnecessary overhead.</item>
+        <item>Architectures without persistent storage — the service downloads videos locally; ensure storage is provisioned.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="runway-sdk-example">
+      <p>Runway Gen-3 Alpha SDK example with image-to-video and polling:</p>
+
+      <example type="good" title="Runway SDK — text and image-to-video with polling">
+        <code lang="python"><![CDATA[
+import runwayml
+from typing import Optional
+import time
+
+class RunwayVideoGenerator:
+    """Generate videos using Runway Gen-3 Alpha."""
+
+    def __init__(self):
+        self.client = runwayml.RunwayML()
+
+    def generate_from_text(
+        self,
+        prompt: str,
+        duration: int = 5,  # 5 or 10 seconds
+        aspect_ratio: str = "16:9",  # 16:9, 9:16, 1:1
+        seed: Optional[int] = None
+    ) -> dict:
+        """Generate video from text prompt."""
+        task = self.client.image_to_video.create(
+            model="gen3a_turbo",
+            prompt_text=prompt,
+            duration=duration,
+            ratio=aspect_ratio,
+            seed=seed
+        )
+        return self._wait_for_completion(task.id)
+
+    def generate_from_image(
+        self,
+        image_url: str,
+        prompt: str,
+        duration: int = 5
+    ) -> dict:
+        """Generate video from image + prompt."""
+        task = self.client.image_to_video.create(
+            model="gen3a_turbo",
+            prompt_image=image_url,
+            prompt_text=prompt,
+            duration=duration
+        )
+        return self._wait_for_completion(task.id)
+
+    def _wait_for_completion(
+        self,
+        task_id: str,
+        timeout: int = 300
+    ) -> dict:
+        """Poll for task completion."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            task = self.client.tasks.retrieve(task_id)
+            if task.status == "SUCCEEDED":
+                return {"status": "success", "video_url": task.output[0], "task_id": task_id}
+            elif task.status == "FAILED":
+                return {"status": "failed", "error": task.failure, "task_id": task_id}
+            time.sleep(5)
+        return {"status": "timeout", "task_id": task_id}
+]]></code>
+      </example>
+    </section>
+
+    <section name="luma-sdk-example">
+      <p>Luma Dream Machine REST API example with text-to-video, image-to-video, and video extension:</p>
+
+      <example type="good" title="Luma REST API — text, image-to-video, and video extension">
+        <code lang="python"><![CDATA[
+import requests
+import time
+from typing import Optional
+
+class LumaVideoGenerator:
+    """Generate videos using Luma AI Dream Machine."""
+
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.lumalabs.ai/dream-machine/v1"
+
+    def generate(self, prompt: str, aspect_ratio: str = "16:9", loop: bool = False) -> dict:
+        """Generate video from text prompt."""
+        response = requests.post(
+            f"{self.base_url}/generations",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"prompt": prompt, "aspect_ratio": aspect_ratio, "loop": loop}
+        )
+        response.raise_for_status()
+        return self._wait_for_completion(response.json()["id"])
+
+    def generate_from_image(
+        self,
+        prompt: str,
+        image_url: str,
+        end_image_url: Optional[str] = None
+    ) -> dict:
+        """Generate video from image(s)."""
+        keyframes = {"frame0": {"type": "image", "url": image_url}}
+        if end_image_url:
+            keyframes["frame1"] = {"type": "image", "url": end_image_url}
+        response = requests.post(
+            f"{self.base_url}/generations",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"prompt": prompt, "keyframes": keyframes}
+        )
+        response.raise_for_status()
+        return self._wait_for_completion(response.json()["id"])
+
+    def extend_video(self, video_id: str, prompt: str) -> dict:
+        """Extend existing video with continuation."""
+        response = requests.post(
+            f"{self.base_url}/generations",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"prompt": prompt, "keyframes": {"frame0": {"type": "generation", "id": video_id}}}
+        )
+        response.raise_for_status()
+        return self._wait_for_completion(response.json()["id"])
+
+    def _wait_for_completion(self, generation_id: str) -> dict:
+        """Wait for video generation to complete."""
+        while True:
+            response = requests.get(
+                f"{self.base_url}/generations/{generation_id}",
+                headers={"Authorization": f"Bearer {self.api_key}"}
+            )
+            response.raise_for_status()
+            generation = response.json()
+            if generation["state"] == "completed":
+                return {"status": "success", "video_url": generation["assets"]["video"], "id": generation_id}
+            elif generation["state"] == "failed":
+                return {"status": "failed", "error": generation.get("failure_reason"), "id": generation_id}
+            time.sleep(5)
+]]></code>
+      </example>
+    </section>
+
+    <section name="replicate-example">
+      <p>Replicate open-source video models: Stable Video Diffusion, AnimateDiff, Zeroscope.</p>
+
+      <example type="good" title="Replicate — SVD, AnimateDiff, Zeroscope">
+        <code lang="python"><![CDATA[
+import replicate
+from typing import Optional
+
+class ReplicateVideoGenerator:
+    """Generate videos using Replicate models."""
+
+    def generate_stable_video(
+        self,
+        image_path: str,
+        motion_bucket_id: int = 127,  # 1-255, higher = more motion
+        fps: int = 7,
+        num_frames: int = 25
+    ) -> str:
+        """Generate video from image using Stable Video Diffusion."""
+        output = replicate.run(
+            "stability-ai/stable-video-diffusion:3f0457e4619daac51203dedb472816fd4af51f3149fa7a9e0b5ffcf1b8172438",
+            input={"input_image": open(image_path, "rb"), "motion_bucket_id": motion_bucket_id,
+                   "fps": fps, "num_frames": num_frames}
+        )
+        return output
+
+    def generate_with_animatediff(
+        self,
+        prompt: str,
+        negative_prompt: str = "blurry, low quality",
+        num_frames: int = 16,
+        guidance_scale: float = 7.5
+    ) -> str:
+        """Generate video using AnimateDiff."""
+        output = replicate.run(
+            "lucataco/animate-diff:beecf59c4aee8d81bf04f0381033dfa10dc16e845b4ae00d281e2fa377e48c9f",
+            input={"prompt": prompt, "negative_prompt": negative_prompt,
+                   "num_frames": num_frames, "guidance_scale": guidance_scale}
+        )
+        return output
+
+    def generate_with_zeroscope(
+        self,
+        prompt: str,
+        num_frames: int = 24,
+        fps: int = 8,
+        width: int = 576,
+        height: int = 320
+    ) -> str:
+        """Generate video using Zeroscope v2."""
+        output = replicate.run(
+            "anotherjesse/zeroscope-v2-xl:9f747673945c62801b13b84701c783929c0ee784e4748ec062204894dda1a351",
+            input={"prompt": prompt, "num_frames": num_frames, "fps": fps,
+                   "width": width, "height": height}
+        )
+        return output
+]]></code>
+      </example>
+    </section>
+
+    <section name="multi-provider-service">
+      <p>Production multi-provider service with automatic retry, fallback, and local video download:</p>
+
+      <example type="good" title="VideoGenerationService — multi-provider with retry">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any, Callable
+from pathlib import Path
+from enum import Enum
+import logging
+import asyncio
+import httpx
+import os
+
+class VideoProvider(Enum):
+    RUNWAY = "runway"
+    LUMA = "luma"
+    REPLICATE = "replicate"
+
+@dataclass
+class VideoConfig:
+    """Video generation configuration."""
+    provider: VideoProvider = VideoProvider.LUMA
+    default_duration: int = 5
+    default_aspect_ratio: str = "16:9"
+    max_retries: int = 3
+    timeout: int = 600  # 10 minutes
+    output_dir: str = "./generated_videos"
+    runway_model: str = "gen3a_turbo"
+    luma_loop: bool = False
+
+@dataclass
+class VideoResult:
+    """Video generation result."""
+    status: str  # success, failed, timeout
+    video_url: Optional[str] = None
+    local_path: Optional[str] = None
+    task_id: Optional[str] = None
+    error: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+class VideoGenerationService:
+    """Production video generation service with multi-provider support."""
+
+    def __init__(self, config: Optional[VideoConfig] = None):
+        self.config = config or VideoConfig()
+        self.logger = logging.getLogger(__name__)
+        Path(self.config.output_dir).mkdir(exist_ok=True)
+        self._runway_client = None
+        self._luma_api_key = os.environ.get("LUMA_API_KEY")
+
+    async def generate(
+        self,
+        prompt: str,
+        provider: Optional[VideoProvider] = None,
+        duration: Optional[int] = None,
+        aspect_ratio: Optional[str] = None,
+        image_url: Optional[str] = None,
+        callback: Optional[Callable] = None,
+        **kwargs
+    ) -> VideoResult:
+        """Generate video with automatic retries and fallback."""
+        provider = provider or self.config.provider
+        duration = duration or self.config.default_duration
+        aspect_ratio = aspect_ratio or self.config.default_aspect_ratio
+
+        for attempt in range(self.config.max_retries):
+            try:
+                self.logger.info(f"Attempt {attempt + 1}: Generating video with {provider.value}")
+                if provider == VideoProvider.RUNWAY:
+                    result = await self._generate_runway(prompt, duration, aspect_ratio, image_url, **kwargs)
+                elif provider == VideoProvider.LUMA:
+                    result = await self._generate_luma(prompt, aspect_ratio, image_url, **kwargs)
+                else:
+                    result = await self._generate_replicate(prompt, **kwargs)
+
+                if result.status == "success":
+                    result.local_path = await self._download_video(
+                        result.video_url, self._sanitize_filename(prompt)
+                    )
+                    if callback:
+                        await callback(result)
+                    return result
+            except Exception as e:
+                self.logger.error(f"Attempt {attempt + 1} failed: {e}")
+                if attempt == self.config.max_retries - 1:
+                    return VideoResult(status="failed", error=str(e))
+
+        return VideoResult(status="failed", error="Max retries exceeded")
+
+    async def _download_video(self, url: str, name: str) -> str:
+        """Download video from URL to local storage."""
+        output_path = Path(self.config.output_dir) / f"{name}.mp4"
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, follow_redirects=True)
+            response.raise_for_status()
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+        return str(output_path)
+
+    def _sanitize_filename(self, text: str) -> str:
+        """Sanitize text for use as filename."""
+        import re
+        clean = re.sub(r'[^\w\s-]', '', text).strip()[:50]
+        return clean.replace(' ', '_')
+]]></code>
+      </example>
+    </section>
+
+    <section name="fastapi-endpoint">
+      <p>FastAPI integration — async job submission and status polling endpoint pattern:</p>
+
+      <example type="good" title="FastAPI async job API for video generation">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+from typing import Optional, Dict
+import uuid
+
+app = FastAPI()
+jobs: Dict[str, VideoResult] = {}  # use Redis in production
+
+class VideoRequest(BaseModel):
+    prompt: str
+    provider: Optional[str] = "luma"
+    duration: Optional[int] = 5
+    aspect_ratio: Optional[str] = "16:9"
+    image_url: Optional[str] = None
+
+class VideoResponse(BaseModel):
+    job_id: str
+    status: str
+    video_url: Optional[str] = None
+    error: Optional[str] = None
+
+service = VideoGenerationService()
+
+@app.post("/api/videos/generate", response_model=VideoResponse)
+async def create_video(request: VideoRequest, background_tasks: BackgroundTasks):
+    """Start video generation job — returns job_id immediately."""
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = VideoResult(status="processing")
+    background_tasks.add_task(generate_video_task, job_id, request)
+    return VideoResponse(job_id=job_id, status="processing")
+
+async def generate_video_task(job_id: str, request: VideoRequest):
+    """Background task for video generation."""
+    try:
+        provider = VideoProvider(request.provider)
+        result = await service.generate(
+            prompt=request.prompt, provider=provider,
+            duration=request.duration, aspect_ratio=request.aspect_ratio,
+            image_url=request.image_url
+        )
+        jobs[job_id] = result
+    except Exception as e:
+        jobs[job_id] = VideoResult(status="failed", error=str(e))
+
+@app.get("/api/videos/{job_id}", response_model=VideoResponse)
+async def get_video_status(job_id: str):
+    """Get video generation status."""
+    if job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    result = jobs[job_id]
+    return VideoResponse(job_id=job_id, status=result.status,
+                         video_url=result.video_url, error=result.error)
+]]></code>
+        <note>Replace in-memory jobs dict with Redis in production for durability and multi-instance support.</note>
+      </example>
+    </section>
+
+    <section name="priority-queue">
+      <p>Priority queue for high-volume video generation with configurable concurrency:</p>
+
+      <example type="good" title="Priority queue with configurable concurrency">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import Optional, Dict
+import asyncio
+from collections import deque
+
+@dataclass
+class VideoJob:
+    id: str
+    prompt: str
+    provider: VideoProvider
+    priority: int = 0
+    created_at: float = 0
+
+class VideoQueue:
+    """Priority queue for video generation jobs."""
+
+    def __init__(self, service: VideoGenerationService, max_concurrent: int = 3):
+        self.service = service
+        self.max_concurrent = max_concurrent
+        self.queue: deque[VideoJob] = deque()
+        self.processing: Dict[str, VideoJob] = {}
+        self.results: Dict[str, VideoResult] = {}
+        self._lock = asyncio.Lock()
+
+    async def submit(self, job: VideoJob) -> str:
+        """Submit job to queue, inserted by priority."""
+        async with self._lock:
+            inserted = False
+            for i, existing in enumerate(self.queue):
+                if job.priority > existing.priority:
+                    self.queue.insert(i, job)
+                    inserted = True
+                    break
+            if not inserted:
+                self.queue.append(job)
+        return job.id
+
+    async def process(self):
+        """Process jobs from queue up to max_concurrent at a time."""
+        while True:
+            if len(self.processing) < self.max_concurrent and self.queue:
+                async with self._lock:
+                    job = self.queue.popleft()
+                    self.processing[job.id] = job
+                asyncio.create_task(self._process_job(job))
+            await asyncio.sleep(1)
+
+    async def _process_job(self, job: VideoJob):
+        try:
+            result = await self.service.generate(prompt=job.prompt, provider=job.provider)
+            self.results[job.id] = result
+        finally:
+            async with self._lock:
+                del self.processing[job.id]
+
+    def get_status(self, job_id: str) -> str:
+        """Get job status: success/failed/timeout/processing/queued/not_found."""
+        if job_id in self.results:
+            return self.results[job_id].status
+        if job_id in self.processing:
+            return "processing"
+        if any(j.id == job_id for j in self.queue):
+            return "queued"
+        return "not_found"
+]]></code>
+      </example>
+    </section>
+
+    <section name="video-processing">
+      <p>Video processing utilities using ffmpeg for clip assembly, transcoding, and thumbnail extraction:</p>
+
+      <example type="good" title="ffmpeg VideoProcessor utilities">
+        <code lang="python"><![CDATA[
+import subprocess
+from pathlib import Path
+from typing import List
+
+class VideoProcessor:
+    """Video processing utilities using ffmpeg."""
+
+    def extract_frames(self, video_path: str, output_dir: str, fps: int = 1) -> List[Path]:
+        """Extract frames from video."""
+        output_dir = Path(output_dir)
+        output_dir.mkdir(exist_ok=True)
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vf", f"fps={fps}",
+             "-y", str(output_dir / "frame_%04d.png")],
+            check=True, capture_output=True
+        )
+        return sorted(output_dir.glob("frame_*.png"))
+
+    def concatenate_videos(self, video_paths: List[str], output_path: str) -> str:
+        """Concatenate multiple videos using ffmpeg concat demuxer."""
+        list_path = "/tmp/videos.txt"
+        with open(list_path, "w") as f:
+            for path in video_paths:
+                f.write(f"file '{path}'\n")
+        subprocess.run(
+            ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_path,
+             "-c", "copy", "-y", output_path],
+            check=True, capture_output=True
+        )
+        return output_path
+
+    def add_audio(self, video_path: str, audio_path: str, output_path: str) -> str:
+        """Add audio track to video."""
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-i", audio_path,
+             "-c:v", "copy", "-c:a", "aac", "-shortest", "-y", output_path],
+            check=True, capture_output=True
+        )
+        return output_path
+
+    def resize_video(self, video_path: str, output_path: str, width: int, height: int) -> str:
+        """Resize video to specific dimensions."""
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vf", f"scale={width}:{height}",
+             "-c:a", "copy", "-y", output_path],
+            check=True, capture_output=True
+        )
+        return output_path
+
+    def get_duration(self, video_path: str) -> float:
+        """Get video duration in seconds using ffprobe."""
+        cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+               "-of", "default=noprint_wrappers=1:nokey=1", video_path]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        return float(result.stdout.strip())
+
+    def extract_thumbnail(self, video_path: str, output_path: str, time: str = "00:00:01") -> str:
+        """Extract thumbnail frame from video."""
+        subprocess.run(
+            ["ffmpeg", "-i", video_path, "-ss", time, "-vframes", "1", "-y", output_path],
+            check=True
+        )
+        return output_path
+
+    def transcode_video(self, input_path: str, output_path: str,
+                        codec: str = "libx264", crf: int = 23) -> str:
+        """Transcode video using ffmpeg."""
+        subprocess.run(
+            ["ffmpeg", "-i", input_path, "-c:v", codec, "-crf", str(crf),
+             "-preset", "medium", "-y", output_path],
+            check=True
+        )
+        return output_path
+]]></code>
+      </example>
+    </section>
+
+    <section name="webhook-integration">
+      <p>Webhook integration for Runway and Luma completion callbacks:</p>
+
+      <example type="good" title="FastAPI webhook handlers for Runway and Luma">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Request
+import httpx
+
+app = FastAPI()
+
+@app.post("/webhook/runway")
+async def runway_webhook(request: Request):
+    """Handle Runway completion webhook."""
+    data = await request.json()
+    if data["status"] == "SUCCEEDED":
+        video_url = data["output"][0]
+        task_id = data["id"]
+        await process_video(task_id, video_url)
+    elif data["status"] == "FAILED":
+        await handle_failure(data["id"], data.get("failure"))
+    return {"status": "ok"}
+
+@app.post("/webhook/luma")
+async def luma_webhook(request: Request):
+    """Handle Luma completion webhook."""
+    data = await request.json()
+    if data["state"] == "completed":
+        video_url = data["assets"]["video"]
+        await process_video(data["id"], video_url)
+    return {"status": "ok"}
+]]></code>
+        <note>Prefer webhooks over polling for production workloads to reduce API calls and latency.</note>
+      </example>
+    </section>
+
+    <section name="async-concurrent-generation">
+      <p>Async concurrent video download and generation:</p>
+
+      <example type="good" title="Async concurrent generation with asyncio.gather">
+        <code lang="python"><![CDATA[
+import asyncio
+import httpx
+from pathlib import Path
+
+async def fetch_clip(url: str, out_path: str) -> None:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        Path(out_path).write_bytes(r.content)
+
+async def download_video(url: str, output_path: str) -> str:
+    """Download video from URL."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, follow_redirects=True)
+        response.raise_for_status()
+        with open(output_path, "wb") as f:
+            f.write(response.content)
+    return output_path
+
+# Generate multiple videos concurrently with asyncio.gather
+async def generate_batch(generator, prompts: list[str]) -> list[dict]:
+    tasks = [generator.generate(prompt) for prompt in prompts]
+    return await asyncio.gather(*tasks)
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-checklist">
+      <p>Production readiness requirements for video generation services:</p>
+    </section>
+
+    <checklist>
+      <check>Create VideoConfig dataclass with provider, duration, aspect_ratio, max_retries, timeout, output_dir.</check>
+      <check>Implement async generate() with retry loop and per-provider dispatch.</check>
+      <check>Download video immediately after SUCCEEDED — store local path, not provider URL.</check>
+      <check>Expose async HTTP endpoint returning job_id immediately (FastAPI BackgroundTasks pattern).</check>
+      <check>Replace in-memory job dict with Redis for multi-instance production deployments.</check>
+      <check>Implement priority queue with max_concurrent guard for high-volume workloads.</check>
+      <check>Add cost estimate logging before every job submission.</check>
+      <check>Set up monitoring for generation success rate and average generation time per provider.</check>
+      <check>Implement per-user/tenant quotas to control spend.</check>
+      <check>Set up video CDN for delivery of downloaded files.</check>
+      <check>Implement content moderation pre-check before sending prompts to providers.</check>
+      <check>Add idempotency keys to prevent duplicate generation on retry.</check>
+      <check>Store API keys in secrets manager — never hardcode.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="video-generation-provider-selection"/>
+      <ref slug="video-generation-async-api"/>
+      <link href="https://runwayml.com/api"/>
+      <link href="https://lumalabs.ai/api"/>
+      <link href="https://replicate.com/collections/video-generation"/>
+    </see-also>
+  </content>
+</methodology>
