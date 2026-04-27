@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-security-iam">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>GCP security framework: IAM least privilege, Workload Identity Federation, VPC Service Controls, CMEK, audit logging, and security checklists for IAM and data protection (2025-2026).</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>iam</tag>
+      <tag>security</tag>
+      <tag>workload-identity</tag>
+      <tag>vpc-service-controls</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-overview-cli"/>
+      <ref slug="gcp-networking-vpc"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Security and IAM</title>
+
+    <summary>GCP security framework covering IAM least privilege with Workload Identity Federation (no service account keys), VPC Service Controls perimeters for data exfiltration prevention, CMEK encryption, and audit logging. Includes full IAM and data security checklists.</summary>
+
+    <why>
+      <p>GCP's shared responsibility model leaves IAM configuration, data classification, and application security to the customer. Service account keys are a primary attack vector; Workload Identity Federation eliminates them for GKE workloads and external CI/CD (GitHub Actions). VPC Service Controls provide a perimeter fence that IAM alone cannot offer — they prevent data exfiltration even when IAM policies are misconfigured.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Configuring IAM roles and service accounts for a new GCP project.</item>
+        <item>Eliminating service account key files from CI/CD pipelines (Workload Identity Federation).</item>
+        <item>Implementing data exfiltration prevention around Cloud Storage or BigQuery (VPC-SC).</item>
+        <item>Conducting a security audit or quarterly IAM review.</item>
+        <item>Setting up CMEK key rotation for sensitive workloads.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Network topology design — use gcp-networking-vpc for VPC, firewall, and Cloud Armor.</item>
+        <item>Compute or GKE cluster provisioning — use gcp-compute-gke.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="security-principles">
+      <p>Five core security principles for GCP (2025-2026):</p>
+      <list>
+        <item>Least Privilege: predefined roles, custom roles, IAM Recommender for drift detection.</item>
+        <item>Zero Trust: VPC Service Controls + context-aware access.</item>
+        <item>Defense in Depth: VPC-SC + Firewall + Cloud Armor + IAM layered together.</item>
+        <item>Keyless Auth: Workload Identity Federation — no service account keys.</item>
+        <item>Encryption: CMEK with Cloud KMS, automatic key rotation.</item>
+      </list>
+
+      <rule>
+        <statement>Never assign primitive roles (Owner, Editor, Viewer) in production. Use predefined roles at the smallest scope (resource &gt; project &gt; folder &gt; org). Apply IAM Recommender quarterly to remove unused permissions.</statement>
+        <rationale>Primitive roles grant hundreds of permissions. IAM Recommender identifies permissions that were never exercised in the last 90 days, enabling safe tightening without guesswork.</rationale>
+      </rule>
+    </section>
+
+    <section name="workload-identity-federation">
+      <p>Workload Identity Federation (WIF) allows external identities (GitHub Actions OIDC, AWS, Azure) to impersonate a GCP service account without a key file. This is the mandatory pattern for keyless CI/CD authentication.</p>
+
+      <example type="good" title="WIF pool and OIDC provider for GitHub Actions">
+        <code lang="bash"><![CDATA[
+# Create workload identity pool
+gcloud iam workload-identity-pools create github-pool \
+    --location=global \
+    --display-name="GitHub Actions Pool"
+
+# Create OIDC provider
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+    --location=global \
+    --workload-identity-pool=github-pool \
+    --display-name="GitHub OIDC" \
+    --issuer-uri="https://token.actions.githubusercontent.com" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.actor=assertion.actor"
+
+# Create service account for GitHub Actions
+gcloud iam service-accounts create github-deploy \
+    --display-name="GitHub Actions Deploy"
+
+# Allow GitHub repo to impersonate SA
+gcloud iam service-accounts add-iam-policy-binding github-deploy@my-project.iam.gserviceaccount.com \
+    --role=roles/iam.workloadIdentityUser \
+    --member="principalSet://iam.googleapis.com/projects/123456789/locations/global/workloadIdentityPools/github-pool/attribute.repository/my-org/my-repo"
+]]></code>
+      </example>
+
+      <example type="good" title="Workload Identity for GKE pods">
+        <code lang="bash"><![CDATA[
+# Create Kubernetes service account
+kubectl create serviceaccount my-app -n default
+
+# Create GCP service account
+gcloud iam service-accounts create my-app-gsa \
+    --display-name="GKE Workload Identity SA"
+
+# Bind Kubernetes SA to GCP SA
+gcloud iam service-accounts add-iam-policy-binding my-app-gsa@my-project.iam.gserviceaccount.com \
+    --role=roles/iam.workloadIdentityUser \
+    --member="serviceAccount:my-project.svc.id.goog[default/my-app]"
+
+# Annotate Kubernetes SA
+kubectl annotate serviceaccount my-app \
+    iam.gke.io/gcp-service-account=my-app-gsa@my-project.iam.gserviceaccount.com
+
+# Grant permissions to GCP SA
+gcloud projects add-iam-policy-binding my-project \
+    --member=serviceAccount:my-app-gsa@my-project.iam.gserviceaccount.com \
+    --role=roles/storage.objectViewer
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using service account key JSON files for GKE workloads or GitHub Actions CI/CD.</description>
+        <reason>Key files are long-lived credentials that can be leaked in logs, repositories, or container images. Workload Identity Federation provides short-lived tokens tied to the actual workload identity.</reason>
+      </antipattern>
+    </section>
+
+    <section name="service-accounts">
+      <example type="good" title="Create service account with least-privilege roles">
+        <code lang="bash"><![CDATA[
+# Create service account
+gcloud iam service-accounts create my-app \
+    --display-name="My Application Service Account" \
+    --description="Service account for my-app workload"
+
+# Grant specific roles with IAM conditions
+gcloud projects add-iam-policy-binding my-project \
+    --member=serviceAccount:my-app@my-project.iam.gserviceaccount.com \
+    --role=roles/storage.objectViewer \
+    --condition='expression=resource.name.startsWith("projects/_/buckets/my-bucket"),title=my-bucket-only'
+
+gcloud projects add-iam-policy-binding my-project \
+    --member=serviceAccount:my-app@my-project.iam.gserviceaccount.com \
+    --role=roles/secretmanager.secretAccessor
+
+gcloud projects add-iam-policy-binding my-project \
+    --member=serviceAccount:my-app@my-project.iam.gserviceaccount.com \
+    --role=roles/cloudsql.client
+]]></code>
+      </example>
+
+      <example type="good" title="Custom role with specific permissions">
+        <code lang="bash"><![CDATA[
+gcloud iam roles create myAppRole \
+    --project=my-project \
+    --title="My App Custom Role" \
+    --description="Minimal permissions for my-app" \
+    --permissions=storage.objects.get,storage.objects.list,secretmanager.versions.access \
+    --stage=GA
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Create one service account per workload. Never share service accounts between unrelated workloads. Use IAM conditions to restrict access to specific resources (bucket prefix, secret name) where possible.</statement>
+        <rationale>Per-workload service accounts contain blast radius if a workload is compromised. IAM conditions provide resource-level scoping without requiring a custom role for every combination.</rationale>
+      </rule>
+    </section>
+
+    <section name="vpc-service-controls">
+      <p>VPC Service Controls (VPC-SC) define security perimeters around GCP API resources (Cloud Storage, BigQuery, Cloud SQL) to prevent data exfiltration even if IAM is misconfigured. Always start in dry-run mode.</p>
+
+      <example type="good" title="Create VPC-SC perimeter (dry-run first)">
+        <code lang="bash"><![CDATA[
+# Create access policy (org level, done once)
+gcloud access-context-manager policies create \
+    --organization=123456789 \
+    --title="my-policy"
+
+# Create service perimeter in dry-run mode
+gcloud access-context-manager perimeters dry-run create my-perimeter \
+    --policy=accessPolicies/123456789 \
+    --title="Production Perimeter" \
+    --resources=projects/my-project \
+    --restricted-services=storage.googleapis.com,bigquery.googleapis.com \
+    --vpc-allowed-services=RESTRICTED-SERVICES \
+    --enable-vpc-accessible-services
+
+# After testing, enforce
+gcloud access-context-manager perimeters dry-run enforce my-perimeter \
+    --policy=accessPolicies/123456789
+]]></code>
+      </example>
+
+      <rule>
+        <statement>VPC-SC perimeters MUST go through a mandatory dry-run phase before enforcement. Stream dry-run audit logs to a SIEM for at least one week before enforcing. Layer VPC-SC with firewalls, Cloud Armor, and IAM — not as a replacement.</statement>
+        <rationale>Premature enforcement of VPC-SC perimeters breaks legitimate access paths silently. Dry-run mode emits audit log entries for what would have been denied, allowing safe validation without service disruption.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Enforcing VPC-SC on day one without a dry-run validation period.</description>
+        <reason>VPC-SC enforcement blocks access immediately. Without dry-run analysis, legitimate API calls from pipelines, humans, and monitoring tools are silently rejected, causing hard-to-diagnose outages.</reason>
+      </antipattern>
+    </section>
+
+    <section name="iam-checklist">
+      <checklist>
+        <check>Use Workload Identity Federation (no service account keys).</check>
+        <check>Implement least privilege with predefined roles.</check>
+        <check>Enable MFA for all human users.</check>
+        <check>Use Cloud Identity for centralized identity management.</check>
+        <check>Review IAM policies with IAM Recommender quarterly.</check>
+        <check>Implement permission boundaries with deny policies.</check>
+        <check>Use organization-level constraints (Organization Policy).</check>
+        <check>Separate service accounts per workload.</check>
+        <check>No primitive roles (Owner, Editor, Viewer) in production.</check>
+        <check>Audit IAM bindings quarterly.</check>
+        <check>Use groups for permission management (not individual users).</check>
+        <check>Enable audit logging for IAM changes.</check>
+      </checklist>
+    </section>
+
+    <section name="data-security-checklist">
+      <checklist>
+        <check>Enable encryption at rest with CMEK.</check>
+        <check>Use Cloud KMS for key management.</check>
+        <check>Enable automatic key rotation.</check>
+        <check>Configure Object Lock for compliance.</check>
+        <check>Enable versioning on Cloud Storage buckets.</check>
+        <check>Block public access on storage buckets.</check>
+        <check>Use Secret Manager for credentials.</check>
+        <check>Enable Cloud SQL SSL connections.</check>
+        <check>Configure Cloud SQL private IP only.</check>
+        <check>Use AlloyDB for enterprise PostgreSQL.</check>
+        <check>Enable data loss prevention (DLP).</check>
+      </checklist>
+    </section>
+
+    <section name="monitoring-auditing-checklist">
+      <checklist>
+        <check>Enable Cloud Audit Logs (Admin, Data Access).</check>
+        <check>Configure log export to BigQuery/GCS.</check>
+        <check>Enable Security Command Center.</check>
+        <check>Configure alerting for security events.</check>
+        <check>Enable Cloud Asset Inventory.</check>
+        <check>Use Cloud Logging for centralized logs.</check>
+        <check>Enable Event Threat Detection.</check>
+        <check>Configure uptime checks.</check>
+        <check>Enable SLO monitoring.</check>
+        <check>Use Error Reporting for application errors.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://cloud.google.com/docs/enterprise/best-practices-for-enterprise-organizations"/>
+      <link href="https://cloud.google.com/iam/docs/using-iam-securely"/>
+      <link href="https://cloud.google.com/vpc-service-controls/docs/overview"/>
+      <link href="https://www.infoq.com/articles/preventing-data-exfiltration-google-cloud/"/>
+      <link href="https://www.sentinelone.com/cybersecurity-101/cloud-security/gcp-security-checklist/"/>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-compute-gke"/>
+    </see-also>
+  </content>
+</methodology>
