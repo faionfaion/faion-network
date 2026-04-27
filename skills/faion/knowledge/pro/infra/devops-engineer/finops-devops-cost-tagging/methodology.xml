@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-devops-cost-tagging">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Enforce mandatory cloud resource tags (project, environment, owner, cost-center) via SCPs, Azure Policy, and GCP org constraints to achieve 95%+ cost allocation accuracy across AWS, Azure, and GCP.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>tagging</tag>
+      <tag>cost-allocation</tag>
+      <tag>policy-as-code</tag>
+      <tag>multi-cloud</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-devops-cost-alerts"/>
+      <ref slug="finops-cost-visibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Resource Tagging Policy and Cost Allocation</title>
+
+    <summary>Cost allocation accuracy depends entirely on tag compliance. Without tags, cloud bills are a lump sum with no attribution to team, project, or environment. The target is 95%+ tag compliance enforced at resource-creation time via provider-native policy mechanisms — SCPs on AWS, Azure Policy, GCP organization policies — not patched retroactively via audits.</summary>
+
+    <why>
+      <p>Tagging retroactively is exponentially more expensive than enforcing at creation time. Once a resource exists without tags, it may have been forked, renamed, handed off, or forgotten — identifying its owner requires manual archaeology. Provider-native enforcement (deny resource creation if mandatory tags missing) converts a cultural problem into a technical gate that works even when team members are new or under deadline pressure.</p>
+      <p>Tag compliance below 90% means at least 10% of spend is unallocated — it goes to shared-cost pools and causes inter-team accounting friction. At 32% average cloud waste, unallocated spend is invisible waste: teams cannot optimize what they cannot see.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new cloud account or subscription — enforce tags from day one before the untagged backlog accumulates.</item>
+        <item>Tag compliance below 90% — implement SCPs/policies to enforce mandatory tags at creation.</item>
+        <item>Multiple teams sharing a cloud account with no chargeback mechanism — tags are the basis for per-team cost visibility.</item>
+        <item>Multi-cloud environments (AWS + Azure + GCP) — establish a unified tag schema across all providers.</item>
+        <item>Before implementing cost dashboards — dashboards are only as good as the tag data feeding them.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team, single-project accounts with one budget line — tagging adds overhead with no allocation benefit.</item>
+        <item>Enforcing tags on ephemeral infrastructure (Lambda invocations, auto-scaling replacements) that inherit tags from parent resources — enforce at the launch template/ASG level instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tag-schema">
+      <p>The mandatory tag set must be minimal and stable. Four tags cover 95% of allocation needs: project (what is this for), environment (prod/staging/dev/sandbox), owner (who is accountable), cost-center (finance chargeback code). Optional tags add dimensions without blocking resource creation.</p>
+
+      <rule testable="true">
+        <statement>Every cloud resource that incurs cost MUST have four mandatory tags: `project` (^[a-z0-9-]{3,30}$), `environment` (prod|staging|dev|sandbox|dr), `owner` (team email or team slug), `cost-center` (finance allocation code). Enforce via SCP (AWS), Azure Policy (Azure), or Terraform label policy (GCP). Report tag compliance weekly; target 95%+.</statement>
+        <rationale>Four tags cover allocation to business unit, SDLC stage, accountable team, and finance. More than 6 mandatory tags causes compliance fatigue and drop-off. Regex validation prevents free-text values that fragment cost reports (e.g., "Prod", "prod", "PROD" treated as three environments).</rationale>
+      </rule>
+
+      <example type="good" title="Unified tag schema (all providers)">
+        <code lang="yaml"><![CDATA[
+mandatory_tags:
+  project:
+    description: "Project or product identifier"
+    validation: "^[a-z0-9-]{3,30}$"
+    examples: ["ecommerce-platform", "data-pipeline", "auth-service"]
+
+  environment:
+    description: "Deployment environment"
+    allowed_values: [prod, staging, dev, sandbox, dr]
+
+  owner:
+    description: "Team or individual responsible"
+    validation: "^[a-z0-9-@.]{3,50}$"
+    examples: ["platform-team", "john.doe@company.com"]
+
+  cost-center:
+    description: "Finance cost allocation code"
+    validation: "^CC[0-9]{4,6}$"
+    examples: ["CC1234", "CC567890"]
+
+recommended_tags:
+  application:
+    examples: ["api-gateway", "web-frontend", "ml-pipeline"]
+  managed-by:
+    allowed_values: [terraform, pulumi, cloudformation, manual]
+  expiry-date:
+    description: "Auto-termination date for temporary resources"
+    validation: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+]]></code>
+        <note>Enforce mandatory tags at creation. Recommended tags are optional — no policy block on absence.</note>
+      </example>
+    </section>
+
+    <section name="aws-enforcement">
+      <p>AWS enforcement uses two mechanisms in combination: Service Control Policies (deny resource creation if tags missing) and AWS Config rules (detect and alert on existing non-compliant resources). SCPs are preventive; Config rules are detective.</p>
+
+      <rule testable="true">
+        <statement>AWS accounts MUST have a Service Control Policy that denies `ec2:RunInstances`, `ec2:CreateVolume`, `rds:CreateDBInstance`, `s3:CreateBucket` when mandatory tags are absent. Additionally, deploy `REQUIRED_TAGS` AWS Config rules covering EC2, EBS, RDS, S3, and Lambda to detect any existing non-compliant resources. Review Config rule findings weekly.</statement>
+        <rationale>SCPs block new violations at the API level — no human can bypass them even with admin IAM roles. Config rules catch legacy untagged resources created before the SCP was in place.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Service Control Policy for mandatory tags">
+        <code lang="json"><![CDATA[
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "RequireMandatoryTags",
+    "Effect": "Deny",
+    "Action": [
+      "ec2:RunInstances",
+      "ec2:CreateVolume",
+      "rds:CreateDBInstance",
+      "s3:CreateBucket"
+    ],
+    "Resource": "*",
+    "Condition": {
+      "Null": {
+        "aws:RequestTag/project": "true",
+        "aws:RequestTag/environment": "true",
+        "aws:RequestTag/owner": "true",
+        "aws:RequestTag/cost-center": "true"
+      }
+    }
+  }]
+}
+]]></code>
+        <note>Deploy this SCP at the AWS Organizations root or OU level. Test in a sandbox OU first before applying org-wide.</note>
+      </example>
+
+      <example type="good" title="AWS Config rule for tag compliance (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "aws_config_config_rule" "required_tags" {
+  name = "required-tags"
+  source {
+    owner             = "AWS"
+    source_identifier = "REQUIRED_TAGS"
+  }
+  input_parameters = jsonencode({
+    tag1Key = "project"
+    tag2Key = "environment"
+    tag3Key = "owner"
+    tag4Key = "cost-center"
+  })
+  scope {
+    compliance_resource_types = [
+      "AWS::EC2::Instance",
+      "AWS::EC2::Volume",
+      "AWS::RDS::DBInstance",
+      "AWS::S3::Bucket",
+      "AWS::Lambda::Function"
+    ]
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="azure-enforcement">
+      <example type="good" title="Azure Policy for mandatory tags (deny effect)">
+        <code lang="json"><![CDATA[
+{
+  "mode": "Indexed",
+  "policyRule": {
+    "if": {
+      "anyOf": [
+        {"field": "[concat('tags[', parameters('tagName1'), ']')]", "exists": "false"},
+        {"field": "[concat('tags[', parameters('tagName2'), ']')]", "exists": "false"},
+        {"field": "[concat('tags[', parameters('tagName3'), ']')]", "exists": "false"},
+        {"field": "[concat('tags[', parameters('tagName4'), ']')]", "exists": "false"}
+      ]
+    },
+    "then": {"effect": "deny"}
+  },
+  "parameters": {
+    "tagName1": {"type": "String", "defaultValue": "project"},
+    "tagName2": {"type": "String", "defaultValue": "environment"},
+    "tagName3": {"type": "String", "defaultValue": "owner"},
+    "tagName4": {"type": "String", "defaultValue": "cost-center"}
+  }
+}
+]]></code>
+        <note>Assign this policy at Management Group scope for org-wide enforcement. Use "audit" effect first to surface backlog before switching to "deny".</note>
+      </example>
+    </section>
+
+    <section name="gcp-enforcement">
+      <example type="good" title="GCP label enforcement via Terraform">
+        <code lang="hcl"><![CDATA[
+resource "google_project_organization_policy" "require_labels" {
+  project    = var.project_id
+  constraint = "constraints/compute.requireLabels"
+  list_policy {
+    allow {
+      values = ["project", "environment", "owner", "cost-center"]
+    }
+  }
+}
+
+# Module with enforced labels
+module "compute_instance" {
+  source = "./modules/compute"
+  labels = merge(var.required_labels, {
+    project      = var.project_name
+    environment  = var.environment
+    owner        = var.owner
+    cost-center  = var.cost_center
+  })
+}
+]]></code>
+        <note>GCP uses "labels" terminology, not "tags". The constraint name differs: constraints/compute.requireLabels. Apply at organization or folder level via Terraform.</note>
+      </example>
+    </section>
+
+    <section name="multi-cloud-unified">
+      <p>Multi-cloud environments require a common tag schema accepted by all three providers. The four mandatory tags above are universally compatible. For unified visibility, ingest billing exports into a single tool: AWS CUR to S3, Azure Cost Management API, GCP BigQuery billing export — then use CloudHealth, Apptio, or custom BigQuery dashboards for cross-provider views.</p>
+
+      <example type="good" title="Multi-cloud FinOps: unified tagging and visibility">
+        <code lang="text"><![CDATA[
+Organization: AWS ($500k) + Azure ($300k) + GCP ($200k) = $1M/month
+
+Step 1: Unified tag schema (same 4 mandatory tags, all providers)
+Step 2: Centralized dashboard
+  - AWS: CUR → S3 → CloudHealth
+  - Azure: Cost Management API → CloudHealth
+  - GCP: BigQuery billing export → CloudHealth
+  Unified views: total spend by provider, cost by team/project, waste
+
+Step 3: Provider-specific optimizations after tagging:
+  AWS: 3-year Convertible RIs (65% coverage) → $97,500/month savings
+  Azure: Reserved VMs + Hybrid Benefit → $54,000/month savings
+  GCP: Committed Use Discounts + Sustained Use → $36,000/month savings
+  All: Rightsizing + idle termination → $70,000/month savings
+
+Result: $1,000,000 → $722,500/month (-27.8%)
+Annual savings: $3.33M
+]]></code>
+        <note>Unified tagging is the prerequisite — without it, the centralized dashboard shows unallocated spend and per-provider optimization cannot be attributed to teams.</note>
+      </example>
+    </section>
+
+    <section name="compliance-recovery">
+      <rule testable="true">
+        <statement>When tag compliance is below 90%, run a bulk tagging sprint before switching SCP/Policy to deny mode. Identify top 20 untagged resources by cost, assign owners, tag them. Switch enforcement policy from "audit" to "deny" only after compliance exceeds 90%. Communicate to engineering leads 2 weeks before switching to deny.</statement>
+        <rationale>Switching to deny before tagging the existing backlog blocks deployments for teams that were never informed of the requirement. Audit-first surfaces the backlog; communication-then-deny prevents a deployment outage on day one of enforcement.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Define mandatory tag schema: project, environment, owner, cost-center with validation patterns.</check>
+      <check>Start in audit mode — run AWS Config / Azure Policy audit to size the untagged backlog.</check>
+      <check>Tag the top 20 untagged resources by cost before switching to enforce/deny mode.</check>
+      <check>Deploy SCP on AWS Organizations (deny on RunInstances, CreateVolume, CreateDBInstance, CreateBucket).</check>
+      <check>Assign Azure Policy (deny effect) at Management Group scope.</check>
+      <check>Apply GCP org-level label constraints via Terraform.</check>
+      <check>Add mandatory tag blocks to all Terraform modules — do not allow untagged resource creation in IaC.</check>
+      <check>Communicate to engineering leads 2 weeks before switching to deny mode.</check>
+      <check>Track tag compliance weekly — alert when below 90%.</check>
+      <check>Set up billing exports: AWS CUR, Azure Cost Management, GCP BigQuery for cost dashboards.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="finops-devops-cost-rightsizing"/>
+      <ref slug="finops-devops-cost-alerts"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://docs.aws.amazon.com/whitepapers/latest/tagging-best-practices/tagging-best-practices.html"/>
+      <link href="https://learn.microsoft.com/en-us/azure/governance/policy/"/>
+      <link href="https://cloud.google.com/resource-manager/docs/creating-managing-labels"/>
+      <link href="https://www.finops.org/framework/"/>
+    </see-also>
+  </content>
+</methodology>
