@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-platform-crossplane">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Use Crossplane to build Kubernetes-native infrastructure compositions: developers submit simple CRD claims, Crossplane reconciles multi-resource AWS/GCP/Azure stacks with security defaults built in.</summary>
+    <tags>
+      <tag>crossplane</tag>
+      <tag>kubernetes</tag>
+      <tag>infrastructure-as-code</tag>
+      <tag>platform-engineering</tag>
+      <tag>cncf</tag>
+    </tags>
+    <category>platform</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-policy-finops"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Crossplane: Kubernetes-Native Infrastructure Compositions</title>
+
+    <summary>Crossplane extends Kubernetes with Composite Resource Definitions (XRDs) so platform teams define infrastructure abstractions (Database, Cache, Network) as custom CRDs. Developers submit simple claim objects; Crossplane reconciles the full multi-resource stack with security defaults embedded. This gives developers a self-service API surface while platform teams retain control over security, cost, and compliance through the composition layer.</summary>
+
+    <why>
+      <p>Traditional IaC (Terraform, CloudFormation) requires developers to understand provider-specific resources and security configurations. Crossplane inverts this: the platform team encodes best practices into a Composition once, and developers interact only with a simple claim API (Database, Cache, Cluster). The Kubernetes reconciliation loop ensures desired state is continuously enforced — drift correction is automatic, not manual.</p>
+      <p>As a CNCF project, Crossplane integrates natively with GitOps tools (ArgoCD, Flux), enabling infrastructure and application deployments to share the same GitOps pipeline. Claims are versioned in Git like application code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Platform team building self-service infrastructure abstractions on top of AWS, GCP, or Azure.</item>
+        <item>Orgs already using Kubernetes who want infrastructure provisioning to follow the same GitOps workflow as application deployments.</item>
+        <item>Multi-cloud environments where the same developer-facing API (e.g., Database claim) must provision to different cloud backends depending on environment.</item>
+        <item>Infrastructure that needs continuous reconciliation (drift correction) rather than one-time apply.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Teams not running Kubernetes — Crossplane requires a Kubernetes cluster as its control plane; the overhead is not justified without an existing cluster.</item>
+        <item>Simple single-resource provisioning where a Terraform module achieves the same result with less operational complexity.</item>
+        <item>Orgs without Kubernetes expertise — Crossplane debugging requires understanding Kubernetes reconciliation loops and CRD status conditions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="xrd-and-composition">
+      <p>Every Crossplane infrastructure abstraction consists of two Kubernetes objects: a CompositeResourceDefinition (XRD) that defines the API schema, and a Composition that maps claim fields to provider-specific resources. Together they are the infrastructure equivalent of a golden path template.</p>
+
+      <rule testable="true">
+        <statement>Every Crossplane XRD MUST define both a composite type (XDatabase) and a claim type (Database). The claim is what developers interact with in their namespace. Compositions MUST embed security defaults that cannot be overridden by claim parameters — storageEncrypted: true, publiclyAccessible: false, and deleteProtection: false in non-production are non-negotiable platform defaults. Developers MUST NOT be able to set storageEncrypted: false through the claim API.</statement>
+        <rationale>Security defaults embedded in the Composition layer are enforced at the platform level, not through policy review. This achieves near-100% security compliance (Netflix Wall-E model) by making insecure configurations impossible to request, not forbidden by policy.</rationale>
+      </rule>
+
+      <example type="good" title="XRD definition — Database composite type with claim">
+        <code lang="yaml"><![CDATA[
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.platform.example.com
+spec:
+  group: platform.example.com
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  claimNames:
+    kind: Database
+    plural: databases
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                size:
+                  type: string
+                  enum: [small, medium, large]
+                  default: small
+                environment:
+                  type: string
+                  enum: [development, staging, production]
+              required:
+                - environment
+]]></code>
+        <note>The schema exposes only size and environment to developers. All other RDS properties (encryption, multiAZ, backup) are controlled in the Composition, invisible to the developer.</note>
+      </example>
+
+      <example type="good" title="Developer claim — what the developer actually writes">
+        <code lang="yaml"><![CDATA[
+# my-database.yaml — what the developer writes and commits to Git
+apiVersion: platform.example.com/v1alpha1
+kind: Database
+metadata:
+  name: user-db
+spec:
+  size: small
+  environment: production
+]]></code>
+        <note>The developer writes 8 lines. Crossplane reconciles this into an RDS instance, security group, subnet group, parameter group, and Kubernetes Secret — all with security defaults enforced.</note>
+      </example>
+
+      <example type="bad" title="Exposing all RDS parameters directly to developers">
+        <code lang="yaml"><![CDATA[
+# Anti-pattern: direct provider resource claim
+apiVersion: rds.aws.crossplane.io/v1alpha1
+kind: DBInstance
+metadata:
+  name: user-db
+spec:
+  forProvider:
+    storageEncrypted: false    # developer disabled encryption
+    publiclyAccessible: true   # developer opened to internet
+    instanceClass: db.r5.8xlarge  # no cost control
+]]></code>
+        <note>Direct provider resources expose every parameter, making security defaults bypassable and cost controls impossible.</note>
+      </example>
+    </section>
+
+    <section name="composition-patches">
+      <p>Crossplane Compositions use patch sets to map claim field values to provider resource properties. The size-to-instanceClass mapping is the canonical example — it translates the developer's abstract "small/medium/large" into specific cloud resource configurations while enforcing environment-appropriate defaults.</p>
+
+      <example type="good" title="Full AWS RDS Composition with patch sets">
+        <code lang="yaml"><![CDATA[
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: database-postgresql-aws
+  labels:
+    provider: aws
+    engine: postgresql
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.com/v1alpha1
+    kind: XDatabase
+
+  patchSets:
+    - name: common-tags
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.labels[team]
+          toFieldPath: spec.forProvider.tags[0].value
+
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.crossplane.io/v1alpha1
+        kind: DBInstance
+        spec:
+          forProvider:
+            region: eu-central-1
+            engine: postgres
+            engineVersion: "15"
+            storageType: gp3
+            storageEncrypted: true          # non-overridable default
+            publiclyAccessible: false       # non-overridable default
+            autoMinorVersionUpgrade: true
+            backupRetentionPeriod: 7
+            deletionProtection: false
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.instanceClass
+          transforms:
+            - type: map
+              map:
+                small: db.t3.micro
+                medium: db.t3.medium
+                large: db.r5.large
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.size
+          toFieldPath: spec.forProvider.allocatedStorage
+          transforms:
+            - type: map
+              map:
+                small: 20
+                medium: 100
+                large: 500
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.environment
+          toFieldPath: spec.forProvider.multiAZ
+          transforms:
+            - type: map
+              map:
+                development: false
+                staging: false
+                production: true
+
+    - name: db-secret
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha1
+        kind: Object
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                namespace: default
+              type: Opaque
+]]></code>
+        <note>multiAZ is automatically true for production, false for dev/staging. The developer never sees this setting — the platform makes the right infrastructure decision based on environment context.</note>
+      </example>
+    </section>
+
+    <section name="terraform-module-pattern">
+      <p>When Crossplane is not available (non-Kubernetes environments), Terraform modules serve as the equivalent composition layer. A platform-standard EKS module encodes the same security defaults that a Crossplane XRD would provide.</p>
+
+      <rule testable="true">
+        <statement>Platform Terraform modules MUST set cluster_endpoint_public_access = false and cluster_endpoint_private_access = true by default for all Kubernetes cluster modules. Public endpoint access MUST NOT be the default. Modules MUST output cluster_endpoint and cluster_certificate_authority_data for downstream consumption without requiring module consumers to access the provider state directly.</statement>
+        <rationale>Public Kubernetes API endpoints are the most common misconfiguration leading to cluster compromise. Embedding the private-only default in the module means all EKS clusters provisioned through the platform golden path are secure by construction, not by policy reminder.</rationale>
+      </rule>
+
+      <example type="good" title="Platform-standard EKS Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/eks-cluster/main.tf
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
+
+  cluster_name    = var.cluster_name
+  cluster_version = "1.29"
+
+  vpc_id     = var.vpc_id
+  subnet_ids = var.private_subnet_ids
+
+  cluster_endpoint_public_access  = false  # platform default: private only
+  cluster_endpoint_private_access = true
+
+  enable_cluster_creator_admin_permissions = true
+
+  cluster_addons = {
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
+    aws-ebs-csi-driver = {
+      most_recent = true
+    }
+  }
+
+  eks_managed_node_groups = {
+    general = {
+      instance_types = ["t3.medium"]
+      min_size       = 2
+      max_size       = 10
+      desired_size   = 3
+
+      labels = {
+        role = "general"
+      }
+
+      tags = {
+        Environment = var.environment
+        Team        = "platform"
+      }
+    }
+  }
+
+  tags = var.tags
+}
+
+# Output for platform consumption
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "cluster_certificate_authority_data" {
+  value = module.eks.cluster_certificate_authority_data
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="crossplane-llm-prompts">
+      <p>LLM prompts for Crossplane composition design and Terraform module generation.</p>
+
+      <prompt purpose="Design a Crossplane composition for an infrastructure resource">
+        <![CDATA[
+Design a Crossplane composition for [resource type].
+
+Resource: [database/cache/storage/network]
+Cloud provider: [AWS/GCP/Azure]
+Variants needed: [development/staging/production]
+
+Composition should:
+1. Define CompositeResourceDefinition (XRD) with claim
+2. Provide sensible defaults
+3. Allow customization where needed
+4. Include security best practices (non-overridable)
+5. Set up monitoring/alerting
+6. Handle credentials securely (output as Kubernetes Secret)
+
+Output:
+- XRD YAML
+- Composition YAML
+- Example claim YAML
+- Documentation for developers
+]]>
+      </prompt>
+
+      <prompt purpose="Generate a Terraform module for a platform component">
+        <![CDATA[
+Generate a Terraform module for [platform component].
+
+Component: [EKS cluster/RDS database/VPC/S3 bucket]
+Requirements: [list specific requirements]
+Security: [encryption, network isolation, IAM]
+
+Module should:
+1. Follow Terraform best practices
+2. Use variables for customization
+3. Include sensible defaults
+4. Output necessary values for consumers
+5. Include examples in README
+
+Output: Complete module with main.tf, variables.tf, outputs.tf, README.md
+]]>
+      </prompt>
+    </section>
+
+    <antipattern>
+      <description>Exposing raw provider CRDs (e.g., rds.aws.crossplane.io/v1alpha1 DBInstance) directly to developers instead of building XRD compositions.</description>
+      <reason>Raw provider resources expose hundreds of configuration options. Developers will misconfigure security settings, pick oversized instances, and bypass cost controls. The composition layer is what makes Crossplane a platform tool rather than just another IaC format.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using Crossplane as a one-shot provisioning tool without leveraging continuous reconciliation.</description>
+      <reason>Crossplane's primary value over Terraform is the Kubernetes reconciliation loop — it continuously corrects drift. Treating it as one-shot apply loses the drift correction benefit and leaves you with Terraform's operational model at Crossplane's operational complexity.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-policy-finops"/>
+      <link href="https://crossplane.io/"/>
+      <link href="https://crossplane.io/docs/"/>
+      <link href="https://humanitec.com/"/>
+    </see-also>
+  </content>
+</methodology>
