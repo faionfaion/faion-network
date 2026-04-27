@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-storage-cdn">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GCP Cloud Storage architecture: storage class selection, lifecycle policies, CDN configuration, and Terraform templates for static content delivery with HTTPS and Cloud Armor.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-storage</tag>
+      <tag>cdn</tag>
+      <tag>terraform</tag>
+      <tag>static-hosting</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="gcp-landing-zone"/>
+      <ref slug="gcp-network-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Cloud Storage and CDN Architecture</title>
+
+    <summary>Cloud Storage provides four storage classes (STANDARD, NEARLINE, COLDLINE, ARCHIVE) with lifecycle rules to automate class transitions. Cloud CDN sits in front of a backend bucket to cache static content globally, reduce origin load, and serve while stale for high availability.</summary>
+
+    <why>
+      <p>Storage class selection directly affects cost: STANDARD is 3-5x more expensive per GB than COLDLINE. Autoclass or explicit lifecycle rules move objects to cheaper tiers automatically when access frequency drops. Without lifecycle policies, objects stay in STANDARD indefinitely even if never accessed again.</p>
+      <p>Cloud CDN with CACHE_ALL_STATIC reduces origin load for repetitive GET requests, lowers latency for global users via Google's edge PoPs, and enables serve-while-stale so users still get content during origin outages.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Hosting static assets (JS/CSS/images) served to global users — pair with CDN.</item>
+        <item>Long-term archive storage for backups, logs, or compliance data — use COLDLINE/ARCHIVE.</item>
+        <item>Infrequently accessed datasets (reports, exports) — use NEARLINE or COLDLINE with lifecycle rules.</item>
+        <item>Serving a SPA or Gatsby/Hugo/Next.js static build via HTTPS with managed SSL — use backend bucket + Cloud CDN + HTTPS proxy.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Storing database files or application state — use Cloud SQL, Firestore, or Bigtable instead.</item>
+        <item>Dynamic server-rendered content — CDN caching is counterproductive for uncacheable responses.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="storage-classes">
+      <p>Pick the storage class based on expected access frequency. Use Autoclass to let GCP move objects automatically when access patterns are unknown.</p>
+
+      <rule>
+        <statement>Set lifecycle rules on every production bucket: transition to NEARLINE after 30 days of no access, COLDLINE after 90 days, and optionally ARCHIVE after 365 days. Enable object versioning on buckets that hold mutable critical data, and limit retained versions to 3-5.</statement>
+        <rationale>Lifecycle rules are the single biggest GCS cost lever. A 1TB bucket of stale STANDARD objects costs ~$20/month; moving it to COLDLINE costs ~$4/month. Version limits prevent unbounded storage growth from frequent mutations.</rationale>
+      </rule>
+
+      <example type="good" title="Storage class selection guide">
+        <code lang="text"><![CDATA[
+Class     | Use case                  | Min duration | Relative cost
+----------|---------------------------|--------------|---------------
+STANDARD  | Frequently accessed       | None         | $$$
+NEARLINE  | < 1/month access          | 30 days      | $$
+COLDLINE  | < 1/quarter access        | 90 days      | $
+ARCHIVE   | < 1/year access           | 365 days     | Lowest
+]]></code>
+      </example>
+
+      <example type="good" title="CDN cache settings">
+        <code lang="text"><![CDATA[
+Setting            | Recommendation
+-------------------|----------------------------------
+Cache mode         | CACHE_ALL_STATIC for static content
+Default TTL        | 3600 seconds (1 hour)
+Max TTL            | 86400 seconds (1 day)
+Negative caching   | Enabled for error pages
+Serve while stale  | Enabled for high availability
+]]></code>
+      </example>
+    </section>
+
+    <section name="storage-cdn-terraform">
+      <p>Complete Terraform configuration for a Cloud Storage bucket with lifecycle rules and a Cloud CDN endpoint with managed SSL certificate, URL map, and HTTP-to-HTTPS redirect.</p>
+
+      <example type="good" title="Cloud Storage bucket with lifecycle rules">
+        <code lang="hcl"><![CDATA[
+# storage-cdn.tf
+resource "google_storage_bucket" "static" {
+  name     = "${var.project_id}-static"
+  location = var.region
+  project  = var.project_id
+
+  uniform_bucket_level_access = true
+
+  versioning {
+    enabled = true
+  }
+
+  # Lifecycle rules
+  lifecycle_rule {
+    condition {
+      age = 90
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 365
+    }
+    action {
+      type          = "SetStorageClass"
+      storage_class = "COLDLINE"
+    }
+  }
+
+  lifecycle_rule {
+    condition {
+      num_newer_versions = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+
+  cors {
+    origin          = ["https://${var.domain}"]
+    method          = ["GET", "HEAD"]
+    response_header = ["Content-Type", "Cache-Control"]
+    max_age_seconds = 3600
+  }
+
+  labels = {
+    environment = var.environment
+    team        = var.team
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Backend bucket with CDN policy">
+        <code lang="hcl"><![CDATA[
+# Backend bucket for CDN
+resource "google_compute_backend_bucket" "static" {
+  name        = "${var.project_id}-static-backend"
+  bucket_name = google_storage_bucket.static.name
+  enable_cdn  = true
+  project     = var.project_id
+
+  cdn_policy {
+    cache_mode        = "CACHE_ALL_STATIC"
+    default_ttl       = 3600     # 1 hour
+    max_ttl           = 86400    # 1 day
+    client_ttl        = 3600
+    negative_caching  = true
+    serve_while_stale = 86400
+
+    cache_key_policy {
+      include_host         = true
+      include_protocol     = true
+      include_query_string = false
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="HTTPS load balancer with managed cert and URL map">
+        <code lang="hcl"><![CDATA[
+# Global IP address
+resource "google_compute_global_address" "cdn" {
+  name    = "${var.project_id}-cdn-ip"
+  project = var.project_id
+}
+
+# Managed SSL certificate
+resource "google_compute_managed_ssl_certificate" "cdn" {
+  name    = "${var.project_id}-cdn-cert"
+  project = var.project_id
+
+  managed {
+    domains = ["static.${var.domain}"]
+  }
+}
+
+# URL map
+resource "google_compute_url_map" "cdn" {
+  name            = "${var.project_id}-cdn-url-map"
+  default_service = google_compute_backend_bucket.static.id
+  project         = var.project_id
+
+  host_rule {
+    hosts        = ["static.${var.domain}"]
+    path_matcher = "static"
+  }
+
+  path_matcher {
+    name            = "static"
+    default_service = google_compute_backend_bucket.static.id
+  }
+}
+
+# HTTPS proxy
+resource "google_compute_target_https_proxy" "cdn" {
+  name             = "${var.project_id}-cdn-https-proxy"
+  url_map          = google_compute_url_map.cdn.id
+  ssl_certificates = [google_compute_managed_ssl_certificate.cdn.id]
+  project          = var.project_id
+}
+
+# Global forwarding rule
+resource "google_compute_global_forwarding_rule" "cdn" {
+  name                  = "${var.project_id}-cdn-https-rule"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.cdn.id
+  ip_address            = google_compute_global_address.cdn.id
+  project               = var.project_id
+}
+
+# HTTP to HTTPS redirect
+resource "google_compute_url_map" "http_redirect" {
+  name    = "${var.project_id}-cdn-http-redirect"
+  project = var.project_id
+
+  default_url_redirect {
+    https_redirect         = true
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+    strip_query            = false
+  }
+}
+
+resource "google_compute_target_http_proxy" "http_redirect" {
+  name    = "${var.project_id}-cdn-http-proxy"
+  url_map = google_compute_url_map.http_redirect.id
+  project = var.project_id
+}
+
+resource "google_compute_global_forwarding_rule" "http_redirect" {
+  name                  = "${var.project_id}-cdn-http-rule"
+  ip_protocol           = "TCP"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.http_redirect.id
+  ip_address            = google_compute_global_address.cdn.id
+  project               = var.project_id
+}
+
+output "cdn_ip" {
+  value = google_compute_global_address.cdn.address
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Cloud Storage + CDN — gcloud equivalent">
+        <code lang="bash"><![CDATA[
+# Create bucket
+gcloud storage buckets create gs://my-project-static \
+    --location=us-central1 \
+    --uniform-bucket-level-access
+
+# Enable versioning
+gcloud storage buckets update gs://my-project-static --versioning
+
+# Create backend bucket with CDN
+gcloud compute backend-buckets create static-backend \
+    --gcs-bucket-name=my-project-static \
+    --enable-cdn \
+    --cache-mode=CACHE_ALL_STATIC \
+    --default-ttl=3600 \
+    --max-ttl=86400
+
+# Create managed SSL certificate
+gcloud compute ssl-certificates create cdn-cert \
+    --domains=static.example.com \
+    --global
+
+# Create URL map
+gcloud compute url-maps create cdn-url-map \
+    --default-backend-bucket=static-backend
+
+# Create HTTPS proxy
+gcloud compute target-https-proxies create cdn-https-proxy \
+    --url-map=cdn-url-map \
+    --ssl-certificates=cdn-cert
+
+# Reserve global IP
+gcloud compute addresses create cdn-ip --global
+
+# Create forwarding rule
+gcloud compute forwarding-rules create cdn-https-rule \
+    --global \
+    --target-https-proxy=cdn-https-proxy \
+    --ports=443 \
+    --address=cdn-ip
+]]></code>
+      </example>
+    </section>
+
+    <section name="storage-cdn-checklist">
+      <checklist>
+        <check>Bucket: enable uniform bucket-level access, configure versioning, set lifecycle policies (NEARLINE/COLDLINE/ARCHIVE transitions), configure CORS for web access, enable access logging.</check>
+        <check>Security: configure IAM (no public access unless required), enable CMEK for sensitive data, set up VPC Service Controls, configure signed URLs for temporary access.</check>
+        <check>CDN: create backend bucket with CDN enabled, configure cache policy (CACHE_ALL_STATIC), set up managed SSL certificate, configure URL map, set up Cloud Armor if public traffic.</check>
+        <check>Operations: monitor cache hit ratio, set up alerting for errors, document cache invalidation procedure, test CDN performance from multiple regions.</check>
+      </checklist>
+    </section>
+
+    <templates>
+      <template path="templates/storage-cdn.tf" purpose="Cloud Storage bucket with lifecycle rules, CDN backend, HTTPS load balancer, and HTTP redirect."/>
+    </templates>
+
+    <see-also>
+      <ref slug="gcp-landing-zone"/>
+      <link href="https://cloud.google.com/cdn/docs/best-practices"/>
+    </see-also>
+  </content>
+</methodology>
