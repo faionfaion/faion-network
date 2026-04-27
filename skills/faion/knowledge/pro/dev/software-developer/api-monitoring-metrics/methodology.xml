@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-monitoring-metrics">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Instrument APIs with Prometheus RED/USE metrics using bounded-cardinality labels, native histograms, and middleware. Covers metric naming, histogram bucket tuning, and cardinality anti-patterns.</summary>
+    <tags>
+      <tag>api-monitoring</tag>
+      <tag>prometheus</tag>
+      <tag>metrics</tag>
+      <tag>red-method</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>monitoring</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>API Metrics Collection: RED/USE with Prometheus</title>
+
+    <summary>Instrument every API using the RED method (Rate, Errors, Duration) per endpoint and USE method (Utilization, Saturation, Errors) per resource. Expose a /metrics endpoint via Prometheus client. Labels MUST be bounded: method, route template, status class only — never user_id, request_id, IP, or raw path.</summary>
+
+    <why>
+      <p>Aggregate metrics without the RED/USE framework hide the most important failure modes: a slow endpoint buried by fast ones, a 4xx spike on one route, a saturated connection pool. The framework forces per-endpoint visibility and resource-level capacity tracking simultaneously.</p>
+      <p>Cardinality is the single biggest operational hazard with Prometheus. One metric with user_id as a label creates millions of time series and kills Prometheus within hours. Route templates (e.g., /users/:id) instead of raw paths, and status class (2xx/3xx) instead of exact codes, keep cardinality bounded for any realistic API.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any API that needs production observability before or after launch.</item>
+        <item>Adding RED/USE dashboards before a planned launch or scale event.</item>
+        <item>Onboarding a new microservice into an existing Prometheus + Grafana stack.</item>
+        <item>Migrating from legacy APM SDKs to OpenTelemetry as the standard instrumentation layer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pre-product-fit prototypes — /health + log-to-stdout covers the minimal monitoring need without Prometheus setup overhead.</item>
+        <item>Internal tools used by fewer than 10 people daily — alert fatigue exceeds incident value.</item>
+        <item>Strict-latency embedded or industrial systems where Prometheus client allocations and OpenTelemetry SDK CPU usage break the SLO. Use sampled, async exporters or skip in-process collection.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Metric labels MUST be bounded: method (GET, POST, etc.), route template (/users/:id, NEVER /users/123), and status class (2xx, 3xx, 4xx, 5xx). Labels MUST NEVER include user_id, request_id, session_id, trace_id, email, IP address, or any high-cardinality identifier.</statement>
+        <rationale>High-cardinality labels create millions of time series. Prometheus stores each series in memory; a label like user_id on an API with 1M users creates 1M series per metric, consuming gigabytes of RAM and crashing Prometheus within hours. This is the single most common Prometheus production incident.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Histogram buckets MUST be tuned to the actual latency profile of the service, not left at Prometheus defaults (0.005s to 10s in 7 buckets). Use the observed p50/p95/p99 from logs to set buckets. On Prometheus 2.40+, prefer native histograms over fixed-bucket histograms for tail percentile accuracy.</statement>
+        <rationale>Default buckets with coarse resolution at the tail mean histogram_quantile(0.99, ...) returns values that are off by a factor of 2 or more. This causes SLO burn-rate alerts to fire late or not at all. Tuned buckets or native histograms give accurate p99 without guesswork.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every service MUST expose a /metrics endpoint in Prometheus text format. The metrics middleware MUST run before authentication and response modification so every request is counted including rejected ones.</statement>
+        <rationale>Metrics missing rejected requests (401, 429) hide real load patterns and error rates. The scrape target must be reachable from the Prometheus server without authentication or with a separate scrape credential.</rationale>
+      </rule>
+    </rules>
+
+    <section name="implementation">
+      <p>Wire a metrics middleware that records request count and latency for every request, with bounded labels.</p>
+
+      <example type="good" title="Prometheus metrics middleware with bounded cardinality">
+        <code lang="python"><![CDATA[
+from prometheus_client import Counter, Histogram, Gauge, generate_latest
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+
+# Three core RED metrics with bounded label sets
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "route", "status_class"]   # route = template, status_class = 2xx/3xx/4xx/5xx
+)
+
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency",
+    ["method", "route"],
+    # Tuned for an API with p99 target of 1s:
+    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+IN_FLIGHT = Gauge(
+    "http_in_flight_requests",
+    "Current in-flight requests"
+)
+
+def status_class(status: int) -> str:
+    return f"{status // 100}xx"
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # Use route template from router, not raw path
+        route = request.scope.get("route")
+        route_path = route.path if route else request.url.path
+
+        IN_FLIGHT.inc()
+        start_time = time.time()
+        try:
+            response = await call_next(request)
+            latency = time.time() - start_time
+            REQUEST_COUNT.labels(
+                method=request.method,
+                route=route_path,
+                status_class=status_class(response.status_code)
+            ).inc()
+            REQUEST_LATENCY.labels(
+                method=request.method,
+                route=route_path
+            ).observe(latency)
+            return response
+        finally:
+            IN_FLIGHT.dec()
+
+app.add_middleware(MetricsMiddleware)
+
+@app.get("/metrics")
+async def metrics():
+    from fastapi.responses import Response
+    return Response(generate_latest(), media_type="text/plain")
+]]></code>
+        <note>route_path uses the route template (/users/{id}) not the raw path (/users/123). status_class collapses 200/201/204 into 2xx, keeping label cardinality at 5 values instead of hundreds.</note>
+      </example>
+
+      <example type="bad" title="High-cardinality labels that kill Prometheus">
+        <code lang="python"><![CDATA[
+# DO NOT DO THIS — high-cardinality labels
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "path", "status", "user_id"]  # path = raw URL, user_id = unbounded
+)
+
+# This creates 1M+ series for a 1M user API. Prometheus OOMs within hours.
+REQUEST_COUNT.labels(
+    method="GET",
+    path="/users/12345678",          # raw path, not template
+    status="200",                    # exact code, not class
+    user_id="12345678"               # unbounded cardinality
+).inc()
+]]></code>
+        <note>Never use raw paths, exact status codes, or any user/request/session identifier as a Prometheus label. These belong in logs and traces, not metrics.</note>
+      </example>
+    </section>
+
+    <section name="red-use-dashboards">
+      <p>Two dashboards, one consistent framework: RED per endpoint, USE per resource.</p>
+      <list>
+        <item>RED dashboard: per-endpoint rate (requests/s), error ratio (5xx/(total)), duration (p50/p95/p99 histogram_quantile). One graph row per endpoint family.</item>
+        <item>USE dashboard: per-resource utilization (CPU%, memory%, connection pool usage%), saturation (queue depth, connection wait time), errors (connection errors, timeouts).</item>
+        <item>Business dashboard: domain-specific counters (orders/min, payments/min, conversions). Wire custom counters in business logic, not middleware.</item>
+      </list>
+    </section>
+
+    <section name="metrics-checklist">
+      <checklist>
+        <check>Implement request counter metric with method, route (template), status_class labels.</check>
+        <check>Implement request latency histogram with tuned buckets or native histogram.</check>
+        <check>Implement in-flight gauge.</check>
+        <check>Add custom business metrics counters (orders, payments, conversions).</check>
+        <check>Verify no high-cardinality labels (user_id, request_id, ip, raw path).</check>
+        <check>Expose /metrics endpoint in Prometheus text format.</check>
+        <check>Configure Prometheus scrape target and scraping interval (15s default).</check>
+        <check>Run cardinality lint script to catch label violations before deploy.</check>
+        <check>Create RED + USE dashboards in Grafana.</check>
+        <check>Load test monitoring overhead — middleware adds less than 1ms per request.</check>
+      </checklist>
+    </section>
+
+    <antipattern>
+      <description>Using user_id, request_id, or session_id as Prometheus metric labels.</description>
+      <reason>Creates millions of time series. High-cardinality identifiers belong in logs and traces where per-event storage is expected, not in metrics where each unique label combination is a persistent time series consuming RAM.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using default Prometheus histogram buckets (0.005s to 10s) for a service with sub-100ms p99 target.</description>
+      <reason>Default coarse buckets give inaccurate percentile estimates at the tail. histogram_quantile(0.99) returns values that can be off by 10x. Tune buckets to your latency distribution or use native histograms (Prometheus 2.40+).</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Disabling or skipping the metrics middleware for authenticated endpoints to avoid "overhead".</description>
+      <reason>Missing metrics for authenticated routes hides 401/403 error rates and real traffic patterns on the most important endpoints. Middleware overhead is sub-millisecond and worth the full coverage.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="api-monitoring-health-checks"/>
+      <ref slug="api-monitoring-alerting"/>
+      <ref slug="api-monitoring-logging"/>
+      <link href="https://prometheus.io/docs/practices/naming/"/>
+      <link href="https://www.brendangregg.com/usemethod.html"/>
+      <link href="https://www.weave.works/blog/the-red-method-key-metrics-for-microservices-architecture"/>
+    </see-also>
+  </content>
+</methodology>
