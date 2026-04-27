@@ -1,0 +1,13 @@
+# AI Assistant Pattern Spec — [Feature Name]
+
+Pattern: [sidebar | modal | inline]
+Trigger: [explicit event that opens assistant — must require user intent]
+Context passed to AI: [list all design context fields sent with the request]
+Response format: [structured JSON | freeform text | ordered list]
+Max response wait: [Xms before skeleton/timeout state shown]
+Fallback state (empty): [what to show if AI returns no result]
+Fallback state (error): [what to show if AI returns error — human-written copy required]
+Fallback state (timeout): [what to show after max wait exceeded]
+Human confirmation: [before | after | none — for destructive actions: always before]
+Undo behavior: [how AI action integrates with tool undo/redo stack — must be single atomic step]
+Copy review: [human reviewer name + approval date before shipping]
