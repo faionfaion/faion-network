@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-org-policies">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Implement GCP organization policies to enforce security constraints: restrict resource locations, disable SA key creation, enforce OS Login, require labels, and set up Security Command Center.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>org-policy</tag>
+      <tag>security-baseline</tag>
+      <tag>governance</tag>
+      <tag>compliance</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-iam-design"/>
+      <ref slug="gcp-security-iam"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Organization Policies and Security Baseline</title>
+
+    <summary>Organization policies are mandatory guardrails applied at the org or folder level that override project-level settings. They prevent the most common GCP security misconfigurations: VM external IPs, service account key creation, unapproved resource regions, and missing labels. A security baseline should be applied to every new organization before any teams create resources.</summary>
+
+    <why>
+      <p>Without org policies, each project team independently decides whether to create VMs with external IPs, use unapproved regions, or create service account keys. At scale, some teams will make insecure choices — org policies make the secure path the only path. Organization policies complement IAM: IAM controls who can do what, org policies control what configurations are even possible regardless of IAM permissions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new GCP organization — apply the security baseline before any teams create resources.</item>
+        <item>Hardening an existing organization where teams have been creating resources without constraints.</item>
+        <item>Meeting compliance requirements (GDPR, HIPAA, SOC2) that require data residency or access controls.</item>
+        <item>Enforcing consistent label usage across all projects for cost allocation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Per-project configuration that does not need to be enforced org-wide — use project-level IAM or Terraform modules instead.</item>
+        <item>Fine-grained network rules — org policies are coarse; use VPC firewall rules and VPC Service Controls for network-layer enforcement.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-org-policies">
+      <p>The minimum set of organization policies to apply to every new GCP organization:</p>
+
+      <rule testable="true">
+        <statement>Apply at minimum: resource location restriction, VM external IP denial, service account key creation disable, OS Login enforcement, and uniform bucket-level access enforcement. Apply these at the organization root so they cascade to all folders and projects.</statement>
+        <rationale>These five policies prevent the most common GCP misconfigurations. Resource location restriction enforces data residency. External IP denial prevents accidental internet exposure. SA key disable forces Workload Identity. OS Login centralizes VM access via IAM. Uniform bucket access prevents ACL-based bucket misconfigurations.</rationale>
+      </rule>
+
+      <example type="good" title="Core Terraform org-policies module">
+        <code lang="hcl"><![CDATA[
+# modules/org-policies/variables.tf
+variable "org_id" {
+  description = "Organization ID"
+  type        = string
+}
+
+variable "allowed_regions" {
+  description = "Allowed GCP regions"
+  type        = list(string)
+  default     = ["in:europe-locations", "in:us-locations"]
+}
+
+variable "require_os_login" {
+  description = "Require OS Login for VMs"
+  type        = bool
+  default     = true
+}
+
+variable "disable_sa_key_creation" {
+  description = "Disable service account key creation"
+  type        = bool
+  default     = true
+}
+
+# modules/org-policies/main.tf
+resource "google_org_policy_policy" "resource_locations" {
+  name   = "organizations/${var.org_id}/policies/gcp.resourceLocations"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      values {
+        allowed_values = var.allowed_regions
+      }
+    }
+  }
+}
+
+resource "google_org_policy_policy" "require_os_login" {
+  count  = var.require_os_login ? 1 : 0
+  name   = "organizations/${var.org_id}/policies/compute.requireOsLogin"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      enforce = "TRUE"
+    }
+  }
+}
+
+resource "google_org_policy_policy" "disable_sa_key_creation" {
+  count  = var.disable_sa_key_creation ? 1 : 0
+  name   = "organizations/${var.org_id}/policies/iam.disableServiceAccountKeyCreation"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      enforce = "TRUE"
+    }
+  }
+}
+
+resource "google_org_policy_policy" "uniform_bucket_level_access" {
+  name   = "organizations/${var.org_id}/policies/storage.uniformBucketLevelAccess"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      enforce = "TRUE"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="vm-external-ip-policy">
+      <p>Controlling VM external IP access is the most impactful single org policy change for reducing attack surface.</p>
+
+      <example type="good" title="Deny VM external IPs org-wide with exception for DMZ folder">
+        <code lang="hcl"><![CDATA[
+# Deny all external IPs at org root
+resource "google_org_policy_policy" "vm_external_ip" {
+  name   = "organizations/${var.org_id}/policies/compute.vmExternalIpAccess"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      deny_all = "TRUE"
+    }
+  }
+}
+
+# Allow exception for specific folder (DMZ / load balancer tier)
+resource "google_org_policy_policy" "vm_external_ip_exception" {
+  name   = "folders/${google_folder.dmz.folder_id}/policies/compute.vmExternalIpAccess"
+  parent = "folders/${google_folder.dmz.folder_id}"
+
+  spec {
+    rules {
+      allow_all = "TRUE"
+    }
+  }
+}
+]]></code>
+        <note>Folder-level policies override the org-level policy for that folder only. Use this pattern to allow external IPs in a designated DMZ or load balancer folder while denying them everywhere else.</note>
+      </example>
+    </section>
+
+    <section name="label-enforcement-policy">
+      <p>Custom org policy constraints (available since 2023) can enforce required labels on project creation and updates.</p>
+
+      <example type="good" title="Custom constraint to require project labels">
+        <code lang="hcl"><![CDATA[
+resource "google_org_policy_custom_constraint" "require_labels" {
+  name         = "organizations/${var.org_id}/customConstraints/custom.requireProjectLabels"
+  parent       = "organizations/${var.org_id}"
+  display_name = "Require Project Labels"
+  description  = "Projects must have env, team, and cost_center labels"
+
+  action_type    = "DENY"
+  condition      = "!has(resource.labels.env) || !has(resource.labels.team) || !has(resource.labels.cost_center)"
+  method_types   = ["CREATE", "UPDATE"]
+  resource_types = ["cloudresourcemanager.googleapis.com/Project"]
+}
+
+resource "google_org_policy_policy" "require_labels" {
+  name   = "organizations/${var.org_id}/policies/custom.requireProjectLabels"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      enforce = "TRUE"
+    }
+  }
+
+  depends_on = [google_org_policy_custom_constraint.require_labels]
+}
+]]></code>
+        <note>Custom constraints require the orgpolicy.googleapis.com API. The constraint must be created before the policy that references it.</note>
+      </example>
+
+      <example type="good" title="Restrict resource locations to EU and US">
+        <code lang="hcl"><![CDATA[
+resource "google_org_policy_policy" "resource_locations" {
+  name   = "organizations/${var.org_id}/policies/gcp.resourceLocations"
+  parent = "organizations/${var.org_id}"
+
+  spec {
+    rules {
+      values {
+        allowed_values = [
+          "in:europe-locations",
+          "in:us-locations"
+        ]
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="security-baseline-checklist">
+      <checklist>
+        <check>VPC Service Controls evaluated for high-sensitivity projects.</check>
+        <check>Organization policies for security constraints applied at org root: resource locations, external IPs, SA key creation, OS Login, uniform bucket access.</check>
+        <check>Cloud Audit Logs enabled (Admin Activity, Data Access) at org level.</check>
+        <check>Access Transparency enabled if applicable (Enterprise/Sovereign controls).</check>
+        <check>Security Command Center enabled at org level (Standard or Premium tier).</check>
+        <check>Cloud Asset Inventory configured for continuous resource monitoring.</check>
+        <check>Custom label constraint deployed and active.</check>
+        <check>Exception policy pattern documented — folders where specific constraints are relaxed.</check>
+      </checklist>
+    </section>
+
+    <section name="security-foundations-checks">
+      <checklist>
+        <check>Custom VPC created for all workloads — default VPC not used in production.</check>
+        <check>Private Google Access enabled on subnets used by private VMs.</check>
+        <check>Cloud NAT configured for private resources needing outbound internet.</check>
+        <check>Firewall rules follow least privilege — no 0.0.0.0/0 ingress except load balancer health checks.</check>
+        <check>VPC Flow Logs enabled for audit and anomaly detection.</check>
+        <check>Cloud Monitoring workspace created and alert policies configured for critical metrics.</check>
+        <check>Logging sinks configured for long-term retention outside the project.</check>
+        <check>Uptime checks configured for public endpoints.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="Design organization policies">
+        <![CDATA[
+Design organization policies for [ORGANIZATION]:
+
+Security Requirements:
+- [List security requirements]
+
+Compliance Requirements:
+- [List compliance frameworks]
+
+Policy Areas:
+1. Resource location restrictions
+2. External access prevention
+3. Service account constraints
+4. Network security policies
+5. Encryption requirements
+
+Deliverables:
+- Policy list with rationale
+- Terraform implementation
+- Exception handling process
+- Monitoring and alerting
+]]>
+      </prompt>
+
+      <prompt purpose="Implement security baseline">
+        <![CDATA[
+Implement GCP security baseline for [PROJECT/ORGANIZATION]:
+
+Security Level: [basic/standard/high]
+
+Baseline Components:
+1. Organization policies
+2. VPC Service Controls (if high)
+3. Audit logging configuration
+4. Security Command Center
+5. IAM recommendations
+6. Network security
+
+Context:
+- Existing security tools: [list]
+- Compliance requirements: [list]
+- Team security expertise: [basic/intermediate/advanced]
+
+Output:
+- Prioritized implementation plan
+- Terraform modules
+- Validation checklist
+- Ongoing monitoring setup
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-iam-design"/>
+      <ref slug="gcp-security-iam"/>
+      <link href="https://cloud.google.com/architecture/framework"/>
+      <link href="https://cloud.google.com/resource-manager/docs/organization-policy/org-policy-constraints"/>
+    </see-also>
+  </content>
+</methodology>
