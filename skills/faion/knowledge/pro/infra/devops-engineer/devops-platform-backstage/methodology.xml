@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-platform-backstage">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Deploy Backstage as a unified developer portal: service catalog, TechDocs, golden path scaffolder, plugin ecosystem. Spotify-validated (280 teams, 2000+ services): 2.3x GitHub activity increase.</summary>
+    <tags>
+      <tag>backstage</tag>
+      <tag>service-catalog</tag>
+      <tag>developer-portal</tag>
+      <tag>platform-engineering</tag>
+      <tag>cncf</tag>
+    </tags>
+    <category>platform</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-crossplane"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Backstage: CNCF Developer Portal and Service Catalog</title>
+
+    <summary>Backstage is the CNCF-donated open-source developer portal (originally from Spotify) that combines a service catalog, TechDocs, and a golden path scaffolder (Software Templates) in one plugin-extensible platform. It is the most common open-source foundation for enterprise IDPs in 2026. Backstage must be treated as a product, not a deployment — it requires dedicated engineering to maintain plugins and keep the catalog data accurate.</summary>
+
+    <why>
+      <p>Spotify had 280 engineering teams managing 2,000+ backend services, 300 websites, 4,000 data pipelines, and 200 mobile features. Engineers struggled to find information and manage services across this complexity. Backstage unified service discovery, documentation, and self-service into one surface, reducing onboarding from 60+ days to 20 days and driving 2.3x more GitHub activity among frequent users.</p>
+      <p>Backstage was open-sourced in 2020 and donated to CNCF. Its plugin ecosystem (300+ plugins in 2026) means most org-specific integrations (PagerDuty, SonarQube, Datadog, cost tools) already exist as community plugins rather than requiring custom development.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Engineering org needing a unified portal to discover services, documentation, and self-service workflows.</item>
+        <item>Teams spending significant time searching for service ownership, dependency information, or runbooks.</item>
+        <item>Platform team that wants a plugin-extensible portal rather than building a custom web app from scratch.</item>
+        <item>Orgs adopting golden paths who want a managed scaffolding UI rather than CLI-only templates.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Teams without dedicated Backstage engineering capacity — an unmaintained catalog goes stale within weeks and loses developer trust permanently.</item>
+        <item>Orgs under 50 engineers where a shared wiki and a Slack channel provide equivalent discoverability at zero maintenance cost.</item>
+        <item>Orgs whose primary IDP requirement is infrastructure orchestration rather than service discovery — Backstage excels at the catalog layer, not the infrastructure layer (use Crossplane for that).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="catalog-info-yaml">
+      <p>The catalog-info.yaml file is the registration artifact for every entity in Backstage. It lives in the service's repository root and is the single source of truth for service metadata. The Backstage catalog polls it via GitHub/GitLab integration.</p>
+
+      <rule testable="true">
+        <statement>Every service registered in Backstage MUST have a catalog-info.yaml at the repository root declaring: apiVersion (backstage.io/v1alpha1), kind (Component), metadata.name (unique, kebab-case), metadata.annotations.github.com/project-slug (for GitHub integration), metadata.annotations.backstage.io/techdocs-ref (for documentation), spec.type (service | library | website | tool), spec.lifecycle (experimental | production | deprecated), spec.owner (exactly one Group entity), and spec.dependsOn (all direct runtime dependencies). Missing spec.owner makes the service orphaned — undiscoverable through the team filter and excluded from on-call routing.</statement>
+        <rationale>Incomplete catalog-info.yaml is the primary cause of catalog staleness. Without owner, the service appears ungoverned. Without dependsOn, dependency blast radius analysis is impossible. These two fields are the minimum for the catalog to provide value beyond a directory listing.</rationale>
+      </rule>
+
+      <example type="good" title="Complete catalog-info.yaml for a service component">
+        <code lang="yaml"><![CDATA[
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: user-auth-service
+  description: User authentication service — handles login, OAuth2, session management
+  labels:
+    team: platform
+  annotations:
+    github.com/project-slug: myorg/user-auth-service
+    backstage.io/techdocs-ref: dir:.
+    pagerduty.com/service-id: P1234567
+    sonarqube.org/project-key: myorg_user-auth-service
+  tags:
+    - python
+    - fastapi
+    - auth
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: authentication-system
+  dependsOn:
+    - component:user-database
+    - component:redis-session-store
+    - resource:auth-secrets
+  providesApis:
+    - auth-api
+]]></code>
+      </example>
+
+      <example type="good" title="API definition entity">
+        <code lang="yaml"><![CDATA[
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: auth-api
+  description: Authentication API — login, token refresh, OAuth2 flows
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  definition:
+    $text: ./openapi.yaml
+]]></code>
+      </example>
+
+      <example type="good" title="System definition entity grouping related services">
+        <code lang="yaml"><![CDATA[
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: authentication-system
+  description: All services and resources related to user authentication
+spec:
+  owner: platform-team
+  domain: user-management
+]]></code>
+      </example>
+
+      <example type="bad" title="Minimal catalog-info.yaml that breaks catalog functionality">
+        <code lang="yaml"><![CDATA[
+# Missing: owner, dependsOn, annotations
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: my-service
+spec:
+  type: service
+  lifecycle: production
+]]></code>
+        <note>No owner means the service is unassignable to a team. No annotations means no GitHub/PagerDuty integration. No dependsOn means dependency analysis is broken.</note>
+      </example>
+    </section>
+
+    <section name="spotify-backstage-case-study">
+      <p>Spotify's Backstage implementation is the reference case study for enterprise-scale developer portals. The specific decisions Spotify made — and why — are directly applicable to orgs adopting Backstage.</p>
+
+      <example type="good" title="Spotify Backstage — before and after metrics">
+        <code lang="text"><![CDATA[
+Context: 280 engineering teams, 2,000+ backend services, 300 websites,
+         4,000 data pipelines, 200 mobile features
+
+Problem: Engineers struggled to find information and manage services
+         across this complexity.
+
+Solution components:
+  - Software catalog (every service registered with ownership)
+  - Tech documentation (TechDocs — docs-as-code)
+  - Golden paths (Software Templates — opinionated but optional)
+  - Plugin ecosystem (300+ community plugins)
+
+Key decision: Golden paths "nudge" toward best practices WITHOUT forcing
+              compliance. Preserves autonomous engineering culture.
+
+Results:
+  Onboarding time:          60+ days → 20 days (3x improvement)
+  Documentation discovery:  Hours → Minutes
+  Service creation:         Days → Hours
+
+Frequent Backstage users vs non-users:
+  GitHub activity:          2.3x more active
+  Code changes:             2x more
+  Cycle time:               17% less
+  Deployment frequency:     2x
+  Deployment stability:     3x longer stability periods
+
+Golden path adoption (post-launch):
+  New service template:     89% voluntary adoption
+  Database golden path:     72% adoption
+  API gateway golden path:  58% adoption
+  Custom setup:             11% (escape hatch users)
+]]></code>
+      </example>
+    </section>
+
+    <section name="netflix-wall-e-case-study">
+      <p>Netflix Wall-E demonstrates the security golden path pattern — embedding security best practices invisibly into the service creation flow so compliance is the default, not the exception.</p>
+
+      <example type="good" title="Netflix Wall-E — security golden path architecture">
+        <code lang="text"><![CDATA[
+Context: Thousands of microservices needing security best practices
+         without slowing development velocity.
+
+Solution — Wall-E platform:
+  - Bootstraps new services with security pre-integrated
+  - Self-service security compliance (no manual review)
+  - Eliminates manual security checkbox reviews
+
+Security golden path provides:
+  - Authentication/authorization pre-configured
+  - Secrets management integrated (no plaintext secrets)
+  - Vulnerability scanning automated in CI pipeline
+  - Compliance templates embedded
+
+Developer experience:
+  - One command to create secure service
+  - Security invisible to developers (built-in, not bolt-on)
+  - Escape hatches for edge cases with documented review
+
+Results:
+  Security compliance:  Near 100% for new services
+  Developer friction:   Minimal (security is default, not overhead)
+  Time to secure svc:   Days to minutes
+
+Key insight: Security by default beats security by policy.
+             Policy requires compliance. Default requires nothing.
+]]></code>
+      </example>
+    </section>
+
+    <section name="backstage-architecture">
+      <p>The Backstage-based IDP architecture uses three integration points: the service catalog (GitHub/GitLab entity discovery), TechDocs (MkDocs/Docusaurus docs-as-code), and Software Templates (golden path scaffolder). All three are plugins — each can be replaced or extended without rebuilding the core.</p>
+
+      <example type="good" title="Backstage IDP integration architecture">
+        <code lang="text"><![CDATA[
+                    Developer Portal (Backstage + Custom Plugins)
+                                        |
+        +-------------------------------|-------------------------------+
+        |                              |                               |
+        v                              v                               v
+Service Catalog                   Tech Docs               Golden Paths (Templates)
+        |                              |                               |
+        v                              v                               v
+GitHub/GitLab Integration     MkDocs/Docusaurus            Backstage Scaffolder
+(catalog-info.yaml polling)   (docs-as-code)               (template.yaml + skeleton)
+        |                                                             |
+        v                                                             v
+Service ownership, deps,                              Repo creation, CI/CD wiring,
+health dashboards                                     catalog auto-registration
+]]></code>
+      </example>
+    </section>
+
+    <section name="backstage-llm-prompts">
+      <p>LLM prompts for Backstage configuration and template generation tasks.</p>
+
+      <prompt purpose="Generate catalog-info.yaml for a service">
+        <![CDATA[
+Generate a Backstage catalog-info.yaml for this service.
+
+Service details:
+- Name: [service name]
+- Description: [what it does]
+- Repository: [GitHub URL]
+- Language: [language]
+- Dependencies: [list of dependent services]
+- APIs provided: [list of APIs]
+- Owner team: [team name]
+- Lifecycle: [experimental/production/deprecated]
+
+Include annotations for:
+- GitHub integration
+- TechDocs
+- PagerDuty (if applicable)
+- SonarQube (if applicable)
+
+Output valid YAML with comments explaining each section.
+]]>
+      </prompt>
+
+      <prompt purpose="Create a Backstage Scaffolder template for a use case">
+        <![CDATA[
+Create a Backstage Scaffolder template for [use case].
+
+Use case: [new microservice/new library/new infrastructure component]
+Language/framework: [specify]
+
+Template should:
+1. Collect necessary parameters (with validation)
+2. Fetch and render template files
+3. Create repository with proper structure
+4. Set up CI/CD pipeline
+5. Register in Backstage catalog
+6. Provide output links
+
+Include template.yaml and skeleton directory structure.
+]]>
+      </prompt>
+
+      <prompt purpose="Design IDP architecture using Backstage">
+        <![CDATA[
+Design an Internal Developer Platform architecture.
+
+Requirements:
+- Cloud provider: [AWS/GCP/Azure]
+- Kubernetes: [yes/no]
+- Team structure: [centralized/distributed]
+- Existing CI/CD: [tool]
+- Security requirements: [list]
+- Budget constraints: [if any]
+
+Deliverables:
+1. Architecture diagram (describe layers)
+2. Tool selection with rationale
+3. Integration points
+4. Data flow for common operations
+5. Security and access control model
+6. Migration path from current state
+]]>
+      </prompt>
+    </section>
+
+    <antipattern>
+      <description>Deploying Backstage without dedicated engineering capacity to maintain it.</description>
+      <reason>The catalog goes stale within weeks without automated entity discovery and active catalog maintenance. Stale catalog data (wrong owners, missing services) destroys developer trust in 2-3 months, making adoption near-impossible to recover.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Building custom Backstage plugins for integrations that already have community plugins.</description>
+      <reason>300+ community plugins exist in 2026. Custom plugin development takes 4-8 weeks; adopting a community plugin takes 1-2 days. Always check the Backstage plugin marketplace before building.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using Backstage as the infrastructure orchestration layer instead of the portal/catalog layer.</description>
+      <reason>Backstage is a portal, not an orchestrator. Complex infrastructure provisioning (multi-resource, multi-cloud) belongs in Crossplane or Terraform pipelines. Backstage Software Templates should invoke those backends, not implement the provisioning logic themselves.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-crossplane"/>
+      <link href="https://backstage.io/"/>
+      <link href="https://github.com/backstage/backstage"/>
+      <link href="https://www.cloudbees.com/blog/platform-engineering-best-practices"/>
+    </see-also>
+  </content>
+</methodology>
