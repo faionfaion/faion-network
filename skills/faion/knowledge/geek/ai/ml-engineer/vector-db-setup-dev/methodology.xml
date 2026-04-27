@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-db-setup-dev">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Run any major vector database locally for development: Docker one-liners, client SDK connections, collection creation, and dev-env checklists.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>docker</tag>
+      <tag>development</tag>
+      <tag>qdrant</tag>
+      <tag>weaviate</tag>
+    </tags>
+    <category>setup</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>sql</language>
+    </languages>
+    <related>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-index-tuning"/>
+      <ref slug="vector-databases"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Vector Database Development Setup</title>
+
+    <summary>Spin up any major vector database (Qdrant, Weaviate, Milvus, pgvector, Pinecone, Chroma) locally via Docker one-liners or pip install, connect a Python client, create a collection, and verify the stack is functional before writing pipeline code.</summary>
+
+    <why>
+      <p>Starting with a running, verified local database eliminates a common failure class in RAG development: bugs that appear to be pipeline logic errors but are actually misconfigured connections, wrong dimension sizes, or missing indexes. A five-minute local setup gives a true integration baseline against which embedding and retrieval code can be tested deterministically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new RAG pipeline and need a vector store to develop against.</item>
+        <item>Evaluating a database before committing to a production deployment.</item>
+        <item>Running integration tests that require a real (not mocked) vector database.</item>
+        <item>Migrating from Chroma in-memory to a persistent database during prototyping.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Proof-of-concept with fewer than 10K documents — use Chroma in-memory or pgvector on an existing Postgres; no Docker needed.</item>
+        <item>Production deployment — use the vector-db-setup-prod methodology instead; dev defaults are not hardened.</item>
+        <item>The bottleneck is embedding quality or chunking strategy — fix those upstream before adding database complexity.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="quickstart-commands">
+      <p>Quickest path to a running database per engine:</p>
+
+      <section name="qdrant-docker">
+        <rule>
+          <statement>Start Qdrant for development with a single docker run command exposing HTTP (6333) and gRPC (6334) ports; mount a volume for persistence so data survives container restarts.</statement>
+          <rationale>Without a persistent volume, all indexed vectors are lost on restart, making iterative development painful.</rationale>
+        </rule>
+
+        <example type="good" title="Qdrant development container with persistence">
+          <code lang="bash"><![CDATA[
+docker run -d --name qdrant \
+  -p 6333:6333 \
+  -p 6334:6334 \
+  -v $(pwd)/qdrant_storage:/qdrant/storage:z \
+  qdrant/qdrant:latest
+
+# Verify
+curl http://localhost:6333/readyz
+]]></code>
+        </example>
+
+        <example type="good" title="Qdrant with custom config (disable telemetry, set gRPC port)">
+          <code lang="bash"><![CDATA[
+docker run -d --name qdrant \
+  -p 6333:6333 \
+  -p 6334:6334 \
+  -v $(pwd)/qdrant_storage:/qdrant/storage:z \
+  -v $(pwd)/qdrant_config.yaml:/qdrant/config/production.yaml:ro \
+  -e QDRANT__SERVICE__GRPC_PORT=6334 \
+  -e QDRANT__TELEMETRY_DISABLED=true \
+  qdrant/qdrant:latest
+]]></code>
+        </example>
+      </section>
+
+      <section name="weaviate-docker">
+        <example type="good" title="Weaviate development container">
+          <code lang="bash"><![CDATA[
+docker run -d --name weaviate \
+  -p 8080:8080 \
+  -p 50051:50051 \
+  -v weaviate_data:/var/lib/weaviate \
+  -e AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED=true \
+  -e PERSISTENCE_DATA_PATH=/var/lib/weaviate \
+  -e QUERY_DEFAULTS_LIMIT=25 \
+  -e DEFAULT_VECTORIZER_MODULE=none \
+  semitechnologies/weaviate:latest
+
+# Verify
+curl http://localhost:8080/v1/.well-known/ready
+]]></code>
+        </example>
+      </section>
+
+      <section name="milvus-docker">
+        <example type="good" title="Milvus standalone via official script">
+          <code lang="bash"><![CDATA[
+curl -sfL https://raw.githubusercontent.com/milvus-io/milvus/master/scripts/standalone_embed.sh \
+  -o standalone_embed.sh
+
+bash standalone_embed.sh start
+
+# Verify
+curl http://localhost:9091/healthz
+]]></code>
+        </example>
+      </section>
+
+      <section name="pgvector-docker">
+        <example type="good" title="pgvector container with extension pre-enabled">
+          <code lang="bash"><![CDATA[
+docker run -d --name pgvector \
+  -p 5432:5432 \
+  -e POSTGRES_USER=vectordb \
+  -e POSTGRES_PASSWORD=vectordb \
+  -e POSTGRES_DB=vectors \
+  -v pgvector_data:/var/lib/postgresql/data \
+  pgvector/pgvector:pg16
+
+# Enable extension
+docker exec -it pgvector psql -U vectordb -d vectors \
+  -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# Verify version
+docker exec -it pgvector psql -U vectordb -d vectors \
+  -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
+]]></code>
+        </example>
+      </section>
+
+      <section name="chroma-docker">
+        <example type="good" title="Chroma server with persistence (prototyping only)">
+          <code lang="bash"><![CDATA[
+docker run -d --name chroma \
+  -p 8000:8000 \
+  -v chroma_data:/chroma/chroma \
+  -e IS_PERSISTENT=TRUE \
+  -e ANONYMIZED_TELEMETRY=FALSE \
+  chromadb/chroma:latest
+
+# Verify
+curl http://localhost:8000/api/v1/heartbeat
+]]></code>
+          <note>Chroma is primarily for prototyping. For production, migrate to Qdrant, Weaviate, or another production-grade database.</note>
+        </example>
+      </section>
+    </section>
+
+    <section name="client-connections">
+      <p>Python client connection patterns for each database:</p>
+
+      <example type="good" title="Qdrant client — local and cloud">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+
+# Local development
+client = QdrantClient(host="localhost", port=6333)
+
+# With gRPC (recommended for production)
+client = QdrantClient(
+    host="localhost",
+    port=6334,
+    prefer_grpc=True,
+)
+
+# Cloud/remote with API key
+client = QdrantClient(
+    url="https://your-cluster.qdrant.io",
+    api_key="your-api-key",
+)
+
+# Verify
+print(client.get_collections())
+]]></code>
+      </example>
+
+      <example type="good" title="Weaviate client — local and cloud">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.init import Auth
+
+# Local development
+client = weaviate.connect_to_local()
+
+# Cloud connection
+client = weaviate.connect_to_weaviate_cloud(
+    cluster_url="https://your-cluster.weaviate.cloud",
+    auth_credentials=Auth.api_key("your-api-key"),
+)
+
+# Custom connection (explicit host/port)
+client = weaviate.connect_to_custom(
+    http_host="localhost",
+    http_port=8080,
+    http_secure=False,
+    grpc_host="localhost",
+    grpc_port=50051,
+    grpc_secure=False,
+)
+
+print(client.is_ready())
+]]></code>
+      </example>
+
+      <example type="good" title="Milvus client">
+        <code lang="python"><![CDATA[
+from pymilvus import MilvusClient
+
+# Simple client (local file — Milvus Lite)
+client = MilvusClient("milvus_demo.db")
+
+# Connect to server
+client = MilvusClient(
+    uri="http://localhost:19530",
+    token="root:Milvus",
+)
+
+print(client.list_collections())
+]]></code>
+      </example>
+
+      <example type="good" title="pgvector connection">
+        <code lang="python"><![CDATA[
+import psycopg2
+from pgvector.psycopg2 import register_vector
+
+conn = psycopg2.connect(
+    "postgresql://vectordb:vectordb@localhost:5432/vectors"
+)
+register_vector(conn)
+
+# Verify extension
+cur = conn.cursor()
+cur.execute("SELECT extversion FROM pg_extension WHERE extname = 'vector';")
+print(cur.fetchone())
+]]></code>
+      </example>
+
+      <example type="good" title="Chroma client">
+        <code lang="python"><![CDATA[
+import chromadb
+
+# In-memory (ephemeral)
+client = chromadb.Client()
+
+# Persistent storage
+client = chromadb.PersistentClient(path="./chroma_db")
+
+# Remote server
+client = chromadb.HttpClient(host="localhost", port=8000)
+
+print(client.list_collections())
+]]></code>
+      </example>
+
+      <example type="good" title="Pinecone client">
+        <code lang="python"><![CDATA[
+from pinecone import Pinecone, ServerlessSpec
+
+pc = Pinecone(api_key="your-api-key")
+
+# Create serverless index
+pc.create_index(
+    name="my-index",
+    dimension=1536,
+    metric="cosine",
+    spec=ServerlessSpec(
+        cloud="aws",
+        region="us-east-1",
+    ),
+)
+
+index = pc.Index("my-index")
+print(index.describe_index_stats())
+]]></code>
+      </example>
+    </section>
+
+    <section name="collection-setup">
+      <p>Create a collection with correct dimensions, distance metric, and basic indexes before inserting any vectors.</p>
+
+      <rule>
+        <statement>Create payload/metadata indexes on filter fields (category, source, date) at collection creation time, not after data load. Qdrant requires explicit payload index creation; pgvector requires a separate CREATE INDEX; Weaviate uses indexFilterable property flags.</statement>
+        <rationale>Adding indexes after data load on large collections forces a full scan rebuild, which blocks queries and takes hours at scale.</rationale>
+      </rule>
+
+      <example type="good" title="Qdrant collection with HNSW, quantization, and payload indexes">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    VectorParams, Distance,
+    HnswConfigDiff, OptimizersConfigDiff,
+    ScalarQuantization, ScalarQuantizationConfig,
+    PayloadSchemaType,
+)
+
+client = QdrantClient(host="localhost", port=6333)
+
+client.create_collection(
+    collection_name="documents",
+    vectors_config=VectorParams(
+        size=1536,
+        distance=Distance.COSINE,
+    ),
+    hnsw_config=HnswConfigDiff(
+        m=16,
+        ef_construct=100,
+    ),
+    optimizers_config=OptimizersConfigDiff(
+        indexing_threshold=20000,
+    ),
+    on_disk_payload=True,  # store large payloads on disk
+)
+
+# Create payload indexes for faster filtering
+client.create_payload_index(
+    collection_name="documents",
+    field_name="category",
+    field_schema=PayloadSchemaType.KEYWORD,
+)
+client.create_payload_index(
+    collection_name="documents",
+    field_name="page",
+    field_schema=PayloadSchemaType.INTEGER,
+)
+client.create_payload_index(
+    collection_name="documents",
+    field_name="created_at",
+    field_schema=PayloadSchemaType.DATETIME,
+)
+
+info = client.get_collection("documents")
+print(f"Created collection with {info.vectors_count} vectors")
+]]></code>
+      </example>
+
+      <example type="good" title="Weaviate collection (BYOV, HNSW)">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.config import Configure, Property, DataType, VectorDistances
+
+client = weaviate.connect_to_local()
+
+documents = client.collections.create(
+    name="Document",
+    vectorizer_config=Configure.Vectorizer.none(),
+    properties=[
+        Property(name="text", data_type=DataType.TEXT),
+        Property(name="source", data_type=DataType.TEXT),
+        Property(name="page", data_type=DataType.INT),
+        Property(
+            name="category",
+            data_type=DataType.TEXT,
+            skip_vectorization=True,
+        ),
+        Property(name="created_at", data_type=DataType.DATE),
+    ],
+    vector_index_config=Configure.VectorIndex.hnsw(
+        ef=100,
+        max_connections=16,
+        distance_metric=VectorDistances.COSINE,
+    ),
+)
+print(f"Created collection: {documents.name}")
+]]></code>
+      </example>
+
+      <example type="good" title="pgvector table with HNSW index">
+        <code lang="sql"><![CDATA[
+-- Enable extension (PostgreSQL 14+)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS documents (
+    id BIGSERIAL PRIMARY KEY,
+    text TEXT NOT NULL,
+    source VARCHAR(255),
+    page INTEGER,
+    category VARCHAR(100),
+    embedding vector(1536),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- HNSW index — always prefer over IVFFlat for production
+CREATE INDEX IF NOT EXISTS documents_embedding_idx
+    ON documents USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+
+-- Metadata indexes for filtered queries
+CREATE INDEX IF NOT EXISTS documents_category_idx ON documents(category);
+CREATE INDEX IF NOT EXISTS documents_source_idx ON documents(source);
+]]></code>
+      </example>
+    </section>
+
+    <section name="dev-checklist">
+      <checklist>
+        <check>Docker installed and running; port conflicts checked (6333, 6334, 8080, 19530, 5432).</check>
+        <check>Database container started; health endpoint returns 200.</check>
+        <check>Python SDK installed and version is compatible with the server.</check>
+        <check>Collection created with correct dimensions and distance metric.</check>
+        <check>Payload/metadata indexes created for all filter fields.</check>
+        <check>Sample vectors inserted and queried — results returned correctly.</check>
+        <check>Data survives a container restart (volume mount confirmed).</check>
+        <check>API keys and connection strings in .env file, not hardcoded.</check>
+        <check>Different configs used for dev, test, prod environments.</check>
+      </checklist>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Agentic workflow notes: vector DB setup is a one-time infrastructure task. The agent reads the target database selection from config, provisions the service (Docker or managed API), creates the schema/collection, and verifies the connection. Downstream RAG agents consume the validated connection config.</p>
+
+      <rule>
+        <statement>Agents MUST handle the "collection already exists" case gracefully — `recreate_collection` drops all data. Use a get-or-create pattern: check for existence first, create only if absent.</statement>
+        <rationale>Idempotent provisioning is required for agents that may run setup steps multiple times (retry, re-run, pipeline restart).</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Calling recreate_collection unconditionally on every agent run.</description>
+        <reason>Drops existing data silently. Always check collection existence and skip creation if already present.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Chroma in-memory for anything beyond single-session prototyping.</description>
+        <reason>Data is lost on process exit. Use PersistentClient or migrate to Qdrant/pgvector once the pipeline is past initial exploration.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-index-tuning"/>
+      <ref slug="vector-databases"/>
+      <link href="https://qdrant.tech/documentation/"/>
+      <link href="https://weaviate.io/developers/weaviate"/>
+      <link href="https://milvus.io/docs"/>
+      <link href="https://github.com/pgvector/pgvector"/>
+      <link href="https://docs.pinecone.io/"/>
+    </see-also>
+  </content>
+</methodology>
