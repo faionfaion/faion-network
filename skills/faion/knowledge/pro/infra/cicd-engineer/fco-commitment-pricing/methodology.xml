@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fco-commitment-pricing">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Pre-commit to cloud capacity via Reserved Instances or Savings Plans for 1-3 years to achieve 60-75% discounts on predictable steady-state workloads.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>reserved-instances</tag>
+      <tag>savings-plans</tag>
+      <tag>cloud-cost</tag>
+      <tag>commitment-pricing</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-spot-instances"/>
+      <ref slug="finops-cost-visibility"/>
+      <ref slug="finops-governance"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Reserved Instances and Savings Plans</title>
+
+    <summary>Commitment-based pricing (Reserved Instances and Savings Plans) delivers 60-75% discounts over on-demand for predictable steady-state workloads. The key discipline is to rightsize before committing, target 70-80% of baseline compute, and start conservative with Convertible RIs to preserve flexibility while the commitment strategy matures.</summary>
+
+    <why>
+      <p>On-demand pricing is a premium for the privilege of not committing. When a workload runs continuously for months or years, the cloud provider will always charge the highest possible rate without a commitment. Reserved Instances and Savings Plans transfer risk to the buyer in exchange for a significant discount — typically 60-75% depending on term length and payment option.</p>
+      <p>The trap is over-commitment: buying 3-year Standard RIs for 100% of capacity, then having usage drop due to efficiency improvements or architectural changes. Starting at 70-80% of minimum observed usage and using Convertible RIs for flexibility eliminates most of this risk.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Production databases, application servers, and analytics clusters that run 24/7 without interruption.</item>
+        <item>Workloads with at least 6 months of stable usage history to establish a reliable baseline.</item>
+        <item>Any environment where on-demand compute exceeds $5,000/month — the break-even on a 1-year RI is typically 7-9 months.</item>
+        <item>After rightsizing: always rightsize first, then commit to the correct size.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Variable or bursty workloads with no stable baseline — commit only to the floor, use on-demand or Spot for burst.</item>
+        <item>Workloads scheduled to be decommissioned or migrated within the commitment period.</item>
+        <item>Environments where the architecture is actively evolving (consider shorter 1-year terms or Convertible RIs instead).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ri-types">
+      <p>Reserved Instance comparison by type and savings potential:</p>
+      <list>
+        <item>Standard RI (3-year): up to 75% savings, locked to instance family and size</item>
+        <item>Standard RI (1-year): up to 60% savings, locked to instance family and size</item>
+        <item>Convertible RI: 60-68% savings, allows exchange to different instance family, OS, or tenancy</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Start RI purchases with Convertible RIs at 70-80% of minimum observed on-demand usage. Use Standard RIs only for workloads with 12+ months of stable history and no planned architecture changes.</statement>
+        <rationale>Convertible RIs can be exchanged; Standard RIs cannot be changed without selling on the RI Marketplace (which may not always be possible). Starting at 70-80% of minimum usage means even if load drops 20%, the commitment is still fully utilized.</rationale>
+      </rule>
+    </section>
+
+    <section name="savings-plans">
+      <p>AWS Savings Plans offer commitment flexibility beyond traditional RIs:</p>
+      <list>
+        <item>Compute Savings Plans: apply to any EC2 instance, Lambda, and Fargate usage — most flexible</item>
+        <item>EC2 Instance Savings Plans: apply to specific instance families in a region — slightly higher discount than Compute SPs</item>
+        <item>Commitment unit: dollars per hour (e.g., $10/hr), not instance count</item>
+        <item>Recommended approach: model 80% of minimum hourly spend, commit to that amount</item>
+      </list>
+    </section>
+
+    <section name="hybrid-strategy">
+      <p>Optimal cloud efficiency comes from blending pricing models. The recommended hybrid baseline:</p>
+
+      <example type="good" title="Hybrid instance pricing strategy">
+        <code lang="text"><![CDATA[Workload distribution for optimal efficiency:
+  Baseline (70%)          → Reserved Instances / Savings Plans
+  Predictable burst (20%) → On-Demand
+  Scale-out / batch (10%) → Spot Instances
+
+Real case (E-Commerce Platform, $150,000/month on-demand):
+  Baseline (60%): 3-year Standard RIs   → $36,000/month (60% off on-demand)
+  Growth buffer (20%): 1-year Cvt RIs   → $15,000/month (50% off on-demand)
+  Seasonal burst (15%): On-Demand       → $22,500/month
+  Batch (5%): Spot                      → $750/month (90% off on-demand)
+  Total: $74,250/month (50.5% overall savings)]]></code>
+        <note>Layer pricing models for maximum efficiency. Reserve flexibility for unknown workloads.</note>
+      </example>
+
+      <example type="bad" title="100% on-demand with no commitments">
+        <code lang="text"><![CDATA[# 100% on-demand, $150,000/month
+# No commitment-based pricing
+# No seasonal adjustment
+# Result: paying maximum price for stable baseline load
+# Annual overspend vs optimal hybrid: ~$900,000]]></code>
+        <note>On-demand is appropriate for burst and variable workloads only. Stable baseline should always be covered by commitments.</note>
+      </example>
+    </section>
+
+    <section name="analysis-process">
+      <p>RI/SP purchase analysis process:</p>
+      <list>
+        <item>Identify steady-state workloads (running 720+ hours/month consistently)</item>
+        <item>Review historical usage patterns for 6+ months (seasonal awareness)</item>
+        <item>Calculate break-even point: at what month does RI cost = equivalent on-demand?</item>
+        <item>Model coverage scenarios: what percentage of baseline to cover at what term?</item>
+        <item>Start conservative: commit to 70-80% of minimum usage, not average or peak</item>
+        <item>Schedule quarterly RI review: utilization monitoring, expiry management, resizing</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Target 70-80% RI/SP coverage of baseline compute. Monitor RI utilization monthly and alert if any RI drops below 80% utilization — this signals waste or a workload change that needs addressing.</statement>
+        <rationale>Under 70% coverage leaves significant on-demand spend that should be committed. Over 80% without a detailed analysis risks over-committing. RI utilization below 80% means the commitment is generating waste rather than savings.</rationale>
+      </rule>
+    </section>
+
+    <section name="ri-management">
+      <p>Ongoing RI portfolio management tasks:</p>
+      <list>
+        <item>Monitor RI utilization daily via Cost Explorer or equivalent</item>
+        <item>Use RI Marketplace to sell unused Standard RIs if workloads change</item>
+        <item>Exchange Convertible RIs proactively when instance family migration is planned</item>
+        <item>Track expiry dates and budget for renewals 60+ days in advance</item>
+        <item>Review Savings Plans recommendations in Cost Optimizer monthly</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Purchasing 3-year Standard RIs for 100% of current capacity without accounting for workload evolution.</description>
+        <reason>Workloads shrink due to rightsizing, efficiency improvements, or architectural changes. Over-committed Standard RIs cannot be easily exited; losses can total tens of thousands per month for large environments.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Committing before rightsizing — purchasing RIs for oversized instances.</description>
+        <reason>You lock in the waste. Rightsize first, validate performance, then commit to the correct smaller instance. Committing to m5.2xlarge when m5.large is sufficient means paying 3-year committed prices for twice the capacity you need.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Treating RI coverage as a one-time purchase decision reviewed annually.</description>
+        <reason>Cloud environments change constantly. Quarterly RI reviews catch misalignments before they become expensive. An RI purchased 18 months ago for a service that was rightsized 6 months ago is wasting money daily.</reason>
+      </antipattern>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="ri-purchase-recommendation"><![CDATA[Based on this usage data, recommend a Reserved Instance strategy:
+
+Current on-demand spend: $[amount]/month
+Usage pattern (last 6 months):
+[Paste instance usage data showing hours/month by instance type]
+
+Constraints:
+- Budget for upfront: $[amount]
+- Risk tolerance: [conservative/moderate/aggressive]
+- Provider: [AWS/GCP/Azure]
+- Planning horizon: [1 year/3 years]
+
+Please provide:
+1. Recommended RI purchases by instance type and term
+2. Standard vs Convertible RI split with rationale
+3. Payment option recommendation (all upfront/partial/no upfront)
+4. Expected savings calculation
+5. Break-even analysis
+6. Coverage percentage achieved
+7. Residual on-demand for flexibility]]></prompt>
+
+      <prompt purpose="ri-utilization-optimization"><![CDATA[Analyze this Reserved Instance portfolio for optimization:
+
+Current RIs:
+[List: Instance type, Quantity, Term remaining, Utilization %]
+
+Current on-demand usage:
+[List: Instance type, Average hours/month]
+
+Please identify:
+1. Underutilized RIs that should be sold or exchanged
+2. Unused capacity that could be reallocated
+3. On-demand usage that should be covered by new RIs
+4. Expiring RIs and renewal recommendations
+5. RI Marketplace selling opportunities]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Rightsize all target instances before purchasing any RIs</check>
+      <check>Collect 6+ months of usage history to identify seasonal patterns</check>
+      <check>Calculate baseline compute (instances running 720+ hours/month)</check>
+      <check>Model RI vs Savings Plan coverage scenarios with break-even analysis</check>
+      <check>Start with Convertible RIs for flexibility during initial commitment period</check>
+      <check>Target 70-80% coverage of baseline compute (not average, not peak)</check>
+      <check>Set up RI utilization monitoring with alerts below 80% utilization</check>
+      <check>Schedule quarterly RI review in calendar</check>
+      <check>Track RI expiry dates 60+ days in advance for renewal planning</check>
+      <check>Evaluate Compute Savings Plans for Fargate/Lambda workloads</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-spot-instances"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://aws.amazon.com/ec2/pricing/reserved-instances/"/>
+      <link href="https://aws.amazon.com/savingsplans/"/>
+    </see-also>
+  </content>
+</methodology>
