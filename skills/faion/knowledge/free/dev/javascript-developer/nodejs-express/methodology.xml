@@ -1,0 +1,533 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nodejs-express">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Build production REST APIs with Node.js Express, layered middleware (helmet, cors, compression, pinoHttp, rate-limit), centralized error handling, and graceful shutdown.</summary>
+    <tags>
+      <tag>nodejs</tag>
+      <tag>express</tag>
+      <tag>rest-api</tag>
+      <tag>typescript</tag>
+      <tag>middleware</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Express Framework Patterns</title>
+
+    <summary>Production-grade REST API framework for Node.js. Set up Express with middleware in order (helmet → cors → compression → json → pinoHttp → rateLimit → routes → notFoundHandler → errorHandler). Use Zod schemas for input validation, centralized error handler for consistent responses, graceful shutdown (SIGTERM/SIGINT), and structured JSON logging with Pino.</summary>
+
+    <why>
+      <p>Express is mature, community-rich, and the ecosystem standard for Node REST APIs. It gives you control over middleware ordering (crucial for security and logging), is framework-agnostic (pluggable auth, validation, ORM), and scales well to multi-service architectures. Middleware composition (helmet for security headers, cors for cross-origin, compression for bandwidth, pinoHttp for structured logging, rate-limit for DDoS) is idiomatic and auditable.</p>
+      <p>Centralized error handling (one middleware at the end) prevents silent failures and ensures consistent response shapes. Graceful shutdown (SIGTERM handler) is mandatory for container deployments (Kubernetes, Docker) and prevents connection leaks.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>REST APIs and microservices on Node 20/22 where ecosystem compatibility is priority.</item>
+        <item>Adding a new resource (router + controller + service + schema + tests) to an existing Express service.</item>
+        <item>Hardening a hand-rolled Express server: add helmet, cors, compression, pino-http, express-rate-limit, graceful shutdown.</item>
+        <item>Centralizing error handling with AppError + Zod-aware error middleware in a project that currently mixes res.status(...).json(...) everywhere.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>New projects targeting peak throughput — Fastify is 2-3x faster on the same hardware.</item>
+        <item>Edge runtimes (Cloudflare Workers, Vercel Edge) — Express depends on Node-only APIs.</item>
+        <item>Greenfield Bun-only services where Bun.serve removes the framework entirely.</item>
+        <item>A microservice that only needs WebSockets — bare ws or uWebSockets.js beats Express middleware overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="app-setup-and-middleware">
+      <p>Express app setup is middleware registration order. Security and robustness depend on correct order: helmet first (security headers), rate-limiter last (after auth, to avoid DoS on auth checks).</p>
+
+      <rule testable="true">
+        <statement>MUST register middleware in order: helmet(), cors(), compression(), express.json(), pinoHttp(), rateLimit(), routes, notFoundHandler, errorHandler. helmet MUST be first (adds HTTP headers). errorHandler MUST be last (async errors bubble up). Health check /health MUST be before rate-limiter (load balancers poll it).</statement>
+        <rationale>Helmet early prevents header injection. CORS before routes ensures preflight requests succeed. Compression after parsing (json) means the body is already in memory. Rate-limit late means legitimate requests (authenticated users) get counted before rejection. errorHandler last ensures all async errors (from routes) are caught.</rationale>
+      </rule>
+
+      <example type="good" title="Express app setup with production middleware">
+        <code lang="typescript"><![CDATA[import express, { Express } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
+import { rateLimit } from 'express-rate-limit';
+import { pinoHttp } from 'pino-http';
+import { router } from './routes';
+import { errorHandler } from './middleware/errorHandler';
+import { notFoundHandler } from './middleware/notFound';
+import { config } from './config';
+
+export function createApp(): Express {
+  const app = express();
+
+  // Trust proxy for rate-limiting behind reverse proxy
+  app.set('trust proxy', 1);
+
+  // Security headers
+  app.use(helmet());
+
+  // CORS
+  app.use(cors({
+    origin: config.corsOrigins,
+    credentials: true,
+  }));
+
+  // Compression
+  app.use(compression());
+
+  // Body parsing
+  app.use(express.json({ limit: '10kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+  // Logging
+  app.use(pinoHttp({
+    logger: config.logger,
+    autoLogging: true,
+    redact: ['req.headers.authorization', 'req.query.token'],
+  }));
+
+  // Rate limiting
+  app.use(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+  }));
+
+  // Health check (before auth)
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // API routes
+  app.use('/api/v1', router);
+
+  // 404 handler
+  app.use(notFoundHandler);
+
+  // Error handler (must be last)
+  app.use(errorHandler);
+
+  return app;
+}]]></code>
+        <note>Middleware ordered: helmet → cors → compression → json → pinoHttp → rateLimit → routes → notFound → errorHandler. Health check before rate-limit. Secrets redacted from logs.</note>
+      </example>
+
+      <antipattern>
+        <description>Placing errorHandler in the middle of the middleware stack or not registering it at all; async errors from routes go uncaught.</description>
+        <reason>errorHandler must be the final middleware. Express 4 does not auto-forward async errors (Express 5 does). Routes MUST call next(error) on catch or use an asyncHandler wrapper.</reason>
+      </antipattern>
+    </section>
+
+    <section name="router-and-controller-organization">
+      <p>Express routers organize endpoints by resource. Controllers handle request/response, services handle business logic, schemas validate input.</p>
+
+      <rule testable="true">
+        <statement>MUST organize routes as: routes/index.ts (mount all sub-routers), routes/&lt;resource&gt;.routes.ts (define routes for a resource). Controllers in controllers/&lt;resource&gt;.controller.ts (40-60 lines, handles req/res). Services in services/&lt;resource&gt;.service.ts (business logic, 50-80 lines). Schemas in schemas/&lt;resource&gt;.ts (Zod definitions). Async handlers wrapped in asyncHandler or using Express 5 auto-forwarding.</statement>
+        <rationale>Layered structure separates concerns. Controllers are thin (req → validate → call service → respond). Services are testable, reusable. Schemas are single source of truth for input validation. One route per HTTP verb on a resource.</rationale>
+      </rule>
+
+      <example type="good" title="Router and controller structure">
+        <code lang="typescript"><![CDATA[// routes/index.ts
+import { Router } from 'express';
+import usersRouter from './users.routes';
+import ordersRouter from './orders.routes';
+import { authenticate } from '../middleware/auth';
+
+const router = Router();
+
+router.use('/users', authenticate, usersRouter);
+router.use('/orders', authenticate, ordersRouter);
+
+export { router };
+
+// routes/users.routes.ts
+import { Router } from 'express';
+import { userController } from '../controllers/users.controller';
+import { validateAll } from '../middleware/validate';
+import { CreateUserSchema, UpdateUserSchema } from '../schemas/users';
+
+const router = Router();
+
+router.get('/', userController.getUsers);
+router.get('/:id', userController.getUser);
+router.post('/', validateAll({ body: CreateUserSchema }), userController.createUser);
+router.patch('/:id', validateAll({ body: UpdateUserSchema }), userController.updateUser);
+router.delete('/:id', userController.deleteUser);
+
+export default router;
+
+// controllers/users.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import { userService } from '../services/users.service';
+import { asyncHandler } from '../utils/asyncHandler';
+
+export const userController = {
+  getUsers: asyncHandler(async (req, res) => {
+    const users = await userService.getUsers();
+    res.json(users);
+  }),
+
+  getUser: asyncHandler(async (req, res) => {
+    const user = await userService.getUser(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Not found' });
+    res.json(user);
+  }),
+
+  createUser: asyncHandler(async (req, res) => {
+    const user = await userService.createUser(req.body);
+    res.status(201).json(user);
+  }),
+};
+
+// services/users.service.ts
+import { db } from '../lib/db';
+import type { CreateUserInput } from '../schemas/users';
+
+export const userService = {
+  async getUsers() {
+    return db.user.findMany();
+  },
+
+  async getUser(id: string) {
+    return db.user.findUnique({ where: { id } });
+  },
+
+  async createUser(data: CreateUserInput) {
+    return db.user.create({ data });
+  },
+};]]></code>
+        <note>Thin controller (asyncHandler wraps async). Service has business logic. Routes declarative, middleware applied globally.</note>
+      </example>
+
+      <antipattern>
+        <description>Putting business logic in controllers or routes; mixing res.status/.json patterns with custom error classes.</description>
+        <reason>Controllers bloat. Routes become unreadable. Custom error handling becomes inconsistent across endpoints. Use services for logic, one error handler for responses.</reason>
+      </antipattern>
+    </section>
+
+    <section name="input-validation-with-zod">
+      <p>Zod schemas validate request body, params, and query. Validation middleware coerces and parses before controllers see the data.</p>
+
+      <rule testable="true">
+        <statement>MUST validate req.body AND req.params AND req.query. Define Zod schemas in schemas/&lt;resource&gt;.ts. Use validateAll({ body, params, query }) middleware to parse all three. On validation error, throw ValidationError (custom subclass of AppError with field details). Schemas MUST export types for TypeScript.</statement>
+        <rationale>Zod parses and coerces (strings to numbers, enum checks). validateAll catches errors before controllers run. Field-level errors (e.g., "email invalid") are returned to client. Exported types keep frontend and backend schemas in sync.</rationale>
+      </rule>
+
+      <example type="good" title="Zod validation in middleware">
+        <code lang="typescript"><![CDATA[// schemas/users.ts
+import { z } from 'zod';
+
+export const CreateUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+});
+
+export const UpdateUserSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+});
+
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
+
+// middleware/validate.ts
+import { Request, Response, NextFunction } from 'express';
+import { z, ZodSchema } from 'zod';
+import { AppError } from '../utils/errors';
+
+interface ValidationSchemas {
+  body?: ZodSchema;
+  params?: ZodSchema;
+  query?: ZodSchema;
+}
+
+export function validateAll(schemas: ValidationSchemas) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      if (schemas.body) req.body = schemas.body.parse(req.body);
+      if (schemas.params) req.params = schemas.params.parse(req.params);
+      if (schemas.query) req.query = schemas.query.parse(req.query);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new AppError(
+          400,
+          'Validation failed',
+          error.flatten().fieldErrors,
+        );
+      }
+      throw error;
+    }
+  };
+}]]></code>
+        <note>Zod schema defines structure and types. validateAll parses all three input sources. Errors include field details.</note>
+      </example>
+
+      <antipattern>
+        <description>Validating only req.body and ignoring req.params (e.g., /users/:id where id is not validated) or query parameters.</description>
+        <reason>Unvalidated params/query lead to silent failures. parseInt(req.params.id) can fail. Use validateAll with schemas for all three.</reason>
+      </antipattern>
+    </section>
+
+    <section name="error-handling">
+      <p>Centralized error handler catches all errors and returns consistent JSON responses. Custom AppError class for typed errors.</p>
+
+      <rule testable="true">
+        <statement>MUST define AppError base class with (statusCode, message, details?). Controllers throw AppError on validation/auth/not-found. errorHandler middleware catches all errors, logs to Pino, returns JSON with status/message. Do NOT call process.exit() in errorHandler — let infra restart. SIGTERM handler closes HTTP server and drains DB/queue connections.</statement>
+        <rationale>One error shape (status, message, details) across all endpoints. Logging is centralized (Pino middleware logs req/res). Errors are observable (status codes, logs). Graceful shutdown prevents connection leaks.</rationale>
+      </rule>
+
+      <example type="good" title="Centralized error handling">
+        <code lang="typescript"><![CDATA[// utils/errors.ts
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    public message: string,
+    public details?: unknown,
+  ) {
+    super(message);
+  }
+}
+
+// middleware/errorHandler.ts
+import { Request, Response, NextFunction } from 'express';
+import { AppError } from '../utils/errors';
+import { logger } from '../utils/logger';
+
+export function errorHandler(
+  error: unknown,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+): void {
+  const appError = error instanceof AppError
+    ? error
+    : new AppError(500, 'Internal Server Error');
+
+  logger.error({
+    statusCode: appError.statusCode,
+    message: appError.message,
+    details: appError.details,
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
+  res.status(appError.statusCode).json({
+    error: appError.message,
+    ...(appError.details && { details: appError.details }),
+  });
+}
+
+// server.ts (graceful shutdown)
+import http from 'node:http';
+import { createApp } from './app';
+import { config } from './config';
+import { logger } from './utils/logger';
+
+const app = createApp();
+const server = http.createServer(app);
+
+function shutdown(signal: string) {
+  logger.info(`${signal} received, shutting down gracefully`);
+
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+
+  // Force close after 30s
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 30000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+server.listen(config.port, () => {
+  logger.info(`Server running on port ${config.port}`);
+});]]></code>
+        <note>AppError for typed errors. errorHandler logs and responds. SIGTERM closes server then exits.</note>
+      </example>
+
+      <antipattern>
+        <description>Throwing generic Error or returning res.status(500).json({ error: 'Internal error' }) directly from routes; inconsistent error shapes across endpoints.</description>
+        <reason>Generic errors lose context. Route-level error handling is repeated. One handler is auditable and provides observability.</reason>
+      </antipattern>
+    </section>
+
+    <section name="authentication-and-authorization">
+      <p>JWT-based auth middleware parses Bearer tokens and augments req.user with the payload.</p>
+
+      <rule testable="true">
+        <statement>MUST extract token from Authorization header (Bearer &lt;token&gt;). Verify token with jwt.verify and JWT_SECRET (from config, never in code). Augment req with user payload. Throw UnauthorizedError on missing/invalid token. Declare req.user type globally in types/express.d.ts (do NOT repeat in multiple files).</statement>
+        <rationale>Bearer tokens are standard. jwt.verify is cryptographic and fails fast on tampering. Global type declaration prevents drift (Express Request type pollution). 401/403 HTTP codes signal auth failures to clients and proxies.</rationale>
+      </rule>
+
+      <example type="good" title="JWT authentication middleware">
+        <code lang="typescript"><![CDATA[// types/express.d.ts
+import type { Request } from 'express';
+
+interface JwtPayload {
+  userId: string;
+  email: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+    }
+  }
+}
+
+// middleware/auth.ts
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { AppError } from '../utils/errors';
+import { config } from '../config';
+
+export function authenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new AppError(401, 'Missing authorization header');
+    }
+
+    const token = authHeader.slice(7);
+    const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
+
+    req.user = payload;
+    next();
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new AppError(401, 'Invalid token');
+    }
+    throw error;
+  }
+}]]></code>
+        <note>Bearer token extraction. jwt.verify with secret. Global type augmentation. Throws on error (caught by errorHandler).</note>
+      </example>
+
+      <antipattern>
+        <description>Using multiple type definitions for req.user across different files or allowing routes to mutate req.user without type safety.</description>
+        <reason>Type drift. One source of truth (types/express.d.ts) ensures consistency. Mutations are visible if type is readonly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="graceful-shutdown">
+      <p>SIGTERM handler ensures long-running requests complete and DB/queue connections drain before exit.</p>
+
+      <rule testable="true">
+        <statement>MUST handle SIGTERM and SIGINT signals. Close HTTP server via server.close((). Drain external connections (DB pool, Redis, queues) before resolving. Force exit after 30s timeout. Log shutdown events. Test graceful shutdown with `docker stop` (sends SIGTERM) or `kill -TERM &lt;pid&gt;`.</statement>
+        <rationale>Containers (Docker, Kubernetes) send SIGTERM to allow graceful shutdown. Draining connections prevents data loss and connection leaks. Timeout prevents infinite hangs. Logging tracks shutdown history.</rationale>
+      </rule>
+
+      <example type="good" title="Graceful shutdown example">
+        <code lang="typescript"><![CDATA[import http from 'node:http';
+import { db } from './lib/db';
+import { redis } from './lib/redis';
+import { logger } from './utils/logger';
+
+const server = http.createServer(app);
+
+function shutdown(signal: string) {
+  logger.info(`${signal} received, shutting down gracefully`);
+
+  server.close(async () => {
+    logger.info('HTTP server closed, draining connections');
+
+    // Drain connections
+    try {
+      await db.$disconnect();
+      logger.info('Database disconnected');
+    } catch (err) {
+      logger.error('Error disconnecting database', err);
+    }
+
+    try {
+      await redis.quit();
+      logger.info('Redis disconnected');
+    } catch (err) {
+      logger.error('Error disconnecting Redis', err);
+    }
+
+    logger.info('All connections closed, exiting');
+    process.exit(0);
+  });
+
+  // Force close after 30s
+  setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 30000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+server.listen(config.port, () => {
+  logger.info(`Server running on port ${config.port}`);
+});]]></code>
+        <note>SIGTERM → server.close() → drain connections → exit. 30s timeout prevents hangs.</note>
+      </example>
+
+      <antipattern>
+        <description>Not handling SIGTERM; calling process.exit() immediately; not draining DB/queue connections on shutdown.</description>
+        <reason>Container orchestrators will kill the process forcefully. Connection leaks prevent clean rollouts. Infra restarts multiple times per deployment.</reason>
+      </antipattern>
+
+      <note>Production deployment checklist: (1) Set trust proxy correctly (1 if behind one nginx/LB, 0 if directly exposed). Wrong value enables IP spoofing. (2) Validate all three input sources (body, params, query) with validateAll({ body, params, query }). (3) Strip secrets from pino-http with redact: ['req.headers.authorization', 'req.query.token']. (4) Mount /health before rate-limiter (load balancers poll it). (5) Register errorHandler last; notFoundHandler immediately before it. (6) Use asyncHandler or migrate to Express 5 (auto-forwarding). (7) Test graceful shutdown: docker stop (sends SIGTERM) or kill -TERM (should exit cleanly).</note>
+
+      <checklist>
+        <check>Set up createApp() function that registers middleware in order: helmet → cors → compression → json → pinoHttp → rateLimit → routes → notFound → errorHandler.</check>
+        <check>Define AppError class with statusCode, message, details fields.</check>
+        <check>Create errorHandler middleware that catches all errors and returns JSON with status/message/details.</check>
+        <check>Implement graceful shutdown: SIGTERM/SIGINT handlers that close server and drain DB/Redis/queue connections.</check>
+        <check>Create routes/index.ts with sub-router mounts and authenticate middleware on protected routes.</check>
+        <check>Create routes/&lt;resource&gt;.routes.ts for each resource with GET/POST/PATCH/DELETE endpoints.</check>
+        <check>Create controllers/&lt;resource&gt;.controller.ts (30-50 lines per controller) that validate and call services.</check>
+        <check>Create services/&lt;resource&gt;.service.ts with business logic (50-80 lines).</check>
+        <check>Create schemas/&lt;resource&gt;.ts with Zod definitions and exported types.</check>
+        <check>Create middleware/validate.ts with validateAll({ body, params, query }) validation.</check>
+        <check>Create middleware/auth.ts with JWT verification and req.user augmentation.</check>
+        <check>Create types/express.d.ts with global Express Request augmentation for req.user.</check>
+        <check>Test all endpoints with supertest; verify status codes (200, 400, 401, 404, 500).</check>
+        <check>Run npm audit and eslint-plugin-security to catch vulnerabilities.</check>
+      </checklist>
+
+      <how-to>
+        <step>Read the README sections on app setup, router organization, validation, error handling, and graceful shutdown.</step>
+        <step>Clone the createApp() template, updating helmet/cors/rate-limit config for your environment.</step>
+        <step>Create AppError class and errorHandler middleware matching the example.</step>
+        <step>Implement SIGTERM handler with graceful shutdown and connection draining.</step>
+        <step>Plan routes and resources: list GET/POST/PATCH/DELETE endpoints, request/response shapes, auth requirements.</step>
+        <step>Create schemas first (Zod definitions), then controllers, then services, then routes. Each layer is thin and testable.</step>
+        <step>Wrap async handlers in asyncHandler utility or ensure try/catch + next(error).</step>
+        <step>Test with supertest: 200 for success, 400 for validation, 401 for auth, 404 for not found, 500 for server error.</step>
+        <step>Code review: middleware order check (helmet first, errorHandler last), CORS config (not wildcard), secrets stripped from logs, all input validated (body/params/query).</step>
+      </how-to>
+    </section>
+
+    <see-also>
+      <link href="https://expressjs.com/en/advanced/best-practice-production.html"/>
+      <link href="https://expressjs.com/en/guide/error-handling.html"/>
+      <link href="https://expressjs.com/en/guide/using-middleware.html"/>
+      <link href="https://github.com/goldbergyoni/nodebestpractices"/>
+      <link href="https://helmetjs.github.io/"/>
+    </see-also>
+  </content>
+</methodology>
