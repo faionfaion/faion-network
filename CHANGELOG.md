@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 javascript-developer methodologies migrated to new shape (batch: decomposition-react, javascript-testing, nodejs-express)
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-review-process, documentation, mob-programming)
 
 ### Added
