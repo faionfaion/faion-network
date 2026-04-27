@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="seo-for-spas">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Make JavaScript SPAs indexable: SSR/SSG for first paint, per-page meta + OG, JSON-LD structured data, crawlable links, sitemap, and Core Web Vitals.</summary>
+    <tags>
+      <tag>seo</tag>
+      <tag>spa</tag>
+      <tag>ssr</tag>
+      <tag>structured-data</tag>
+      <tag>core-web-vitals</tag>
+      <tag>sitemap</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>nextjs</framework>
+      <framework>react</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>SEO for SPAs</title>
+
+    <summary>A methodology for making JavaScript Single Page Applications indexable by search engines. Covers server-side rendering for first paint, per-page meta tag management, JSON-LD structured data, crawlable link patterns, sitemap generation, and Core Web Vitals performance.</summary>
+
+    <why>
+      <p>Search engines historically struggled with client-rendered SPAs because crawlers see an empty HTML shell until JS executes. SSR ensures critical content appears in the initial HTML response; without it, Google may index blank pages or rank content poorly. Core Web Vitals (LCP, CLS, FID) are ranking signals — a SPA that loads slowly loses rank even if content is present.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Migrating a CSR-only React/Vue/Angular app to SSR/SSG (Next.js, Nuxt, Remix, Angular Universal) for indexable content.</item>
+        <item>Adding per-route meta + Open Graph + Twitter Card + canonical tags via Next `&lt;Head&gt;` / Metadata API or `react-helmet-async`.</item>
+        <item>Implementing JSON-LD structured data for Product, Article, FAQ, BreadcrumbList, Organization.</item>
+        <item>Generating `sitemap.xml` and `robots.txt` from data, plus hreflang for multi-locale apps.</item>
+        <item>Auditing Core Web Vitals (LCP, INP, CLS) — the ranking-relevant subset of Lighthouse.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal app behind auth — search engines can't reach it; SEO budget is wasted.</item>
+        <item>Pure marketing-static site already on Astro / Gatsby / 11ty — those generate static HTML by default and most "SEO for SPA" patterns don't apply.</item>
+        <item>The site is on Cloudflare Pages with full prerendering already configured — additional SSR plumbing is duplicate work.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="limitations">
+      <p>Where it fails / limitations:</p>
+      <list>
+        <item>Next.js App Router replaced `&lt;Head&gt;` with the `metadata` export. Agents copy Pages Router examples and ship duplicate `&lt;head&gt;` tags.</item>
+        <item>Dynamic OG images: building one per request from `@vercel/og` is fine on Vercel/Edge; on a self-hosted Node server it eats CPU. Cache with `Cache-Control: public, max-age=31536000, immutable`.</item>
+        <item>Googlebot now renders JS, but rendering is delayed and rate-limited. Critical content must be in the SSR HTML, not lazy-mounted.</item>
+        <item>Canonical wars: `canonical` pointing to a URL that 301s to another canonical creates an indexing loop — easy to introduce via locale prefixes.</item>
+        <item>`react-helmet` (legacy) is no longer maintained and has SSR memory leaks; use `react-helmet-async`.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat SEO as a per-route task. Subagent reads the route, identifies the content type (Product, Article, etc.), and emits: (1) meta tags, (2) JSON-LD, (3) canonical, (4) sitemap entry, (5) Open Graph image source. Use Lighthouse (mobile preset), `linkinator` for broken links, and Google's Rich Results Test API as oracles. Keep humans in the loop for keyword strategy and copy — those are content decisions, not engineering.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-feature-executor` — per-route SEO retrofits with Lighthouse + structured-data validation gates.</item>
+        <item>`faion-sdd-executor-agent` — full-site SEO migrations (CSR → SSR) span spec, design (URL structure, sitemap), implementation, and tests.</item>
+      </list>
+      <p>Prompt patterns:</p>
+      <prompt purpose="generate-product-metadata"><![CDATA[For `/products/[slug]`, generate the Next.js App Router `generateMetadata` export and a Product JSON-LD `<script>`. Pull data via `getProduct(slug)`. Include canonical, OG, Twitter, hreflang for `en` and `uk`.]]></prompt>
+      <prompt purpose="audit-lighthouse-seo"><![CDATA[Audit Lighthouse SEO + Best Practices on `https://staging.example.com/products/widget`. List failing audits with file paths and proposed fixes; do not edit yet.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools used in this methodology:</p>
+      <list>
+        <item>`npx lighthouse &lt;url&gt; --preset=desktop --only-categories=seo,performance` — SEO + CWV audit (https://developer.chrome.com/docs/lighthouse/).</item>
+        <item>`pnpm dlx @lhci/cli autorun` — Lighthouse CI per PR (https://github.com/GoogleChrome/lighthouse-ci).</item>
+        <item>`npx linkinator https://example.com --recurse` — broken-link crawler for sitemap validation (https://github.com/JustinBeckwith/linkinator).</item>
+        <item>`pnpm add -D next-sitemap` — generate `sitemap.xml` + `robots.txt` from Next routes (https://github.com/iamvishnusankar/next-sitemap).</item>
+        <item>`npx schema-dts-gen` — type-safe JSON-LD via TypeScript (https://github.com/google/schema-dts).</item>
+        <item>`pnpm dlx @vercel/og` — programmatic OG image generation (https://vercel.com/docs/functions/og-image-generation).</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>Services &amp; apps relevant here:</p>
+      <list>
+        <item>Google Search Console (SaaS, partial REST API) — Coverage, Core Web Vitals, sitemap submit; agents can pull index status.</item>
+        <item>Google Rich Results Test (SaaS, web + URL inspection API) — Validate JSON-LD; treat as CI oracle for structured data.</item>
+        <item>Bing Webmaster Tools (SaaS, REST API) — Often forgotten; lower traffic but indexes faster for small sites.</item>
+        <item>Ahrefs / Semrush (SaaS, partial REST API, paid) — Backlinks + keyword data; out of scope for code agents.</item>
+        <item>Schema.org validator (OSS) — https://validator.schema.org/ — wrap with curl.</item>
+        <item>WebPageTest (SaaS + OSS, REST) — CWV testing under throttled networks.</item>
+      </list>
+    </section>
+
+    <section name="core-rules">
+      <p>Concrete rules for SSR, meta tags, canonical URLs, and crawlable link structure in Single Page Applications.</p>
+
+      <rule>
+        <statement>Render critical page content in the initial HTML response — never rely on client-side JS for content that must be indexed.</statement>
+        <rationale>Search engine crawlers may not execute JavaScript, or may index the page before hydration completes. Content absent from the initial HTML is at risk of not being indexed.</rationale>
+      </rule>
+      <rule>
+        <statement>Use SSR or SSG for all public-facing pages; defer CSR-only rendering to authenticated or non-indexed routes.</statement>
+        <rationale>Next.js getStaticProps/getStaticPaths and ISR (revalidate) provide SSG with on-demand regeneration — the best performance/freshness trade-off for most content sites.</rationale>
+      </rule>
+      <example type="good" title="Next.js page with ISR — content in initial HTML, revalidated every hour">
+        <code lang="typescript"><![CDATA[
+export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
+  const product = await fetchProduct(params?.slug as string);
+  if (!product) return { notFound: true };
+  return { props: { product }, revalidate: 3600 };
+};
+]]></code>
+      </example>
+      <antipattern>
+        <description>Fetching product data in useEffect and rendering into DOM after hydration.</description>
+        <reason>The initial HTML contains no product content — crawlers may index an empty shell.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Every public page must have a unique title (under 60 chars), meta description (under 160 chars), canonical URL, Open Graph tags, and Twitter Card tags.</statement>
+        <rationale>Missing or duplicate meta tags cause indexing conflicts; Open Graph tags control how the page appears when shared on social platforms.</rationale>
+      </rule>
+      <rule>
+        <statement>Set the canonical URL to the definitive version of the page URL to prevent duplicate content penalties.</statement>
+        <rationale>Query parameters (e.g. ?ref=email, ?page=1) can create duplicate URL variants; canonical signals the preferred version to crawlers.</rationale>
+      </rule>
+      <example type="good" title="Next.js Head with full meta tag set for a product page">
+        <code lang="typescript"><![CDATA[
+<Head>
+  <title>{product.name} | Example Store</title>
+  <meta name="description" content={product.description.slice(0, 160)} />
+  <link rel="canonical" href={`https://example.com/products/${product.id}`} />
+  <meta property="og:type" content="product" />
+  <meta property="og:title" content={product.name} />
+  <meta property="og:description" content={product.description} />
+  <meta property="og:image" content={product.image} />
+  <meta property="og:url" content={`https://example.com/products/${product.id}`} />
+  <meta name="twitter:card" content="summary_large_image" />
+</Head>
+]]></code>
+      </example>
+      <antipattern>
+        <description>A single static title and description shared across all pages of a SPA.</description>
+        <reason>Every page gets the same snippet in search results; click-through rate drops and duplicate content is flagged.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>All navigable links must use anchor tags with a valid href attribute — never onClick-only divs or buttons for navigation.</statement>
+        <rationale>Crawlers follow href links; onClick handlers that call router.push() are invisible to bots and create orphaned pages that receive no link equity.</rationale>
+      </rule>
+      <example type="good" title="Crawlable Next.js Link + external anchor">
+        <code lang="tsx"><![CDATA[
+import Link from 'next/link';
+// Next.js 13+
+<Link href={`/products/${product.slug}`}>{product.name}</Link>
+// External links
+<a href="https://external.com" rel="noopener noreferrer" target="_blank">
+  External
+</a>
+]]></code>
+      </example>
+      <example type="bad" title="onClick-only div for navigation">
+        <code lang="tsx"><![CDATA[
+<div onClick={() => router.push('/products')}>Products</div>
+]]></code>
+        <note>No href — invisible to search engine crawlers.</note>
+      </example>
+    </section>
+
+    <section name="structured-data">
+      <p>Schema.org JSON-LD patterns for Product, Article, and Breadcrumb types, injected via a shared StructuredData component.</p>
+
+      <rule>
+        <statement>Inject JSON-LD structured data via a script tag with type="application/ld+json" inside the document head on every page that benefits from rich results.</statement>
+        <rationale>JSON-LD is Google's recommended format — it is decoupled from the DOM, easy to validate with Google's Rich Results Test, and does not require modifying HTML markup.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Product pages must include name, description, image, sku, brand, offers (with priceCurrency, price, availability URL, seller), and aggregateRating when reviews exist.</statement>
+        <rationale>Complete Product schema enables Google Shopping rich results and product carousels in SERPs, increasing click-through rate for e-commerce pages.</rationale>
+      </rule>
+      <example type="good" title="Product JSON-LD schema">
+        <code lang="typescript"><![CDATA[
+const productSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description,
+  image: product.images,
+  sku: product.sku,
+  brand: { '@type': 'Brand', name: product.brand },
+  offers: {
+    '@type': 'Offer',
+    url: `https://example.com/products/${product.slug}`,
+    priceCurrency: 'USD',
+    price: product.price,
+    availability: product.inStock
+      ? 'https://schema.org/InStock'
+      : 'https://schema.org/OutOfStock',
+    seller: { '@type': 'Organization', name: 'Example Store' }
+  },
+  aggregateRating: product.rating ? {
+    '@type': 'AggregateRating',
+    ratingValue: product.rating.average,
+    reviewCount: product.rating.count
+  } : undefined
+};
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Article pages must include headline, description, image, datePublished, dateModified, author (Person), publisher (Organization with logo), and mainEntityOfPage. Breadcrumb structured data must mirror the visible breadcrumb component.</statement>
+        <rationale>Article schema enables AMP and Top Stories rich results. BreadcrumbList schema provides path context in SERPs and must match the visible navigation to pass Google validation.</rationale>
+      </rule>
+      <example type="good" title="BreadcrumbList JSON-LD">
+        <code lang="typescript"><![CDATA[
+const breadcrumbSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: items.map((item, index) => ({
+    '@type': 'ListItem',
+    position: index + 1,
+    name: item.name,
+    item: item.url
+  }))
+};
+]]></code>
+        <note>Must match the rendered nav breadcrumb exactly.</note>
+      </example>
+      <antipattern>
+        <description>Breadcrumb schema that diverges from the visible breadcrumb navigation.</description>
+        <reason>Google validates schema against rendered content; mismatches can result in a manual action or rich result loss.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance">
+      <p>Next.js performance optimisations for LCP/CLS/FID, image handling, lazy loading, and automated sitemap + robots.txt generation.</p>
+
+      <rule>
+        <statement>Mark the Largest Contentful Paint image with priority={true} on the Next.js Image component. Never defer above-the-fold images.</statement>
+        <rationale>LCP is a direct ranking signal. The LCP element is typically the hero image or product photo; loading it eagerly instead of lazily is the single highest-impact LCP optimisation.</rationale>
+      </rule>
+      <rule>
+        <statement>Reserve space for all images using explicit width and height (or aspect ratio) to avoid Cumulative Layout Shift.</statement>
+        <rationale>CLS penalises pages where content shifts as images load. Reserving dimensions prevents reflow.</rationale>
+      </rule>
+      <rule>
+        <statement>Lazy-load non-critical components using next/dynamic with ssr: false only when the component is genuinely below-the-fold and not required for indexing.</statement>
+        <rationale>CSR-only components are invisible to crawlers; use this only for widgets (comments, analytics) that do not carry indexable content.</rationale>
+      </rule>
+      <example type="good" title="LCP image priority + below-fold dynamic widget">
+        <code lang="typescript"><![CDATA[
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
+
+// LCP image: priority eager load
+<Image
+  src={product.image}
+  alt={product.name}
+  width={400}
+  height={400}
+  priority={true}
+  placeholder="blur"
+  blurDataURL={product.blurDataUrl}
+/>
+
+// Non-critical below-fold widget
+const CommentsSection = dynamic(() => import('./Comments'), {
+  loading: () => <Skeleton />,
+  ssr: false
+});
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Generate sitemap.xml and robots.txt at build time. Include all public static pages, dynamic content URLs (products, posts), and exclude admin, API, and private routes.</statement>
+        <rationale>Sitemaps accelerate crawl discovery; robots.txt prevents crawl budget waste on non-indexable routes like /admin and /api.</rationale>
+      </rule>
+      <example type="good" title="Robots.txt with sitemap pointer + blocked admin/API">
+        <code lang="text"><![CDATA[
+User-agent: *
+Allow: /
+Sitemap: https://example.com/sitemap.xml
+Disallow: /admin/
+Disallow: /api/
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Enable image optimisation with modern formats (avif, webp), set long-lived Cache-Control headers for static assets, and disable production source maps to reduce bundle size.</statement>
+        <rationale>AVIF/WebP reduces image payload by 20-50% vs JPEG; immutable cache headers prevent unnecessary revalidation; source maps in production unnecessarily double the download size.</rationale>
+      </rule>
+    </section>
+
+    <section name="minimal-sitemap-snippet">
+      <p>Minimal sitemap script for static export (canonical short form):</p>
+      <code lang="typescript"><![CDATA[
+// scripts/build-sitemap.ts
+import { writeFileSync } from 'node:fs';
+const SITE = 'https://example.com';
+const routes = ['/', '/about', '/products', ...await getProductSlugs()];
+const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${routes.map(r => `  <url><loc>${SITE}${r}</loc><changefreq>weekly</changefreq></url>`).join('\n')}
+</urlset>`;
+writeFileSync('public/sitemap.xml', xml);
+]]></code>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Critical content must be in the SSR HTML, not appended via `useEffect`. Test with `curl &lt;url&gt; | grep &lt;expected-text&gt;`.</item>
+        <item>One canonical per page. If you serve trailing-slash and non-trailing-slash variants, redirect 301 to the canonical form.</item>
+        <item>JSON-LD goes in `&lt;head&gt;` (or just before `&lt;/body&gt;`); place exactly one block per type per page. Multiple Product blocks confuse Googlebot.</item>
+        <item>Keep meta description under 160 chars and unique per page; avoid templated "Welcome to X" descriptions.</item>
+        <item>Set `Cache-Control` on OG images aggressively — they get crawled from Slack/Twitter/Facebook bots, all of which hit the URL hard.</item>
+        <item>For multi-locale, pair `hreflang` tags with `&lt;link rel="alternate"&gt;` and a sitemap `&lt;xhtml:link&gt;` block; tag mismatches are the #1 indexing bug.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents add `&lt;title&gt;` both via `metadata` export and a manual `&lt;head&gt;` element in a layout — Next dedupes inconsistently and one wins per route.</item>
+        <item>Generated JSON-LD often hard-codes `@id` to a placeholder URL; Search Console flags as "missing `@id`" or duplicate.</item>
+        <item>LLMs use `next/image` then forget the explicit `width`/`height`, causing CLS regressions that tank the SEO score.</item>
+        <item>For dynamic OG images, agents fetch fonts inside the handler on every request; use the prebuilt edge runtime + `fetch` with cache headers.</item>
+        <item>`robots.txt` regenerated by an agent often blocks `/api/` and accidentally `/api/og/*` — OG images stop appearing on social.</item>
+        <item>Generated `sitemap.xml` includes draft / private routes when the route function returns all DB rows; filter by published flag.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/seo-component.tsx" purpose="Reusable SEO head component for React Helmet or Next.js Head."/>
+      <template path="templates/structured-data.tsx" purpose="StructuredData component + Product/Article/Breadcrumb schema factories."/>
+      <template path="templates/generate-sitemap.ts" purpose="Sitemap + robots.txt build-time generator script."/>
+    </templates>
+
+    <see-also>
+      <link href="https://developers.google.com/search/docs/appearance/core-web-vitals"/>
+      <link href="https://schema.org/docs/full.html"/>
+      <link href="https://nextjs.org/docs/app/api-reference/functions/generate-metadata"/>
+      <link href="https://github.com/iamvishnusankar/next-sitemap"/>
+      <link href="https://search.google.com/test/rich-results"/>
+      <link href="https://web.dev/learn/seo/"/>
+    </see-also>
+  </content>
+</methodology>
