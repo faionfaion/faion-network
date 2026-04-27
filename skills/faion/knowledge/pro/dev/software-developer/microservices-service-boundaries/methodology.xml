@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-service-boundaries">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Define microservice boundaries by bounded context and data ownership; each service owns its tables, exposes one API surface, and maps to one team.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>architecture</tag>
+      <tag>bounded-context</tag>
+      <tag>service-design</tag>
+      <tag>ddd</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+      <ref slug="microservices-observability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Microservices Service Boundaries and Structure</title>
+
+    <summary>Microservices architecture structures an application as a collection of loosely coupled, independently deployable services. Each service owns its data and business logic, communicating through well-defined APIs. Boundaries follow bounded contexts — not layers, not convenience, not team politics.</summary>
+
+    <why>
+      <p>Microservices architecture structures an application as a collection of loosely coupled, independently deployable services. Each service owns its data and business logic, communicating through well-defined APIs.</p>
+      <p>Independent scaling, polyglot persistence, and team autonomy are only achievable when service boundaries are clean. A poorly drawn boundary forces cross-service SQL, synchronous coupling chains, and shared deployment pipelines — recreating the monolith's problems with distributed-systems overhead added.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Large applications requiring independent scaling.</item>
+        <item>Multiple teams (three or more) working on different features where service boundaries cleanly map to team boundaries (Conway's Law in reverse).</item>
+        <item>Systems needing technology diversity (polyglot persistence is a real need — transactional Postgres for orders, document store for catalog, Redis for sessions).</item>
+        <item>Applications requiring high availability and blast-radius isolation (PCI scope, PHI scope, regional data residency).</item>
+        <item>Organizations practicing continuous deployment where independent deploy cadences matter.</item>
+        <item>A monolith that has been internally modularised (modular monolith) and the seams are clearly load-bearing.</item>
+        <item>Long-running async workflows where event-driven decoupling beats request/response chains.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Solo or two-person teams — operational overhead (CI per service, deploy choreography, observability) eats more capacity than it returns.</item>
+        <item>Pre-product-market-fit — domain boundaries are unstable; you will re-cut them three times and pay full distributed-systems tax each rewrite.</item>
+        <item>Sub-millisecond synchronous chains (high-frequency trading, real-time bidding) — network hops kill the latency budget.</item>
+        <item>"Microservices for resume" — a modular monolith with clean module boundaries delivers most benefits without the distributed pain.</item>
+        <item>Tight transactional boundaries across services — if every command spans three services and two-phase coordination, the boundary is wrong.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="key-principles">
+      <rule testable="true">
+        <statement>Each service MUST have single responsibility — it does one thing well, owns one bounded context.</statement>
+        <rationale>Single responsibility keeps the service small enough to rewrite, test independently, and deploy without fear.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Services MUST be loosely coupled — no shared database tables across service boundaries, no shared ORM models, no direct imports from another service's infrastructure layer.</statement>
+        <rationale>Shared data creates implicit coupling that defeats the purpose of microservices. Schema changes cascade unpredictably.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Related functionality MUST be grouped with high cohesion — everything a service needs to fulfil its bounded context lives inside it.</statement>
+        <rationale>Low cohesion forces choreography for every operation, multiplying latency and failure surface.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Each service MUST own its data — its own schema/database/collection, with no direct reads or writes from external services.</statement>
+        <rationale>Decentralized data is the foundation of independent deployability. Shared data is a hidden monolith.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Services MUST be designed for failure — every outbound call assumes the dependency will fail; timeouts, retries, and fallbacks are mandatory, not optional.</statement>
+        <rationale>In a distributed system, partial failure is the normal state. Services that do not handle it degrade the entire system.</rationale>
+      </rule>
+    </section>
+
+    <section name="service-structure">
+      <p>Each service follows a layered structure: API (routes + schemas), Domain (entities + services + events), and Infrastructure (database + message bus). This maps directly to hexagonal/clean architecture.</p>
+
+      <example type="good" title="Per-service folder layout">
+        <code lang="text"><![CDATA[
+services/
+├── user-service/
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── routes.py
+│   │   │   └── schemas.py
+│   │   ├── domain/
+│   │   │   ├── entities.py
+│   │   │   ├── services.py
+│   │   │   └── events.py
+│   │   ├── infrastructure/
+│   │   │   ├── database.py
+│   │   │   └── message_bus.py
+│   │   └── main.py
+│   ├── tests/
+│   ├── Dockerfile
+│   └── requirements.txt
+├── order-service/
+│   └── ... (similar structure)
+├── product-service/
+│   └── ...
+└── shared/
+    ├── messaging/
+    └── observability/
+]]></code>
+        <note>shared/ contains only cross-cutting concerns (auth middleware, tracing helpers, event envelope). Never domain logic.</note>
+      </example>
+    </section>
+
+    <section name="service-implementation">
+      <p>FastAPI with lifespan context managers is the canonical shape for a Python microservice. Startup initializes DB + message bus; shutdown tears them down gracefully.</p>
+
+      <example type="good" title="FastAPI service main.py with lifespan">
+        <code lang="python"><![CDATA[
+# user-service/src/main.py
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+from api.routes import router
+from infrastructure.database import init_db, close_db
+from infrastructure.message_bus import init_message_bus, close_message_bus
+from infrastructure.health import health_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await init_db()
+    await init_message_bus()
+    yield
+    # Shutdown
+    await close_message_bus()
+    await close_db()
+
+
+app = FastAPI(
+    title="User Service",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.include_router(health_router, tags=["health"])
+app.include_router(router, prefix="/api/v1", tags=["users"])
+]]></code>
+      </example>
+
+      <example type="good" title="FastAPI route handlers with domain service injection">
+        <code lang="python"><![CDATA[
+# user-service/src/api/routes.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
+
+from domain.services import UserService
+from api.schemas import CreateUserRequest, UserResponse
+from infrastructure.dependencies import get_user_service
+
+router = APIRouter()
+
+
+@router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def create_user(
+    request: CreateUserRequest,
+    service: UserService = Depends(get_user_service),
+):
+    try:
+        user = await service.create_user(
+            email=request.email,
+            name=request.name,
+        )
+        return UserResponse.from_entity(user)
+    except UserAlreadyExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this email already exists",
+        )
+
+
+@router.get("/users/{user_id}", response_model=UserResponse)
+async def get_user(
+    user_id: UUID,
+    service: UserService = Depends(get_user_service),
+):
+    user = await service.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return UserResponse.from_entity(user)
+]]></code>
+      </example>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>Distributed monolith — services call each other synchronously for every operation.</description>
+        <reason>All services must be up simultaneously; a single failure cascades. The "microservices" label is cosmetic.</reason>
+      </antipattern>
+
+      <example type="bad" title="Distributed monolith: sync chain for every operation">
+        <code lang="python"><![CDATA[
+# BAD - services tightly coupled via synchronous calls
+class OrderService:
+    def create_order(self, data):
+        user = user_service.get_user(data.user_id)  # Sync call
+        product = product_service.get_product(data.product_id)  # Sync call
+        inventory = inventory_service.check(data.product_id)  # Sync call
+        # All services must be up
+]]></code>
+      </example>
+
+      <example type="good" title="Async events + local data caching">
+        <code lang="python"><![CDATA[
+# GOOD - async events, local data caching
+class OrderService:
+    def create_order(self, data):
+        # Use cached/local data
+        user_valid = await self.user_cache.exists(data.user_id)
+        product = await self.product_cache.get(data.product_id)
+
+        order = Order.create(data)
+        await self.repository.save(order)
+
+        # Publish event for other services
+        await self.event_bus.publish(OrderCreated(order))
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Shared database — multiple services access the same database tables.</description>
+        <reason>Schema changes to a shared table break all services simultaneously; deployment independence is lost.</reason>
+      </antipattern>
+
+      <example type="bad" title="Shared DB anti-pattern">
+        <code lang="python"><![CDATA[
+# BAD - multiple services access same database
+# user-service and order-service both query 'users' table
+]]></code>
+      </example>
+
+      <example type="good" title="Per-service data ownership">
+        <code lang="python"><![CDATA[
+# GOOD - each service owns its data
+# user-service owns 'users' table
+# order-service has 'customer_info' with denormalized user data
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive microservices design as a five-stage pipeline: (1) a domain agent extracts bounded contexts and proposes service boundaries from the spec; (2) a contract agent generates OpenAPI/AsyncAPI/Protobuf schemas and registers them; (3) a code-gen agent produces the per-service skeleton (API + domain + infra) following the structure above; (4) a resilience agent wires circuit breakers, retries, timeouts, and saga/process-manager skeletons; (5) a review agent runs the anti-pattern checklist (sync chains greater than 2 hops, shared DB, missing trace propagation, command without idempotency key, event without schema version). Persist the service map, contracts, and event catalogue in .aidocs/product_docs/service-map.md so subsequent feature work does not re-derive boundaries.</p>
+
+      <prompt purpose="boundary-pass"><![CDATA[
+You are a microservices architect. Given the spec in <spec>:
+(a) Identify bounded contexts; for each: aggregates owned, language
+    of the domain, team(s) responsible.
+(b) Propose services; for each: name, ownership, sync API surface
+    (OpenAPI), async events emitted (AsyncAPI subjects), data store.
+(c) For every cross-service operation, classify as: sync request,
+    async event, or saga. Reject any sync chain > 2 hops; rewrite as
+    saga or precomputed projection.
+]]></prompt>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Boundaries follow data ownership. A service owns its tables. No cross-service SQL. Replicate via events into a read model if needed.</item>
+        <item>One service, one team, one repo (or per-service folder in monorepo). Cross-team commits to a service are a smell.</item>
+        <item>Service-level SLOs published. Each service declares latency/error budgets; downstream callers consume them when sizing timeouts.</item>
+        <item>Versioning policy up front: additive only, deprecate before remove, support N-1 for 90 days. Pick now, stop arguing per-PR.</item>
+        <item>Local dev: stub external services using wiremock, localstack, testcontainers. Do not expect engineers to run 12 services to ship a feature.</item>
+        <item>Human-in-loop on boundary changes. Splitting a service is a one-way door. Block auto-merge on changes that move tables/aggregates between services.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Sync-chain reflex: asked to "let order service get user info," agents call user_service.get_user() synchronously inside the request handler. Constrain to async event + local cache lookup; reject sync chains greater than 2 hops.</item>
+        <item>Distributed monolith on a single repo: agents copy the same User class into every service module and import across boundaries. Lint the imports.</item>
+        <item>Hardcoded service URLs: http://order-service:8000 baked in; agents skip env/config injection. Force config-driven addresses.</item>
+        <item>Auth re-implementation: agents copy JWT-validation code into each new service. Provide one auth-middleware lib and require its import.</item>
+        <item>Local-dev sprawl: agents add a new service without updating docker-compose.yml or Tilt config. Force "if you add a service, you update local-dev manifest."</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+      <ref slug="microservices-observability"/>
+      <link href="https://samnewman.io/books/building_microservices_2nd_edition/"/>
+      <link href="https://microservices.io/patterns/"/>
+      <link href="https://martinfowler.com/articles/microservices.html"/>
+      <link href="https://12factor.net/"/>
+    </see-also>
+  </content>
+</methodology>
