@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-aws-service-selection">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>AWS service selection decision guide: compute (Lambda vs Fargate vs EKS vs EC2), database (Aurora vs DynamoDB vs ElastiCache), Well-Architected 6 pillars, and agent-model selection per task type.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>service-selection</tag>
+      <tag>well-architected</tag>
+      <tag>compute</tag>
+      <tag>decision</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <ref slug="devops-aws-monitoring-dr"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Service Selection: Compute, Database, and Architecture Decisions</title>
+
+    <summary>Choosing the right AWS service avoids rework. Compute selection follows: short tasks under 15 minutes use Lambda; container workloads prefer Fargate unless EKS control is needed; sustained CPU workloads use Graviton EC2 Reserved Instances. Database selection follows workload access patterns. The Well-Architected Framework 6 pillars provide the decision checklist across all categories.</summary>
+
+    <why>
+      <p>AWS has 200+ services. Selecting the wrong compute or database type at the start of a project creates migration debt that compounds with scale. Graviton instances cost 20% less than equivalent x86 at the same performance. Fargate eliminates node management overhead compared to EKS managed node groups. Aurora Serverless v2 provides sub-second scaling without DBA toil. These decisions are the highest-leverage architectural choices a DevOps engineer makes at project kickoff.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new AWS project and selecting core services.</item>
+        <item>Reviewing an existing architecture for cost or operational efficiency gaps.</item>
+        <item>Migrating on-premises workloads and mapping legacy components to AWS equivalents.</item>
+        <item>Conducting a Well-Architected Review against the 6 pillars.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the architecture is already locked and services are in production — use cost optimization and monitoring methodologies instead.</item>
+        <item>For service-specific configuration details — see devops-aws-three-tier and devops-aws-serverless-api.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="well-architected">
+      <p>The AWS Well-Architected Framework defines 6 pillars. Every architecture decision should be evaluated against all 6. The pillar with the most gaps drives the remediation priority.</p>
+
+      <rule testable="true">
+        <statement>Every production architecture MUST be evaluated against all 6 Well-Architected pillars: Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, and Sustainability. The evaluation MUST produce a gap list with priority (High/Medium/Low) per pillar before the first production deployment.</statement>
+        <rationale>Skipping Well-Architected review at design time results in costly retrofits post-launch. Security and Reliability gaps are much cheaper to fix in Terraform before the first deployment than after data is in production.</rationale>
+      </rule>
+
+      <section name="pillars-table">
+        <p>Pillar summary with focus areas and key practices:</p>
+        <list>
+          <item>Operational Excellence: Automation, monitoring, continuous improvement. Key: IaC, runbooks, observability.</item>
+          <item>Security: IAM, encryption, network security, compliance. Key: least privilege, encryption at rest and in transit.</item>
+          <item>Reliability: Fault tolerance, recovery, scaling. Key: Multi-AZ, auto-scaling, chaos engineering.</item>
+          <item>Performance Efficiency: Right-sizing, caching, serverless. Key: Graviton, caching layers, CDN.</item>
+          <item>Cost Optimization: Reserved capacity, spot instances, right-sizing. Key: Savings Plans, cost allocation tags.</item>
+          <item>Sustainability: Resource efficiency, managed services. Key: efficient regions, managed services over self-managed.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="compute-selection">
+      <p>Compute selection is a two-step decision: first choose the execution model (serverless, container, VM), then choose the instance type within that model.</p>
+
+      <rule testable="true">
+        <statement>Compute selection MUST follow this priority: tasks under 15 minutes → Lambda (arm64); container workloads without specific EKS requirements → Fargate; container workloads needing node-level control or service mesh → EKS with Graviton managed node groups; batch processing with fault tolerance → AWS Batch with Spot instances; ML inference → Inferentia2 or Graviton. EC2 is a last resort for legacy or specific OS requirements.</statement>
+        <rationale>Lambda and Fargate eliminate node management, patching, and capacity planning. Graviton (arm64) costs 20% less than x86 at equivalent performance. Spot instances save up to 90% for interruption-tolerant batch workloads.</rationale>
+      </rule>
+
+      <section name="compute-table">
+        <list>
+          <item>General compute: Graviton (ARM64) instances — default for all new EC2-backed workloads.</item>
+          <item>Containers: Fargate for simplicity; EKS for node-level control or service mesh requirements.</item>
+          <item>Short tasks (under 15 minutes): Lambda on arm64.</item>
+          <item>Batch processing: AWS Batch with Spot instances — up to 90% cost reduction.</item>
+          <item>ML inference: Inferentia2 or Graviton — purpose-built for inference cost and throughput.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="database-selection">
+      <p>Database selection follows access patterns, not familiarity with the engine. The most common mistake is defaulting to RDS PostgreSQL when DynamoDB or ElastiCache would be more appropriate.</p>
+
+      <rule testable="true">
+        <statement>Database engine selection MUST be driven by access patterns: relational joins and complex queries → Aurora Serverless v2 PostgreSQL; key-value or document with known access patterns → DynamoDB on-demand; sub-millisecond cache → ElastiCache Serverless; graph relationships → Neptune; document store with mongo-compatible API → DocumentDB. Never default to RDS without evaluating DynamoDB first for new greenfield services.</statement>
+        <rationale>DynamoDB scales to millions of requests per second with single-digit millisecond latency at any scale, but only when access patterns fit the key-value model. Aurora Serverless v2 handles relational complexity but requires connection management via RDS Proxy at scale.</rationale>
+      </rule>
+
+      <section name="database-table">
+        <list>
+          <item>Relational data with joins: Aurora Serverless v2 PostgreSQL — scales 0.5 to 128 ACU automatically.</item>
+          <item>Key-value or single-table access: DynamoDB on-demand — zero capacity planning.</item>
+          <item>Session cache, leaderboard, rate limiting: ElastiCache Serverless — sub-millisecond, no cluster management.</item>
+          <item>Document store (MongoDB-compatible): DocumentDB — fully managed, replication built-in.</item>
+          <item>Graph relationships: Neptune — purpose-built for graph traversal at scale.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="networking-decisions">
+      <p>Networking decisions follow the traffic flow: internet-facing traffic terminates at CloudFront or ALB; private inter-service traffic stays within the VPC; cross-account traffic uses Transit Gateway or PrivateLink; on-premises connectivity uses Site-to-Site VPN for low bandwidth or Direct Connect for high bandwidth.</p>
+
+      <section name="network-table">
+        <list>
+          <item>Static assets and global CDN: CloudFront with S3 OAC origin — PriceClass_100 for EU/US.</item>
+          <item>HTTP API load balancing: Application Load Balancer in public subnets.</item>
+          <item>TCP/UDP load balancing: Network Load Balancer — static IPs, ultra-low latency.</item>
+          <item>Global traffic acceleration: Global Accelerator — anycast IPs reduce latency for global users.</item>
+          <item>AWS service access without NAT: VPC Endpoints (Interface or Gateway type).</item>
+          <item>Cross-VPC routing: Transit Gateway for 3+ VPCs; VPC Peering for 1:1 connections.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="architecture-patterns">
+      <p>Standard architecture patterns and their canonical service sets:</p>
+      <list>
+        <item>Three-Tier web app: ALB + ECS/EKS + Aurora Serverless v2. See devops-aws-three-tier.</item>
+        <item>Serverless REST/GraphQL API: API Gateway (HTTP) + Lambda (arm64) + DynamoDB. See devops-aws-serverless-api.</item>
+        <item>Async event processing: EventBridge + Lambda + SQS with DLQ. See devops-aws-serverless-api.</item>
+        <item>Microservices: EKS + Service Mesh (App Mesh or Istio) + RDS per service. See devops-aws-three-tier.</item>
+        <item>Data lake: S3 + Glue + Athena + Redshift Serverless — query data in place.</item>
+        <item>GenAI RAG: Bedrock + Kendra or OpenSearch Serverless + Lambda + DynamoDB. See devops-aws-serverless-api.</item>
+      </list>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Different AWS engineering tasks have different cognitive complexity. Selecting the right model tier saves both cost and quality drift.</p>
+
+      <section name="agent-table">
+        <list>
+          <item>Haiku: Run terraform plan, docker build, kubectl get commands — mechanical CLI operations with deterministic output.</item>
+          <item>Sonnet: Review Dockerfile for best practices, debug pod crashes, write Helm values, troubleshoot Kubernetes pod evictions — code review and diagnosis tasks requiring pattern matching.</item>
+          <item>Opus: Design multi-region failover architecture, create monitoring strategy for microservices — complex distributed systems decisions requiring reasoning across multiple trade-offs.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="quick-decision-guide">
+      <p>Quick decision guide — resolve the first matching condition:</p>
+      <list>
+        <item>Need serverless compute? Lambda (arm64) + API Gateway + DynamoDB.</item>
+        <item>Need containers? EKS if node-level control needed; ECS/Fargate otherwise.</item>
+        <item>Need VMs? EC2 Graviton (legacy or OS-specific requirements only).</item>
+        <item>Relational data? Aurora Serverless v2 (PostgreSQL or MySQL).</item>
+        <item>Key-value data? DynamoDB on-demand.</item>
+        <item>Need cache? ElastiCache Serverless.</item>
+        <item>Async events? EventBridge + SQS + Lambda.</item>
+        <item>Real-time streams? Kinesis Data Streams.</item>
+        <item>Multi-step orchestration? Step Functions.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <ref slug="devops-aws-monitoring-dr"/>
+      <link href="https://aws.amazon.com/architecture/well-architected/"/>
+      <link href="https://aws.amazon.com/architecture/"/>
+    </see-also>
+  </content>
+</methodology>
