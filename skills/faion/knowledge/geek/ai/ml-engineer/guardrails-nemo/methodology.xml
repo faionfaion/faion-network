@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="guardrails-nemo">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>NeMo Guardrails by NVIDIA: Colang DSL for dialog flow control, jailbreak detection, fact-checking, multi-turn conversation state, configuration templates, and custom actions.</summary>
+    <tags>
+      <tag>nemo-guardrails</tag>
+      <tag>colang</tag>
+      <tag>dialog-control</tag>
+      <tag>nvidia</tag>
+      <tag>llm-safety</tag>
+    </tags>
+    <category>safety</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>nemoguardrails</framework>
+    </frameworks>
+    <related>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-ai-framework"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>NeMo Guardrails — Colang Dialog Flow Control</title>
+
+    <summary>NeMo Guardrails (NVIDIA) is best for complex conversational flows and multi-turn dialogs in enterprise deployments. It uses the Colang DSL to define conversation state machines with built-in jailbreak detection, topic control, and fact-checking against a knowledge base. It integrates with LangChain, LangGraph, and LlamaIndex and works with any LLM, with optimized performance on NVIDIA NIM.</summary>
+
+    <why>
+      <p>Declarative dialog flow control is NeMo's primary advantage over other guardrail frameworks. The Colang state machine approach captures complex conversation patterns (multi-turn order flows, conditional branching, escalation paths) that regex and output validators cannot express. Built-in jailbreak detection and fact-checking run as first-class rails, not afterthoughts.</p>
+      <p>Strengths: declarative dialog flow control; state machine approach for complex conversations; built-in jailbreak detection; fact-checking against knowledge base; multi-agent support. Limitations: learning curve for Colang DSL; heavier setup compared to simple validators; requires a running LLM for the Colang runtime (infra dependency); best performance with NVIDIA infrastructure.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complex conversational flows requiring state across multiple turns (e.g., order status → refund → confirmation).</item>
+        <item>Enterprise deployments where dialog control policy must be auditable and version-controlled.</item>
+        <item>Applications that need fact-checking against a knowledge base before responding.</item>
+        <item>Multi-agent systems where each agent needs its own dialog rail.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple output validation only — Guardrails AI is lighter and more direct for schema enforcement.</item>
+        <item>Single-turn request/response APIs with no conversation state — the Colang runtime overhead is not justified.</item>
+        <item>Teams without Python expertise or NVIDIA infrastructure — setup cost is high relative to simpler alternatives.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-setup">
+      <rule>
+        <statement>Initialize NeMo Guardrails with RailsConfig loaded from a config directory or inline Colang + YAML content, then call rails.generate() with the conversation messages list.</statement>
+        <rationale>Config-from-path separates the policy definition from the application code, enabling policy versioning without code changes. Inline config is acceptable for testing only.</rationale>
+      </rule>
+      <example type="good" title="Basic NeMo Guardrails setup">
+        <code lang="python"><![CDATA[
+# pip install nemoguardrails
+
+from nemoguardrails import RailsConfig, LLMRails
+
+# Load from directory (production)
+config = RailsConfig.from_path("./config")
+
+# Or inline (testing only)
+config = RailsConfig.from_content(
+    colang_content="""
+    define user express greeting
+        "hello"
+        "hi"
+        "hey"
+
+    define bot express greeting
+        "Hello! How can I help you today?"
+
+    define flow greeting
+        user express greeting
+        bot express greeting
+    """,
+    yaml_content="""
+    models:
+      - type: main
+        engine: openai
+        model: gpt-4o
+    """
+)
+
+rails = LLMRails(config)
+
+response = rails.generate(messages=[{
+    "role": "user",
+    "content": "Hello!"
+}])
+print(response["content"])
+]]></code>
+      </example>
+    </section>
+
+    <section name="input-rails-config">
+      <rule>
+        <statement>Configure input rails in config/config.yml under rails.input.flows. Use self check input for general content policy and check jailbreak for injection/manipulation detection. Configure the corresponding prompts in the prompts section.</statement>
+        <rationale>Separating input and output rail flows in config.yml makes the policy readable and independently testable. The prompts section drives the LLM-based checks with domain-specific policy text.</rationale>
+      </rule>
+      <example type="good" title="NeMo input and output rails configuration">
+        <code lang="yaml"><![CDATA[
+# config/config.yml
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o
+
+rails:
+  input:
+    flows:
+      - self check input
+      - check jailbreak
+      - check topic
+
+  output:
+    flows:
+      - self check output
+      - check facts
+
+prompts:
+  - task: self_check_input
+    content: |
+      Your task is to check if the user message below complies with the policy.
+
+      Policy:
+      - Should not contain harmful content
+      - Should not ask for illegal activities
+      - Should not contain personal attacks
+
+      User message: {{ user_input }}
+
+      Response (allowed/not_allowed):
+]]></code>
+      </example>
+    </section>
+
+    <section name="colang-flows">
+      <rule>
+        <statement>Define user intents as canonical forms with representative utterance examples. Define bot responses as canonical forms. Wire them together in flows. Use guardrail flows (check jailbreak, check topic, mask sensitive data, check facts) as the enforcement layer.</statement>
+        <rationale>Canonical forms allow NeMo to generalize from examples using semantic similarity. Flows define the policy logic without requiring exact string matching, making the guardrails robust to paraphrasing.</rationale>
+      </rule>
+      <example type="good" title="Topic control with Colang flows">
+        <code lang="colang"><![CDATA[
+# config/rails/topics.co
+
+define user ask about products
+    "What products do you sell?"
+    "Tell me about your offerings"
+    "Product information"
+
+define user ask off topic
+    "What's the weather like?"
+    "Tell me a joke"
+    "Who won the game?"
+
+define bot explain products
+    "We offer the following products: ..."
+
+define bot refuse off topic
+    "I'm sorry, but I can only help with questions about our products and services."
+
+define flow product inquiry
+    user ask about products
+    bot explain products
+
+define flow handle off topic
+    user ask off topic
+    bot refuse off topic
+]]></code>
+      </example>
+      <example type="good" title="Jailbreak detection flow">
+        <code lang="colang"><![CDATA[
+# config/rails/jailbreak.co
+
+define flow check jailbreak
+    $is_jailbreak = execute check_jailbreak_action(user_input=$user_message)
+
+    if $is_jailbreak
+        bot refuse jailbreak
+        stop
+
+define bot refuse jailbreak
+    "I'm unable to process that request. Please rephrase your question."
+]]></code>
+      </example>
+      <example type="good" title="Multi-turn dialog control">
+        <code lang="colang"><![CDATA[
+# config/rails/dialog.co
+
+define flow customer_support
+    user greet
+    bot greet and ask how to help
+
+    when user ask about order status
+        bot ask for order number
+        user provide order number
+        $order_info = execute lookup_order(order_number=$user_input)
+        bot provide order status using $order_info
+
+    when user ask about refund
+        bot explain refund policy
+        user confirm refund request
+        $refund_result = execute process_refund()
+        bot confirm refund using $refund_result
+
+    when user say goodbye
+        bot say goodbye
+
+define bot greet and ask how to help
+    "Hello! I'm here to help with your order. How can I assist you today?"
+
+define bot ask for order number
+    "Could you please provide your order number?"
+]]></code>
+      </example>
+    </section>
+
+    <section name="fact-checking">
+      <rule>
+        <statement>Implement fact-checking as a custom action decorated with @action(). Retrieve relevant documents from the knowledge base, use LLM to verify the bot response is grounded, and register the action with rails.register_action(check_facts).</statement>
+        <rationale>Fact-checking as a Colang output flow gates every bot response against the knowledge base. This prevents hallucinations in RAG-backed customer support and knowledge base applications.</rationale>
+      </rule>
+      <example type="good" title="Fact-checking action with knowledge base">
+        <code lang="python"><![CDATA[
+from nemoguardrails import RailsConfig, LLMRails
+from nemoguardrails.actions import action
+
+@action()
+async def check_facts(context: dict, llm: object, kb: object):
+    """Check if the bot response is grounded in the knowledge base."""
+    bot_response = context.get("bot_message", "")
+
+    # Retrieve relevant documents
+    docs = kb.search(bot_response, top_k=3)
+
+    # Use LLM to verify facts
+    prompt = f"""
+    Verify if the following response is supported by the given documents.
+
+    Response: {bot_response}
+
+    Documents:
+    {chr(10).join([doc.content for doc in docs])}
+
+    Is the response factually supported? Respond with "supported" or "not_supported".
+    """
+
+    result = await llm.generate(prompt)
+    return result.strip().lower() == "supported"
+
+config = RailsConfig.from_content(
+    yaml_content="""
+    models:
+      - type: main
+        engine: openai
+        model: gpt-4o
+    rails:
+      output:
+        flows:
+          - check facts
+    knowledge_base:
+      - type: local
+        path: ./knowledge
+    """
+)
+
+rails = LLMRails(config)
+rails.register_action(check_facts)
+]]></code>
+      </example>
+    </section>
+
+    <section name="custom-actions">
+      <rule>
+        <statement>Implement custom actions for jailbreak checking, topic validation, PII masking, and fact-checking as Python async functions decorated with @action(). Keep each action focused on a single check. Register all actions before calling rails.generate().</statement>
+        <rationale>Custom actions extend Colang flows with Python logic. Async actions avoid blocking the event loop during I/O (API calls, DB lookups). Single-purpose actions are independently testable and composable.</rationale>
+      </rule>
+      <example type="good" title="Custom action implementations">
+        <code lang="python"><![CDATA[
+# config/actions.py
+
+from nemoguardrails.actions import action
+from typing import Optional
+import re
+
+@action()
+async def check_jailbreak_action(user_input: str) -> bool:
+    """Check if input is a jailbreak attempt."""
+    jailbreak_patterns = [
+        r'ignore\s+(all\s+)?(previous|above)',
+        r'you\s+are\s+now\s+',
+        r'pretend\s+(you\'re|to\s+be)',
+        r'developer\s+mode',
+        r'DAN\s+mode',
+    ]
+    for pattern in jailbreak_patterns:
+        if re.search(pattern, user_input, re.IGNORECASE):
+            return True
+    return False
+
+@action()
+async def mask_pii_action(text: str) -> str:
+    """Mask PII in text."""
+    patterns = {
+        'email': (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]'),
+        'phone': (r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE]'),
+        'ssn': (r'\b\d{3}-\d{2}-\d{4}\b', '[SSN]'),
+        'credit_card': (r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b', '[CARD]'),
+    }
+    masked = text
+    for name, (pattern, replacement) in patterns.items():
+        masked = re.sub(pattern, replacement, masked)
+    return masked
+
+@action()
+async def check_facts_action(
+    response: str,
+    context: Optional[dict] = None,
+    llm: Optional[object] = None
+) -> bool:
+    """Check if response is factually grounded."""
+    if context is None or llm is None:
+        return True  # Skip if no context available
+    prompt = f"""
+    Verify if the following response is supported by the context.
+
+    Context: {context.get('text', '')}
+    Response: {response}
+
+    Is the response factually supported? Answer only "yes" or "no".
+    """
+    result = await llm.generate(prompt)
+    return result.strip().lower() == "yes"
+]]></code>
+      </example>
+    </section>
+
+    <section name="content-safety-nvidia">
+      <rule>
+        <statement>For production NVIDIA deployments, configure a dedicated content_safety model using nvidia_ai_endpoints and llama-guard-3-8b. Enable content safety on both input and output with a threshold of 0.5.</statement>
+        <rationale>NVIDIA-hosted Llama Guard runs on GPU-accelerated NIM endpoints, providing significantly lower latency than CPU-bound classification. The dedicated model type keeps safety classification out of the main LLM's context.</rationale>
+      </rule>
+      <example type="good" title="Content safety with NVIDIA models">
+        <code lang="yaml"><![CDATA[
+# config/config.yml
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o
+
+  - type: content_safety
+    engine: nvidia_ai_endpoints
+    model: nvidia/llama-guard-3-8b
+
+rails:
+  input:
+    flows:
+      - content safety check input
+  output:
+    flows:
+      - content safety check output
+
+content_safety:
+  input:
+    enabled: true
+    threshold: 0.5
+  output:
+    enabled: true
+    threshold: 0.5
+]]></code>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Configuring NeMo Guardrails without a fallback for the Colang runtime LLM being unavailable.</description>
+      <reason>NeMo requires a running LLM for the Colang runtime itself, not just for main responses. If the LLM endpoint is unavailable, the entire rails system fails. Design a graceful degradation path (default-block or default-pass) that activates when the runtime LLM is unreachable.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Setting max_reasks to unlimited in NeMo retry-on-fail configuration.</description>
+      <reason>Guardrails AI's retry-on-fail mechanism and NeMo's retry behavior can cause agents to loop indefinitely. Set max_reasks=3 and handle the failure case explicitly with a fallback response.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-ai-framework"/>
+      <link href="https://docs.nvidia.com/nemo/guardrails/latest/index.html"/>
+      <link href="https://github.com/NVIDIA-NeMo/Guardrails"/>
+      <link href="https://arxiv.org/abs/2310.10501"/>
+    </see-also>
+  </content>
+</methodology>
