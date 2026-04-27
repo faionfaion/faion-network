@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="web-scraping-agentic-workflow">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>End-to-end agentic scrape workflow: SSR detection, tool selection, schema validation, versioned dataset storage, drift detection, best practices, AI-agent gotchas, and managed service options.</summary>
+    <tags>
+      <tag>web-scraping</tag>
+      <tag>agentic-workflow</tag>
+      <tag>schema-validation</tag>
+      <tag>dataset-storage</tag>
+      <tag>firecrawl</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="web-scraping-element-extraction"/>
+      <ref slug="web-scraping-pagination"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="playwright-automation"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="browser-automation-overview"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Web Scraping — Agentic Workflow and Tool Selection</title>
+
+    <summary>A scrape agent probes SSR vs JS-render, selects the right tool (httpx+selectolax or Playwright), validates every row against a schema, stores to a versioned JSONL dataset, and detects schema drift between runs. Use managed services (Firecrawl, Jina Reader) when the agent only needs clean text.</summary>
+
+    <why>
+      <p>Without an explicit SSR/JS detection step, agents default to Playwright for everything — wasting 10x the resources on static HTML that httpx handles in milliseconds. Without schema validation, silently malformed rows corrupt datasets over time. Without drift detection, a target site redesign goes unnoticed until stakeholders find broken pipelines weeks later.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Sites without an official API or RSS feed where you need product, price, or listing data on a schedule.</item>
+        <item>Research workflows: gathering a corpus of pages for an LLM to summarize or fine-tune on.</item>
+        <item>Monitoring: tracking changes to a competitor pricing page, regulator publication, or status board.</item>
+        <item>Aggregating content from JS-rendered SPAs that curl cannot see.</item>
+        <item>One-off backfills of public data into a structured dataset.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The site offers an official API or RSS — use it. Cheaper, more reliable, and ToS-clean.</item>
+        <item>Targets where the ToS forbids scraping and you have no fair-use defense.</item>
+        <item>Authenticated account data of users who did not consent.</item>
+        <item>Data behind hard anti-bot walls (Cloudflare Turnstile interactive, Akamai Bot Manager) without a stealth service budget.</item>
+        <item>Sub-second latency requirements — scraping is inherently slow.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agentic-workflow">
+      <rule testable="true">
+        <statement>A scrape agent MUST execute in this order: (1) curl -I to confirm SSR vs JS-render; (2) choose httpx+selectolax for SSR, Playwright for JS; (3) extract with role/text locators; (4) validate every row with Pydantic/Zod and log invalid count; (5) write to raw/YYYY-MM-DD/source.jsonl; (6) on schema drift (&gt;5% field disappearance), stop and raise a human review issue.</statement>
+        <rationale>Each step is a quality gate. Skipping the SSR probe wastes browser resources. Skipping validation lets corrupt rows contaminate the dataset silently. Skipping drift detection makes pipeline failures invisible for days.</rationale>
+      </rule>
+
+      <example type="good" title="Agent prompt pattern — SSR detection to schema validation">
+        <code lang="text"><![CDATA[
+Source: <URL>. Content: <product table | article list | etc.>.
+
+Step 1: curl -sI <URL> — report content-type, server, set-cookie, status.
+Step 2: curl -s <URL> | grep -E '<table|<article' — confirm SSR.
+   If empty → JS-rendered, use Playwright with role-based locators.
+   Else → httpx + selectolax with CSS selectors.
+Step 3: Output schema as Pydantic / Zod. Validate every row. Drop invalid; log count.
+Step 4: Save to raw/<YYYY-MM-DD>/<source>.jsonl. Commit dataset separately from code.
+]]></code>
+      </example>
+
+      <example type="good" title="Agent prompt pattern — drift detection">
+        <code lang="text"><![CDATA[
+Detect schema drift: compare today's raw/<date>/<source>.jsonl
+to last good run (git diff). If new fields → flag for review.
+If existing fields disappear in > 5% of rows → fail and stop.
+]]></code>
+      </example>
+
+      <example type="good" title="Polite SSR scraper — Python reference implementation">
+        <code lang="python"><![CDATA[
+import asyncio, hashlib, json, time
+from pathlib import Path
+import httpx
+from selectolax.parser import HTMLParser
+from urllib.robotparser import RobotFileParser
+
+UA = "ResearchBot/1.0 (+contact@example.com)"
+DELAY = 1.5  # seconds between requests
+
+async def fetch(client: httpx.AsyncClient, url: str) -> str:
+    r = await client.get(url, headers={"User-Agent": UA}, timeout=20)
+    r.raise_for_status()
+    return r.text
+
+def parse(html: str) -> list[dict]:
+    tree = HTMLParser(html)
+    rows = []
+    for card in tree.css("article.item"):
+        title = card.css_first("h2")
+        price = card.css_first(".price")
+        if title and price:
+            rows.append({"title": title.text(strip=True),
+                         "price": price.text(strip=True)})
+    return rows
+
+async def main(urls: list[str], out: Path):
+    rp = RobotFileParser()
+    rp.set_url(urls[0].rsplit('/', 3)[0] + "/robots.txt")
+    rp.read()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    async with httpx.AsyncClient(http2=True) as client:
+        with out.open("w") as f:
+            for u in urls:
+                if not rp.can_fetch(UA, u):
+                    continue
+                html = await fetch(client, u)
+                for row in parse(html):
+                    row["_source"] = u
+                    row["_hash"] = hashlib.sha1(html.encode()).hexdigest()[:10]
+                    f.write(json.dumps(row) + "\n")
+                await asyncio.sleep(DELAY)
+
+if __name__ == "__main__":
+    import sys
+    asyncio.run(main(sys.argv[2:], Path(sys.argv[1])))
+]]></code>
+        <note>Checks robots.txt, identifies itself via UA, adds per-row source and hash for dedup and re-parse without re-scraping.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Always check robots.txt before scraping and cache the result for the run. Identify your bot with a descriptive User-Agent including a contact email. Snapshot raw HTML alongside parsed JSON. Validate rows with Pydantic/Zod and log validation errors to a separate stream. For LLM consumption, prefer Firecrawl or r.jina.ai markdown output — it saves 70% or more tokens versus raw HTML.</statement>
+        <rationale>robots.txt compliance reduces ban risk and is a legal shield in many jurisdictions. Raw HTML snapshots let you re-parse without re-scraping when the parser changes. Pydantic validation surfaces schema drift at ingestion rather than at query time.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Check robots.txt and respect it; cache the result for the run.</check>
+        <check>Identify your bot: descriptive User-Agent with contact email.</check>
+        <check>Throttle: 1–3 RPS minimum for small sites; jitter the delay.</check>
+        <check>Cache pages locally during development so iteration does not re-hit the target.</check>
+        <check>Snapshot raw HTML alongside parsed JSON for re-parse without re-scraping.</check>
+        <check>Write parsers tolerant of missing fields — return None rather than crashing.</check>
+        <check>Validate with Pydantic/Zod and log validation errors to a separate stream.</check>
+        <check>Schedule with cron plus a dead-letter table; never silently fail.</check>
+        <check>For LLM consumption, prefer Firecrawl or r.jina.ai markdown — saves 70%+ tokens.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <rule testable="true">
+        <statement>In agent prompts, robots.txt check MUST be the first step — agents skip it unless explicitly instructed. Provide the actual DOM selector from inspection, not a guessed class name. Specify pagination layout explicitly (next-button or infinite-scroll) since agents default to the wrong one.</statement>
+        <rationale>LLMs hallucinate selectors that "feel right" (.product-card) when the actual class is .css-1abc23. "Just retry on failure" loops without backoff get IPs banned in minutes. Login flows produce cookies/tokens that agents commit unless explicitly gitignored.</rationale>
+      </rule>
+
+      <list>
+        <item>Agents skip robots.txt unless the prompt makes it step 1.</item>
+        <item>LLMs hallucinate site selectors — always inspect the actual DOM first and provide the real class.</item>
+        <item>"Just retry on failure" without backoff gets IPs banned in minutes.</item>
+        <item>Login flows: agents commit cookies/tokens. Add auth.json and cookies.json to .gitignore.</item>
+        <item>Encoding: Asian-language sites often use gb2312 or Shift_JIS; agents assume UTF-8 and silently corrupt data.</item>
+        <item>Pagination: agents stop at "next button gone" but miss infinite-scroll. State the layout in the prompt.</item>
+        <item>Legal: agents do not reason about ToS. Human-in-loop checkpoint required for any commercial-data scrape.</item>
+        <item>Use Reader (r.jina.ai) or Firecrawl when the agent only needs the text — bypasses 90% of brittle-selector failures.</item>
+      </list>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for Python scraping:</p>
+      <list>
+        <item>curl / httpx (CLI) — SSR-only fetches; HTTP/2 + async. Install: pip install httpx[cli]</item>
+        <item>selectolax — Fast lxml-based HTML parsing. Install: pip install selectolax</item>
+        <item>parsel — Scrapy selector lib, standalone. Install: pip install parsel</item>
+        <item>playwright — JS-rendered scraping. See playwright-automation/</item>
+        <item>scrapy — Full crawler framework with pipelines. Install: pip install scrapy</item>
+        <item>puppeteer-extra-plugin-stealth — Bypass naive bot detection. Install: npm i puppeteer-extra puppeteer-extra-plugin-stealth</item>
+        <item>crawl4ai — LLM-friendly scraping (markdown output). Install: pip install crawl4ai</item>
+        <item>playwright-stealth — Stealth for Playwright. Install: pip install playwright-stealth</item>
+        <item>firecrawl (self-host) — Markdown-first scrape API. https://github.com/mendableai/firecrawl</item>
+        <item>htmlq — jq for HTML. Install: cargo install htmlq</item>
+      </list>
+
+      <p>Managed scraping services (agent-friendly):</p>
+      <list>
+        <item>Firecrawl (SaaS + OSS) — Returns LLM-ready markdown; agent-first REST API.</item>
+        <item>Browserbase (SaaS) — Stealth profiles + residential proxies; Playwright CDP.</item>
+        <item>Bright Data Web Scraper (SaaS) — Datasets-as-a-service; expensive.</item>
+        <item>ScraperAPI (SaaS) — Handles proxies + JS rendering; single-endpoint REST.</item>
+        <item>ScrapingBee (SaaS) — Simple GET wrapper with JS render option.</item>
+        <item>Apify (SaaS + OSS) — Reusable scraper "actors"; agentic-friendly Actor API.</item>
+        <item>Reader by Jina (SaaS) — Free LLM-readable text from any URL: r.jina.ai/&lt;url&gt;</item>
+        <item>ZenRows (SaaS) — Anti-bot bypass focus; REST API.</item>
+        <item>Crawlbase (SaaS) — Captcha solving included; REST API.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="web-scraping-element-extraction"/>
+      <ref slug="web-scraping-pagination"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="playwright-automation"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="browser-automation-overview"/>
+      <link href="https://www.rfc-editor.org/rfc/rfc9309.html"/>
+      <link href="https://docs.scrapy.org/"/>
+      <link href="https://github.com/mendableai/firecrawl"/>
+      <link href="https://jina.ai/reader/"/>
+      <link href="https://www.zyte.com/blog/"/>
+    </see-also>
+  </content>
+</methodology>
