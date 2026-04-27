@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-security-hardening">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Harden Kubernetes workloads with Pod Security Standards, container securityContext, dedicated ServiceAccounts with minimal RBAC, NetworkPolicies (default-deny), and secrets management best practices.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>security</tag>
+      <tag>pod-security-standards</tag>
+      <tag>networkpolicy</tag>
+      <tag>rbac</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="k8s-deployment-workloads"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Security Hardening</title>
+
+    <summary>Kubernetes workload security requires five layers: Pod Security Standards (enforce restricted namespace labels), container securityContext (non-root, read-only root filesystem, drop ALL capabilities), dedicated ServiceAccounts with minimal RBAC, NetworkPolicies enforcing default-deny with explicit allow rules, and secrets never stored in ConfigMaps or environment variables — use secretKeyRef or an external vault.</summary>
+
+    <why>
+      <p>Kubernetes defaults are permissive: pods run as root, can escalate privileges, read the default ServiceAccount token (which has cluster-wide permissions in many setups), and communicate with any other pod. A compromised container in a cluster without security hardening becomes an attack path to the Kubernetes API, adjacent services, and cloud metadata APIs. Pod Security Standards (replacing the deprecated PodSecurityPolicy) enforce baseline/restricted profiles at namespace admission time. NetworkPolicies enforce zero-trust pod-to-pod communication. Together they implement defence-in-depth: a compromised pod cannot pivot to the database or the API server.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying any production workload to Kubernetes.</item>
+        <item>Auditing an existing Deployment for security misconfigurations.</item>
+        <item>Setting up a new namespace for production workloads.</item>
+        <item>Implementing zero-trust pod-to-pod communication.</item>
+        <item>Reviewing secrets management practices.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development namespaces with throwaway workloads where security overhead slows iteration — use baseline PSS at minimum.</item>
+        <item>Legacy applications that genuinely require root (e.g., some database init scripts) — use securityContext.runAsUser: 0 explicitly rather than omitting it, and document the exception.</item>
+        <item>Namespace-level PSS enforcement on namespaces with existing workloads before validating compatibility — start with warn mode.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pod-security-standards">
+      <p>Pod Security Standards (PSS) replaced PodSecurityPolicy in Kubernetes 1.25+. Three profiles: Privileged (unrestricted), Baseline (prevents known privilege escalations), Restricted (strongly hardened). Apply via namespace labels. Three modes: enforce (reject violating pods), audit (log but allow), warn (warn but allow). Production namespaces MUST use enforce: restricted.</p>
+
+      <rule>
+        <statement>Label every production namespace with pod-security.kubernetes.io/enforce: restricted. Use warn and audit modes in staging to catch violations before they block production deploys.</statement>
+        <rationale>The enforce label blocks admission of any pod that does not comply with the restricted profile — no root containers, no privilege escalation, no host namespaces. Without enforcement, security context fields are optional and developers omit them under deadline pressure.</rationale>
+      </rule>
+
+      <example type="good" title="Namespace with restricted PSS">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: production
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: latest
+]]></code>
+      </example>
+
+      <section name="pss-checklist">
+        <checklist>
+          <check>Namespace labeled with pod-security.kubernetes.io/enforce: restricted.</check>
+          <check>Namespace labeled with pod-security.kubernetes.io/warn: restricted.</check>
+          <check>Namespace labeled with pod-security.kubernetes.io/audit: restricted.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="container-security-context">
+      <p>securityContext fields at container and pod level implement the mandatory controls required by the restricted PSS profile. All six fields must be set: runAsNonRoot, runAsUser, readOnlyRootFilesystem, allowPrivilegeEscalation, capabilities.drop ALL, and seccompProfile RuntimeDefault.</p>
+
+      <rule>
+        <statement>Every production container MUST set runAsNonRoot: true, runAsUser >= 1000, readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities.drop: [ALL], and seccompProfile.type: RuntimeDefault on the pod spec. Writable paths (tmp, cache) must use emptyDir volumes.</statement>
+        <rationale>runAsNonRoot prevents a container compromise from immediately having UID 0 on the host. readOnlyRootFilesystem prevents malware writing to /usr/bin or /etc. Dropping ALL capabilities removes file ownership change, raw socket access, and other Linux privilege mechanisms. RuntimeDefault seccomp filters ~300 syscalls not needed by normal applications.</rationale>
+      </rule>
+
+      <example type="good" title="Container and pod security context">
+        <code lang="yaml"><![CDATA[
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  containers:
+    - name: api
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 100Mi
+    - name: cache
+      emptyDir:
+        sizeLimit: 500Mi
+]]></code>
+      </example>
+
+      <section name="container-security-checklist">
+        <checklist>
+          <check>runAsNonRoot: true.</check>
+          <check>runAsUser specified (UID 1000+).</check>
+          <check>readOnlyRootFilesystem: true.</check>
+          <check>allowPrivilegeEscalation: false.</check>
+          <check>capabilities.drop: ["ALL"].</check>
+          <check>Only necessary capabilities added back (usually none).</check>
+          <check>seccompProfile.type: RuntimeDefault.</check>
+          <check>Writable paths mounted as emptyDir.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="service-account-rbac">
+      <p>The default ServiceAccount in most namespaces has a mounted API token with cluster-wide read access. Applications that do not call the Kubernetes API should have automountServiceAccountToken: false. Applications that do need API access must use a dedicated ServiceAccount with a minimal Role.</p>
+
+      <rule>
+        <statement>Create a dedicated ServiceAccount per application. Set automountServiceAccountToken: false on the ServiceAccount (or pod spec) for applications that do not call the Kubernetes API. Use a Role and RoleBinding with minimal verbs — never ClusterRole for namespace-scoped workloads.</statement>
+        <rationale>If a container is compromised, the mounted token grants the attacker whatever permissions the ServiceAccount has. The default ServiceAccount often has broad read access across the cluster. automountServiceAccountToken: false means no token to steal.</rationale>
+      </rule>
+
+      <example type="good" title="Dedicated ServiceAccount with minimal RBAC">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api
+  namespace: production
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: api
+  namespace: production
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api
+  namespace: production
+subjects:
+  - kind: ServiceAccount
+    name: api
+    namespace: production
+roleRef:
+  kind: Role
+  name: api
+  apiGroup: rbac.authorization.k8s.io
+]]></code>
+      </example>
+
+      <section name="service-account-checklist">
+        <checklist>
+          <check>Dedicated ServiceAccount (not default).</check>
+          <check>automountServiceAccountToken: false if not needed.</check>
+          <check>RBAC Role/RoleBinding with minimal permissions.</check>
+          <check>No ClusterRole for namespace-scoped workloads.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="secrets-management">
+      <rule>
+        <statement>Never store secrets in ConfigMaps or as plain environment variable values in the Deployment manifest. Always use secretKeyRef / secretRef for environment variables, or mount secrets as files. In production, use an External Secrets Operator or Vault to keep secrets out of etcd entirely.</statement>
+        <rationale>ConfigMaps are not encrypted at rest by default; anyone with ConfigMap read access sees the secret. Manifest-embedded plaintext secrets leak into git history and CI logs. External secrets operators sync secrets from a vault at pod start time so only an encrypted reference is stored in Kubernetes.</rationale>
+      </rule>
+
+      <example type="good" title="Secret via secretKeyRef">
+        <code lang="yaml"><![CDATA[
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: api-secrets
+        key: database-url
+  - name: SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: api-secrets
+        key: secret-key
+]]></code>
+      </example>
+
+      <example type="bad" title="Secret in ConfigMap or plain env">
+        <code lang="yaml"><![CDATA[
+# ConfigMap - DO NOT store secrets here
+apiVersion: v1
+kind: ConfigMap
+data:
+  DATABASE_URL: "postgres://user:password@host:5432/db"
+---
+# Or plain env value in Deployment - DO NOT do this
+env:
+  - name: DATABASE_URL
+    value: "postgres://user:password@host:5432/db"
+]]></code>
+        <note>Both patterns leak credentials to anyone with ConfigMap/Deployment read access, and into kubectl describe output visible in cluster logs.</note>
+      </example>
+
+      <section name="secrets-checklist">
+        <checklist>
+          <check>Secrets not hardcoded in manifests or ConfigMaps.</check>
+          <check>External secrets operator or vault used in production.</check>
+          <check>Secrets rotated regularly.</check>
+          <check>Environment variables use secretKeyRef.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="network-policies">
+      <p>By default all pods in a Kubernetes cluster can communicate with all other pods, including pods in other namespaces. NetworkPolicy implements zero-trust at the pod level: a default-deny policy blocks all traffic, explicit rules allow only what is necessary. DNS (UDP 53 to kube-dns) must always be explicitly allowed in egress rules.</p>
+
+      <rule>
+        <statement>Apply a default-deny NetworkPolicy to every production namespace. Then add explicit ingress rules (from ingress controller namespace) and egress rules (to database, cache, DNS). Never use a wildcard namespaceSelector in a production NetworkPolicy.</statement>
+        <rationale>A default-deny posture means a new pod that should not receive traffic from the database cannot accidentally receive it if someone misconfigures the deployment selector. Explicit egress rules prevent a compromised pod from exfiltrating data to an external IP.</rationale>
+      </rule>
+
+      <example type="good" title="Full NetworkPolicy with default-deny">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-network-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: api
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8000
+
+    # Allow from other api pods (for health checks)
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: api
+      ports:
+        - protocol: TCP
+          port: 8000
+
+  egress:
+    # Allow to database
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+
+    # Allow DNS (required)
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+]]></code>
+      </example>
+
+      <section name="network-policy-checklist">
+        <checklist>
+          <check>NetworkPolicy denies all ingress by default (no ingress rules = deny all ingress).</check>
+          <check>NetworkPolicy denies all egress by default.</check>
+          <check>Explicit ingress rules for required traffic.</check>
+          <check>Explicit egress rules (DNS, required services).</check>
+          <check>DNS egress rule present (UDP 53 to kube-dns).</check>
+          <check>NetworkPolicy verified: kubectl get networkpolicy -n namespace.</check>
+        </checklist>
+      </section>
+    </section>
+
+    <section name="policy-tools">
+      <list>
+        <item>Kyverno — Kubernetes-native policy engine, YAML policies, generates resources, validates admission.</item>
+        <item>OPA Gatekeeper — Rego-based policies for complex admission control.</item>
+        <item>Polaris — best practices validation, built-in checks, dashboard, score &gt; 80% is good baseline.</item>
+        <item>kubectl apply --dry-run=server — validate manifests against admission webhooks before apply.</item>
+        <item>kubeconform — offline YAML schema validation, fast in CI.</item>
+      </list>
+    </section>
+
+    <section name="pre-production-security-checklist">
+      <checklist>
+        <check>kubectl apply --dry-run=server passes.</check>
+        <check>Kyverno/OPA policies pass.</check>
+        <check>Polaris audit passes with score &gt; 80%.</check>
+        <check>YAML linted (kubeconform, kubeval).</check>
+        <check>Namespace PSS labels set.</check>
+        <check>Container security context complete (all 6 fields).</check>
+        <check>Dedicated ServiceAccount created.</check>
+        <check>No secrets in ConfigMaps or plain env values.</check>
+        <check>NetworkPolicy applied with default-deny.</check>
+        <check>DNS egress rule present.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/security/pod-security-standards/"/>
+      <link href="https://kubernetes.io/docs/concepts/services-networking/network-policies/"/>
+      <link href="https://kyverno.io/"/>
+      <link href="https://open-policy-agent.github.io/gatekeeper/"/>
+      <ref slug="k8s-deployment-workloads"/>
+    </see-also>
+  </content>
+</methodology>
