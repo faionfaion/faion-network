@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-canary-progressive">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Implement Kubernetes canary deployments manually via replica-weight or Nginx Ingress annotations, and with Argo Rollouts for automated progressive delivery with Prometheus-based analysis.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>canary</tag>
+      <tag>argo-rollouts</tag>
+      <tag>progressive-delivery</tag>
+      <tag>blue-green</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="k8s-rolling-update"/>
+      <ref slug="k8s-deployment-workloads"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Canary and Progressive Delivery</title>
+
+    <summary>Canary deployment gradually shifts traffic from a stable version to a new version, using metrics analysis to decide whether to promote or rollback. Manual canary uses replica-count weighting or Nginx Ingress annotations. Argo Rollouts (2025-2026 standard) automates step-wise traffic shifts with Prometheus metric analysis and automatic rollback on threshold breach.</summary>
+
+    <why>
+      <p>A rolling update replaces all pods with no traffic control — a bad version reaches 100% of users before enough signal accumulates to trigger a rollback. Canary limits blast radius: 10% of traffic to the new version means 90% of users are unaffected if the new version has a bug. Progressive delivery adds automated analysis so humans need not watch dashboards through a 30-minute promotion window.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Production releases where a rolling update's 100% exposure is too risky.</item>
+        <item>Features that need real-traffic validation before full promotion.</item>
+        <item>High-stakes deployments for enterprise or regulated workloads.</item>
+        <item>GitOps workflows where automated promotion/rollback is desirable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple stateless services with good staging coverage — rolling update is sufficient.</item>
+        <item>Clusters without a service mesh or Ingress controller that supports traffic splitting.</item>
+        <item>Environments without Prometheus or equivalent metrics — analysis templates have nothing to query.</item>
+        <item>Hot-fix deployments where speed matters more than gradual exposure.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="manual-canary">
+      <p>The simplest canary uses two separate Deployments — stable and canary — that share a common Service selector label. Traffic weight is determined by replica ratio: 9 stable replicas + 1 canary replica = 10% canary traffic. This requires no special tooling but manual progression steps.</p>
+
+      <example type="good" title="Manual canary with two Deployments">
+        <code lang="yaml"><![CDATA[
+# Stable deployment (90% traffic via 9 replicas)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-stable
+  labels:
+    app: api
+    version: stable
+spec:
+  replicas: 9
+  selector:
+    matchLabels:
+      app: api
+      version: stable
+  template:
+    metadata:
+      labels:
+        app: api
+        version: stable
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/api:1.0.0
+---
+# Canary deployment (10% traffic via 1 replica)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-canary
+  labels:
+    app: api
+    version: canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: api
+        version: canary
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/api:2.0.0
+---
+# Service routes to both (weighted by replica count)
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api    # Matches both stable and canary
+  ports:
+    - port: 80
+      targetPort: 8000
+]]></code>
+      </example>
+    </section>
+
+    <section name="nginx-ingress-canary">
+      <p>Nginx Ingress Controller supports canary annotations that apply traffic splitting at the Ingress level — more precise than replica weighting, supports both percentage-based and header-based routing.</p>
+
+      <example type="good" title="Canary with Nginx Ingress weight annotation">
+        <code lang="yaml"><![CDATA[
+# Stable Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-stable
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-stable
+                port:
+                  number: 80
+---
+# Canary Ingress with weight
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-canary
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"    # 10% traffic
+spec:
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-canary
+                port:
+                  number: 80
+]]></code>
+      </example>
+
+      <example type="good" title="Header-based routing for internal canary testing">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-canary-header
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+spec:
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-canary
+                port:
+                  number: 80
+]]></code>
+        <note>Header-based routing lets QA and developers test the canary version in production without affecting end users.</note>
+      </example>
+
+      <section name="nginx-progression-commands">
+        <commands>
+          <command name="increase-to-30pct">kubectl annotate ingress api-canary nginx.ingress.kubernetes.io/canary-weight="30" --overwrite</command>
+          <command name="increase-to-50pct">kubectl annotate ingress api-canary nginx.ingress.kubernetes.io/canary-weight="50" --overwrite</command>
+          <command name="promote">kubectl delete ingress api-canary &amp;&amp; kubectl set image deployment/api-stable api=registry.example.com/api:2.0.0</command>
+        </commands>
+      </section>
+    </section>
+
+    <section name="argo-rollouts">
+      <p>Argo Rollouts replaces a Deployment with a Rollout resource that supports step-based canary promotion, automated AnalysisTemplate queries (Prometheus, Datadog, web hooks), and automatic rollback when success conditions are not met. It is the 2025-2026 standard for enterprise production deployments and GitOps workflows.</p>
+
+      <example type="good" title="Argo Rollouts canary with Prometheus analysis">
+        <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: api
+spec:
+  replicas: 5
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/api:1.0.0
+          ports:
+            - containerPort: 8000
+
+  strategy:
+    canary:
+      canaryService: api-canary
+      stableService: api-stable
+      trafficRouting:
+        nginx:
+          stableIngress: api-stable
+          annotationPrefix: nginx.ingress.kubernetes.io
+
+      steps:
+        # 10% for 5 minutes
+        - setWeight: 10
+        - pause: {duration: 5m}
+
+        # Analysis at 10%
+        - analysis:
+            templates:
+              - templateName: success-rate
+            args:
+              - name: service-name
+                value: api-canary
+
+        # 30% for 5 minutes
+        - setWeight: 30
+        - pause: {duration: 5m}
+
+        # 50% for 10 minutes
+        - setWeight: 50
+        - pause: {duration: 10m}
+
+        # 80% for 10 minutes
+        - setWeight: 80
+        - pause: {duration: 10m}
+
+        # Full promotion
+        - setWeight: 100
+---
+# Analysis Template for automated validation
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: success-rate
+spec:
+  args:
+    - name: service-name
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 5
+      successCondition: result[0] >= 0.99
+      failureLimit: 3
+      provider:
+        prometheus:
+          address: http://prometheus:9090
+          query: |
+            sum(rate(http_requests_total{
+              service="{{args.service-name}}",
+              status=~"2.."
+            }[5m])) /
+            sum(rate(http_requests_total{
+              service="{{args.service-name}}"
+            }[5m]))
+]]></code>
+        <note>The AnalysisTemplate queries Prometheus every minute for 5 minutes. If success rate drops below 99% three times, the rollout is automatically aborted and traffic returns to stable.</note>
+      </example>
+
+      <example type="good" title="Blue-Green with Argo Rollouts">
+        <code lang="yaml"><![CDATA[
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: registry.example.com/api:1.0.0
+          ports:
+            - containerPort: 8000
+
+  strategy:
+    blueGreen:
+      activeService: api-active       # Production traffic
+      previewService: api-preview     # Preview/test traffic
+      autoPromotionEnabled: false     # Manual promotion required
+      previewReplicaCount: 1
+      scaleDownDelaySeconds: 30
+]]></code>
+      </example>
+
+      <section name="argo-rollouts-commands">
+        <commands>
+          <command name="install">kubectl create namespace argo-rollouts &amp;&amp; kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml</command>
+          <command name="watch">kubectl argo rollouts get rollout api -w</command>
+          <command name="promote">kubectl argo rollouts promote api</command>
+          <command name="abort">kubectl argo rollouts abort api</command>
+          <command name="retry">kubectl argo rollouts retry rollout api</command>
+          <command name="dashboard">kubectl argo rollouts dashboard</command>
+        </commands>
+      </section>
+    </section>
+
+    <section name="canary-analysis-metrics">
+      <list>
+        <item>Error rate: less than baseline + 1%. Source: Prometheus.</item>
+        <item>P99 latency: less than baseline + 10%. Source: Prometheus.</item>
+        <item>Success rate: greater than 99%. Source: Prometheus.</item>
+        <item>Custom business metric: define per app. Source: Application.</item>
+      </list>
+    </section>
+
+    <section name="canary-checklist">
+      <checklist>
+        <check>Baseline deployment stable (production).</check>
+        <check>Traffic splitting mechanism chosen (Ingress annotations, service mesh, or Argo Rollouts).</check>
+        <check>Metrics for analysis defined (latency, error rate, custom).</check>
+        <check>Success criteria documented.</check>
+        <check>Rollback triggers defined.</check>
+        <check>Initial traffic weight set (5-10% recommended).</check>
+        <check>Promotion schedule defined (10% → 30% → 50% → 100%).</check>
+        <check>Argo Rollouts: AnalysisTemplate metric provider configured.</check>
+        <check>Argo Rollouts: Prometheus/Datadog integration tested.</check>
+        <check>Post-canary: old deployment scaled down.</check>
+        <check>Post-canary: canary promoted to stable.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://argoproj.github.io/rollouts/"/>
+      <link href="https://flagger.app/"/>
+      <link href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#canary-deployment"/>
+      <ref slug="k8s-rolling-update"/>
+      <ref slug="k8s-deployment-workloads"/>
+    </see-also>
+  </content>
+</methodology>
