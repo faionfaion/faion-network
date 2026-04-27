@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-branch-by-abstraction">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Perform large refactors on trunk without long-lived branches: introduce an abstraction layer, implement the new code behind it, swap via flag, then collapse the abstraction.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>refactoring</tag>
+      <tag>branch-by-abstraction</tag>
+      <tag>protocol</tag>
+      <tag>incremental</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trunk-based-dev-principles"/>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-challenges"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Branch by Abstraction for Trunk-Based Development</title>
+
+    <summary>Replace a component incrementally on trunk without a long-lived branch: create a Protocol/interface over the old implementation, add a new implementation behind that interface, use a feature flag to route between them, validate the new one, then remove the old and collapse the abstraction. Five discrete steps, each mergeable in one day.</summary>
+
+    <why>
+      <p>Large refactors are the most common excuse for long-lived branches. Branch by Abstraction eliminates that excuse by making the refactor incremental: each step is a small, safe commit that merges to trunk. The abstraction layer acts as a seam that isolates callers from the implementation swap. Once the new implementation is fully rolled out, the abstraction is collapsed back to a direct call — leaving no permanent indirection. Without the collapse step the refactor leaves technical debt behind.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Replacing a backend service, data layer, or third-party integration that affects many callers.</item>
+        <item>Migrating from one API client to another while keeping existing behaviour unchanged during rollout.</item>
+        <item>Any refactor estimated to take more than one day — break it into five abstraction steps instead of one long branch.</item>
+        <item>When compliance requires a stable trunk and audit trail for each change step.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny one-file renames or argument signature changes — overhead exceeds benefit; refactor directly.</item>
+        <item>Purely cosmetic refactors (rename, format) — no abstraction needed, rename inline and merge.</item>
+        <item>Cases where the interface cannot be defined until the new implementation is written — sketch the interface first or use a simpler flag-wrap approach.</item>
+        <item>Codebases with no tests on the callsites — you cannot validate the swap without a safety net.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="five-step-process">
+      <p>Branch by Abstraction follows a strict five-step sequence. Each step is a separate commit that merges to trunk independently. Steps 1-3 can happen on different days; step 4 is the flag flip; step 5 is the mandatory cleanup.</p>
+
+      <rule>
+        <statement>Branch by Abstraction MUST follow all five steps in order: (1) create Protocol/interface, (2) wrap old implementation to satisfy it, (3) implement new code behind the same interface, (4) gate swap via flag and validate, (5) remove old implementation and collapse abstraction to direct call. NEVER skip step 5. File the step-5 cleanup ticket at step 1 merge time.</statement>
+        <rationale>Agents routinely drop the abstraction at step 4 and never collapse it, leaving permanent indirection. The cleanup ticket filed at step 1 creates an explicit obligation that outlives the implementation work.</rationale>
+      </rule>
+
+      <example type="good" title="Full five-step payment processor migration">
+        <code lang="python"><![CDATA[
+# Step 1: Create abstraction (Protocol) — commit, merge, done
+# billing/abc.py
+from typing import Protocol
+from decimal import Decimal
+
+class PaymentProcessor(Protocol):
+    def process(self, amount: Decimal) -> "PaymentResult": ...
+
+# Step 2: Old implementation satisfies the Protocol
+# billing/legacy.py
+class LegacyPaymentProcessor:
+    def process(self, amount: Decimal) -> PaymentResult:
+        return self.old_gateway.charge(amount)
+
+# Step 3: New implementation behind the same Protocol
+# billing/stripe_impl.py
+class StripePaymentProcessor:
+    def process(self, amount: Decimal) -> PaymentResult:
+        return self._stripe.create_charge(amount)
+
+# Step 4: Factory routes via flag
+# billing/factory.py
+from .flags import flags
+def get_processor() -> PaymentProcessor:
+    if flags.is_enabled("billing.use_stripe_v2"):
+        return StripePaymentProcessor()
+    return LegacyPaymentProcessor()
+
+# Step 5 (cleanup ticket): After 100% rollout + stability confirmed
+# - Delete billing/legacy.py
+# - Remove flag "billing.use_stripe_v2" from provider
+# - Replace factory with direct: return StripePaymentProcessor()
+# - Remove PaymentProcessor Protocol if no longer needed elsewhere
+]]></code>
+        <note>Steps 1-3 land as separate commits. Step 4 is the flag rollout. Step 5 closes the cleanup ticket filed at step 1.</note>
+      </example>
+
+      <example type="bad" title="Dropping cleanup — permanent abstraction debt">
+        <code lang="python"><![CDATA[
+# After full rollout of billing.use_stripe_v2, developer leaves:
+def get_processor() -> PaymentProcessor:
+    if flags.is_enabled("billing.use_stripe_v2"):  # always True now
+        return StripePaymentProcessor()
+    return LegacyPaymentProcessor()  # dead code, never reached
+]]></code>
+        <note>LegacyPaymentProcessor and the flag check remain forever. Future agents read the dead branch and assume it is live, causing confusion during the next refactor.</note>
+      </example>
+    </section>
+
+    <section name="agentic-gotchas">
+      <p>Agents have specific failure modes with Branch by Abstraction:</p>
+
+      <list>
+        <item>LLMs forget to file the collapse-abstraction follow-up before merging the introduction — always create the cleanup ticket at step 1.</item>
+        <item>Agents write 200-line PRs mixing all five steps into one commit — enforce one-step-per-commit rule in the task spec.</item>
+        <item>Agent generates is_enabled(... True) hard-coded defaults during local dev — gate via FLAGS_DEFAULT=off in CI and grep for literal True defaults before merge.</item>
+        <item>Squash-merge on step 4 (the flag flip) loses step-level granularity — acceptable, but the cleanup ticket must reference the step-4 squash commit.</item>
+      </list>
+
+      <prompt purpose="implement-bba-increment"><![CDATA[
+Implement Branch-by-Abstraction step 3/5 for payment rewrite.
+Reference: solo/dev/automation-tooling/trunk-based-branch-by-abstraction
+Constraints:
+- Protocol PaymentProcessor exists in src/billing/abc.py
+- Add StripePaymentProcessor in src/billing/stripe_impl.py; DO NOT delete LegacyPaymentProcessor
+- Gate factory via flag "billing.use_stripe_v2"
+- Update CHANGELOG
+- Open SDD subtask: "Step 5 — collapse billing abstraction after 100% rollout"
+- branch: feat/billing-stripe-bba-3; squash-merge same day
+]]></prompt>
+    </section>
+
+    <section name="sdd-integration">
+      <p>In the SDD task lifecycle, Branch by Abstraction maps cleanly: each step is a TASK_*.md in the feature's in-progress/ folder. The cleanup ticket (step 5) is created at the same time as the feature task — it enters the backlog with a dependency on the step-4 task.</p>
+      <list>
+        <item>Step 1 task → create Protocol + wrap old impl → merge → move task to done/</item>
+        <item>Step 2 task → new implementation → merge → done/</item>
+        <item>Step 3 task → factory + flag → merge → done/</item>
+        <item>Step 4 task → flag rollout to 100% → human-approved for billing/auth paths</item>
+        <item>Step 5 cleanup task → remove old impl, collapse abstraction, delete flag from provider</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-challenges"/>
+      <link href="https://martinfowler.com/bliki/BranchByAbstraction.html"/>
+      <link href="https://trunkbaseddevelopment.com/"/>
+    </see-also>
+  </content>
+</methodology>
