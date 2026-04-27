@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-iam-practical-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Practical IAM patterns: write least-privilege inline policies, create EC2 instance roles with SSM, set up cross-account assume-role with MFA, and apply permission boundaries for delegated admin.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>iam</tag>
+      <tag>least-privilege</tag>
+      <tag>cross-account</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-ec2-provisioning"/>
+      <ref slug="aws-cli-setup"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>IAM Practical Patterns: Policies, Instance Roles, Cross-Account, Permission Boundaries</title>
+
+    <summary>Write least-privilege IAM policies scoped to specific resource ARNs with conditions. Create EC2 instance roles with SSM and CloudWatch access. Configure cross-account AssumeRole with MFA and ExternalId conditions. Apply permission boundaries to prevent privilege escalation in delegated admin scenarios.</summary>
+
+    <why>
+      <p>Overly-permissive IAM policies are the most common root cause of AWS security incidents. Resource-scoped policies with conditions (environment tags, ExternalId, MFA) constrain the blast radius. EC2 instance roles with AmazonSSMManagedInstanceCore eliminate SSH key management entirely. Permission boundaries are the only mechanism that prevents a delegated admin from granting themselves full access through an IAM role they create.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Writing IAM policies for application workloads that need access to S3, Secrets Manager, or DynamoDB.</item>
+        <item>Creating EC2 instance roles to replace long-lived access keys on servers.</item>
+        <item>Setting up cross-account access for a CI/CD pipeline or audit tool.</item>
+        <item>Delegating IAM role creation to a team while preventing privilege escalation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>EKS pod-level permissions — use IRSA (IAM Roles for Service Accounts) with OIDC; see the templates.md IRSA pattern.</item>
+        <item>Human user management — use IAM Identity Center (SSO) with permission sets, not IAM users.</item>
+        <item>Account-wide guardrails — use Service Control Policies (SCPs) at the Organizations level, not IAM policies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="least-privilege-policy">
+      <rule testable="true">
+        <statement>IAM policies for application workloads MUST scope every Action to the minimum set required and every Resource to the specific ARN or ARN prefix (not "*"). Add Condition blocks to restrict to specific resource tags (aws:ResourceTag) or account paths. Never allow Action: "*" or Resource: "*" in application policies.</statement>
+        <rationale>Wildcard actions on wildcard resources grant an attacker full account access if the credential is compromised. Resource-level constraints limit the blast radius to only the resources the service legitimately touches.</rationale>
+      </rule>
+
+      <example type="good" title="Least privilege policy: S3 read + Secrets Manager + KMS">
+        <code lang="json"><![CDATA[
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "S3ReadSpecificBucket",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::my-app-bucket",
+                "arn:aws:s3:::my-app-bucket/*"
+            ]
+        },
+        {
+            "Sid": "SecretsManagerReadSpecific",
+            "Effect": "Allow",
+            "Action": [
+                "secretsmanager:GetSecretValue"
+            ],
+            "Resource": [
+                "arn:aws:secretsmanager:us-east-1:123456789012:secret:myapp/prod/*"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:ResourceTag/Environment": "production"
+                }
+            }
+        },
+        {
+            "Sid": "KMSDecryptSpecificKey",
+            "Effect": "Allow",
+            "Action": [
+                "kms:Decrypt"
+            ],
+            "Resource": [
+                "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
+            ]
+        }
+    ]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="ec2-instance-role">
+      <rule testable="true">
+        <statement>Every EC2 instance MUST have an IAM instance role (not access keys) that includes at minimum AmazonSSMManagedInstanceCore. Attach CloudWatchAgentServerPolicy for metrics/logs. Add application-specific inline policies scoped to the resources the instance actually needs. Create an instance profile and associate it with the role before attaching to an instance.</statement>
+        <rationale>Instance roles provide auto-rotating credentials via IMDS. Access keys embedded in instances never rotate automatically and survive AMI copies. SSM Core policy enables Session Manager, Patch Manager, and Run Command without SSH.</rationale>
+      </rule>
+
+      <example type="good" title="Create EC2 instance role with SSM and instance profile">
+        <code lang="bash"><![CDATA[
+# Create trust policy
+cat > trust-policy.json << 'EOF'
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {"Service": "ec2.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }
+    ]
+}
+EOF
+
+# Create role
+aws iam create-role \
+    --role-name ec2-ssm-role \
+    --assume-role-policy-document file://trust-policy.json
+
+# Attach SSM managed policy
+aws iam attach-role-policy \
+    --role-name ec2-ssm-role \
+    --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+# Create instance profile
+aws iam create-instance-profile --instance-profile-name ec2-ssm-role
+aws iam add-role-to-instance-profile \
+    --instance-profile-name ec2-ssm-role \
+    --role-name ec2-ssm-role
+]]></code>
+      </example>
+    </section>
+
+    <section name="cross-account-role">
+      <rule testable="true">
+        <statement>Cross-account AssumeRole trust policies MUST require MFA (aws:MultiFactorAuthPresent: true) for human access and MUST include a unique ExternalId condition for third-party tool access. The source account principal MUST be scoped to a specific role ARN or account, never "arn:aws:iam::*:root".</statement>
+        <rationale>Without MFA enforcement, a compromised long-term credential in the source account can assume cross-account roles. ExternalId prevents the confused deputy problem where a third-party SaaS tool is tricked into accessing the wrong customer account.</rationale>
+      </rule>
+
+      <example type="good" title="Cross-account trust policy with MFA and ExternalId">
+        <code lang="bash"><![CDATA[
+# Create role in target account
+cat > cross-account-trust.json << 'EOF'
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "arn:aws:iam::SOURCE_ACCOUNT_ID:root"
+            },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+                "Bool": {"aws:MultiFactorAuthPresent": "true"},
+                "StringEquals": {"sts:ExternalId": "unique-external-id"}
+            }
+        }
+    ]
+}
+EOF
+
+aws iam create-role \
+    --role-name CrossAccountReadOnly \
+    --assume-role-policy-document file://cross-account-trust.json
+
+# Assume role from source account
+aws sts assume-role \
+    --role-arn arn:aws:iam::TARGET_ACCOUNT:role/CrossAccountReadOnly \
+    --role-session-name my-session \
+    --external-id unique-external-id
+]]></code>
+      </example>
+    </section>
+
+    <section name="permission-boundary">
+      <rule testable="true">
+        <statement>When delegating IAM role creation to a team, attach a permission boundary to every role they create. The boundary MUST explicitly Deny iam:CreateUser, iam:DeleteUser, iam:CreateRole, iam:DeleteRole, iam:AttachRolePolicy, iam:DetachRolePolicy, iam:PutRolePermissionsBoundary, iam:DeleteRolePermissionsBoundary, and all organizations:* actions. The delegated admin SCP or IAM policy MUST require iam:PermissionsBoundary on role creation.</statement>
+        <rationale>A delegated admin without a permission boundary can create a role with AdministratorAccess and assume it, escaping all delegation constraints. The boundary is the only hard limit on effective permissions.</rationale>
+      </rule>
+
+      <example type="good" title="Permission boundary preventing IAM and Organizations escalation">
+        <code lang="json"><![CDATA[
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowedServices",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:*",
+                "s3:*",
+                "rds:*",
+                "lambda:*",
+                "logs:*",
+                "cloudwatch:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "DenyIAMChanges",
+            "Effect": "Deny",
+            "Action": [
+                "iam:CreateUser",
+                "iam:DeleteUser",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:AttachRolePolicy",
+                "iam:DetachRolePolicy",
+                "iam:PutRolePermissionsBoundary",
+                "iam:DeleteRolePermissionsBoundary"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "DenyOrganizations",
+            "Effect": "Deny",
+            "Action": "organizations:*",
+            "Resource": "*"
+        }
+    ]
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using Action: "*" with Resource: "*" in any application workload policy (the "AdministratorAccess" pattern for a service).</description>
+        <reason>Grants the workload the ability to create IAM users, modify billing, and delete any resource. Compromise of the credential gives attacker full account access.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Storing access keys on EC2 instances via environment variables or ~/.aws/credentials.</description>
+        <reason>Keys never auto-rotate, survive AMI copies, and are accessible to any code running on the instance including injected code. Use instance roles with IMDS instead.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>No Action: "*" or Resource: "*" in application workload policies.</check>
+      <check>Every EC2 instance has an IAM instance role (no access keys).</check>
+      <check>AmazonSSMManagedInstanceCore attached to all EC2 roles.</check>
+      <check>Cross-account roles require MFA condition or ExternalId.</check>
+      <check>Permission boundaries attached when delegating IAM role creation.</check>
+      <check>IAM Access Analyzer enabled to detect unused permissions.</check>
+      <check>No root account access keys exist (delete if found).</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html"/>
+      <ref slug="aws-iam-security-foundations"/>
+      <ref slug="aws-ec2-provisioning"/>
+    </see-also>
+  </content>
+</methodology>
