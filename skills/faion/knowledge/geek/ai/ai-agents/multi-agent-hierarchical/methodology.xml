@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-hierarchical">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Manager agent decomposes a task into assignments, delegates each subtask to a specialized worker, then synthesizes all worker results into a final output.</summary>
+    <tags>
+      <tag>multi-agent</tag>
+      <tag>hierarchical</tag>
+      <tag>orchestration</tag>
+      <tag>delegation</tag>
+      <tag>task-decomposition</tag>
+    </tags>
+    <category>orchestration</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-conversational"/>
+      <ref slug="multi-agent-production-bus"/>
+      <ref slug="multi-agent-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Hierarchical Manager-Worker Multi-Agent Pattern</title>
+
+    <summary>A manager agent receives a top-level task, creates a JSON assignment plan by querying available workers and their roles, dispatches each subtask to the matching worker, and finally synthesizes all worker results into one response. Workers are stateless specialists; only the manager holds the overall task context.</summary>
+
+    <why>
+      <p>Complex tasks exceed what a single agent can produce in one context window. Decomposing into role-scoped worker calls distributes cognitive load and allows specialization: a Developer agent concentrates solely on code; a Tester agent on tests; a Designer on UI decisions. The manager's role is coordination and synthesis only — it must not perform domain work itself. This produces a traceable assignment log (sender, subtask, result) required for auditability in production systems.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complex project work where different agents have genuinely different roles (researcher, coder, reviewer) — role overlap must be minimal.</item>
+        <item>Tasks that decompose into sequential but dependent subtasks: each worker's output feeds the synthesis step.</item>
+        <item>Production systems requiring auditability: hierarchical delegation produces a traceable assignment log.</item>
+        <item>When the top-level task scope exceeds a single context window but can be partitioned clearly.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple tasks that fit in a single context window — manager overhead (plan call + synthesis call) adds cost without value.</item>
+        <item>When agent roles overlap significantly — workers with redundant roles echo each other rather than contribute.</item>
+        <item>Tight latency budgets: hierarchical delegation adds at minimum 2 extra LLM round-trips (plan + synthesis) on top of worker calls.</item>
+        <item>Tasks requiring fine-grained shared mutable state between workers — pass-by-message is the only inter-agent channel.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="implementation">
+      <p>The ManagerAgent subclasses Agent and holds a dict of workers keyed by name. The delegate() method runs in two LLM calls: first, a plan call that returns a JSON assignments list; second, a synthesis call that receives all worker results and produces the final answer. Workers are plain Agents — they receive only their subtask string and return a string result.</p>
+
+      <rule testable="true">
+        <statement>The manager MUST validate the JSON plan before dispatching subtasks. If json.loads() raises, return the raw error to the manager for re-planning rather than aborting silently.</statement>
+        <rationale>Non-deterministic plan parsing is the most common failure point in hierarchical systems. A malformed plan that silently skips workers produces an incomplete synthesis without any error signal.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The orchestrator MUST NOT perform domain work itself. Its system prompt MUST say "Decompose tasks and coordinate workers" — never "implement" or "write code".</statement>
+        <rationale>If the manager also does domain work, it becomes a single-agent bottleneck with extra coordination overhead. The only value of hierarchy is specialization.</rationale>
+      </rule>
+
+      <example type="good" title="ManagerAgent with plan validation and synthesis">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import List, Dict
+from openai import OpenAI
+import json
+
+client = OpenAI()
+
+class ManagerAgent(Agent):
+    """Manager that delegates tasks to workers."""
+
+    def __init__(self, config: AgentConfig, workers: List[Agent]):
+        super().__init__(config)
+        self.workers = {w.config.name: w for w in workers}
+
+    def delegate(self, task: str) -> str:
+        """Decompose task and delegate to workers."""
+        # Ask manager to create plan
+        plan_prompt = f"""Task: {task}
+
+Available workers:
+{chr(10).join([f"- {w.config.name}: {w.config.role}" for w in self.workers.values()])}
+
+Create a plan assigning subtasks to workers.
+Return JSON: {{"assignments": [{{"worker": "name", "subtask": "description"}}]}}"""
+
+        response = self.respond(plan_prompt)
+
+        try:
+            plan = json.loads(response)
+            assignments = plan.get("assignments", [])
+        except json.JSONDecodeError:
+            return f"Failed to parse plan: {response}"
+
+        # Execute assignments
+        results = []
+        for assignment in assignments:
+            worker_name = assignment["worker"]
+            subtask = assignment["subtask"]
+
+            if worker_name in self.workers:
+                worker_result = self.workers[worker_name].respond(subtask)
+                results.append({
+                    "worker": worker_name,
+                    "task": subtask,
+                    "result": worker_result
+                })
+
+        # Have manager synthesize results
+        synthesis_prompt = f"""Original task: {task}
+
+Worker results:
+{json.dumps(results, indent=2)}
+
+Synthesize these results into a final response."""
+
+        return self.respond(synthesis_prompt)
+
+# Example
+manager = ManagerAgent(
+    config=AgentConfig(
+        name="ProjectManager",
+        role="Project Manager",
+        system_prompt="You are a project manager. Decompose tasks and coordinate workers."
+    ),
+    workers=[
+        Agent(AgentConfig(
+            name="Developer",
+            role="Software Developer",
+            system_prompt="You are a developer. Write and review code."
+        )),
+        Agent(AgentConfig(
+            name="Designer",
+            role="UI Designer",
+            system_prompt="You are a UI designer. Create user interface designs."
+        )),
+        Agent(AgentConfig(
+            name="Tester",
+            role="QA Tester",
+            system_prompt="You are a QA tester. Create test cases and find bugs."
+        ))
+    ]
+)
+
+result = manager.delegate("Build a simple todo app with tests")
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Manager system prompt that includes domain tasks: "You are a project manager AND senior developer."</description>
+        <reason>Blending coordination and domain roles turns the manager into a bottleneck. Workers are never actually used for domain work; the pattern collapses to a single agent with extra prompt tokens.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Plan staleness: manager creates a plan, then slow workers produce results that invalidate earlier assignments already dispatched.</description>
+        <reason>Hierarchical systems assume a static task decomposition. If early worker results change the problem shape, the manager must re-plan — not silently skip conflicting assignments. Build a re-plan step triggered by result contradictions.</reason>
+      </antipattern>
+    </section>
+
+    <section name="prompt-pattern">
+      <p>Hierarchical delegation prompt pattern for the manager system prompt:</p>
+      <prompt purpose="hierarchical-manager-system-prompt"><![CDATA[
+<role>Project Manager</role>
+<goal>{{project_goal}}</goal>
+<workers>
+  <worker name="Researcher" role="Gathers facts and references"/>
+  <worker name="Developer" role="Implements features"/>
+  <worker name="Tester" role="Writes and runs tests"/>
+</workers>
+<instruction>Decompose the goal into assignments. Return JSON: {"assignments": [{"worker": "name", "subtask": "desc"}]}</instruction>
+]]></prompt>
+    </section>
+
+    <section name="model-selection">
+      <p>Model selection for hierarchical agents:</p>
+      <list>
+        <item>Orchestrator (manager): use Opus — complex coordination patterns require full reasoning capacity.</item>
+        <item>Researcher worker: use Sonnet — web search and summarization require logic but not maximum cost.</item>
+        <item>Coder worker: use Sonnet — code generation and unit test writing.</item>
+        <item>Reviewer worker: use Sonnet — code review, critique, adversarial checking.</item>
+      </list>
+    </section>
+
+    <section name="gotchas">
+      <p>Known failure modes specific to hierarchical manager-worker:</p>
+      <list>
+        <item>Non-deterministic plan parsing: always validate JSON against a schema before dispatching; return errors to manager for re-planning.</item>
+        <item>Worker blocking orchestrator: in synchronous patterns, one slow worker blocks all downstream agents. Use async with timeouts (asyncio.wait_for) per worker call.</item>
+        <item>Synthesis quality: the final synthesis call is a single LLM call that may miss conflicts in individual results. Pass all results simultaneously, not iteratively, to avoid anchoring bias.</item>
+        <item>Token attribution: use agentops or LangSmith tagging per agent role from the start so you can identify which worker consumed most tokens.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-production-bus"/>
+      <link href="https://microsoft.github.io/autogen/"/>
+      <link href="https://github.com/joaomdmoura/crewAI"/>
+      <link href="https://www.anthropic.com/research/building-effective-agents"/>
+    </see-also>
+  </content>
+</methodology>

@@ -9,7 +9,7 @@
 - decompose: rag-eval-metrics → 3 slugs (rag-eval-retrieval-metrics, rag-eval-generation-metrics, rag-eval-strategy)
 - decompose: dev-methodologies-testing → 3 slugs (testing-django-pytest, testing-js-ts-frontend, testing-backend-languages)
 - decompose: agentic-rag → 4 slugs (agentic-rag-iterative-retrieval, agentic-rag-query-decomposition, agentic-rag-self-correction, agentic-rag-tool-using)
-- decompose: embedding-basics → 4 slugs (embedding-model-selection, embedding-chunking-strategies, embedding-caching, embedding-cost-optimization)
+- decompose: multi-agent-patterns → 4 slugs (multi-agent-hierarchical, multi-agent-collaborative, multi-agent-conversational, multi-agent-production-bus)
 - decompose: nosql-patterns → 4 slugs (nosql-mongodb-patterns, nosql-redis-patterns, nosql-cassandra-patterns, nosql-neo4j-patterns)
 - decompose: go-standard-layout → 4 slugs (go-layout-directory-structure, go-layout-layer-rules, go-layout-agentic-workflow, go-layout-toolchain)
 - decompose: langchain-patterns → 3 slugs (langchain-rag-pipeline, langchain-production-patterns, langchain-observability)
