@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-platform-policy-finops">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Platform governance via OPA/Gatekeeper admission policies (labels, resource limits, security) plus FinOps integration for per-team cost visibility and pre-deployment cost estimation.</summary>
+    <tags>
+      <tag>policy-as-code</tag>
+      <tag>opa</tag>
+      <tag>gatekeeper</tag>
+      <tag>finops</tag>
+      <tag>governance</tag>
+    </tags>
+    <category>platform</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-crossplane"/>
+      <ref slug="devops-platform-golden-paths"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Platform Governance: Policy as Code and FinOps Integration</title>
+
+    <summary>Platform governance covers two complementary concerns: policy enforcement (preventing non-compliant workloads from being deployed via OPA/Gatekeeper admission control) and FinOps (providing cost visibility per team/service, pre-deployment cost estimation, and budget controls). Both must be embedded into the platform's golden paths — not bolted on as separate review gates.</summary>
+
+    <why>
+      <p>The Google "Shift Down" strategy (2025) is the empirical foundation: rather than asking developers to understand and follow security/cost policies (shift left), embed policy decisions into the platform layer so developers cannot accidentally violate them. OPA/Gatekeeper admission control is the Kubernetes implementation of this principle — a workload that violates platform policies is rejected at API server admission, before it ever reaches a node.</p>
+      <p>FinOps integration addresses the second major cognitive load area: developers in orgs without cost visibility consistently overprovision resources, as the cost signal reaches them weeks later via a finance report rather than at deployment time. Pre-deployment cost estimation and per-team cost dashboards shift the cost feedback loop from retrospective (monthly) to real-time (per-deploy).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Kubernetes clusters serving multiple teams where resource misuse or security misconfiguration is a recurring incident source.</item>
+        <item>Orgs with compliance requirements (SOC2, HIPAA, PCI) that mandate container resource limits, non-root execution, and read-only filesystems.</item>
+        <item>Teams where cloud costs are growing faster than usage — a signal that provisioning is undisciplined.</item>
+        <item>Orgs where finance teams are chasing engineering teams for cost attribution after the fact.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team orgs where informal agreement provides equivalent governance with near-zero overhead.</item>
+        <item>Non-Kubernetes environments — OPA/Gatekeeper is Kubernetes-specific; use Sentinel (Terraform Cloud) or AWS Service Control Policies for non-K8s enforcement.</item>
+        <item>Early platform adoption phases — policy enforcement before golden paths are established drives developers to shadow infrastructure. Establish golden paths first (Phase 2), enforce policy second (Phase 4).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="opa-gatekeeper-admission">
+      <p>OPA (Open Policy Agent) with Gatekeeper is the standard Kubernetes admission control solution. It intercepts every API server request for resources matching the constraint's scope and evaluates a Rego policy against it. Non-compliant resources are rejected with a descriptive error message before any controller processes them.</p>
+
+      <rule testable="true">
+        <statement>All Kubernetes Pods and Deployments on the platform MUST pass the following admission gates enforced via Gatekeeper ConstraintTemplates: (1) required labels — team and app labels mandatory on all pods; (2) resource limits required — all containers must declare CPU and memory limits; (3) non-root execution — runAsNonRoot: true required unless explicitly exempted with a documented justification stored in an exemption ConfigMap. ConstraintTemplates MUST be applied in dry-run mode for 2 weeks before switching to enforce mode to avoid blocking existing workloads.</statement>
+        <rationale>Resource limits prevent a single pod from starving other pods on the node (noisy neighbor problem). Required labels are the prerequisite for cost allocation by team. Non-root execution is a CIS Kubernetes Benchmark requirement. The 2-week dry-run prevents the constraint from blocking existing legitimate workloads on day one of enforcement.</rationale>
+      </rule>
+
+      <example type="good" title="OPA Gatekeeper ConstraintTemplate — require team and app labels">
+        <code lang="yaml"><![CDATA[
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredlabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            labels:
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequiredlabels
+
+        violation[{"msg": msg}] {
+          provided := {label | input.review.object.metadata.labels[label]}
+          required := {label | label := input.parameters.labels[_]}
+          missing := required - provided
+          count(missing) > 0
+          msg := sprintf("Missing required labels: %v", [missing])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: require-team-label
+spec:
+  enforcementAction: deny     # use "dryrun" first, then switch to "deny"
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+      - apiGroups: ["apps"]
+        kinds: ["Deployment"]
+  parameters:
+    labels:
+      - team
+      - app
+]]></code>
+        <note>Use enforcementAction: dryrun for 2 weeks, then switch to deny. Dry-run violations appear in the constraint's status.violations field for audit without blocking.</note>
+      </example>
+
+      <example type="good" title="OPA Gatekeeper ConstraintTemplate — require CPU and memory limits">
+        <code lang="yaml"><![CDATA[
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8scontainerlimits
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sContainerLimits
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8scontainerlimits
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits.cpu
+          msg := sprintf("Container %v has no CPU limit", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not container.resources.limits.memory
+          msg := sprintf("Container %v has no memory limit", [container.name])
+        }
+]]></code>
+        <note>Separate violation rules for CPU and memory provide clear error messages. Developers see exactly which container is missing which limit.</note>
+      </example>
+
+      <antipattern>
+        <description>Switching Gatekeeper constraints directly to enforce mode on an existing cluster without a dry-run period.</description>
+        <reason>Existing legitimate workloads without the required labels or resource limits will be blocked immediately on the next reconciliation or update. This creates an incident instead of a compliance improvement. Always dry-run for 2 weeks and fix violations before enforcing.</reason>
+      </antipattern>
+    </section>
+
+    <section name="policy-phase4-checklist">
+      <p>Phase 4 (Governance and Security) implementation checklist. All items in Phase 2 (golden paths) must be complete before starting Phase 4 — enforcing policy on a platform developers haven't adopted yet drives shadow infrastructure.</p>
+
+      <checklist>
+        <check>Define infrastructure policies (OPA, Kyverno) — document each policy's rationale, the violation it prevents, and the exemption process.</check>
+        <check>Implement security guardrails as Gatekeeper ConstraintTemplates — required labels, resource limits, non-root execution, read-only filesystems.</check>
+        <check>Set up compliance scanning — run OPA policy-as-code tests in CI against IaC files (Terraform, Helm) before apply.</check>
+        <check>Create cost control policies — maximum instance size per team, maximum replica count without platform approval, TTL on ephemeral environments.</check>
+        <check>Enable policy exceptions workflow — documented process for teams to request exemptions; all exemptions tracked in a ConfigMap with owner, expiry date, and justification.</check>
+        <check>Add policy documentation — every policy must have a public page explaining what it enforces, why, and how to fix violations.</check>
+        <check>Integrate secrets management — no plaintext secrets in Kubernetes manifests; enforce via Gatekeeper policy that rejects Pod specs with env.value fields containing known secret patterns.</check>
+        <check>Enable RBAC for platform resources — least-privilege service accounts for all platform-managed workloads.</check>
+        <check>Set up vulnerability scanning — Trivy or Grype in CI pipeline, block deploy on HIGH/CRITICAL CVEs without explicit exception.</check>
+        <check>Implement supply chain security — image signing (Cosign), SBOM generation, provenance attestation.</check>
+        <check>Add audit logging — all platform API calls (self-service requests, golden path executions, policy exceptions) logged to immutable audit trail.</check>
+        <check>Create security golden paths — new service template includes security scanning, secrets management, and RBAC pre-configured.</check>
+      </checklist>
+    </section>
+
+    <section name="finops-integration">
+      <p>FinOps (Financial Operations) embedded in the platform transforms cost from a retrospective audit concern into a real-time developer signal. The three required capabilities are: per-team cost visibility (who is spending what), pre-deployment cost estimation (what will this cost), and budget alerts (stop runaway spending before month-end).</p>
+
+      <rule testable="true">
+        <statement>Platform tagging standards MUST require the following tags on all cloud resources created through platform golden paths: team (owning team name), service (service name from catalog), environment (development | staging | production), cost-center (business unit for chargeback). Tags MUST be enforced via Gatekeeper policies (Kubernetes) or AWS Service Control Policies / GCP Organization Policies (cloud resources). Untagged resources MUST generate an alert to the platform team within 24 hours of creation.</statement>
+        <rationale>Cost allocation is impossible without consistent tagging. Retroactive tagging campaigns (after 6-12 months of untagged resources) typically achieve 40-60% coverage — the remaining 40% is permanently unattributable. Enforcement at creation time achieves near-100% coverage without manual remediation.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Per-team cost dashboards MUST be accessible to all team members (not just finance) and MUST update at least daily. Dashboards MUST show: current month spend by team and service, 30-day trend, top 5 cost drivers, and projected month-end spend. Cost data MUST be available in the developer portal (Backstage plugin) so developers see cost impact alongside deployment status.</statement>
+        <rationale>Cost signals only change developer behavior when they are visible at the point of decision. Finance reports delivered monthly do not change provisioning decisions made 3 weeks earlier. Same-day cost visibility in the developer portal is the mechanism that drives the 15-30% cost reduction observed in orgs with mature FinOps practices.</rationale>
+      </rule>
+
+      <example type="good" title="Platform tagging standards">
+        <code lang="text"><![CDATA[
+Required tags on all platform-provisioned resources:
+  team:         engineering-platform | payments | auth | notifications
+  service:      service name from Backstage catalog (exact match)
+  environment:  development | staging | production
+  cost-center:  eng-001 | product-002 | infra-003
+
+Enforcement:
+  Kubernetes:    Gatekeeper K8sRequiredLabels constraint
+  AWS:           Service Control Policy (SCP) requiring tags on EC2, RDS, S3
+  GCP:           Organization Policy enforcing label requirements
+
+Alert: Untagged resources → PagerDuty alert to platform team (P3) within 24h
+
+Reporting cadence:
+  Real-time:   Cost anomaly alerts (>20% day-over-day spike) → Slack
+  Daily:       Per-team cost update in Backstage plugin
+  Weekly:      Cost digest email to team leads
+  Monthly:     Chargeback/showback report to finance
+]]></code>
+      </example>
+
+      <example type="good" title="Platform adoption and cost metrics dashboard specification">
+        <code lang="text"><![CDATA[
+Platform Adoption Dashboard (audience: platform team + leadership):
+
+Golden Path Usage (Last 30 Days):
+  New Service Template:     target >50% new services
+  Database Golden Path:     target >70% database requests
+  API Gateway Golden Path:  target >50% new APIs
+  Custom Setup:             track as escape hatch usage
+
+Self-Service Requests:
+  Infrastructure:           volume + trend (target: >70% of all infra requests)
+  Environment Clone:        volume + trend
+  Database Creation:        volume + trend
+  Manual Ticket (ops):      volume + trend (target: <30% of total)
+
+Developer Productivity:
+  Time to First Deployment: target <1 day for new developers
+  Deployment Frequency:     track per team, target 2x pre-platform baseline
+
+Platform Health:
+  Portal availability:      target >99.5%
+  Self-service API p95:     target <2s response
+  Catalog freshness:        % services updated in last 30 days (target >90%)
+
+FinOps:
+  Cost per team:            current month vs prior month
+  Top 5 cost services:      by team
+  Untagged resource %:      target <2%
+  Budget alert count:       number of teams over budget
+]]></code>
+      </example>
+
+      <example type="good" title="FinOps integration in Backstage platform dashboard">
+        <code lang="text"><![CDATA[
+Pre-deployment cost estimation (embedded in golden path form):
+  Developer selects: Database size=large, environment=production
+  Platform shows:    ~$450/month (db.r5.large + storage + backup)
+  Team budget:       $800/month remaining
+  Decision:          Developer proceeds or selects medium
+
+Budget alert workflow:
+  Trigger:  Team exceeds 80% of monthly budget
+  Action:   Slack alert to team lead + platform team
+  Trigger:  Team exceeds 100% of monthly budget
+  Action:   Pagerduty P2 alert, platform team reviews new resource requests
+
+Chargeback report fields:
+  - Team name
+  - Cost center
+  - Compute cost (EC2/GKE node hours)
+  - Storage cost (EBS/RDS/S3)
+  - Network cost (egress, NAT)
+  - Tooling cost (licenses, SaaS)
+  - Total
+  - vs budget
+  - vs prior month
+]]></code>
+      </example>
+    </section>
+
+    <section name="finops-llm-prompts">
+      <p>LLM prompts for platform governance and FinOps design tasks.</p>
+
+      <prompt purpose="Analyze platform costs and generate optimization recommendations">
+        <![CDATA[
+Analyze platform costs and suggest optimizations.
+
+Current costs:
+- Compute: [amount]
+- Storage: [amount]
+- Network: [amount]
+- Tools/licenses: [amount]
+
+Usage patterns: [describe typical usage]
+
+Analyze:
+1. Cost breakdown by team/service
+2. Unused or underutilized resources
+3. Right-sizing opportunities
+4. Reserved capacity potential
+5. Architecture optimizations
+6. Tool consolidation opportunities
+
+Output: Prioritized recommendations with estimated savings.
+]]>
+      </prompt>
+
+      <prompt purpose="Design FinOps integration for the platform">
+        <![CDATA[
+Design FinOps integration for the platform.
+
+Requirements:
+- Cost visibility per team/service
+- Pre-deployment cost estimation
+- Budget alerts and controls
+- Chargeback/showback reporting
+
+Current cloud: [AWS/GCP/Azure]
+Tagging strategy: [describe or ask to design]
+
+Output:
+1. Tagging standards
+2. Cost allocation approach
+3. Alert configuration
+4. Dashboard design
+5. Integration with golden paths
+]]>
+      </prompt>
+
+      <prompt purpose="Design an observability and metrics strategy for the platform">
+        <![CDATA[
+Design an observability strategy for the platform.
+
+Platform components: [list components]
+SLO requirements: [availability, latency targets]
+Current tools: [Prometheus/Grafana/Datadog/etc]
+
+Strategy should cover:
+1. Golden signals for each component
+2. SLI definitions
+3. Alert thresholds and escalation
+4. Dashboard design (what to show)
+5. Log aggregation approach
+6. Distributed tracing setup
+7. Cost-effective retention policies
+]]>
+      </prompt>
+
+      <prompt purpose="Generate runbook for a platform operation">
+        <![CDATA[
+Create a runbook for [operation].
+
+Operation: [database failover/service rollback/incident response]
+Platform: [describe platform components]
+SLA requirements: [recovery time objectives]
+
+Runbook should include:
+1. Trigger conditions (when to use this runbook)
+2. Prerequisites (access, tools)
+3. Step-by-step procedure
+4. Verification steps after each action
+5. Rollback procedure
+6. Escalation path
+7. Post-incident checklist
+
+Format: Numbered steps with commands and expected outputs.
+]]>
+      </prompt>
+    </section>
+
+    <section name="continuous-improvement-checklist">
+      <p>Phase 5 (Observability) and Phase 6 (Continuous Improvement) checklists. Platform health monitoring must be running before soliciting developer feedback — otherwise the feedback cannot be correlated with platform behavior.</p>
+
+      <checklist>
+        <check>Track platform adoption rates — golden path usage %, self-service request volume, catalog freshness %.</check>
+        <check>Measure golden path usage — which templates are used vs bypassed; bypass rate is the primary signal for golden path improvement.</check>
+        <check>Monitor self-service request volume vs manual ticket volume — target: manual tickets below 30% of total infra requests.</check>
+        <check>Track time-to-first-deployment for new developers — plot weekly; regression signals onboarding documentation decay.</check>
+        <check>Measure developer satisfaction — quarterly NPS survey; target above 7/10.</check>
+        <check>Set up platform SLI/SLO dashboards — portal availability, self-service API latency, catalog sync lag.</check>
+        <check>Monitor platform API latency — p95 response time for self-service endpoints (target below 2s).</check>
+        <check>Track platform availability — target above 99.5%; outages are tracked as developer-facing incidents.</check>
+        <check>Alert on platform degradation — pagerduty on portal down, self-service API errors above 1%, catalog sync failure.</check>
+        <check>Establish regular developer feedback sessions — monthly 30-min interviews with 2-3 developers from different teams.</check>
+        <check>Create platform feature request process — backlog visible to all developers; prioritized quarterly.</check>
+        <check>Run platform retrospectives — quarterly review of NPS, adoption, and cost metrics with platform team.</check>
+        <check>Analyze support ticket trends — top 5 repeated questions indicate missing documentation or golden path gaps.</check>
+        <check>AI integration (2026): define AI agent RBAC and resource quotas through same golden paths as human-operated services.</check>
+        <check>AI integration (2026): implement AI governance policies — inference cost budgets, model version pinning, output validation.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="devops-platform-idp-core"/>
+      <ref slug="devops-platform-crossplane"/>
+      <ref slug="devops-platform-golden-paths"/>
+      <link href="https://www.openpolicyagent.org/"/>
+      <link href="https://open-policy-agent.github.io/gatekeeper/"/>
+      <link href="https://www.finops.org/introduction/what-is-finops/"/>
+    </see-also>
+  </content>
+</methodology>

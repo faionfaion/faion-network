@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: platform-engineering → 5 slugs (devops-platform-idp-core, devops-platform-golden-paths, devops-platform-backstage, devops-platform-crossplane, devops-platform-policy-finops)
 - decompose: iac-patterns → 5 slugs (iac-patterns-module-design, iac-patterns-dry, iac-patterns-composition, iac-patterns-testing, iac-patterns-cicd)
 - decompose: finops-cloud-cost-optimization → 5 slugs (fco-rightsizing, fco-commitment-pricing, fco-spot-instances, fco-cost-allocation, fco-waste-elimination)
 - decompose: backup-implementation → 6 slugs (backup-database-postgres, backup-database-mysql-mongo, backup-filesystem-restic, backup-kubernetes-velero, backup-cloud-aws, backup-verification-dr)
