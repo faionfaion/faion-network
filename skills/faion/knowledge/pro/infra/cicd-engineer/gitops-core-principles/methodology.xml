@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops-core-principles">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitOps fundamentals: Git as single source of truth, four OpenGitOps principles, push vs pull models, tool selection (ArgoCD vs Flux), and phased adoption path.</summary>
+    <tags>
+      <tag>gitops</tag>
+      <tag>argocd</tag>
+      <tag>flux</tag>
+      <tag>kubernetes</tag>
+      <tag>ci-cd</tag>
+    </tags>
+    <category>gitops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gitops-repository-structure"/>
+      <ref slug="gitops-flux"/>
+      <ref slug="gitops-progressive-delivery"/>
+      <ref slug="gitops-secrets-security"/>
+      <ref slug="argocd-gitops"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitOps Core Principles</title>
+
+    <summary>GitOps uses Git repositories as the single source of truth for declarative infrastructure and applications. All cluster state is described in Git, applied by an in-cluster operator (pull model), and continuously reconciled — eliminating manual deployments, configuration drift, and unreliable releases.</summary>
+
+    <why>
+      <p>Manual deployments cause inconsistency, configuration drift, and unreliable releases. GitOps solves this by treating Git as the authoritative record of desired state: every change is reviewed, versioned, and auditable. Pull-based reconcilers (ArgoCD, Flux) detect drift and self-heal without exposing cluster credentials to external CI systems.</p>
+      <p>Industry adoption as of 2025-2026: 90% of Kubernetes deployments use GitOps; 93% of organizations plan to continue or increase usage; 80%+ report higher reliability. ArgoCD holds ~60% market share; Flux ~25%.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Migrating a Kubernetes (or Helm/Kustomize-managed) workload off kubectl apply and CI-driven pushes onto a pull-based reconciler (ArgoCD or Flux).</item>
+        <item>Multi-cluster fleet management — single source of truth for 10+ clusters with environment promotion via PRs.</item>
+        <item>Compliance / audit-heavy environments where every cluster change must be traceable to a Git commit and reviewer.</item>
+        <item>Drift detection and self-healing of cluster state.</item>
+        <item>Teams wanting to separate CI (build/test) from CD (deploy) cleanly.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-declarative workloads (one-off scripts, ad-hoc data jobs) — use a CI pipeline, not GitOps.</item>
+        <item>Single small cluster with one developer and no compliance pressure — overhead exceeds benefit.</item>
+        <item>Stateful migrations with manual data steps — GitOps tools won't orchestrate "drain, snapshot, restore" sequencing; use a custom operator or runbook.</item>
+        <item>Tight imperative sequencing (deploy A, wait for hook, then B, then C) where push-based pipelines are simpler.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="opengitops-principles">
+      <p>The four OpenGitOps principles define what qualifies as GitOps:</p>
+      <rules>
+        <rule>
+          <statement>Infrastructure MUST be described declaratively (YAML/HCL), not via imperative scripts.</statement>
+          <rationale>Declarative state can be diffed, versioned, and reconciled. Imperative scripts are side-effectful and not idempotent.</rationale>
+        </rule>
+        <rule>
+          <statement>All configuration MUST live in Git with complete history and audit trail.</statement>
+          <rationale>Git provides versioning, review workflow, and rollback. "Who changed what and why" is answered by commit history alone.</rationale>
+        </rule>
+        <rule>
+          <statement>Changes MUST be pulled by an in-cluster agent, not pushed by CI to the cluster.</statement>
+          <rationale>Pull model eliminates credential distribution to external systems; the cluster only makes egress connections to Git.</rationale>
+        </rule>
+        <rule>
+          <statement>The system MUST continuously reconcile actual state to desired state and detect drift automatically.</statement>
+          <rationale>Without continuous reconciliation, manual kubectl or helm operations silently diverge from Git, defeating the audit trail.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="push-vs-pull">
+      <p>Two deployment models exist. Most 2025-2026 production setups use pull-based or hybrid:</p>
+      <list>
+        <item>Pull-based: GitOps operator in-cluster polls Git for changes. Best for security, multi-cluster, self-healing. Advantages: egress-only connections (no cluster exposure), no credentials distributed to external services, self-healing drift correction, better compliance and auditability.</item>
+        <item>Push-based: CI/CD pipeline pushes changes to cluster. Best for tight control, sequencing, existing pipelines. Advantages: works with existing CI/CD pipelines, better for non-Kubernetes environments, simpler initial setup, tight deployment sequencing control.</item>
+        <item>Hybrid (2025-2026): Push for velocity, pull for safety and drift correction. Used in enterprise environments needing both.</item>
+      </list>
+    </section>
+
+    <section name="tool-selection">
+      <p>ArgoCD vs Flux decision matrix for 2025-2026:</p>
+      <list>
+        <item>UI/UX: ArgoCD has built-in web UI; Flux is CLI-first with external UI options.</item>
+        <item>Learning curve: ArgoCD lower; Flux higher.</item>
+        <item>Resource usage: ArgoCD higher; Flux lower.</item>
+        <item>Multi-tenancy: ArgoCD good; Flux excellent.</item>
+        <item>Commercial support: ArgoCD strong (Akuity, others); Flux CNCF community.</item>
+        <item>Market share (2025): ArgoCD ~60%; Flux ~25%.</item>
+        <item>Best for: ArgoCD — teams, visibility, onboarding; Flux — platform engineers, automation.</item>
+      </list>
+      <p>2025-2026 Recommendation: ArgoCD for most teams (especially new to GitOps). Flux for platform engineers building automation or with existing Flux deployments.</p>
+      <p>Other tools in the ecosystem: Kargo (multi-environment promotion, staging to prod), Flagger (automated canary, progressive delivery, works with ArgoCD/Flux), Argo Rollouts (canary/blue-green primitives), Spinnaker (multi-cloud, complex setup).</p>
+    </section>
+
+    <section name="gitops-workflow">
+      <p>Standard GitOps workflow: Developer commits to app repo → CI builds and tests image → CI opens PR against config repo with updated image tag → reviewer approves and merges → GitOps operator (ArgoCD/Flux) detects change → applies to cluster → continuous reconciliation corrects any drift.</p>
+      <rule>
+        <statement>Separate CI from CD: build and test in the CI pipeline; deploy exclusively via the GitOps operator reading from the config repo.</statement>
+        <rationale>Mixing CI push-deploys with GitOps reconciliation creates two sources of truth. The GitOps operator will revert any push-deployed change not present in Git.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-phases">
+      <p>Phased GitOps adoption path:</p>
+      <list>
+        <item>Phase 1: Assess current state, design target architecture. Document current deployment process, choose tool (ArgoCD vs Flux), define RBAC and secret management strategy.</item>
+        <item>Phase 2: Basic GitOps setup, single environment. Install operator, connect config repo, migrate one non-critical app, validate sync and drift correction.</item>
+        <item>Phase 3: Multi-environment, security/compliance integration. Folder-per-environment structure, PR-based promotion, SOPS or External Secrets for secret management, CI validation of manifests.</item>
+        <item>Phase 4: Multi-cluster management, progressive delivery. Hub-spoke ArgoCD managing multiple clusters, ApplicationSets, Flagger canary deployments.</item>
+        <item>Phase 5: Self-service developer platforms, advanced automation. Backstage or similar IDP, Kargo multi-stage promotions, AI-powered rollback (Akuity AI).</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use agents to author and review GitOps repos, never to bypass them. Pattern: developer (or agent) opens a PR against the config repo with a Kustomize overlay or Helm values change → CI runs kustomize build / helm template + policy checks (Kyverno/OPA Conftest) + diff preview against current cluster state → human reviews → merge → ArgoCD/Flux reconciles. Agents can scaffold app manifests, run argocd app diff against a candidate branch, and post the diff to the PR. Auto-promotion between envs (dev to staging) happens via PR-bot agents that copy known-good versions; production promotion is human-gated.</p>
+      <p>Recommended subagents: faion-sdd-executor-agent for implementing manifest/Helm chart changes with quality gates and review; custom gitops-pr-author that generates Kustomize overlays / Helm values updates from a structured request; custom gitops-diff-reviewer that runs argocd app diff / flux diff against PR branch and comments on dangerous changes (replica drops, image rollbacks, RBAC widening); custom kargo-promoter that automates Kargo stage promotions with policy checks.</p>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Agent model routing for GitOps tasks:</p>
+      <list>
+        <item>Set up GitHub Actions workflow from template: haiku — pattern application, simple configuration.</item>
+        <item>Design CI/CD pipeline architecture: opus — complex system design with many variables.</item>
+        <item>Write terraform code for infrastructure: sonnet — implementation with moderate complexity.</item>
+        <item>Debug failing pipeline step: sonnet — debugging and problem-solving.</item>
+        <item>Implement AIOps anomaly detection: opus — novel ML approach, complex decision.</item>
+        <item>Configure webhook and secret management: haiku — mechanical setup using checklists.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>LLM-specific failure modes when generating GitOps manifests:</p>
+      <list>
+        <item>LLMs frequently emit apiVersion: apps/v1beta1 or other deprecated APIs — pin a CRD/API inventory and validate with kubeconform against the target Kubernetes version.</item>
+        <item>Image tag suggestions sometimes include :latest — explicitly disallow in policies and prompts.</item>
+        <item>Helm values overrides: agents may set values that the chart does not expose; render and diff before commit.</item>
+        <item>Multi-line YAML formatting: agents break indentation in nested overlays; always run yamllint and kustomize build on output.</item>
+        <item>Cross-env contamination: an agent told to "bump api in staging" may also touch prod overlays if path patterns are loose — constrain the working directory in the prompt.</item>
+        <item>Secret leakage: never let an agent commit a decrypted SOPS file or a kubectl get secret -o yaml dump; route through a password-scrubber-agent.</item>
+        <item>Auto-merge bots + ArgoCD auto-sync = blast radius; require human approval at least at the prod boundary.</item>
+      </list>
+    </section>
+
+    <prompt purpose="assess-current-state"><![CDATA[
+Analyze my current deployment process and recommend a GitOps adoption strategy.
+
+Current state:
+- Deployment method: [CI/CD push / manual / scripts]
+- Infrastructure: [Kubernetes / VMs / serverless]
+- Team size: [number]
+- Number of environments: [dev/staging/prod]
+- Current tools: [Jenkins / GitHub Actions / etc.]
+
+Please provide:
+1. Gap analysis between current state and GitOps
+2. Recommended GitOps tool (ArgoCD vs Flux) with reasoning
+3. Repository structure recommendation
+4. Migration phases
+5. Risk assessment
+]]></prompt>
+
+    <prompt purpose="push-vs-pull-decision"><![CDATA[
+Help me decide between push-based and pull-based GitOps for my organization.
+
+Context:
+- Security requirements: [strict / moderate / basic]
+- Compliance needs: [SOC2 / HIPAA / PCI-DSS / none]
+- Multi-cluster: [yes / no, how many clusters]
+- Team experience with Kubernetes: [expert / intermediate / beginner]
+- Existing CI/CD: [describe current pipeline]
+
+Provide a recommendation with:
+1. Recommended approach (push/pull/hybrid)
+2. Security implications
+3. Operational complexity comparison
+4. Migration effort estimate
+]]></prompt>
+
+    <see-also>
+      <link href="https://opengitops.dev/"/>
+      <link href="https://argo-cd.readthedocs.io/"/>
+      <link href="https://fluxcd.io/docs/"/>
+      <link href="https://akuity.io/blog/gitops-best-practices-whitepaper"/>
+      <ref slug="gitops-repository-structure"/>
+      <ref slug="gitops-flux"/>
+      <ref slug="argocd-gitops"/>
+    </see-also>
+  </content>
+</methodology>
