@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing-ci-toolchain">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Rust CI testing toolchain: cargo nextest for parallelism, cargo llvm-cov for coverage, cargo miri for UB detection, nextest.toml configuration, and GitHub Actions setup.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>ci</tag>
+      <tag>cargo-nextest</tag>
+      <tag>coverage</tag>
+      <tag>cargo-miri</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <related>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Rust Testing CI Toolchain — nextest, llvm-cov, miri</title>
+
+    <summary>The production Rust test toolchain in CI uses cargo nextest for parallel execution with per-test timeouts, cargo llvm-cov for LCOV coverage reports, cargo +nightly miri for UB detection in unsafe code, and taiki-e/install-action to cache tool installs in GitHub Actions. Pin all tool versions via Renovate to avoid silent breakage.</summary>
+
+    <why>
+      <p>cargo test runs tests sequentially within a binary and produces no per-test timeout. cargo nextest runs tests in separate processes in parallel, emits JUnit XML, and enforces per-test timeouts — catching hangs that cargo test would let run forever. The parallel model also means a single panicking test does not kill the rest of the suite.</p>
+      <p>cargo llvm-cov is faster and more accurate than cargo tarpaulin (no PTRACE) and emits LCOV/HTML/JSON output that Codecov and Coveralls understand natively. cargo miri catches undefined behavior in unsafe blocks that the compiler's borrow checker cannot see: wrong pointer arithmetic, uninitialized reads, data races in unsafe Send/Sync impls.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Rust project with more than a handful of integration tests where cargo test's sequential-within-binary model causes slow CI.</item>
+        <item>Multi-crate workspaces where cargo nextest provides much faster, more parallel test execution than cargo test.</item>
+        <item>Codebases with unsafe blocks or FFI where cargo +nightly miri test catches UB the compiler does not.</item>
+        <item>Any project uploading coverage to Codecov or Coveralls where cargo llvm-cov provides the LCOV feed.</item>
+        <item>Library crates where cargo test --doc should run on every PR.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trivial scripts with two or three test functions — cargo test is sufficient; nextest setup cost is not justified.</item>
+        <item>cargo bench / criterion benchmarks — nextest and llvm-cov do not apply to perf-sensitive code paths; keep them in a separate job.</item>
+        <item>Cross-compile targets where running tests on the host does not reflect the target — use cross + Docker, or skip and rely on a hardware-in-the-loop CI runner.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Use cargo nextest run in CI instead of cargo test. Configure .config/nextest.toml with fail-fast = false, retries = 1 on the ci profile, and a slow-timeout to catch hangs. Never use cargo test in the main CI job for a project that has integration tests.</statement>
+        <rationale>cargo test runs tests sequentially within a binary and has no per-test timeout. A single hanging test blocks the entire suite silently. nextest runs each test in its own process with a configurable timeout, emits JUnit XML, and parallelizes across all available cores.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Upload cargo llvm-cov --lcov output to Codecov or Coveralls on every PR. Do not enforce a coverage percentage gate in CI — coverage is a signal for reviewers, not a binary pass/fail. A drop in coverage on a PR is a conversation item, not a block.</statement>
+        <rationale>Hard coverage gates incentivize writing trivial tests that inflate coverage without testing behavior. Soft signals (uploaded diff coverage) keep reviewers informed without gamification.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run cargo +nightly miri test on every PR for crates that contain unsafe blocks or FFI. Gate miri on its own CI job (it is slow); do not block the main test job on it.</statement>
+        <rationale>Miri catches undefined behavior — wrong pointer offsets, uninitialized reads, data races in unsafe Send/Sync — that the Rust compiler cannot detect at compile time. These bugs are silent in release builds and manifest as memory corruption in production.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pin cargo nextest, cargo llvm-cov, and cargo miri versions in CI using taiki-e/install-action and manage updates via Renovate. Never use @latest or a floating version in CI tool installs.</statement>
+        <rationale>Floating @latest versions can break CI silently when a new release changes behavior or output format. Pinned versions + Renovate gives reproducible CI with automated upgrade PRs.</rationale>
+      </rule>
+    </rules>
+
+    <section name="nextest-config">
+      <p>Add a .config/nextest.toml to the crate root (or workspace root). The default profile controls local runs; the ci profile is activated by nextest run --profile ci in CI.</p>
+
+      <example type="good" title=".config/nextest.toml — nextest configuration">
+        <code lang="toml"><![CDATA[
+[profile.default]
+fail-fast = false
+retries = 0
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[profile.ci]
+fail-fast = false
+retries = 1
+slow-timeout = { period = "60s", terminate-after = 1 }
+final-status-level = "fail"
+
+[[profile.ci.overrides]]
+filter = 'test(integration)'
+threads-required = 2
+]]></code>
+        <note>retries = 1 on the ci profile automatically re-runs a failing test once before marking it as failed — this catches transient flakes (container startup race, DNS timeout) without hiding genuine bugs.</note>
+      </example>
+    </section>
+
+    <section name="github-actions-setup">
+      <p>A minimal GitHub Actions workflow installs the toolchain with dtolnay/rust-toolchain, caches tools with taiki-e/install-action, runs the full test suite with cargo nextest, uploads coverage with Codecov, and runs miri in a separate job. Use --workspace to cover all crates in a monorepo.</p>
+
+      <example type="good" title="GitHub Actions workflow for Rust tests with nextest and llvm-cov">
+        <code lang="yaml"><![CDATA[
+name: Test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest,cargo-llvm-cov
+      - name: Run tests
+        run: cargo nextest run --workspace --profile ci
+      - name: Coverage
+        run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+
+  miri:
+    runs-on: ubuntu-latest
+    # Only run on crates that use unsafe
+    if: contains(github.event.pull_request.labels.*.name, 'has-unsafe')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo +nightly miri test
+]]></code>
+        <note>taiki-e/install-action caches nextest and llvm-cov binaries across runs — no rebuild overhead. The miri job is gated on a PR label to avoid running it on every PR regardless of unsafe usage.</note>
+      </example>
+    </section>
+
+    <section name="tool-reference">
+      <p>Full CLI tool reference for Rust testing:</p>
+      <list>
+        <item>cargo test — built-in test runner; sufficient for small suites without per-test timeout requirements.</item>
+        <item>cargo nextest — faster, parallel, per-test timeout, JUnit XML; https://nexte.st</item>
+        <item>cargo llvm-cov — LCOV/HTML coverage reports; https://github.com/taiki-e/cargo-llvm-cov</item>
+        <item>cargo tarpaulin — older coverage tool (PTRACE-based, Linux only); prefer llvm-cov for new projects.</item>
+        <item>cargo bench + criterion — statistical benchmarks separated from tests; https://bheisler.github.io/criterion.rs</item>
+        <item>cargo +nightly miri — UB detector for unsafe and FFI; https://github.com/rust-lang/miri</item>
+        <item>cargo expand — view macro expansions when mockall errors are cryptic; https://github.com/dtolnay/cargo-expand</item>
+        <item>cargo udeps — detect unused dependencies in [dev-dependencies]; https://github.com/est31/cargo-udeps</item>
+        <item>cargo deny — vet licenses, yanked crates, advisories; https://github.com/EmbarkStudios/cargo-deny</item>
+        <item>cargo audit — RustSec advisories; https://rustsec.org</item>
+        <item>cross — run tests for cross-compile targets in Docker; https://github.com/cross-rs/cross</item>
+        <item>bacon — test-watch loop in TUI; https://dystroy.org/bacon/</item>
+        <item>wiremock (Rust crate) — mock HTTP server for integration tests; https://docs.rs/wiremock</item>
+      </list>
+    </section>
+
+    <section name="saas-services">
+      <p>SaaS and hosted services relevant to Rust CI testing:</p>
+      <list>
+        <item>GitHub Actions with dtolnay/rust-toolchain — cargo nextest run + cargo clippy --all-targets.</item>
+        <item>taiki-e/install-action — cached install of nextest/llvm-cov/etc in CI.</item>
+        <item>Codecov / Coveralls — upload cargo-llvm-cov reports.</item>
+        <item>Testcontainers Cloud — offload Docker for integration tests; agents drive same API.</item>
+        <item>Datadog / Honeycomb (test-trace) — optional; emit tracing spans during tests for flake diagnosis.</item>
+        <item>Sentry (release tracking) — tie test failures to release for triage.</item>
+        <item>nextest self-update — pin in CI; auto-update via Renovate.</item>
+      </list>
+    </section>
+
+    <section name="slow-link-times">
+      <p>cargo test rebuilds the test binary and all integration test binaries on every run. Without a shared target/ cache, CI minutes balloon in monorepos. Use sccache or the GitHub Actions cache action pointing at ~/.cargo/registry and target/ to share build artifacts across runs. cargo nextest benefits from the same cache.</p>
+
+      <rule testable="true">
+        <statement>Configure a CI build cache for ~/.cargo/registry, ~/.cargo/git, and target/ keyed on the rust toolchain version and Cargo.lock hash. Rebuild on Cargo.lock change; otherwise restore from cache. This applies to both cargo test and cargo nextest runs.</statement>
+        <rationale>Slow link times inflate CI minutes. On a medium Rust service, a cold build of test binaries can take 3-5 minutes. With a warm cache, incremental rebuilds take 20-30 seconds.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>cargo nextest installed and configured in CI with a .config/nextest.toml.</check>
+      <check>ci nextest profile has fail-fast = false, retries = 1, slow-timeout set.</check>
+      <check>cargo llvm-cov generates LCOV and uploads to Codecov or Coveralls on every PR.</check>
+      <check>No hard coverage percentage gate in CI.</check>
+      <check>cargo miri runs in a separate CI job gated on unsafe usage.</check>
+      <check>cargo deny and cargo audit wired into CI.</check>
+      <check>Tool versions pinned via taiki-e/install-action; Renovate manages updates.</check>
+      <check>CI cache for ~/.cargo/registry, ~/.cargo/git, and target/ configured.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-integration"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <link href="https://nexte.st"/>
+      <link href="https://github.com/taiki-e/cargo-llvm-cov"/>
+      <link href="https://github.com/rust-lang/miri"/>
+      <link href="https://doc.rust-lang.org/book/ch11-00-testing.html"/>
+      <link href="https://doc.rust-lang.org/rust-by-example/testing.html"/>
+    </see-also>
+  </content>
+</methodology>
