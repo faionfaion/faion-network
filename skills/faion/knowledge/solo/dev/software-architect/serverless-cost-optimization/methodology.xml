@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="serverless-cost-optimization">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>AWS Lambda pricing model, cost optimization strategies (ARM/Graviton, right-sizing, batch processing), container crossover analysis, and cost monitoring for serverless workloads.</summary>
+    <tags>
+      <tag>serverless</tag>
+      <tag>cost</tag>
+      <tag>lambda</tag>
+      <tag>finops</tag>
+      <tag>optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-cold-start-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Serverless Cost Optimization</title>
+
+    <summary>Lambda cost equals Requests + (Duration × Memory) + Data Transfer. ARM/Graviton saves 20%, right-sizing memory (via Lambda Power Tuning) saves 10-50%, and batch processing saves 30-70%. The container crossover point is roughly 10-30M requests/month at consistent load. Cost monitoring with per-function granularity is mandatory for production workloads.</summary>
+
+    <why>
+      <p>Serverless is extremely cost-efficient at low and variable traffic but can become more expensive than containers at high steady-state load. Understanding the pricing model, optimization levers, and crossover points allows architects to make informed build vs. migrate decisions rather than discovering runaway bills in production.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Estimating and projecting Lambda costs before or during architecture design.</item>
+        <item>Monthly cost review for production serverless workloads.</item>
+        <item>Evaluating the cost/performance tradeoff of switching to ARM/Graviton.</item>
+        <item>Analyzing whether to migrate a high-volume workload from Lambda to containers.</item>
+        <item>Optimizing a Lambda function identified as a cost anomaly in Cost Explorer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Newly launched functions with no traffic data — cost projections require baseline measurements.</item>
+        <item>One-off scripts or developer tooling — cost is trivial and optimization is not worth the effort.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pricing-model">
+      <p>AWS Lambda pricing (2025, us-east-1):</p>
+      <list>
+        <item>Requests: $0.20 per 1M requests (free tier: first 1M requests/month free).</item>
+        <item>Duration (x86): $0.0000166667 per GB-second.</item>
+        <item>Duration (ARM/Graviton): $0.0000133334 per GB-second — 20% cheaper than x86.</item>
+        <item>Formula: Cost = (Invocations / 1M × $0.20) + (Invocations × AvgDuration_sec × Memory_GB × $rate).</item>
+      </list>
+    </section>
+
+    <section name="cost-optimization-strategies">
+      <p>Optimization strategies ranked by potential savings and implementation effort:</p>
+      <list>
+        <item>ARM/Graviton processors — 20% savings on duration cost, zero code change for Python/Node/Go. Change Architectures: [arm64] in SAM/CDK template.</item>
+        <item>Right-size memory — 10-50% savings. More memory allocates more CPU; sometimes doubling memory halves duration, resulting in same or lower cost. Use AWS Lambda Power Tuning to find the optimum.</item>
+        <item>Reduce duration — direct duration savings. Optimize code, reuse connections (module-scope init), implement caching, reduce external API calls.</item>
+        <item>Batch processing — 30-70% savings. Process multiple items per invocation instead of one. SQS with BatchSize=10 and MaximumBatchingWindowInSeconds=5 reduces invocations by 10x.</item>
+        <item>Savings Plans — up to 17% savings. Commit to consistent compute usage across Lambda and Fargate for 1 or 3 years.</item>
+        <item>Lambda Managed Instances (2025) — up to 72% savings. For steady-state workloads with predictable throughput; billed per instance-hour rather than per GB-second.</item>
+      </list>
+    </section>
+
+    <section name="crossover-analysis">
+      <p>Lambda vs Fargate cost crossover at 200ms average duration:</p>
+      <list>
+        <item>1M requests/month @ 256MB: Lambda ~$3, Fargate ~$30 — Lambda wins 10:1.</item>
+        <item>10M requests/month @ 512MB: Lambda ~$33, Fargate ~$30 — approximately equal.</item>
+        <item>100M requests/month @ 512MB: Lambda ~$333, Fargate ~$60 — Fargate wins 5:1.</item>
+      </list>
+      <p>Crossover point: at approximately 10-30M requests/month with consistent steady load, containers become more cost-effective. Variable/spiky traffic delays the crossover significantly because containers are always-on even at zero traffic.</p>
+    </section>
+
+    <rules>
+      <rule testable="true">
+        <statement>All Lambda functions MUST use ARM/Graviton (Architectures: [arm64]) by default. Functions using x86 MUST document the specific reason (e.g., x86-only native extension) in a code comment.</statement>
+        <rationale>ARM is 20% cheaper per GB-second than x86 with no behavioral difference for Python, Node.js, Go, and Rust. The savings compound at scale — at 10M invocations/month at 200ms/512MB, the difference is ~$6/month per function.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Lambda functions processing multiple items (from SQS, Kinesis, DynamoDB Streams) MUST use batching: set BatchSize to the maximum safe value for the workload and MaximumBatchingWindowInSeconds to 5 or higher unless real-time latency is required.</statement>
+        <rationale>Batching reduces invocation count proportionally. At BatchSize=10, invocation cost drops 10x. The $0.20/million invocation charge becomes the dominant cost factor at high throughput; batching eliminates it.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Production Lambda functions MUST have per-function cost tracking enabled via tagging (Service, Environment, Function name tags on the Lambda resource) and Cost Explorer tag filters. A monthly cost anomaly alert MUST be configured for each function exceeding $50/month.</statement>
+        <rationale>Without per-function cost visibility, runaway functions (stuck retry loops, fan-out storms, incorrect memory allocation) go undetected until the monthly bill. Tag-based cost attribution enables per-function chargebacks and anomaly detection.</rationale>
+      </rule>
+    </rules>
+
+    <section name="sam-arm-example">
+      <example type="good" title="ARM/Graviton with batching in SAM">
+        <code lang="yaml"><![CDATA[
+Globals:
+  Function:
+    Architectures:
+      - arm64  # 20% cheaper, often faster — default for all functions
+
+Resources:
+  ProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/processor.handler
+      Runtime: python3.11
+      MemorySize: 512
+      Timeout: 30
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ProcessingQueue.Arn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+]]></code>
+        <note>ReportBatchItemFailures allows partial batch success — failed items return to queue without reprocessing successful ones.</note>
+      </example>
+
+      <example type="bad" title="x86 with no batching">
+        <code lang="yaml"><![CDATA[
+Resources:
+  ProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/processor.handler
+      Runtime: python3.11
+      # No Architectures — defaults to x86 (20% more expensive)
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ProcessingQueue.Arn
+            BatchSize: 1  # One invocation per message = 10x cost vs BatchSize=10
+]]></code>
+        <note>No ARM and BatchSize=1 at 100K messages/day costs ~$0.20/day in invocations alone vs ~$0.002 with BatchSize=10 and ARM.</note>
+      </example>
+    </section>
+
+    <section name="power-tuning">
+      <p>AWS Lambda Power Tuning is a Step Functions state machine that runs the same function at multiple memory settings (e.g., 128MB, 256MB, 512MB, 1024MB, 1769MB, 3008MB) and reports the optimal configuration for cost, speed, or balanced objectives.</p>
+      <p>Run before committing to a memory setting in production. The optimal memory configuration is never obvious — more memory often halves duration, resulting in the same or lower cost at higher speed.</p>
+    </section>
+
+    <section name="cost-monitoring">
+      <p>Essential cost monitoring setup for serverless workloads:</p>
+      <list>
+        <item>Enable Lambda Cost Explorer: tag all functions with Service, Environment, and Function name; create Cost Explorer tag filters per service.</item>
+        <item>Set up Cost Anomaly Detection in AWS Cost Explorer with a per-service threshold (e.g., alert if Lambda spend exceeds 2x baseline).</item>
+        <item>Track cost per invocation as a custom CloudWatch metric (total_cost / invocations) to catch memory over-allocation or duration regressions.</item>
+        <item>Review monthly cost reports and identify functions above $50/month for optimization candidates.</item>
+      </list>
+    </section>
+
+    <section name="agent-prompts">
+      <prompt purpose="cost-analysis"><![CDATA[
+Analyze serverless costs for:
+
+Current monthly metrics:
+- Invocations: [X]
+- Average duration: [X ms]
+- Memory: [X MB]
+- Data transfer: [X GB]
+- API Gateway requests: [X]
+- DynamoDB reads/writes: [X/X]
+
+Current monthly cost: [if known]
+
+Please analyze:
+1. Cost breakdown by service
+2. Optimization opportunities
+3. Right-sizing recommendations
+4. Reserved capacity analysis
+5. Architecture changes for cost reduction
+6. Expected savings
+]]></prompt>
+
+      <prompt purpose="cost-projection"><![CDATA[
+Project serverless costs at scale:
+
+Current state:
+- Daily active users: [X]
+- Requests per user: [X]
+- Average function duration: [X ms]
+- Memory per function: [X MB]
+
+Growth projection:
+- 3 months: [X users]
+- 6 months: [X users]
+- 12 months: [X users]
+
+Please provide:
+1. Cost projection chart
+2. Cost per user analysis
+3. Scaling inflection points (when containers become cheaper)
+4. Cost optimization triggers
+5. Budget planning recommendations
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Switch all functions to ARM/Graviton (arm64) — free 20% cost reduction, no code change.</check>
+      <check>Run AWS Lambda Power Tuning on high-invocation functions to find optimal memory configuration.</check>
+      <check>Enable batching on all SQS/Kinesis consumers: BatchSize=10+, MaximumBatchingWindowInSeconds=5.</check>
+      <check>Add ReportBatchItemFailures to SQS event sources to avoid reprocessing successful batch items on partial failure.</check>
+      <check>Tag all Lambda functions with Service, Environment, and Function name for Cost Explorer visibility.</check>
+      <check>Set up Cost Anomaly Detection alert for Lambda spend per service.</check>
+      <check>At &gt;10M requests/month with steady load: run Lambda vs Fargate cost comparison and evaluate migration.</check>
+      <check>Review Savings Plans eligibility for consistent Lambda usage patterns.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/alexcasalboni/aws-lambda-power-tuning"/>
+      <link href="https://aws.amazon.com/blogs/compute/"/>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-cold-start-optimization"/>
+    </see-also>
+  </content>
+</methodology>
