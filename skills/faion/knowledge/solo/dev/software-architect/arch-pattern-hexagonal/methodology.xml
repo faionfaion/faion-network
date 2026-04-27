@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="arch-pattern-hexagonal">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Hexagonal Architecture (Ports &amp; Adapters): isolate the application core with explicit inbound/outbound port interfaces and swap adapters without touching core logic.</summary>
+    <tags>
+      <tag>hexagonal-architecture</tag>
+      <tag>ports-and-adapters</tag>
+      <tag>dependency-inversion</tag>
+      <tag>adapter-pattern</tag>
+      <tag>testability</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-onion"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Hexagonal Architecture (Ports and Adapters)</title>
+
+    <summary>The application core is isolated from the outside world through ports (interfaces) and adapters (implementations). Primary adapters drive the core (REST, CLI, gRPC); secondary adapters are driven by the core (database, email, payment gateway). All external interactions follow the same symmetric contract.</summary>
+
+    <why>
+      <p>Alistair Cockburn (2005) defined Hexagonal Architecture to solve the recurring problem of applications tightly coupled to their delivery mechanism. By placing explicit port interfaces on both sides of the core, any number of input channels can share the same application logic — you add a gRPC adapter without touching a single line of the domain. Similarly, swapping PostgreSQL for DynamoDB means writing a new secondary adapter, not rewriting business logic.</p>
+      <p>The symmetric treatment of all external interactions (whether incoming or outgoing) is the key distinction from Clean Architecture. Both share the dependency-inversion principle, but Hexagonal makes it explicit with the inbound/outbound port vocabulary.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Multi-interface systems: REST API + CLI + gRPC + scheduled jobs + message-queue consumers all sharing the same core logic.</item>
+        <item>Applications with several outbound dependencies (database, cache, email, payment gateway, third-party APIs) where each needs a testable seam.</item>
+        <item>Projects requiring symmetric treatment of inputs and outputs via explicit port contracts.</item>
+        <item>Systems where new input channels or output adapters are likely to be added frequently.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CRUD-only admin tools — ports add interface overhead with no business logic to protect.</item>
+        <item>Single-channel applications (REST only, simple domain) — Clean Architecture is sufficient and less verbose.</item>
+        <item>Microservices that are already small enough that the entire domain fits in 200 lines.</item>
+        <item>Prototypes — the boilerplate of ports + adapters + mappers is real; start simple and extract later.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <p>Key vocabulary:</p>
+      <list>
+        <item>Port (interface): a technology-agnostic contract at the hexagon boundary. Inbound ports define what the application CAN DO; outbound ports define what the application NEEDS.</item>
+        <item>Primary Adapter (Driving): implements or uses an inbound port to push data into the core. Examples: REST controller, CLI command handler, gRPC server, test harness.</item>
+        <item>Secondary Adapter (Driven): implements an outbound port to satisfy what the core needs. Examples: PostgresOrderRepository, SendGridEmailAdapter, StripePaymentAdapter.</item>
+        <item>Application Core: domain model + core services. Depends only on port interfaces. No framework, no ORM, no HTTP.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>The application core MUST depend only on port interfaces, never on adapter implementations. All inbound ports (use-case interfaces) and outbound ports (repository, service interfaces) MUST live inside core/ports/, NOT inside the adapters directory.</statement>
+        <rationale>If the core imports an adapter directly, swapping the adapter requires modifying the core — this breaks the pattern's fundamental guarantee. Port interfaces decouple the hexagon from its surroundings.</rationale>
+      </rule>
+    </section>
+
+    <section name="folder-structure">
+      <p>Canonical TypeScript folder layout for Hexagonal Architecture:</p>
+      <code lang="text"><![CDATA[
+src/
+├── core/                          # The Hexagon
+│   ├── domain/                    # Entities, value objects
+│   │   ├── entities/
+│   │   └── value-objects/
+│   ├── ports/
+│   │   ├── inbound/               # Primary ports (use-case contracts)
+│   │   │   ├── CreateUserPort.ts
+│   │   │   └── GetUserPort.ts
+│   │   └── outbound/              # Secondary ports (what core needs)
+│   │       ├── UserRepository.ts
+│   │       └── EmailSender.ts
+│   └── services/                  # Core services implementing inbound ports
+│       └── UserService.ts
+│
+├── adapters/
+│   ├── inbound/                   # Primary adapters (drive the core)
+│   │   ├── rest/
+│   │   │   └── UserController.ts
+│   │   ├── graphql/
+│   │   │   └── UserResolver.ts
+│   │   └── cli/
+│   │       └── UserCommand.ts
+│   └── outbound/                  # Secondary adapters (driven by core)
+│       ├── persistence/
+│       │   └── PostgresUserRepository.ts
+│       └── email/
+│           └── SendGridEmailAdapter.ts
+│
+└── config/                        # Bootstrap, DI
+    └── container.ts
+]]></code>
+    </section>
+
+    <section name="port-examples">
+      <example type="good" title="Inbound port (PlaceOrderPort.ts)">
+        <code lang="typescript"><![CDATA[
+// src/core/ports/inbound/PlaceOrderPort.ts
+export interface PlaceOrderCommand {
+  customerId: string;
+  items: Array<{ productId: string; quantity: number; price: number }>;
+}
+
+export interface PlaceOrderResult {
+  orderId: string;
+  total: number;
+  status: string;
+}
+
+export interface PlaceOrderPort {
+  execute(command: PlaceOrderCommand): Promise<PlaceOrderResult>;
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Outbound port (OrderRepository.ts)">
+        <code lang="typescript"><![CDATA[
+// src/core/ports/outbound/OrderRepository.ts
+import { Order } from '../../domain/Order';
+
+export interface OrderRepository {
+  save(order: Order): Promise<void>;
+  findById(id: string): Promise<Order | null>;
+  findByCustomerId(customerId: string): Promise<Order[]>;
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Core service implementing inbound port">
+        <code lang="typescript"><![CDATA[
+// src/core/services/OrderService.ts
+import { PlaceOrderPort, PlaceOrderCommand, PlaceOrderResult } from '../ports/inbound/PlaceOrderPort';
+import { OrderRepository } from '../ports/outbound/OrderRepository';
+import { PaymentGateway } from '../ports/outbound/PaymentGateway';
+
+export class OrderService implements PlaceOrderPort {
+  constructor(
+    private readonly orderRepository: OrderRepository,
+    private readonly paymentGateway: PaymentGateway,
+  ) {}
+
+  async execute(command: PlaceOrderCommand): Promise<PlaceOrderResult> {
+    const order = Order.create(command.customerId, command.items);
+    await this.paymentGateway.charge(command.customerId, order.total);
+    await this.orderRepository.save(order);
+    return { orderId: order.id, total: order.total.amount, status: order.status.value };
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Primary adapter (REST controller)">
+        <code lang="typescript"><![CDATA[
+// src/adapters/inbound/rest/OrderController.ts
+import { Request, Response } from 'express';
+import { PlaceOrderPort } from '../../../core/ports/inbound/PlaceOrderPort';
+
+export class OrderController {
+  constructor(private readonly placeOrderPort: PlaceOrderPort) {}
+
+  async placeOrder(req: Request, res: Response): Promise<void> {
+    const result = await this.placeOrderPort.execute({
+      customerId: req.body.customerId,
+      items: req.body.items,
+    });
+    res.status(201).json(result);
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Secondary adapter (Postgres repository)">
+        <code lang="typescript"><![CDATA[
+// src/adapters/outbound/persistence/PostgresOrderRepository.ts
+import { Pool } from 'pg';
+import { OrderRepository } from '../../../core/ports/outbound/OrderRepository';
+import { Order } from '../../../core/domain/Order';
+
+export class PostgresOrderRepository implements OrderRepository {
+  constructor(private readonly pool: Pool) {}
+
+  async save(order: Order): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'INSERT INTO orders (id, customer_id, total, status) VALUES ($1, $2, $3, $4)',
+        [order.id, order.customerId, order.total.amount, order.status.value]
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async findById(id: string): Promise<Order | null> {
+    const result = await this.pool.query('SELECT * FROM orders WHERE id = $1', [id]);
+    if (result.rows.length === 0) return null;
+    return Order.reconstitute(result.rows[0].id, result.rows[0].customer_id, result.rows[0].total, result.rows[0].status);
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Manual DI composition root">
+        <code lang="typescript"><![CDATA[
+// src/config/composition.ts
+import { Pool } from 'pg';
+import { OrderService } from '../core/services/OrderService';
+import { OrderController } from '../adapters/inbound/rest/OrderController';
+import { PostgresOrderRepository } from '../adapters/outbound/persistence/PostgresOrderRepository';
+import { StripePaymentAdapter } from '../adapters/outbound/payment/StripePaymentAdapter';
+
+export function compose(pool: Pool) {
+  const repository = new PostgresOrderRepository(pool);
+  const payment = new StripePaymentAdapter(process.env.STRIPE_KEY!);
+  const service = new OrderService(repository, payment);
+  const controller = new OrderController(service);
+  return { controller };
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="port-types">
+      <p>Port type reference:</p>
+      <list>
+        <item>Primary (Inbound) port — direction: Outside → Core. Defines what the application can do. Examples: CreateUser, PlaceOrder, GetOrderHistory.</item>
+        <item>Secondary (Outbound) port — direction: Core → Outside. Defines what the application needs. Examples: UserRepository, EmailSender, PaymentGateway.</item>
+      </list>
+    </section>
+
+    <section name="testing-strategy">
+      <p>Hexagonal Architecture testing approach:</p>
+      <list>
+        <item>Domain — unit tests, zero mocks, direct instantiation.</item>
+        <item>Core Services (inbound port impls) — unit tests, mock ALL outbound ports with test doubles.</item>
+        <item>Primary Adapters — integration tests, mock the core service (inbound port).</item>
+        <item>Secondary Adapters — integration tests against real dependencies (testcontainers, real SMTP sandbox, Stripe test mode).</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Core services MUST be tested with in-memory adapter implementations of all outbound ports, never against real databases or HTTP services. This keeps the core test suite fast (&lt;1s) and environment-independent.</statement>
+        <rationale>If core service tests require a database, every developer needs a local DB, CI needs it, and tests become flaky on network timeouts. In-memory adapters eliminate the dependency entirely.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Defining ports too coarsely — one god-interface with 20 methods that covers everything a service needs.</description>
+        <reason>God interfaces are hard to mock, hard to swap, and force all adapter implementations to stub irrelevant methods. Split by use case: one port per operation or per coherent group.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Defining ports too finely — one interface per method, 50 interfaces for 50 operations.</description>
+        <reason>Death by a thousand mocks. Compose related operations into meaningful port groups; use role-based naming (OrderRepository, not SaveOrderPort).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Core service constructor directly instantiating adapters (new PostgresOrderRepository()).</description>
+        <reason>This bypasses the port abstraction entirely. The core must receive all dependencies via constructor injection so the DI root can supply in-memory or real adapters.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Putting business logic in a primary adapter (e.g., pricing calculation in the REST controller).</description>
+        <reason>Primary adapters are translation layers only. They convert HTTP/CLI/gRPC input into a port command and return the result. All logic belongs in the core service or domain.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>All inbound ports are defined in core/ports/inbound/, not in adapters.</check>
+      <check>All outbound ports are defined in core/ports/outbound/, not in infrastructure.</check>
+      <check>Core services depend only on port interfaces, never on adapter classes.</check>
+      <check>Every primary adapter takes a port interface in its constructor (not a concrete service).</check>
+      <check>Every secondary adapter implements exactly one outbound port interface.</check>
+      <check>Core service tests use in-memory adapters; no real DB or HTTP in unit tests.</check>
+      <check>Adding a new input channel (gRPC, WebSocket) requires creating only a new primary adapter.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://alistair.cockburn.us/hexagonal-architecture/"/>
+      <link href="https://github.com/Sairyss/domain-driven-hexagon"/>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-ddd"/>
+    </see-also>
+  </content>
+</methodology>
