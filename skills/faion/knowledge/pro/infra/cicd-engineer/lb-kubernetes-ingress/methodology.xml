@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-kubernetes-ingress">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Deploy Kubernetes Ingress controllers (Nginx, HAProxy, Gateway API) with TLS via cert-manager, rate limiting, CORS, PodDisruptionBudgets, and anti-affinity for production HA.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>ingress</tag>
+      <tag>load-balancing</tag>
+      <tag>gateway-api</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-nginx-production"/>
+      <ref slug="lb-haproxy-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Ingress Configuration</title>
+
+    <summary>Kubernetes Ingress requires: controller deployment with 3+ replicas, PodDisruptionBudget (minAvailable: 2), pod anti-affinity to prevent co-location, topology spread constraints across AZs, explicit resource requests/limits (TLS and regex are CPU-bound), and per-Ingress annotations for TLS redirect, rate limiting, CORS, body size, and timeouts. Use separate Ingress controllers per traffic class (public/internal/admin).</summary>
+
+    <why>
+      <p>Kubernetes Ingress controllers concentrate all HTTP(S) traffic through a small pod fleet — a single misconfigured controller replica can take down all routes. The Ingress annotation namespace is controller-specific (nginx.ingress.kubernetes.io/* vs haproxy.org/* vs traefik.ingress.kubernetes.io/*) and LLMs frequently mix them. Gateway API (gateway.networking.k8s.io/v1) is the successor to the Ingress API and provides first-class support for traffic splitting, header-based routing, and TLS passthrough without annotations.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying Kubernetes Ingress controller (Nginx-Ingress, Traefik, HAProxy Ingress, Envoy Gateway) and tuning health checks, TLS, and replicas.</item>
+        <item>Migrating legacy Nginx configs to a Gateway API plus Envoy-based stack.</item>
+        <item>Setting up separate Ingress controllers per traffic class (public, internal, admin).</item>
+        <item>Bare-metal K8s clusters where MetalLB provides LoadBalancer Services for the Ingress controller.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Managed cloud clusters where the cloud-native LB (ALB Ingress Controller on EKS, GKE Ingress) integrates better with the cloud network fabric.</item>
+        <item>Service mesh routing between internal services — use Istio VirtualService or Linkerd SMI instead of Ingress.</item>
+        <item>TCP/UDP load balancing — Ingress API only handles HTTP(S); use a LoadBalancer Service or HAProxy at L4.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ingress-controller-deployment">
+      <example type="good" title="Nginx Ingress Controller: 3 replicas, PDB, anti-affinity, topology spread">
+        <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingress-nginx
+    spec:
+      serviceAccountName: ingress-nginx
+      terminationGracePeriodSeconds: 300
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: ingress-nginx
+              topologyKey: kubernetes.io/hostname
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+
+      containers:
+        - name: controller
+          image: registry.k8s.io/ingress-nginx/controller:v1.9.5
+          args:
+            - /nginx-ingress-controller
+            - --publish-service=$(POD_NAMESPACE)/ingress-nginx-controller
+            - --election-id=ingress-controller-leader
+            - --controller-class=k8s.io/ingress-nginx
+            - --ingress-class=nginx
+            - --configmap=$(POD_NAMESPACE)/ingress-nginx-controller
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+]]></code>
+      </example>
+    </section>
+
+    <section name="basic-nginx-ingress">
+      <example type="good" title="Basic Nginx Ingress resource">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-nginx-ingress">
+      <example type="good" title="Production Ingress: TLS, rate limiting, CORS, body size, timeouts">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: production-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # SSL
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+
+    # Request size
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+
+    # Security headers via configuration snippet
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+spec:
+  tls:
+    - hosts:
+        - example.com
+        - api.example.com
+      secretName: example-tls
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-frontend
+                port:
+                  number: 80
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 80
+]]></code>
+      </example>
+    </section>
+
+    <section name="haproxy-ingress">
+      <example type="good" title="HAProxy Ingress with leastconn, rate limiting, health checks">
+        <code lang="yaml"><![CDATA[
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: haproxy-ingress
+  annotations:
+    kubernetes.io/ingress.class: haproxy
+
+    # SSL
+    haproxy.org/ssl-redirect: "true"
+    haproxy.org/ssl-certificate: "default/example-tls"
+
+    # Load balancing
+    haproxy.org/load-balance: "leastconn"
+
+    # Rate limiting
+    haproxy.org/rate-limit-requests: "100"
+    haproxy.org/rate-limit-period: "10s"
+
+    # Timeouts
+    haproxy.org/timeout-connect: "5s"
+    haproxy.org/timeout-server: "60s"
+    haproxy.org/timeout-client: "60s"
+
+    # Health checks
+    haproxy.org/check: "true"
+    haproxy.org/check-http: "/health"
+    haproxy.org/check-interval: "10s"
+spec:
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+]]></code>
+        <note>HAProxy Ingress annotation prefix is haproxy.org/ — never mix with nginx.ingress.kubernetes.io/ annotations.</note>
+      </example>
+    </section>
+
+    <section name="gateway-api">
+      <example type="good" title="Gateway API (modern alternative to Ingress)">
+        <code lang="yaml"><![CDATA[
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: production-gateway
+spec:
+  gatewayClassName: nginx
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: example-tls
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: api-route
+spec:
+  parentRefs:
+    - name: production-gateway
+  hostnames:
+    - "api.example.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - name: api-v1
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v2
+      backendRefs:
+        - name: api-v2
+          port: 80
+]]></code>
+        <note>Gateway API is the successor to the Ingress API. It provides first-class support for traffic splitting, header-based routing, and TLS passthrough without annotation hacks. Use for new clusters.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Ingress controller deployments MUST have minAvailable: 2 in a PodDisruptionBudget and MUST use pod anti-affinity with topologyKey kubernetes.io/hostname to prevent co-location of replicas. Topology spread constraints MUST distribute replicas across availability zones.</statement>
+        <rationale>Without PDB, a node drain during a rolling update can kill all Ingress controller pods simultaneously, dropping all HTTP traffic for the cluster. Without anti-affinity, all replicas may land on one node; a node failure takes down the controller entirely.</rationale>
+      </rule>
+      <rule>
+        <statement>Ingress annotation namespaces MUST match the deployed controller. nginx.ingress.kubernetes.io/* annotations are ONLY valid for Nginx Ingress; haproxy.org/* for HAProxy Ingress; traefik.ingress.kubernetes.io/* for Traefik. Never mix annotation prefixes across controllers.</statement>
+        <rationale>Wrong-namespace annotations are silently ignored by the controller, not rejected. A config that looks correct produces no effect and is very difficult to debug. Always pin the controller name in the ingressClassName field and verify annotations against that controller's documentation.</rationale>
+      </rule>
+      <rule>
+        <statement>Ingress controller pods MUST have explicit resources.requests and resources.limits. TLS termination and regex path matching are CPU-bound operations; under-provisioned controllers saturate CPU silently and cause latency spikes.</statement>
+        <rationale>CPU throttling is a common root cause of Ingress controller latency under moderate traffic. requests.cpu must be set to a non-trivial value (at least 100m per replica) so the scheduler reserves headroom; limits.cpu should be 5-10x the request to allow bursts.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Multiple replicas deployed (3+).</check>
+      <check>PodDisruptionBudget configured (minAvailable: 2).</check>
+      <check>Pod anti-affinity rules set (topologyKey: kubernetes.io/hostname).</check>
+      <check>Topology spread constraints across AZs configured.</check>
+      <check>Resource requests/limits defined on controller pods.</check>
+      <check>Ingress class specified in ingressClassName or annotation.</check>
+      <check>TLS secret created and referenced in spec.tls.</check>
+      <check>force-ssl-redirect annotation set.</check>
+      <check>Rate limiting annotations set (limit-rps, limit-connections).</check>
+      <check>CORS configured if needed (enable-cors annotation).</check>
+      <check>Body size limits set (proxy-body-size annotation).</check>
+      <check>Timeout annotations set (connect, read, send).</check>
+      <check>Backend services exist and healthy.</check>
+      <check>Path types appropriate (Prefix vs Exact vs ImplementationSpecific).</check>
+      <check>Connection draining via terminationGracePeriodSeconds on controller pods.</check>
+    </checklist>
+
+    <section name="modern-alternatives">
+      <p>Modern Ingress alternatives to consider for new clusters:</p>
+      <list>
+        <item>Gateway API (gateway.networking.k8s.io/v1) — successor to Ingress API; first-class traffic splitting, header routing, TLS passthrough without annotation hacks.</item>
+        <item>Traefik — dynamic routing via CRDs, automatic TLS via ACME, dashboard.</item>
+        <item>Envoy Gateway — retries, circuit breaking, HTTP/2, native xDS dynamic config.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.github.io/ingress-nginx/"/>
+      <link href="https://www.haproxy.com/documentation/kubernetes-ingress/overview/"/>
+      <link href="https://gateway-api.sigs.k8s.io/"/>
+      <link href="https://metallb.universe.tf/"/>
+      <link href="https://kubernetes.github.io/ingress-nginx/kubectl-plugin/"/>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-monitoring"/>
+    </see-also>
+  </content>
+</methodology>
