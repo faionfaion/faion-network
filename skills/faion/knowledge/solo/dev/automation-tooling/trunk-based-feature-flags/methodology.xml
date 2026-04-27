@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-feature-flags">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Use feature flags in TBD to hide incomplete features, enable keystone and dark-launch patterns, and manage safe rollouts without long-lived branches.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>feature-flags</tag>
+      <tag>dark-launch</tag>
+      <tag>keystone-interface</tag>
+      <tag>rollout</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trunk-based-dev-principles"/>
+      <ref slug="trunk-based-branch-by-abstraction"/>
+      <ref slug="trunk-based-ci-gates"/>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flags for Trunk-Based Development</title>
+
+    <summary>Deploy incomplete features to production on trunk by hiding them behind flags. Keystone Interface and Dark Launch extend this: build parts incrementally without exposing them, then test with live traffic before enabling users. One flag = one task = one cleanup ticket.</summary>
+
+    <why>
+      <p>Long-lived feature branches exist to keep incomplete code off trunk. Feature flags eliminate that reason: code merges daily, the flag controls exposure. This maintains a continuously releasable trunk while still allowing multi-week feature work. Keystone Interface lets you build parts iteratively (endpoint, backend logic, connection) — only the final "keystone" step enables the feature. Dark Launch tests new implementations under real production traffic before any user sees the result, catching differences in behavior with near-zero risk.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>A feature requires more than one day to implement — wrap each increment behind a flag and merge daily.</item>
+        <item>You want to test new backend logic with production traffic before switching users — use Dark Launch.</item>
+        <item>A feature requires multiple sequential build parts where only the final wire-up exposes the functionality — use Keystone Interface.</item>
+        <item>SDD task lifecycle: flag name matches task ID, cleanup ticket filed at flag creation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Feature flag infrastructure setup — see feature-flags-types-lifecycle and feature-flags-core-implementation for provider choice and evaluation engine.</item>
+        <item>Mobile/desktop release gating where store review is the exposure gate, not a flag.</item>
+        <item>Very small features completable in a single commit — adding flag overhead exceeds the benefit.</item>
+        <item>Codebases with no automated tests — a broken flag state produces silent production failures with no safety net.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="feature-flag-pattern">
+      <p>A feature flag gates new code at the call site. The flag provider evaluates context (user ID, percentage, env) and returns a boolean. The implementation does NOT import conditionals from the flag provider into business logic — the flag check lives at the boundary (route handler, service factory, middleware).</p>
+
+      <rule>
+        <statement>Every feature flag MUST have a corresponding cleanup ticket filed at flag creation time. Flag names MUST follow the pattern area.verb_thing (e.g. billing.use_stripe_v2). Boolean negatives (disable_x) are forbidden because they invert mid-rollout and confuse agents.</statement>
+        <rationale>Flags without cleanup tickets accumulate to dozens within weeks. Boolean negatives become impossible to reason about when toggled at 50% rollout. Naming discipline keeps flag state readable in dashboards and diffs.</rationale>
+      </rule>
+
+      <example type="good" title="Feature flag at the boundary">
+        <code lang="python"><![CDATA[
+from feature_flags import is_enabled
+
+def get_user_profile(user_id: str):
+    profile = fetch_profile(user_id)
+
+    # New feature behind flag — check at boundary, not inside business logic
+    if is_enabled("profile.show_activity_feed", user_id):
+        profile["activity"] = fetch_activity(user_id)
+
+    return profile
+
+# Feature flag service (thin wrapper around provider)
+class FeatureFlags:
+    def __init__(self, provider: FlagProvider):
+        self.provider = provider
+
+    def is_enabled(self, flag: str, user_id: str = None) -> bool:
+        """
+        Check if feature is enabled.
+        Supports:
+        - Global on/off
+        - Percentage rollout
+        - User-specific targeting
+        """
+        return self.provider.evaluate(flag, {"user_id": user_id})
+]]></code>
+        <note>Flag check is at the API layer, not buried inside fetch_activity. Business logic stays clean.</note>
+      </example>
+
+      <antipattern>
+        <description>Hard-coding is_enabled(..., default=True) during local development and shipping it to CI without reverting.</description>
+        <reason>The flag is effectively dead — gate via env (FLAGS_DEFAULT=off in CI) and grep for literal is_enabled(... True) in code review. Agents forget to revert defaults frequently.</reason>
+      </antipattern>
+    </section>
+
+    <section name="keystone-interface-pattern">
+      <p>Keystone Interface builds a complete feature in discrete parts — each part merges to trunk independently without triggering visible behaviour. The "keystone" is the final step that connects the parts. Until the keystone is placed, nothing is exposed; after, the flag gates the keystone itself.</p>
+
+      <rule>
+        <statement>Each increment of a Keystone Interface feature MUST be independently mergeable and produce no visible change. The keystone (wire-up) step MUST be behind a feature flag. The flag MUST be removed once rollout reaches 100% and stability is confirmed.</statement>
+        <rationale>Keeping each increment independent prevents the "partial state" problem where a half-built feature is live. The flag on the keystone gives a hard on/off lever during stabilisation.</rationale>
+      </rule>
+
+      <example type="good" title="Keystone Interface — four increments">
+        <code lang="python"><![CDATA[
+# Part 1: Add endpoint (returns 404 — no behaviour yet)
+@app.get("/api/v2/users/{user_id}/activity")
+async def get_activity(user_id: str):
+    raise HTTPException(status_code=404, detail="Coming soon")
+
+# Part 2: Add backend logic (not reachable yet)
+class ActivityService:
+    def get_recent_activity(self, user_id: str):
+        return self.repo.get_activity(user_id, limit=50)
+
+# Part 3: Connect via flag (the keystone)
+@app.get("/api/v2/users/{user_id}/activity")
+async def get_activity(user_id: str):
+    if not feature_flags.is_enabled("activity.v2_api"):
+        raise HTTPException(status_code=404)
+    return activity_service.get_recent_activity(user_id)
+
+# Part 4: Enable flag, monitor, remove flag and dead 404 branch
+]]></code>
+        <note>Parts 1 and 2 can merge on the same day. Part 3 is the keystone — one small commit. Part 4 is the cleanup ticket.</note>
+      </example>
+    </section>
+
+    <section name="dark-launch-pattern">
+      <p>Dark Launch runs a new implementation in parallel with the current one, using real production traffic. Results are compared and discrepancies logged, but the old result is always returned. This validates correctness and performance under real load before any exposure.</p>
+
+      <rule>
+        <statement>Dark launch comparison MUST be wrapped in try/except to prevent the shadow call from surfacing into the production path. Run at less than 1% traffic for at least one full diurnal cycle before scaling. The comparison logic MUST handle non-deterministic outputs (floats, list order) with a tolerant diff, not strict equality.</statement>
+        <rationale>Dark launch code re-raises in production paths without a try/except. Strict equality comparisons fail on floats and sorted lists, producing false positives that obscure real divergence. One diurnal cycle catches time-dependent bugs (timezone, cache expiry, batch jobs).</rationale>
+      </rule>
+
+      <example type="good" title="Dark launch with safe comparison">
+        <code lang="python"><![CDATA[
+async def process_order(order: Order):
+    # Current implementation — result always returned
+    result = await current_processor.process(order)
+
+    # Dark launch: run new implementation in parallel
+    if feature_flags.is_enabled("billing.dark_launch_new_processor"):
+        try:
+            new_result = await new_processor.process(order)
+            # Compare results, log differences — never raise
+            if result != new_result:
+                logger.warning(
+                    "dark_launch_mismatch",
+                    old=result,
+                    new=new_result,
+                    order_id=order.id,
+                )
+        except Exception as e:
+            logger.error("dark_launch_error", error=str(e), order_id=order.id)
+
+    # Always return the current result
+    return result
+]]></code>
+        <note>New processor errors are swallowed entirely — the production path is never affected. Mismatches are logged for analysis, not raised.</note>
+      </example>
+
+      <antipattern>
+        <description>Skipping the try/except around the dark-launch call because "the new implementation should not throw".</description>
+        <reason>Any unhandled exception in the shadow path propagates to the caller, breaking the current result. Dark launch must be hermetically isolated from the production path at all costs.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Agents implementing flagged features must track the cleanup lifecycle. Use a tracking artifact (.aidocs/feature-flags.md or equivalent) so flags do not outlive their reason. Human-in-loop checkpoint: any flag flip from less than 50% to 100% on a billing- or auth-critical path must be human-approved.</p>
+
+      <prompt purpose="implement-flagged-increment"><![CDATA[
+Implement payment-rewrite increment 3/5 using feature flags.
+Reference: solo/dev/automation-tooling/trunk-based-feature-flags
+Constraints:
+- add NewStripeProcessor; gate via flag "billing.use_new_processor"
+- DO NOT remove LegacyPaymentProcessor yet
+- update CHANGELOG, open SDD subtask "remove flag billing.use_new_processor"
+- branch: feat/billing-stripe-3; squash-merge same day
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>Tooling for flag management and branch hygiene in a TBD workflow:</p>
+      <list>
+        <item>flagsmith-cli / unleash-edge / growthbook — manage flags from the command line; agents can flip flags via API</item>
+        <item>LaunchDarkly ldcli — REST + webhooks, industry default; agents can flip flags programmatically</item>
+        <item>gh — GitHub branch protection and PR lifecycle from CLI</item>
+        <item>git-absorb — auto-fixup commits onto right base, keeps flagged-feature PRs clean</item>
+        <item>gh-stack / git-spice / Graphite CLI — stacked PRs for multi-increment features</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-branch-by-abstraction"/>
+      <ref slug="trunk-based-ci-gates"/>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <link href="https://martinfowler.com/articles/feature-toggles.html"/>
+      <link href="https://martinfowler.com/bliki/DarkLaunching.html"/>
+      <link href="https://trunkbaseddevelopment.com/"/>
+    </see-also>
+  </content>
+</methodology>
