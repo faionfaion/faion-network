@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="web-scraping-pagination">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Handle paginated web content via next-button, infinite-scroll, and load-more patterns. Manage browser memory with page pooling and semaphores for concurrent scrapes.</summary>
+    <tags>
+      <tag>web-scraping</tag>
+      <tag>pagination</tag>
+      <tag>infinite-scroll</tag>
+      <tag>browser-pool</tag>
+      <tag>concurrency</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+      <framework>playwright</framework>
+    </frameworks>
+    <related>
+      <ref slug="web-scraping-element-extraction"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="web-scraping-agentic-workflow"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="playwright-automation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Web Scraping — Pagination and Memory Management</title>
+
+    <summary>Three pagination patterns (next-button, infinite-scroll, load-more) cover virtually all paginated sites. Pair them with a browser pool or semaphore to bound memory when scraping many URLs concurrently.</summary>
+
+    <why>
+      <p>Pagination is the most common source of incomplete scrape datasets. Each pattern has a specific termination condition; missing it produces either premature stops or infinite loops with duplicate rows. Memory leaks from unclosed pages are the second most common production failure in long-running scrapers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scraping a listing page that spans multiple pages via a next/prev button.</item>
+        <item>Extracting all items from a feed or social wall that uses infinite scroll.</item>
+        <item>Handling a "Load More" button that appends items to the same DOM without navigation.</item>
+        <item>Running concurrent scrapes across many URLs where browser memory must be bounded.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-page sites with no pagination — add unnecessary complexity.</item>
+        <item>APIs with offset/cursor parameters — use HTTP pagination, not DOM pagination.</item>
+        <item>When the total item count is small enough to fit in one DOM render — no loop needed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pagination-patterns">
+      <rule testable="true">
+        <statement>For next-button pagination, loop until the next button is absent or disabled. For infinite scroll, break when document.body.scrollHeight stops growing. For load-more buttons, break when the button is absent or not in the viewport. Always deduplicate collected items by index or hash.</statement>
+        <rationale>Each termination condition maps to a different DOM state. Using the wrong check (e.g., "next button exists" when the button is disabled but still in DOM) produces infinite loops. Deduplication guards against the off-by-one overlap in infinite scroll.</rationale>
+      </rule>
+
+      <example type="good" title="Next-button pagination">
+        <code lang="javascript"><![CDATA[
+async function scrapeAllPages(page) {
+  const allData = [];
+
+  while (true) {
+    // Scrape current page
+    const data = await page.$$eval('.item', items =>
+      items.map(item => item.textContent)
+    );
+    allData.push(...data);
+
+    // Check for next button (absent OR disabled)
+    const nextButton = await page.$('a.next:not(.disabled)');
+    if (!nextButton) break;
+
+    // Click and wait for navigation
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle0' }),
+      nextButton.click()
+    ]);
+  }
+
+  return allData;
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Infinite scroll pagination">
+        <code lang="javascript"><![CDATA[
+async function scrapeInfiniteScroll(page) {
+  let previousHeight = 0;
+  const allData = [];
+
+  while (true) {
+    // Scroll to bottom
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+
+    // Wait for new content to render
+    await page.waitForTimeout(2000);
+
+    // Break when no new content loaded
+    const newHeight = await page.evaluate(() => document.body.scrollHeight);
+    if (newHeight === previousHeight) break;
+    previousHeight = newHeight;
+
+    // Extract only new items (slice avoids duplicates)
+    const items = await page.$$eval('.item', els => els.map(e => e.textContent));
+    allData.push(...items.slice(allData.length));
+  }
+
+  return allData;
+}
+]]></code>
+        <note>Always use allData.length as the slice offset — re-extracting all items and slicing prevents duplicate rows even when the DOM re-renders existing items.</note>
+      </example>
+
+      <example type="good" title="Load-more button pagination">
+        <code lang="javascript"><![CDATA[
+async function scrapeLoadMore(page) {
+  while (true) {
+    const loadMoreBtn = await page.$('button.load-more');
+    if (!loadMoreBtn) break;
+
+    const isVisible = await loadMoreBtn.isIntersectingViewport();
+    if (!isVisible) break;
+
+    await loadMoreBtn.click();
+    await page.waitForSelector('.item:nth-child(n+10)'); // wait for new items
+  }
+
+  return await page.$$eval('.item', items => items.map(i => i.textContent));
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Checking only "button exists" without checking disabled state or viewport visibility for next/load-more termination.</description>
+        <reason>Many sites keep the button in the DOM but set it to disabled or visually hidden on the last page; the loop never terminates.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>In infinite scroll, re-collecting all items each iteration without slicing by previous count.</description>
+        <reason>Produces duplicate rows every iteration because already-collected items are still in the DOM.</reason>
+      </antipattern>
+    </section>
+
+    <section name="memory-management">
+      <rule testable="true">
+        <statement>Always close pages in a finally block after use. For concurrent URL lists, use a semaphore or p-limit to cap open pages. Implement a BrowserPool when launching multiple browser instances to avoid unbounded memory growth.</statement>
+        <rationale>Each open Chromium page consumes 50–200 MB of RAM. A 100-URL batch without page management exhausts memory on any standard VPS within minutes.</rationale>
+      </rule>
+
+      <example type="good" title="Semaphore-bounded concurrent scraping">
+        <code lang="javascript"><![CDATA[
+const pLimit = require('p-limit');
+
+async function scrapeWithConcurrency(urls, browser, concurrency = 3) {
+  const limit = pLimit(concurrency);
+
+  const tasks = urls.map(url =>
+    limit(async () => {
+      const page = await browser.newPage();
+      try {
+        await page.goto(url);
+        return await extractData(page);
+      } finally {
+        await page.close();
+      }
+    })
+  );
+
+  return Promise.all(tasks);
+}
+]]></code>
+      </example>
+
+      <example type="good" title="BrowserPool for multi-browser concurrency">
+        <code lang="javascript"><![CDATA[
+class BrowserPool {
+  constructor(size = 5) {
+    this.size = size;
+    this.browsers = [];
+    this.available = [];
+  }
+
+  async initialize() {
+    for (let i = 0; i < this.size; i++) {
+      const browser = await puppeteer.launch({ headless: true });
+      this.browsers.push(browser);
+      this.available.push(browser);
+    }
+  }
+
+  async acquire() {
+    while (this.available.length === 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return this.available.pop();
+  }
+
+  release(browser) {
+    this.available.push(browser);
+  }
+
+  async close() {
+    await Promise.all(this.browsers.map(b => b.close()));
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Leaking pages without close in finally">
+        <code lang="javascript"><![CDATA[
+// BAD: page.close() skipped on error → memory leak
+async function scrapeUrl(browser, url) {
+  const page = await browser.newPage();
+  await page.goto(url);
+  const data = await extractData(page);
+  await page.close(); // never reached if extractData throws
+  return data;
+}
+]]></code>
+        <note>Wrap page.close() in finally so it always runs, even on extraction errors.</note>
+      </example>
+
+      <antipattern>
+        <description>Launching a new browser per URL in a large batch instead of reusing a pool.</description>
+        <reason>Browser launch adds 1–3 seconds of overhead and creates a new Chromium process for each URL; 100 URLs = 100 Chromium processes running simultaneously.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="web-scraping-element-extraction"/>
+      <ref slug="web-scraping-resilience"/>
+      <ref slug="web-scraping-agentic-workflow"/>
+    </see-also>
+  </content>
+</methodology>

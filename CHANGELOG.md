@@ -4,6 +4,7 @@
 
 ### Changed
 - decompose: dev-methodologies-practices → 5 slugs (practices-django-coding, practices-python-ecosystem, practices-js-ts-stack, practices-backend-languages, practices-frontend-components)
+- decompose: web-scraping → 4 slugs (web-scraping-element-extraction, web-scraping-pagination, web-scraping-resilience, web-scraping-agentic-workflow)
 - decompose: feature-flags → 4 slugs (feature-flags-types-lifecycle, feature-flags-core-implementation, feature-flags-rollout-targeting, feature-flags-services-testing)
 - decompose: message-queues → 4 slugs (mq-patterns, mq-broker-implementations, mq-idempotent-consumers, mq-reliability)
 - decompose: ssl-tls-setup → 4 slugs (cicd-tls-renewal-automation, cicd-cert-rotation-pipeline, cicd-tls-validation-gate, cicd-mtls-deployment)
