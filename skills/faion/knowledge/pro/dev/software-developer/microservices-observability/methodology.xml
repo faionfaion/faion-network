@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-observability">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Distributed tracing with traceparent propagation, schema registry for event versioning, boundary lint script, and anti-pattern review prompt for microservice observability and maintainability.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>observability</tag>
+      <tag>distributed-tracing</tag>
+      <tag>schema-registry</tag>
+      <tag>opentelemetry</tag>
+    </tags>
+    <category>observability</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Microservices Observability and Boundary Integrity</title>
+
+    <summary>Distributed tracing is the API for debugging microservices. Every inbound request opens a span; every outbound call propagates traceparent. Schema registry with compatibility checks is non-optional once event payloads become public APIs. A boundary lint script detects sync chains, missing timeouts, and shared-DB imports before they reach production.</summary>
+
+    <why>
+      <p>Without traceparent propagation across HTTP and bus, debugging "where did the order go?" requires manual log spelunking across five services. A trace ID connecting every span in a request lifecycle reduces mean-time-to-diagnose from hours to minutes.</p>
+      <p>Without a schema registry, every event payload is a public API that can break silently. A producer deploys a breaking field rename; the consumer crashes at runtime because the field is missing. Compatibility checks at the registry enforce backward compatibility before merge.</p>
+      <p>Boundary anti-patterns (sync chains deeper than two hops, shared-DB imports, missing idempotency keys) are invisible in code review without automated lint. The boundary lint script makes them visible on every push.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any microservices system in production where "which service caused this error?" is a real question.</item>
+        <item>Systems with more than two services publishing events that other services consume.</item>
+        <item>CI pipelines for any microservices codebase where boundary violations need automated detection.</item>
+        <item>Teams onboarding a new service: tracing and schema registry must be configured before the first production deploy.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-service monoliths — standard logging and APM are sufficient; distributed tracing adds complexity without value.</item>
+        <item>Prototypes and throwaway experiments where operational overhead exceeds value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="distributed-tracing">
+      <rule testable="true">
+        <statement>Every inbound HTTP request MUST open a trace span and every outbound HTTP call or message bus publish MUST propagate the traceparent header. A service that does not propagate traceparent breaks the trace for all downstream services.</statement>
+        <rationale>Without end-to-end trace propagation, a distributed trace is a collection of disconnected local traces. The value of distributed tracing is the cross-service correlation, which requires every service to propagate the context.</rationale>
+      </rule>
+
+      <list>
+        <item>Use OpenTelemetry SDK for instrumentation — vendor-neutral, ships to Datadog, Honeycomb, Grafana Tempo, Jaeger, or any OTLP backend without code changes.</item>
+        <item>Provide a single shared tracing helper library. Every service imports it. Do not let each service implement its own span creation — instrumentation drift makes traces inconsistent.</item>
+        <item>Include the trace ID in every log line at ERROR and WARN level so logs and traces can be correlated without a full APM query.</item>
+        <item>Set span attributes for the service name, environment, and the target service name on every outbound call span.</item>
+      </list>
+    </section>
+
+    <section name="schema-registry">
+      <rule testable="true">
+        <statement>Every event class MUST be registered in a schema registry (Apicurio, Confluent Schema Registry, Buf Schema Registry) and compatibility checks MUST be enforced as a CI gate before any producer is deployed.</statement>
+        <rationale>Event payloads are public APIs once consumed by another service. A breaking change (field rename, type change, required field added) crashes consumers silently at runtime. The registry's compatibility check is the only automated gate that catches this before production.</rationale>
+      </rule>
+
+      <list>
+        <item>Schema evolution policy: BACKWARD compatibility by default (new optional fields only). Announce deprecations N-1 release in advance with a migration window of at least 90 days.</item>
+        <item>Use buf for Protobuf schemas — it enforces breaking-change detection on every PR.</item>
+        <item>Use spectral for OpenAPI and AsyncAPI schemas — lint for missing operationId, required response codes, and schema completeness.</item>
+        <item>Publish the event catalogue as a Backstage TechDocs page or equivalent so teams can see what events exist without reading source code.</item>
+      </list>
+    </section>
+
+    <section name="boundary-lint">
+      <p>The following script detects the most common microservices anti-patterns in a Python services codebase. Run it in CI on every PR that touches service code.</p>
+
+      <example type="good" title="Boundary anti-pattern lint script">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# microservices-lint.sh — boundary anti-pattern scan
+set -euo pipefail
+root="${1:?usage: microservices-lint.sh SERVICES_DIR}"
+fail=0
+echo "## Sync HTTP chain depth (must be <= 2 within a request handler)"
+grep -rEn 'await self\._client\.|httpx\.|http\.Client' "$root" -A 2 \
+  | awk -F: '{print $1}' | sort -u \
+  | while read -r f; do
+      n=$(grep -cE 'await .+_client\.|httpx\.' "$f" || true)
+      [[ "$n" -ge 3 ]] && { echo "deep chain: $f ($n)"; fail=1; }
+  done
+echo "## Outbound calls without timeout"
+grep -rEn 'AsyncClient\(' "$root" | grep -vE 'timeout=' && fail=1 || true
+echo "## Events without schema_version"
+grep -rEn 'class .*Event' "$root" -A 8 \
+  | awk '/class .*Event/{n=$0; ok=0} /schema_version/{ok=1} /^--/ {if(!ok)print n; ok=0}' \
+  | tee /tmp/ms.evt && [[ -s /tmp/ms.evt ]] && fail=1 || true
+echo "## Commands without idempotency_key"
+grep -rEn 'class .*Command' "$root" -A 8 \
+  | awk '/class .*Command/{n=$0; ok=0} /idempotency_key|command_id/{ok=1} /^--/ {if(!ok)print n; ok=0}' \
+  | tee /tmp/ms.cmd && [[ -s /tmp/ms.cmd ]] && fail=1 || true
+echo "## Cross-service shared DB imports"
+grep -rEn 'from services\.[a-z_]+\.infrastructure\.database' "$root" \
+  | grep -vE 'self_service' && fail=1 || true
+exit "$fail"
+]]></code>
+        <note>Run as: bash microservices-lint.sh services/ — exits non-zero on any violation so CI fails.</note>
+      </example>
+    </section>
+
+    <section name="anti-pattern-review-prompt">
+      <prompt purpose="anti-pattern-review"><![CDATA[
+You are reviewing a microservices PR. Flag:
+(1) HTTP client call inside a request handler without circuit
+    breaker / timeout,
+(2) shared-DB import across service module boundaries,
+(3) event class without schema_version + occurred_at,
+(4) command without idempotency_key,
+(5) saga without compensation paths for every step,
+(6) missing traceparent propagation on outbound HTTP / bus message,
+(7) JWT validation logic copy-pasted vs. shared lib.
+Cite file:line. No fixes — only flags.
+]]></prompt>
+    </section>
+
+    <section name="services-and-tools">
+      <list>
+        <item>kind / k3d / minikube — local Kubernetes for service-mesh testing. https://kind.sigs.k8s.io</item>
+        <item>kubectl + helm — cluster and chart management. https://helm.sh</item>
+        <item>istioctl / linkerd — service mesh install and diagnostics. https://istio.io / https://linkerd.io</item>
+        <item>temporal CLI — workflow definitions and replays for sagas. https://temporal.io</item>
+        <item>tilt / skaffold / mirrord — inner dev loop against a real cluster. https://tilt.dev / https://mirrord.dev</item>
+        <item>chaos-mesh / litmus — failure injection (network, pod kill, latency). https://chaos-mesh.org</item>
+        <item>k6 / vegeta — load testing per-service. https://k6.io</item>
+        <item>OpenTelemetry Collector — vendor-neutral telemetry pipeline; configure once, ship anywhere.</item>
+        <item>Datadog / Honeycomb / Grafana Tempo + Loki + Mimir — traces, logs, metrics at scale.</item>
+        <item>Backstage — service catalog and golden paths; agents read TechDocs to learn boundaries.</item>
+        <item>Hashicorp Vault — service auth and dynamic DB credentials.</item>
+      </list>
+    </section>
+
+    <section name="services-table">
+      <list>
+        <item>Kubernetes (EKS/GKE/AKS) — default substrate; agents drive via kubectl and Helm.</item>
+        <item>Istio / Linkerd — mTLS, traffic shifting, retries at mesh; reduces in-app boilerplate.</item>
+        <item>Apache Kafka / Confluent / Redpanda — event backbone and schema registry.</item>
+        <item>NATS JetStream — lightweight bus alternative; ergonomic for small fleets.</item>
+        <item>RabbitMQ — mature broker; quorum queues for HA.</item>
+        <item>AWS SQS + SNS + EventBridge — managed event plumbing without ops overhead.</item>
+        <item>Temporal / Cadence — owns saga and orchestration; commands stay thin.</item>
+        <item>Apicurio / Confluent Schema Registry / Buf Schema Registry — compatibility checks on every publish.</item>
+        <item>Dapr — sidecar abstracts pubsub, state, and secret store; cuts boilerplate.</item>
+        <item>AWS App Mesh / Cloud Map — native AWS alternative to Istio and Consul.</item>
+      </list>
+    </section>
+
+    <section name="references">
+      <list>
+        <item>Newman, S. "Building Microservices," 2nd ed. O'Reilly, 2021.</item>
+        <item>Richardson, C. "Microservices Patterns." Manning, 2018. https://microservices.io/patterns/</item>
+        <item>Fowler, M. "Microservices." https://martinfowler.com/articles/microservices.html</item>
+        <item>12-Factor App. https://12factor.net</item>
+        <item>Burns, B. "Designing Distributed Systems." O'Reilly.</item>
+        <item>Kleppmann, M. "Designing Data-Intensive Applications." Chapters on replication, partitioning, transactions.</item>
+        <item>Vernon, V. "Implementing Domain-Driven Design" — bounded contexts.</item>
+        <item>Confluent — Outbox and event sourcing patterns. https://www.confluent.io/learn-more/outbox-pattern/</item>
+        <item>AsyncAPI spec. https://www.asyncapi.com</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+      <link href="https://opentelemetry.io/"/>
+      <link href="https://microservices.io/patterns/"/>
+    </see-also>
+  </content>
+</methodology>
