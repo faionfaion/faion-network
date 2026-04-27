@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-technology-selection">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Decide between HAProxy, Nginx, cloud LBs, and Kubernetes Ingress controllers using a structured decision matrix for production workloads.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>haproxy</tag>
+      <tag>nginx</tag>
+      <tag>kubernetes</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-nginx-production"/>
+      <ref slug="lb-kubernetes-ingress"/>
+      <ref slug="lb-cloud-terraform"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer Technology Selection</title>
+
+    <summary>Choose the right load balancer for production using a decision matrix covering HAProxy, Nginx, AWS/GCP/Azure managed LBs, and Kubernetes Ingress controllers. Selection criteria: traffic type (L4/L7), environment (bare-metal/cloud/K8s), concurrency, and operational complexity.</summary>
+
+    <why>
+      <p>Picking the wrong LB forces a costly migration. HAProxy and Nginx have fundamentally different strengths — TCP performance vs. web server versatility — and cloud managed LBs trade configuration flexibility for operational simplicity. Kubernetes environments add another axis: Nginx Ingress vs. HAProxy Ingress vs. Gateway API. Getting this right upfront avoids rewrites when traffic grows or requirements change.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new service fleet and selecting the LB stack from scratch.</item>
+        <item>Migrating from a single-instance setup to a multi-backend load-balanced architecture.</item>
+        <item>Evaluating whether to use a managed cloud LB or a self-hosted solution.</item>
+        <item>Choosing a Kubernetes Ingress controller for a new cluster.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal service-to-service mesh routing — use a service mesh (Linkerd, Istio, Cilium) instead; LB selection does not apply.</item>
+        <item>Static-site CDN — CloudFront, Cloudflare, or Fastly serve this role; no LB configuration needed.</item>
+        <item>Single-instance dev workloads — nginx -t and docker run -p are sufficient.</item>
+        <item>Database load balancing (PgBouncer, ProxySQL, Vitess) — generic LB rules do not fit; use database-specific patterns.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decision-matrix">
+      <p>Use this matrix to route each scenario to the best solution before touching any configuration:</p>
+      <list>
+        <item>Raw TCP performance, high concurrency → HAProxy</item>
+        <item>Web server + reverse proxy combo → Nginx</item>
+        <item>Kubernetes simple HTTP routing → Nginx Ingress</item>
+        <item>Kubernetes advanced L4/L7 → HAProxy Ingress</item>
+        <item>AWS managed, auto-scaling → ALB/NLB</item>
+        <item>Multi-cloud, future-proof → Gateway API</item>
+      </list>
+    </section>
+
+    <section name="haproxy-selection">
+      <p>Choose HAProxy when the workload demands raw connection throughput and fine-grained control:</p>
+      <list>
+        <item>TCP-heavy environments — 10-15% better raw connection handling than Nginx.</item>
+        <item>High concurrency needs — superior under extreme loads.</item>
+        <item>Fine-grained connection control — advanced retries, circuit breaking.</item>
+        <item>Native HTTP/3 and gRPC support required.</item>
+        <item>Microservices/IoT — rapid connection establishment patterns.</item>
+        <item>Bare metal/self-hosted — maximum performance control.</item>
+      </list>
+    </section>
+
+    <section name="nginx-selection">
+      <p>Choose Nginx when the LB must also serve static content or act as a web server:</p>
+      <list>
+        <item>Web server + LB combo — versatile out-of-box.</item>
+        <item>Static content caching — built-in cache layer.</item>
+        <item>Simpler configuration — easier for basic setups.</item>
+        <item>WebSocket proxying — native support.</item>
+        <item>Path-based routing — clean HTTP routing rules.</item>
+      </list>
+    </section>
+
+    <section name="combined-ha-pattern">
+      <p>For bare-metal and on-premise Kubernetes clusters, combine both: HAProxy as TCP load balancer in front of Ingress-NGINX pods. This gives L4 performance at the edge and L7 routing flexibility inside the cluster.</p>
+      <example type="good" title="HAProxy + Nginx Ingress combined HA architecture">
+        <code lang="text"><![CDATA[
+HAProxy (L4 TCP LB)
+    |
+    +-- Nginx Ingress Pod 1 (Node A)
+    +-- Nginx Ingress Pod 2 (Node B)
+    +-- Nginx Ingress Pod 3 (Node C)
+            |
+            +-- Backend Services
+]]></code>
+        <note>Use HAProxy as TCP load balancer in front of Ingress-NGINX for bare-metal and on-premise Kubernetes clusters.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive LB work through IaC and config templates, not direct edits to running boxes. Workflow: agent renders config from a structured input (backends, paths, TLS source, rate limits), validates with nginx -t / haproxy -c -f / ingress-nginx-validate, runs a synthetic health-check matrix in a staging environment, opens a PR. Cluster-side: prefer Ingress controller plus Gateway API CRDs over hand-edited configs. Never kubectl edit ingress from the agent — only via Git.</p>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Recommended model per task type:</p>
+      <list>
+        <item>Set up GitHub Actions workflow from template — haiku (pattern application, simple configuration).</item>
+        <item>Design CI/CD pipeline architecture — opus (complex system design with many variables).</item>
+        <item>Write terraform code for infrastructure — sonnet (implementation with moderate complexity).</item>
+        <item>Debug failing pipeline step — sonnet (debugging and problem-solving).</item>
+        <item>Implement AIOps anomaly detection — opus (novel ML approach, complex decision).</item>
+        <item>Configure webhook and secret management — haiku (mechanical setup using checklists).</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Validation and operations tools for each LB type:</p>
+      <list>
+        <item>haproxy -c -f — validate HAProxy config (https://www.haproxy.org/)</item>
+        <item>nginx -t / nginx -T — validate NGINX, dump effective config (https://nginx.org/en/docs/)</item>
+        <item>kubectl ingress-nginx plugin — diagnose NGINX Ingress (https://kubernetes.github.io/ingress-nginx/kubectl-plugin/)</item>
+        <item>traefikctl (traefik binary) — Traefik validation/info (https://doc.traefik.io/traefik/)</item>
+        <item>envoy --mode validate — validate Envoy config (https://www.envoyproxy.io/docs/)</item>
+        <item>awscli elbv2 / gcloud compute backend-services — cloud LB ops</item>
+        <item>mkcert / cfssl — local certs for testing (https://github.com/FiloSottile/mkcert)</item>
+        <item>vegeta / wrk2 / oha — load testing through the LB (https://github.com/tsenart/vegeta)</item>
+        <item>httpx (ProjectDiscovery) — probing TLS, headers, redirects (https://github.com/projectdiscovery/httpx)</item>
+        <item>testssl.sh — TLS endpoint hardening test (https://testssl.sh/)</item>
+        <item>keepalived / ucarp — VIP failover for active/passive HA (https://www.keepalived.org/)</item>
+      </list>
+    </section>
+
+    <section name="services-catalog">
+      <p>LB services and agent-friendliness reference:</p>
+      <list>
+        <item>HAProxy / HAProxy Enterprise — OSS/SaaS, agent-friendly via Data Plane API plus Runtime API; best raw L4 perf, dataplaneapi for dynamic config.</item>
+        <item>NGINX / NGINX Plus — OSS/SaaS, agent-friendly via Plus REST API; reverse proxy + L7, cache built-in.</item>
+        <item>Envoy / Envoy Gateway — OSS, agent-friendly via xDS API; dynamic config, native to mesh.</item>
+        <item>Traefik — OSS, agent-friendly via file/CRD providers; auto TLS via ACME, dynamic.</item>
+        <item>Caddy — OSS, agent-friendly via JSON API; easiest TLS automation.</item>
+        <item>AWS ALB / NLB / GLB — SaaS, agent-friendly via Terraform/CDK; ALB L7, NLB L4, GLB for appliances.</item>
+        <item>GCP Cloud Load Balancing — SaaS, agent-friendly; global anycast L7, regional L4.</item>
+        <item>Azure Front Door / App Gateway — SaaS, agent-friendly; Front Door global, App Gateway regional.</item>
+        <item>Cloudflare LB / Spectrum — SaaS, agent-friendly via API; global, integrated WAF.</item>
+        <item>MetalLB — OSS, agent-friendly via CRDs; bare-metal K8s LoadBalancer Service.</item>
+        <item>Kong / Tyk / APISIX — OSS/SaaS, agent-friendly via admin API; combined gateway plus LB.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common LLM mistakes when selecting and configuring load balancers:</p>
+      <list>
+        <item>LLMs suggest worker_connections 100000 blindly — verify against ulimit -n and kernel nofile first.</item>
+        <item>HAProxy balance algorithm choice — agents pick source for stickiness but conflate that with proper session affinity; clarify intent.</item>
+        <item>NGINX location ordering — agents emit overlapping prefixes; require disjoint or use = / ^~ modifiers.</item>
+        <item>Ingress annotation drift — nginx.ingress.kubernetes.io/... vs traefik.ingress.kubernetes.io/...; LLMs mix them. Pin the controller in the prompt.</item>
+        <item>TLS cipher copy-paste — 2018 cipher lists still circulate; force the Mozilla SSL Configurator output for current year/profile.</item>
+        <item>Health endpoint in app — agents wire /healthz but the app returns 200 even when DB is down; push for deep health checks via dependency probe.</item>
+        <item>HTTP/2 + sticky cookie — NGINX has subtle interactions; verify with curl --http2 -v.</item>
+        <item>WAF rules generated by LLM frequently false-positive on legit traffic; deploy in DetectionOnly first.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Never replace a managed cloud LB with a self-hosted solution just to save money before you have outgrown it. Operational overhead (HA setup, patching, certificate renewal, failover testing) routinely exceeds cloud LB costs at small scale.</statement>
+        <rationale>Self-hosted LBs require keepalived or UCARP for VIP failover, manual cert renewal, and active monitoring — all of which are included in managed services. The break-even point is typically 100k+ req/s or strict compliance requirements.</rationale>
+      </rule>
+      <rule>
+        <statement>Sticky sessions on stateless services MUST be flagged as an architectural smell before implementing them. Sticky sessions break autoscaling.</statement>
+        <rationale>Agents implementing sticky sessions on stateless services usually mask a real architectural issue (missing shared session store, missing distributed cache). Fix the root cause first.</rationale>
+      </rule>
+    </rules>
+
+    <see-also>
+      <link href="https://www.haproxy.com/documentation/"/>
+      <link href="https://www.nginx.com/blog/tuning-nginx/"/>
+      <link href="https://last9.io/blog/haproxy-vs-nginx-performance/"/>
+      <link href="https://www.xurrent.com/blog/top-load-balancers"/>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-nginx-production"/>
+      <ref slug="lb-kubernetes-ingress"/>
+      <ref slug="lb-cloud-terraform"/>
+    </see-also>
+  </content>
+</methodology>
