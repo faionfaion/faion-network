@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-governance">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>FinOps OPERATE phase: automated policies and guardrails, budget management with tiered alerts, dev/test automation, and CI/CD cost gates via Infracost for continuous governance.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>governance</tag>
+      <tag>budget-management</tag>
+      <tag>automation</tag>
+      <tag>cicd-cost-gates</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-cost-visibility"/>
+      <ref slug="finops-cloud-cost-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>FinOps Governance: Policies, Budgets, and CI/CD Cost Gates</title>
+
+    <summary>The OPERATE phase makes cost efficiency self-sustaining through automated policies, budget alerts at multiple thresholds, scheduled dev/test automation, and cost gates embedded in CI/CD pipelines. It converts one-time optimization into continuous governance so new workloads do not erode savings.</summary>
+
+    <why>
+      <p>One-time optimization degrades within weeks as teams ship new workloads. Without governance automation, the same idle resources, overprovisioned instances, and missing tags reappear each sprint cycle. Governance makes cost hygiene structural — engineers get cost signals at the point of decision (in PRs, not in next month's invoice).</p>
+      <p>Cost gates in CI/CD (via Infracost or equivalent) surface the monthly cost impact of infrastructure changes before they merge. This shifts cost accountability from a retrospective finance review to a proactive engineering decision.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>INFORM phase complete — visibility and tagging are established.</item>
+        <item>Teams deploying infrastructure via IaC (Terraform, CloudFormation, Pulumi) — cost gates are implementable.</item>
+        <item>Dev/test environments running overnight and on weekends, generating avoidable spend.</item>
+        <item>Budget overruns discovered only on monthly invoice — need proactive alerts.</item>
+        <item>Engineering teams making architecture decisions without cost signal.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>INFORM phase incomplete — governance without visibility enforces the wrong things.</item>
+        <item>Flat-fee infrastructure — no elastic costs to gate or automate.</item>
+        <item>Strictly regulated environments where automated shutdown/modification requires change-control approval.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="policies-and-guardrails">
+      <rule>
+        <statement>Define approved instance types and sizes per environment tier; set per-team and per-project spending limits; implement approval workflows requiring human sign-off for any resource with estimated monthly cost above $X (calibrate X to org size — typically $500-$2000 for dev, $5000+ for prod).</statement>
+        <rationale>Without spending guardrails, a single misconfigured GPU instance or forgotten NAT gateway can double a team's monthly bill. Approval workflows create the human checkpoint for high-impact decisions without blocking low-risk changes.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Implement a dev/test auto-shutdown policy: stop (do not terminate) all resources tagged environment=dev or environment=staging on a weekday schedule (stop at 7 PM, start at 8 AM local team timezone). Include timezone awareness — a UTC 18:00 shutdown hits an APAC team's morning. Tag exemptions (do-not-shutdown=true) for long-running jobs.</statement>
+        <rationale>Dev/test environments typically run 16 hours per day unnecessarily. Auto-shutdown at 7 PM weekdays and all weekend reduces dev/test compute costs by 60-70% for globally-distributed teams — the single highest-ROI FinOps automation.</rationale>
+      </rule>
+
+      <example type="good" title="GitHub Actions dev environment scheduler">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/dev-scheduler.yml
+name: Dev Environment Scheduler
+
+on:
+  schedule:
+    - cron: '0 19 * * 1-5'   # Stop at 7 PM weekdays UTC
+    - cron: '0 8 * * 1-5'    # Start at 8 AM weekdays UTC
+
+jobs:
+  manage-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Stop/Start Dev Instances
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 19 * * 1-5" ]; then
+            aws ec2 stop-instances --instance-ids \
+              $(aws ec2 describe-instances \
+                --filters "Name=tag:environment,Values=dev" \
+                         "Name=tag:do-not-shutdown,Values=false" \
+                --query 'Reservations[].Instances[].InstanceId' \
+                --output text)
+          else
+            aws ec2 start-instances --instance-ids \
+              $(aws ec2 describe-instances \
+                --filters "Name=tag:environment,Values=dev" \
+                --query 'Reservations[].Instances[].InstanceId' \
+                --output text)
+          fi
+]]></code>
+        <note>Add timezone awareness: offset the cron schedule by team location or add a per-region schedule.</note>
+      </example>
+    </section>
+
+    <section name="budget-management">
+      <rule>
+        <statement>Set budgets at account and project level with tiered alerts: 50% forecast, 75% forecast, 90% actual, 100% actual. Route alerts to both Slack and email. Use forecasted alerts at lower thresholds (50%, 75%) to catch trends before actual spend exceeds budget; use actual alerts at higher thresholds (90%, 100%) for emergency response.</statement>
+        <rationale>Email-only budget alerts are seen too late. Slack channels with on-call routing ensure the right engineer sees the alert within minutes. Forecast alerts at 50%/75% give 1-2 weeks of lead time to course-correct before overspend materializes.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Budget with SNS Alert via Terraform">
+        <code lang="hcl"><![CDATA[
+resource "aws_budgets_budget" "monthly_cost" {
+  name         = "monthly-total-cost"
+  budget_type  = "COST"
+  limit_amount = "10000"
+  limit_unit   = "USD"
+  time_unit    = "MONTHLY"
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 80
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "FORECASTED"
+    subscriber_email_addresses = ["finops@company.com"]
+  }
+
+  notification {
+    comparison_operator        = "GREATER_THAN"
+    threshold                  = 100
+    threshold_type             = "PERCENTAGE"
+    notification_type          = "ACTUAL"
+    subscriber_email_addresses = ["finops@company.com", "cto@company.com"]
+  }
+
+  cost_filter {
+    name   = "TagKeyValue"
+    values = ["user:environment$prod"]
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="GCP Budget Alert via Terraform">
+        <code lang="hcl"><![CDATA[
+resource "google_billing_budget" "monthly_budget" {
+  billing_account = "000000-AAAAAA-BBBBBB"
+  display_name    = "Monthly Production Budget"
+
+  budget_filter {
+    projects = ["projects/${var.project_id}"]
+    labels = {
+      environment = "prod"
+    }
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = "10000"
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+    spend_basis       = "FORECASTED_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 0.9
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = [
+      google_monitoring_notification_channel.finops.id
+    ]
+    pubsub_topic = google_pubsub_topic.budget_alerts.id
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="cicd-cost-gates">
+      <rule>
+        <statement>Integrate Infracost (or equivalent) into every IaC pull request. Block PRs that increase monthly cost above a configured threshold (typically 10-20% of current baseline) without explicit FinOps team justification in the PR description. Display the cost diff as a PR comment so reviewers see it without navigating to a dashboard.</statement>
+        <rationale>Cost signals at PR review time cost nothing to act on. Cost signals discovered in the monthly invoice require reverse-engineering and potentially rollbacks. The cost gate shifts the decision to the cheapest possible moment.</rationale>
+      </rule>
+
+      <example type="good" title="GitHub Actions Infracost CI integration">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/infracost.yml
+name: Terraform Cost
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+
+jobs:
+  infracost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost JSON
+        run: |
+          infracost breakdown --path=terraform \
+            --format=json \
+            --out-file=/tmp/infracost.json
+
+      - name: Post comment
+        uses: infracost/actions/comment@v1
+        with:
+          path: /tmp/infracost.json
+          behavior: update
+]]></code>
+        <note>Set behavior=update to replace the previous comment on re-runs; prevents comment spam on large PRs.</note>
+      </example>
+    </section>
+
+    <section name="budget-template">
+      <p>Reference budget structure for a $10k/month cloud environment:</p>
+      <note>Adapt allocation percentages to your actual service mix; this is a starting point, not a prescription.</note>
+      <list>
+        <item>Compute (EC2/Lambda/ECS): 40% — $4,000/month</item>
+        <item>Storage (S3/EBS/RDS-storage): 20% — $2,000/month</item>
+        <item>Database (RDS/DynamoDB/ElastiCache): 25% — $2,500/month</item>
+        <item>Network (data transfer/NAT gateway/CDN): 10% — $1,000/month</item>
+        <item>Other: 5% — $500/month</item>
+      </list>
+    </section>
+
+    <section name="implementation-checklist">
+      <checklist>
+        <check>Define approved instance types and sizes per environment tier.</check>
+        <check>Set spending limits per team and project.</check>
+        <check>Implement approval workflows for resources above cost threshold.</check>
+        <check>Create policy for dev/test auto-shutdown with timezone awareness.</check>
+        <check>Establish data retention and snapshot cleanup policies.</check>
+        <check>Define GPU/AI resource approval process.</check>
+        <check>Set budgets at account/project level.</check>
+        <check>Configure budget alerts at 50%, 75%, 90%, 100% (forecast and actual).</check>
+        <check>Enable forecast-based alerts.</check>
+        <check>Route alerts to Slack channel and on-call rotation, not only email.</check>
+        <check>Review budget vs actual monthly.</check>
+        <check>Automate dev/test shutdown schedules.</check>
+        <check>Implement auto-scaling policies.</check>
+        <check>Set up automated rightsizing recommendations.</check>
+        <check>Create IaC templates with mandatory cost tags.</check>
+        <check>Add Infracost or equivalent cost estimation to pull requests.</check>
+        <check>Block deployments exceeding cost thresholds without justification.</check>
+        <check>Include cost metrics in deployment dashboards.</check>
+        <check>Track cost impact of each release.</check>
+        <check>Schedule quarterly commitment review (RI/SP renewal analysis).</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-cost-alert-rules"><![CDATA[
+Generate cost alert rules for:
+
+Environment: [prod/dev/all]
+Provider: [AWS/GCP/Azure]
+Monthly budget: $[amount]
+
+Create alert rules for:
+1. Forecast-based alerts (50%, 75%, 90% of budget)
+2. Actual spend alerts (80%, 100%, 120% of budget)
+3. Anomaly detection (>20% daily increase)
+4. Service-specific alerts for top cost drivers
+
+Output format: [Terraform/CloudFormation/JSON/YAML]
+
+Include:
+- Alert thresholds
+- Notification channels
+- Escalation logic
+- Auto-remediation suggestions
+]]></prompt>
+
+      <prompt purpose="create-scheduled-cleanup-script"><![CDATA[
+Create a script to identify and clean up unused resources:
+
+Provider: [AWS/GCP/Azure]
+Resource types to check:
+- [ ] Unattached volumes
+- [ ] Unused elastic IPs
+- [ ] Old snapshots (>X days)
+- [ ] Stopped instances (>X days)
+- [ ] Unused load balancers
+- [ ] Empty S3 buckets
+
+Requirements:
+- Dry-run mode by default
+- Generate report before deletion
+- Respect tag exemptions (tag: "do-not-delete")
+- Log all actions
+
+Output: [Python/Bash/Go] script with comments.
+]]></prompt>
+
+      <prompt purpose="create-finops-implementation-plan"><![CDATA[
+Create a FinOps implementation plan for an organization with:
+
+- Cloud provider(s): [AWS/GCP/Azure/multi-cloud]
+- Current monthly spend: $[amount]
+- Number of teams: [X]
+- Current maturity: [crawl/walk/run]
+- Main pain points: [list]
+
+Provide a phased 6-month plan covering:
+
+Phase 1 (Month 1-2): INFORM
+- Visibility and tagging strategy
+- Tool selection
+- Baseline metrics
+
+Phase 2 (Month 3-4): OPTIMIZE
+- Quick wins
+- Commitment strategy
+- Rightsizing approach
+
+Phase 3 (Month 5-6): OPERATE
+- Governance policies
+- Automation
+- Cultural change
+
+Include success metrics for each phase.
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://www.infracost.io/"/>
+      <link href="https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html"/>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-cost-visibility"/>
+      <ref slug="finops-cloud-cost-optimization"/>
+    </see-also>
+  </content>
+</methodology>
