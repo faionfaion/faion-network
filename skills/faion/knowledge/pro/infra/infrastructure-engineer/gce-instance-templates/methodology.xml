@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gce-instance-templates">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Design, version, and manage GCE instance templates as the single source of truth for VM configuration in Managed Instance Groups and standalone deployments.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>compute-engine</tag>
+      <tag>instance-templates</tag>
+      <tag>infrastructure-as-code</tag>
+    </tags>
+    <category>compute</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gce-managed-instance-groups"/>
+      <ref slug="gce-spot-vms"/>
+      <ref slug="gcp-terraform-templates"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCE Instance Templates</title>
+
+    <summary>Instance templates are immutable, reusable VM configurations that define machine type, boot disk image, network settings, service account, labels, and startup/shutdown scripts. Every Managed Instance Group (MIG) requires an instance template; standalone VMs benefit from templates for consistency. Always version templates by name and use image families, not specific image versions, to get automatic security patches.</summary>
+
+    <why>
+      <p>Manual VM creation produces configuration drift: machines diverge over time, rollbacks are impossible, and autoscaling cannot produce identical replicas. Instance templates solve all three problems by encoding the full VM spec as an immutable artifact. New template versions enable zero-downtime rolling updates in MIGs. Image families (e.g. ubuntu-os-cloud/ubuntu-2404-lts) rather than pinned image names mean the template always uses the latest patched image on the next instance creation without any template update.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating a Managed Instance Group — MIGs require an instance template, no exceptions.</item>
+        <item>Deploying multiple VMs with identical configuration in different zones or for autoscaling.</item>
+        <item>Rolling out application version updates across a fleet without downtime (create new template, update MIG).</item>
+        <item>Canary deployments — MIGs support two template versions simultaneously at configurable percentages.</item>
+        <item>Building a custom machine image baked with pre-installed software to reduce startup time from minutes to seconds.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off diagnostic or short-lived VMs — the overhead of template creation exceeds the value; use gcloud directly.</item>
+        <item>VMs with highly individualized configurations that differ per instance — templates require all VMs to start from the same base; per-instance divergence belongs in startup scripts reading instance metadata.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Instance templates MUST use an image family (e.g. ubuntu-os-cloud/ubuntu-2404-lts-amd64) rather than a specific image version. Templates MUST be versioned by name suffix (date or semantic version, e.g. app-template-20260427 or app-template-v2). The lifecycle block MUST contain create_before_destroy = true in Terraform.</statement>
+        <rationale>Image families resolve to the latest patched image at creation time, eliminating the need to update the template for OS security patches. Name versioning enables audit trails and rollback. create_before_destroy prevents Terraform from deleting the in-use template before the replacement is ready, which would break MIG updates.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Instance templates MUST attach a dedicated service account with only the IAM roles required for the workload (principle of least privilege). Templates MUST NOT use the default Compute service account. The scopes field MUST be set to cloud-platform when a dedicated service account is used (IAM roles on the SA govern access, not scopes).</statement>
+        <rationale>The default Compute service account has project editor permissions; any compromised VM becomes a full project compromised. A dedicated SA with minimal roles limits blast radius. The cloud-platform scope defers to SA IAM roles and avoids the confusion of per-API scope lists.</rationale>
+      </rule>
+    </rules>
+
+    <section name="template-design">
+      <p>A well-designed instance template captures the complete, reproducible VM specification. Key fields: machine_type (or machine_type in gcloud), disk with source_image from image family, network_interface pointing to the VPC/subnet, service_account, tags for firewall targeting, labels for cost allocation, and metadata containing startup-script and (for Spot VMs) shutdown-script.</p>
+
+      <p>Template versioning convention: use name_prefix in Terraform (Terraform appends a random suffix and manages the lifecycle) or append a version string in gcloud. Never mutate an existing template — templates are immutable; create a new one and update the MIG.</p>
+
+      <example type="good" title="Terraform instance template with image family and versioned name">
+        <code lang="hcl"><![CDATA[
+resource "google_compute_instance_template" "default" {
+  name_prefix  = "app-template-"
+  machine_type = "e2-medium"
+
+  disk {
+    source_image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+    auto_delete  = true
+    boot         = true
+    disk_size_gb = 50
+    disk_type    = "pd-balanced"
+  }
+
+  network_interface {
+    network    = google_compute_network.vpc.id
+    subnetwork = google_compute_subnetwork.private.id
+  }
+
+  service_account {
+    email  = google_service_account.app_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  tags = ["app-server"]
+
+  labels = {
+    environment = var.environment
+    version     = var.app_version
+  }
+
+  metadata = {
+    startup-script = file("${path.module}/scripts/startup.sh")
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Pinned image version, no lifecycle, default service account">
+        <code lang="hcl"><![CDATA[
+# BAD: pinned image, no service_account, no lifecycle
+resource "google_compute_instance_template" "bad" {
+  name         = "app-template"  # immutable name blocks updates
+  machine_type = "e2-medium"
+
+  disk {
+    source_image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64-20240115"  # pinned
+    auto_delete  = true
+    boot         = true
+  }
+
+  network_interface {
+    network = "default"
+  }
+  # no service_account → uses default SA with editor permissions
+}
+]]></code>
+        <note>Pinned image means VMs never get OS patches without manual template recreation. Fixed name blocks Terraform updates. Missing lifecycle causes Terraform to delete the old template before the MIG can drain.</note>
+      </example>
+    </section>
+
+    <section name="gcloud-commands">
+      <p>Key gcloud commands for template management:</p>
+
+      <commands>
+        <command name="create-basic-template"><![CDATA[gcloud compute instance-templates create my-template \
+    --machine-type=e2-medium \
+    --image-family=ubuntu-2404-lts \
+    --image-project=ubuntu-os-cloud \
+    --boot-disk-size=50GB \
+    --boot-disk-type=pd-balanced \
+    --tags=http-server \
+    --service-account=my-sa@project.iam.gserviceaccount.com \
+    --scopes=cloud-platform]]></command>
+        <command name="create-template-with-startup"><![CDATA[gcloud compute instance-templates create my-template-v2 \
+    --machine-type=e2-medium \
+    --image-family=ubuntu-2404-lts \
+    --image-project=ubuntu-os-cloud \
+    --metadata-from-file=startup-script=startup.sh \
+    --service-account=my-sa@project.iam.gserviceaccount.com \
+    --scopes=cloud-platform]]></command>
+        <command name="list-templates">gcloud compute instance-templates list</command>
+        <command name="describe-template">gcloud compute instance-templates describe my-template</command>
+        <command name="delete-template">gcloud compute instance-templates delete my-template</command>
+      </commands>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>Uses image family (not specific image) for automatic security patches.</check>
+        <check>Template name includes version suffix (date or semver).</check>
+        <check>Dedicated service account with minimal IAM roles (not default Compute SA).</check>
+        <check>Scopes set to cloud-platform when using dedicated SA.</check>
+        <check>Labels include environment and version for cost allocation.</check>
+        <check>Network tags applied for targeted firewall rules.</check>
+        <check>Boot disk size adequate for OS + application + logs.</check>
+        <check>Startup script tested and idempotent.</check>
+        <check>Terraform lifecycle block contains create_before_destroy = true.</check>
+        <check>Description field documents purpose and version context.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-instance-template"><![CDATA[
+Create a GCE instance template for the following requirements:
+
+Requirements:
+- Name prefix: {name_prefix}
+- Machine type: {machine_type}
+- OS: {os_family} (e.g., ubuntu-2404-lts)
+- Disk size: {disk_size}GB, type: {disk_type} (pd-standard, pd-balanced, pd-ssd)
+- Network tags: {tags}
+- Service account: {service_account_email}
+- Startup script: {startup_script_path or "none"}
+- Environment label: {environment}
+- App version label: {app_version}
+
+Provide:
+1. gcloud CLI command
+2. Terraform google_compute_instance_template resource with lifecycle block
+3. Explanation of configuration choices
+4. Startup script skeleton if requested
+]]></prompt>
+
+      <prompt purpose="update-instance-template"><![CDATA[
+Create a new instance template version for rolling update:
+
+Current template: {current_template_name}
+
+Changes:
+- {change_1: e.g., "Update machine type from e2-medium to e2-standard-2"}
+- {change_2: e.g., "Add new startup script"}
+- {change_3: e.g., "Update image to latest version"}
+
+Provide:
+1. New instance template gcloud command
+2. Rolling update command with:
+   - maxUnavailable: {value}
+   - maxSurge: {value}
+3. Canary deployment option (10% then full)
+4. Rollback command
+5. Monitoring recommendations during update
+]]></prompt>
+    </section>
+
+    <antipattern>
+      <description>Using a specific image version instead of an image family in the instance template.</description>
+      <reason>Pinned images never receive OS security patches automatically. New instances created months later will boot a stale, potentially vulnerable image. Image families resolve to the latest patched image at creation time with zero template changes.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Reusing the default Compute Engine service account for application VMs.</description>
+      <reason>The default SA has project editor permissions. Any VM compromise yields full project access. Create a dedicated SA and assign only the IAM roles the workload actually needs.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Hardcoding configuration values in the startup script instead of reading from instance metadata.</description>
+      <reason>Hardcoded values make the template environment-specific, defeating its reusability. Use instance metadata keys for environment, version, and config — the same template can then serve dev, staging, and production by varying only the metadata at MIG creation time.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="gce-managed-instance-groups"/>
+      <ref slug="gce-spot-vms"/>
+      <link href="https://cloud.google.com/compute/docs/instance-templates"/>
+    </see-also>
+  </content>
+</methodology>
