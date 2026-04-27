@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-resource-requests-limits">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Set CPU/memory requests and limits on every container; understand QoS classes (Guaranteed/Burstable/BestEffort) and right-size values from observed P50/P99 metrics.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>resource-management</tag>
+      <tag>qos</tag>
+      <tag>cpu-limits</tag>
+      <tag>memory-limits</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="k8s-limitrange"/>
+      <ref slug="k8s-resource-quota"/>
+      <ref slug="k8s-scaling-availability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Resource Requests, Limits, and QoS Classes</title>
+
+    <summary>Every container in production MUST declare CPU and memory requests and limits. Requests drive scheduler placement (guaranteed minimum); limits drive kubelet enforcement (maximum). The ratio of requests to limits determines the pod's QoS class, which controls eviction order under node pressure. According to 2025 benchmarks, 99.94% of clusters are over-provisioned with average CPU utilization at just 10% — right-sizing is the single biggest lever for cost and stability.</summary>
+
+    <why>
+      <p>Without requests, the scheduler cannot make placement decisions; pods land on arbitrary nodes and compete for resources without any guarantee. Without limits, a single runaway container can OOMKill or CPU-starve its neighbors. The QoS class system (Guaranteed → Burstable → BestEffort) gives the kubelet a deterministic eviction order: BestEffort pods die first, Guaranteed pods survive longest. Misconfigured resources are the root cause of the three most common K8s production incidents: OOMKill loops, CPU throttling degradation, and scheduling failures due to Insufficient resources.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every container in every Deployment, StatefulSet, DaemonSet, or Job in a non-trivial environment.</item>
+        <item>When a pod is OOMKilled repeatedly — diagnose and raise memory limit.</item>
+        <item>When CPU throttling metrics show &gt;10% throttled periods — raise or remove CPU limit.</item>
+        <item>When pods fail to schedule with "Insufficient resources" — lower requests or add nodes.</item>
+        <item>When right-sizing using VPA in recommendation mode before locking values.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway local dev containers — overhead of tuning exceeds value; use a LimitRange default instead.</item>
+        <item>Init containers in simple scenarios — they run once and exit; defaults from LimitRange suffice unless they do heavy work.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="units-and-fields">
+      <p>Kubernetes uses two resource types: CPU (compressible — throttled, never killed) and memory (incompressible — OOMKilled when exceeded).</p>
+      <rules>
+        <rule>
+          <statement>CPU values MUST use millicores (e.g., 250m = 0.25 vCPU, 1000m = 1 vCPU). Memory values MUST use binary suffixes (Mi, Gi) not decimal (M, G) to avoid ambiguity.</statement>
+          <rationale>Millicores allow fine-grained allocation below 1 vCPU. Binary suffixes (Mi = 2^20 bytes) are what the kernel actually uses; decimal M causes subtle off-by-5% errors in limit enforcement.</rationale>
+        </rule>
+        <rule>
+          <statement>requests.cpu sets the scheduler guarantee (minimum CPU shares); limits.cpu sets the CFS quota ceiling (throttling threshold). requests.memory sets the scheduler guarantee; limits.memory sets the OOMKill threshold. NEVER set limits lower than requests.</statement>
+          <rationale>Limits below requests are rejected by the API server. Requests above node capacity cause unschedulable pods.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="qos-classes">
+      <p>Kubernetes automatically assigns one of three QoS classes to every pod based on how requests and limits are configured. This class determines eviction priority when a node runs low on memory.</p>
+      <rules>
+        <rule>
+          <statement>Critical services (databases, primary APIs, stateful workloads) MUST use Guaranteed QoS: every container in the pod must have requests.cpu == limits.cpu AND requests.memory == limits.memory.</statement>
+          <rationale>Guaranteed pods are evicted last. They are never CPU-throttled because the limit equals the request and CFS scheduling treats them as reserved. OOM score is -998, making the OOM killer avoid them.</rationale>
+        </rule>
+        <rule>
+          <statement>Standard workloads (web servers, background workers) SHOULD use Burstable QoS: set both requests and limits with requests &lt; limits. Variable workloads benefit from burst capacity without monopolizing node resources.</statement>
+          <rationale>Burstable allows the container to use spare CPU/memory when available, absorbing traffic spikes without requiring provisioning at peak. Eviction priority is middle — they survive longer than BestEffort.</rationale>
+        </rule>
+        <rule>
+          <statement>BestEffort QoS (no requests/limits) is ONLY acceptable for batch jobs and dev/disposable workloads. NEVER use BestEffort in production namespaces without explicit justification.</statement>
+          <rationale>BestEffort pods are evicted first. They provide no scheduling guarantees; they can starve unexpectedly when any node faces memory pressure.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="right-sizing">
+      <p>Setting requests and limits requires observed metrics, not guesses. The standard procedure: run VPA in recommendation mode for 7+ days, then lock values derived from P50 (request) and P99+headroom (limit).</p>
+      <rules>
+        <rule>
+          <statement>Set requests.cpu = observed P50 CPU usage. Set limits.cpu = observed P99 usage x 2-3 for variable workloads, or equal to requests for steady workloads (Guaranteed). Set requests.memory = working set size (P50). Set limits.memory = max heap/buffer + overhead (P99 + 20%).</statement>
+          <rationale>P50 requests ensure the scheduler places pods accurately for typical load. P99-based limits prevent runaway containers while absorbing legitimate spikes without triggering OOMKill or excessive throttling.</rationale>
+        </rule>
+        <rule>
+          <statement>JVM applications MUST align container memory limits with JVM flags: limits.memory = -Xmx + MetaspaceSize + thread stacks + NIO buffers. Set -Xmx = limits.memory * 0.75 as a starting point.</statement>
+          <rationale>The JVM does not respect container limits natively before Java 11 with -XX:+UseContainerSupport. Without alignment, the JVM heap expands past the container limit causing OOMKill from the kernel, not a graceful OutOfMemoryError.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <example type="good" title="Burstable web API">
+      <code lang="yaml"><![CDATA[
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+# QoS: Burstable (requests < limits)
+# Can burst to 0.5 CPU under load
+]]></code>
+    </example>
+
+    <example type="good" title="Guaranteed QoS for PostgreSQL">
+      <code lang="yaml"><![CDATA[
+resources:
+  # requests = limits → Guaranteed QoS
+  requests:
+    cpu: "2"
+    memory: 4Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+]]></code>
+    </example>
+
+    <example type="good" title="JVM service with aligned memory">
+      <code lang="yaml"><![CDATA[
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+env:
+- name: JAVA_OPTS
+  value: "-Xms512m -Xmx1536m -XX:MaxMetaspaceSize=256m"
+# -Xmx 1536m = 75% of 2Gi limit, leaving headroom for metaspace + buffers
+]]></code>
+    </example>
+
+    <example type="good" title="Multi-container pod with sidecar sizing">
+      <code lang="yaml"><![CDATA[
+containers:
+- name: web
+  image: nginx:1.25
+  resources:
+    requests: {cpu: 200m, memory: 256Mi}
+    limits: {cpu: 500m, memory: 512Mi}
+- name: fluentbit
+  image: fluent/fluent-bit:2.2
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 100m, memory: 128Mi}
+initContainers:
+- name: init-db
+  image: busybox:1.36
+  resources:
+    requests: {cpu: 10m, memory: 16Mi}
+    limits: {cpu: 50m, memory: 32Mi}
+]]></code>
+      <note>Sidecars should be sized minimally — they share the pod's node allocation. Init containers can use more because they run sequentially before main containers start.</note>
+    </example>
+
+    <example type="bad" title="Missing resources (BestEffort in production)">
+      <code lang="yaml"><![CDATA[
+containers:
+- name: api
+  image: myapp:1.0.0
+  # No resources block — BestEffort QoS
+  # Will be evicted first under any node pressure
+]]></code>
+      <note>99.94% of clusters are over-provisioned because developers leave resources blank. This workload will be the first casualty of any node memory pressure event.</note>
+    </example>
+
+    <example type="bad" title="CPU limit too tight causing throttling">
+      <code lang="yaml"><![CDATA[
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 100m   # Limit = request: zero burst capacity
+    memory: 512Mi
+# CPU is compressible; this container will be throttled on any spike
+# Observe: container_cpu_cfs_throttled_seconds_total rising
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Setting identical ResourceQuota for all namespaces regardless of team size or workload type.</description>
+      <reason>One-size-fits-all quotas either over-constrain small teams or under-constrain large ones. Quota should be proportional to team need with 15-20% headroom for burst.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Setting limits without requests (limits-only).</description>
+      <reason>The scheduler ignores limits; it uses only requests for placement. A pod with limits but no requests gets BestEffort QoS despite having a limit, and the scheduler cannot guarantee the pod lands on a node with sufficient resources.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Ignoring CPU throttling metrics after setting limits.</description>
+      <reason>CPU throttling degrades latency silently — the pod stays Running but response times increase. Monitor container_cpu_cfs_throttled_seconds_total and alert at &gt;10% throttled periods.</reason>
+    </antipattern>
+
+    <section name="observability">
+      <p>Essential Prometheus metrics for resource monitoring:</p>
+      <list>
+        <item>container_cpu_usage_seconds_total — actual CPU usage</item>
+        <item>container_memory_working_set_bytes — memory actually in use (not cached)</item>
+        <item>container_cpu_cfs_throttled_seconds_total — CPU throttling events</item>
+        <item>kube_pod_container_resource_requests — configured requests</item>
+        <item>kube_pod_container_resource_limits — configured limits</item>
+      </list>
+      <p>Key alerts: CPU throttling &gt;10% for 10m (warning), memory near limit &gt;85% for 5m (warning), OOMKill event (critical).</p>
+    </section>
+
+    <section name="right-sizing-tools">
+      <p>Tools for automated right-sizing:</p>
+      <list>
+        <item>Goldilocks (Fairwinds) — VPA recommendations dashboard per namespace</item>
+        <item>Kubecost — cost allocation and optimization recommendations</item>
+        <item>CAST AI — automated rightsizing with cluster autoscaler integration</item>
+        <item>VPA (vertical-pod-autoscaler) in updateMode: "Off" — recommendations without applying</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Never leave resources blank in production (results in BestEffort QoS).</check>
+      <check>Set requests based on observed P50 usage from metrics.</check>
+      <check>Set limits based on observed P99 usage + headroom.</check>
+      <check>Use VPA in recommendation mode before locking values.</check>
+      <check>Test under load before finalizing limits.</check>
+      <check>For JVM: set limits.memory = Xmx + metaspace + stack + buffers.</check>
+      <check>Monitor container_cpu_cfs_throttled_seconds_total after setting CPU limits.</check>
+      <check>Alert on OOMKill events (critical) and memory near limit &gt;85% (warning).</check>
+    </checklist>
+
+    <templates>
+      <template path="templates/deployment-resources.yaml" purpose="Deployment with Burstable and Guaranteed QoS resource blocks."/>
+    </templates>
+
+    <prompt purpose="Analyze and right-size container resources"><![CDATA[
+Analyze the following Kubernetes resource configuration and provide recommendations:
+
+[PASTE DEPLOYMENT/POD YAML HERE]
+
+Consider:
+1. Are requests/limits appropriately sized?
+2. What QoS class will this pod receive?
+3. Are there any potential issues (OOM risk, CPU throttling)?
+4. Suggest optimized values based on workload type.
+
+Workload type: [web service / background worker / batch job / database]
+Expected traffic pattern: [steady / bursty / variable]
+]]></prompt>
+
+    <prompt purpose="Right-size from observed metrics"><![CDATA[
+Help right-size resources based on observed metrics:
+
+Application: [APP_NAME]
+Current configuration:
+[PASTE CURRENT RESOURCES]
+
+Observed metrics (last 7 days):
+- CPU: P50=[X]m, P95=[Y]m, P99=[Z]m, Max=[W]m
+- Memory: P50=[A]Mi, P95=[B]Mi, P99=[C]Mi, Max=[D]Mi
+
+Requirements:
+- QoS class desired: [Guaranteed/Burstable]
+- Cost priority: [minimize cost / balance / maximize performance]
+- Stability priority: [high / medium / low]
+
+Output:
+1. Recommended requests and limits
+2. Rationale for each value
+3. Expected savings or performance impact
+]]></prompt>
+
+    <see-also>
+      <ref slug="k8s-limitrange"/>
+      <ref slug="k8s-resource-quota"/>
+      <ref slug="k8s-scaling-availability"/>
+      <link href="https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"/>
+      <link href="https://aokumo.io/blog/kubernetes-resource-management-2025/"/>
+    </see-also>
+  </content>
+</methodology>

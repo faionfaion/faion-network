@@ -1,0 +1,97 @@
+# Deployment with Burstable QoS (requests < limits)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${APP_NAME}
+  namespace: ${NAMESPACE}
+  labels:
+    app: ${APP_NAME}
+spec:
+  replicas: ${REPLICAS}
+  selector:
+    matchLabels:
+      app: ${APP_NAME}
+  template:
+    metadata:
+      labels:
+        app: ${APP_NAME}
+    spec:
+      containers:
+      - name: ${APP_NAME}
+        image: ${IMAGE}:${TAG}
+        ports:
+        - containerPort: ${PORT}
+        resources:
+          requests:
+            cpu: ${CPU_REQUEST}       # P50 observed usage
+            memory: ${MEMORY_REQUEST} # Working set size
+          limits:
+            cpu: ${CPU_LIMIT}         # P99 * 2-3x for variable workloads
+            memory: ${MEMORY_LIMIT}   # P99 + 20% headroom
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: ${PORT}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: ${PORT}
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# Deployment with Guaranteed QoS (requests = limits)
+# Use for: databases, critical APIs, stateful services
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${APP_NAME}-critical
+  namespace: ${NAMESPACE}
+spec:
+  replicas: ${REPLICAS}
+  selector:
+    matchLabels:
+      app: ${APP_NAME}-critical
+  template:
+    metadata:
+      labels:
+        app: ${APP_NAME}-critical
+        qos: guaranteed
+    spec:
+      priorityClassName: high-priority
+      containers:
+      - name: ${APP_NAME}
+        image: ${IMAGE}:${TAG}
+        resources:
+          # requests = limits → Guaranteed QoS, last to be evicted
+          requests:
+            cpu: ${CPU}
+            memory: ${MEMORY}
+          limits:
+            cpu: ${CPU}
+            memory: ${MEMORY}
+---
+# VPA in recommendation mode (run for 7+ days before locking values)
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: ${APP_NAME}-vpa
+  namespace: ${NAMESPACE}
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ${APP_NAME}
+  updatePolicy:
+    updateMode: "Off"   # Recommendation only, no auto-apply
+  resourcePolicy:
+    containerPolicies:
+    - containerName: '*'
+      minAllowed:
+        cpu: 50m
+        memory: 64Mi
+      maxAllowed:
+        cpu: "4"
+        memory: 8Gi
+      controlledResources: ["cpu", "memory"]
