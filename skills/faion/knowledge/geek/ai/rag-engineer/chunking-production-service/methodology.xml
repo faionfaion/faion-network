@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chunking-production-service">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>ChunkingService routes by content type, propagates metadata to all chunks, and provides a word-split fallback when the primary strategy fails.</summary>
+    <tags>
+      <tag>chunking</tag>
+      <tag>production</tag>
+      <tag>orchestration</tag>
+      <tag>rag</tag>
+      <tag>chunking-service</tag>
+    </tags>
+    <category>chunking</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-semantic"/>
+      <ref slug="chunking-document-structure"/>
+      <ref slug="chunking-code-ast"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Production Chunking Service with Strategy Routing</title>
+
+    <summary>ChunkingService is a production-grade orchestration layer over SemanticChunker, MarkdownChunker, CodeChunker, and the basics-tier RecursiveChunker. It accepts a ChunkingConfig with strategy, chunk_size, overlap, and min_chunk_size; dispatches to the matching chunker; attaches caller-supplied metadata to every output chunk; and falls back to word-split on any exception.</summary>
+
+    <why>
+      <p>In production pipelines, a single ingestion run processes Markdown documentation, Python source, HTML pages, and plain prose from the same document corpus. Wiring each chunker individually at the call site creates brittle dispatch logic that breaks when a new content type is added. ChunkingService centralizes strategy selection, configuration, exception handling, and metadata propagation, exposing a single chunk(text, strategy, metadata) call to the pipeline layer.</p>
+      <p>The fallback path (word-based splitting) ensures partial results rather than total failures when a primary chunker raises an exception, which is critical for overnight batch ingestion jobs that cannot pause for manual intervention.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Production ingestion pipelines that process mixed content types (Markdown, code, HTML, prose) in a single run.</item>
+        <item>Any pipeline where chunking strategy should be decided per-document rather than globally for the entire corpus.</item>
+        <item>Batch ingestion jobs that require graceful degradation on parse errors without halting the run.</item>
+        <item>Pipelines that attach document-level metadata (source path, page number, ingestion timestamp) to every chunk for traceability.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Quick prototyping with a homogeneous corpus — use RecursiveChunker directly to avoid the orchestration layer overhead.</item>
+        <item>When semantic chunking is the only strategy needed — SemanticChunker can be used directly without ChunkingService.</item>
+        <item>Pipelines that need to audit which strategy was actually used per document — ChunkingService's fallback path does not currently expose a strategy_used field; add it before relying on this for audit trails.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-impl">
+      <rule testable="true">
+        <statement>ChunkingService MUST accept ChunkingConfig (strategy, chunk_size, overlap, min_chunk_size) and an optional embedding_func. It MUST raise ValueError immediately when strategy=SEMANTIC and embedding_func is None, rather than deferring the error to chunk time. The fallback path MUST be reached only via the exception handler, never as a default code path, and MUST log the exception before returning fallback chunks.</statement>
+        <rationale>Failing fast on missing embedding_func surfaces configuration errors at service construction time rather than mid-batch. Logging the exception before fallback ensures that silent word-split output is traceable in monitoring; without the log, operators cannot distinguish fallback chunks from successful RecursiveChunker output.</rationale>
+      </rule>
+
+      <example type="good" title="ChunkingService with strategy dispatch and metadata propagation">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
+from enum import Enum
+import logging
+
+class ChunkingStrategy(Enum):
+    FIXED = "fixed"
+    SENTENCE = "sentence"
+    PARAGRAPH = "paragraph"
+    SEMANTIC = "semantic"
+    RECURSIVE = "recursive"
+    MARKDOWN = "markdown"
+    CODE = "code"
+
+@dataclass
+class ChunkingConfig:
+    strategy: ChunkingStrategy = ChunkingStrategy.RECURSIVE
+    chunk_size: int = 500
+    overlap: int = 50
+    min_chunk_size: int = 100
+
+class ChunkingService:
+    """Production chunking service with multiple strategies."""
+
+    def __init__(
+        self,
+        config: Optional[ChunkingConfig] = None,
+        embedding_func: Optional[callable] = None
+    ):
+        self.config = config or ChunkingConfig()
+        self.embedding_func = embedding_func
+        self.logger = logging.getLogger(__name__)
+
+    def chunk(
+        self,
+        text: str,
+        strategy: Optional[ChunkingStrategy] = None,
+        metadata: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """Chunk text using specified strategy."""
+        strategy = strategy or self.config.strategy
+
+        try:
+            if strategy == ChunkingStrategy.FIXED:
+                from chunking_basics import FixedSizeChunker
+                chunks = FixedSizeChunker(
+                    self.config.chunk_size,
+                    self.config.overlap
+                ).chunk(text)
+            elif strategy == ChunkingStrategy.SENTENCE:
+                from chunking_basics import SentenceChunker
+                chunks = SentenceChunker(
+                    self.config.chunk_size,
+                    self.config.min_chunk_size
+                ).chunk(text)
+            elif strategy == ChunkingStrategy.SEMANTIC:
+                if not self.embedding_func:
+                    raise ValueError("Semantic chunking requires embedding function")
+                chunks = SemanticChunker(
+                    self.embedding_func,
+                    max_chunk_size=self.config.chunk_size
+                ).chunk(text)
+            elif strategy == ChunkingStrategy.MARKDOWN:
+                chunks = MarkdownChunker(
+                    self.config.chunk_size
+                ).chunk(text)
+            else:
+                from chunking_basics import RecursiveChunker
+                chunks = RecursiveChunker(
+                    self.config.chunk_size,
+                    self.config.overlap
+                ).chunk(text)
+
+            # Add metadata to all chunks
+            if metadata:
+                for chunk in chunks:
+                    chunk["metadata"] = {**metadata, **chunk.get("metadata", {})}
+
+            self.logger.info(f"Created {len(chunks)} chunks using {strategy.value}")
+            return chunks
+
+        except Exception as e:
+            self.logger.error(f"Chunking failed: {e}")
+            # Fallback to simple splitting
+            return self._fallback_chunk(text, metadata)
+
+    def _fallback_chunk(self, text: str, metadata: Optional[Dict]) -> List[Dict]:
+        """Simple fallback chunking."""
+        words = text.split()
+        chunks = []
+
+        for i in range(0, len(words), self.config.chunk_size):
+            chunk_words = words[i:i + self.config.chunk_size]
+            chunks.append({
+                "text": " ".join(chunk_words),
+                "metadata": metadata or {}
+            })
+
+        return chunks
+]]></code>
+        <note>ChunkingService catches all exceptions and falls back to word-split; agents must verify that strategy_used in output matches the requested strategy. Consider adding a strategy_used field to chunk output.</note>
+      </example>
+
+      <example type="good" title="Content-type router feeding ChunkingService">
+        <code lang="python"><![CDATA[
+from pathlib import Path
+
+def chunk_file(path: str, embedding_func=None) -> list[dict]:
+    text = Path(path).read_text(encoding="utf-8", errors="replace")
+    ext = Path(path).suffix.lower()
+    if ext in (".md", ".mdx"):
+        strategy = ChunkingStrategy.MARKDOWN
+    elif ext in (".py",):
+        strategy = ChunkingStrategy.CODE
+    elif ext in (".js", ".ts", ".tsx"):
+        strategy = ChunkingStrategy.CODE
+    elif ext in (".html", ".htm"):
+        strategy = ChunkingStrategy.RECURSIVE  # HTMLChunker handles internally
+    else:
+        strategy = ChunkingStrategy.SEMANTIC if embedding_func else ChunkingStrategy.RECURSIVE
+    svc = ChunkingService(embedding_func=embedding_func)
+    return svc.chunk(text, strategy=strategy, metadata={"source": path})
+]]></code>
+        <note>This router uses file extension as the primary content-type signal. Add MIME detection for files without extensions or with misleading extensions.</note>
+      </example>
+
+      <example type="good" title="Production usage with explicit config">
+        <code lang="python"><![CDATA[
+from chunking_advanced import ChunkingService, ChunkingConfig, ChunkingStrategy
+
+config = ChunkingConfig(
+    strategy=ChunkingStrategy.RECURSIVE,
+    chunk_size=500,
+    overlap=50
+)
+
+service = ChunkingService(config)
+
+# Chunk document
+chunks = service.chunk(
+    text=document_text,
+    metadata={"source": "doc.pdf", "page": 1}
+)
+
+# Use different strategy for code
+code_chunks = service.chunk(
+    text=code_content,
+    strategy=ChunkingStrategy.CODE,
+    metadata={"file": "main.py"}
+)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Passing strategy=SEMANTIC to ChunkingService without checking that embedding_func is set before constructing the service.</description>
+        <reason>ChunkingService raises ValueError at chunk time if embedding_func is None for SEMANTIC strategy. The fallback then silently returns word-split chunks that look like successful output. Validate embedding_func at service construction time and raise immediately.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using ChunkingService's word-split fallback path as a default for corpora with no structure, rather than explicitly configuring RecursiveChunker.</description>
+        <reason>ChunkingService's fallback uses word-based splitting that ignores token limits — verify with tiktoken before ingesting. RecursiveChunker from chunking-basics correctly handles overlap and token counting; the fallback does not.</reason>
+      </antipattern>
+    </section>
+
+    <section name="strategy-selection-matrix">
+      <p>Strategy selection by content type:</p>
+      <list>
+        <item>Markdown docs — MARKDOWN (MarkdownChunker): preserves header hierarchy</item>
+        <item>Code files (.py, .js, .ts) — CODE (CodeChunker): respects function/class boundaries</item>
+        <item>Legal or medical prose — SEMANTIC (SemanticChunker): context-aware splits</item>
+        <item>News or blog posts — RECURSIVE (RecursiveChunker): natural boundaries with overlap</item>
+        <item>Mixed content — RECURSIVE (RecursiveChunker): general purpose default</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Preserve metadata: track source documents, maintain hierarchy paths, store chunk position.</item>
+        <item>Handle edge cases: empty documents, oversized single paragraphs, mixed content types.</item>
+        <item>Performance: cache embeddings for semantic chunking; batch process multiple documents; use AST parsing for code.</item>
+        <item>Quality validation: test retrieval accuracy; check chunk size distribution; verify context preservation.</item>
+        <item>Validate chunk size distribution: log warning if more than 5% of chunks exceed max_chunk_size.</item>
+        <item>Always set min_chunk_size; empty code blocks and single-word paragraphs produce near-zero vectors that pollute nearest-neighbor results.</item>
+        <item>Validate strategy selection with at least 20 representative queries spanning all content types before committing to production index.</item>
+        <item>When switching chunking strategy on an existing index, always clear the collection or use a versioned collection name to avoid stale vectors.</item>
+      </list>
+    </section>
+
+    <section name="agent-workflow">
+      <p>A subagent detects the content type of each document, instantiates ChunkingService with the matching strategy, runs chunking, validates the size distribution (log a warning if more than 5% of chunks exceed max_chunk_size), and emits enriched chunk dicts with header_path, type, and metadata fields. A second agent reviews the distribution and can trigger a re-chunk with adjusted parameters. No human approval is needed unless the chunk count changes more than 2x from the previous run.</p>
+    </section>
+
+    <checklist>
+      <check>Configure ChunkingConfig with explicit strategy, chunk_size, overlap, and min_chunk_size rather than relying on defaults.</check>
+      <check>Validate embedding_func is not None before constructing ChunkingService with SEMANTIC strategy.</check>
+      <check>Verify chunk size distribution after every ingestion run: warn if more than 5% of chunks exceed max_chunk_size.</check>
+      <check>Add strategy_used field to chunk output to distinguish successful strategy execution from fallback.</check>
+      <check>Use tiktoken to validate token counts rather than word count when targeting a token-limited embedding model.</check>
+      <check>Version collection names when switching chunking strategy to avoid stale vector collisions.</check>
+      <check>Test with at least 20 representative queries before committing threshold and chunk_size values to production.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-semantic"/>
+      <ref slug="chunking-document-structure"/>
+      <ref slug="chunking-code-ast"/>
+      <link href="https://python.langchain.com/docs/modules/data_connection/document_transformers/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/module_guides/loading/node_parsers/"/>
+    </see-also>
+  </content>
+</methodology>
