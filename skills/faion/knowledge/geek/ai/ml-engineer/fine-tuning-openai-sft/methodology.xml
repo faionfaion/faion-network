@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-sft">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Supervised fine-tuning of OpenAI GPT-4.1/4o models: JSONL format, job lifecycle, hyperparameters, validation split, and production workflow.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>openai</tag>
+      <tag>sft</tag>
+      <tag>gpt</tag>
+      <tag>training</tag>
+    </tags>
+    <category>ml</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="fine-tuning-openai-dpo"/>
+      <ref slug="fine-tuning-openai-data-prep"/>
+      <ref slug="fine-tuning-openai-eval"/>
+      <ref slug="fine-tuning-openai-deployment"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>OpenAI Supervised Fine-Tuning (SFT)</title>
+
+    <summary>Supervised Fine-Tuning (SFT) customizes OpenAI GPT-4.1 and GPT-4o models by training on input-output pairs in JSONL format. It is the default and primary fine-tuning method: upload a JSONL training file, create a fine-tuning job, poll for completion, then use the returned model ID in production.</summary>
+
+    <why>
+      <p>Fine-tuning internalizes domain-specific patterns, response formats, and style into the model weights, which reduces prompt length at inference and improves consistency. SFT is the correct method when clear correct answers exist and you have 50+ labeled examples. Compared to few-shot prompting, a fine-tuned model delivers shorter system prompts, lower latency, and more reliable structured output.</p>
+      <p>OpenAI fine-tuning requires no GPU management: the entire lifecycle runs over the REST API. Training cost = tokens x epochs x price-per-token. Inference costs are higher than base model rates, so the economics only favour fine-tuning at meaningful call volumes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Clear correct answers exist and 50+ high-quality labeled examples are available.</item>
+        <item>Domain-specific tasks where the base model underperforms (medical coding, legal extraction, brand voice).</item>
+        <item>Reducing long system prompts that are repeated on every call — internalize them into the model.</item>
+        <item>Consistent structured output (JSON schema, specific formats) is required at high call volume.</item>
+        <item>Prompt engineering alone cannot achieve the required quality bar.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fewer than 50 quality labeled examples — use few-shot prompting instead; SFT with noisy data degrades quality.</item>
+        <item>Real-time data dependency — fine-tuned models have a static knowledge snapshot; use RAG.</item>
+        <item>Need a private or on-premise model — OpenAI fine-tuned models stay on OpenAI infrastructure; weights are not exported.</item>
+        <item>Task is exploratory or requirements change within weeks — retrain cost makes iteration prohibitive.</item>
+        <item>Low call volume — inference cost premium over base model does not pay off.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="supported-models">
+      <p>Supported models for SFT as of 2025:</p>
+      <list>
+        <item>gpt-4.1 — $25/M training tokens, $2/$8 input/output inference, 1M context. Complex reasoning, long context.</item>
+        <item>gpt-4.1-mini — $3/M training tokens, $0.40/$1.60 inference, 128K context. Best cost/quality ratio for production.</item>
+        <item>gpt-4.1-nano — $1/M training tokens, $0.10/$0.40 inference, 128K context. High-volume simple tasks.</item>
+        <item>gpt-4o — $25/M training tokens, $3.75/$15 inference, 128K context. Vision and multimodal tasks.</item>
+        <item>gpt-4o-mini — $3/M training tokens, $0.30/$1.20 inference, 128K context. Budget production.</item>
+      </list>
+      <note>Fine-tuned model inference costs are higher than base model costs. Enable data sharing for inference discounts if training data is non-sensitive.</note>
+    </section>
+
+    <section name="data-format">
+      <p>SFT training data is JSONL (one JSON object per line). Each object has a messages array with role/content pairs covering system, user, and assistant turns.</p>
+      <rule>
+        <statement>Every SFT training example MUST be a JSON object with a top-level "messages" key containing a list with at least one "user" message and one "assistant" message. The system message is optional but MUST be consistent across examples if used.</statement>
+        <rationale>The OpenAI fine-tuning API rejects files missing the messages key or lacking assistant turns. Inconsistent system prompts cause the model to learn conflicting behavior baselines.</rationale>
+      </rule>
+      <example type="good" title="SFT JSONL — customer support">
+        <code lang="jsonl"><![CDATA[{"messages": [{"role": "system", "content": "You are a customer support agent for TechCorp."}, {"role": "user", "content": "How do I reset my password?"}, {"role": "assistant", "content": "To reset your password:\n1. Go to settings.techcorp.com/password\n2. Click 'Forgot Password'\n3. Enter your email address\n4. Check your inbox for the reset link\n5. Create a new password (8+ characters)"}]}
+{"messages": [{"role": "system", "content": "You are a customer support agent for TechCorp."}, {"role": "user", "content": "I want to cancel my subscription"}, {"role": "assistant", "content": "I understand you'd like to cancel. Before I process this:\n\n1. Your subscription is valid until March 15, 2025\n2. You'll lose access to premium features\n3. Data will be retained for 30 days\n\nTo confirm cancellation, please reply with 'CANCEL'. Or let me know if you'd like to discuss alternatives."}]}]]></code>
+      </example>
+      <example type="good" title="Multi-turn conversation SFT">
+        <code lang="jsonl"><![CDATA[{"messages": [{"role": "system", "content": "You are an AI coding assistant."}, {"role": "user", "content": "How do I read a file in Python?"}, {"role": "assistant", "content": "Here's how to read a file in Python:\n\nwith open('file.txt', 'r') as f:\n    content = f.read()\n\nThe with statement ensures the file is properly closed after reading."}, {"role": "user", "content": "What if I want to read line by line?"}, {"role": "assistant", "content": "For line-by-line reading, you have several options:\n\n# Option 1: Iterate directly (memory efficient)\nwith open('file.txt', 'r') as f:\n    for line in f:\n        print(line.strip())\n\n# Option 2: Read all lines into a list\nwith open('file.txt', 'r') as f:\n    lines = f.readlines()\n\nOption 1 is best for large files as it doesn't load everything into memory."}]}]]></code>
+      </example>
+      <example type="good" title="Function calling training data">
+        <code lang="jsonl"><![CDATA[{"messages": [{"role": "system", "content": "You are a helpful assistant with access to a weather API."}, {"role": "user", "content": "What's the weather in Tokyo?"}, {"role": "assistant", "content": null, "function_call": {"name": "get_weather", "arguments": "{\"location\": \"Tokyo, Japan\", \"units\": \"celsius\"}"}}, {"role": "function", "name": "get_weather", "content": "{\"temp\": 22, \"condition\": \"Partly cloudy\", \"humidity\": 65}"}, {"role": "assistant", "content": "The weather in Tokyo is currently 22°C with partly cloudy skies and 65% humidity."}]}]]></code>
+      </example>
+    </section>
+
+    <section name="job-lifecycle">
+      <p>The SFT job lifecycle: upload training file → optionally upload validation file → create fine-tuning job → poll for completion → use returned model ID.</p>
+      <rule>
+        <statement>Always upload a validation file (10% split minimum). Without it, overfitting is invisible — the training loss curve alone does not indicate generalization quality.</statement>
+        <rationale>Validation loss diverging upward from training loss is the primary overfitting signal. Without a validation file, epoch miscalibration (too many epochs) goes undetected and produces a model that memorizes training examples rather than generalizing.</rationale>
+      </rule>
+      <rule>
+        <statement>Use 3 epochs as the baseline; increase only if validation loss is still decreasing at epoch 3. Decrease if validation loss increases before epoch 3 ends.</statement>
+        <rationale>Epoch count is the main hyperparameter causing overfitting. Three epochs is the empirically validated baseline across OpenAI's model family for datasets of 50-500 examples.</rationale>
+      </rule>
+      <example type="good" title="Complete SFT job lifecycle">
+        <code lang="python"><![CDATA[from openai import OpenAI
+import json
+import time
+
+client = OpenAI()
+
+# Step 1: Prepare training data
+training_data = [
+    {
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi! How can I help you today?"}
+        ]
+    },
+    # Add more examples...
+]
+
+# Step 2: Save as JSONL
+with open("training_data.jsonl", "w") as f:
+    for example in training_data:
+        f.write(json.dumps(example) + "\n")
+
+# Step 3: Upload training file
+with open("training_data.jsonl", "rb") as f:
+    training_file = client.files.create(file=f, purpose="fine-tune")
+
+print(f"Training file ID: {training_file.id}")
+
+# Step 4: Wait for file processing
+while True:
+    file_status = client.files.retrieve(training_file.id)
+    if file_status.status == "processed":
+        break
+    time.sleep(5)
+
+# Step 5: Create fine-tuning job
+job = client.fine_tuning.jobs.create(
+    training_file=training_file.id,
+    model="gpt-4o-mini-2024-07-18",
+    suffix="my-custom-model",
+    hyperparameters={
+        "n_epochs": 3
+    }
+)
+
+print(f"Job ID: {job.id}")
+
+# Step 6: Monitor progress
+while True:
+    job_status = client.fine_tuning.jobs.retrieve(job.id)
+    print(f"Status: {job_status.status}")
+
+    if job_status.status == "succeeded":
+        print(f"Fine-tuned model: {job_status.fine_tuned_model}")
+        break
+    elif job_status.status == "failed":
+        print(f"Error: {job_status.error}")
+        break
+
+    # Print recent events
+    events = client.fine_tuning.jobs.list_events(job.id, limit=3)
+    for event in events.data:
+        print(f"  {event.message}")
+
+    time.sleep(60)
+
+# Step 7: Use fine-tuned model
+response = client.chat.completions.create(
+    model=job_status.fine_tuned_model,
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello"}
+    ]
+)
+
+print(response.choices[0].message.content)]]></code>
+        <note>A failed job still returns 200 OK on creation; always check job.status, not the HTTP response code.</note>
+      </example>
+      <example type="good" title="SFT job with validation file">
+        <code lang="python"><![CDATA[import random
+
+# Prepare data with train/validation split
+all_data = [...]  # Your examples
+
+random.shuffle(all_data)
+split_idx = int(len(all_data) * 0.9)
+train_data = all_data[:split_idx]
+val_data = all_data[split_idx:]
+
+# Upload both files
+with open("train_data.jsonl", "rb") as f:
+    train_file = client.files.create(file=f, purpose="fine-tune")
+
+with open("val_data.jsonl", "rb") as f:
+    val_file = client.files.create(file=f, purpose="fine-tune")
+
+# Create job with validation
+job = client.fine_tuning.jobs.create(
+    training_file=train_file.id,
+    validation_file=val_file.id,
+    model="gpt-4o-mini-2024-07-18",
+    suffix="with-validation",
+    hyperparameters={
+        "n_epochs": 3,
+        "batch_size": 4,
+        "learning_rate_multiplier": 1.0
+    }
+)
+
+# Monitor with validation metrics
+while True:
+    job_status = client.fine_tuning.jobs.retrieve(job.id)
+
+    if job_status.status in ["succeeded", "failed", "cancelled"]:
+        break
+
+    # Check training metrics
+    events = client.fine_tuning.jobs.list_events(job.id, limit=5)
+    for event in events.data:
+        if "training_loss" in event.message or "validation_loss" in event.message:
+            print(event.message)
+
+    time.sleep(60)]]></code>
+      </example>
+    </section>
+
+    <section name="hyperparameters">
+      <p>Key hyperparameters for SFT jobs:</p>
+      <list>
+        <item>n_epochs — default "auto". Use 3 for small datasets (50-500 examples), 1-2 for large datasets. Increase if validation loss still decreasing at epoch 3.</item>
+        <item>batch_size — default "auto". Larger batch = faster training, may reduce quality on small datasets.</item>
+        <item>learning_rate_multiplier — default "auto". Lower if overfitting (validation loss diverging). Typical range 0.5-2.0.</item>
+        <item>suffix — optional string appended to the model ID for identification (e.g. "my-domain-v1").</item>
+      </list>
+    </section>
+
+    <section name="monitoring">
+      <p>Training progress is accessible only via job events. The loss curve is the primary diagnostic tool.</p>
+      <list>
+        <item>Training loss — should decrease monotonically over epochs. Stagnation indicates data quality issues.</item>
+        <item>Validation loss — should track training loss. If it increases while training loss decreases, overfitting has begun — reduce epochs.</item>
+        <item>Loss gap — small gap between training and validation loss indicates good generalization.</item>
+      </list>
+      <note>client.fine_tuning.jobs.list_events(job_id) is the only way to see training progress. Parse these events for loss values. Fine-tuning jobs run for 15-120 minutes; the agent must poll asynchronously, not block a synchronous thread.</note>
+    </section>
+
+    <section name="decision-framework">
+      <p>Decision framework for when to fine-tune vs alternatives:</p>
+      <list>
+        <item>Can prompt engineering solve it? YES → Use prompts. NO → continue.</item>
+        <item>Have 50+ quality examples? NO → Collect more data first. YES → continue.</item>
+        <item>Is task domain-specific? NO → Consider RAG instead. YES → continue.</item>
+        <item>Need preference alignment? YES → Use DPO after SFT. NO → Use SFT.</item>
+      </list>
+    </section>
+
+    <section name="cost-calculation">
+      <p>Training cost formula: Tokens in training file x Epochs x Training price per token.</p>
+      <p>Example: 1M tokens, 3 epochs, gpt-4o-mini ($3/M) = 1M x 3 x $3/M = $9 total training cost.</p>
+      <p>Data requirements: minimum 10 examples, recommended 50-100+. Validation split: 10% minimum, 10-20% recommended. Example length: under 4K tokens each. Total tokens: 10K-100K+ recommended.</p>
+    </section>
+
+    <antipattern>
+      <description>Using fewer than 50 training examples for SFT.</description>
+      <reason>With fewer than 50 examples the model memorizes rather than generalizes. A JSONL file with 10% noisy examples degrades the entire run. Use few-shot prompting until sufficient data is collected.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Omitting the validation file to save cost.</description>
+      <reason>Without a validation file, overfitting is invisible. Epoch miscalibration is the most common failure mode. The validation file cost is negligible compared to the cost of a degraded production model.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Hardcoding the fine-tuned model ID in application code.</description>
+      <reason>OpenAI fine-tuned model IDs look like ft:gpt-4.1-mini-2025-01-01:org::xxxxx. Store in config alongside training data hash in version control. Never hardcode — retraining produces a new ID.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Define specific task/behavior to improve and confirm prompt engineering alone is insufficient.</check>
+      <check>Collect 50-100+ high-quality examples with consistent format and system prompts.</check>
+      <check>Format all examples as JSONL with messages array (system optional, user+assistant required).</check>
+      <check>Validate JSON syntax and check for duplicate examples, PII, and token counts under 4K per example.</check>
+      <check>Split into training (90%) and validation (10%) sets.</check>
+      <check>Upload training file with purpose="fine-tune" and verify file processing status.</check>
+      <check>Upload validation file with purpose="fine-tune".</check>
+      <check>Create fine-tuning job with n_epochs=3 baseline and model suffix for identification.</check>
+      <check>Record job ID and set up polling loop (every 60s) for status and loss events.</check>
+      <check>Monitor training and validation loss curves for divergence (overfitting signal).</check>
+      <check>Enable data sharing for inference discounts if training data is non-sensitive.</check>
+      <check>Document fine-tuned model ID and training data hash in version control alongside config.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="fine-tuning-openai-dpo"/>
+      <ref slug="fine-tuning-openai-data-prep"/>
+      <ref slug="fine-tuning-openai-eval"/>
+      <ref slug="fine-tuning-openai-deployment"/>
+      <link href="https://platform.openai.com/docs/guides/supervised-fine-tuning"/>
+      <link href="https://platform.openai.com/docs/api-reference/fine-tuning"/>
+      <link href="https://cookbook.openai.com/examples/how_to_finetune_chat_models"/>
+    </see-also>
+  </content>
+</methodology>
