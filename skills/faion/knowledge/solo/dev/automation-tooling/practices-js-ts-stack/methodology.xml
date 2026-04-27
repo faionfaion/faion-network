@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="practices-js-ts-stack">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>JavaScript/TypeScript standards: React component/hooks patterns, TypeScript strict mode config, Node.js project layout, Next.js 13+ App Router structure, state management selection, CSS architecture.</summary>
+    <tags>
+      <tag>typescript</tag>
+      <tag>react</tag>
+      <tag>nextjs</tag>
+      <tag>frontend</tag>
+      <tag>coding-standards</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>nextjs</framework>
+    </frameworks>
+    <related>
+      <ref slug="practices-frontend-components"/>
+      <ref slug="practices-backend-languages"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>JavaScript/TypeScript Stack Practices</title>
+
+    <summary>Six conventions for the JS/TS stack: typed React components with explicit interface props, custom hooks for shared async logic, strict TypeScript compiler options, standard Node.js project layout, Next.js App Router file structure, state management selection table, and CSS architecture selection by context.</summary>
+
+    <why>
+      <p>Inconsistent JS/TS patterns across projects cause agents to produce code that fails type-check or conflicts with the project's existing patterns. TypeScript strict mode catches entire classes of bugs at compile time rather than runtime. The Next.js App Router is fundamentally different from Pages Router — agents operating without explicit guidance default to Pages Router patterns. State management churn is a leading cause of refactor-heavy projects.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield React/Next.js service scaffolding — use as template for component and routing structure.</item>
+        <item>Adding TypeScript to an existing JS project — use the strict tsconfig as the starting point.</item>
+        <item>Evaluating state management approach for a new feature.</item>
+        <item>Code review gate for any PR touching React components or hooks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Frontend component library authoring (Storybook, design tokens) — see practices-frontend-components.</item>
+        <item>Architecture decisions (microservices vs modular monolith) — see dev-methodologies-architecture.</item>
+        <item>Next.js 15+ React Server Components with partial prerendering — this covers App Router basics; advanced RSC patterns are in best-practices-2026.</item>
+        <item>Projects using Vue, Svelte, or Astro — patterns are React/Next-specific.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="react-component-pattern">
+      <rule testable="true">
+        <statement>React components MUST define an explicit TypeScript interface for props (`interface ButtonProps { ... }`), use `React.FC&lt;ButtonProps&gt;` or direct destructuring, and be placed in `src/components/{Name}/{Name}.tsx`. The component file MUST NOT contain inline styles longer than a class reference.</statement>
+        <rationale>Explicit prop interfaces enable TypeScript strict-mode checking, autocomplete in IDEs, and documentation in Storybook. Consistent file placement makes agents find existing components before creating duplicates.</rationale>
+      </rule>
+      <example type="good" title="React functional component with typed props">
+        <code lang="typescript"><![CDATA[
+// src/components/Button/Button.tsx
+interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+export const Button: React.FC<ButtonProps> = ({
+  variant,
+  children,
+  onClick,
+}) => {
+  return (
+    <button className={styles[variant]} onClick={onClick}>
+      {children}
+    </button>
+  );
+};
+]]></code>
+      </example>
+      <antipattern>
+        <description>Props typed as `any` or as a bare object `{ variant: string, children: any }`.</description>
+        <reason>Defeats TypeScript's type system; agents propagate `any` through the component tree silently.</reason>
+      </antipattern>
+    </section>
+
+    <section name="react-hooks-pattern">
+      <rule testable="true">
+        <statement>Shared async data-fetching logic MUST be extracted into a custom hook in `hooks/use{Name}.ts`. The hook MUST return `{ data, loading, error }`. Components MUST NOT contain raw `useEffect` + `useState` for fetching — use the hook abstraction.</statement>
+        <rationale>Duplicated useEffect fetch patterns across components are the most common React code smell. Custom hooks allow centralized caching, error handling, and retry logic. TanStack Query replaces this pattern for server-state caching.</rationale>
+      </rule>
+      <example type="good" title="Custom hook for async data">
+        <code lang="typescript"><![CDATA[
+// hooks/useUser.ts
+export function useUser(userId: string) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    fetchUser(userId)
+      .then(setUser)
+      .catch(setError)
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  return { user, loading, error };
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="typescript-strict-mode">
+      <rule testable="true">
+        <statement>All TypeScript projects MUST enable `"strict": true` in tsconfig.json, which includes `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, and `noUnusedParameters`. Type-only imports MUST use `import type { X }` syntax to keep bundle slim. No `any` type in production code.</statement>
+        <rationale>TypeScript strict mode catches null pointer errors, implicit any, and unused variables at compile time. `import type` eliminates type-only symbols from the bundle and satisfies `verbatimModuleSyntax`. Agents default to non-strict configs and then add `any` casts as a workaround.</rationale>
+      </rule>
+      <example type="good" title="tsconfig.json with strict mode">
+        <code lang="json"><![CDATA[
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Adding `"strict": false` or casting with `as any` to suppress TypeScript errors during development.</description>
+        <reason>Errors suppressed this way surface in production as runtime crashes. Agents copy the pattern and progressively weaken the type system.</reason>
+      </antipattern>
+    </section>
+
+    <section name="nodejs-project-structure">
+      <rule testable="true">
+        <statement>Node.js/TypeScript projects MUST follow this layout: `package.json` + `tsconfig.json` at root, `src/` for source (index.ts, routes/, services/, models/), `tests/` for test files (`*.test.ts`), `.env.example` committed but never `.env`.</statement>
+        <rationale>Consistent layout prevents agents from scattering source files at the project root or placing tests alongside source without a clear boundary.</rationale>
+      </rule>
+      <example type="good" title="Node.js project layout">
+        <code lang="text"><![CDATA[
+project/
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── index.ts
+│   ├── routes/
+│   ├── services/
+│   └── models/
+├── tests/
+│   └── *.test.ts
+└── .env.example
+]]></code>
+      </example>
+    </section>
+
+    <section name="nextjs-app-router">
+      <rule testable="true">
+        <statement>Next.js 13+ projects MUST use the App Router (`app/` directory). Route groups use `(name)/` syntax for layout isolation. API routes use `app/api/{resource}/route.ts`. Root layout in `app/layout.tsx` wraps all pages. Dashboard-level layout is `app/dashboard/layout.tsx`.</statement>
+        <rationale>Next.js 15 is App Router-only. Pages Router (`pages/`) is deprecated. Agents that default to Pages Router patterns produce code that conflicts with the App Router's server component model and causes hydration errors.</rationale>
+      </rule>
+      <example type="good" title="Next.js App Router structure">
+        <code lang="text"><![CDATA[
+app/
+├── layout.tsx       # Root layout
+├── page.tsx         # Home page
+├── (auth)/
+│   ├── login/
+│   │   └── page.tsx
+│   └── register/
+│       └── page.tsx
+├── dashboard/
+│   ├── layout.tsx   # Dashboard layout
+│   └── page.tsx
+└── api/
+    └── users/
+        └── route.ts
+]]></code>
+      </example>
+      <note>Next.js App Router section covers basics through Next.js 14. React 19 server actions and partial prerendering are in best-practices-2026.</note>
+    </section>
+
+    <section name="state-management">
+      <rule testable="true">
+        <statement>Select state management by scope: `useState` for local component state; `useContext` for shared UI state (theme, auth); Zustand for medium-complexity cross-component state; Redux Toolkit only for large apps requiring time-travel debugging; TanStack Query for all server-state caching. Do NOT use Redux for server state — use TanStack Query.</statement>
+        <rationale>Overengineering state is the most common frontend architecture mistake. Adding Redux to a project that needs two shared values doubles its complexity. TanStack Query handles cache invalidation, background refetching, and loading states that would require 200 lines of Redux boilerplate.</rationale>
+      </rule>
+      <example type="good" title="State management selection table">
+        <code lang="text"><![CDATA[
+| Solution        | Use Case                               |
+|-----------------|----------------------------------------|
+| useState        | Local component state                  |
+| useContext      | Shared state (theme, auth)             |
+| Zustand         | Medium complexity                      |
+| Redux Toolkit   | Large apps, time-travel debugging      |
+| TanStack Query  | Server state caching                   |
+]]></code>
+      </example>
+    </section>
+
+    <section name="css-architecture">
+      <rule testable="true">
+        <statement>Select CSS approach by project context: CSS Modules for component isolation in React; Tailwind CSS for rapid prototyping and utility-first projects; styled-components for CSS-in-JS with dynamic styles; SCSS + BEM for large traditional projects. Do NOT mix approaches within one project.</statement>
+        <rationale>Mixed CSS approaches cause naming collisions and specificity wars. Agents produce Tailwind utility classes inside CSS Modules files or vice versa when the project convention is not explicit.</rationale>
+      </rule>
+      <example type="good" title="CSS architecture selection">
+        <code lang="text"><![CDATA[
+| Approach          | Use Case                              |
+|-------------------|---------------------------------------|
+| CSS Modules       | Component isolation                   |
+| Tailwind CSS      | Rapid prototyping                     |
+| styled-components | CSS-in-JS, dynamic styles             |
+| SCSS + BEM        | Large traditional projects            |
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>TypeScript strict mode enabled in tsconfig.json.</check>
+      <check>React components have explicit prop interfaces, no `any`.</check>
+      <check>Custom hooks extracted for shared async data fetching.</check>
+      <check>Node.js project follows src/ layout.</check>
+      <check>Next.js project uses App Router (not Pages Router).</check>
+      <check>State management selected from the table; no Redux for server state.</check>
+      <check>CSS approach is consistent (no mixing Tailwind + CSS Modules).</check>
+      <check>Run `tsc --noEmit` as a type-check gate before committing.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.typescriptlang.org/tsconfig"/>
+      <link href="https://react.dev/"/>
+      <link href="https://nextjs.org/docs/app"/>
+      <link href="https://tanstack.com/query/latest"/>
+      <link href="https://zustand-demo.pmnd.rs/"/>
+      <ref slug="practices-frontend-components"/>
+    </see-also>
+  </content>
+</methodology>

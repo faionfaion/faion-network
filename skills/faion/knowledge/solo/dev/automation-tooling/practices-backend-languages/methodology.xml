@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="practices-backend-languages">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Multi-language backend standards: Go (project layout, error wrapping, consumer-side interfaces, concurrency), Rails, Laravel, Spring Boot, .NET, and Rust (Result types, async with tokio).</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>rust</tag>
+      <tag>backend</tag>
+      <tag>coding-standards</tag>
+      <tag>multi-language</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+      <language>rust</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <related>
+      <ref slug="practices-python-ecosystem"/>
+      <ref slug="practices-django-coding"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Backend Languages Practices</title>
+
+    <summary>Reference patterns for six backend languages: Go (cmd/internal/pkg layout, wrapped errors, consumer-side interfaces, worker-pool concurrency), Ruby on Rails (service/form/query objects), PHP Laravel (service pattern), Java Spring Boot (constructor injection), C# .NET (async repository pattern), Rust (thiserror Result types, tokio async). One canonical snippet per pattern.</summary>
+
+    <why>
+      <p>A breadth-first reference across languages is how agents handle cross-language onboarding — producing a Django service that mirrors a Spring service, or scaffolding a Go service that matches an existing Rust service's shape. Without a shared reference, agents extrapolate from their training distribution and produce subtly wrong patterns: Go interfaces in the producer package, Spring field injection, Rust blocking inside tokio. This methodology is the cheat sheet the agent loads when the file's language is detected.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield service scaffolding in any of the six languages — use as layout template.</item>
+        <item>Cross-language onboarding: agent must produce equivalent shape in two stacks.</item>
+        <item>Refactor passes aligning an existing module to the known-good shape.</item>
+        <item>Code review gate — check Go interfaces are consumer-side, Spring uses constructor injection.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Architecture decisions (microservices vs monolith) — see dev-methodologies-architecture.</item>
+        <item>Testing patterns — see dev-methodologies-testing.</item>
+        <item>Performance profiling or observability — out of scope.</item>
+        <item>When the project already has a documented house style that diverges — agent will overwrite.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="go-patterns">
+      <rule testable="true">
+        <statement>Go projects MUST use the `cmd/` + `internal/` + `pkg/` layout. Error handling MUST use `fmt.Errorf("context: %w", err)` wrapping — never discard errors or return bare strings. Interfaces MUST be defined in the consumer package, not the producer package. Concurrency MUST use the worker-pool pattern with buffered channels.</statement>
+        <rationale>The `cmd/internal/pkg` layout is the de facto Go community standard. Error wrapping with `%w` enables `errors.Is/As` unwrapping. Consumer-side interfaces ("accept interfaces, return structs") follow Go's implicit interface satisfaction model and prevent import cycles. Worker pools prevent goroutine leaks.</rationale>
+      </rule>
+      <example type="good" title="Go project layout">
+        <code lang="text"><![CDATA[
+project/
+├── cmd/
+│   └── server/
+│       └── main.go
+├── internal/
+│   ├── handlers/
+│   ├── services/
+│   └── models/
+├── pkg/           # Reusable packages
+├── go.mod
+└── go.sum
+]]></code>
+      </example>
+      <example type="good" title="Go error wrapping">
+        <code lang="go"><![CDATA[
+func GetUser(id string) (*User, error) {
+    user, err := db.FindUser(id)
+    if err != nil {
+        return nil, fmt.Errorf("get user %s: %w", id, err)
+    }
+    return user, nil
+}
+]]></code>
+      </example>
+      <example type="good" title="Go consumer-side interface">
+        <code lang="go"><![CDATA[
+// Define interface where it's used (consumer package)
+type UserRepository interface {
+    Find(id string) (*User, error)
+    Save(user *User) error
+}
+
+// Implementation (producer package)
+type PostgresUserRepo struct {
+    db *sql.DB
+}
+
+func (r *PostgresUserRepo) Find(id string) (*User, error) {
+    // implementation
+}
+]]></code>
+      </example>
+      <example type="good" title="Go worker pool pattern">
+        <code lang="go"><![CDATA[
+// Worker pool pattern
+func worker(jobs <-chan Job, results chan<- Result) {
+    for job := range jobs {
+        results <- process(job)
+    }
+}
+
+func main() {
+    jobs := make(chan Job, 100)
+    results := make(chan Result, 100)
+
+    for w := 1; w <= 3; w++ {
+        go worker(jobs, results)
+    }
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>Interface defined in the producer package: `package userservice; type UserRepository interface {...}`.</description>
+        <reason>Violates Go's "accept interfaces, return structs" idiom. Causes import cycles and forces the producer to anticipate all consumers.</reason>
+      </antipattern>
+      <note>The README snippet places the interface in the producer package — this is incorrect. Consumer-side is the Go idiom. Correct the agent if it replicates the wrong placement.</note>
+    </section>
+
+    <section name="ruby-on-rails">
+      <rule testable="true">
+        <statement>Rails projects MUST follow thin-controller architecture: controllers handle only HTTP; business logic goes in service objects; complex validations go in form objects; complex queries go in query objects; view logic goes in presenters.</statement>
+        <rationale>Fat models and fat controllers in Rails are the canonical anti-pattern. Service objects, form objects, and query objects keep each class single-responsibility and testable in isolation without the HTTP stack or ActiveRecord.</rationale>
+      </rule>
+      <example type="good" title="Rails architecture objects">
+        <code lang="text"><![CDATA[
+- Thin Controllers  → Only HTTP handling
+- Service Objects   → Business logic
+- Form Objects      → Complex validations
+- Query Objects     → Complex queries
+- Presenters        → View logic
+]]></code>
+      </example>
+    </section>
+
+    <section name="php-laravel">
+      <rule testable="true">
+        <statement>Laravel controllers MUST delegate to a service class injected via the constructor. Service classes contain business logic and return Eloquent models. Controllers use Form Requests for validation. Never put business logic directly in a controller method.</statement>
+        <rationale>The same rationale as Rails thin-controllers: business logic in controllers is untestable without HTTP. Laravel's service container makes DI easy; there is no excuse for fat controllers.</rationale>
+      </rule>
+      <example type="good" title="Laravel service pattern">
+        <code lang="php"><![CDATA[
+// Service Pattern
+class UserService
+{
+    public function create(array $data): User
+    {
+        return User::create($data);
+    }
+}
+
+// Controller
+class UserController extends Controller
+{
+    public function store(CreateUserRequest $request, UserService $service)
+    {
+        $user = $service->create($request->validated());
+        return new UserResource($user);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="java-spring-boot">
+      <rule testable="true">
+        <statement>Spring Boot services MUST use constructor injection (not field injection via `@Autowired` on fields). Service classes are annotated `@Service @RequiredArgsConstructor`. Repository interfaces extend `JpaRepository`. DTOs use the builder pattern.</statement>
+        <rationale>Constructor injection makes dependencies explicit and enables instantiation in unit tests without a Spring context. `@Autowired` field injection is untestable without the full context. `@RequiredArgsConstructor` from Lombok generates the constructor automatically from `final` fields.</rationale>
+      </rule>
+      <example type="good" title="Spring Boot service with constructor injection">
+        <code lang="java"><![CDATA[
+@Service
+@RequiredArgsConstructor
+public class UserService {
+    private final UserRepository userRepository;
+
+    public User createUser(CreateUserDto dto) {
+        User user = User.builder()
+            .name(dto.getName())
+            .email(dto.getEmail())
+            .build();
+        return userRepository.save(user);
+    }
+}
+]]></code>
+      </example>
+      <antipattern>
+        <description>`@Autowired` on a field: `@Autowired private UserRepository userRepository;`.</description>
+        <reason>Field injection requires Spring context in tests; constructor injection lets tests pass mocks directly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="csharp-dotnet">
+      <rule testable="true">
+        <statement>C# .NET services MUST implement an interface (`IUserService`), use constructor injection via the interface, and use `async Task&lt;T&gt;` for all I/O-bound operations. Never use synchronous I/O methods inside an `async` method.</statement>
+        <rationale>Interface-based DI enables mock injection in tests. `async/await` throughout the call chain prevents thread starvation under load. Mixing sync and async I/O causes deadlocks in ASP.NET contexts.</rationale>
+      </rule>
+      <example type="good" title="C# async service pattern">
+        <code lang="csharp"><![CDATA[
+public class UserService : IUserService
+{
+    private readonly IUserRepository _repository;
+
+    public UserService(IUserRepository repository)
+    {
+        _repository = repository;
+    }
+
+    public async Task<User> CreateAsync(CreateUserDto dto)
+    {
+        var user = new User { Name = dto.Name, Email = dto.Email };
+        return await _repository.AddAsync(user);
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="rust-patterns">
+      <rule testable="true">
+        <statement>Rust projects MUST use `thiserror` for error types, returning `Result&lt;T, E&gt;` from all fallible functions — never `panic!` or `.unwrap()` in library code. Async code MUST use `tokio` and the `#[tokio::main]` entrypoint. Blocking I/O MUST NOT be called inside an async function; use `tokio::task::spawn_blocking` instead.</statement>
+        <rationale>Explicit `Result` types make error propagation visible in function signatures. `thiserror` generates `Display` and `From` impls automatically. `reqwest::blocking::Client` inside `#[tokio::main]` compiles but blocks the async runtime, causing deadlocks under load — a common agent mistake.</rationale>
+      </rule>
+      <example type="good" title="Rust thiserror error types">
+        <code lang="rust"><![CDATA[
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum UserError {
+    #[error("user not found: {0}")]
+    NotFound(String),
+    #[error("database error")]
+    Database(#[from] sqlx::Error),
+}
+
+pub fn get_user(id: &str) -> Result<User, UserError> {
+    db.find_user(id)
+        .map_err(|e| UserError::Database(e))?
+        .ok_or(UserError::NotFound(id.to_string()))
+}
+]]></code>
+      </example>
+      <example type="good" title="Rust async with tokio">
+        <code lang="rust"><![CDATA[
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    let result = fetch_data().await;
+    println!("{:?}", result);
+}
+
+async fn fetch_data() -> Result<Data, Error> {
+    let response = reqwest::get("https://api.example.com/data").await?;
+    response.json().await
+}
+]]></code>
+      </example>
+      <example type="good" title="Rust project layout">
+        <code lang="text"><![CDATA[
+project/
+├── Cargo.toml
+├── src/
+│   ├── main.rs
+│   ├── lib.rs
+│   └── modules/
+│       ├── mod.rs
+│       └── user.rs
+├── tests/
+│   └── integration_test.rs
+└── examples/
+]]></code>
+      </example>
+      <antipattern>
+        <description>Using `reqwest::blocking::Client` inside `#[tokio::main]` or any async function.</description>
+        <reason>Compiles and runs, but blocks the async runtime thread, causing deadlocks under concurrent load. Use `reqwest::Client` (async) instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-gotchas">
+      <list>
+        <item>For Go: declare interfaces in the consumer package, not the producer. The README snippet contradicts this — correct the agent.</item>
+        <item>Spring `@Autowired` field injection is shown in many tutorials but discouraged; agents replicate field injection. Force constructor injection in the prompt.</item>
+        <item>Rust async section uses `reqwest`; agent imports `reqwest::blocking::Client` inside `#[tokio::main]` — compiles, but blocks the runtime. Catch in review.</item>
+        <item>Mass-rename refactors need a typecheck + test gate per file batch; otherwise the agent commits a half-migrated tree.</item>
+        <item>For multi-stack work, dispatch one subagent per language so each keeps a focused context.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Go project uses cmd/internal/pkg layout.</check>
+      <check>Go errors use fmt.Errorf wrapping with %w.</check>
+      <check>Go interfaces defined in consumer package.</check>
+      <check>Rails controllers are thin; logic in service/form/query objects.</check>
+      <check>Spring Boot uses constructor injection, not field @Autowired.</check>
+      <check>Rust uses thiserror Result types, no .unwrap() in library code.</check>
+      <check>Rust async uses reqwest::Client (async), not blocking variant.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://google.github.io/styleguide/"/>
+      <link href="https://rust-lang.github.io/api-guidelines/"/>
+      <link href="https://martinfowler.com/eaaCatalog/"/>
+      <link href="https://www.cosmicpython.com/"/>
+      <ref slug="practices-python-ecosystem"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="practices-frontend-components">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Frontend component authoring: Storybook CSF3 stories, design token TypeScript constants, co-located component file layout, and CLAUDE.md skeleton (100-150 lines) for AI-readable folder docs.</summary>
+    <tags>
+      <tag>storybook</tag>
+      <tag>design-tokens</tag>
+      <tag>frontend</tag>
+      <tag>component-library</tag>
+      <tag>documentation</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+    </frameworks>
+    <related>
+      <ref slug="practices-js-ts-stack"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Frontend Component Authoring Practices</title>
+
+    <summary>Four conventions for frontend component authoring: Storybook CSF3 stories co-located with components, design tokens as TypeScript constants (colors, spacing), a standardized co-located component file structure, and a 100-150 line CLAUDE.md skeleton for AI-readable folder documentation.</summary>
+
+    <why>
+      <p>Without a standard component authoring convention, agents scatter story files, duplicate design values as magic hex strings, and produce CLAUDE.md files that either balloon to 500 lines or are too sparse to be useful. Storybook CSF3 is the current standard (v7+); older CSF2 patterns are incompatible. Design tokens as TypeScript constants provide type safety and enable theming. The CLAUDE.md size guidelines (100-150 lines, hard cap 200) prevent the most common agent failure: over-summarizing large folders into unreadable walls of text.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding a new component to a React component library — use as the file layout template.</item>
+        <item>Setting up Storybook for the first time in a project.</item>
+        <item>Creating or updating design tokens for a project's visual system.</item>
+        <item>Generating CLAUDE.md/AGENTS.md documentation for any project folder.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>React application components that are not part of a shared library — a loose component in an app page does not need a Storybook story.</item>
+        <item>Storybook v8/v9 with `tags: ['autodocs']` and new args API — this covers v7 CSF3 basics only.</item>
+        <item>Design system theming with CSS custom properties or CSS-in-JS tokens — covers TypeScript-only tokens.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="storybook-pattern">
+      <rule testable="true">
+        <statement>Storybook stories MUST use CSF3 format: `Meta&lt;typeof Component&gt;` as the default export type, `StoryObj&lt;typeof Component&gt;` for each story, and be co-located as `{Name}.stories.tsx` in the component folder. Stories MUST define `args` for every required prop to be usable in the Storybook controls panel.</statement>
+        <rationale>CSF3 provides TypeScript inference for controls and actions. CSF2 (using `Template.bind({})`) is deprecated in Storybook v7+. Co-located stories make it impossible to forget to update stories when the component's props change.</rationale>
+      </rule>
+      <example type="good" title="Storybook CSF3 story">
+        <code lang="typescript"><![CDATA[
+// Button.stories.tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from './Button';
+
+const meta: Meta<typeof Button> = {
+  title: 'Components/Button',
+  component: Button,
+};
+
+export default meta;
+type Story = StoryObj<typeof Button>;
+
+export const Primary: Story = {
+  args: {
+    variant: 'primary',
+    children: 'Click me',
+  },
+};
+]]></code>
+      </example>
+      <antipattern>
+        <description>CSF2 `Template.bind({})` pattern: `const Template = (args) =&gt; &lt;Button {...args}/&gt;; export const Primary = Template.bind({})`.</description>
+        <reason>Deprecated in Storybook v7; no TypeScript inference for controls. Agents copy this pattern from older documentation.</reason>
+      </antipattern>
+      <note>Storybook v8/v9 adds `tags: ['autodocs']` and a revised args API. Upgrade the story when migrating Storybook versions.</note>
+    </section>
+
+    <section name="design-tokens">
+      <rule testable="true">
+        <statement>Design values MUST be defined as TypeScript constants in a `tokens/` directory, never as magic hex strings inline. Colors use a palette object with numeric scales (50-900) and a semantic layer (success, error, warning). Spacing uses a numeric key with rem values. Export from a single `index.ts`.</statement>
+        <rationale>Magic hex strings scattered across component files cause color drift — small variants of the same color appear across the codebase. TypeScript token objects provide autocomplete, make global color changes O(1), and are consumable by CSS-in-JS, Tailwind config, and design tools via style-dictionary.</rationale>
+      </rule>
+      <example type="good" title="Design token structure">
+        <code lang="typescript"><![CDATA[
+// tokens/colors.ts
+export const colors = {
+  primary: {
+    50: '#f0f9ff',
+    500: '#3b82f6',
+    900: '#1e3a8a',
+  },
+  semantic: {
+    success: '#22c55e',
+    error: '#ef4444',
+    warning: '#f59e0b',
+  },
+};
+
+// tokens/spacing.ts
+export const spacing = {
+  0: '0',
+  1: '0.25rem',
+  2: '0.5rem',
+  4: '1rem',
+  8: '2rem',
+};
+]]></code>
+      </example>
+      <antipattern>
+        <description>Inline hex strings in component styles: `color: '#3b82f6'` or `background: '#ef4444'`.</description>
+        <reason>Color drift: agents produce slightly different hex strings each time. No central change point.</reason>
+      </antipattern>
+    </section>
+
+    <section name="component-file-structure">
+      <rule testable="true">
+        <statement>Each component in a shared library MUST be in its own folder `src/components/{Name}/` containing exactly: `{Name}.tsx` (component), `{Name}.stories.tsx` (Storybook), `{Name}.test.tsx` (tests), `{Name}.module.css` (scoped styles, if CSS Modules is the project convention), and `index.ts` (barrel export). No other files.</statement>
+        <rationale>Co-located test and story files ensure they are updated when the component changes. The barrel `index.ts` keeps import paths clean (`from '@/components/Button'` instead of `from '@/components/Button/Button'`). Scattered files lead to orphaned stories with no corresponding component.</rationale>
+      </rule>
+      <example type="good" title="Component folder layout">
+        <code lang="text"><![CDATA[
+src/components/{Name}/
+├── {Name}.tsx           # Component
+├── {Name}.stories.tsx   # Storybook
+├── {Name}.test.tsx      # Tests
+├── {Name}.module.css    # Styles
+└── index.ts             # Export
+]]></code>
+      </example>
+    </section>
+
+    <section name="claude-md-documentation">
+      <rule testable="true">
+        <statement>Every project folder that contains source code MUST have a CLAUDE.md (or AGENTS.md) following the 100-150 line skeleton: H1 folder name, one-sentence description, Overview (2-3 sentences), Structure table (path → purpose), Key Concepts list, Entry Points list, Common Operations with bash examples, Dependencies list. Hard cap: 200 lines. Never exceed this — agents consistently over-generate.</statement>
+        <rationale>CLAUDE.md is auto-loaded by Claude Code when entering a directory. If it is too short, agents lack context. If it is too long, agents waste tokens on non-essential content. The 100-150 line sweet spot gives enough routing context without consuming the working context window.</rationale>
+      </rule>
+      <example type="good" title="CLAUDE.md skeleton">
+        <code lang="markdown"><![CDATA[
+# {Folder Name}
+
+{One-sentence description}
+
+## Overview
+{2-3 sentences explaining what this folder contains}
+
+## Structure
+| Path | Purpose |
+|------|---------|
+| `file.py` | Description |
+
+## Key Concepts
+- **Concept1**: Explanation
+
+## Entry Points
+- `main_file.py` — Primary entry point
+
+## Common Operations
+### Operation 1
+```bash
+command example
+```
+
+## Dependencies
+- dep1: purpose
+]]></code>
+      </example>
+      <note>Size guidelines: target 100-150 lines, hard cap 200. CLAUDE.md generation: agents consistently exceed the 200-line cap when summarizing large folders; require word/line budget explicitly in the prompt.</note>
+      <antipattern>
+        <description>CLAUDE.md that exceeds 200 lines by summarizing every function and every file in prose.</description>
+        <reason>Consumes the agent's working context window on non-essential content; slows routing and increases cost. CLAUDE.md is a routing document, not a full API reference.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cli-tools">
+      <p>Linting and formatting tools for the frontend stack:</p>
+      <list>
+        <item>`eslint` + `@typescript-eslint` — JS/TS lint: `npm i -D eslint @typescript-eslint/{parser,eslint-plugin}`</item>
+        <item>`prettier` — JS/TS/MD formatter: `npm i -D prettier`</item>
+        <item>`tsc --noEmit` — TS type-check gate: bundled with `typescript`</item>
+        <item>`storybook` — Component explorer: `npx storybook@latest init`</item>
+        <item>Chromatic — hosted Storybook with visual regression (SaaS, CLI + API)</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Components co-located with stories, tests, styles, and barrel export.</check>
+      <check>Storybook stories use CSF3 format (Meta + StoryObj types).</check>
+      <check>Design tokens in tokens/ as TypeScript constants, no magic hex strings inline.</check>
+      <check>CLAUDE.md for every source folder, 100-150 lines, under 200 hard cap.</check>
+      <check>Token file exports from a single index.ts barrel.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://storybook.js.org/docs/writing-stories"/>
+      <link href="https://storybook.js.org/docs/migration-guide"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code"/>
+      <ref slug="practices-js-ts-stack"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="practices-django-coding">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Django coding standards: import aliases, services-as-functions, thin views, multi-line params, base model with UUID/timestamps, code decision tree for placement.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>python</tag>
+      <tag>coding-standards</tag>
+      <tag>services</tag>
+      <tag>best-practices</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="practices-python-ecosystem"/>
+      <ref slug="dev-methodologies-testing"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Coding Standards</title>
+
+    <summary>Consistent Django code across projects requires four conventions: module-level import aliases for cross-app references, services-as-functions (not classes) for DB mutations, thin views that delegate to services, and a BaseModel providing UUID + timestamps on every model.</summary>
+
+    <why>
+      <p>Inconsistent Django code across projects is the canonical problem. Without a shared shape, agents extrapolate from whatever they see first — often fat views, inline DB writes, or unaliased star imports — and produce code that fails review. The four conventions below are each individually small but jointly eliminate the most common drift patterns in solopreneur and agency Django projects.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Django service scaffolding — use as the layout template.</item>
+        <item>Refactor passes aligning an existing app to a known-good shape (thin views, services/).</item>
+        <item>Cross-language onboarding where the agent must produce a Django service mirroring a Spring or Rails shape.</item>
+        <item>Code review gate — any PR touching Django apps/views/services should be checked against these rules.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Architecture decisions (microservices vs modular monolith) — see dev-methodologies-architecture.</item>
+        <item>Testing patterns — see dev-methodologies-testing.</item>
+        <item>Projects using Django Ninja instead of DRF where the view shape differs — agent will overwrite existing patterns.</item>
+        <item>Performance tuning, caching, observability — out of scope.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="import-style">
+      <rule testable="true">
+        <statement>Cross-app imports MUST use module-level aliases: `from apps.orders import models as order_models`. Own-module imports use relative: `from .models import User`. Never use `from apps.users.services import *`.</statement>
+        <rationale>Module-level aliases make renames O(1) — change the alias, not 40 call sites. Star imports shadow names silently and make agents lose track of provenance. Relative imports for own-module are idiomatic Python and shorter.</rationale>
+      </rule>
+      <example type="good" title="Cross-app import with alias">
+        <code lang="python"><![CDATA[
+# Cross-app imports - ALWAYS with alias
+from apps.orders import models as order_models
+from apps.users import services as user_services
+
+# Own modules (relative)
+from .models import User
+from . import constants
+]]></code>
+      </example>
+      <example type="bad" title="Unaliased cross-app import">
+        <code lang="python"><![CDATA[
+from apps.orders.models import Order
+from apps.users.services import activate_user, deactivate_user, *
+]]></code>
+        <note>Direct symbol imports from other apps break on rename and make namespace collisions invisible. Star imports are forbidden.</note>
+      </example>
+    </section>
+
+    <section name="services-as-functions">
+      <rule testable="true">
+        <statement>Services MUST be plain functions in `services/` modules, not classes. A class around a single method is a code smell. Use classes only when the service must hold connection or cache state across calls.</statement>
+        <rationale>Function-based services are simpler to test (no instantiation), simpler to type-check, and match the "Architecture Patterns with Python" (cosmicpython) approach. Agents default to god-service classes when left unconstrained.</rationale>
+      </rule>
+      <example type="good" title="Service as function">
+        <code lang="python"><![CDATA[
+# services/activation.py
+def activate_user_item(
+    user: User,
+    item_code: str,
+    *,
+    activated_by: Admin,
+) -> Item:
+    """Activate item for user."""
+    item = Item.objects.get(code=item_code)
+    item.user = user
+    item.is_active = True
+    item.save(update_fields=['user', 'is_active', 'updated_at'])
+    return item
+]]></code>
+      </example>
+      <antipattern>
+        <description>Wrapping a single function in a class: `class ActivationService: def activate(self, ...)`.</description>
+        <reason>Adds instantiation overhead, hides the function interface, and agents replicate the pattern into every new service creating needless boilerplate.</reason>
+      </antipattern>
+    </section>
+
+    <section name="multiline-params">
+      <rule testable="true">
+        <statement>Functions with more than two parameters MUST use multi-line parameter style with a bare `*` separator to enforce keyword-only arguments for optional params. Each parameter on its own line.</statement>
+        <rationale>Multi-line params make PR diffs readable (one param changed = one diff line), enable `ruff` to flag missing type hints per-param, and prevent positional-argument bugs in service calls.</rationale>
+      </rule>
+      <example type="good" title="Multi-line with keyword-only enforcement">
+        <code lang="python"><![CDATA[
+def create_order(
+    user: User,
+    amount: Decimal,
+    order_type: str,
+    *,  # Keyword-only after
+    item: Item | None = None,
+    notify: bool = True,
+) -> Order:
+    ...
+]]></code>
+      </example>
+    </section>
+
+    <section name="thin-views">
+      <rule testable="true">
+        <statement>Django/DRF views MUST be thin: validate input via serializer, call one service function, return serialized output. Views MUST NOT contain DB queries, business logic, or conditional branching beyond HTTP error cases. Target: under 20 lines per view method.</statement>
+        <rationale>Fat views are untestable without the HTTP layer. Thin views delegate to services which are testable as pure Python. Agents commonly re-create fat views when the service layer is not explicitly required in the prompt.</rationale>
+      </rule>
+      <example type="good" title="Thin DRF view">
+        <code lang="python"><![CDATA[
+class ItemActivationView(APIView):
+    def post(self, request):
+        serializer = ItemActivationRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        item = services.activate_user_item(
+            user=request.user,
+            item_code=serializer.validated_data['item_code'],
+        )
+        return Response(ItemResponse(item).data)
+]]></code>
+      </example>
+      <antipattern>
+        <description>DB query or business logic inside the view method body (e.g., `Item.objects.filter(...)` directly in `post()`).</description>
+        <reason>Breaks testability and creates duplicate logic when the same operation is needed from a Celery task or management command.</reason>
+      </antipattern>
+    </section>
+
+    <section name="base-model">
+      <rule testable="true">
+        <statement>Every Django model MUST inherit from `BaseModel` which provides `uid` (UUIDField, unique=True), `created_at` (auto_now_add), and `updated_at` (auto_now). `BaseModel` is abstract. Never add these fields individually to each model.</statement>
+        <rationale>Missing standard fields is a recurring problem in new Django apps. UUID `uid` provides an external-safe identifier separate from the integer PK. Without a shared base, agents add or skip fields inconsistently across apps.</rationale>
+      </rule>
+      <example type="good" title="BaseModel pattern">
+        <code lang="python"><![CDATA[
+class BaseModel(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+]]></code>
+      </example>
+    </section>
+
+    <section name="code-decision-tree">
+      <p>Use this decision tree to determine where new code belongs in a Django app.</p>
+      <rule testable="true">
+        <statement>When placing a new function: DB mutations (CREATE/UPDATE/DELETE) go in `services/`; external API calls go in `services/` or `integrations/`; pure functions (validation, calculation) go in `utils/`; data transformation goes in `utils/`.</statement>
+        <rationale>A predictable placement rule means agents and humans find code without grep. Without this rule agents default to putting everything in views or models.</rationale>
+      </rule>
+      <example type="good" title="Decision tree applied">
+        <code lang="text"><![CDATA[
+What does the function do?
+│
+├─ Changes DB (CREATE/UPDATE/DELETE)?
+│  └─ services/
+├─ Makes external API calls?
+│  └─ services/ or integrations/
+├─ Pure function (validation, calculation)?
+│  └─ utils/
+└─ Data transformation?
+   └─ utils/
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Known failure modes when agents apply these patterns:</p>
+      <list>
+        <item>Agent silently rewrites imports across the file when fixing one — restrict edits with explicit line ranges or use the Edit tool.</item>
+        <item>`save(update_fields=[...])` requires the list to match real column names; agent renaming a field forgets to update the list, leading to silent partial saves.</item>
+        <item>Agent confuses Pydantic v1 vs v2 syntax (`@validator` vs `@field_validator`) inside FastAPI examples — always state the major version.</item>
+        <item>Human-in-loop checkpoint: any change to BaseModel, shared interfaces, or DI registration is a blast-radius change and must be reviewed.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Cross-app imports use module-level aliases (no star imports).</check>
+      <check>Service layer is functions, not classes, in `services/` modules.</check>
+      <check>View methods are under 20 lines and contain no DB queries.</check>
+      <check>All models inherit BaseModel (uuid, created_at, updated_at).</check>
+      <check>New functions placed using the decision tree (DB → services, pure → utils).</check>
+      <check>Run `ruff check --fix` before committing Python changes.</check>
+    </checklist>
+
+    <prompt purpose="apply-django-standards">
+<![CDATA[Apply the Django coding standards from practices-django-coding to apps/{APP_NAME}.
+Constraints:
+- Move DB-mutating logic into apps/{APP_NAME}/services/
+- Keep views under 20 lines per method
+- Use module-level import alias for all cross-app references
+- Ensure all models inherit BaseModel
+Run `ruff check --fix apps/{APP_NAME} && pytest apps/{APP_NAME} -x`.
+]]>
+    </prompt>
+
+    <see-also>
+      <link href="https://docs.djangoproject.com/en/5.0/misc/design-philosophies/"/>
+      <link href="https://www.cosmicpython.com/"/>
+      <ref slug="practices-python-ecosystem"/>
+      <ref slug="dev-methodologies-testing"/>
+    </see-also>
+  </content>
+</methodology>
