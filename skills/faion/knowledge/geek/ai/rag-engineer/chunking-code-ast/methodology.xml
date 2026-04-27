@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chunking-code-ast">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Split source code by function and class boundaries using Python AST or JavaScript regex patterns; each chunk carries name, type, docstring, and source line range for precise retrieval.</summary>
+    <tags>
+      <tag>chunking</tag>
+      <tag>code-chunking</tag>
+      <tag>ast</tag>
+      <tag>rag</tag>
+      <tag>code-search</tag>
+    </tags>
+    <category>chunking</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-document-structure"/>
+      <ref slug="chunking-semantic"/>
+      <ref slug="chunking-production-service"/>
+    </related>
+    <languages>
+      <language>python</language>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Code Chunking via AST and Function Boundaries</title>
+
+    <summary>CodeChunker splits Python source via the `ast` module at FunctionDef, AsyncFunctionDef, and ClassDef boundaries, emitting chunks with name, type, docstring, and line range. JavaScript and TypeScript fall back to regex patterns for function and class extraction. Generic line-based splitting handles unsupported languages or parse errors.</summary>
+
+    <why>
+      <p>Character-based chunking of code breaks function bodies mid-statement, producing chunks that embed incoherently — a fragment of a function is neither the function signature nor its body, so vector search cannot match either "what does function X do" or "show me examples of pattern Y". AST-based chunking treats each function and class as an atomic unit, which is exactly how developers search for code.</p>
+      <p>The Python AST path is authoritative: it handles decorators, nested functions, type annotations, and multiline expressions correctly. Regex patterns for JavaScript/TypeScript are a practical fallback but fail on arrow functions with implicit returns, TypeScript generics, and decorator syntax — use tree-sitter for those if query accuracy on TypeScript is critical.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Ingesting source code repositories into a code-search RAG (Python AST, JS/TS function-level splitting).</item>
+        <item>Building a code documentation assistant that answers "what does function X do?" or "show me examples of pattern Y".</item>
+        <item>Any pipeline where the retrieval query maps naturally to function or class units (e.g., finding all async route handlers).</item>
+        <item>Multi-language codebases where Python is the primary language and JS/TS is secondary.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Code chunking via JS regex patterns on TypeScript with decorators or generics — AST parsers handle those correctly; regex does not. Use tree-sitter bindings instead.</item>
+        <item>Corpora entirely in languages not supported by ast or the JS regex patterns — the generic line-based fallback silently drops class and function metadata.</item>
+        <item>Documentation or prose files — use chunking-document-structure or chunking-semantic instead.</item>
+        <item>Files with syntax errors that prevent ast.parse — the fallback to generic splitting silently drops all metadata; surface this to the caller as a warning.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="code-chunker-impl">
+      <rule testable="true">
+        <statement>CodeChunker MUST dispatch on language: python uses ast.parse on the full source and walks FunctionDef/AsyncFunctionDef/ClassDef nodes; javascript/typescript uses regex patterns for function, class, and arrow function definitions. For any language where the primary path fails (SyntaxError for Python, empty match list for JS), CodeChunker MUST fall back to _chunk_generic and MUST log a warning indicating that metadata fields (name, type, docstring) will be absent in the output chunks.</statement>
+        <rationale>Silent fallback without a warning causes the caller to index chunks as if they were named function units, but they are actually anonymous line-based fragments. Surfacing the fallback allows the pipeline to flag these files for manual review or exclusion.</rationale>
+      </rule>
+
+      <example type="good" title="CodeChunker with Python AST and JS regex">
+        <code lang="python"><![CDATA[
+import re
+from typing import List, Dict
+
+class CodeChunker:
+    """Chunk code files by functions/classes."""
+
+    def __init__(
+        self,
+        max_chunk_size: int = 800,
+        language: str = "python"
+    ):
+        self.max_chunk_size = max_chunk_size
+        self.language = language
+
+    def chunk(self, code: str) -> List[Dict]:
+        """Split code by logical units."""
+        if self.language == "python":
+            return self._chunk_python(code)
+        elif self.language in ["javascript", "typescript"]:
+            return self._chunk_javascript(code)
+        else:
+            return self._chunk_generic(code)
+
+    def _chunk_python(self, code: str) -> List[Dict]:
+        """Chunk Python code by classes and functions."""
+        import ast
+
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return self._chunk_generic(code)
+
+        chunks = []
+        lines = code.split('\n')
+
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                start_line = node.lineno - 1
+                end_line = node.end_lineno
+
+                chunk_lines = lines[start_line:end_line]
+                chunk_text = '\n'.join(chunk_lines)
+
+                # Get docstring if exists
+                docstring = ast.get_docstring(node) or ""
+
+                chunks.append({
+                    "text": chunk_text,
+                    "type": "class" if isinstance(node, ast.ClassDef) else "function",
+                    "name": node.name,
+                    "docstring": docstring,
+                    "start_line": start_line + 1,
+                    "end_line": end_line
+                })
+
+        # Handle module-level code
+        if not chunks:
+            return self._chunk_generic(code)
+
+        return chunks
+
+    def _chunk_javascript(self, code: str) -> List[Dict]:
+        """Chunk JavaScript/TypeScript code."""
+        # Pattern for functions and classes
+        patterns = [
+            (r'((?:export\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', 'function'),
+            (r'((?:export\s+)?class\s+\w+[^{]*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', 'class'),
+            (r'(const\s+\w+\s*=\s*(?:async\s+)?\([^)]*\)\s*=>\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})', 'arrow_function'),
+        ]
+
+        chunks = []
+        for pattern, chunk_type in patterns:
+            for match in re.finditer(pattern, code, re.MULTILINE | re.DOTALL):
+                chunk_text = match.group(1)
+                if len(chunk_text.split()) <= self.max_chunk_size:
+                    # Extract name
+                    name_match = re.search(r'(?:function|class|const)\s+(\w+)', chunk_text)
+                    name = name_match.group(1) if name_match else "anonymous"
+
+                    chunks.append({
+                        "text": chunk_text,
+                        "type": chunk_type,
+                        "name": name
+                    })
+
+        if not chunks:
+            return self._chunk_generic(code)
+
+        return chunks
+
+    def _chunk_generic(self, code: str) -> List[Dict]:
+        """Generic code chunking by lines."""
+        lines = code.split('\n')
+        chunks = []
+        current_chunk = []
+        current_size = 0
+
+        for line in lines:
+            line_words = len(line.split())
+
+            if current_size + line_words <= self.max_chunk_size:
+                current_chunk.append(line)
+                current_size += line_words
+            else:
+                if current_chunk:
+                    chunks.append({
+                        "text": '\n'.join(current_chunk),
+                        "type": "code_block",
+                        "line_count": len(current_chunk)
+                    })
+                current_chunk = [line]
+                current_size = line_words
+
+        if current_chunk:
+            chunks.append({
+                "text": '\n'.join(current_chunk),
+                "type": "code_block",
+                "line_count": len(current_chunk)
+            })
+
+        return chunks
+]]></code>
+        <note>CodeChunker Python path uses ast.parse — it silently falls back to generic line-based splitting for syntax errors without warning. Add explicit logging on the SyntaxError branch.</note>
+      </example>
+
+      <antipattern>
+        <description>Using the JS regex-based path for TypeScript files with decorators, generics, or complex arrow functions.</description>
+        <reason>For multi-language codebases, prefer tree-sitter bindings over regex-based JS chunking — the regex patterns in the reference implementation fail on arrow functions with implicit returns, TypeScript generics, and decorator syntax. Install tree-sitter for production TypeScript RAG.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Indexing CodeChunker output from Python files without deduplicating overlapping method/class chunks.</description>
+        <reason>CodeChunker via AST produces overlapping chunks when a class contains methods — both the class body and each method appear as separate chunks. Deduplicate by (name, start_line) before indexing to avoid duplicate vector entries that skew nearest-neighbor scores.</reason>
+      </antipattern>
+    </section>
+
+    <section name="strategy-selection">
+      <p>Strategy selection matrix by content type:</p>
+      <list>
+        <item>Python source files (.py) — CodeChunker with language="python" (AST path)</item>
+        <item>JavaScript/TypeScript (.js, .ts, .tsx) — CodeChunker with language="javascript"; consider tree-sitter for complex TS</item>
+        <item>Other languages — _chunk_generic (line-based, no metadata)</item>
+        <item>Markdown documentation — use chunking-document-structure (MarkdownChunker)</item>
+        <item>HTML pages — use chunking-document-structure (HTMLChunker)</item>
+        <item>Unstructured prose — use chunking-semantic (SemanticChunker) or RecursiveChunker</item>
+      </list>
+    </section>
+
+    <section name="tooling">
+      <list>
+        <item>ast (stdlib) — Python AST parsing for CodeChunker; built-in, no install needed</item>
+        <item>tree-sitter — language-agnostic AST for multi-language code chunking: `pip install tree-sitter`</item>
+        <item>llama-index-core — CodeSplitter node parser: `pip install llama-index-core`</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Agents running CodeChunker on .py files with encoding errors must handle the ast.parse SyntaxError branch explicitly; the fallback _chunk_generic silently drops class/function metadata.</p>
+      <p>When switching chunking strategy on an existing index, the chunk count per document changes — chunk IDs collide — stale vectors remain. Always clear the collection or use a versioned collection name when re-chunking a corpus.</p>
+    </section>
+
+    <checklist>
+      <check>Deduplicate chunks by (name, start_line) when using Python AST path to remove overlapping class/method chunks.</check>
+      <check>Log a warning when ast.parse raises SyntaxError — the fallback _chunk_generic silently drops function metadata.</check>
+      <check>Use tree-sitter instead of regex for TypeScript files with decorators, generics, or complex arrow functions.</check>
+      <check>Version collection names when switching chunking strategy to avoid stale vector collisions.</check>
+      <check>Validate chunk size distribution: log warning if more than 5% of chunks exceed max_chunk_size.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-production-service"/>
+      <link href="https://github.com/tree-sitter/tree-sitter"/>
+      <link href="https://python.langchain.com/docs/modules/data_connection/document_transformers/"/>
+    </see-also>
+  </content>
+</methodology>
