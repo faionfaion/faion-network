@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-jobs">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run Jobs for batch processing: parallel task execution, CLOUD_RUN_TASK_INDEX work distribution, idempotency, checkpointing, Cloud Scheduler integration, and Terraform configuration.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>jobs</tag>
+      <tag>batch</tag>
+      <tag>scheduler</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-monitoring"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run Jobs</title>
+
+    <summary>Cloud Run Jobs run containers to completion rather than serving HTTP requests. Jobs support up to 10,000 parallel tasks, 168-hour timeouts, and automatic retries. Use CLOUD_RUN_TASK_INDEX and CLOUD_RUN_TASK_COUNT environment variables to distribute work across parallel tasks. Tasks MUST be idempotent because retries re-execute the same task.</summary>
+
+    <why>
+      <p>Cloud Run Services are optimized for HTTP request/response workloads that auto-scale on traffic. Jobs are optimized for run-to-completion batch tasks: ETL pipelines, report generation, data exports, ML training data preparation. Jobs handle parallelism natively (up to 10,000 tasks) without requiring external orchestration. The 168-hour timeout accommodates multi-day batch jobs that would time out in any HTTP-based service.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Batch processing large datasets that can be partitioned across parallel tasks.</item>
+        <item>ETL pipelines, data exports, report generation, and scheduled data transformations.</item>
+        <item>One-off administrative tasks (database migrations, cleanup jobs, backfills).</item>
+        <item>ML training data preparation or model evaluation pipelines.</item>
+        <item>Recurring scheduled tasks (replace Cloud Functions cron triggers for complex jobs).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>HTTP-triggered request processing — use Cloud Run Services.</item>
+        <item>Streaming or continuous processing — use Dataflow or Pub/Sub push subscriptions.</item>
+        <item>Workflows with complex DAG dependencies — use Cloud Workflows or Composer.</item>
+        <item>Jobs needing more than 8 vCPU or 32 GB memory per task — use GKE Batch or Dataproc.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-job">
+      <rule>
+        <statement>Tasks MUST be idempotent: running the same task twice with the same CLOUD_RUN_TASK_INDEX MUST produce the same result and not corrupt state. Set max-retries to 3 (default) for transient failures and 0 for non-idempotent tasks where retry is dangerous. Always set task-timeout explicitly — default is 10 minutes; ETL tasks often need hours.</statement>
+        <rationale>Cloud Run retries failed tasks up to max-retries. If tasks are not idempotent, retries cause duplicate writes, double-charged payments, or corrupted state. Explicit timeout prevents infinite-hang tasks from consuming quota indefinitely.</rationale>
+      </rule>
+
+      <example type="good" title="Basic job creation and execution">
+        <code lang="bash"><![CDATA[
+# Create job
+gcloud run jobs create my-job \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-job:v1 \
+    --region=us-central1 \
+    --task-timeout=600 \
+    --max-retries=3
+
+# Execute job
+gcloud run jobs execute my-job --region=us-central1
+
+# Execute with overrides
+gcloud run jobs execute my-job \
+    --region=us-central1 \
+    --update-env-vars=BATCH_SIZE=1000
+]]></code>
+      </example>
+
+      <example type="good" title="Parallel job with 100 tasks">
+        <code lang="bash"><![CDATA[
+gcloud run jobs create batch-processor \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/processor:v1 \
+    --region=us-central1 \
+    --tasks=100 \
+    --parallelism=10 \
+    --task-timeout=3600 \
+    --max-retries=3 \
+    --memory=4Gi \
+    --cpu=2 \
+    --set-env-vars=BUCKET=my-data-bucket
+]]></code>
+        <note>--tasks=100 creates 100 task instances. --parallelism=10 runs 10 simultaneously. Each task receives CLOUD_RUN_TASK_INDEX (0-99) and CLOUD_RUN_TASK_COUNT (100).</note>
+      </example>
+    </section>
+
+    <section name="task-distribution">
+      <rule>
+        <statement>Use CLOUD_RUN_TASK_INDEX (0-based) and CLOUD_RUN_TASK_COUNT to distribute work across parallel tasks. Divide the total work set into equal slices by task index. The last task MUST handle the remainder when total_items is not divisible by task_count. Use checkpointing to Cloud Storage for tasks exceeding 30 minutes to survive potential task restarts.</statement>
+        <rationale>Without work distribution by index, all tasks would process the same data. The index-based slice pattern is the canonical Cloud Run Jobs pattern for parallel batch: deterministic, idempotent, no coordination required between tasks.</rationale>
+      </rule>
+
+      <example type="good" title="Python task index work distribution">
+        <code lang="python"><![CDATA[
+import os
+
+def process_batch():
+    task_index = int(os.environ.get('CLOUD_RUN_TASK_INDEX', 0))
+    task_count = int(os.environ.get('CLOUD_RUN_TASK_COUNT', 1))
+
+    # Calculate work slice
+    total_items = 10000
+    items_per_task = total_items // task_count
+    start = task_index * items_per_task
+    end = start + items_per_task
+
+    if task_index == task_count - 1:
+        end = total_items  # Last task handles remainder
+
+    print(f"Task {task_index}: Processing items {start} to {end}")
+
+    # Process items
+    for i in range(start, end):
+        process_item(i)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Processing all items in every task without using CLOUD_RUN_TASK_INDEX for partitioning.</description>
+        <reason>All tasks process the same data N times. With 100 tasks and 10,000 items, 1,000,000 items are processed instead of 10,000. Results are duplicated N times; cost multiplies by task_count.</reason>
+      </antipattern>
+    </section>
+
+    <section name="scheduling">
+      <rule>
+        <statement>Use Cloud Scheduler to trigger Cloud Run Jobs on a recurring cron schedule. The scheduler service account MUST have roles/run.invoker on the job. Set attempt-deadline on the scheduler job to match the expected job duration plus buffer (not the task timeout). Use the v1 jobs run API endpoint for HTTP POST triggering.</statement>
+        <rationale>Cloud Scheduler handles cron expression parsing, timezone conversion, and retry-on-failure for the trigger itself (not the job tasks). The attempt-deadline controls how long Scheduler waits for the HTTP response before retrying the trigger — it must be long enough for the job to start (not complete).</rationale>
+      </rule>
+
+      <example type="good" title="Create job and Cloud Scheduler trigger">
+        <code lang="bash"><![CDATA[
+# Create job
+gcloud run jobs create daily-report \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/report:v1 \
+    --region=us-central1 \
+    --task-timeout=1800
+
+# Create scheduler
+gcloud scheduler jobs create http daily-report-trigger \
+    --location=us-central1 \
+    --schedule="0 6 * * *" \
+    --time-zone="Europe/Kyiv" \
+    --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/my-project/jobs/daily-report:run" \
+    --oauth-service-account-email=scheduler-sa@my-project.iam.gserviceaccount.com
+]]></code>
+      </example>
+    </section>
+
+    <section name="terraform-job">
+      <example type="good" title="Terraform: Cloud Run Job with Cloud Scheduler">
+        <code lang="hcl"><![CDATA[
+variable "project_id" { type = string }
+variable "region"     { type = string; default = "us-central1" }
+variable "job_name"   { type = string }
+variable "image"      { type = string }
+variable "task_count" { type = number; default = 1 }
+variable "parallelism" { type = number; default = 1 }
+
+resource "google_cloud_run_v2_job" "batch" {
+  name     = var.job_name
+  location = var.region
+
+  template {
+    task_count  = var.task_count
+    parallelism = var.parallelism
+
+    template {
+      containers {
+        image = var.image
+
+        resources {
+          limits = {
+            cpu    = "2"
+            memory = "4Gi"
+          }
+        }
+
+        env {
+          name  = "BUCKET"
+          value = "my-data-bucket"
+        }
+      }
+
+      max_retries = 3
+      timeout     = "3600s"
+    }
+  }
+}
+
+resource "google_cloud_scheduler_job" "trigger" {
+  name             = "${var.job_name}-trigger"
+  region           = var.region
+  schedule         = "0 6 * * *"
+  time_zone        = "Europe/Kyiv"
+  attempt_deadline = "320s"
+
+  http_target {
+    http_method = "POST"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${var.job_name}:run"
+
+    oauth_token {
+      service_account_email = "scheduler-sa@${var.project_id}.iam.gserviceaccount.com"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="yaml-templates">
+      <example type="good" title="Cloud Run Job YAML for gcloud apply">
+        <code lang="yaml"><![CDATA[
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: batch-processor
+spec:
+  template:
+    spec:
+      taskCount: 100
+      parallelism: 10
+      template:
+        spec:
+          maxRetries: 3
+          timeoutSeconds: 3600
+          containers:
+            - image: us-central1-docker.pkg.dev/my-project/my-repo/processor:v1
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 4Gi
+              env:
+                - name: BUCKET
+                  value: my-data-bucket
+]]></code>
+      </example>
+    </section>
+
+    <section name="jobs-checklist">
+      <checklist>
+        <check>Task count and parallelism configured appropriately for data volume.</check>
+        <check>Task timeout set explicitly (default 10min is often too short for ETL).</check>
+        <check>Retry count configured (default 3; set to 0 for non-idempotent tasks).</check>
+        <check>Memory and CPU allocated to match per-task processing needs.</check>
+        <check>Tasks are idempotent (safe to retry with same CLOUD_RUN_TASK_INDEX).</check>
+        <check>Checkpointing implemented for tasks exceeding 30 minutes.</check>
+        <check>CLOUD_RUN_TASK_INDEX used for work distribution across tasks.</check>
+        <check>CLOUD_RUN_TASK_COUNT used for total work calculation.</check>
+        <check>Error handling and structured logging implemented.</check>
+        <check>Cloud Scheduler job created with correct cron and service account (if scheduled).</check>
+        <check>Scheduler service account has roles/run.invoker on the job.</check>
+        <check>Timezone configured on Cloud Scheduler (do not rely on default UTC).</check>
+      </checklist>
+    </section>
+
+    <section name="management-commands">
+      <commands>
+        <command name="list-jobs">gcloud run jobs list --region=us-central1</command>
+        <command name="describe-job">gcloud run jobs describe my-job --region=us-central1</command>
+        <command name="execute-job">gcloud run jobs execute my-job --region=us-central1</command>
+        <command name="list-executions">gcloud run jobs executions list --job=my-job --region=us-central1</command>
+        <command name="job-logs">gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=my-job" --limit=100</command>
+        <command name="delete-job">gcloud run jobs delete my-job --region=us-central1</command>
+      </commands>
+    </section>
+
+    <see-also>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-monitoring"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <link href="https://cloud.google.com/run/docs/create-jobs"/>
+      <link href="https://cloud.google.com/run/docs/execute/jobs"/>
+      <link href="https://cloud.google.com/run/docs/configuring/jobs/parallel-jobs"/>
+    </see-also>
+  </content>
+</methodology>
