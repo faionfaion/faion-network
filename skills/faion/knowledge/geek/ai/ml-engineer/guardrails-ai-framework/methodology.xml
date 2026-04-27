@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="guardrails-ai-framework">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Guardrails AI: validator-based output pipeline with Pydantic schemas and RAIL spec, 50+ Hub validators, custom validator authoring, streaming validation, and schema-enforced structured extraction.</summary>
+    <tags>
+      <tag>guardrails-ai</tag>
+      <tag>output-validation</tag>
+      <tag>pydantic</tag>
+      <tag>llm-safety</tag>
+      <tag>schema-validation</tag>
+    </tags>
+    <category>safety</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>guardrails-ai</framework>
+    </frameworks>
+    <related>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-nemo"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Guardrails AI — Validator-Based Output Pipeline</title>
+
+    <summary>Guardrails AI is best for output validation, structured data extraction, and schema enforcement. It uses a validator-based pipeline with Pydantic schemas or RAIL (XML) spec, 50+ pre-built validators on Guardrails Hub, and a simple code-first API for custom validators. It integrates with OpenAI, Anthropic, and local models.</summary>
+
+    <why>
+      <p>Guardrails AI excels at the output validation problem: given a schema, force the LLM to return data that conforms to it — with automatic retry-and-fix on failure. It is the simplest path from "LLM generates JSON" to "application receives typed, validated data". The Hub ecosystem provides 50+ pre-built validators for common needs (PII detection, toxic language, competitor checking) that would otherwise require custom code.</p>
+      <p>Strengths: simple code-first approach; rich validator ecosystem; strong typing and schema validation; easy to extend with custom validators; good for structured output extraction. Limitations: less sophisticated dialog control; primarily output-focused; no built-in conversation state management.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Structured data extraction where LLM output must conform to a Pydantic model or RAIL schema.</item>
+        <item>Output validation pipelines needing multiple independent validators (toxicity, PII, length, format) composed together.</item>
+        <item>Applications requiring automatic retry-with-feedback when the LLM output fails validation.</item>
+        <item>Teams that need validators from the Hub ecosystem without building custom classifiers.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Complex multi-turn dialog control — use NeMo Guardrails instead.</item>
+        <item>Input-only guardrails (Guardrails AI is primarily output-focused).</item>
+        <item>Latency-critical paths where retry-on-fail could compound response times.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-validation">
+      <rule>
+        <statement>Create a Guard with Guard.for_pydantic(OutputSchema) where OutputSchema is a Pydantic BaseModel with Field validators. Call guard(openai.chat.completions.create, ...) to get a validated, typed response.</statement>
+        <rationale>Pydantic integration gives type safety and automatic schema generation. The guard wraps the API call and handles retry-on-fail transparently — the application receives a validated object or a clear validation failure.</rationale>
+      </rule>
+      <example type="good" title="Pydantic schema validation with Guard">
+        <code lang="python"><![CDATA[
+# pip install guardrails-ai
+
+from guardrails import Guard
+from guardrails.validators import ValidLength, RegexMatch
+from pydantic import BaseModel, Field
+import openai
+
+class ProductReview(BaseModel):
+    sentiment: str = Field(
+        ...,
+        description="The sentiment of the review",
+        validators=[RegexMatch(regex="^(positive|negative|neutral)$")]
+    )
+    summary: str = Field(
+        ...,
+        description="A brief summary of the review",
+        validators=[ValidLength(min=10, max=200)]
+    )
+    rating: int = Field(
+        ...,
+        description="Rating from 1 to 5",
+        ge=1,
+        le=5
+    )
+
+guard = Guard.for_pydantic(ProductReview)
+
+response = guard(
+    openai.chat.completions.create,
+    model="gpt-4o",
+    messages=[{
+        "role": "user",
+        "content": "Analyze this review: 'Great product, fast shipping!'"
+    }]
+)
+
+if response.validation_passed:
+    print(response.validated_output)
+else:
+    print(f"Validation failed: {response.validation_summary}")
+]]></code>
+      </example>
+    </section>
+
+    <section name="hub-validators">
+      <rule>
+        <statement>Install Hub validators with guardrails hub install hub://guardrails/&lt;name&gt;. Use Guard().use_many() to compose multiple validators. Hub validators cover: ToxicLanguage, DetectPII, CompetitorCheck, and 50+ more.</statement>
+        <rationale>Hub validators are pre-built, tested, and maintained. Composing them with use_many() creates a pipeline where each validator can independently fix, filter, or block on failure without custom code.</rationale>
+      </rule>
+      <example type="good" title="Hub validators with fix-on-fail">
+        <code lang="python"><![CDATA[
+# Install validators:
+# guardrails hub install hub://guardrails/toxic_language
+# guardrails hub install hub://guardrails/detect_pii
+# guardrails hub install hub://guardrails/competitor_check
+
+from guardrails import Guard
+from guardrails.hub import ToxicLanguage, DetectPII, CompetitorCheck
+
+guard = Guard().use_many(
+    ToxicLanguage(threshold=0.5, on_fail="fix"),
+    DetectPII(pii_entities=["EMAIL_ADDRESS", "PHONE_NUMBER"], on_fail="fix"),
+    CompetitorCheck(competitors=["CompetitorA", "CompetitorB"], on_fail="filter")
+)
+
+result = guard.validate("Contact us at john@email.com or call 555-1234")
+print(result.validated_output)
+# Output: "Contact us at [EMAIL_ADDRESS] or call [PHONE_NUMBER]"
+]]></code>
+      </example>
+    </section>
+
+    <section name="custom-validators">
+      <rule>
+        <statement>Define custom validators by subclassing Validator and decorating with @register_validator(name="custom/slug", data_type="string"). Implement validate() returning PassResult or FailResult(error_message, fix_value). The fix_value is returned when on_fail="fix".</statement>
+        <rationale>Custom validators follow the same interface as Hub validators, enabling seamless composition in Guard().use_many() pipelines. The fix_value mechanism allows the validator to both detect and repair violations in a single pass.</rationale>
+      </rule>
+      <example type="good" title="Custom validator for medical advice detection">
+        <code lang="python"><![CDATA[
+from guardrails import Guard, Validator, register_validator
+from guardrails.validators import PassResult, FailResult
+from typing import Any, Dict
+
+@register_validator(name="custom/no_medical_advice", data_type="string")
+class NoMedicalAdvice(Validator):
+    """Validator that checks for medical advice."""
+
+    def __init__(
+        self,
+        keywords: list = None,
+        on_fail: str = "fix",
+        **kwargs
+    ):
+        super().__init__(on_fail=on_fail, **kwargs)
+        self.keywords = keywords or [
+            "take medication",
+            "prescription",
+            "dosage",
+            "diagnose",
+            "treatment plan"
+        ]
+
+    def validate(self, value: Any, metadata: Dict = {}) -> PassResult | FailResult:
+        """Check if the text contains medical advice."""
+        lower_value = value.lower()
+
+        for keyword in self.keywords:
+            if keyword in lower_value:
+                if self.on_fail == "fix":
+                    fixed_value = value.replace(
+                        keyword,
+                        "[CONSULT A MEDICAL PROFESSIONAL]"
+                    )
+                    return FailResult(
+                        error_message=f"Medical advice detected: {keyword}",
+                        fix_value=fixed_value
+                    )
+                return FailResult(
+                    error_message=f"Medical advice detected: {keyword}"
+                )
+
+        return PassResult()
+
+guard = Guard().use(NoMedicalAdvice(on_fail="fix"))
+result = guard.validate("You should take medication twice daily")
+print(result.validated_output)
+# Output: "You should [CONSULT A MEDICAL PROFESSIONAL] twice daily"
+]]></code>
+      </example>
+    </section>
+
+    <section name="rail-spec">
+      <rule>
+        <statement>Use RAIL XML spec via Guard.from_rail_string(rail_spec) when the output schema is complex or needs to be defined outside Python code. RAIL defines output structure, field validators, and the prompt template in a single XML document.</statement>
+        <rationale>RAIL spec separates the validation contract from application code. It is useful for teams that version schema definitions independently of application code, or for dynamically generated schemas.</rationale>
+      </rule>
+      <example type="good" title="RAIL spec for structured extraction">
+        <code lang="python"><![CDATA[
+from guardrails import Guard
+import openai
+
+rail_spec = """
+<rail version="0.1">
+<output>
+    <object name="user_info">
+        <string name="name" description="User's full name" required="true"/>
+        <string name="email" format="email" description="User's email"/>
+        <integer name="age" description="User's age" validators="greater_than: 0"/>
+        <list name="interests" description="User's interests">
+            <string/>
+        </list>
+    </object>
+</output>
+<prompt>
+Extract user information from the following text:
+{{text}}
+
+Return as JSON.
+</prompt>
+</rail>
+"""
+
+guard = Guard.from_rail_string(rail_spec)
+
+response = guard(
+    openai.chat.completions.create,
+    model="gpt-4o",
+    prompt_params={"text": "John Doe, john@example.com, 30 years old, likes hiking"}
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="streaming-validation">
+      <rule>
+        <statement>Use guard.stream() for streaming validation. The guard buffers the stream, applies validators to the complete output, and yields validated chunks. Set a length validator to catch runaway responses before they finish streaming.</statement>
+        <rationale>Streaming with validation requires buffering the full output before validation can run. The guard abstraction hides this complexity while preserving the streaming interface to the caller.</rationale>
+      </rule>
+      <example type="good" title="Streaming with length validation">
+        <code lang="python"><![CDATA[
+from guardrails import Guard
+from guardrails.validators import ValidLength
+import openai
+
+guard = Guard().use(ValidLength(max=500))
+
+async def stream_with_validation():
+    validated_text = ""
+
+    async for chunk in guard.stream(
+        openai.chat.completions.create,
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Write a short story"}],
+        stream=True
+    ):
+        validated_text += chunk
+        print(chunk, end="", flush=True)
+
+    return validated_text
+]]></code>
+      </example>
+    </section>
+
+    <section name="validator-templates">
+      <p>Production validator patterns for common use cases.</p>
+      <example type="good" title="Keyword blocker validator">
+        <code lang="python"><![CDATA[
+from guardrails import Validator, register_validator
+from guardrails.validators import PassResult, FailResult
+from typing import Any, Dict, List
+import re
+
+@register_validator(name="custom/keyword_blocker", data_type="string")
+class KeywordBlocker(Validator):
+    """Block content containing specific keywords."""
+
+    def __init__(
+        self,
+        keywords: List[str],
+        case_sensitive: bool = False,
+        on_fail: str = "filter",
+        **kwargs
+    ):
+        super().__init__(on_fail=on_fail, **kwargs)
+        self.keywords = keywords
+        self.case_sensitive = case_sensitive
+
+    def validate(self, value: Any, metadata: Dict = {}) -> PassResult | FailResult:
+        check_value = value if self.case_sensitive else value.lower()
+        check_keywords = self.keywords if self.case_sensitive else [k.lower() for k in self.keywords]
+
+        found = [k for k in check_keywords if k in check_value]
+
+        if found:
+            return FailResult(
+                error_message=f"Blocked keywords found: {found}",
+                fix_value=self._filter_keywords(value, found)
+            )
+
+        return PassResult()
+
+    def _filter_keywords(self, text: str, keywords: List[str]) -> str:
+        result = text
+        for keyword in keywords:
+            pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+            result = pattern.sub("[FILTERED]", result)
+        return result
+]]></code>
+      </example>
+      <example type="good" title="Response quality validator">
+        <code lang="python"><![CDATA[
+@register_validator(name="custom/response_quality", data_type="string")
+class ResponseQuality(Validator):
+    """Validate response quality metrics."""
+
+    def __init__(
+        self,
+        min_sentences: int = 1,
+        max_sentences: int = 10,
+        require_complete: bool = True,
+        on_fail: str = "fix",
+        **kwargs
+    ):
+        super().__init__(on_fail=on_fail, **kwargs)
+        self.min_sentences = min_sentences
+        self.max_sentences = max_sentences
+        self.require_complete = require_complete
+
+    def validate(self, value: Any, metadata: Dict = {}) -> PassResult | FailResult:
+        issues = []
+        sentences = re.split(r'[.!?]+', value)
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        if len(sentences) < self.min_sentences:
+            issues.append(f"Too few sentences ({len(sentences)} < {self.min_sentences})")
+        if len(sentences) > self.max_sentences:
+            issues.append(f"Too many sentences ({len(sentences)} > {self.max_sentences})")
+        if self.require_complete and value and value[-1] not in '.!?':
+            issues.append("Response appears incomplete")
+
+        if issues:
+            return FailResult(
+                error_message="; ".join(issues),
+                fix_value=value + '.' if value and value[-1] not in '.!?' else value
+            )
+
+        return PassResult()
+]]></code>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Setting max_reasks to unlimited (or very high) in Guard configuration.</description>
+      <reason>Each reask is an additional LLM call. Unlimited reasks can cause infinite loops when the LLM consistently fails to satisfy the validator. Set max_reasks=3 and handle the final failure case explicitly with a fallback response.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Using Guardrails AI for input validation without a separate injection detection layer.</description>
+      <reason>Guardrails AI validators run on LLM output, not input. Input injection detection requires a separate mechanism (regex patterns, a dedicated classifier, or NeMo's input rails) before the LLM call.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-nemo"/>
+      <link href="https://www.guardrailsai.com/docs"/>
+      <link href="https://hub.guardrailsai.com/"/>
+    </see-also>
+  </content>
+</methodology>
