@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-algorithms">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Select the correct load balancing algorithm (round-robin, least-conn, ip-hash, least-response-time, resource-based) based on request duration, server homogeneity, and state requirements.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>algorithms</tag>
+      <tag>round-robin</tag>
+      <tag>least-connections</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-layer-selection"/>
+      <ref slug="lb-session-persistence"/>
+      <ref slug="lb-health-checks"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancing Algorithm Selection</title>
+
+    <summary>Load balancing algorithms distribute traffic across backend servers. Static algorithms (round-robin, weighted round-robin, IP hash, random) ignore real-time server load; dynamic algorithms (least connections, weighted least connections, least response time, resource-based) adapt to server state. Algorithm choice is driven by request duration homogeneity, server capacity uniformity, and autoscaling behavior.</summary>
+
+    <why>
+      <p>Algorithm choice on paper rarely survives real traffic. Round-robin can starve hot CPUs when request processing time varies widely. Least-connections is excellent for long-lived connections (WebSocket, database proxies) but adds connection-tracking overhead. IP hash gives sticky routing but creates uneven distribution with NAT/VPN clients and breaks autoscaling. Picking the wrong algorithm produces uneven load, degraded p99 latency, and unpredictable failover behavior.</p>
+      <p>LLMs default to recommending "round-robin is fairest" — this is only true when backends are identical and request processing time is uniform. Push for least-connections or response-time-aware algorithms unless those conditions hold.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Selecting an algorithm before writing any load balancer config.</item>
+        <item>Reviewing an existing config that exhibits uneven backend utilization or high p99 latency.</item>
+        <item>Autoscaling events are causing distribution problems (ip-hash + frequent scale events).</item>
+        <item>Traffic has variable request cost (some endpoints are fast, others are slow, long-running).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Session persistence is the primary concern — see lb-session-persistence for ip-hash and cookie-based approaches.</item>
+        <item>Tool-specific algorithm configuration (HAProxy balance directive, Nginx upstream) — see load-balancing-implementation.</item>
+        <item>Service mesh internal load balancing (Envoy/Istio) — those use distinct xDS-configured algorithms.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="static-algorithms">
+      <p>Static algorithms assign traffic without real-time knowledge of backend state. They are simpler to implement and have zero tracking overhead, but they cannot react to load imbalances caused by variable-cost requests.</p>
+
+      <rule testable="true">
+        <statement>Use round-robin only when all backend servers have equal capacity AND request processing time is uniform (short-lived, homogeneous requests). Use weighted round-robin when servers have different capacities but request time is still uniform. Never use round-robin or weighted round-robin for workloads with variable-cost endpoints (mixed fast/slow API routes, large file uploads alongside simple reads).</statement>
+        <rationale>Round-robin distributes by connection count, not CPU cost. A server handling one long-running request alongside many short ones accumulates queue depth while receiving equal new connections. Least-connections handles this correctly at the cost of per-connection tracking.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Do not use IP hash in autoscaling environments or behind NAT/VPN. IP hash routes all traffic from a client IP to one backend; when backends scale in/out, all existing sessions redistribute. When clients share a NAT IP (corporate networks, mobile carriers), one backend receives disproportionate load.</statement>
+        <rationale>IP hash + frequent autoscale events causes constant wholesale re-distribution — the sticky property breaks on every scale event. NAT collapses many real users to one IP, creating a thundering-herd effect on a single backend. Cookie-based persistence handles both problems correctly.</rationale>
+      </rule>
+
+      <example type="good" title="Round-robin for uniform stateless API">
+        <code lang="nginx"><![CDATA[
+upstream web_backend {
+    # round-robin is the default in Nginx — no directive needed
+    server 10.0.0.1:8080 weight=5 max_fails=3 fail_timeout=30s;
+    server 10.0.0.2:8080 weight=5 max_fails=3 fail_timeout=30s;
+    server 10.0.0.3:8080 weight=2 backup;
+    keepalive 32;
+}
+]]></code>
+        <note>Correct for equal-capacity backends with short, uniform-cost requests (e.g., REST API with consistent response times).</note>
+      </example>
+
+      <example type="bad" title="IP hash behind autoscaling group">
+        <code lang="text"><![CDATA[
+upstream api_backend {
+    ip_hash;  # DO NOT use with autoscaling
+    server 10.0.1.1:8000;
+    server 10.0.1.2:8000;
+    server 10.0.1.3:8000;
+}
+# Problem: scale-in event removes one server → all sessions redistribute
+# Problem: corporate NAT → one IP maps to thousands of real users
+]]></code>
+        <note>IP hash breaks on scale events and creates uneven distribution with NAT. Use cookie-based sticky sessions instead.</note>
+      </example>
+    </section>
+
+    <section name="dynamic-algorithms">
+      <p>Dynamic algorithms track real-time backend state (active connections, response time, resource utilization) to route new requests to the least-loaded server. They are the correct default for any workload with variable request cost.</p>
+
+      <rule testable="true">
+        <statement>Use least-connections (or weighted least-connections for heterogeneous capacity) as the default algorithm for any workload with variable request processing time: WebSocket connections, database proxies, long-running HTTP uploads/downloads, streaming endpoints, or mixed fast/slow API routes. Use least-response-time only when a load balancer health probe provides accurate per-backend latency measurements.</statement>
+        <rationale>Least-connections adapts to request cost naturally — a backend processing a slow request accumulates connection count and receives fewer new requests. Weighted least-connections extends this to heterogeneous fleets. Least-response-time is the most accurate but requires active probing; its benefit over least-connections is measurable only when backends have significantly different computational power or cache hit rates.</rationale>
+      </rule>
+
+      <example type="good" title="Least-connections for mixed-cost API backend">
+        <code lang="haproxy"><![CDATA[
+backend api_servers
+    balance leastconn
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    default-server inter 10s fall 3 rise 2
+
+    server api1 10.0.1.1:8000 check
+    server api2 10.0.1.2:8000 check
+    server api3 10.0.1.3:8000 check
+]]></code>
+        <note>leastconn adapts to variable-cost endpoints automatically. Correct default for REST APIs with mixed endpoint costs.</note>
+      </example>
+
+      <example type="good" title="Weighted least-connections for heterogeneous backends">
+        <code lang="haproxy"><![CDATA[
+backend mixed_capacity_servers
+    balance leastconn
+    option httpchk GET /health
+
+    # weight proportional to server capacity (CPU/RAM)
+    server large1 10.0.0.1:8080 check weight 100
+    server large2 10.0.0.2:8080 check weight 100
+    server small1 10.0.0.3:8080 check weight 50
+]]></code>
+        <note>Weight reflects relative capacity. leastconn distributes new connections to the server with fewest active connections relative to weight.</note>
+      </example>
+    </section>
+
+    <section name="algorithm-selection-guide">
+      <p>Decision guide mapping traffic profile to algorithm:</p>
+
+      <list>
+        <item>Equal-capacity servers, short uniform requests, stateless → Round Robin</item>
+        <item>Different server capacities, short uniform requests, stateless → Weighted Round Robin</item>
+        <item>Variable-cost requests, any capacity mix → Least Connections (or Weighted Least Connections)</item>
+        <item>Performance-critical, active health probes available → Least Response Time</item>
+        <item>Session persistence needed → IP Hash (only for static server pools without autoscaling), or Cookie-based (preferred)</item>
+        <item>Heterogeneous server resources (CPU/RAM vary) → Resource Based (requires agent on each backend)</item>
+      </list>
+
+      <rule testable="true">
+        <statement>When adding a new load balancer to a production system, measure actual backend response time distribution before picking an algorithm. If p50 and p99 differ by more than 2x (evidence of variable-cost requests), default to least-connections. If they are within 20%, round-robin is acceptable.</statement>
+        <rationale>Algorithm decisions made without traffic data produce subtle load imbalances that are invisible until a backend falls behind and starts dropping requests under peak load. Measuring first eliminates guesswork.</rationale>
+      </rule>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>Identify whether all backend servers have equal capacity (homogeneous vs heterogeneous fleet).</check>
+        <check>Measure or estimate request processing time distribution — is it uniform or variable?</check>
+        <check>Determine whether autoscaling is in scope — eliminates IP hash.</check>
+        <check>Determine whether clients share NAT/VPN IPs — eliminates IP hash.</check>
+        <check>Choose static algorithm (RR, WRR) for uniform short requests; choose dynamic (leastconn, WLC) for variable-cost workloads.</check>
+        <check>Verify the chosen algorithm is supported by the selected load balancer product.</check>
+        <check>Set connection weights proportional to actual server capacity for heterogeneous fleets.</check>
+        <check>Document the algorithm choice and its rationale in the architecture decision record.</check>
+        <check>Revisit algorithm when traffic doubles or fleet composition changes significantly.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://www.cloudflare.com/learning/performance/types-of-load-balancing-algorithms/"/>
+      <link href="https://gcore.com/learning/load-balancing-algorithms"/>
+      <ref slug="lb-session-persistence"/>
+      <ref slug="lb-layer-selection"/>
+    </see-also>
+  </content>
+</methodology>
