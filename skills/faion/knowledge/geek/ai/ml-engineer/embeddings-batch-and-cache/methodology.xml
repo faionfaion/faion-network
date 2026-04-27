@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="embeddings-batch-and-cache">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Batch processing and caching for embedding pipelines: async parallel batchers, Redis and SQLite caches, deduplication, rate-limit backoff — targeting 10x throughput and 80% cost reduction.</summary>
+    <tags>
+      <tag>embeddings</tag>
+      <tag>batch-processing</tag>
+      <tag>caching</tag>
+      <tag>redis</tag>
+      <tag>performance</tag>
+    </tags>
+    <category>embeddings</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="embeddings-provider-apis"/>
+      <ref slug="embeddings-production-ops"/>
+      <ref slug="embedding-generation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Embedding Batch Processing and Caching</title>
+
+    <summary>Two complementary optimizations for embedding pipelines: batching reduces API call overhead by up to 10x, and caching eliminates repeated computation (80% cache hit rate = 80% cost savings). Both patterns require careful key design and order preservation to avoid subtle bugs.</summary>
+
+    <why>
+      <p>Embedding APIs charge per token and have rate limits. Individual single-text calls multiply API overhead: 1000 single calls is 10-100x more expensive than 10 batches of 100. Repeated embeddings for common queries (chat applications see high query repetition) waste tokens. Batching and caching together can reduce embedding costs by 90%+ on real workloads without any quality loss.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Indexing large document corpora (thousands to millions of documents).</item>
+        <item>Chat or search applications where users repeat similar queries.</item>
+        <item>Cost-sensitive pipelines where embedding API bills are significant.</item>
+        <item>High-throughput pipelines where single-call latency would block progress.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny corpora (under 100 documents) — the overhead of setting up batch infrastructure exceeds the savings.</item>
+        <item>Truly unique, never-repeating text streams — caching provides no benefit and adds storage costs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="batching-principles">
+      <p>Key batching rules:</p>
+      <list>
+        <item>Batch requests up to the provider limit (OpenAI: 2048 texts, Voyage: 128, Cohere: varies).</item>
+        <item>Always preserve order — the API may return results out of order; sort by index before extending results.</item>
+        <item>Handle partial failures: if one batch fails, retry only that batch, not the entire corpus.</item>
+        <item>Use exponential backoff with jitter on rate limit errors (OpenAI tier 1: 1M tokens/min).</item>
+      </list>
+    </section>
+
+    <section name="caching-key-design">
+      <p>Cache key must include the model name AND version, not just the text. Example key: sha256(f"{model}:{text}"). This ensures cache invalidation when the model changes. Use Redis for production (TTL 30 days, LRU eviction), SQLite for local development.</p>
+    </section>
+
+    <example type="good" title="Cache-aware embedding with deduplication (lightweight, no Redis)">
+      <code lang="python"><![CDATA[
+import hashlib
+from openai import OpenAI
+
+client = OpenAI()
+_cache: dict[str, list[float]] = {}
+
+def embed_texts(texts: list[str], model: str = "text-embedding-3-small") -> list[list[float]]:
+    results = [None] * len(texts)
+    to_embed = []
+    indices = []
+    for i, text in enumerate(texts):
+        key = hashlib.sha256(f"{model}:{text}".encode()).hexdigest()
+        if key in _cache:
+            results[i] = _cache[key]
+        else:
+            to_embed.append(text)
+            indices.append((i, key))
+    if to_embed:
+        response = client.embeddings.create(input=to_embed, model=model)
+        for (i, key), item in zip(indices, response.data):
+            _cache[key] = item.embedding
+            results[i] = item.embedding
+    return results
+]]></code>
+    </example>
+
+    <example type="good" title="Unified thread-based parallel batch processor">
+      <code lang="python"><![CDATA[
+from typing import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+
+class BatchEmbedder:
+    """Unified batch processor for any embedding provider."""
+
+    def __init__(
+        self,
+        embed_fn: Callable[[list[str]], list[list[float]]],
+        batch_size: int = 100,
+        max_workers: int = 4,
+        rate_limit_delay: float = 0.1
+    ):
+        self.embed_fn = embed_fn
+        self.batch_size = batch_size
+        self.max_workers = max_workers
+        self.rate_limit_delay = rate_limit_delay
+
+    def embed(self, texts: list[str], show_progress: bool = True) -> list[list[float]]:
+        """Embed texts in parallel batches."""
+        batches = [texts[i:i + self.batch_size] for i in range(0, len(texts), self.batch_size)]
+        results = [None] * len(batches)
+
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = {
+                executor.submit(self._process_batch, batch, idx): idx
+                for idx, batch in enumerate(batches)
+            }
+            completed = 0
+            for future in as_completed(futures):
+                idx = futures[future]
+                results[idx] = future.result()
+                completed += 1
+                if show_progress:
+                    print(f"Progress: {completed}/{len(batches)} batches")
+
+        return [emb for batch in results for emb in batch]
+
+    def _process_batch(self, batch: list[str], idx: int) -> list[list[float]]:
+        time.sleep(self.rate_limit_delay * idx)  # Stagger requests
+        return self.embed_fn(batch)
+]]></code>
+    </example>
+
+    <example type="good" title="Async batch processor with semaphore concurrency control">
+      <code lang="python"><![CDATA[
+import asyncio
+from typing import Callable, Awaitable
+from openai import AsyncOpenAI
+
+async def openai_embed_async(texts: list[str]) -> list[list[float]]:
+    client = AsyncOpenAI()
+    response = await client.embeddings.create(input=texts, model="text-embedding-3-large")
+    sorted_data = sorted(response.data, key=lambda x: x.index)
+    return [e.embedding for e in sorted_data]
+
+async def process_async(
+    texts: list[str],
+    embed_fn: Callable[[list[str]], Awaitable[list[list[float]]]],
+    batch_size: int = 100,
+    max_concurrent: int = 5,
+    rate_limit_delay: float = 0.1
+) -> list[list[float]]:
+    """Process texts with controlled concurrency."""
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def process_batch(batch: list[str], batch_idx: int) -> tuple[int, list[list[float]]]:
+        async with semaphore:
+            await asyncio.sleep(rate_limit_delay * batch_idx)
+            return batch_idx, await embed_fn(batch)
+
+    batches = [texts[i:i + batch_size] for i in range(0, len(texts), batch_size)]
+    tasks = [process_batch(batch, idx) for idx, batch in enumerate(batches)]
+    results = []
+    for coro in asyncio.as_completed(tasks):
+        batch_idx, embeddings = await coro
+        results.append((batch_idx, embeddings))
+
+    sorted_results = sorted(results, key=lambda x: x[0])
+    return [emb for _, batch_embs in sorted_results for emb in batch_embs]
+]]></code>
+    </example>
+
+    <example type="good" title="Production Redis cache with batch pipeline operations">
+      <code lang="python"><![CDATA[
+import json
+import hashlib
+from dataclasses import dataclass
+from typing import Callable
+import redis
+
+@dataclass
+class RedisCacheConfig:
+    redis_url: str = "redis://localhost:6379"
+    ttl_days: int = 30
+    prefix: str = "emb"
+
+class RedisEmbeddingCache:
+    """Production Redis cache with batch operations."""
+
+    def __init__(self, config: RedisCacheConfig | None = None):
+        self.config = config or RedisCacheConfig()
+        self.client = redis.from_url(self.config.redis_url)
+        self.ttl = 86400 * self.config.ttl_days
+
+    def _key(self, text: str, model: str) -> str:
+        content = f"{model}:{text}"
+        hash_val = hashlib.sha256(content.encode()).hexdigest()
+        return f"{self.config.prefix}:{hash_val}"
+
+    def get_batch(self, texts: list[str], model: str) -> dict[int, list[float] | None]:
+        pipe = self.client.pipeline()
+        for text in texts:
+            pipe.get(self._key(text, model))
+        results = pipe.execute()
+        return {i: json.loads(data) if data else None for i, data in enumerate(results)}
+
+    def set_batch(self, texts: list[str], model: str, embeddings: list[list[float]]):
+        pipe = self.client.pipeline()
+        for text, emb in zip(texts, embeddings):
+            pipe.setex(self._key(text, model), self.ttl, json.dumps(emb))
+        pipe.execute()
+
+    def get_or_compute_batch(
+        self,
+        texts: list[str],
+        model: str,
+        compute_fn: Callable[[list[str]], list[list[float]]]
+    ) -> list[list[float]]:
+        cached = self.get_batch(texts, model)
+        uncached_indices = [i for i, v in cached.items() if v is None]
+        uncached_texts = [texts[i] for i in uncached_indices]
+        if uncached_texts:
+            new_embeddings = compute_fn(uncached_texts)
+            self.set_batch(uncached_texts, model, new_embeddings)
+            for idx, emb in zip(uncached_indices, new_embeddings):
+                cached[idx] = emb
+        return [cached[i] for i in range(len(texts))]
+
+    def stats(self) -> dict:
+        info = self.client.info("stats")
+        hits = info.get("keyspace_hits", 0)
+        misses = info.get("keyspace_misses", 0)
+        return {"keyspace_hits": hits, "keyspace_misses": misses, "hit_rate": hits / (hits + misses + 1)}
+]]></code>
+    </example>
+
+    <example type="good" title="SQLite cache for development (no Redis dependency)">
+      <code lang="python"><![CDATA[
+import json
+import hashlib
+import sqlite3
+from pathlib import Path
+from typing import Callable
+
+class SQLiteEmbeddingCache:
+    def __init__(self, db_path: str = ".embedding_cache.db"):
+        self.db_path = Path(db_path)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS embeddings (
+                key TEXT PRIMARY KEY,
+                model TEXT,
+                embedding TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_model ON embeddings(model)")
+        conn.commit()
+        conn.close()
+
+    def _key(self, text: str, model: str) -> str:
+        return hashlib.sha256(f"{model}:{text}".encode()).hexdigest()
+
+    def get(self, text: str, model: str) -> list[float] | None:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.execute("SELECT embedding FROM embeddings WHERE key = ?", (self._key(text, model),))
+        row = cursor.fetchone()
+        conn.close()
+        return json.loads(row[0]) if row else None
+
+    def set(self, text: str, model: str, embedding: list[float]):
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "INSERT OR REPLACE INTO embeddings (key, model, embedding) VALUES (?, ?, ?)",
+            (self._key(text, model), model, json.dumps(embedding))
+        )
+        conn.commit()
+        conn.close()
+
+    def get_or_compute(self, text: str, model: str, compute_fn: Callable[[str], list[float]]) -> list[float]:
+        cached = self.get(text, model)
+        if cached:
+            return cached
+        embedding = compute_fn(text)
+        self.set(text, model, embedding)
+        return embedding
+]]></code>
+    </example>
+
+    <section name="cost-optimization-tips">
+      <p>Concrete cost optimization techniques:</p>
+      <list>
+        <item>Batch requests — up to 10x cost reduction by reducing per-call API overhead.</item>
+        <item>Cache aggressively — 80% cache hit rate produces 80% cost savings with no quality loss.</item>
+        <item>Use dimension reduction — 256d is often sufficient; Matryoshka models (OpenAI, Voyage, Cohere) truncate natively with 3-5% quality loss.</item>
+        <item>Deduplicate before embedding — TF-IDF cosine similarity above 0.95 indicates near-duplicate; skip re-embedding.</item>
+        <item>Quantize vectors — INT8 reduces storage 4x with less than 1% quality loss (Voyage and BGE-M3 only).</item>
+        <item>Use a cheaper model for filtering tier — embed with all-MiniLM-L6-v2, rerank top-K with voyage-3.5.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Cache key includes both model name and text hash.</check>
+      <check>Batch results sorted by index before extending results list.</check>
+      <check>Rate limit errors trigger exponential backoff with jitter, not immediate retry.</check>
+      <check>Partial batch failures retry only the failed batch.</check>
+      <check>Cache hit rate tracked and dashboarded.</check>
+      <check>Cache TTL configured (default 30 days for static corpora).</check>
+      <check>Cache eviction policy set (LRU) with size limits.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Sorting batch results by response order rather than by the index field returned by the API.</description>
+      <reason>OpenAI and other APIs do not guarantee result ordering matches input ordering. Always sort by the index field on the response objects to preserve the original text-to-embedding mapping.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Caching embeddings in a dict keyed only by text, shared across model versions.</description>
+      <reason>When the model changes, all cached embeddings become invalid but appear valid. Include the model identifier in the cache key to enforce automatic invalidation.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="embeddings-provider-apis"/>
+      <ref slug="embeddings-production-ops"/>
+      <ref slug="embedding-generation"/>
+      <link href="https://platform.openai.com/docs/guides/embeddings"/>
+    </see-also>
+  </content>
+</methodology>
