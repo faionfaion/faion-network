@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cicd-mtls-deployment">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Deploy mutual TLS for service-to-service auth: internal CAs (step-ca, Vault PKI), nginx client cert verification, short-lived per-pod certs. Avoid shared long-lived client certs at scale.</summary>
+    <tags>
+      <tag>mtls</tag>
+      <tag>tls</tag>
+      <tag>service-mesh</tag>
+      <tag>internal-ca</tag>
+      <tag>zero-trust</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+      <ref slug="cicd-tls-renewal-automation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Mutual TLS (mTLS) Deployment in CI/CD Pipelines</title>
+
+    <summary>Configure mutual TLS for service-to-service authentication: nginx ssl_client_certificate verification, internal CA setup with step-ca or Vault PKI, client certificate issuance and rotation, and mTLS testing via curl. For K8s service mesh, delegate mTLS to the mesh (Linkerd/Istio/Cilium) and do not hand-roll — short-lived per-pod identity certs are the de-facto standard.</summary>
+
+    <why>
+      <p>mTLS at scale fails in two characteristic ways: (1) shared long-lived client certs spread across teams, making key compromise require mass rotation pain; (2) revocation via CRL/OCSP is operationally expensive and often disabled, meaning revoked certs are still accepted. Short-lived certs issued by an internal CA (Vault PKI, step-ca) solve both problems — rotation is automatic and revocation is replaced by expiry.</p>
+      <p>The nginx ssl_verify_client pattern is the correct choice for API services that need mTLS without a full service mesh. Vault PKI or step-ca provides the internal CA with short-lived cert issuance APIs that agent pipelines can call programmatically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Service-to-service authentication for internal APIs where network-layer identity is required (zero-trust architecture).</item>
+        <item>Setting up an internal CA (step-ca or Vault PKI) for automated short-lived cert issuance to services.</item>
+        <item>Configuring nginx or HAProxy as an mTLS termination point that forwards client identity headers to the backend.</item>
+        <item>Issuing client certificates programmatically from CI/CD pipelines for service-to-service auth in staging or production.</item>
+        <item>Migration from shared long-lived client certs to short-lived per-service certs.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Kubernetes service mesh environments — Linkerd, Istio, and Cilium auto-rotate per-pod mTLS identities; do not hand-roll on top of a mesh's identity plane.</item>
+        <item>App-layer encryption (JWE, envelope encryption) — different methodology; mTLS only secures the transport layer.</item>
+        <item>Public-facing client authentication — mTLS with browser clients requires distributing client certs to end users, which is rarely practical.</item>
+        <item>VPN/IPSec — different protocols and CA structures apply.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="internal-ca-setup">
+      <p>For non-Kubernetes environments, step-ca (smallstep) is the recommended self-hosted ACME/CA server for issuing short-lived certs to services. It supports the ACME protocol and has a CLI (step) for programmatic cert ops. Vault PKI is the choice for environments already running HashiCorp Vault.</p>
+
+      <rule testable="true">
+        <statement>Internal CA MUST issue short-lived client certificates (24h–7d) and MUST expose an ACME or API endpoint for automated renewal. Long-lived shared client certs (validity &gt; 30d) shared across multiple services are forbidden — key compromise requires mass rotation with no revocation guarantee.</statement>
+        <rationale>Revocation (CRL/OCSP) is operationally hard to operate reliably at scale — clients cache CRL responses, OCSP responders are single points of failure, and many implementations silently accept certs if the OCSP check fails (soft-fail). Short-lived certs replace revocation with expiry as the primary security boundary.</rationale>
+      </rule>
+
+      <example type="good" title="Create internal CA and sign server certificate with OpenSSL">
+        <code lang="bash"><![CDATA[
+# Create CA private key
+openssl genrsa -out ca.key 4096
+
+# Create CA certificate
+openssl req -x509 -new -nodes -key ca.key -sha256 -days 3650 \
+  -out ca.crt -subj "/CN=Internal CA"
+
+# Create server private key (ECDSA P-256)
+openssl ecparam -name prime256v1 -genkey -noout -out server.key
+
+# Create CSR
+openssl req -new -key server.key -out server.csr \
+  -subj "/CN=api.example.internal"
+
+# Sign with CA, adding SAN extension
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key \
+  -CAcreateserial -out server.crt -days 365 -sha256 \
+  -extfile <(printf "subjectAltName=DNS:api.example.internal,DNS:*.api.example.internal")
+]]></code>
+      </example>
+
+      <example type="good" title="Create client certificate signed by internal CA">
+        <code lang="bash"><![CDATA[
+# Create client key
+openssl genrsa -out client.key 2048
+
+# Create CSR with service identity
+openssl req -new -key client.key -out client.csr \
+  -subj "/CN=payment-service/O=InternalServices"
+
+# Sign with CA
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key \
+  -CAcreateserial -out client.crt -days 7 -sha256
+
+# Create PKCS12 bundle (if service expects .p12 format)
+openssl pkcs12 -export -out client.p12 \
+  -inkey client.key -in client.crt -certfile ca.crt
+
+# Test connection with client cert
+curl --cert client.crt --key client.key \
+  --cacert ca.crt https://api.example.internal/health
+]]></code>
+        <note>Use -days 7 (short-lived) for service certs, not the default 365. The service must have ACME or a pipeline step to renew before expiry.</note>
+      </example>
+    </section>
+
+    <section name="nginx-mtls">
+      <p>nginx ssl_verify_client on enables client certificate verification at the TLS termination layer. The nginx directive passes client identity to the backend via X-SSL headers, giving the application layer the authenticated service identity without re-implementing TLS.</p>
+
+      <example type="good" title="nginx mTLS configuration for API endpoint">
+        <code lang="nginx"><![CDATA[
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    # Server certificate (from cert-manager or certbot)
+    ssl_certificate /etc/nginx/ssl/server.crt;
+    ssl_certificate_key /etc/nginx/ssl/server.key;
+
+    # Client certificate verification
+    ssl_client_certificate /etc/nginx/ssl/ca.crt;
+    ssl_verify_client on;
+    ssl_verify_depth 2;
+
+    # TLS protocol and cipher policy
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305;
+    ssl_prefer_server_ciphers off;
+
+    # Pass client cert identity to backend
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header X-SSL-Client-Cert $ssl_client_cert;
+        proxy_set_header X-SSL-Client-DN $ssl_client_s_dn;
+        proxy_set_header X-SSL-Client-Verify $ssl_client_verify;
+    }
+}
+]]></code>
+        <note>ssl_verify_client on rejects any connection without a valid client cert. Use ssl_verify_client optional if you need to serve both mTLS and non-mTLS clients on the same endpoint (and check $ssl_client_verify in the application).</note>
+      </example>
+
+      <rule testable="true">
+        <statement>nginx mTLS configurations MUST pass $ssl_client_s_dn (client Distinguished Name) and $ssl_client_verify to the backend via X-SSL-Client-DN and X-SSL-Client-Verify headers. The backend MUST validate $ssl_client_verify == SUCCESS before trusting the identity in X-SSL-Client-DN.</statement>
+        <rationale>Without passing $ssl_client_verify, the backend cannot distinguish between a verified client cert and an unauthenticated connection that somehow reached the proxy. A backend trusting X-SSL-Client-DN without checking the verify status is a critical authentication bypass.</rationale>
+      </rule>
+    </section>
+
+    <section name="vault-pki">
+      <p>HashiCorp Vault PKI secrets engine is the preferred internal CA for environments already running Vault. It issues short-lived certs via API calls and integrates with Vault Agent for automatic rotation.</p>
+
+      <example type="good" title="Vault PKI cert-manager integration for K8s">
+        <code lang="yaml"><![CDATA[
+# vault-issuer.yaml — cert-manager Vault ClusterIssuer
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-issuer
+spec:
+  vault:
+    path: pki/sign/my-role
+    server: https://vault.example.com
+    auth:
+      kubernetes:
+        role: cert-manager
+        mountPath: /v1/auth/kubernetes
+        secretRef:
+          name: cert-manager-vault-token
+          key: token
+]]></code>
+        <note>cert-manager Vault integration uses Kubernetes auth to obtain a Vault token, then calls the PKI sign endpoint. This eliminates static Vault tokens in CI/CD pipelines.</note>
+      </example>
+
+      <example type="good" title="Vault PKI direct API for pipeline cert issuance">
+        <code lang="bash"><![CDATA[
+# Issue a short-lived cert from Vault PKI via API
+# Assumes VAULT_TOKEN and VAULT_ADDR are set
+
+curl -s \
+  --header "X-Vault-Token: $VAULT_TOKEN" \
+  --request POST \
+  --data '{
+    "common_name": "payment-service.example.internal",
+    "ttl": "24h",
+    "alt_names": "payment-service.svc.cluster.local"
+  }' \
+  "$VAULT_ADDR/v1/pki/issue/internal-services" \
+  | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+data = d['data']
+open('service.crt', 'w').write(data['certificate'])
+open('service.key', 'w').write(data['private_key'])
+open('ca.crt', 'w').write(data['issuing_ca'])
+print('Cert issued, expires:', data['expiration'])
+"
+]]></code>
+        <note>TTL of 24h means the service must have a pipeline step or Vault Agent running to renew daily. Vault Agent handles this automatically via template rendering.</note>
+      </example>
+    </section>
+
+    <section name="service-mesh-guidance">
+      <p>When running Kubernetes, prefer delegating mTLS to the service mesh rather than hand-rolling with cert-manager or Vault PKI at the pod level.</p>
+
+      <rule testable="true">
+        <statement>When a service mesh is present (Linkerd, Istio, or Cilium), MUST NOT hand-roll mTLS by injecting client certs into application pods. The mesh's identity plane handles cert issuance, rotation, and revocation automatically per pod identity (SPIFFE/X.509 SVIDs). Hand-rolling on top of a mesh creates two competing PKI systems with conflicting root trust.</statement>
+        <rationale>Service mesh mTLS is transparent, automatic, and operates at the sidecar level with cryptographic identity bound to the pod service account. Adding application-level client certs on top introduces two PKIs with different roots, rotation schedules, and failure modes — all of which manifest as intermittent authentication failures that are extremely hard to diagnose.</rationale>
+      </rule>
+
+      <list>
+        <item>Linkerd: automatic mTLS with 24h cert rotation, SPIFFE identity, no configuration needed for in-mesh services</item>
+        <item>Istio: PeerAuthentication STRICT mode enforces mTLS; DestinationRule configures per-service TLS settings</item>
+        <item>Cilium: identity-aware networking with mTLS enforcement via CiliumNetworkPolicy</item>
+      </list>
+    </section>
+
+    <section name="mtls-gotchas">
+      <p>Common mTLS deployment failures in CI/CD pipelines and production environments:</p>
+
+      <antipattern>
+        <description>Using long-lived shared client certs (validity 1 year+) for service-to-service mTLS across multiple microservices.</description>
+        <reason>Wildcard certs or shared service certs spread across teams. A single key compromise requires mass rotation with no revocation guarantee (OCSP/CRL is unreliable at scale). Use per-service short-lived certs from an internal CA instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Disabling HSTS preload without verifying every subdomain is reachable via HTTPS first.</description>
+        <reason>HSTS preload with the wrong domain creates a permanently unreachable subdomain for any user whose browser has cached the HSTS policy. Only add preload after auditing every subdomain in the HSTS scope.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Pasting private keys into chat sessions or CI/CD environment variable values as plain text for debugging mTLS issues.</description>
+        <reason>Private keys in chat history, CI/CD logs, or environment variable exports are permanently compromised. Use Vault dynamic secrets or CI/CD secret stores (GitHub Secrets, GCP Secret Manager) to inject private material at runtime without exposing it in logs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Configuring mTLS with ssl_verify_client on nginx but not validating $ssl_client_verify in the backend application.</description>
+        <reason>nginx may be bypassed by internal routing, misconfigured load balancers, or direct-to-backend traffic in Kubernetes. The backend MUST verify the ssl_client_verify header value equals SUCCESS before trusting any client identity headers.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Choose internal CA: step-ca for ACME-compatible pure-TLS, Vault PKI for Vault-integrated environments.</check>
+      <check>Generate CA key (RSA 4096 or ECDSA P-384) and self-signed CA cert with long validity (10y).</check>
+      <check>Set cert TTL for services to 24h–7d (short-lived); configure automatic renewal before expiry.</check>
+      <check>Configure nginx ssl_client_certificate pointing to CA cert, ssl_verify_client on, ssl_verify_depth 2.</check>
+      <check>Pass $ssl_client_s_dn and $ssl_client_verify to backend via proxy headers.</check>
+      <check>Validate $ssl_client_verify == SUCCESS in backend before trusting client identity.</check>
+      <check>Test mTLS connection with curl --cert client.crt --key client.key --cacert ca.crt.</check>
+      <check>Confirm connection is rejected without a client cert (curl without --cert should return 400).</check>
+      <check>If using Kubernetes service mesh: confirm PeerAuthentication STRICT mode is set; do not add app-level mTLS on top.</check>
+      <check>Store CA private key in Vault or an offline secure location — never in Git or CI/CD environment variables.</check>
+      <check>Document service identity naming convention (CN format) and the CA hierarchy.</check>
+      <check>Plan revocation procedure: for short-lived certs, let them expire; for emergency, roll CA key.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://smallstep.com/docs/step-ca/"/>
+      <link href="https://developer.hashicorp.com/vault/docs/secrets/pki"/>
+      <link href="https://github.com/FiloSottile/mkcert"/>
+      <link href="https://github.com/cloudflare/cfssl"/>
+      <link href="https://github.com/nabla-c0d3/sslyze"/>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+      <ref slug="cicd-tls-renewal-automation"/>
+    </see-also>
+  </content>
+</methodology>
