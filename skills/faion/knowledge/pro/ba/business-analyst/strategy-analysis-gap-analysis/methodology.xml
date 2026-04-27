@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="strategy-analysis-gap-analysis">
+  <metadata>
+    <tier>pro</tier>
+    <group>ba</group>
+    <domain>business-analyst</domain>
+    <summary>Identify and measure what must change: each gap row carries area, current metric, future metric, numeric delta, unit, priority H/M/L, evidence URL, and a dependency DAG.</summary>
+    <tags>
+      <tag>strategy-analysis</tag>
+      <tag>gap-analysis</tag>
+      <tag>babok</tag>
+      <tag>prioritization</tag>
+      <tag>measurement</tag>
+    </tags>
+    <category>strategy</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="strategy-analysis-current-state"/>
+      <ref slug="strategy-analysis-future-state"/>
+      <ref slug="strategy-analysis-change-strategy"/>
+      <ref slug="strategy-analysis-business-need"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Strategy Analysis: Gap Analysis</title>
+
+    <summary>Gap analysis identifies what must change by joining current-state measurements with future-state targets for each area. Every gap row carries: area, current metric value, future metric target, gap size, gap unit, priority (H/M/L), and an evidence URL. Gaps without numeric deltas cannot be prioritized and must be returned for re-measurement. A dependency DAG identifies which gaps block others so prioritization is not popularity-weighted.</summary>
+
+    <why>
+      <p>Gap analysis without measurement is the second most common failure mode of strategy analysis after solution-shaped needs. Gaps recorded as prose ("our reporting is slow") instead of measured deltas ("monthly close 9 business days vs. target 3 business days") cannot be prioritized, cannot be tracked, and cannot be verified as closed.</p>
+      <p>Agents regress to the median when scoring gap priority: they cluster around three or around H. Without a dependency DAG, the most politically visible gaps are prioritized rather than the ones that block other gaps from closing. A dependency-agent must build the gap DAG so the BA can prioritize structurally rather than by advocacy.</p>
+      <p>There is no do-nothing baseline without measuring the status-quo cost: how large is each gap today, and what does it cost to leave it open? Without that number, leadership cannot see the cost of inaction.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>After current-state assessment is signed off AND future state is locked by the exec sponsor — both inputs are required; running gap analysis on unsigned inputs produces gaps that shift when the inputs shift.</item>
+        <item>Any initiative requiring a change strategy: the gap analysis is the prioritized input to option evaluation.</item>
+        <item>Portfolio planning: gap analysis across N initiatives establishes a shared prioritization surface — which gaps are shared, which are blocking, which are independent.</item>
+        <item>Regulatory-driven change: the gap between the regulator's future-state requirements and the org's current state is the compliance gap; each row carries the regulatory citation as evidence_url.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Before future state is locked — gaps computed against a draft future state will change when the future state is finalized; the work is wasted.</item>
+        <item>Before current-state assessment is complete — gaps without a measured current-state baseline are guesses, not analysis.</item>
+        <item>Single-area tactical changes with an obvious and agreed gap — overhead exceeds value; a two-line ADR is sufficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="gap-table-schema">
+      <p>Every gap row in the gap analysis table must conform to this schema. Rows lacking numeric delta or evidence_url are flagged for re-elicitation and excluded from the signed gap analysis.</p>
+      <example type="good" title="Gap analysis table row schema">
+        <code lang="yaml"><![CDATA[
+gap_rows:
+  - area: "Process / Order Management"
+    current_metric: "order intake channel"
+    current_value: "phone and email only"
+    future_metric: "online self-service order rate"
+    future_value: ">= 70% of orders"
+    gap: "no e-commerce capability"
+    gap_size: 70
+    gap_unit: "percentage points of orders"
+    priority: "H"
+    evidence_url: "https://internal/analytics/order-channel-2026Q1"
+    blocks: ["gap-inventory-system", "gap-reporting-automation"]
+
+  - area: "Technology / Inventory"
+    current_metric: "inventory system"
+    current_value: "manual spreadsheets, updated weekly"
+    future_metric: "real-time inventory accuracy"
+    future_value: ">= 99% accuracy, updated in < 5 min"
+    gap: "no inventory management system"
+    gap_size: 99
+    gap_unit: "accuracy percentage points"
+    priority: "H"
+    evidence_url: "https://internal/ops/inventory-audit-2026Q1"
+    blocks: ["gap-reporting-automation"]
+
+  - area: "Reporting"
+    current_metric: "reporting cycle"
+    current_value: "manual monthly"
+    future_metric: "automated daily reporting"
+    future_value: "daily, T+1 latency"
+    gap: "no reporting automation"
+    gap_size: 29
+    gap_unit: "days per cycle removed"
+    priority: "M"
+    evidence_url: "https://internal/finance/close-times-2025"
+    blocks: []
+]]></code>
+        <note>Priority gaps: e-commerce capability (revenue impact, blocks inventory + reporting), inventory system (efficiency impact, blocks reporting), reporting automation (decision quality). Each gap has a numeric delta and a blocks list for the dependency DAG.</note>
+      </example>
+      <example type="bad" title="Gap analysis as prose">
+        <code lang="text"><![CDATA[
+Our reporting is slow and manual. The inventory system needs improvement.
+Orders come in by phone which is inefficient.
+]]></code>
+        <note>No metrics, no deltas, no priorities, no evidence. Cannot be used for change-strategy option evaluation or tracked for closure.</note>
+      </example>
+    </section>
+
+    <section name="gap-rules">
+      <rule testable="true">
+        <statement>Every gap row MUST include a numeric delta (gap_size and gap_unit) derived from the current-state metric and the future-state target. Prose-only gaps MUST be returned for re-elicitation before the gap analysis is signed.</statement>
+        <rationale>Un-measured gaps cannot be prioritized analytically; they become political. Numeric deltas allow weighted scoring in the change strategy evaluation matrix.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Gap priority (H/M/L) MUST be assigned using percentile rank across all gaps, not free H/M/L labeling. Agents MUST be prompted: "Of these N gaps, rank by impact size; assign H to top quartile, M to middle half, L to bottom quartile."</statement>
+        <rationale>Agents cluster around three or around H when given free labeling. Percentile forcing produces a realistic distribution and prevents all gaps from being "high priority."</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>A gap dependency DAG MUST be produced: each gap row lists which other gaps it blocks. Gaps with zero dependents and low priority are candidates for deferral. The dependency DAG MUST be validated by the BA before the gap analysis is signed.</statement>
+        <rationale>Without the dependency DAG, prioritization is popularity-weighted: the most visible gaps surface first regardless of whether they block other gaps. Structural prioritization via DAG is the only way to sequence the change strategy correctly.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>The BA owns judgment on priority and dependency validation; agents own coverage and structured output. Run a sonnet gap-agent that joins current-state and future-state per area; each gap row is structured as the schema above. Gaps without metrics are flagged for re-elicitation. Run a dependency-agent to build the gap dependency DAG (which gap blocks which) so prioritization is structural, not political.</p>
+      <p>Gap priority calibration: feed the agent a forced-ranking prompt ("of these 12 gaps, this is in the worst quartile") instead of free H/M/L. This prevents clustering at H/M/three.</p>
+      <p>Bulk transitions are dangerous: a runaway agent that re-writes 30 gap rows is hard to undo. Cap any agent action to N rows per run; require human review on the diff.</p>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Gap analysis as prose: agents produce paragraphs when a structured table is required. Force the schema per row with JSON or YAML output format; reject prose.</p>
+      <p>Cluster around three or around H: agents regress to the median on scoring. Use percentile rank prompts instead of free H/M/L to force a realistic priority distribution.</p>
+      <p>Gaps without evidence_url: agents assert gaps without pointing to the current-state evidence. Every gap row must carry a verifiable evidence pointer.</p>
+      <p>Missing dependency DAG: agents skip the blocks field when not explicitly instructed. The BA must check the DAG manually; structural errors in the DAG produce wrong sequencing in the change strategy.</p>
+    </section>
+
+    <section name="tools">
+      <p>CLI tools: pandas plus numpy for aggregating current-state metrics and computing gap deltas; graphviz (dot) for the gap dependency DAG when the number of gaps exceeds what mermaid handles cleanly; mermaid-cli for current-state to future-state state diagrams; jq plus yq for reading and writing the gap table stored as YAML or JSON.</p>
+      <p>Services: Jira or Linear (one epic per gap; status moves as gap closes; agents update via API), Airtable (lightweight gap tracking for non-IT stakeholders), Polarion ALM or Jama (regulated industries where gaps must trace to managed requirements).</p>
+    </section>
+
+    <section name="references">
+      <p>IIBA — BABOK Guide v3, Knowledge Area 6, section 6.3 Assess Risks (gap sizing and prioritization). Rumelt — Good Strategy / Bad Strategy (diagnosis before guiding policy; gap analysis is the diagnosis step). Hammond, Keeney, Raiffa — Smart Choices (decision quality discipline; pairs with the change-strategy option evaluation that follows gap analysis).</p>
+    </section>
+
+    <see-also>
+      <ref slug="strategy-analysis-current-state"/>
+      <ref slug="strategy-analysis-future-state"/>
+      <ref slug="strategy-analysis-change-strategy"/>
+      <ref slug="decision-analysis"/>
+    </see-also>
+  </content>
+</methodology>
