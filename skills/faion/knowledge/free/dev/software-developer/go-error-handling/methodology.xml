@@ -20,6 +20,8 @@
     <summary>Typed AppError with Code, Message, HTTPStatus, Err. HTTP middleware translates to JSON. Wrap at repo boundaries. Use errors.As, never type assertions.</summary>
     <why>
       <p>Go's built-in errors carry no HTTP status, machine-readable code, or structured context. Without a shared error type, each handler invents its own response shape, status mapping, and logging format. A single AppError + middleware pattern enforces consistency and lets errors.Is / errors.As work across wrapping chains.</p>
+      <p>In production, inconsistent error responses break clients: one handler returns {error: "..."}; another returns {code: "...", message: "..."}. HTTP status codes leak implementation details (500 for a not-found because the developer forgot to map pgx.ErrNoRows). Type assertions or string comparison of errors break when errors are wrapped, causing silent failures. The AppError + Wrap pattern solves these by enforcing a single typed error at every layer, with a middleware that centralizes HTTP mapping.</p>
+      <p>The Wrap function is the key: it preserves HTTPStatus from inner AppError instead of always demoting to 500. This ensures a not-found error stays a 404 even when wrapped with additional context. Clients rely on these status codes for retry logic: 404 means "don't retry"; 500 means "back off exponentially". Mixing them breaks client behavior. The errors.As check (not type assertion) traverses wrapped errors correctly, catching errors that would be invisible to err.(*AppError) type assertions.</p>
     </why>
     <when-to-use>
       <list>
