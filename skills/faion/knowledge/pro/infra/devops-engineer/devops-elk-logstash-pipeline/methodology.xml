@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-elk-logstash-pipeline">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Configure Logstash pipelines: input/filter/output plugins, grok/JSON parsing, PII masking, multi-pipeline architecture, dead letter queues, and performance tuning for high-throughput log processing.</summary>
+    <tags>
+      <tag>logstash</tag>
+      <tag>elk</tag>
+      <tag>pipeline</tag>
+      <tag>logging</tag>
+      <tag>devops</tag>
+    </tags>
+    <category>logging</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-beats-collection"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Logstash Pipeline Configuration and Tuning</title>
+
+    <summary>Logstash processes log streams through input → filter → output pipelines. Filters parse raw text into structured fields (grok, json, date, geoip, useragent), mask sensitive data (mutate gsub), and normalize field names. Multi-pipeline configurations isolate heavy processing from lightweight routing. Dead letter queues capture failed events for later replay.</summary>
+
+    <why>
+      <p>Raw log lines are unstructured strings. Logstash transforms them into structured documents with typed fields before they reach Elasticsearch, enabling aggregations, time-range filtering, and field-level access control. Without parsing, every query requires slow regexp scans across the message field. PII masking in the pipeline prevents sensitive data (passwords, credit card numbers, bearer tokens) from ever reaching the search index, which is essential for GDPR and PCI-DSS compliance.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Log sources produce multiple formats requiring different parsing rules (nginx access logs, application JSON logs, syslog, custom formats).</item>
+        <item>PII masking, field normalization, or GeoIP enrichment is required before indexing.</item>
+        <item>Heavy processing (grok pattern matching, useragent parsing) needs to be isolated from the write path.</item>
+        <item>Multiple log streams need routing to different Elasticsearch indices with different retention policies.</item>
+        <item>A dead letter queue is needed to capture and replay events that fail parsing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple JSON logs from a single application — Filebeat with JSON parsing and direct Elasticsearch output avoids the Logstash overhead entirely.</item>
+        <item>Kubernetes-native deployments where Fluentd or Fluent Bit provide sufficient routing and transformation with lower memory footprint.</item>
+        <item>Throughput requirements exceed what a single Logstash node can handle and horizontal scaling is constrained — consider Kafka as a buffer upstream.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-pipeline">
+      <p>A Logstash pipeline has three sections: input, filter, output. Each pipeline is a .conf file in /etc/logstash/conf.d/.</p>
+      <example type="good" title="Basic pipeline: Beats input, JSON filter, Elasticsearch output">
+        <code lang="ruby"><![CDATA[
+# /etc/logstash/conf.d/main.conf
+
+input {
+  beats {
+    port => 5044
+    ssl => true
+    ssl_certificate => "/etc/logstash/certs/logstash.crt"
+    ssl_key         => "/etc/logstash/certs/logstash.key"
+  }
+}
+
+filter {
+  # Parse JSON logs
+  if [message] =~ /^\{/ {
+    json {
+      source => "message"
+      target => "parsed"
+    }
+    mutate {
+      rename => { "[parsed][level]" => "level" }
+      rename => { "[parsed][msg]"   => "log_message" }
+    }
+  }
+
+  # Parse timestamp
+  date {
+    match  => ["[parsed][timestamp]", "ISO8601", "yyyy-MM-dd HH:mm:ss"]
+    target => "@timestamp"
+  }
+
+  # Add environment tag
+  mutate {
+    add_field    => { "environment" => "production" }
+    remove_field => ["agent", "ecs", "input"]
+  }
+}
+
+output {
+  elasticsearch {
+    hosts    => ["https://elasticsearch:9200"]
+    index    => "logs-%{[service]}-%{+YYYY.MM.dd}"
+    user     => "logstash"
+    password => "${LOGSTASH_PASSWORD}"
+    ssl_certificate_verification => true
+    cacert   => "/etc/logstash/certs/ca.crt"
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="advanced-filter">
+      <p>Production pipelines combine grok, geoip, useragent, PII masking, and field normalization.</p>
+      <example type="good" title="Advanced filter: multi-format, GeoIP, PII masking, normalization">
+        <code lang="ruby"><![CDATA[
+filter {
+  # Parse different log formats per service
+  if [service] == "nginx" {
+    grok {
+      match => {
+        "message" => '%{IPORHOST:client_ip} - %{DATA:user} \[%{HTTPDATE:timestamp}\] "%{WORD:method} %{DATA:request} HTTP/%{NUMBER:http_version}" %{NUMBER:status} %{NUMBER:bytes} "%{DATA:referrer}" "%{DATA:user_agent}"'
+      }
+    }
+  } else if [service] == "application" {
+    json { source => "message" }
+  }
+
+  # Enrich with GeoIP
+  if [client_ip] {
+    geoip {
+      source => "client_ip"
+      target => "geo"
+      fields => ["country_name", "city_name", "location"]
+    }
+  }
+
+  # Parse user agent
+  if [user_agent] {
+    useragent {
+      source => "user_agent"
+      target => "ua"
+    }
+  }
+
+  # Mask sensitive data (PII / secrets)
+  mutate {
+    gsub => [
+      "message", "password=\\S+",    "password=[REDACTED]",
+      "message", "\\b\\d{16}\\b",    "[CARD_REDACTED]",
+      "message", "Bearer\\s+\\S+",   "Bearer [REDACTED]"
+    ]
+  }
+
+  # Normalize log levels
+  mutate { uppercase => ["level"] }
+  translate {
+    field       => "level"
+    destination => "level"
+    override    => true
+    dictionary  => {
+      "WARN"  => "WARNING"
+      "FATAL" => "CRITICAL"
+    }
+  }
+
+  # Categorize response time
+  if [duration_ms] {
+    if [duration_ms] < 100 {
+      mutate { add_field => { "response_category" => "fast" } }
+    } else if [duration_ms] < 1000 {
+      mutate { add_field => { "response_category" => "normal" } }
+    } else {
+      mutate { add_field => { "response_category" => "slow" } }
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="dead-letter-queue">
+      <p>Events that fail grok or JSON parsing should not be silently dropped. Route them to a dead letter queue or a failure index for inspection.</p>
+      <example type="good" title="Dead letter queue: write parse failures to file">
+        <code lang="ruby"><![CDATA[
+output {
+  elasticsearch {
+    hosts    => ["https://elasticsearch:9200"]
+    index    => "logs-%{+YYYY.MM.dd}"
+    user     => "logstash"
+    password => "${LOGSTASH_PASSWORD}"
+  }
+
+  # Capture failed events separately
+  if "_grokparsefailure" in [tags] or "_jsonparsefailure" in [tags] {
+    file {
+      path  => "/var/log/logstash/failed/%{+YYYY-MM-dd}.json"
+      codec => json_lines
+    }
+  }
+}
+]]></code>
+        <note>Enable dead_letter_queue.enable: true in logstash.yml to persist failed events to disk for replay via the dead_letter_queue input plugin.</note>
+      </example>
+    </section>
+
+    <section name="multi-pipeline">
+      <p>Isolate heavy-processing pipelines from lightweight ones using pipelines.yml. Each pipeline has its own workers, queue, and JVM overhead budget.</p>
+      <example type="good" title="pipelines.yml: separate beats and kafka pipelines">
+        <code lang="yaml"><![CDATA[
+- pipeline.id: beats-pipeline
+  path.config: "/etc/logstash/conf.d/beats.conf"
+  pipeline.workers: 2
+
+- pipeline.id: kafka-pipeline
+  path.config: "/etc/logstash/conf.d/kafka.conf"
+  pipeline.workers: 4
+  queue.type: persisted
+  queue.max_bytes: 4gb
+]]></code>
+        <note>Use persisted queue for the kafka pipeline to survive Logstash restarts without message loss.</note>
+      </example>
+    </section>
+
+    <section name="logstash-yml">
+      <p>logstash.yml controls global pipeline settings, dead letter queue, and monitoring.</p>
+      <example type="good" title="logstash.yml production settings">
+        <code lang="yaml"><![CDATA[
+node.name: logstash-1
+
+pipeline.workers: 4
+pipeline.batch.size: 125
+pipeline.batch.delay: 50
+
+path.data:   /var/lib/logstash
+path.logs:   /var/log/logstash
+path.config: /etc/logstash/conf.d
+
+dead_letter_queue.enable:    true
+dead_letter_queue.max_bytes: 1gb
+
+http.host: 0.0.0.0
+http.port: 9600
+
+xpack.monitoring.enabled: true
+xpack.monitoring.elasticsearch.hosts:    ["https://elasticsearch:9200"]
+xpack.monitoring.elasticsearch.username: logstash_system
+xpack.monitoring.elasticsearch.password: ${LOGSTASH_SYSTEM_PASSWORD}
+]]></code>
+      </example>
+    </section>
+
+    <section name="performance-tuning">
+      <p>Logstash performance knobs for high-throughput environments.</p>
+      <list>
+        <item>pipeline.workers: set to number of CPU cores; each worker runs filter and output stages in parallel.</item>
+        <item>pipeline.batch.size: 125 is the default; increase to 500–1000 for bulk Elasticsearch output to reduce round-trips.</item>
+        <item>pipeline.batch.delay: maximum milliseconds to wait to fill a batch; default 50 ms is acceptable for logging.</item>
+        <item>JVM heap: set LS_JAVA_OPTS=-Xms1g -Xmx1g; more heap enables larger caches for translate and useragent plugins.</item>
+        <item>Avoid expensive filters in hot path: geoip and useragent parsers are CPU-heavy; apply only to fields that actually contain IPs/UA strings using conditional guards.</item>
+      </list>
+      <rule testable="true">
+        <statement>pipeline.workers MUST be set to the number of available CPU cores minus one (reserved for the input thread). pipeline.batch.size MUST be at least 500 for Elasticsearch outputs receiving more than 10,000 events/second.</statement>
+        <rationale>Under-utilizing workers leaves CPU idle while the output thread waits for bulk ACKs. Batch size below 125 with high event rates causes excessive HTTP round-trips to Elasticsearch, increasing indexing latency and reducing throughput.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Configure SSL/TLS for all Beats inputs (ssl: true, ssl_certificate, ssl_key).</check>
+      <check>Store Elasticsearch credentials in the Logstash keystore, not plaintext in pipeline configs.</check>
+      <check>Add PII masking (mutate gsub) for passwords, card numbers, and bearer tokens before output.</check>
+      <check>Enable dead_letter_queue.enable: true in logstash.yml.</check>
+      <check>Route _grokparsefailure and _jsonparsefailure events to a separate file or index.</check>
+      <check>Set pipeline.workers to CPU core count and pipeline.batch.size to at least 500 for high-volume outputs.</check>
+      <check>Use conditional guards on expensive plugins (geoip, useragent) to avoid running them on every event.</check>
+      <check>Monitor JVM heap usage via xpack.monitoring — keep below 75% to avoid GC pressure.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-beats-collection"/>
+      <link href="https://www.elastic.co/guide/en/logstash/current/index.html"/>
+    </see-also>
+  </content>
+</methodology>
