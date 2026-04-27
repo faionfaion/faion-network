@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rust-testing-integration">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Integration-test Rust HTTP services with tower::ServiceExt::oneshot and testcontainers-rs Postgres; isolate per-test DB state with per-test schema or transaction rollback.</summary>
+    <tags>
+      <tag>rust</tag>
+      <tag>integration-test</tag>
+      <tag>axum</tag>
+      <tag>testcontainers</tag>
+      <tag>tower</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>rust</language>
+    </languages>
+    <frameworks>
+      <framework>axum</framework>
+      <framework>tokio</framework>
+    </frameworks>
+    <related>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Rust Integration Testing — Axum/Tower and Testcontainers</title>
+
+    <summary>Integration tests for Rust HTTP services drive the real Axum (or Actix) router via tower::ServiceExt::oneshot without binding a port. Database tests use testcontainers-rs to spin up a per-test Postgres container — or a shared container with per-test schema isolation — ensuring tests never depend on a shared dev DB and never leave state that breaks parallel runs.</summary>
+
+    <why>
+      <p>Unit tests with mockall verify logic but cannot catch wiring mistakes: wrong handler registration, missing middleware, broken serialization, or a migration that broke the schema. Integration tests drive the full request path and expose these errors early. tower::ServiceExt::oneshot is the canonical Axum pattern: it calls the router directly in the test process with no network socket, so tests are fast and portable.</p>
+      <p>testcontainers-rs starts a real Postgres (or any Docker image) per test or shared across the suite. Per-test containers guarantee isolation at the cost of startup time; a shared container with per-test schema (CREATE SCHEMA test_&lt;uuid&gt;; DROP SCHEMA ... CASCADE after) is the common middle ground for CI speed.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Rust services using Axum/Actix/Tonic where you need confidence that the real router, extractors, middleware, and DB round-trip work end-to-end.</item>
+        <item>Any handler that reads or writes a database and where a mock would just assert the mock setup.</item>
+        <item>Pagination, filtering, and ordering logic that requires real SQL execution to be meaningful.</item>
+        <item>Scenarios where multiple components interact and the unit-level boundaries are wrong.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Business logic that has no I/O — a unit test with mockall is cheaper and faster.</item>
+        <item>Hot-path benchmarks — cargo test is not cargo bench; use criterion for perf-sensitive code.</item>
+        <item>Cross-compile targets where running tests on the host does not reflect the target. Use cross + Docker, or skip and rely on CI.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Use tower::ServiceExt::oneshot to drive Axum routers in integration tests. Never bind a real TCP listener on a fixed port (e.g., 127.0.0.1:8080) for HTTP integration tests. If a real listener is needed, bind to :0 and discover the assigned port with local_addr().</statement>
+        <rationale>Hardcoded ports cause CI failures when tests run in parallel — two tests bind the same address and one panics. oneshot drives the router in-process with no socket allocation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use testcontainers-rs for any integration test that requires a real database. Never point integration tests at a shared dev or staging database. Provide per-test schema isolation (CREATE SCHEMA test_&lt;uuid&gt; + DROP after) when sharing a container across a test suite.</statement>
+        <rationale>Integration tests that share a real Postgres container without isolation fail in CI in random order because one test's INSERT is visible to another's SELECT. Per-test schema or transaction rollback prevents state leak.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Run database migrations (sqlx migrate run or diesel migration run) inside the integration test setup before any assertions. Tests MUST NOT assume migrations are pre-applied in the container.</statement>
+        <rationale>A freshly-started Postgres container has no schema. Tests that skip migration setup produce confusing "relation does not exist" errors that are hard to diagnose in CI.</rationale>
+      </rule>
+    </rules>
+
+    <section name="axum-integration-pattern">
+      <p>The canonical shape of an Axum integration test: build the app in a setup_app() helper that creates a test database pool and runs migrations; drive requests with app.oneshot(Request::builder()...build()).await; assert status code and deserialize the body with serde_json.</p>
+
+      <example type="good" title="Axum integration test with tower::ServiceExt::oneshot">
+        <code lang="rust"><![CDATA[
+// tests/api_tests.rs
+
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use tower::ServiceExt;
+use serde_json::json;
+
+async fn setup_app() -> Router {
+    // Create test database, run migrations, return app
+    // Use testcontainers-rs or a per-test schema against a shared container
+    todo!()
+}
+
+#[tokio::test]
+async fn test_create_user() {
+    let app = setup_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/users")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    json!({
+                        "name": "John Doe",
+                        "email": "john@example.com",
+                        "password": "password123"
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let user: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(user["name"], "John Doe");
+    assert_eq!(user["email"], "john@example.com");
+}
+
+#[tokio::test]
+async fn test_list_users_pagination() {
+    let app = setup_app().await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/v1/users?page=1&per_page=10")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let result: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert!(result["data"].is_array());
+    assert_eq!(result["page"], 1);
+    assert_eq!(result["per_page"], 10);
+}
+]]></code>
+        <note>oneshot consumes the router once; call setup_app() once per test, not once for the suite. This guarantees each test starts with a clean router state.</note>
+      </example>
+
+      <antipattern>
+        <description>Integration tests sharing a Postgres container without truncation or transaction-rollback between tests.</description>
+        <reason>Tests fail in CI in random order because INSERT from one test is visible to another's SELECT or constraint check. Isolation must be explicit: per-test schema, per-test container, or BEGIN ... ROLLBACK wrapping.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Binding a real TCP listener on a hardcoded port (e.g., 127.0.0.1:8080) in integration tests.</description>
+        <reason>Parallel test runs (cargo nextest) assign multiple tests to the same port and one panics with "address already in use". Use oneshot or bind to :0.</reason>
+      </antipattern>
+    </section>
+
+    <section name="snapshot-testing">
+      <p>For complex output — rendered emails, AST pretty-prints, serialized API responses — insta snapshot tests keep the test body readable and make review-friendly diffs. Run cargo insta review in the PR to update snapshots deliberately.</p>
+
+      <rule testable="true">
+        <statement>Use insta for snapshot tests of complex structured output (HTML, large JSON, AST). Do not hand-write multi-line assert_eq! strings for outputs longer than ~10 lines.</statement>
+        <rationale>Hand-written expected strings break on every whitespace or ordering change, producing noisy diffs. insta stores the expected value in a .snap file that git tracks and reviews cleanly.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>setup_app() creates a fresh database and runs migrations before returning.</check>
+      <check>Each test calls setup_app() independently — no shared router state.</check>
+      <check>No hardcoded TCP ports — use oneshot or bind to :0.</check>
+      <check>Database isolation is explicit: per-test schema, per-test container, or rollback.</check>
+      <check>Complex output tests use insta snapshots instead of hand-written assert_eq! strings.</check>
+      <check>wiremock used for external HTTP dependencies in integration scope.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rust-testing-unit"/>
+      <ref slug="rust-testing-property"/>
+      <ref slug="rust-testing-antipatterns"/>
+      <ref slug="rust-testing-ci-toolchain"/>
+      <link href="https://docs.rs/axum-test"/>
+      <link href="https://docs.rs/tower"/>
+      <link href="https://docs.rs/testcontainers"/>
+      <link href="https://insta.rs"/>
+      <link href="https://docs.rs/wiremock"/>
+    </see-also>
+  </content>
+</methodology>
