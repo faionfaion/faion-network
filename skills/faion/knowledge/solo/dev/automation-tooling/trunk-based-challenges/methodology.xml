@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-challenges">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Solutions to the three most common TBD adoption failures: broken trunk, long-lived branch pressure, and code review bottleneck; plus TBD integration with the SDD task lifecycle.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>troubleshooting</tag>
+      <tag>code-review</tag>
+      <tag>sdd</tag>
+      <tag>adoption</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trunk-based-dev-principles"/>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-branch-by-abstraction"/>
+      <ref slug="trunk-based-ci-gates"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Trunk-Based Development: Challenges and Solutions</title>
+
+    <summary>TBD adoption fails at three predictable points: "trunk is always broken" (insufficient gates), "we need long-lived branches" (large features with no flag infrastructure), and "code review is the bottleneck" (large PRs and few reviewers). Each has a concrete fix. The SDD task lifecycle maps cleanly onto TBD: one task = one trunk-merged increment.</summary>
+
+    <why>
+      <p>Most teams that abandon TBD do so because of one of these three failure modes. Each looks like a TBD problem but is actually a missing practice: broken trunk means missing test gates, long-lived branches mean missing feature flag infrastructure, review bottlenecks mean missing PR size discipline. Addressing the root cause — not the symptom — unblocks adoption. The SDD integration section shows how the task lifecycle (backlog → todo → in-progress → done) maps to TBD so that each merged commit is traceable to a work item.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Trunk is red more than once per week and developers have lost trust in main — apply the "broken trunk" fixes first.</item>
+        <item>Team keeps creating week-long feature branches despite wanting to do TBD — apply the long-lived branch solutions.</item>
+        <item>PRs sit unreviewed for more than four hours — apply the review bottleneck solutions.</item>
+        <item>Adopting SDD task lifecycle alongside TBD and need a mapping between the two.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield projects that have not yet experienced these failure modes — apply good practices up front rather than fixing problems after they appear.</item>
+        <item>Teams not using TBD — some of these solutions (e.g. feature flags for branch elimination) only make sense in a TBD context.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="challenge-broken-trunk">
+      <p>The most common complaint against TBD: "trunk is always broken." The root causes are known and fixable.</p>
+
+      <rule>
+        <statement>When trunk breaks more than once per week, diagnose using this ordered checklist: (1) Are all merges gated on passing CI? If not, add branch protection. (2) Is CI under 10 minutes? If not, developers batch pushes and bugs compound. (3) Are incomplete features behind flags? If not, partial code reaches trunk and breaks on interaction. (4) Are commits small (less than 200 lines diff)? Large commits hide bugs. Fix the first failing check before touching others.</statement>
+        <rationale>Broken trunk is never caused by TBD itself — it is caused by missing gates. Treating TBD as the cause and reverting to long-lived branches just hides the broken practices; they surface later as merge conflicts and integration failures.</rationale>
+      </rule>
+
+      <list>
+        <item>Gate merges on passing tests — no merge without green CI</item>
+        <item>Add pre-commit hooks for lint and type-check (under 1 second)</item>
+        <item>Speed up CI to under 10 minutes (parallelise, cache, drop slow suites to nightly)</item>
+        <item>Use feature flags for all incomplete work — nothing partially wired lands on trunk</item>
+        <item>Smaller commits — under 200 lines diff per PR as a soft limit</item>
+      </list>
+    </section>
+
+    <section name="challenge-long-lived-branches">
+      <p>"We need long-lived branches because the feature is too big." This is always a symptom of missing decomposition skills or missing flag infrastructure, not a genuine constraint.</p>
+
+      <rule>
+        <statement>Before allowing a branch lifetime exceeding 24 hours, require the developer to articulate which of the three missing practices is blocking trunk-merge: (1) feature too big to ship in one commit, (2) no feature flag infrastructure to hide partial work, (3) compliance requirement for a stable release cut point. For (1) apply task decomposition; for (2) implement flags; for (3) use release branches only for compliance-cut points, not for feature development.</statement>
+        <rationale>The belief that some features "require" long-lived branches is almost always a proxy for "we have not broken this down" or "we have no flags." Addressing the root cause produces better outcomes than making exceptions to TBD.</rationale>
+      </rule>
+
+      <list>
+        <item>Break feature into smaller parts — each part is a separate task and a separate trunk-merged commit</item>
+        <item>Implement feature flags — hide large features behind flags and merge parts daily</item>
+        <item>Use Branch by Abstraction for major component replacements — see trunk-based-branch-by-abstraction</item>
+        <item>For compliance: use release branches only for the release cut point, not for feature development</item>
+      </list>
+    </section>
+
+    <section name="challenge-review-bottleneck">
+      <p>Code review bottleneck is the second most common reason teams abandon TBD. Large PRs accumulate, reviewers are overwhelmed, and PRs sit for days. The fix is PR size discipline and review SLA, not abandoning TBD.</p>
+
+      <rule>
+        <statement>PRs MUST be under 200 lines of diff (excluding generated files and test fixtures). Review SLA MUST be under 4 hours for PRs under 200 lines. Teams of two or three can use pair programming as the review (instant review = no PR queue). Reviewer rotation is mandatory when one person is the only approver for a domain — single-reviewer bottlenecks cause queues that resemble long-lived branch pressure.</statement>
+        <rationale>Review time scales with PR size non-linearly: a 500-line PR takes 4x as long to review as a 200-line PR and produces 10x more review comments. Small PRs are reviewed faster, approved faster, and cause fewer merge conflicts. The 4-hour SLA forces reviewers to batch review time rather than letting PRs age.</rationale>
+      </rule>
+
+      <list>
+        <item>Smaller PRs — under 200 lines diff as a soft limit</item>
+        <item>Pair programming as instant review — eliminates the PR queue for paired work</item>
+        <item>Fast review SLA — under 4 hours for small PRs; teams that batch reviews at end-of-day lose TBD benefits</item>
+        <item>Rotate reviewers — avoid single-person bottlenecks on domain knowledge</item>
+        <item>Use stacked PRs (gh-stack, git-spice, Graphite) for multi-step features requiring sequential review</item>
+      </list>
+    </section>
+
+    <section name="sdd-integration">
+      <p>TBD maps cleanly onto the SDD task lifecycle. Each trunk-merged commit corresponds to one SDD task. Feature flags and Branch by Abstraction provide the safety net that allows daily merges even for large features.</p>
+
+      <rule>
+        <statement>In the SDD + TBD workflow: each TASK_*.md corresponds to one short-lived branch and one squash-merge to trunk. Task states map as: todo → create branch; in-progress → open PR; done → merged to trunk. Feature flag enabled = task deployed; flag removed = task complete. The SDD tracking artifact (.aidocs/feature-flags.md) MUST list every active flag with its associated task ID and cleanup ticket.</statement>
+        <rationale>Without an explicit mapping between SDD tasks and branch/flag lifecycle, flags accumulate without owners and tasks show "done" even though the feature is not deployed. The tracking artifact closes this gap.</rationale>
+      </rule>
+
+      <list>
+        <item>TBD + SDD workflow: create task in .aidocs/backlog/, move to todo/, create short-lived branch (under 24h), implement with feature flags, open PR, fast review, merge to trunk, move task to done/</item>
+        <item>Feature flags for SDD: flag name matches task ID; enable after thorough testing; remove after stability confirmed</item>
+        <item>Auto-deploy from trunk: trunk push → CI → staging deploy; manual production deploy or auto with approval; feature flags control visibility</item>
+        <item>Task completion stages: task done = merged to trunk; task deployed = feature flag enabled; task complete = flag removed</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Agents working in TBD codebases accumulate specific failure patterns that manifest as adoption regressions:</p>
+
+      <list>
+        <item>"Fix" pre-commit failures by adding # type: ignore or # noqa instead of fixing the root issue — require diff review of any new pragma.</item>
+        <item>Generate flag checks with hard-coded True defaults during local dev and forget to revert — gate via FLAGS_DEFAULT=off in CI.</item>
+        <item>Write 2000-line PRs instead of stacking — enforce under 200-line soft limit in task spec.</item>
+        <item>Drop the abstraction collapse step after Branch by Abstraction rollout — always file the step-5 cleanup ticket at step 1.</item>
+        <item>Add a CI job without updating branch protection required-status list — verify via gh api after any CI change.</item>
+        <item>Flip a billing/auth flag from less than 50% to 100% without human approval — enforce human-in-loop checkpoint in the task spec.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-branch-by-abstraction"/>
+      <ref slug="trunk-based-ci-gates"/>
+      <link href="https://trunkbaseddevelopment.com/"/>
+      <link href="https://graphite.dev/blog/stacked-prs-for-trunk-based-development"/>
+      <link href="https://itrevolution.com/accelerate-book/"/>
+    </see-also>
+  </content>
+</methodology>
