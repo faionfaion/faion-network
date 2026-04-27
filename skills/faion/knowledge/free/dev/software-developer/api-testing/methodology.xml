@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>API tests are organized in a pyramid: many unit tests, some integration tests against TestClient/httpx, targeted contract tests (Pact) only across team or service boundaries, and few E2E tests. Every integration test must validate the response body against the OpenAPI schema — status code alone is not enough.</summary>
+    <summary>API tests in a pyramid: unit tests, integration tests against TestClient/httpx, contract tests only cross-team, few E2E. Always validate response body against OpenAPI schema.</summary>
     <tags>
       <tag>api</tag>
       <tag>testing</tag>
@@ -169,6 +169,62 @@ describe('User API contract', () => {
         <statement>Any change to openapi.json snapshot or a removed Pact pact must be reviewed by a human before merging.</statement>
         <rationale>Agents will silently delete drifting tests to make CI green. Removing a pact means a consumer dependency was dropped — that is a product decision, not a test fix.</rationale>
       </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Two-pass loop: (1) generation — an agent reads openapi.json (served by the running app) and emits one test module per resource with happy + 4xx + 5xx cases; (2) verification — a second agent runs pytest, parses failures, opens or updates a corresponding test (never the production code unless explicitly authorized).</p>
+      <p>For contract tests, run consumer tests in CI, publish pacts to a Pact Broker, and have the provider pipeline verify against the latest tag. Always require a fresh openapi.json snapshot diff per PR — that diff IS the contract.</p>
+      <rule>
+        <statement>Generate tests from the served openapi.json, not a hand-maintained spec — the served version is the source of truth.</statement>
+        <rationale>Hand-maintained specs drift within weeks. A served spec stays in sync with implementation.</rationale>
+      </rule>
+      <rule>
+        <statement>Snapshot openapi.json per PR; an unintentional diff is a breaking-change signal. Use oasdiff for "breaking" vs "non-breaking" classification.</statement>
+        <rationale>Schema changes must be reviewed; agents can silently delete schema to make tests pass.</rationale>
+      </rule>
+      <rule>
+        <statement>One auth fixture per role (anon_client, user_client, admin_client); never thread tokens through arguments.</statement>
+        <rationale>Consistent fixture names prevent duplicate auth setup and make role boundaries explicit.</rationale>
+      </rule>
+      <rule>
+        <statement>Run schemathesis in CI as a fuzz pass — it catches edge cases hand-written tests miss (huge integers, empty strings, unicode, nulls in unexpected fields).</statement>
+        <rationale>Hand-written tests cover happy paths; fuzzing finds boundary cases.</rationale>
+      </rule>
+      <rule>
+        <statement>Never share state between contract tests; each consumer pact is independent. Reset Pact Broker tags per branch.</statement>
+        <rationale>Shared state causes order-dependent failures that manifest non-deterministically in CI.</rationale>
+      </rule>
+      <rule>
+        <statement>Always assert on the response body schema, not just the status code — a 200 with a missing field is still a regression.</statement>
+        <rationale>Status code is a coarse signal. Schema validation catches missing fields, type changes, and unexpected nullability.</rationale>
+      </rule>
+      <rule>
+        <statement>For idempotent endpoints, run the test twice in the same module to catch hidden side-effects.</statement>
+        <rationale>A second identical POST must return the same result (201 or 200) not a 500 due to constraint violation.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep contract test fixtures dumb: a single state string on the provider; the provider implements /_pact/states to set up DB rows.</statement>
+        <rationale>Complex fixtures slow down contract test iteration and obscure the actual contract.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>README's testing pyramid puts "Contract Tests" above "Unit Tests" — agents take this literally and over-invest in Pact for solo/internal services. Restate that contract tests only pay off across team or service boundaries.</p>
+      <p>The Pact snippet uses pactman on the provider side; pactman is unmaintained — modern stacks use pact-python v2 or the Pact JVM/.NET providers. Agents will install the wrong package.</p>
+      <p>README mixes OpenAPI.from_file_path (openapi-core) with FastAPI's auto-generated spec — but doesn't say to dump the *served* spec to disk. Agents will let the file go stale.</p>
+      <p>The Postman collection example is fine for manual runs but agents try to drive Postman from CLI — they should use Newman (newman run collection.json).</p>
+      <p>No mention of authentication test setup, JWT refresh, idempotency keys, retry semantics, or pagination — agents will skip these.</p>
+      <p>"Test rate limiting behavior" is a one-liner with no method; agents need explicit guidance (X-RateLimit-Remaining header assertion, fixed-window vs token-bucket semantics).</p>
+      <p>No discussion of test data isolation — agents reuse a single fixture user and tests start interfering once parallelism is enabled.</p>
+      <p>Agents copy README's pactman import; it's abandoned. Pin pact-python>=2.</p>
+      <p>Agents conflate "integration test against TestClient" with "contract test"; only the latter publishes a pact. Be explicit which you want.</p>
+      <p>Agents write tests that mutate shared fixtures, then parallelize with pytest-xdist — order-dependent failures appear non-deterministic. Force --dist=loadgroup or use pytest.mark.serial.</p>
+      <p>Agents leak credentials into committed test fixtures (Authorization headers, refresh tokens). Run a scrubber pass before commit.</p>
+      <p>Agents use requests instead of httpx in async test files, blocking the event loop and producing flaky timeouts.</p>
+      <p>Agents call the live external service (Stripe, SendGrid) in tests because it "works locally"; require respx/WireMock and ban network egress in CI.</p>
+      <p>When asked to "fix the failing test", agents weaken the assertion (assert r.status_code in (200, 201, 204)). Forbid loosening assertions — failures must be fixed in production code or in the spec.</p>
+      <p>Agents skip 5xx tests because "the server is supposed to work"; require an explicit failure-injection test for at least one dependent (DB down, third-party 503).</p>
+      <p>Any change to openapi.json snapshot or a removed Pact pact must be reviewed by a human — agents will silently delete drifting tests.</p>
     </section>
 
     <section name="antipatterns">
