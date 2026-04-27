@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="browser-automation-overview">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Routing layer for headless browser tasks: compare Puppeteer vs Playwright via a feature matrix and route the agent to puppeteer-automation, playwright-automation, or web-scraping.</summary>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tags>
+      <tag>browser-automation</tag>
+      <tag>puppeteer</tag>
+      <tag>playwright</tag>
+      <tag>routing</tag>
+      <tag>headless</tag>
+    </tags>
+    <languages>
+      <language>javascript</language>
+      <language>typescript</language>
+    </languages>
+    <related>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="playwright-automation"/>
+      <ref slug="web-scraping"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Browser Automation Overview</title>
+
+    <summary>A routing layer for headless browser tasks: compare Puppeteer vs Playwright using the feature matrix, pick one, then load the appropriate sibling methodology (`puppeteer-automation/`, `playwright-automation/`, or `web-scraping/`). This file does not contain implementation patterns — it is the decision layer only.</summary>
+
+    <why>
+      <p>Picking the wrong tool (Puppeteer for cross-browser E2E, Playwright for simple Chrome scraping) introduces unnecessary complexity or missing features. The comparison matrix gives concrete criteria: cross-browser need to Playwright; scraping Chrome-only to Puppeteer. Loading a single focused sibling avoids the token cost of the full 2100-line decomposed set.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Choosing between Puppeteer and Playwright for a new automation, scraping, or E2E project.</item>
+        <item>Onboarding a project that needs headless browser tasks (PDF, screenshots, form fill, scraping, E2E).</item>
+        <item>Triaging an existing browser-automation codebase: which tool is in use and where are the gaps.</item>
+        <item>Routing an agent to the correct sibling skill before producing any code.</item>
+        <item>Centralizing browser-automation knowledge for a single agent that will fan out to one of three sibling skills.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Deep implementation: jump directly to `puppeteer-automation/`, `playwright-automation/`, or `web-scraping/`.</item>
+        <item>Mobile app automation (Appium, Detox, Maestro) — browser-only scope.</item>
+        <item>API-only testing — use `api-testing` patterns; a browser is wasteful.</item>
+        <item>Browser fingerprinting / strong anti-bot evasion at scale — out of scope here.</item>
+        <item>For accessibility audits — Lighthouse / axe-core have purpose-built drivers; Playwright integration is fine but the audit logic is not in this file.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decision-matrix">
+      <rule>
+        <statement>Choose Playwright when cross-browser coverage, built-in auto-waiting, video/trace recording, or accessibility (role) selectors are required; choose Puppeteer for Chrome-only scraping, PDF/screenshot generation, or CDP-level access.</statement>
+        <rationale>Playwright adds cross-browser abstraction and auto-wait at the cost of slightly higher setup complexity; Puppeteer's simpler API is appropriate when only Chromium is needed and auto-wait is not a priority.</rationale>
+      </rule>
+    </section>
+
+    <section name="comparison">
+      <p>Key differences as of 2025-2026:</p>
+      <list>
+        <item>Browsers: Puppeteer = Chrome/Chromium only; Playwright = Chrome, Firefox, WebKit</item>
+        <item>Auto-waiting: Puppeteer = manual waitForSelector; Playwright = built-in on all actions</item>
+        <item>Testing framework: Puppeteer = separate (Jest/Mocha); Playwright = built-in (@playwright/test)</item>
+        <item>Selector types: Puppeteer = CSS/XPath; Playwright = CSS, XPath, text, role (accessibility)</item>
+        <item>Video/tracing: Puppeteer = manual CDP; Playwright = built-in, one config flag</item>
+      </list>
+    </section>
+
+    <section name="minimal-code-comparison">
+      <example type="good">
+        <code lang="javascript"><![CDATA[
+// Puppeteer — Chrome only, simpler API
+const browser = await puppeteer.launch({ headless: true });
+const page = await browser.newPage();
+await page.goto('https://example.com');
+const text = await page.$eval('h1', el => el.textContent);
+await browser.close();
+
+// Playwright — cross-browser, auto-wait
+const browser = await chromium.launch({ headless: true });
+const context = await browser.newContext();
+const page = await context.newPage();
+await page.goto('https://example.com');
+const text = await page.textContent('h1');  // auto-waits
+await browser.close();
+]]></code>
+      </example>
+    </section>
+
+    <section name="routing-script">
+      <reference path="templates/decide-browser.js">Scoring script: pick Puppeteer vs Playwright based on boolean requirement flags.</reference>
+    </section>
+
+    <section name="always-load-sibling">
+      <rule>
+        <statement>After choosing a tool from this overview, always load the sibling methodology (puppeteer-automation/, playwright-automation/, or web-scraping/) before producing any automation code.</statement>
+        <rationale>This file is a router with about 100 lines of context. The sibling files contain the actual patterns, selectors, anti-detection, Page Object Model, and CI integration details needed for production code.</rationale>
+      </rule>
+    </section>
+
+    <section name="ci-launch-flags">
+      <rule>
+        <statement>In Linux CI containers, always launch Chrome with --disable-dev-shm-usage --disable-gpu --no-sandbox; never use these flags on a developer workstation without a trusted container boundary.</statement>
+        <rationale>--no-sandbox disables the browser sandbox which is a security boundary; safe inside a dedicated CI container but dangerous on a shared machine. --disable-dev-shm-usage prevents /dev/shm exhaustion in Docker's 64MB default.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="javascript"><![CDATA[
+const browser = await puppeteer.launch({
+  headless: true,
+  args: ['--disable-dev-shm-usage', '--disable-gpu', '--no-sandbox'],
+});
+]]></code>
+      </example>
+    </section>
+
+    <section name="timeout-discipline">
+      <rule>
+        <statement>Set page.setDefaultTimeout(15000) at launch; never use waitForTimeout(N) as a substitute for waitForSelector or waitForLoadState.</statement>
+        <rationale>waitForTimeout is a fixed sleep; it fails on slow networks and wastes time on fast ones. waitForSelector blocks until the element appears, adapting to actual page state.</rationale>
+      </rule>
+      <antipattern>
+        <description>Agent adds await page.waitForTimeout(2000) after every interaction to "let the page settle".</description>
+        <reason>Fixed sleeps are fragile and slow; they fail when pages take longer than 2s and waste time when pages settle in 50ms. Use event-driven waits instead.</reason>
+      </antipattern>
+    </section>
+
+    <section name="memory-and-cleanup">
+      <rule>
+        <statement>Always close the browser in a try/finally block; capture trace and screenshot on failure and discard on success to prevent disk accumulation.</statement>
+        <rationale>Agents that forget browser.close() in error paths leave zombie Chrome processes that exhaust memory. Keeping all traces accumulates gigabytes per CI run.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="javascript"><![CDATA[
+let browser;
+try {
+  browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  // ... automation
+} catch (e) {
+  await page.screenshot({ path: 'failure.png' });
+  throw e;
+} finally {
+  await browser?.close();
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="managed-browser-services">
+      <rule>
+        <statement>Route to a managed browser service (Browserless, Browserbase, Bright Data) when running more than 20 parallel sessions; local Chrome instances at that scale cause OOM and CPU contention.</statement>
+        <rationale>Each Chromium instance uses 100-300MB RAM; 20 parallel instances = 2-6GB RAM, exceeding standard CI runner limits and causing cascading failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>The file is a 100-line router; all real patterns live in the three child files. Agents must read the chosen child file before producing code.</item>
+        <item>Comparison table is correct as of 2024-2025 but does not capture: Playwright's Chrome-only `chromium-headless-shell` (faster, smaller), Puppeteer's official Firefox channel (still labelled experimental), or BiDi protocol convergence.</item>
+        <item>"Stealth mode" via `puppeteer-extra-plugin-stealth` is a moving target; bot defences improve faster than the plugin.</item>
+        <item>No coverage of resource limits (memory leaks per browser context), Docker base images, or CI parallelism — those bite hard in production.</item>
+        <item>"PDF/screenshot generation" lumped under Puppeteer is fine, but Playwright now matches feature parity.</item>
+        <item>No guidance on running in serverless (Lambda layer for Chromium, Cloudflare Browser Rendering, Browserless) — major omission for solopreneur stacks.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use a routing agent: it reads the user request, picks Puppeteer vs Playwright using the comparison table, then delegates to the corresponding sibling skill's deeper file. Keep browser execution in a sandboxed worker (its own container or `--no-sandbox` is for desktop-only; in CI use `--disable-dev-shm-usage`). Always run with a timeout per page action; agents that lack timeouts hang CI for hours. For scraping at scale, route through a managed browser pool (Browserless, Bright Data, Apify) rather than letting an agent fork dozens of local Chrome instances.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`general-purpose` — initial language/tool decision and bootstrap.</item>
+        <item>`faion-browser-agent` (mentioned in the README) — actual page automation; keep it Sonnet-tier; only escalate to Opus for selector-design or anti-bot reasoning.</item>
+        <item>A narrow `selector-stabilizer` task agent — converts brittle CSS selectors to role/text/data-testid; optional pass.</item>
+        <item>A `screenshot-diff` task agent — paired with Percy/Chromatic/Playwright trace viewer for visual regression.</item>
+      </list>
+    </section>
+
+    <prompt purpose="route-and-implement"><![CDATA[
+Read solo/dev/automation-tooling/browser-automation-overview/README.md.
+The task is: <task>. Decide tool (Puppeteer/Playwright) using the comparison
+table; justify in one paragraph. Then read the relevant sibling
+(puppeteer-automation/ or playwright-automation/) and produce a runnable
+script with: timeout per action, browser-launch flags suitable for Linux CI,
+explicit cleanup in finally, and a non-zero exit code on selector miss.
+]]></prompt>
+
+    <prompt purpose="audit-existing-codebase"><![CDATA[
+Audit <repo> for browser automation. Catalogue: tool used, version, headless
+mode, timeouts, retry policy, container base, parallelism. Flag missing
+items vs the overview's "When to Use What" guidance.
+]]></prompt>
+
+    <section name="cli-tools">
+      <list>
+        <item>`npx puppeteer browsers install chrome` — Pin Chromium binary (pptr.dev).</item>
+        <item>`npx playwright install --with-deps` — Install browsers + Linux deps for CI (playwright.dev).</item>
+        <item>`npx playwright codegen &lt;url&gt;` — Record a test by clicking (playwright.dev).</item>
+        <item>`npx playwright show-trace trace.zip` — Open a trace + screenshots + DOM snapshots (playwright.dev).</item>
+        <item>`npx puppeteer screenshot &lt;url&gt;` (via Puppeteer CLI projects) — Quick screenshot from CLI (homegrown).</item>
+        <item>`chromium --headless=new --dump-dom &lt;url&gt;` — Bare browser for sanity checks (apt-get chromium).</item>
+        <item>`chrome-launcher` — Programmatic Chrome launch with sane defaults (npm).</item>
+        <item>`lighthouse` / `lighthouse-ci` — Run perf/a11y audits driven by headless Chrome (npm).</item>
+        <item>`playwright-mcp` — MCP server exposing Playwright as agent tools (github.com/microsoft/playwright-mcp).</item>
+        <item>`puppeteer-mcp` (community) — MCP variant for Puppeteer (varies).</item>
+        <item>`bx browserless-cli` — Manage remote Browserless workers (browserless.io).</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Browserless (SaaS + OSS self-host, agent-friendly): Hosted Chrome over WS; agents connect with `puppeteer.connect()` / Playwright `browserType.connect()`.</item>
+        <item>Cloudflare Browser Rendering (SaaS, agent-friendly): REST + Workers binding; pay-per-use; weak BiDi.</item>
+        <item>Apify (SaaS, agent-friendly): Actor model + proxy + storage; managed crawls.</item>
+        <item>Bright Data Scraping Browser (SaaS, agent-friendly): Real-browser pool with residential IPs; CDP-compatible.</item>
+        <item>Browserbase (SaaS, agent-friendly): Headless Chrome over CDP for AI agents; built for LLM-driven flows.</item>
+        <item>Steel.dev (SaaS + OSS, agent-friendly): Browser-as-a-service tuned for agents; session replay.</item>
+        <item>ScrapingBee / ScraperAPI / Zyte (SaaS, partial): Proxy + render APIs; less control than CDP.</item>
+        <item>Vercel/Netlify build "headless Chrome" support (SaaS, partial): Works but cold-start hostile; prefer dedicated.</item>
+        <item>AWS Lambda + chrome-aws-lambda layer (SaaS, agent-friendly): Cheap on-demand; size limits + cold start.</item>
+        <item>GitHub Actions runners (SaaS, agent-friendly): `microsoft/playwright-github-action` is one line.</item>
+        <item>Sauce Labs / BrowserStack (SaaS, partial): Real-device cross-browser; agent automation possible but per-minute pricing.</item>
+        <item>Selenium Grid 4 (OSS, agent-friendly): If team is on Selenium; Grid hubs CDP-compatible.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always set per-action timeouts (`page.setDefaultTimeout(15000)`) — silent hangs eat agent budget.</item>
+        <item>Launch with `--disable-dev-shm-usage --disable-gpu --no-sandbox` only inside trusted containers.</item>
+        <item>One browser context per concurrent task; do not share cookies between unrelated jobs.</item>
+        <item>Capture trace+screenshot on failure; throw away on success — disk fills fast.</item>
+        <item>Pin browser binary version in `package.json` (`puppeteer.browsers`) or `playwright.config.ts` so CI is reproducible.</item>
+        <item>For scraping, set a realistic UA + viewport + accept-language; randomize subtly across runs.</item>
+        <item>For E2E, prefer role/text selectors over CSS class chains — they survive UI refactors.</item>
+        <item>In CI, run with `--workers=N` matching CPU cores; over-parallelism crashes Chrome with OOM.</item>
+        <item>Use a remote browser service (Browserless/Browserbase) when running &gt;20 parallel sessions — local resource contention dominates.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Selector design: agents glue together long CSS chains that break on the next deploy. Force role/text/data-testid first.</item>
+        <item>Agents reflexively add `await page.waitForTimeout(2000)` instead of `waitForSelector`/`waitForLoadState`. Banish `waitForTimeout` from the codebase via lint rule.</item>
+        <item>"Click then read" race: agents read DOM before navigation completes. Always `Promise.all([page.waitForNavigation(), page.click(...)])` (Puppeteer) or use Playwright's auto-wait.</item>
+        <item>Headless detection: agents copy "stealth" snippets from blog posts that defeat 2022 bot defences and fail today. If the target has serious anti-bot, route through a managed browser farm.</item>
+        <item>Memory: agents forget to `await browser.close()` in error paths. Wrap in `try/finally`.</item>
+        <item>File downloads: agents miss the platform-specific download path; use `page.waitForEvent('download')` (Playwright) or CDP `Browser.downloadBehavior` (Puppeteer).</item>
+        <item>Cookies / auth: agents will paste real session cookies into the script. Force a `storageState.json` file gitignored.</item>
+        <item>For scraping: agents over-rotate user agents and cause more bans, not fewer; rate-limit + sticky session is the better lever.</item>
+        <item>Cross-browser: agents claim "this works in Chromium" and ship it as Playwright cross-browser. Always run the matrix in CI.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/decide-browser.js" purpose="Scoring script: pick Puppeteer vs Playwright based on boolean requirement flags."/>
+    </templates>
+
+    <see-also>
+      <link href="https://pptr.dev/"/>
+      <link href="https://playwright.dev/"/>
+      <link href="https://github.com/microsoft/playwright-mcp"/>
+      <link href="https://browserless.io/"/>
+      <link href="https://browserbase.com/"/>
+      <link href="https://www.w3.org/TR/webdriver-bidi/"/>
+      <ref slug="puppeteer-automation"/>
+      <ref slug="playwright-automation"/>
+      <ref slug="web-scraping"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tech-debt-management">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Prioritize tech debt with Impact x Risk x Interest / Cost score, pick payoff strategy (Boy Scout / feature-attached / sprint / Strangler Fig), prevent accumulation via CI gates.</summary>
+    <tags>
+      <tag>tech-debt</tag>
+      <tag>refactoring</tag>
+      <tag>prioritization</tag>
+      <tag>strangler-fig</tag>
+      <tag>quality-gates</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <applies-to>both</applies-to>
+    <related>
+      <ref slug="refactoring-patterns"/>
+      <ref slug="code-review"/>
+      <ref slug="tech-debt-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Technical Debt Management</title>
+
+    <summary>Prioritization and payoff strategy for technical debt using a scoring formula (Impact x Risk x Interest / Cost), four execution strategies (Boy Scout, feature-attached, dedicated sprint, Strangler Fig), and CI/pre-commit gates to prevent accumulation. The concrete rule: track debt as labels on existing feature tickets, never in a separate backlog — separate backlogs are where debt goes to die.</summary>
+
+    <why>
+      <p>Unprioritized debt reduces velocity non-linearly: high-complexity, high-churn files cause disproportionate bugs and slow down every adjacent feature. Git-history hotspot analysis (files changed often AND most complex) identifies the 20% of debt that causes 80% of friction. Automated quality gates (complexity check, duplication, TODO-ticket enforcement) prevent accumulation at zero marginal cost.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Sprint planning where engineering velocity has visibly decayed and the team disagrees on which debt to address.</item>
+        <item>Onboarding a new codebase where debt is undocumented and you need a quick triage of high-impact items.</item>
+        <item>Setting up CI quality gates and pre-commit hooks to prevent debt accumulation on a fresh project.</item>
+        <item>Planning a Strangler Fig migration of a legacy module that cannot be replaced atomically.</item>
+        <item>Deciding between Boy Scout Rule, dedicated debt sprints, feature-attached payoff, or strangler-fig per debt item.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield codebase younger than 6 months — there is no real debt yet, just inexperience; focus on prevention (linters, tests, ADRs).</item>
+        <item>Codebase you intend to throw away in less than 3 months — paying down debt on a doomed system is sunk cost.</item>
+        <item>During an outage / launch crunch — debt management requires calm and capacity.</item>
+        <item>As a substitute for refactoring patterns — debt management is prioritization; the actual code work is in refactoring-patterns.</item>
+        <item>Solo project with no other contributors — most debt frameworks optimize for team coordination overhead you do not have.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="priority-score-formula">
+      <p>Score debt items so the highest-leverage payoffs surface first. Inputs are bounded so one inflated factor cannot dominate, and division by fix cost prevents low-effort cleanups from being buried under expensive-but-critical items.</p>
+
+      <rule>
+        <statement>Score debt items using Priority = (Impact x Risk x Interest) / Fix Cost, where each factor is 1-5 and Fix Cost is in hours. Sort descending; tackle highest first.</statement>
+        <rationale>Multiplicative scoring ensures that a debt item that is high on all three dimensions ranks far above items with mixed profiles. Division by fix cost prevents low-effort cleanups being buried under expensive-but-critical items.</rationale>
+      </rule>
+
+      <list>
+        <item>Impact: how much does this debt slow development (1=none, 5=blocks features).</item>
+        <item>Risk: probability and magnitude of failure caused by this debt (1=cosmetic, 5=data integrity/security).</item>
+        <item>Interest: ongoing cost per sprint (complexity spreading, recurring bugs) (1=isolated, 5=compounds daily).</item>
+        <item>Fix Cost: estimated hours to resolve.</item>
+      </list>
+
+      <rule>
+        <statement>Use git-history hotspots to prioritize: files churned often AND complex are the highest-leverage payoff targets. Run: git log --since="12 months ago" + lizard complexity cross-reference.</statement>
+        <rationale>Hotspot analysis from "Your Code as a Crime Scene" (Adam Tornhill) shows that 20% of files cause 80% of bugs. Complexity alone misses stable legacy; churn alone misses complex-but-frozen debt.</rationale>
+      </rule>
+    </section>
+
+    <section name="pay-now-pay-soon-pay-later">
+      <list>
+        <item>Pay Now (High Priority): security vulnerabilities, data integrity risks, items blocking other development, high ongoing maintenance cost.</item>
+        <item>Pay Soon (Medium Priority): items slowing feature development, causing frequent bugs, spreading complexity to adjacent modules.</item>
+        <item>Pay Later (Low Priority): cosmetic issues, low-traffic areas, stable legacy code that is not changing.</item>
+      </list>
+    </section>
+
+    <section name="sprint-allocation">
+      <rule>
+        <statement>Allocate 15% of each sprint to continuous debt payoff plus a quarterly debt sprint for large systemic items (hybrid approach). Pure 20% continuous allocation works at scale but breaks for 1-2 person teams who need lumpy debt sprints.</statement>
+        <rationale>Hybrid outperforms pure continuous for most teams: continuous allocation handles small-incidental debt while the quarterly sprint addresses large architectural items that require more than a half-day of focus.</rationale>
+      </rule>
+
+      <list>
+        <item>Continuous (20% every sprint) — prevents buildup.</item>
+        <item>Periodic (every 4th sprint) — risk: debt accumulates.</item>
+        <item>Triggered (when threshold exceeded) — reactive, can reach crisis mode.</item>
+        <item>Hybrid (15% + quarterly) — best of both.</item>
+      </list>
+    </section>
+
+    <section name="tracking-rule">
+      <rule>
+        <statement>Track debt as labels on existing feature tickets, never in a separate debt backlog. Every TODO/FIXME must reference a ticket: TODO(PROJ-123): description.</statement>
+        <rationale>A separate debt backlog is where debt goes to die — it decouples debt from feature work, guaranteeing it is never prioritized. Ticket-linked inline comments keep debt visible in the context where it matters.</rationale>
+      </rule>
+    </section>
+
+    <section name="strategy-selection">
+      <rule>
+        <statement>For each debt item, choose the payoff strategy based on its profile: Boy Scout for low-cost incidental items (same file, &lt;= 20 LOC change), feature-attached for items in code about to change for a feature, dedicated sprint for high-impact isolated items, Strangler Fig for high-cost systemic replacement.</statement>
+        <rationale>Applying the wrong strategy wastes effort: Strangler Fig for a 10-line function is over-engineering; Boy Scout for a 500-line God class is scope explosion. Matching strategy to profile keeps PRs focused and reviewable.</rationale>
+      </rule>
+    </section>
+
+    <section name="boy-scout-rule">
+      <p>Leave code better than you found it — make 1-3 small improvements while working on related code in the same file. Cap at 20 LOC per cleanup; reject same-PR scope expansion to other files.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# Before (encountered during feature work)
+def process_data(d):
+    r = []
+    for x in d:
+        if x > 0:
+            r.append(x * 2)
+    return r
+
+# After (small improvement, same file, no behavior change)
+def process_data(data: list[int]) -> list[int]:
+    """Double positive numbers in the input list."""
+    return [x * 2 for x in data if x > 0]
+]]></code>
+        <note>Type hints, docstring, comprehension — all under 20 LOC delta, no API change, no new tests required.</note>
+      </example>
+    </section>
+
+    <section name="feature-attached-payoff">
+      <p>When planning a feature that touches debt-ridden code: identify debt in the affected area, include payoff in the feature estimate, pay debt before building the feature. Prevents adding new code on top of existing debt.</p>
+      <example type="good">
+        <code lang="text"><![CDATA[
+Feature: Add subscription tiers
+Affected code: User billing module (has TD-003 — missing type hints, mixed concerns)
+Approach: Fix TD-003 first, then build feature on clean foundation
+Benefit: Feature code is cleaner; no debt-on-debt layering
+]]></code>
+      </example>
+    </section>
+
+    <section name="strangler-fig-pattern">
+      <p>Gradually replace legacy system by routing traffic to a modern facade. Use only when the legacy interface is stable enough to wrap. If the interface is also debt, rewrite atomically inside a feature flag instead.</p>
+      <example type="good">
+        <code lang="python"><![CDATA[
+class OrderProcessorFacade:
+    """Route to modern or legacy based on feature flag."""
+
+    def __init__(self):
+        self.legacy = LegacyOrderProcessor()
+        self.modern = ModernOrderProcessor()
+
+    def process(self, order):
+        if feature_flags.is_enabled("modern_orders") and order.type in ["standard", "premium"]:
+            return self.modern.process(order)
+        return self.legacy.process(order)
+]]></code>
+        <note>Start routing a subset of traffic (standard/premium orders). Expand flag coverage as confidence grows. Remove legacy path only after 100% rollout and monitoring.</note>
+      </example>
+      <rule>
+        <statement>Do not let agents ship the Strangler Fig modern path to more than 1% of traffic without human sign-off and a rollback feature flag.</statement>
+        <rationale>Agents underestimate migration cost by 2-3x. The Strangler Fig involves production routing changes; early errors affect real users.</rationale>
+      </rule>
+    </section>
+
+    <section name="ci-quality-gates">
+      <reference path="templates/quality-gates.yml">GitHub Actions workflow: complexity, coverage, duplication, dep audit, TODO count</reference>
+      <rule>
+        <statement>Gate on cyclomatic complexity (radon cc, threshold 10), test coverage (80% minimum), duplicate code (pylint), vulnerable dependencies (safety/npm audit), and TODO count (&lt;= 50 unlinked markers).</statement>
+        <rationale>Each gate targets a distinct debt type. Combining them in CI means every PR is evaluated before merge; manual code review catches things automation misses, but automation catches things code review skips.</rationale>
+      </rule>
+      <p>Tools: radon (Python complexity), lizard (multi-language), pytest --cov (coverage), pylint --enable=duplicate-code, safety (Python deps), npm audit / cargo audit.</p>
+    </section>
+
+    <section name="pre-commit-todo-enforcement">
+      <reference path="templates/check-debt-comments.py">Pre-commit hook: enforces TODO(TICKET-ID) format</reference>
+      <rule>
+        <statement>Enforce TODO(PROJ-123): description format via pre-commit hook. Reject commits with unlinked TODO/FIXME/HACK/XXX/TECH_DEBT markers.</statement>
+        <rationale>Unlinked debt markers are invisible in project management tools. Ticket-linked markers create an audit trail, appear in sprint planning, and get closed when the ticket is resolved.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# Good: linked marker
+# TODO(PROJ-123): Replace this with the new billing service once TD-045 is resolved
+
+# Bad: unlinked marker (will be rejected by pre-commit hook)
+# TODO: fix this later
+# FIXME: this is a hack
+]]></code>
+      </example>
+    </section>
+
+    <section name="hotspot-finder">
+      <reference path="templates/debt-hotspots.sh">Bash script: cross-reference git churn with lizard complexity</reference>
+      <p>Run monthly or before planning a refactoring sprint. Output: top-20 files by (churn_count, complexity) — these are the highest-leverage targets.</p>
+    </section>
+
+    <section name="prevention-antipatterns">
+      <antipattern>
+        <description>Pre-commit gates configured too strictly (threshold 5 complexity on legacy code).</description>
+        <reason>Over-strict gates become bypassed with --no-verify, losing all enforcement. Set thresholds at current median + 10%, then tighten each quarter.</reason>
+      </antipattern>
+      <antipattern>
+        <description>CI-only gates without pre-commit enforcement.</description>
+        <reason>CI catches regressions after the fact; developers get slow feedback. Pre-commit gates catch at the moment of writing, when fixing is cheapest.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>A debt-discovery agent runs static analysis (radon, pylint, sonar, semgrep) plus codebase grep for TODO|FIXME|HACK|XXX|TECH_DEBT and produces an inventory with file paths, line counts, and complexity metrics. A scoring agent assigns Impact / Risk / Interest / Cost per item with rationale tied to the metric. A strategy-picker agent chooses payoff strategy per item: Boy Scout for low-cost-incidental, feature-attached for items in code about to change, debt sprint for high-impact-isolated, Strangler Fig for high-cost-systemic. A prevention-agent generates the CI / pre-commit config matched to the language. Human reviews scoring and approves the strategy mix.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-executor-agent — once a debt item is committed, runs as a regular SDD task with quality gates.</item>
+        <item>A static-analysis runner agent (Sonnet) — invokes radon / pylint / semgrep / cloc and shapes results into a debt inventory.</item>
+        <item>A "boy-scout" agent — small-scope: while editing file X for feature Y, propose 1-3 nearby cleanups, no scope expansion.</item>
+        <item>A debt-scoring agent (Sonnet) — applies Impact/Risk/Interest/Cost rationale.</item>
+        <item>A strangler-fig planner agent (Opus) — designs the legacy/modern facade and rollout plan; this is architecture work.</item>
+      </list>
+
+      <prompt purpose="static-analysis-debt-inventory"><![CDATA[
+Run static analysis on <repo path>. For each file with cyclomatic complexity > 10
+or duplication > 50 lines, output:
+- file: path
+- top_issue: <complexity|duplication|dead_code|outdated_dep|missing_tests>
+- evidence: tool output line
+- estimated_payoff_hours: integer
+- depends_on_feature_in_flight: <feature_id or none>
+Sort by (complexity * line_count) desc.
+]]></prompt>
+
+      <prompt purpose="boy-scout-cleanup"><![CDATA[
+You are the boy-scout. While editing <file> for feature <id>:
+Propose 1-3 small cleanups in this file ONLY (no other files).
+Each cleanup: <=20 LOC change, no behavior change, named with the safety pattern (rename, extract method, remove dead branch).
+Reject suggestions that touch public API or require new tests.
+]]></prompt>
+
+      <prompt purpose="strategy-picker"><![CDATA[
+For debt item <id> with profile <impact, risk, interest, cost>:
+Pick payoff strategy from {boy_scout, feature_attached, dedicated_sprint, strangler_fig}.
+Justify in 2 sentences. State a stop-condition: "we abandon this strategy if X."
+]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>radon — Python cyclomatic complexity, maintainability index. https://radon.readthedocs.io</item>
+        <item>lizard — Multi-language complexity (C, JS, Python, Go, Rust). https://github.com/terryyin/lizard</item>
+        <item>cloc — Lines-of-code per file/language; baseline for size. https://github.com/AlDanial/cloc</item>
+        <item>semgrep — Pattern-based static analysis; custom debt rules. https://semgrep.dev/docs</item>
+        <item>sonar-scanner — SonarQube CLI; debt as time-units estimate. https://docs.sonarsource.com/sonarqube</item>
+        <item>safety (Python) / npm audit / cargo audit — Vulnerable dependency debt. https://pyup.io/safety</item>
+        <item>depcheck — Unused JS/TS dependencies. https://github.com/depcheck/depcheck</item>
+        <item>vulture — Find dead Python code. https://github.com/jendrikseipp/vulture</item>
+        <item>git-quick-stats — Hot-spot analysis: files changed most often = debt risk. https://github.com/arzzen/git-quick-stats</item>
+        <item>code-maat — Hotspot + complexity from git history. https://github.com/adamtornhill/code-maat</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>SonarQube / SonarCloud (OSS / SaaS) — Yes (REST API). Debt expressed in "remediation hours"; agents read via Web API.</item>
+        <item>Codacy (SaaS) — Yes (REST API). Lower-friction SonarQube alternative.</item>
+        <item>CodeClimate (SaaS) — Yes (REST API). Maintainability scores per file.</item>
+        <item>Snyk (SaaS) — Yes (CLI + REST API). Dependency-debt focused.</item>
+        <item>Stepsize / SteadyBit (SaaS) — Yes (API). Tech-debt-as-issues, links debt to feature tickets.</item>
+        <item>Trunk.io (SaaS) — Yes (CLI). Multi-linter wrapper, code health dashboard.</item>
+        <item>GitHub CodeQL (SaaS) — Yes (Actions). Pattern-based code scanning.</item>
+        <item>Refactor.io (SaaS) — Limited. Hotspot visualizations.</item>
+        <item>Renovate / Dependabot (OSS / SaaS) — Yes (PR bot). Automates dependency-debt payoff.</item>
+      </list>
+    </section>
+
+    <section name="inline-hotspot-finder">
+      <p>See templates/ for the priority matrix, payoff strategies, CI quality gates, and pre-commit debt-comment validator. Inline hotspot finder:</p>
+      <example type="good" title="debt-hotspots inline shell">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# debt-hotspots.sh — files most frequently changed AND most complex.
+# Output: rank, file, change_count, complexity
+set -euo pipefail
+cd "${1:-.}"
+
+# Top-50 most-churned files in last 12 months
+git log --since="12 months ago" --name-only --pretty=format: \
+  | grep -v '^$' | sort | uniq -c | sort -rn | head -50 \
+  > /tmp/churn.txt
+
+# Add complexity per file (Python/JS via lizard)
+while read -r count file; do
+  if [[ -f "$file" ]]; then
+    cmplx=$(lizard "$file" 2>/dev/null | awk '/^[0-9]+/ {sum+=$2} END {print sum+0}')
+    printf "%6d  %4d  %s\n" "$count" "$cmplx" "$file"
+  fi
+done < /tmp/churn.txt | sort -k1,1 -nr -k2,2 -nr | head -20
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Track debt as labels on existing tickets, not in a separate backlog. A separate backlog is where debt goes to die.</item>
+        <item>Every TODO/FIXME must reference a ticket: TODO(PROJ-123): description. Enforce via pre-commit.</item>
+        <item>Use git-history hotspots to prioritize: files churned often AND complex are the highest-leverage payoff targets.</item>
+        <item>Hybrid sprint allocation (15% continuous + quarterly debt sprint) outperforms pure 20% continuous for most teams.</item>
+        <item>Strangler Fig is correct when the legacy interface is stable; if the interface is also debt, rewrite atomically inside a feature flag.</item>
+        <item>Boy Scout cleanups must be &lt;=20 LOC and same-file; larger touches expand PR scope and stall reviews.</item>
+        <item>Pre-commit gates with override discipline beat CI-only gates that pass-by-default. CI catches != team behavior.</item>
+        <item>Measure debt before and after a quarter. If complexity / duplication does not drop, your strategy is wrong.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>LLMs proposing refactors will silently change behavior. Require: tests must exist before refactor, and the agent must show test results pre and post.</item>
+        <item>Coding agents over-expand "small" cleanups. Cap LOC per agent change explicitly (&lt;=20-50) and reject scope expansion.</item>
+        <item>Agents will dismiss any debt comment they did not write ("looks fine to me"). Force them to chase the linked ticket and get its resolution status.</item>
+        <item>Static-analysis output is verbose; agents truncate and miss tail items. Pipe through head -N deliberately and tell the agent how many items it has.</item>
+        <item>Boy-scout agents create review fatigue: 5 unrelated cleanups per PR. Cap at 1-3 per PR; all must be local to the file being modified.</item>
+        <item>Strangler Fig is high-risk; do not let the agent ship the modern path to &gt;1% of traffic without human sign-off and a rollback feature flag.</item>
+        <item>Human-in-loop checkpoint: any payoff &gt; 1 sprint requires explicit human approval — agents underestimate cost by 2-3x.</item>
+        <item>Human-in-loop checkpoint: pre-commit hook config is permanent infrastructure; humans must review the rule list.</item>
+        <item>Do not let the agent close debt tickets based on diff-size heuristics; require linked test runs that demonstrate the underlying issue is gone.</item>
+      </list>
+    </section>
+
+    <section name="where-it-fails">
+      <list>
+        <item>Priority Score = (Impact x Risk x Interest) / Cost is multiplicative; one inflated factor dominates the ranking.</item>
+        <item>"Interest rate" is the hardest factor to quantify and the most often guessed; bad inputs poison the ranking.</item>
+        <item>20% sprint allocation is a heuristic — works at scale, breaks for 1-2 person teams who need lumpy debt sprints.</item>
+        <item>Strangler Fig fails when the legacy interface is not stable enough to wrap — sometimes you must rewrite atomically.</item>
+        <item>Pre-commit / CI gates that are too strict become bypassed (--no-verify epidemic) and lose all force.</item>
+        <item>Tracking debt in a separate "debt backlog" decouples it from feature work and guarantees it is never paid.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/quality-gates.yml" purpose="GitHub Actions workflow: complexity, coverage, duplication, dep audit, TODO count."/>
+      <template path="templates/check-debt-comments.py" purpose="Pre-commit hook: enforces TODO(TICKET-ID) format on all debt markers."/>
+      <template path="templates/debt-hotspots.sh" purpose="Bash: cross-reference git churn with lizard complexity to find top-20 debt targets."/>
+    </templates>
+
+    <see-also>
+      <link href="https://wiki.c2.com/?WardExplainsDebtMetaphor"/>
+      <link href="https://martinfowler.com/bliki/StranglerFigApplication.html"/>
+      <link href="https://www.oreilly.com/library/view/97-things-every/9780596809515/ch08.html"/>
+      <link href="https://www.adamtornhill.com/articles/crimescene/codeascrimescene.htm"/>
+      <link href="https://www.thoughtworks.com/radar"/>
+      <ref slug="tech-debt-basics"/>
+      <ref slug="refactoring-patterns"/>
+      <ref slug="code-review"/>
+    </see-also>
+  </content>
+</methodology>
