@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-dast">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Integrate Dynamic Application Security Testing (DAST) into CI/CD using OWASP ZAP or Nuclei to find runtime vulnerabilities in staging — never against production.</summary>
+    <tags>
+      <tag>dast</tag>
+      <tag>owasp-zap</tag>
+      <tag>nuclei</tag>
+      <tag>security</tag>
+      <tag>runtime</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="security-sast"/>
+      <ref slug="security-container-scanning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Dynamic Application Security Testing (DAST) in CI/CD</title>
+
+    <summary>DAST tests running applications to find vulnerabilities in production-like environments — auth bypass, injection, header misconfigurations — that SAST cannot see. Run DAST against staging only, on schedule or post-deploy, never against live production. OWASP ZAP suits automation; Nuclei suits template-based targeted scanning; Burp Suite is for manual pen testing engagements.</summary>
+
+    <why>
+      <p>DAST finds runtime vulnerabilities that exist only when the application is executing: authentication flaws, session management issues, SSRF, misconfigured security headers, and injection vectors that depend on actual HTTP responses. SAST misses all of these. The "shift-right" complement to SAST's "shift-left" — together they give defense in depth across the SDLC.</p>
+      <p>DAST requires a running application, authenticated scan configuration, and a well-scoped target. Without a scope definition, automated DAST scanners can trigger rate limits, trip alarms, or cause compliance violations in shared staging environments.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Post-deploy gate to staging — run ZAP baseline on every main-branch deploy.</item>
+        <item>Scheduled nightly/weekly full scans of the staging environment for continuous monitoring.</item>
+        <item>Authenticated scan coverage for endpoints that require login (form auth, OAuth, API key).</item>
+        <item>Template-based targeted scanning with Nuclei for known CVEs and misconfigurations.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Scanning production without explicit written authorization and a tight scope — compliance violation risk and potential disruption.</item>
+        <item>Replacing pen testing for novel architectures — DAST catches known patterns, not design flaws.</item>
+        <item>PR-level gating — DAST takes minutes and requires a deployed environment; use SAST for PR gates.</item>
+        <item>One-off scripts or APIs without a staging environment — stand up a test harness first.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>DAST MUST run against staging or a dedicated test environment only. Production URLs MUST NOT appear as DAST targets in any CI/CD configuration.</statement>
+        <rationale>DAST is an active scanner — it sends malformed requests, probes endpoints, and may trigger destructive operations. Running against production can cause outages, trip rate-limiters, and violate terms of service or compliance mandates.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Define a scan scope file (.zap/rules.tsv or equivalent) that explicitly excludes third-party services, payment processors, email senders, and test-data-destructive endpoints.</statement>
+        <rationale>Out-of-scope scanning can trigger real-money transactions, send test emails to real users, or delete data — regardless of whether the environment is labelled "staging".</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Update Nuclei templates on a schedule (weekly); pin to a specific template version in CI. Do not float to HEAD of the community template repo.</statement>
+        <rationale>New Nuclei templates may be noisy or incorrect before community review; floating HEAD can cause CI to suddenly flag many false positives after an upstream template update.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="ZAP baseline scan on staging post-deploy">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/zap-scan.yml
+name: ZAP Scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # Daily 2AM
+
+jobs:
+  zap-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://staging.example.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
+]]></code>
+      <note>Baseline scan is passive — it spiders the app and runs passive rules only, making it safe for shared staging environments.</note>
+    </example>
+
+    <example type="good" title="ZAP rules configuration file">
+      <code lang="text"><![CDATA[
+# .zap/rules.tsv
+# Rule ID	Action	Description
+10010	IGNORE	Cookie No HttpOnly Flag (acceptable for this app)
+10011	WARN	Cookie Without Secure Flag
+10015	FAIL	Incomplete or No Cache-control Header Set
+10016	IGNORE	Web Browser XSS Protection Not Enabled
+10017	FAIL	Cross-Domain JavaScript Source File Inclusion
+10019	FAIL	Content-Type Header Missing
+]]></code>
+    </example>
+
+    <example type="good" title="Nuclei targeted scan with SARIF output">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/nuclei.yml
+name: Nuclei Scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  nuclei:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nuclei Scan
+        uses: projectdiscovery/nuclei-action@main
+        with:
+          target: https://staging.example.com
+          templates: cves,vulnerabilities,misconfigurations
+          output: nuclei-output.txt
+          sarif-export: nuclei-results.sarif
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: nuclei-results.sarif
+]]></code>
+    </example>
+
+    <example type="good" title="Custom Nuclei template for security headers">
+      <code lang="yaml"><![CDATA[
+# .nuclei/templates/custom-headers-check.yaml
+id: missing-security-headers
+info:
+  name: Missing Security Headers
+  author: security-team
+  severity: medium
+  tags: headers,security
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+    matchers-condition: or
+    matchers:
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "X-Content-Type-Options"
+        condition: and
+
+      - type: word
+        part: header
+        negative: true
+        words:
+          - "X-Frame-Options"
+]]></code>
+    </example>
+
+    <example type="bad" title="DAST targeting production">
+      <code lang="yaml"><![CDATA[
+# DO NOT — DAST against production
+- name: ZAP Full Scan
+  uses: zaproxy/action-full-scan@v0.10.0
+  with:
+    target: 'https://app.example.com'  # production URL!
+]]></code>
+      <note>Full active scan against production can trigger destructive actions, trip rate limits, generate real alerts in security monitoring, and may violate compliance mandates.</note>
+    </example>
+
+    <section name="tool-selection">
+      <list>
+        <item>OWASP ZAP — open-source, free, excellent CI integration via zaproxy GitHub Actions. Best for startups and small teams running automated scans.</item>
+        <item>Nuclei — template-based, fast, highly CI-friendly, massive community template library. Best for targeted CVE and misconfiguration scanning.</item>
+        <item>Burp Suite — commercial, best for manual penetration testing engagements where human expertise drives the scan. Not suitable for automated CI.</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-zap-config"><![CDATA[
+Create a ZAP configuration for scanning [application type].
+
+Application details:
+- URL: [URL]
+- Authentication: [type - form/OAuth/API key]
+- Technology stack: [stack]
+- Sensitive areas to exclude: [list]
+
+Include:
+1. Context configuration
+2. Authentication setup
+3. Scan policy (active/passive rules)
+4. Alert filters
+5. Reporting format
+]]></prompt>
+
+      <prompt purpose="create-nuclei-template"><![CDATA[
+Create a Nuclei template to detect [vulnerability/misconfiguration].
+
+Target: [application type]
+Vulnerability: [description]
+Detection method: [HTTP response, header, body pattern]
+
+Include:
+- Template metadata
+- HTTP request configuration
+- Matchers (status, word, regex)
+- Extractors if needed
+- Severity rating with justification
+]]></prompt>
+
+      <prompt purpose="analyze-dast-results"><![CDATA[
+Analyze these DAST scan results and provide:
+
+1. True positive assessment for each finding
+2. Business impact analysis
+3. Reproduction steps
+4. Remediation recommendations
+5. Priority ranking
+
+Findings:
+[paste DAST output]
+
+Application context:
+- Type: [web app/API/SPA]
+- Users: [internal/external]
+- Data sensitivity: [level]
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Choose DAST tool: OWASP ZAP (free, automation-first), Nuclei (template-based, CI-friendly), or Burp Suite (manual pen testing).</check>
+      <check>Set up a dedicated staging environment for DAST — never point at production.</check>
+      <check>Configure authentication for authenticated scans (form auth, OAuth, API key).</check>
+      <check>Define scan scope file to exclude third-party services, payment endpoints, and destructive operations.</check>
+      <check>Integrate into staging deployment pipeline as a post-deploy gate.</check>
+      <check>Set up scheduled scans for continuous monitoring (daily or weekly).</check>
+      <check>Configure SARIF output and upload to GitHub Security tab.</check>
+      <check>Update scan templates/rules on a schedule; review and triage findings weekly.</check>
+      <check>Track remediation SLAs by severity; define MTTR targets.</check>
+    </checklist>
+
+    <section name="ai-agent-gotchas">
+      <p>DAST against prod: agents that "just probe a few URLs" can trip rate limits, alarms, or even compliance violations; always scope to staging and define an explicit allowlist of URLs.</p>
+      <p>Signal-to-noise: DAST emits many findings; without triage rules and severity gating the team ignores them all. Funnel into a dedicated security triage queue rather than surfacing directly in PR comments.</p>
+    </section>
+
+    <see-also>
+      <link href="https://www.zaproxy.org/"/>
+      <link href="https://docs.projectdiscovery.io/tools/nuclei"/>
+      <ref slug="security-sast"/>
+      <ref slug="security-container-scanning"/>
+    </see-also>
+  </content>
+</methodology>
