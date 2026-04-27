@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-pytest-setup">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Bootstrap pytest for a Python project: plugin selection, pyproject.toml configuration, project structure, coverage gates, parallel execution with xdist, CI integration, and agentic TDD workflow.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>configuration</tag>
+      <tag>ci</tag>
+      <tag>coverage</tag>
+      <tag>python</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="python-pytest-parametrize"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-async"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>pytest Project Setup — Plugins, Configuration, Coverage, and CI</title>
+
+    <summary>Wire pytest into a Python project: install the essential plugin set, configure pyproject.toml with strict markers and coverage gates, structure the tests/ directory mirroring src/, add parallel execution for CI, and follow the agentic TDD loop for feature development.</summary>
+
+    <why>
+      <p>pytest out of the box works, but a properly configured project prevents whole classes of maintenance problems: strict-markers catches typos in marker names at collection time, filterwarnings = ["error"] turns deprecation warnings into failures before upgrades break you, branch coverage detects untested conditionals, and pytest-randomly exposes order dependencies before they become production flakes. The plugin ecosystem in 2025-2026 has matured to the point where each concern has a focused, well-maintained plugin.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Python project — wire pytest as the only test runner; never use stdlib unittest for new code.</item>
+        <item>Migrating from unittest.TestCase — keep existing tests running, add new tests in pytest style (the mix is supported).</item>
+        <item>CI pipeline that needs coverage reporting, parallel execution, or artifact upload.</item>
+        <item>Team project that needs enforced marker discipline and reproducible test ordering.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Doctest-only libraries — pytest can run doctests but adds setup overhead; pure "python -m doctest" is sufficient for tiny libs.</item>
+        <item>Single-script tools where the setup overhead dominates — assert + manual run is fine.</item>
+        <item>BDD-style requirement docs — pytest-bdd works but behave is more idiomatic for Gherkin-first teams.</item>
+        <item>Serious performance benchmarks — pytest-benchmark works but asv (airspeed velocity) or vendor profilers give better regression detection.</item>
+        <item>Hard-real-time or hardware-in-loop tests — pytest's discovery and fixture model add latency; use a dedicated harness.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="essential-plugins">
+      <p>Essential plugin set (2025-2026) with monthly download counts as a popularity signal:</p>
+      <list>
+        <item>pytest-cov: coverage reporting, 87M+ downloads/month.</item>
+        <item>pytest-xdist: parallel execution via -n auto, 60M+.</item>
+        <item>pytest-asyncio: async test support, 58M+.</item>
+        <item>pytest-mock: mocker fixture wrapping unittest.mock, 50M+.</item>
+        <item>pytest-django: Django integration (db, transactional_db, settings fixtures), 20M+.</item>
+        <item>pytest-timeout: prevent hanging tests, 19M+.</item>
+        <item>pytest-randomly: randomize test order to expose order dependencies, 10M+.</item>
+        <item>pytest-sugar: improved output formatting, 8M+.</item>
+        <item>pytest-factoryboy: auto-register Factory Boy factories as pytest fixtures, 5M+.</item>
+      </list>
+      <commands>
+        <command name="install-core">uv add --dev pytest pytest-cov pytest-asyncio pytest-mock pytest-randomly pytest-xdist</command>
+        <command name="install-django">uv add --dev pytest-django pytest-factoryboy</command>
+        <command name="install-optional">uv add --dev pytest-timeout pytest-sugar syrupy hypothesis</command>
+      </commands>
+    </section>
+
+    <section name="pyproject-config">
+      <p>Complete pyproject.toml configuration covering test discovery, output, markers, async, warnings, coverage, and reporting:</p>
+      <example type="good" title="pyproject.toml — complete pytest and coverage configuration">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Output
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+    "-ra",  # Show summary of all except passed
+]
+
+# Markers (--strict-markers enforces this list)
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "e2e: marks tests as end-to-end tests",
+]
+
+# Async
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Warnings — turn deprecations into failures early
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:pytest_asyncio.*",
+    "ignore::PendingDeprecationWarning",
+]
+
+minversion = "8.0"
+timeout = 300  # 5 minutes default (requires pytest-timeout)
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+parallel = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__init__.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+    "@overload",
+]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+]]></code>
+      </example>
+      <example type="good" title="Django-specific additions to pyproject.toml">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--reuse-db",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["apps"]
+branch = true
+omit = ["*/migrations/*", "*/tests/*", "*/admin.py"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="project-structure">
+      <p>Mirror the source tree in tests/ for easy navigation and pytest auto-discovery:</p>
+      <example type="good" title="Recommended test directory layout">
+        <code lang="text"><![CDATA[
+project/
+├── src/
+│   └── myapp/
+│       ├── __init__.py
+│       ├── models.py
+│       └── services.py
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py        # Shared fixtures
+│   ├── unit/
+│   │   ├── __init__.py
+│   │   ├── test_models.py
+│   │   └── test_services.py
+│   ├── integration/
+│   │   ├── __init__.py
+│   │   └── test_api.py
+│   └── fixtures/
+│       ├── factories.py   # Factory Boy factories
+│       └── data.py        # Static test data
+└── pyproject.toml
+]]></code>
+        <note>src/myapp/services.py → tests/unit/test_services.py. The mirroring makes it obvious which tests cover which module.</note>
+      </example>
+    </section>
+
+    <section name="coverage-and-parallel">
+      <p>Branch coverage detects untested conditionals that line coverage misses. Parallel execution reduces CI time on multi-core runners.</p>
+      <example type="good" title="Branch coverage: parametrize for all branches">
+        <code lang="python"><![CDATA[
+def get_discount(user, amount):
+    if user.is_premium:
+        if amount > 100:
+            return amount * 0.2  # Branch 1
+        return amount * 0.1      # Branch 2
+    return 0                      # Branch 3
+
+
+@pytest.mark.parametrize("is_premium,amount,expected", [
+    (True, 150, 30),    # Branch 1: premium + high amount
+    (True, 50, 5),      # Branch 2: premium + low amount
+    (False, 150, 0),    # Branch 3: not premium
+])
+def test_get_discount_all_branches(user_factory, is_premium, amount, expected):
+    user = user_factory(is_premium=is_premium)
+    discount = get_discount(user, amount)
+    assert discount == expected
+]]></code>
+      </example>
+      <commands>
+        <command name="run-all">pytest</command>
+        <command name="run-coverage">pytest --cov=src --cov-report=html --cov-report=term-missing</command>
+        <command name="run-parallel">pytest -n auto</command>
+        <command name="run-markers">pytest -m "not slow"</command>
+        <command name="run-failed">pytest --lf</command>
+        <command name="run-verbose">pytest -v</command>
+        <command name="run-stop-first">pytest -x</command>
+        <command name="run-show-locals">pytest -l</command>
+        <command name="run-durations">pytest --durations=10</command>
+        <command name="run-debug">pytest --pdb -x -s</command>
+        <command name="run-collect">pytest --collect-only -q</command>
+      </commands>
+    </section>
+
+    <section name="ci-integration">
+      <p>GitHub Actions workflow running pytest with PostgreSQL and Redis services, parallel execution, and coverage upload to Codecov:</p>
+      <example type="good" title="GitHub Actions pytest workflow with services and coverage">
+        <code lang="yaml"><![CDATA[
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          pytest -n auto --cov=src --cov-report=xml --junitxml=junit.xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: junit.xml
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Bootstrap sequence for an agent wiring pytest into a new project or migrating from unittest:</p>
+      <how-to>
+        <step>Install core plugins: uv add --dev pytest pytest-cov pytest-asyncio pytest-mock pytest-randomly pytest-xdist (add pytest-django and pytest-factoryboy for Django projects).</step>
+        <step>Configure [tool.pytest.ini_options] in pyproject.toml: testpaths = ["tests"], asyncio_mode = "auto", addopts = ["-ra", "--strict-markers", "--strict-config"].</step>
+        <step>Configure [tool.coverage.run]: branch = true, parallel = true, source = ["src"], omit migrations and tests. Set fail_under = 80.</step>
+        <step>Create tests/conftest.py with shared fixtures: database session with rollback, API client (authenticated and unauthenticated), factory fixtures for domain models.</step>
+        <step>Per module: create tests/test_modulename.py mirroring the source layout. Write the smallest failing test first (red), then implement (green), then expand parametrize for edge cases.</step>
+        <step>CI: run pytest -n auto --cov --cov-report=xml --cov-fail-under=80; upload coverage.xml to Codecov; upload junit.xml as artifact.</step>
+      </how-to>
+      <p>Agentic TDD prompt pattern for adding tests to a function:</p>
+      <prompt purpose="tdd-add-tests"><![CDATA[
+Write pytest tests for <module>.<function>.
+Cover:
+  - Happy path with realistic input.
+  - Edge cases: empty, None, max-size, off-by-one.
+  - Error paths: each exception class explicitly raised.
+  - @pytest.mark.parametrize for input matrix; provide ids= for readable names.
+  - Use mocker.patch (pytest-mock) over monkeypatch for object methods; autospec=True.
+Aim for branch coverage >= 90% on the function. Run:
+  pytest -v tests/test_<module>.py --cov=<module> --cov-branch --cov-report=term-missing
+Show output. Fix any uncovered branches before stopping.
+]]></prompt>
+      <prompt purpose="tdd-async-tests"><![CDATA[
+Add pytest-asyncio tests for <async_module>.<coroutine>.
+Setup:
+  - asyncio_mode = "auto" (already in pyproject); no @pytest.mark.asyncio needed.
+  - Use @pytest_asyncio.fixture for async fixtures.
+  - Mock async dependencies with mocker.AsyncMock.
+  - Test concurrent paths: asyncio.gather error propagation; ExceptionGroup handling.
+  - Timeout assertions: with pytest.raises(asyncio.TimeoutError): await asyncio.wait_for(...).
+Run pytest -v --asyncio-mode=auto.
+]]></prompt>
+    </section>
+
+    <section name="best-practices">
+      <p>Key practices that prevent common long-term problems:</p>
+      <list>
+        <item>Mirror source tree in tests/ — src/foo/bar.py maps to tests/foo/test_bar.py. Auto-discoverable, easy to navigate.</item>
+        <item>Smallest scope first: function-scope fixture is the default; only widen to module/session when measured cost demands it.</item>
+        <item>Parametrize with ids= — pytest.param(..., id="empty-list") makes failures readable without opening the source.</item>
+        <item>Mock at the boundary: patch the dependency where it is used in the unit under test, not where it is defined.</item>
+        <item>mocker.patch.object(cls, "method", autospec=True) prevents drift when the real method's signature changes.</item>
+        <item>pytest-randomly always on — exposes order-dependence early. Pin seed in CI for reproducibility on failure.</item>
+        <item>Strict markers + strict config — typos fail the run, not silently mark as no-marker.</item>
+        <item>filterwarnings = ["error"] turns warnings into failures — catches deprecations before upgrades break you.</item>
+        <item>Snapshot DRF/JSON shapes with syrupy — diff in PR review surfaces unintended response changes.</item>
+        <item>Hypothesis for invariants (round-trip serializers, idempotent operations) — catches edge cases parametrize misses.</item>
+        <item>Do not share state via module globals — fixtures or pytest-randomly will expose the dependency.</item>
+      </list>
+    </section>
+
+    <section name="setup-checklist">
+      <checklist>
+        <check>pytest and essential plugins installed (pytest-cov, pytest-xdist, pytest-asyncio, pytest-mock, pytest-randomly).</check>
+        <check>pyproject.toml [tool.pytest.ini_options] configured with testpaths, strict-markers, and asyncio_mode.</check>
+        <check>Coverage configured with branch = true, fail_under = 80, and omit patterns for migrations.</check>
+        <check>tests/ directory created mirroring src/ layout.</check>
+        <check>tests/conftest.py with shared fixtures (database session, API clients, factories).</check>
+        <check>CI workflow runs pytest -n auto --cov --cov-report=xml and uploads artifacts.</check>
+        <check>pytest-randomly installed and --randomly-seed set in CI for reproducible failures.</check>
+        <check>Custom markers documented in pyproject.toml markers list.</check>
+      </checklist>
+    </section>
+
+    <section name="additional-tools">
+      <p>Extended tool ecosystem beyond the core set:</p>
+      <list>
+        <item>syrupy / pytest-snapshot: snapshot testing for JSON response shapes — diffs surface unintended changes in PR review.</item>
+        <item>hypothesis: property-based testing for invariants (round-trip serializers, idempotent ops) — finds edge cases parametrize misses.</item>
+        <item>pytest-recording / vcrpy: record and replay HTTP fixtures; commit cassettes with filter_headers to strip secrets.</item>
+        <item>respx: httpx-specific mock library with declarative route matching.</item>
+        <item>freezegun / time-machine: deterministic time mocking for tests with datetime.now() or time.time().</item>
+        <item>testcontainers-python: spin up postgres/redis Docker containers per session — replaces sqlite-for-tests with realistic databases.</item>
+        <item>pytest-benchmark: microbenchmark regression detection within the test suite.</item>
+        <item>pytest-watch / ptw: re-run tests on file changes during development.</item>
+        <item>Codecov / Coveralls: SaaS coverage tracking with PR comments.</item>
+        <item>Allure / allure-pytest: rich stakeholder-facing test reports.</item>
+        <item>Datadog CI Visibility: per-test telemetry for flaky test tracking.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.pytest.org/"/>
+      <link href="https://pytest-cov.readthedocs.io/"/>
+      <link href="https://pytest-xdist.readthedocs.io/"/>
+      <link href="https://danielsarney.com/blog/python-testing-best-practices-2025-building-reliable-applications/"/>
+      <link href="https://docs.pytest.org/en/stable/explanation/goodpractices.html"/>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="python-pytest-parametrize"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-async"/>
+    </see-also>
+  </content>
+</methodology>
