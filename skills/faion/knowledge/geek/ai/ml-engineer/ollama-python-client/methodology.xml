@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ollama-python-client">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Python integration patterns for Ollama: REST API, official library, async client, streaming, embeddings, vision models, and production service class with retries.</summary>
+    <tags>
+      <tag>ollama</tag>
+      <tag>python</tag>
+      <tag>async</tag>
+      <tag>streaming</tag>
+    </tags>
+    <category>local-llm</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ollama-setup-models"/>
+      <ref slug="ollama-tool-calling"/>
+      <ref slug="ollama-agent-integration"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Ollama Python Client Patterns</title>
+
+    <summary>Ollama exposes a REST API at http://localhost:11434 and an official Python library (pip install ollama). This methodology covers sync and async integration patterns, streaming responses, embeddings, vision models, and a production-ready service class with retry logic and metrics.</summary>
+
+    <why>
+      <p>Choosing the wrong integration path (raw REST vs. library vs. OpenAI-compatible) adds unnecessary complexity. The official Python library handles session management, streaming, and response parsing cleanly. Async patterns are critical for concurrent batch processing. A production service class with retries, timeouts, and health checks prevents cascade failures when models are loading or unavailable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a Python application that calls a local Ollama instance.</item>
+        <item>Needing concurrent batch processing with asyncio.</item>
+        <item>Requiring streaming output for real-time UX.</item>
+        <item>Generating embeddings locally for RAG pipelines.</item>
+        <item>Processing images with local vision models.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Production cloud deployment where OpenAI SDK with Ollama base_url override suffices — see ollama-agent-integration.</item>
+        <item>Simple one-off scripting where the CLI (ollama run) is faster to use.</item>
+        <item>TypeScript/JavaScript frontends — use the OpenAI-compatible REST API directly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-integration">
+      <p>Two paths: raw REST API or the official Python library. Prefer the library for new code; use REST directly only when you need fine-grained control over the HTTP session.</p>
+
+      <example type="good" title="REST API — generate and chat">
+        <code lang="python"><![CDATA[
+import requests
+import json
+from typing import Optional
+
+OLLAMA_URL = "http://localhost:11434"
+
+def generate(
+    prompt: str,
+    model: str = "llama3.1:8b",
+    system: str = "",
+    temperature: float = 0.7
+) -> str:
+    """Simple text generation."""
+    response = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={
+            "model": model,
+            "prompt": prompt,
+            "system": system,
+            "stream": False,
+            "options": {"temperature": temperature}
+        },
+        timeout=120
+    )
+    response.raise_for_status()
+    return response.json()["response"]
+
+def chat(
+    messages: list[dict],
+    model: str = "llama3.1:8b",
+    temperature: float = 0.7
+) -> str:
+    """Chat completion with message history."""
+    response = requests.post(
+        f"{OLLAMA_URL}/api/chat",
+        json={
+            "model": model,
+            "messages": messages,
+            "stream": False,
+            "options": {"temperature": temperature}
+        },
+        timeout=120
+    )
+    response.raise_for_status()
+    return response.json()["message"]["content"]
+]]></code>
+      </example>
+
+      <example type="good" title="Official Python library">
+        <code lang="python"><![CDATA[
+import ollama
+
+# Simple generation
+response = ollama.generate(
+    model="llama3.1:8b",
+    prompt="Write a haiku about programming"
+)
+print(response["response"])
+
+# Chat with history
+response = ollama.chat(
+    model="llama3.1:8b",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Why is the sky blue?"}
+    ]
+)
+print(response["message"]["content"])
+]]></code>
+      </example>
+    </section>
+
+    <section name="streaming">
+      <p>Use streaming for real-time UX — it reduces perceived latency even though total time is the same.</p>
+
+      <example type="good" title="REST API streaming">
+        <code lang="python"><![CDATA[
+def stream_generate(
+    prompt: str,
+    model: str = "llama3.1:8b",
+    callback: Optional[callable] = None
+) -> str:
+    """Stream response tokens in real-time."""
+    response = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={"model": model, "prompt": prompt, "stream": True},
+        stream=True,
+        timeout=120
+    )
+
+    full_response = ""
+    for line in response.iter_lines():
+        if line:
+            data = json.loads(line)
+            token = data.get("response", "")
+            if callback:
+                callback(token)
+            else:
+                print(token, end="", flush=True)
+            full_response += token
+            if data.get("done"):
+                break
+
+    return full_response
+]]></code>
+      </example>
+
+      <example type="good" title="Library streaming">
+        <code lang="python"><![CDATA[
+import ollama
+
+stream = ollama.chat(
+    model="llama3.1:8b",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True
+)
+
+for chunk in stream:
+    print(chunk["message"]["content"], end="", flush=True)
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-client">
+      <p>Use the async client for batch processing multiple prompts concurrently. asyncio.gather dispatches all requests in parallel, limited by Ollama's concurrency setting (OLLAMA_NUM_PARALLEL).</p>
+
+      <example type="good" title="Async Ollama client with batch processing">
+        <code lang="python"><![CDATA[
+import aiohttp
+import asyncio
+from typing import AsyncIterator
+
+class AsyncOllama:
+    """Async Ollama client for concurrent requests."""
+
+    def __init__(self, base_url: str = "http://localhost:11434"):
+        self.base_url = base_url
+
+    async def generate(self, prompt: str, model: str = "llama3.1:8b", **kwargs) -> str:
+        """Async generation."""
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/api/generate",
+                json={"model": model, "prompt": prompt, "stream": False, **kwargs},
+                timeout=aiohttp.ClientTimeout(total=120)
+            ) as response:
+                data = await response.json()
+                return data["response"]
+
+    async def chat(self, messages: list[dict], model: str = "llama3.1:8b", **kwargs) -> str:
+        """Async chat completion."""
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/api/chat",
+                json={"model": model, "messages": messages, "stream": False, **kwargs},
+                timeout=aiohttp.ClientTimeout(total=120)
+            ) as response:
+                data = await response.json()
+                return data["message"]["content"]
+
+    async def stream_generate(self, prompt: str, model: str = "llama3.1:8b") -> AsyncIterator[str]:
+        """Async streaming generation."""
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{self.base_url}/api/generate",
+                json={"model": model, "prompt": prompt, "stream": True}
+            ) as response:
+                async for line in response.content:
+                    if line:
+                        data = json.loads(line)
+                        yield data.get("response", "")
+                        if data.get("done"):
+                            break
+
+async def batch_generate(prompts: list[str]) -> list[str]:
+    """Process multiple prompts concurrently."""
+    client = AsyncOllama()
+    tasks = [client.generate(p) for p in prompts]
+    return await asyncio.gather(*tasks)
+]]></code>
+      </example>
+    </section>
+
+    <section name="embeddings">
+      <p>Use dedicated embedding models for RAG pipelines. nomic-embed-text (768 dim) is the default choice for large context; mxbai-embed-large (1024 dim) for higher performance.</p>
+
+      <example type="good" title="Embedding generation">
+        <code lang="python"><![CDATA[
+def get_embedding(text: str, model: str = "nomic-embed-text") -> list[float]:
+    """Generate embeddings locally."""
+    response = requests.post(
+        f"{OLLAMA_URL}/api/embeddings",
+        json={"model": model, "prompt": text},
+        timeout=60
+    )
+    response.raise_for_status()
+    return response.json()["embedding"]
+
+def get_batch_embeddings(
+    texts: list[str],
+    model: str = "nomic-embed-text"
+) -> list[list[float]]:
+    """Generate embeddings for multiple texts."""
+    return [get_embedding(text, model) for text in texts]
+
+# Using the library
+import ollama
+
+response = ollama.embeddings(model="nomic-embed-text", prompt="Hello world")
+embedding = response["embedding"]
+print(f"Embedding dimension: {len(embedding)}")  # 768 for nomic-embed-text
+]]></code>
+      </example>
+    </section>
+
+    <section name="vision-models">
+      <example type="good" title="Image analysis with vision model">
+        <code lang="python"><![CDATA[
+import ollama
+import base64
+
+def analyze_image(image_path: str, prompt: str, model: str = "llava:7b") -> str:
+    """Analyze an image with a vision model."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    response = ollama.chat(
+        model=model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt,
+                "images": [image_data]
+            }
+        ]
+    )
+    return response["message"]["content"]
+
+result = analyze_image(
+    "/path/to/image.jpg",
+    "What's in this image? Describe in detail."
+)
+print(result)
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-service">
+      <p>A production service class should include: health checking, exponential backoff retries, configurable timeouts, metrics collection (tokens/s, total duration), and a pull_model helper for automated setup.</p>
+
+      <example type="good" title="Production-ready OllamaService">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import Optional, Any
+import logging
+import time
+import requests
+
+@dataclass
+class OllamaConfig:
+    model: str = "llama3.1:8b"
+    temperature: float = 0.7
+    top_p: float = 0.9
+    top_k: int = 40
+    num_ctx: int = 4096
+    base_url: str = "http://localhost:11434"
+    timeout: int = 120
+    max_retries: int = 3
+
+class OllamaService:
+    """Production-ready Ollama service with error handling and retries."""
+
+    def __init__(self, config: Optional[OllamaConfig] = None):
+        self.config = config or OllamaConfig()
+        self.logger = logging.getLogger(__name__)
+
+    def is_available(self) -> bool:
+        """Check if Ollama server is running."""
+        try:
+            response = requests.get(f"{self.config.base_url}/api/tags", timeout=5)
+            return response.status_code == 200
+        except Exception:
+            return False
+
+    def list_models(self) -> list[str]:
+        """Get available models."""
+        response = requests.get(f"{self.config.base_url}/api/tags", timeout=10)
+        response.raise_for_status()
+        return [m["name"] for m in response.json().get("models", [])]
+
+    def _make_request(self, endpoint: str, payload: dict) -> dict:
+        """Make request with exponential backoff retries."""
+        last_error = None
+        for attempt in range(self.config.max_retries):
+            try:
+                response = requests.post(
+                    f"{self.config.base_url}{endpoint}",
+                    json=payload,
+                    timeout=self.config.timeout
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.Timeout as e:
+                last_error = e
+                self.logger.warning(f"Timeout on attempt {attempt + 1}/{self.config.max_retries}")
+                time.sleep(2 ** attempt)
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                self.logger.warning(f"Request failed on attempt {attempt + 1}: {e}")
+                time.sleep(2 ** attempt)
+        raise last_error
+
+    def generate(self, prompt: str, system: str = "", **kwargs) -> dict[str, Any]:
+        """Generate completion with metrics."""
+        options = {
+            "temperature": kwargs.get("temperature", self.config.temperature),
+            "top_p": kwargs.get("top_p", self.config.top_p),
+            "top_k": kwargs.get("top_k", self.config.top_k),
+            "num_ctx": kwargs.get("num_ctx", self.config.num_ctx)
+        }
+        start_time = time.time()
+        data = self._make_request("/api/generate", {
+            "model": kwargs.get("model", self.config.model),
+            "prompt": prompt,
+            "system": system,
+            "stream": False,
+            "options": options
+        })
+        elapsed = time.time() - start_time
+        return {
+            "content": data["response"],
+            "model": data["model"],
+            "done": data["done"],
+            "total_duration_ms": data.get("total_duration", 0) / 1_000_000,
+            "eval_count": data.get("eval_count", 0),
+            "tokens_per_second": data.get("eval_count", 0) / elapsed if elapsed > 0 else 0
+        }
+
+    def chat(self, messages: list[dict], tools: Optional[list] = None, **kwargs) -> dict[str, Any]:
+        """Chat completion with optional tool support."""
+        payload = {
+            "model": kwargs.get("model", self.config.model),
+            "messages": messages,
+            "stream": False,
+            "options": {
+                "temperature": kwargs.get("temperature", self.config.temperature),
+                "num_ctx": kwargs.get("num_ctx", self.config.num_ctx)
+            }
+        }
+        if tools:
+            payload["tools"] = tools
+        data = self._make_request("/api/chat", payload)
+        return {
+            "content": data["message"]["content"],
+            "role": data["message"]["role"],
+            "tool_calls": data["message"].get("tool_calls"),
+            "model": data["model"]
+        }
+
+    def pull_model(self, model: str) -> bool:
+        """Pull a model from Ollama library with progress logging."""
+        try:
+            response = requests.post(
+                f"{self.config.base_url}/api/pull",
+                json={"name": model},
+                stream=True,
+                timeout=3600  # 1 hour for large models
+            )
+            for line in response.iter_lines():
+                if line:
+                    data = json.loads(line)
+                    status = data.get("status", "")
+                    self.logger.info(f"Pulling {model}: {status}")
+                    if status == "success":
+                        return True
+            return False
+        except Exception as e:
+            self.logger.error(f"Failed to pull {model}: {e}")
+            return False
+]]></code>
+      </example>
+    </section>
+
+    <section name="config-class">
+      <example type="good" title="OllamaConfig with environment variable support">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import Optional
+import os
+
+@dataclass
+class OllamaConfig:
+    """Ollama configuration with environment variable support."""
+
+    # Server
+    base_url: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_URL", "http://localhost:11434")
+    )
+    timeout: int = field(
+        default_factory=lambda: int(os.getenv("OLLAMA_TIMEOUT", "120"))
+    )
+    max_retries: int = 3
+
+    # Default model
+    model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+    )
+
+    # Generation parameters
+    temperature: float = 0.7
+    top_p: float = 0.9
+    top_k: int = 40
+    num_ctx: int = 4096
+    repeat_penalty: float = 1.1
+
+    # Tool calling
+    tool_model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_TOOL_MODEL", "llama3.1:8b")
+    )
+    tool_ctx: int = 32768
+
+    # Embedding
+    embed_model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+    )
+
+    # Vision
+    vision_model: str = field(
+        default_factory=lambda: os.getenv("OLLAMA_VISION_MODEL", "llava:7b")
+    )
+
+    @classmethod
+    def for_coding(cls) -> "OllamaConfig":
+        return cls(model="qwen2.5-coder:7b", temperature=0.2, num_ctx=16384, repeat_penalty=1.0)
+
+    @classmethod
+    def for_creative(cls) -> "OllamaConfig":
+        return cls(temperature=0.9, top_p=0.95, top_k=100, num_ctx=8192, repeat_penalty=1.2)
+
+    @classmethod
+    def for_analysis(cls) -> "OllamaConfig":
+        return cls(temperature=0.2, top_p=0.9, num_ctx=8192)
+]]></code>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Always set explicit timeout values (120s for generation, 60s for embeddings, 3600s for model pulls) — the default requests timeout of None causes hung processes.</statement>
+        <rationale>Large models can take 5-30s for first token; without timeout the process hangs indefinitely on server restart or OOM.</rationale>
+      </rule>
+      <rule>
+        <statement>Implement a health check (GET /api/tags with 5s timeout) before starting any batch workload; fail fast rather than queuing requests to an unavailable server.</statement>
+        <rationale>Ollama returns connection refused when not running; early detection prevents batches from failing after partial progress.</rationale>
+      </rule>
+      <rule>
+        <statement>Set num_ctx explicitly in options or Modelfile — the default context window (2048) is too small for most agent tasks; use 8192-32768 depending on use case.</statement>
+        <rationale>Truncated context causes models to ignore early messages or tool definitions, producing silent failures.</rationale>
+      </rule>
+    </rules>
+
+    <see-also>
+      <link href="https://github.com/ollama/ollama-python"/>
+      <link href="https://docs.ollama.com/"/>
+      <ref slug="ollama-setup-models"/>
+      <ref slug="ollama-tool-calling"/>
+    </see-also>
+  </content>
+</methodology>
