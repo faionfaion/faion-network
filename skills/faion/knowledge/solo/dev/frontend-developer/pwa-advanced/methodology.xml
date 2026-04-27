@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="pwa-advanced">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>frontend-developer</domain>
+    <summary>Advanced PWA features — Web Push (VAPID), offline data sync (IndexedDB + Background Sync), and update management with skipWaiting + reload banner.</summary>
+    <tags>
+      <tag>pwa</tag>
+      <tag>web-push</tag>
+      <tag>vapid</tag>
+      <tag>service-worker</tag>
+      <tag>offline-sync</tag>
+      <tag>indexeddb</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>PWA Advanced Features</title>
+
+    <summary>Advanced PWA features: Web Push (VAPID subscribe → server send via `web-push`), offline data sync (IndexedDB queue + Background Sync API + retry), and update management (skipWaiting with user-visible banner). Every async service worker handler must be wrapped in `event.waitUntil()`. Test with Playwright `context.setOffline(true)` on every PR.</summary>
+
+    <why>
+      <p>Push notifications and offline sync are the two most-requested PWA capabilities beyond install + precache, and the two with the most LLM failure modes: VAPID key encoding errors, IDB transaction auto-close on non-IDB awaits, `skipWaiting()` causing silent data loss, and push permission gated behind page load instead of a user gesture.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding Web Push notifications to a PWA (subscribe → store → server-send via VAPID).</item>
+        <item>Building offline-first data sync with IndexedDB queue and Background Sync API + retry-with-backoff.</item>
+        <item>Implementing Background Fetch / Periodic Background Sync for large downloads or refresh jobs.</item>
+        <item>Hardening a PWA shell with advanced caching strategies (stale-while-revalidate, cache-first with network update, navigation preload).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>iOS Safari is the primary platform — Web Push works only on iOS 16.4+ from a home-screen-installed PWA; Background Sync and Periodic Sync are unsupported.</item>
+        <item>Apps already running a native shell (Capacitor, Tauri, React Native) — use platform push (APNs / FCM) directly.</item>
+        <item>Static marketing sites with no offline UX requirement — a basic precache from `pwa-core` is enough; advanced patterns add operational debt.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="limitations">
+      <p>Where it fails / limitations:</p>
+      <list>
+        <item>VAPID key encoding: `urlBase64ToUint8Array` is the #1 source of "applicationServerKey is not a valid base64-encoded string" errors when keys contain `+`/`/`.</item>
+        <item>Background Sync only fires when the browser deems network "reliable" — there is no guaranteed timing; tests must use `chrome://serviceworker-internals` or simulated triggers.</item>
+        <item>Service worker updates: `skipWaiting()` + `clients.claim()` without a refresh banner causes data loss for users mid-edit.</item>
+        <item>IndexedDB transactions auto-close on the first `await` of a non-IDB promise; agents routinely break this.</item>
+        <item>Push payload encryption (`aes128gcm`) requires a server library (`web-push` for Node, `pywebpush` for Python) — rolling your own is a security footgun.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat PWA-advanced work as three separable tracks: push (subscribe + send), offline sync (queue + replay), and update strategy (skipWaiting + UX). Run a subagent per track with a Playwright + `@playwright/test` PWA harness as the oracle. The agent must register the SW, force `update()`, simulate offline (`context.setOffline(true)`), and assert behavior — otherwise the human cannot tell if the change worked. Keep production VAPID keys human-controlled; let agents generate scratch keys for dev only.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-feature-executor` — push notifications and offline sync are well-scoped tasks; sequential gates (build, lint, Playwright PWA tests) catch regressions.</item>
+        <item>`faion-sdd-executor-agent` — when the work spans backend (push send service) + SW + UI, the SDD spec/design loop keeps it coherent.</item>
+      </list>
+      <p>Prompt patterns:</p>
+      <prompt purpose="implement-web-push-flow"><![CDATA[Implement Web Push subscription flow per `pwa-advanced/README.md`. Server side: Node Express handler that stores subscriptions and exposes `POST /api/push/send`. Use the `web-push` library with VAPID keys from env. Write a Playwright test that asserts the SW receives a push event.]]></prompt>
+      <prompt purpose="audit-service-worker"><![CDATA[Audit `service-worker.ts` against three failure modes: (1) IDB transaction await across non-IDB promise, (2) `skipWaiting` without update banner, (3) push handler missing `event.waitUntil`.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools used in this methodology:</p>
+      <list>
+        <item>`npx web-push generate-vapid-keys` — generate VAPID public/private pair (https://github.com/web-push-libs/web-push).</item>
+        <item>`pnpm add idb` — typed IndexedDB wrapper used in the README (https://github.com/jakearchibald/idb).</item>
+        <item>`pnpm add -D workbox-cli` — pre-built strategies + manifest gen + SW build (https://developer.chrome.com/docs/workbox/).</item>
+        <item>`npx lighthouse --preset=desktop --only-categories=pwa &lt;url&gt;` — audit PWA install + offline + manifest (https://developer.chrome.com/docs/lighthouse/).</item>
+        <item>`npx pwa-asset-generator &lt;logo&gt; public/icons` — generate maskable icons + splash screens (https://github.com/elegantapp/pwa-asset-generator).</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>Services &amp; apps relevant here:</p>
+      <list>
+        <item>OneSignal (SaaS, agent-friendly REST + SDK) — Push as a service; agents wire SDK + send via API token. Skip if you want zero vendor lock-in.</item>
+        <item>Pushwoosh / Knock (SaaS, REST) — Multi-channel (push + email + SMS) — useful when push extends to native apps later.</item>
+        <item>Firebase Cloud Messaging (SaaS, REST/SDK) — Most widely used; same VAPID-keyed Web Push under the hood for browsers.</item>
+        <item>`web-push` (Node), `pywebpush` (Py), `web_push` (Rust) — OSS; self-host send infrastructure.</item>
+        <item>Workbox (OSS) — Google's SW strategies library; `injectManifest` mode for custom logic.</item>
+      </list>
+    </section>
+
+    <section name="push-notifications">
+      <p>VAPID-based Web Push: subscribe flow, key encoding, service worker push handler, notificationclick handler, and the critical gotchas that LLMs miss.</p>
+
+      <rule>
+        <statement>Gate Notification.requestPermission() behind a user gesture (button click), never on page load. Set userVisibleOnly: true — Chrome rejects false.</statement>
+        <rationale>Browsers apply heuristics to permission requests; calling on page load gets the request silently blocked. userVisibleOnly: false is rejected in Chrome for web push.</rationale>
+      </rule>
+      <example type="good" title="Subscribe from a click handler">
+        <code lang="typescript"><![CDATA[
+// Called from a click handler, not on mount
+async function handleSubscribeClick() {
+  const reg = await navigator.serviceWorker.ready;
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return null;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  });
+  await fetch('/api/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sub),
+  });
+  return sub;
+}
+        ]]></code>
+        <note>VAPID key converter is the most common source of encoding errors — see templates/vapid-util.ts.</note>
+      </example>
+
+      <rule>
+        <statement>Wrap all async work in push and notificationclick handlers with event.waitUntil(). Call event.notification.close() in notificationclick before opening a window.</statement>
+        <rationale>Without event.waitUntil(), the browser may kill the service worker before async work completes. Without close(), the notification persists after the user clicks.</rationale>
+      </rule>
+      <example type="good" title="Service worker push + notificationclick handlers">
+        <code lang="typescript"><![CDATA[
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? { title: 'New Notification', body: '' };
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/badge-72x72.png',
+      tag: data.tag,
+      data: data.url,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close(); // required
+  const url = event.notification.data || '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window' }).then((list) => {
+      for (const client of list) {
+        if (client.url === url && 'focus' in client) return client.focus();
+      }
+      return clients.openWindow(url);
+    })
+  );
+});
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Store the VAPID private key in a secrets manager. Never commit it. Rotate on team changes. Use web-push (Node) or pywebpush (Python) for server-side sending.</statement>
+        <rationale>Rolling a custom push encryption implementation is a security footgun; the standard libraries handle aes128gcm correctly.</rationale>
+      </rule>
+
+      <example type="good" title="VAPID key converter (the breakpoint LLMs miss)">
+        <code lang="typescript"><![CDATA[
+// lib/vapid.ts
+export function urlBase64ToUint8Array(b64: string): Uint8Array {
+  const pad = '='.repeat((4 - (b64.length % 4)) % 4);
+  const norm = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(norm);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+// Test: assert Uint8Array length is 65 for a P-256 public key.
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="offline-sync">
+      <p>Queue failed requests in IndexedDB, replay on reconnect via Background Sync API. Critical: IDB transactions auto-close on non-IDB awaits — never mix IDB and fetch operations in one transaction.</p>
+
+      <rule>
+        <statement>Never await a non-IDB promise inside an open IndexedDB transaction. The transaction auto-commits (and becomes unusable) after the first non-IDB await.</statement>
+        <rationale>This is the single most common IndexedDB bug generated by LLMs; the symptom is "transaction has finished" errors that only appear under load or with real network latency.</rationale>
+      </rule>
+      <example type="bad" title="Awaiting fetch inside an IDB transaction">
+        <code lang="typescript"><![CDATA[
+// WRONG: await fetch() inside transaction auto-closes it
+const tx = db.transaction('requests', 'readwrite');
+await tx.store.add(item);
+await fetch('/api/sync');        // <-- auto-closes tx
+await tx.done;                   // throws: transaction already finished
+        ]]></code>
+      </example>
+      <example type="good" title="Complete IDB op first, then fetch">
+        <code lang="typescript"><![CDATA[
+// Correct: complete the IDB operation first, then fetch
+await db.add('requests', item);  // separate transaction per operation
+await fetch('/api/sync');        // fetch after IDB is done
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Register one-shot Background Sync via registration.sync.register(tag). Do not confuse with PeriodicSyncManager — Background Sync fires once when network is restored; Periodic Sync repeats on a schedule and requires an installed PWA.</statement>
+        <rationale>Agents routinely swap SyncManager and PeriodicSyncManager; Background Sync has no guaranteed timing and requires Chrome or Edge.</rationale>
+      </rule>
+      <example type="good" title="One-shot Background Sync registration + handler">
+        <code lang="typescript"><![CDATA[
+// Client: register one-shot sync
+if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+  const reg = await navigator.serviceWorker.ready;
+  await reg.sync.register('sync-pending-requests');
+}
+
+// Service worker: handle sync
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-pending-requests') {
+    event.waitUntil(replayPendingRequests());
+  }
+});
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="update-strategy">
+      <p>skipWaiting() must always be paired with a user-visible reload banner. Navigation preload reduces service worker boot latency. Test updates with Playwright context.setOffline().</p>
+
+      <rule>
+        <statement>Never call skipWaiting() silently. Always ship a "new version available, reload?" banner; let the user decide when to reload.</statement>
+        <rationale>Silent skipWaiting() activates the new service worker while the user is mid-edit. The new SW may serve different API contracts, causing data loss or UI inconsistency.</rationale>
+      </rule>
+      <example type="good" title="updatefound listener with banner trigger">
+        <code lang="typescript"><![CDATA[
+// In the page: listen for new SW waiting
+navigator.serviceWorker.ready.then((reg) => {
+  reg.addEventListener('updatefound', () => {
+    const newWorker = reg.installing;
+    newWorker?.addEventListener('statechange', () => {
+      if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+        showUpdateBanner(() => {
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+          window.location.reload();
+        });
+      }
+    });
+  });
+});
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Enable navigation preload in the service worker activate handler to avoid the "wait for SW boot" latency hit on navigation requests.</statement>
+        <rationale>Without navigation preload, the browser waits for the service worker to boot before starting the network request; on cold starts this adds 100-400ms.</rationale>
+      </rule>
+      <example type="good" title="Activate handler with navigation preload">
+        <code lang="typescript"><![CDATA[
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      clients.claim(),
+      self.registration.navigationPreload?.enable(),
+    ])
+  );
+});
+        ]]></code>
+      </example>
+
+      <rule>
+        <statement>Test offline mode with Playwright context.setOffline(true) on every PR. Manual DevTools offline checks regress within a sprint.</statement>
+        <rationale>Service worker offline behavior is easy to break silently; automated tests are the only reliable regression gate.</rationale>
+      </rule>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Always wrap async work in service worker handlers with `event.waitUntil(...)` — without it the browser may kill the SW before the work finishes.</item>
+        <item>Store push subscriptions with a `userId` foreign key and a `createdAt`; expire stale ones on 410 Gone responses from the push service.</item>
+        <item>For SW updates, ship a "new version available, reload" banner; never call `skipWaiting()` silently.</item>
+        <item>Use `navigation preload` (`registration.navigationPreload.enable()`) for navigation requests to avoid the "wait for SW boot" latency hit.</item>
+        <item>Test offline mode with Playwright (`context.setOffline(true)`) on every PR — manual DevTools checks regress within a sprint.</item>
+        <item>Keep VAPID private key in a secrets manager; never commit it. Rotate on team changes.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents call `Notification.requestPermission()` on page load — Chrome and Safari heuristics will silently deny. Gate it behind a user gesture.</item>
+        <item>LLMs commonly write `pushManager.subscribe({ userVisibleOnly: false })` for "silent push" — Chrome rejects this; only `true` is allowed for web.</item>
+        <item>IDB code generated from memory uses `db.transaction(...).complete` (deprecated) instead of `tx.done` from `idb`.</item>
+        <item>Agents forget to call `event.notification.close()` in `notificationclick`, leaving the notification visible after the user clicks.</item>
+        <item>When asked to "register sync", agents use the wrong API (`SyncManager` vs `PeriodicSyncManager`); only Background Sync is one-shot, Periodic requires installed PWA + permission.</item>
+        <item>HTTPS-only: agents test against `http://localhost` (works) and miss that staging on plain HTTP silently fails SW registration.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/vapid-util.ts" purpose="urlBase64ToUint8Array — canonical VAPID key converter with test assertion note."/>
+    </templates>
+
+    <see-also>
+      <link href="https://datatracker.ietf.org/doc/html/rfc8030"/>
+      <link href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API"/>
+      <link href="https://github.com/web-push-libs/web-push"/>
+      <link href="https://developer.chrome.com/docs/workbox/"/>
+      <link href="https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/"/>
+    </see-also>
+  </content>
+</methodology>
