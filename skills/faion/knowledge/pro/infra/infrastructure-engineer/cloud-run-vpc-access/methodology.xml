@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-vpc-access">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run networking: Direct VPC egress vs Serverless VPC connectors, ingress controls, multi-container sidecars (Cloud SQL proxy, OpenTelemetry), Private Service Connect, and firewall configuration.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>vpc</tag>
+      <tag>networking</tag>
+      <tag>sidecars</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-deployment"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run VPC Access and Multi-Container</title>
+
+    <summary>Cloud Run services connect to private VPC resources via Direct VPC egress (preferred) or Serverless VPC Access connectors. Direct VPC egress provides 2x throughput, lower cost, and lower latency compared to connectors. Multi-container support (up to 10 containers per instance) enables sidecar patterns for database proxies, observability agents, and security middleware.</summary>
+
+    <why>
+      <p>By default, Cloud Run can only reach public internet endpoints. Most production services need to reach private Cloud SQL, AlloyDB, Redis (Memorystore), or internal services. Direct VPC egress attaches the Cloud Run instance directly to a VPC subnet, routing all egress through the VPC without requiring a separate connector VM. This eliminates the connector as a bottleneck (connectors are shared VMs), reduces cost, and delivers up to 1 Gbps per instance.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Connecting a Cloud Run service to private Cloud SQL, AlloyDB, or Memorystore (Redis).</item>
+        <item>Reaching internal GCP services or on-premises resources via VPN/Interconnect.</item>
+        <item>Adding Cloud SQL Proxy sidecar to avoid IAP or public Cloud SQL IP exposure.</item>
+        <item>Adding OpenTelemetry collector sidecar for metrics and tracing.</item>
+        <item>Migrating from Serverless VPC Access connectors to Direct VPC egress.</item>
+        <item>Restricting Cloud Run ingress to internal load balancer only.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Services that only access public internet APIs — no VPC egress needed.</item>
+        <item>VPC architecture and subnet design — see gcp-networking-vpc.</item>
+        <item>General Cloud Run service deployment — see cloud-run-deployment.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="direct-vpc-egress">
+      <rule>
+        <statement>Use Direct VPC egress (not Serverless VPC Access connectors) for all new Cloud Run deployments requiring VPC access. Direct VPC egress requires a subnet with at least /26 (64 IPs) per region per service. Set --vpc-egress=all-traffic to route all outbound through the VPC, preventing egress from bypassing VPC Service Controls perimeters.</statement>
+        <rationale>Serverless VPC Access connectors run on shared e2-micro or e2-standard-4 VMs that become a single bottleneck. Direct VPC egress gives each Cloud Run instance a network interface in the VPC subnet directly — no intermediary VM, no connector limit (max 200 Mbps per connector). Direct egress costs less: no connector instance hours, just standard VPC egress pricing.</rationale>
+      </rule>
+
+      <example type="good" title="Deploy with Direct VPC egress">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-service \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-service:v1 \
+    --region=us-central1 \
+    --network=my-vpc \
+    --subnet=my-subnet \
+    --vpc-egress=all-traffic \
+    --no-allow-unauthenticated
+]]></code>
+        <note>The subnet must have at least /26 prefix length (64 IPs). Cloud Run allocates IPs from this subnet for instances. Use a dedicated subnet for Cloud Run services to avoid IP exhaustion.</note>
+      </example>
+
+      <example type="good" title="Migrate from VPC connector to Direct VPC egress">
+        <code lang="bash"><![CDATA[
+# Step 1: Pre-migration checklist
+# - Subnet exists with /26+ prefix
+# - Firewall rule allows traffic from Cloud Run subnet to backend services
+
+# Step 2: Deploy updated service with Direct VPC egress
+gcloud run deploy my-service \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-service:v1 \
+    --region=us-central1 \
+    --network=my-vpc \
+    --subnet=my-subnet \
+    --vpc-egress=all-traffic \
+    --clear-vpc-connector
+
+# Step 3: Verify connectivity to private services, then delete connector
+gcloud compute networks vpc-access connectors delete my-connector \
+    --region=us-central1
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform: Direct VPC egress">
+        <code lang="hcl"><![CDATA[
+resource "google_cloud_run_v2_service" "production" {
+  name     = var.service_name
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+
+  template {
+    service_account = var.service_account_email
+
+    vpc_access {
+      network_interfaces {
+        network    = var.vpc_network
+        subnetwork = var.vpc_subnet
+      }
+      egress = "ALL_TRAFFIC"
+    }
+
+    containers {
+      image = var.image
+      ports { container_port = 8080 }
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using Serverless VPC Access connector for new deployments while Direct VPC egress is available in the same region.</description>
+        <reason>Connectors are bottlenecks: a single connector instance supports max 200-300 Mbps and is shared across all services using it. Direct VPC egress eliminates the connector VM, reduces cost, and scales linearly with Cloud Run instances.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ingress-controls">
+      <rule>
+        <statement>Cloud Run ingress MUST be set to: internal for services reachable only from within the VPC or other GCP services; internal-and-cloud-load-balancing for services behind a Google Cloud Load Balancer (GCLB); all only when the service must be publicly accessible without a load balancer. Never use all for services that contain sensitive data or admin endpoints.</statement>
+        <rationale>Ingress all exposes the service URL publicly to the internet without authentication. Even with --no-allow-unauthenticated, the service is reachable by any Google identity with invoker role. internal-and-cloud-load-balancing allows GCLB to proxy traffic while blocking direct internet access to the .run.app URL, enabling Cloud Armor WAF and DDoS protection.</rationale>
+      </rule>
+
+      <example type="good" title="Ingress controls for three service types">
+        <code lang="bash"><![CDATA[
+# Internal service (only reachable from VPC/other Cloud Run services)
+gcloud run services update internal-api \
+    --region=us-central1 \
+    --ingress=internal
+
+# GCLB-fronted service (public via load balancer with Cloud Armor)
+gcloud run services update public-api \
+    --region=us-central1 \
+    --ingress=internal-and-cloud-load-balancing
+
+# Public API (simple case, no load balancer needed)
+gcloud run services update public-webhook \
+    --region=us-central1 \
+    --ingress=all \
+    --no-allow-unauthenticated
+]]></code>
+      </example>
+    </section>
+
+    <section name="multi-container">
+      <rule>
+        <statement>Multi-container Cloud Run services MUST: expose a port only on the ingress container, declare container dependencies via the run.googleapis.com/container-dependencies annotation so the ingress container waits for sidecars to start, configure startup probes on sidecars so the dependency check is meaningful, and use instance-based billing (cpu_idle=false) because sidecars consume CPU outside request handling.</statement>
+        <rationale>Without container-dependencies, the ingress container may receive traffic before the Cloud SQL proxy or OpenTelemetry collector is ready, causing connection failures. Instance-based billing is required because request-based billing throttles CPU to near-zero between requests, starving sidecar processes.</rationale>
+      </rule>
+
+      <example type="good" title="Cloud SQL proxy sidecar (YAML)">
+        <code lang="yaml"><![CDATA[
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: my-app
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/container-dependencies: '{"my-app":["cloud-sql-proxy"]}'
+    spec:
+      serviceAccountName: my-app-sa@my-project.iam.gserviceaccount.com
+      containers:
+        - name: my-app
+          image: us-central1-docker.pkg.dev/my-project/my-repo/my-app:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOST
+              value: localhost
+            - name: DB_PORT
+              value: "5432"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0
+          args:
+            - "--structured-logs"
+            - "my-project:us-central1:my-db"
+          startupProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 0
+            periodSeconds: 1
+            failureThreshold: 30
+]]></code>
+      </example>
+
+      <example type="good" title="Cloud SQL proxy sidecar (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "google_cloud_run_v2_service" "with_cloudsql" {
+  name     = "my-app"
+  location = var.region
+
+  template {
+    service_account = var.service_account_email
+
+    containers {
+      name  = "my-app"
+      image = var.image
+
+      ports { container_port = 8080 }
+
+      env { name = "DB_HOST"; value = "localhost" }
+      env { name = "DB_PORT"; value = "5432" }
+
+      depends_on = ["cloud-sql-proxy"]
+
+      startup_probe {
+        http_get { path = "/health"; port = 8080 }
+        initial_delay_seconds = 5
+        period_seconds        = 10
+        failure_threshold     = 3
+      }
+    }
+
+    containers {
+      name  = "cloud-sql-proxy"
+      image = "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0"
+
+      args = [
+        "--structured-logs",
+        "${var.project_id}:${var.region}:${var.database_instance}"
+      ]
+
+      startup_probe {
+        tcp_socket { port = 5432 }
+        initial_delay_seconds = 0
+        period_seconds        = 1
+        failure_threshold     = 30
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="OpenTelemetry collector sidecar (YAML)">
+        <code lang="yaml"><![CDATA[
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: my-app
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/container-dependencies: '{"my-app":["otel-collector"]}'
+    spec:
+      containers:
+        - name: my-app
+          image: us-central1-docker.pkg.dev/my-project/my-repo/my-app:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://localhost:4317
+        - name: otel-collector
+          image: us-docker.pkg.dev/cloud-ops-agents-artifacts/cloud-run-gmp-sidecar/cloud-run-gmp-sidecar:1
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://localhost:4317
+]]></code>
+      </example>
+    </section>
+
+    <section name="networking-checklist">
+      <checklist>
+        <check>Ingress setting configured (internal / internal-and-cloud-load-balancing / all).</check>
+        <check>Direct VPC egress used instead of Serverless VPC Access connector for new deployments.</check>
+        <check>Subnet selected for Direct VPC egress has at least /26 prefix.</check>
+        <check>Firewall rules allow Cloud Run subnet to reach backend services (Cloud SQL, Redis).</check>
+        <check>Cloud NAT configured if external egress needed (internet access from VPC subnet).</check>
+        <check>Multi-container: container-dependencies annotation set for startup ordering.</check>
+        <check>Multi-container: startup probes on sidecars to validate dependency readiness.</check>
+        <check>Multi-container: instance-based billing enabled (cpu_idle=false).</check>
+        <check>VPC Service Controls configured if data exfiltration prevention required.</check>
+        <check>Private Service Connect used for accessing Google APIs over private network.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <link href="https://cloud.google.com/run/docs/configuring/vpc-direct-vpc"/>
+      <link href="https://cloud.google.com/run/docs/configuring/connecting-vpc"/>
+      <link href="https://cloud.google.com/run/docs/configuring/services/containers"/>
+    </see-also>
+  </content>
+</methodology>
