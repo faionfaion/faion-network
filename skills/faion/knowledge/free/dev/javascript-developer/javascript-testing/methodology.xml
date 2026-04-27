@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="javascript-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Test JavaScript and React using Vitest (preferred) or Jest with Testing Library, MSW for API mocking, and Vitest's coverage gates to maintain code quality.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>vitest</tag>
+      <tag>jest</tag>
+      <tag>react-testing-library</tag>
+      <tag>msw</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>JavaScript Testing</title>
+
+    <summary>Modern testing patterns with Vitest and Jest. Configure Vitest (v2+) or Jest with jsdom environment. Write unit tests with `describe/it`, component tests with React Testing Library (query by role/label, use userEvent not fireEvent), mock API endpoints with MSW, and set coverage thresholds (80% lines/functions). Test behavior, not implementation; avoid snapshot tests on dynamically-generated HTML.</summary>
+
+    <why>
+      <p>Tests are executable specifications. They document expected behavior, catch regressions before deployment, and enable safe refactoring. Vitest is native to Vite/ESM and 2-3x faster than Jest on modern codebases. Testing Library enforces user-centric testing (query by role, simulate user interactions) rather than component internals, resulting in tests that break only on actual user-visible bugs. MSW intercepts HTTP at the network layer, so the same mocks work in unit tests, Storybook, and Playwright.</p>
+      <p>Coverage thresholds (80% lines, 80% functions) are pragmatic gates: they catch obvious gaps without forcing empty-assertion tests. Mutation testing (Stryker) is the next level but requires CI investment.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a test suite for a new TS/React/Node project (Vitest preferred, Jest acceptable).</item>
+        <item>Adding tests around a refactor — write characterization tests first, then refactor under green.</item>
+        <item>Building a component test harness with React Testing Library + userEvent + jsdom.</item>
+        <item>Mocking modules, network (MSW), timers, or filesystem during tests.</item>
+        <item>CI gate authoring: `vitest run --coverage` with thresholds and JUnit output.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>E2E flows that require a real browser and full backend — use Playwright/Cypress methodologies instead.</item>
+        <item>Performance benchmarking — use `vitest bench`/`mitata`/`tinybench` patterns, not unit-test files.</item>
+        <item>Visual regression — Storybook + Chromatic / Loki, not React Testing Library.</item>
+        <item>Type-level tests for libraries — use `tsd`/`expect-type`, not Vitest assertions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="vitest-setup">
+      <p>Vitest configuration pairs with React, Vite, and TypeScript. Setup files install jsdom polyfills and global test utilities.</p>
+
+      <rule testable="true">
+        <statement>MUST configure vitest.config.ts with: plugins: [react()], test: { globals: true, environment: 'jsdom', setupFiles: './src/test/setup.ts', coverage: { provider: 'v8', reporter: ['text', 'json', 'html'], exclude: ['node_modules/', 'src/test/'] } }. Setup file MUST call afterEach cleanup() and vi.restoreAllMocks(), and define IntersectionObserver, ResizeObserver, matchMedia polyfills.</statement>
+        <rationale>Globals: true allows `describe`, `it`, `expect` without imports (less boilerplate). jsdom mimics browser behavior (DOM, window, fetch). Coverage providers track lines/branches. Polyfills prevent jsdom-unimplemented APIs from breaking tests (IntersectionObserver, ResizeObserver, matchMedia are common).</rationale>
+      </rule>
+
+      <example type="good" title="Vitest config with React">
+        <code lang="typescript"><![CDATA[// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules/', 'src/test/'],
+    },
+  },
+});]]></code>
+        <note>Minimal, standard setup. Works with most React + Vite projects.</note>
+      </example>
+    </section>
+
+    <section name="unit-testing-functions">
+      <p>Unit tests verify pure functions and business logic in isolation. Arrange-act-assert structure: set up inputs, call function, check outputs.</p>
+
+      <rule testable="true">
+        <statement>Unit tests MUST follow arrange-act-assert: arrange (set up inputs, mocks, state), act (call the function), assert (check outputs or side effects). Each `it(...)` case MUST test one behavior. Use `describe` to group related tests. Error cases (throw, rejection) are behaviors.</statement>
+        <rationale>Arrange-act-assert is crystal-clear structure. Readers immediately understand test intent. One behavior per test makes failures unambiguous. Grouped describes keep test files organized.</rationale>
+      </rule>
+
+      <example type="good" title="Unit test for pure function">
+        <code lang="typescript"><![CDATA[import { describe, it, expect } from 'vitest';
+import { calculateDiscount } from './pricing';
+
+describe('calculateDiscount', () => {
+  it('should apply percentage discount', () => {
+    // Arrange
+    const price = 100;
+    const discount = { type: 'percentage', value: 10 };
+    // Act
+    const result = calculateDiscount(price, discount);
+    // Assert
+    expect(result).toBe(90);
+  });
+
+  it('should apply fixed discount', () => {
+    const result = calculateDiscount(100, { type: 'fixed', value: 15 });
+    expect(result).toBe(85);
+  });
+
+  it('should not go below zero', () => {
+    const result = calculateDiscount(10, { type: 'fixed', value: 20 });
+    expect(result).toBe(0);
+  });
+
+  it('should throw for negative price', () => {
+    expect(() => calculateDiscount(-10, { type: 'fixed', value: 5 }))
+      .toThrow('Price must be positive');
+  });
+});]]></code>
+        <note>Each `it` tests one scenario. Error cases are explicit. No mock boilerplate (pure function).</note>
+      </example>
+
+      <antipattern>
+        <description>Testing implementation details: checking internal state (useState values), spying on private methods, or asserting on mock call counts without asserting the output.</description>
+        <reason>Implementation-detail tests break on every refactor, even if behavior unchanged. Test observable behavior (return value, side effect) instead. If a refactor changes internals without changing behavior, tests should still pass.</reason>
+      </antipattern>
+
+      <note>Best practice: query order in React Testing Library is getByRole (first), getByLabelText, getByText, getByDisplayValue, getByTestId (last resort). Use userEvent (not fireEvent) for all user-driven interactions to mimic real browser behavior (focus changes, paste events, double-clicks).</note>
+
+      <checklist>
+        <check>Set up vitest.config.ts with jsdom, globals: true, setupFiles pointing to src/test/setup.ts.</check>
+        <check>Create src/test/setup.ts with afterEach cleanup() and vi.restoreAllMocks().</check>
+        <check>Add jsdom polyfills for IntersectionObserver, ResizeObserver, matchMedia.</check>
+        <check>For unit tests: define test plan (behaviors as name | input | expected output | error cases).</check>
+        <check>Implement tests with arrange/act/assert structure; one behavior per it() case.</check>
+        <check>For component tests: query by role/label first; avoid getByTestId without justification.</check>
+        <check>Use userEvent for interactions; wrap async in waitFor.</check>
+        <check>Set up MSW: define handlers in src/test/mocks/handlers.ts, server in src/test/mocks/server.ts.</check>
+        <check>Run vitest run --coverage and check thresholds (80% lines, functions).</check>
+        <check>Review coverage report; reject empty/whitespace-only tests.</check>
+      </checklist>
+    </section>
+
+    <section name="react-component-testing">
+      <p>Component tests use React Testing Library to render components and simulate user interaction. Query by role/label (accessible); avoid test-id unless necessary.</p>
+
+      <rule testable="true">
+        <statement>MUST query by role first (getByRole, getByLabelText), then by text (getByText), then display value (getByDisplayValue). getByTestId is the last resort and requires justification. Use userEvent (not fireEvent) for all user interactions. Wrap async operations in waitFor.</statement>
+        <rationale>Querying by role/label ensures tests verify accessibility. userEvent mimics real browser interactions (focus, blur, paste events), not just DOM updates. waitFor polls until async operations settle, preventing flaky timing issues.</rationale>
+      </rule>
+
+      <example type="good" title="Component test with React Testing Library">
+        <code lang="tsx"><![CDATA[import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from 'vitest';
+import { LoginForm } from './LoginForm';
+
+describe('LoginForm', () => {
+  it('should render email and password inputs', () => {
+    render(<LoginForm onSubmit={vi.fn()} />);
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+  });
+
+  it('should call onSubmit with form data', async () => {
+    const handleSubmit = vi.fn();
+    const user = userEvent.setup();
+
+    render(<LoginForm onSubmit={handleSubmit} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(handleSubmit).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+    });
+  });
+
+  it('should show validation error for invalid email', async () => {
+    const user = userEvent.setup();
+
+    render(<LoginForm onSubmit={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText(/valid email/i)).toBeInTheDocument();
+  });
+});]]></code>
+        <note>Queries by role/label. userEvent for interactions. waitFor for async. Tests verify behavior from user perspective.</note>
+      </example>
+
+      <antipattern>
+        <description>Using getByTestId for everything to avoid learning role/label queries; testing component props directly instead of user interactions.</description>
+        <reason>testId queries are brittle (tied to DOM structure). Role/label queries verify accessibility and match user-visible names. Direct props are implementation — users don't see props, they see rendered output.</reason>
+      </antipattern>
+    </section>
+
+    <section name="mocking-modules">
+      <p>Mock external modules and functions using vi.mock() at the top level. Hoisted mocks for shared state.</p>
+
+      <rule testable="true">
+        <statement>vi.mock() calls MUST be at module scope (not inside test). vi.mock() is hoisted, so order with imports does not matter. Use vi.hoisted() for shared state across tests. clearAllMocks in beforeEach to reset call counts and return values.</statement>
+        <rationale>Module-scope mocks are static and predictable. Hoisting ensures they are set before imports. Clearing mocks between tests prevents test pollution (one test's mock affecting another).</rationale>
+      </rule>
+
+      <example type="good" title="Module mocking with Vitest">
+        <code lang="typescript"><![CDATA[import { vi, type Mock, beforeEach } from 'vitest';
+import { fetchUsers } from './api';
+import { getUsers } from './users.service';
+
+// Mock module
+vi.mock('./api', () => ({
+  fetchUsers: vi.fn(),
+}));
+
+describe('getUsers', () => {
+  const mockFetchUsers = fetchUsers as Mock;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should return users from API', async () => {
+    const mockUsers = [{ id: '1', name: 'John' }];
+    mockFetchUsers.mockResolvedValue(mockUsers);
+
+    const result = await getUsers();
+
+    expect(result).toEqual(mockUsers);
+    expect(mockFetchUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle API error', async () => {
+    mockFetchUsers.mockRejectedValue(new Error('Network error'));
+
+    await expect(getUsers()).rejects.toThrow('Network error');
+  });
+});]]></code>
+        <note>vi.mock at top level. Mocked function returns controlled values. clearAllMocks resets state.</note>
+      </example>
+    </section>
+
+    <section name="api-mocking-with-msw">
+      <p>Mock HTTP endpoints using MSW (Mock Service Worker). Handlers live in src/test/handlers.ts and are reused across unit tests, Storybook, and Playwright.</p>
+
+      <rule testable="true">
+        <statement>MSW handlers MUST be defined once in src/test/mocks/handlers.ts with http.get/post/put/delete. Server setup MUST be in src/test/mocks/server.ts. Test setup MUST call beforeAll(server.listen), afterEach(server.resetHandlers), afterAll(server.close). Handlers return HttpResponse.json() or HttpResponse.text().</statement>
+        <rationale>Single source of truth for API mocks. Reusable handlers across test types. server.listen/close ensures MSW starts and stops correctly. resetHandlers clears overrides from individual tests, ensuring isolation.</rationale>
+      </rule>
+
+      <example type="good" title="MSW setup for unit and component tests">
+        <code lang="typescript"><![CDATA[// src/test/mocks/handlers.ts
+import { http, HttpResponse } from 'msw';
+
+export const handlers = [
+  http.get('/api/users', () => {
+    return HttpResponse.json({
+      users: [
+        { id: '1', name: 'John' },
+        { id: '2', name: 'Jane' },
+      ],
+    });
+  }),
+
+  http.post('/api/users', async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json(
+      { id: '3', ...body },
+      { status: 201 },
+    );
+  }),
+];
+
+// src/test/mocks/server.ts
+import { setupServer } from 'msw/node';
+import { handlers } from './handlers';
+
+export const server = setupServer(...handlers);
+
+// src/test/setup.ts (in setupFiles)
+import { beforeAll, afterEach, afterAll } from 'vitest';
+import { server } from './mocks/server';
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());]]></code>
+        <note>Handlers defined once. Server manages lifecycle. Errors on unmocked requests (onUnhandledRequest: 'error').</note>
+      </example>
+
+      <antipattern>
+        <description>Forking mocks per test type (one set for unit tests, one for Storybook, one for Playwright) or embedding mock data directly in test files.</description>
+        <reason>Forks diverge and become inconsistent, leading to tests that pass locally but fail in CI (production behavior unmodeled). Centralized MSW handlers are the single source of truth; all test types use the same mocks.</reason>
+      </antipattern>
+
+      <note>MSW best practices: handlers defined once in src/test/mocks/handlers.ts and reused across unit tests, Storybook, and Playwright. Use onUnhandledRequest: 'error' in server.listen() to fail fast on unmocked endpoints. Individual tests can override handlers with server.use() to test error cases without modifying the base handlers.</note>
+
+      <section name="agentic-workflow">
+        <p>Recommended multi-agent workflow for test-first development: a planner subagent reads the target module, lists behaviors, and emits a test plan. An implementer writes tests and code. A reviewer checks for: arrange/act/assert separation, no expect.anything() blanket asserts, proper cleanup, no leaked timers/spies.</p>
+
+        <rule testable="true">
+          <statement>Planner MUST produce test plan as table: behavior name | inputs | expected outputs | side effects | error cases | mocks needed (which modules, which endpoints). Do NOT write tests yet.</statement>
+          <rationale>Plan guides implementer; it is reviewed before code is written. Behavior-driven approach ensures tests match requirements, not implementation.</rationale>
+        </rule>
+
+        <rule testable="true">
+          <statement>Implementer MUST write tests from plan. Each test follows arrange/act/assert. RTL queries by role/label first. MSW for HTTP. No as any in mocks. Run vitest run --coverage after implementation.</statement>
+          <rationale>Code review of tests is easier when plan is pre-approved. Test quality improves with explicit structure. Coverage check gates unintended coverage drops.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="coverage-gates">
+      <p>Set coverage thresholds to gate CI builds. 80% lines and 80% functions are pragmatic minimums.</p>
+
+      <rule testable="true">
+        <statement>CI MUST run `vitest run --coverage` with thresholds: --coverage.thresholds.lines=80 --coverage.thresholds.functions=80. Uncovered lines MUST be reviewed before merge. Coverage chasing (writing tests with no assertions) is forbidden; pair coverage with mutation testing or manual branch review.</statement>
+        <rationale>80% threshold catches obvious gaps without forcing meaningless tests. 100% coverage is a false god (dead code, defensive assertions). Mutation testing (Stryker) identifies coverage that is "checked but not used" and should be prioritized in a second pass.</rationale>
+      </rule>
+
+      <example type="good" title="Coverage gate in CI">
+        <code lang="bash"><![CDATA[# .github/workflows/test.yml (excerpt)
+- run: |
+    npx vitest run --coverage \
+      --coverage.thresholds.lines=80 \
+      --coverage.thresholds.functions=80 \
+      --reporter=junit \
+      --outputFile=./reports/junit.xml]]></code>
+        <note>CI blocks if coverage falls below 80%. JUnit report integrates with GitHub checks.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://vitest.dev/"/>
+      <link href="https://testing-library.com/"/>
+      <link href="https://mswjs.io/"/>
+      <link href="https://kentcdodds.com/blog/write-tests"/>
+      <link href="https://stryker-mutator.io/"/>
+    </see-also>
+  </content>
+</methodology>
