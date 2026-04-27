@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vector-db-security">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Harden vector databases for production: authentication (API keys, OIDC), TLS in transit, network isolation (VPC, private subnet), encryption at rest, audit logging, and data handling policies.</summary>
+    <tags>
+      <tag>vector-database</tag>
+      <tag>security</tag>
+      <tag>authentication</tag>
+      <tag>tls</tag>
+      <tag>network-isolation</tag>
+    </tags>
+    <category>setup</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-monitoring"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Vector Database Security Hardening</title>
+
+    <summary>Harden a vector database deployment against unauthorized access and data leakage: disable anonymous access, configure API key or OIDC authentication, enforce TLS for all connections, deploy in a private VPC subnet, enable encryption at rest, set up audit logging, and define PII handling procedures.</summary>
+
+    <why>
+      <p>Vector databases often store embeddings derived from sensitive documents, user queries, or proprietary knowledge bases. An unprotected endpoint exposed on a public IP leaks semantic information about the data even without decoding the raw vectors, since neighbors to a query vector reveal what the collection contains. Authentication, network isolation, and encryption at rest are the minimum three controls required before a vector database handles non-public data.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any vector database deployment that handles non-public data (user documents, internal knowledge bases, PII-adjacent text).</item>
+        <item>Before promoting a development deployment to production traffic.</item>
+        <item>When adding a vector database to a stack that already enforces network isolation for other services.</item>
+        <item>Compliance requirements (SOC2, GDPR, HIPAA) mandate audit logging and encryption.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Local development with only synthetic data — anonymous access is acceptable to minimize setup friction.</item>
+        <item>Fully managed services (Pinecone Serverless, Weaviate Cloud) — authentication and network security are managed by the provider; verify their compliance docs instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="authentication">
+      <p>Authentication methods per database engine:</p>
+
+      <section name="auth-matrix">
+        <list>
+          <item>Qdrant: API key (via QDRANT__SERVICE__API_KEY env var), TLS client certificates.</item>
+          <item>Weaviate: API key (AUTHENTICATION_APIKEY_ENABLED), OIDC (AUTHENTICATION_OIDC_ENABLED), anonymous (disable in production).</item>
+          <item>Milvus: username/password (root:Milvus default — change immediately), TLS.</item>
+          <item>pgvector: PostgreSQL authentication (md5, scram-sha-256), SSL certificates.</item>
+          <item>Pinecone: API key only (managed).</item>
+        </list>
+      </section>
+
+      <rule>
+        <statement>Disable anonymous access on all production vector database deployments. Set a strong API key or OIDC credential at first boot. Rotate keys on a defined schedule (90 days maximum) using a secrets manager (AWS Secrets Manager, Vault, Kubernetes Secrets).</statement>
+        <rationale>Anonymous access enabled is the single most common misconfiguration found in exposed vector databases. An API key in an environment variable from a secrets manager prevents both accidental exposure and credential sprawl.</rationale>
+      </rule>
+
+      <example type="good" title="Qdrant authentication via Docker Compose env">
+        <code lang="yaml"><![CDATA[
+# docker-compose.yml
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
+      - QDRANT__TELEMETRY_DISABLED=true
+]]></code>
+      </example>
+
+      <example type="good" title="Qdrant Python client with API key">
+        <code lang="python"><![CDATA[
+from qdrant_client import QdrantClient
+
+client = QdrantClient(
+    host="localhost",
+    port=6333,
+    api_key="your-api-key",
+)
+]]></code>
+      </example>
+
+      <example type="good" title="Weaviate authentication (disable anonymous, enable API key)">
+        <code lang="yaml"><![CDATA[
+# docker-compose.yml
+services:
+  weaviate:
+    image: semitechnologies/weaviate:latest
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: '${WEAVIATE_API_KEY}'
+      AUTHENTICATION_APIKEY_USERS: 'admin'
+]]></code>
+      </example>
+
+      <example type="good" title="Weaviate Python client with API key">
+        <code lang="python"><![CDATA[
+import weaviate
+from weaviate.classes.init import Auth
+
+client = weaviate.connect_to_local(
+    auth_credentials=Auth.api_key("your-api-key"),
+)
+]]></code>
+      </example>
+
+      <example type="bad" title="Weaviate with anonymous access enabled">
+        <code lang="yaml"><![CDATA[
+# DO NOT use in production
+AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+]]></code>
+        <note>Any process that can reach port 8080 can read, write, and delete all vectors without credentials.</note>
+      </example>
+
+      <section name="service-accounts">
+        <rule>
+          <statement>Create separate service accounts for different application components (ingestion pipeline, query service, admin). Grant minimal permissions per account. Never share credentials between services.</statement>
+          <rationale>Separate credentials allow per-service audit trails and containment: a compromised ingestion account cannot execute administrative operations or read from collections it does not own.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="network-security">
+      <p>Network isolation prevents unauthorized network-level access regardless of authentication state:</p>
+
+      <rule>
+        <statement>Deploy vector databases in a private subnet with no public IP. Allow inbound traffic only from application-tier security groups or Kubernetes network policies on the specific ports required (Qdrant: 6333/6334, Weaviate: 8080/50051, Milvus: 19530, pgvector: 5432). Require VPN or bastion host for administrative access.</statement>
+        <rationale>Network isolation is a defense-in-depth layer. If an API key is accidentally logged or leaked, network controls prevent exploitation from outside the VPC.</rationale>
+      </rule>
+
+      <section name="tls-enforcement">
+        <rule>
+          <statement>Enable TLS for all connections to vector databases in production. Use valid certificates (Let's Encrypt or corporate CA) — never self-signed with certificate verification disabled in clients. Automate certificate renewal.</statement>
+          <rationale>Without TLS, API keys and query vectors are transmitted in plaintext on the network, vulnerable to interception on shared infrastructure.</rationale>
+        </rule>
+
+        <example type="good" title="pgvector TLS connection from Python client">
+          <code lang="python"><![CDATA[
+import psycopg2
+import ssl
+
+ssl_context = ssl.create_default_context(
+    ssl.Purpose.SERVER_AUTH,
+    cafile="/path/to/ca-certificate.crt"
+)
+ssl_context.check_hostname = True
+ssl_context.verify_mode = ssl.CERT_REQUIRED
+
+conn = psycopg2.connect(
+    host="your-host",
+    port=5432,
+    database="vectors",
+    user="vectordb",
+    password="secure-password",
+    sslmode="verify-full",
+    sslrootcert="/path/to/ca-certificate.crt",
+)
+]]></code>
+        </example>
+      </section>
+
+      <section name="network-checklist-items">
+        <list>
+          <item>Database deployed in private subnet — no public IP assigned.</item>
+          <item>Security groups restrict inbound to application tier IPs only.</item>
+          <item>VPN required for admin access (no direct internet exposure of admin ports).</item>
+          <item>IP allowlisting configured where the database engine supports it.</item>
+          <item>Service mesh (Istio, Linkerd) for mutual TLS on Kubernetes.</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="data-security">
+      <p>Data at rest and access audit controls:</p>
+
+      <section name="encryption-at-rest">
+        <rule>
+          <statement>Enable encryption at rest for all persistent volumes storing vector data. Use cloud-provider managed keys (AWS KMS, GCP Cloud KMS) for key management. Backup encryption must use the same or equivalent key policy.</statement>
+          <rationale>Without encryption at rest, a stolen disk or snapshot exposes raw vector data and payload metadata. Volume-level encryption is transparent to the database engine and adds negligible performance overhead on modern hardware.</rationale>
+        </rule>
+      </section>
+
+      <section name="audit-logging">
+        <rule>
+          <statement>Enable access and query logs. Ship logs to a central log aggregation system (CloudWatch, ELK, Loki) with a minimum 90-day retention. Log at minimum: authentication events, failed requests, schema changes, and administrative operations.</statement>
+          <rationale>Audit logs are required for SOC2, GDPR, and HIPAA compliance; they also provide the forensic trail needed to investigate data access incidents.</rationale>
+        </rule>
+      </section>
+
+      <section name="pii-handling">
+        <rule>
+          <statement>Never store raw PII in vector payload. Strip sensitive fields (names, emails, SSNs, phone numbers) before upsert. Implement data classification and retention policies; test deletion procedures before go-live.</statement>
+          <rationale>Vector payloads are returned verbatim in search results. PII stored in payload metadata is exposed to any service that can query the collection. Vectors themselves leak statistical information about source text; minimize payload exposure as a second layer of defense.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="security-checklist">
+      <checklist>
+        <check>Anonymous access disabled on all production database instances.</check>
+        <check>API keys stored in secrets manager (not hardcoded in code or Dockerfiles).</check>
+        <check>Key rotation policy defined and scheduled (90-day maximum).</check>
+        <check>Separate service accounts with minimal permissions per application component.</check>
+        <check>TLS enabled for all connections; certificate renewal automated.</check>
+        <check>Database in private subnet; no public IP.</check>
+        <check>Firewall/security group rules restrict to application-tier sources only.</check>
+        <check>VPN required for admin access.</check>
+        <check>Encryption at rest enabled on storage volumes and backups.</check>
+        <check>Access logs enabled and shipped to central log system.</check>
+        <check>PII identification documented; PII stripped from payloads before upsert.</check>
+        <check>Data retention and deletion procedures tested.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="vector-db-setup-prod"/>
+      <ref slug="vector-db-monitoring"/>
+      <link href="https://qdrant.tech/documentation/guides/security/"/>
+      <link href="https://weaviate.io/developers/weaviate/configuration/authentication"/>
+    </see-also>
+  </content>
+</methodology>
