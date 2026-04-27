@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-gateway-resilience">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Design rate limiting, circuit breakers, retries, timeouts, and fallbacks at the API gateway layer to protect backends and prevent cascading failures.</summary>
+    <tags>
+      <tag>api-gateway</tag>
+      <tag>resilience</tag>
+      <tag>rate-limiting</tag>
+      <tag>circuit-breaker</tag>
+      <tag>reliability</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-security"/>
+      <ref slug="api-gateway-observability"/>
+      <ref slug="reliability-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>API Gateway Resilience: Rate Limiting, Circuit Breakers, Retries, and Timeouts</title>
+
+    <summary>Resilience at the gateway layer means applying multi-level rate limiting to prevent abuse, circuit breakers to stop cascading failures, retries with exponential backoff to absorb transient errors, and tiered timeouts matched to backend SLAs. Each mechanism protects the backend from overload and the client from opaque failures.</summary>
+
+    <why>
+      <p>Without rate limiting, a single misbehaving client can saturate backend capacity for all users. Without circuit breakers, a failing backend causes every request to hang until timeout, consuming gateway threads and eventually taking down the gateway itself. Without retries, transient 500s surface as client errors. Without layered timeouts, one slow backend blocks all downstream consumers.</p>
+      <p>Generated rate-limit configs often pick arbitrary numbers (1000 RPS) without tying to backend capacity or SLO — they are meaningless until validated under load. Circuit breaker thresholds need real failure-rate data; agent defaults (5 failures / 30s) are fine for hello-world but wrong for high-traffic.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Configuring multi-level rate limits (global / per-API / per-consumer / per-route).</item>
+        <item>Adding circuit breakers for all backend upstreams.</item>
+        <item>Designing retry policies with exponential backoff and jitter.</item>
+        <item>Setting connection, read, write, and overall request timeouts.</item>
+        <item>Planning fallback responses and graceful degradation for backend failures.</item>
+        <item>Implementing adaptive rate limiting based on error rates, latency, or backend health.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Circuit breakers on health-check upstreams — wiring breakers on /health polls causes self-inflicted outages. Exclude health endpoints from the circuit.</item>
+        <item>Retries on non-idempotent operations (POST, PATCH, DELETE with side effects) — retrying creates duplicate transactions. Only retry GET and safe/idempotent operations unless the backend is explicitly idempotent-safe.</item>
+        <item>Rate limiting with local (non-distributed) storage in a multi-node gateway deployment — local mode does not share counters across nodes; force redis or cluster mode.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rate-limiting-algorithms">
+      <p>Algorithm comparison for rate limiting:</p>
+      <list>
+        <item>Fixed Window — X requests per time window. Simple; vulnerable to burst at window boundary (double the allowed rate possible at transition).</item>
+        <item>Sliding Window — rolling window average. Smoother traffic distribution; eliminates boundary burst problem.</item>
+        <item>Token Bucket — tokens replenish over time; allows controlled bursts up to bucket size. Best for APIs that need to allow short bursts.</item>
+        <item>Leaky Bucket — fixed rate outflow regardless of input rate. Enforces consistent output rate; excess queued or dropped.</item>
+      </list>
+      <rule testable="true">
+        <statement>Apply rate limits at multiple levels: global (all traffic ceiling), per-API (endpoint-level), per-consumer (API key or user), per-route (expensive operations). Enforce per-consumer first (cheapest check), then per-route, then global.</statement>
+        <rationale>Single-level rate limiting is easy to abuse — a consumer can exhaust global limits. Multi-level limits protect both the gateway and individual service backends.</rationale>
+      </rule>
+      <example type="good" title="Multi-level rate limit tiers">
+        <code lang="text"><![CDATA[
+Level     | Scope             | Example
+----------|-------------------|------------------------
+Global    | All traffic       | 100,000 RPS
+Per-API   | Specific endpoint | 10,000 RPS for /api/users
+Per-Consumer | API key/user  | 1,000 RPM per API key
+Per-Route | Specific route    | 500 RPM for /api/expensive
+]]></code>
+      </example>
+      <example type="good" title="Rate limit tiers by subscription">
+        <code lang="text"><![CDATA[
+Tier       | Requests/min | Burst  | Use Case
+-----------|-------------|--------|----------
+Free       | 60          | 10     | Trial users
+Basic      | 600         | 100    | Small teams
+Pro        | 6,000       | 1,000  | Growth stage
+Enterprise | 60,000+     | 10,000 | Large scale
+]]></code>
+      </example>
+    </section>
+
+    <section name="dynamic-rate-limiting">
+      <p>Modern gateways support adaptive rate limiting based on real-time system state. Triggers to reduce limits automatically:</p>
+      <list>
+        <item>Current error rates — lower limits when errors exceed 5%</item>
+        <item>Response latency — adjust when p95 exceeds 500ms</item>
+        <item>Backend health — reduce when backends are degraded</item>
+        <item>Time-based patterns — higher limits during off-peak hours</item>
+      </list>
+      <rule testable="true">
+        <statement>Configure rate limit response headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset) and return HTTP 429 with Retry-After header when limits are exceeded. Use Redis or cluster storage for distributed enforcement in multi-node deployments.</statement>
+        <rationale>Without response headers, API consumers cannot implement polite backoff. Without distributed storage, per-node counters allow N times the intended rate in an N-node cluster.</rationale>
+      </rule>
+    </section>
+
+    <section name="circuit-breaker">
+      <p>Circuit breaker three states:</p>
+      <list>
+        <item>Closed — normal operation, requests pass through. Opens when failure threshold exceeded.</item>
+        <item>Open — requests immediately fail with configured fallback. Half-opens after timeout.</item>
+        <item>Half-Open — limited requests to test backend recovery. Closes on success, reopens on failure.</item>
+      </list>
+      <rule testable="true">
+        <statement>Configure per-service circuit breakers with distinct thresholds, timeouts, and fallback responses. A circuit breaker opening on one backend MUST NOT open the circuit for other independent backends.</statement>
+        <rationale>A shared circuit breaker across all backends means one failing service takes down all traffic. Per-service breakers isolate failures.</rationale>
+      </rule>
+      <example type="good" title="Circuit breaker parameter reference">
+        <code lang="text"><![CDATA[
+Parameter            | Conservative | Aggressive
+---------------------|-------------|------------
+Failure Threshold    | 10          | 5
+Success Threshold    | 5           | 3
+Timeout (open→half)  | 60s         | 30s
+Half-open requests   | 5           | 3
+Failure Rate Window  | 30s         | 10s
+]]></code>
+      </example>
+      <example type="bad" title="Circuit breaker on health endpoint">
+        <code lang="yaml"><![CDATA[
+# DO NOT wire circuit breakers on health check paths
+# This causes self-inflicted outages when the gateway
+# marks a healthy backend as open due to health probe failures
+circuit_breaker:
+  paths: ["/"]   # catches /health — wrong
+]]></code>
+        <note>Explicitly exclude /health, /healthz, /ready, /metrics from circuit breaker scope.</note>
+      </example>
+    </section>
+
+    <section name="timeouts">
+      <p>Timeout layers — each must be set independently:</p>
+      <list>
+        <item>Connection timeout — time to establish TCP connection to upstream (typical: 3–5s, max: 10s)</item>
+        <item>Read timeout — time waiting for upstream response data (typical: 30s, max: 120s)</item>
+        <item>Write timeout — time to send request body to upstream (typical: 30s, max: 120s)</item>
+        <item>Idle timeout — time before closing an idle connection (typical: 60s, max: 300s)</item>
+      </list>
+      <rule testable="true">
+        <statement>Set per-service timeout overrides for long-running operations (uploads, exports, reports). Never apply a single global timeout that is high enough for the slowest operation — it will hide latency issues in all other services.</statement>
+        <rationale>A 300s global timeout masks latency regressions in services that should respond in 100ms. Per-service timeouts surface regressions precisely.</rationale>
+      </rule>
+    </section>
+
+    <section name="retries">
+      <p>Retry configuration rules:</p>
+      <rule testable="true">
+        <statement>Only retry on 5xx errors, network errors, and connection failures. Never retry POST/PATCH/DELETE unless the backend explicitly guarantees idempotency. Always use exponential backoff with jitter to prevent thundering herd on recovery.</statement>
+        <rationale>Retrying non-idempotent operations creates duplicate side effects (duplicate orders, double charges). Thundering herd after a backend recovers can immediately re-trigger the failure.</rationale>
+      </rule>
+      <example type="good" title="Retry policy with exponential backoff">
+        <code lang="text"><![CDATA[
+Per-service retry configuration:
+Service   | Read Timeout | Retries | Idempotent
+----------|-------------|---------|------------
+users     | 10s         | 3       | GET only
+orders    | 60s         | 2       | GET only
+payments  | 120s        | 0       | None (no retry)
+reports   | 300s        | 1       | All
+
+Backoff: exponential, initial 100ms, max 2s, jitter 20%
+]]></code>
+      </example>
+    </section>
+
+    <section name="fallback-and-degradation">
+      <p>When a circuit opens or all retries fail, the gateway must respond with a defined fallback rather than a raw 502/503. Options:</p>
+      <list>
+        <item>Static fallback response — predefined JSON error with clear message and support reference</item>
+        <item>Cached fallback — last known good response from cache (acceptable for read-only, non-critical data)</item>
+        <item>Feature degradation — return partial data from healthy services, omit data from the failed service with a flag indicating degradation</item>
+        <item>Service-specific fallback endpoint — redirect to a fallback service or stub</item>
+      </list>
+      <rule testable="true">
+        <statement>Every circuit breaker configuration MUST specify an explicit fallback response or fallback endpoint. "Let it fail with 503" is acceptable only for critical write paths where partial data is worse than no data.</statement>
+        <rationale>Clients receiving raw 503 cannot distinguish gateway misconfiguration from backend outage from network partition. Structured fallback responses enable clients to degrade gracefully.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-checklists">
+      <p>Rate limiting implementation checklist:</p>
+      <checklist>
+        <check>Choose rate limiting algorithm (token bucket for burst-tolerance, sliding window for smoothness)</check>
+        <check>Define global, per-API, per-consumer, and per-route limits based on backend capacity</check>
+        <check>Configure Redis or cluster storage for distributed enforcement (never local-only in multi-node)</check>
+        <check>Add X-RateLimit-* response headers and 429 with Retry-After</check>
+        <check>Define adaptive triggers (error rate, latency, backend health)</check>
+      </checklist>
+      <p>Circuit breaker implementation checklist:</p>
+      <checklist>
+        <check>Configure per-service (not global) circuit breakers</check>
+        <check>Define failure threshold, success threshold, timeout, and half-open request count</check>
+        <check>Specify fallback response or fallback endpoint for each breaker</check>
+        <check>Exclude /health, /healthz, /ready, /metrics from circuit scope</check>
+        <check>Expose circuit breaker state as a metric and alert on state change</check>
+      </checklist>
+      <p>Retry implementation checklist:</p>
+      <checklist>
+        <check>Define retryable errors: 5xx, network errors, connection failures</check>
+        <check>Configure per-service retry count (0 for payment/write-once services)</check>
+        <check>Set exponential backoff with jitter</check>
+        <check>Exclude non-idempotent operations (POST, PATCH, DELETE) unless explicitly safe</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="circuit-breaker-config"><![CDATA[
+Generate circuit breaker configuration for [Gateway name].
+
+Backend services:
+| Service  | Failure threshold | Timeout | Recovery   |
+|----------|------------------|---------|------------|
+| users    | 5 errors in 30s  | 60s     | 3 successes|
+| orders   | 3 errors in 10s  | 30s     | 2 successes|
+| payments | 2 errors in 10s  | 120s    | 5 successes|
+
+Behavior when open:
+- Return: [503 / cached response / fallback response]
+- Fallback endpoint: [URL if applicable]
+
+Monitoring:
+- Expose circuit state as metric
+- Alert on state change
+
+Generate complete configuration. Exclude /health from circuit scope.
+]]></prompt>
+      <prompt purpose="rate-limiting-config"><![CDATA[
+Generate rate limiting configuration for [Gateway name].
+
+Requirements:
+| Tier       | Requests/min | Burst | Quota/day |
+|------------|-------------|-------|-----------|
+| Free       | 60          | 10    | 1,000     |
+| Pro        | 600         | 100   | 100,000   |
+| Enterprise | 6,000       | 1,000 | Unlimited |
+
+Additional requirements:
+- Rate limit by: [IP / API key / user ID / custom header]
+- Storage backend: redis (required for multi-node)
+- Response headers: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+- Exceeded response: 429 with Retry-After header and custom JSON body
+
+Provide complete configuration with:
+1. Rate limit plugin/middleware config
+2. Consumer/tier definitions
+3. Response customization
+4. Redis configuration
+]]></prompt>
+      <prompt purpose="retry-timeout-config"><![CDATA[
+Generate retry and timeout configuration for [Gateway name].
+
+Global defaults:
+- Connection timeout: 5s
+- Read timeout: 30s
+- Retries: 3
+- Retry on: 5xx, connection errors
+
+Per-service overrides:
+| Service  | Read timeout | Retries | Idempotent |
+|----------|-------------|---------|------------|
+| users    | 10s         | 3       | GET only   |
+| orders   | 60s         | 2       | GET only   |
+| payments | 120s        | 0       | None       |
+| reports  | 300s        | 1       | All        |
+
+Retry strategy:
+- Exponential backoff: yes
+- Initial interval: 100ms
+- Max interval: 2s
+- Jitter: 20%
+
+Generate complete configuration with comments.
+]]></prompt>
+    </section>
+
+    <see-also>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-observability"/>
+      <ref slug="reliability-architecture"/>
+      <link href="https://docs.konghq.com/gateway/"/>
+      <link href="https://doc.traefik.io/traefik/"/>
+      <link href="https://www.envoyproxy.io/docs/envoy/latest/"/>
+    </see-also>
+  </content>
+</methodology>
