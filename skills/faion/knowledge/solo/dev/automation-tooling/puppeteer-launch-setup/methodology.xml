@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-launch-setup">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Install and launch Puppeteer (headless Chrome via DevTools Protocol), configure browser flags, navigate pages, and wait for DOM/network conditions reliably.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>browser-automation</tag>
+      <tag>headless-chrome</tag>
+      <tag>navigation</tag>
+      <tag>nodejs</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-page-interaction"/>
+      <ref slug="puppeteer-session-management"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Launch, Navigation &amp; Wait Strategies</title>
+
+    <summary>Puppeteer is Google's Node.js library for controlling Chrome/Chromium via the DevTools Protocol. This methodology covers installation, browser launch configuration, page navigation, and the correct wait strategies for SPA and classic sites.</summary>
+
+    <why>
+      <p>Puppeteer gives a programmable Chrome surface with full DevTools access — request interception, coverage, tracing, CDP sessions. Understanding the right launch flags and wait strategies prevents the two most common failure modes: scripts that hang on networkidle0 for WebSocket-heavy SPAs and scripts that break in CI because of missing sandbox flags.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Headless Chrome scripting jobs that need DevTools Protocol features (CDP sessions, request interception, coverage, tracing).</item>
+        <item>Generating PDFs or screenshots from rendered HTML inside a Node-only pipeline.</item>
+        <item>Light scraping where stealth is already handled (reCAPTCHA-free targets) and you want minimum dependencies.</item>
+        <item>Running on serverless (chromium binary via @sparticuz/chromium) where Playwright bundles are too large.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cross-browser testing — use Playwright (Firefox + WebKit are first-class there; Puppeteer is Chromium-only).</item>
+        <item>E2E test suites with parallelism, retries, fixtures — Playwright Test or Cypress give you that for free.</item>
+        <item>Long-running scraping farms against bot-defended targets — Playwright + stealth or a managed service.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="installation">
+      <p>Install puppeteer (bundles Chromium) or puppeteer-core (bring your own browser binary):</p>
+      <example type="good" title="Install">
+        <code lang="bash"><![CDATA[npm install puppeteer
+# or lighter version without bundled browser
+npm install puppeteer-core]]></code>
+      </example>
+      <rule>
+        <statement>Set PUPPETEER_CACHE_DIR to a writable path in CI; the default ~/.cache/puppeteer breaks in read-only containers. Pin the chromium revision in the lockfile so headless behaviour is reproducible across agent runs.</statement>
+        <rationale>Chrome auto-update via puppeteer install drifts the bundled version; pinning prevents silent CI failures.</rationale>
+      </rule>
+    </section>
+
+    <section name="launch-config">
+      <p>Standard launch configuration for containerised / CI environments:</p>
+      <example type="good" title="Standard launch">
+        <code lang="javascript"><![CDATA[const puppeteer = require('puppeteer');
+
+async function main() {
+  const browser = await puppeteer.launch({
+    headless: 'new', // or true for old headless, false for visible
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu'
+    ]
+  });
+
+  const page = await browser.newPage();
+  await page.goto('https://example.com');
+
+  // ... operations ...
+
+  await browser.close();
+}]]></code>
+        <note>--no-sandbox and --disable-setuid-sandbox are required in Docker/CI where the process runs as root.</note>
+      </example>
+      <example type="good" title="Custom user agent and viewport">
+        <code lang="javascript"><![CDATA[const page = await browser.newPage();
+await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+await page.setViewport({ width: 1920, height: 1080 });]]></code>
+      </example>
+      <rule>
+        <statement>Always call browser.close() in a finally block. Orphan Chromium processes pin GBs of RAM; a single browser instance under page churn must be recycled every N pages.</statement>
+        <rationale>Node process exit does not guarantee browser process cleanup; finally ensures cleanup on both normal exit and unhandled exceptions.</rationale>
+      </rule>
+    </section>
+
+    <section name="navigation">
+      <p>Navigate to pages and handle post-navigation flows:</p>
+      <example type="good" title="Navigate with options">
+        <code lang="javascript"><![CDATA[// Navigate with explicit wait condition
+await page.goto('https://example.com', {
+  waitUntil: 'networkidle0', // or 'load', 'domcontentloaded', 'networkidle2'
+  timeout: 30000
+});
+
+// Wait for navigation after click
+await Promise.all([
+  page.waitForNavigation({ waitUntil: 'networkidle0' }),
+  page.click('a.nav-link')
+]);
+
+// Go back/forward/reload
+await page.goBack();
+await page.goForward();
+await page.reload({ waitUntil: 'networkidle0' });]]></code>
+      </example>
+      <rule>
+        <statement>Prefer domcontentloaded + explicit waitForSelector over networkidle0 for SPA targets. The networkidle0 condition hangs forever on sites with long-poll or WebSocket traffic; agents loop until timeout.</statement>
+        <rationale>networkidle0 waits for zero in-flight network requests for 500ms — SPAs with analytics pings, WebSockets, or SSE never reach that state.</rationale>
+      </rule>
+    </section>
+
+    <section name="wait-strategies">
+      <p>All reliable wait strategies available in Puppeteer:</p>
+      <example type="good" title="Wait strategies">
+        <code lang="javascript"><![CDATA[// Wait for selector
+await page.waitForSelector('#element', { visible: true, timeout: 5000 });
+
+// Wait for XPath
+await page.waitForXPath('//button[contains(text(), "Submit")]');
+
+// Wait for function (custom condition)
+await page.waitForFunction(() => document.querySelector('#data').innerText !== '');
+
+// Wait for network idle
+await page.waitForNetworkIdle({ idleTime: 500 });
+
+// Wait for specific response
+await page.waitForResponse(response =>
+  response.url().includes('/api/data') && response.status() === 200
+);]]></code>
+      </example>
+      <antipattern>
+        <description>Using await page.waitForTimeout(N) to pause execution.</description>
+        <reason>waitForTimeout was deprecated and removed in Puppeteer 22. Use new Promise(r =&gt; setTimeout(r, N)) or preferably a targeted waitForSelector/waitForFunction instead of fixed sleeps.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://pptr.dev"/>
+      <ref slug="puppeteer-page-interaction"/>
+      <ref slug="puppeteer-stealth-proxy"/>
+    </see-also>
+  </content>
+</methodology>
