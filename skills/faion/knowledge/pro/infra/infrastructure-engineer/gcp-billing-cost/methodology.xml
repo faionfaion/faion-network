@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-billing-cost">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Configure GCP billing accounts, budget alerts at multiple thresholds, BigQuery billing exports, and cost allocation labels for per-team chargeback and spend optimization.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>billing</tag>
+      <tag>cost-management</tag>
+      <tag>budgets</tag>
+      <tag>cost-allocation</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-org-policies"/>
+      <ref slug="gcp-overview-cli"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Billing and Cost Management</title>
+
+    <summary>GCP billing is structured around billing accounts linked to projects, with costs attributed via resource labels. Budget alerts at 50%, 90%, and 100% thresholds prevent surprise overspend. BigQuery billing exports enable custom dashboards and per-team chargeback via label-based queries. Labels are the only mechanism for cost allocation — enforce them from day one via org policy.</summary>
+
+    <why>
+      <p>GCP costs grow silently without proactive controls. A project created without budget alerts can run up thousands of dollars before anyone notices. BigQuery billing exports with a consistent label taxonomy (env, team, cost_center) enable finance to chargeback costs to teams without manual sorting. Committed use discounts (CUDs) require capacity planning — the analysis tooling built on billing exports pays for itself.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up billing for a new GCP organization, project, or environment.</item>
+        <item>Implementing cost chargeback by team, cost center, or application.</item>
+        <item>Configuring budget alerts before launching production workloads.</item>
+        <item>Analyzing and optimizing existing GCP spend (rightsizing, CUDs, storage class).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Personal sandbox projects with minimal spend — a single $10/month alert is sufficient; full export pipeline is over-engineering.</item>
+        <item>Network cost analysis (egress, interconnect) — those require Traffic Analytics and billing exports combined with VPC Flow Logs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="billing-structure">
+      <p>GCP billing components and their roles:</p>
+      <list>
+        <item>Billing Account — pays for all linked projects; uses single currency; tied to a payment method via Payments Profile.</item>
+        <item>Payments Profile — links billing account to the payment method (credit card, invoice).</item>
+        <item>Budgets — alert at configurable spend thresholds; can trigger Pub/Sub actions.</item>
+        <item>Cost Allocation — achieved via resource labels and the folder/project hierarchy in billing reports.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every production project MUST have a budget configured with alert thresholds at 50%, 90%, and 100% of the monthly spend target. Alerts MUST route to a monitored notification channel (email group or Pub/Sub).</statement>
+        <rationale>Without budget alerts, cost anomalies (runaway VMs, data egress spikes, accidental BigQuery full table scans) go undetected until the monthly bill. Multi-threshold alerts give early warning before overspend is irrecoverable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Billing exports MUST be enabled to BigQuery for all production billing accounts. The export dataset must be queried via scheduled queries or Looker Studio to produce per-team cost reports at least monthly.</statement>
+        <rationale>The GCP console billing UI does not support custom cost allocation or chargeback. BigQuery exports are the only way to query costs by label, folder, or project combination at scale.</rationale>
+      </rule>
+    </section>
+
+    <section name="budget-configuration">
+      <example type="good" title="Budget alert via gcloud">
+        <code lang="bash"><![CDATA[
+# Create budget with three alert thresholds
+gcloud billing budgets create \
+  --billing-account=BILLING_ACCOUNT_ID \
+  --display-name="Project Monthly Budget" \
+  --budget-amount=1000USD \
+  --threshold-rules="percent=0.5,basis=current-spend" \
+  --threshold-rules="percent=0.9,basis=current-spend" \
+  --threshold-rules="percent=1.0,basis=current-spend" \
+  --filter-projects="projects/PROJECT_ID" \
+  --notifications-rule="monitoringNotificationChannels=CHANNEL_ID"
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform billing budget module">
+        <code lang="hcl"><![CDATA[
+# modules/billing/main.tf
+resource "google_monitoring_notification_channel" "email" {
+  for_each = toset(var.alert_emails)
+
+  project      = var.project_id
+  display_name = "Budget Alert - ${each.value}"
+  type         = "email"
+
+  labels = {
+    email_address = each.value
+  }
+}
+
+resource "google_billing_budget" "project" {
+  billing_account = var.billing_account
+  display_name    = "Budget - ${var.project_id}"
+
+  budget_filter {
+    projects = ["projects/${var.project_number}"]
+  }
+
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = tostring(var.budget_amount)
+    }
+  }
+
+  threshold_rules {
+    threshold_percent = 0.5
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 0.75
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 0.9
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  threshold_rules {
+    threshold_percent = 1.0
+    spend_basis       = "CURRENT_SPEND"
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = [
+      for channel in google_monitoring_notification_channel.email : channel.id
+    ]
+    disable_default_iam_recipients = false
+  }
+}
+]]></code>
+        <note>Parameterize budget_amount and alert_emails per environment. Use a billing module called from the project factory.</note>
+      </example>
+
+      <antipattern>
+        <description>Single 100% threshold budget alert only.</description>
+        <reason>By the time the 100% alert fires, the spend is already at the budget limit. Multi-threshold alerts (50%, 90%) give time to investigate and cap before the budget is exhausted.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No billing exports configured; relying on the GCP console billing UI for cost reporting.</description>
+        <reason>The console UI cannot filter by resource labels, aggregate across folders, or support chargeback queries. BigQuery exports are mandatory for any organization with more than one team or project.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cost-allocation">
+      <p>Cost allocation relies entirely on consistent resource labels. Without labels, BigQuery billing exports cannot attribute costs to teams or cost centers.</p>
+
+      <rule testable="true">
+        <statement>All projects MUST have env, team, and cost_center labels. All major resources (VMs, GKE node pools, Cloud SQL instances, buckets) MUST inherit or carry the same labels. Enforce via org policy custom constraint (custom.requireProjectLabels).</statement>
+        <rationale>Labels are propagated to billing export line items. A missing label on a VM means that VM's cost appears as unattributed in chargeback reports — the team is not charged and no one investigates the spend.</rationale>
+      </rule>
+
+      <example type="good" title="Label taxonomy for cost allocation">
+        <code lang="yaml"><![CDATA[
+Required Labels (enforced via org policy):
+  env: prod|staging|dev
+  team: platform|backend|frontend|data
+  cost_center: cc-NNN
+  managed_by: terraform|manual
+
+Optional Labels:
+  app: application-name
+  component: api|web|worker
+  owner: team-email
+]]></code>
+      </example>
+
+      <example type="good" title="BigQuery billing export query — cost by team">
+        <code lang="sql"><![CDATA[
+-- Monthly cost by team from BigQuery billing export
+SELECT
+  labels.value AS team,
+  SUM(cost) AS total_cost,
+  SUM(cost) + SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)) AS net_cost
+FROM `billing_dataset.gcp_billing_export_v1_XXXXXX_XXXXXX_XXXXXX`
+CROSS JOIN UNNEST(labels) AS labels
+WHERE labels.key = 'team'
+  AND DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH)
+GROUP BY 1
+ORDER BY 2 DESC;
+]]></code>
+      </example>
+    </section>
+
+    <section name="billing-setup-checklist">
+      <checklist>
+        <check>Billing account configured and linked to organization.</check>
+        <check>Budget alerts set at 50%, 90%, and 100% thresholds for each project.</check>
+        <check>Billing exports to BigQuery enabled for production billing account.</check>
+        <check>Cost allocation labels (env, team, cost_center) defined and enforced via org policy.</check>
+        <check>Committed use discounts evaluated for stable workloads running &gt;= 12 months.</check>
+        <check>Billing reports configured by folder/project in Console or Looker Studio.</check>
+        <check>Rightsizing recommendations reviewed monthly (GCP recommender API).</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="Design cost management strategy">
+        <![CDATA[
+Design cost management strategy for GCP [ORGANIZATION/PROJECT]:
+
+Context:
+- Monthly budget: [amount]
+- Teams/cost centers: [list]
+- Chargeback requirements: [describe]
+- Existing spending: [current patterns]
+
+Requirements:
+1. Budget alert configuration
+2. Cost allocation via labels
+3. BigQuery billing export setup
+4. Looker Studio dashboard
+5. Committed use discount analysis
+6. Rightsizing recommendations
+
+Deliverables:
+- Budget configuration per project
+- Label taxonomy for cost allocation
+- Dashboard queries
+- Cost optimization checklist
+]]>
+      </prompt>
+
+      <prompt purpose="Optimize GCP costs">
+        <![CDATA[
+Analyze and optimize GCP costs for [PROJECT/ORGANIZATION]:
+
+Current Spending:
+- Monthly cost: [amount]
+- Top services: [list]
+- Growth trend: [describe]
+
+Optimization Areas:
+1. Idle resources identification
+2. Rightsizing opportunities
+3. Committed use discounts
+4. Preemptible/Spot VM opportunities
+5. Storage class optimization
+6. Network egress reduction
+
+Output:
+- Potential savings by category
+- Implementation steps
+- Risk assessment
+- Monitoring setup post-optimization
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-resource-hierarchy"/>
+      <ref slug="gcp-org-policies"/>
+      <link href="https://cloud.google.com/billing/docs/onboarding-checklist"/>
+      <link href="https://cloud.google.com/architecture/framework"/>
+    </see-also>
+  </content>
+</methodology>
