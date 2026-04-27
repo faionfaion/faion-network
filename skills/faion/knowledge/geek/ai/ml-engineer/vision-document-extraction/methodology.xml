@@ -1,0 +1,455 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-document-extraction">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Extract structured data from document images (invoices, receipts, forms, contracts) using VLMs with schema-enforced JSON output, field validation, and human-review queues for low-confidence results.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>ocr</tag>
+      <tag>document-extraction</tag>
+      <tag>structured-output</tag>
+      <tag>invoice</tag>
+    </tags>
+    <category>vision</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Vision Document Extraction</title>
+
+    <summary>Document extraction uses VLMs to pull structured data from invoices, receipts, forms, contracts, and ID documents. The core pattern is: schema-defined prompt → response_format enforcement → Pydantic validation → confidence routing to human review. Claude Sonnet is the default choice for complex layouts; Gemini Flash for high-volume simple documents.</summary>
+
+    <why>
+      <p>Traditional OCR engines (Tesseract, Azure Read) extract raw text but cannot interpret document semantics — they cannot map "TOTAL DUE: $1,234.56" to a JSON field total_amount. VLMs bridge the gap by combining OCR with layout understanding and field-to-schema mapping in a single API call. The result is a structured Pydantic object ready for downstream ERP or database writes without a secondary NLP parse step.</p>
+      <p>Claude 4's 2.1% Character Error Rate on printed text is production-grade for most document types; cursive handwriting and sub-100px fonts remain unreliable across all providers. Complex multi-column PDF layouts with footnotes and margin notes often produce merged or reordered text chunks — validate numerically sensitive fields in a separate verification pass.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Extracting structured data from uploaded documents: invoices, receipts, contracts, forms.</item>
+        <item>OCR replacement for scanned PDFs where layout matters (tables, multi-column text).</item>
+        <item>Processing ID documents (passports, driver's licences) to extract personal information.</item>
+        <item>Automating data entry from paper-based or image-based forms into backend systems.</item>
+        <item>Batch processing of historical document archives that were not machine-readable.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple barcode/QR decoding — zxing or python-qrcode are faster and cheaper.</item>
+        <item>Documents where pixel-level measurement accuracy is required — statistical VLM outputs are not reliable for calibration tasks.</item>
+        <item>Medical records where FDA/CE-cleared inference is required — off-the-shelf VLMs are not cleared devices.</item>
+        <item>Privacy-regulated documents where sending to third-party APIs violates GDPR/HIPAA data agreements — use self-hosted Qwen3-VL instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-extraction-pattern">
+      <rule>
+        <statement>Always enforce structured JSON output via response_format={"type": "json_object"} or tool-use. Never rely on prompt-only schema enforcement — free-form descriptions drift from schema under token pressure.</statement>
+        <rationale>Without response_format the model occasionally returns prose descriptions or partially formatted JSON; Pydantic parsing then raises ValidationError and the extraction fails silently if not caught.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always wrap extraction in try/except and re-prompt with explicit error on ValidationError. Never silently swallow failed extractions.</statement>
+        <rationale>Pydantic schema enforcement via prompt alone is unreliable without response_format/tool-use — parsing must fall back to a re-prompt with the exact validation error message appended to the original prompt.</rationale>
+      </rule>
+
+      <example type="good" title="Claude invoice extraction with Pydantic">
+        <code lang="python"><![CDATA[
+import anthropic
+import base64
+import json
+from pydantic import BaseModel
+
+class InvoiceData(BaseModel):
+    vendor: str | None
+    total_amount: float | None
+    date: str | None
+    line_items: list[dict]
+    confidence: str  # "high" | "low"
+
+def extract_invoice(image_path: str) -> InvoiceData:
+    client = anthropic.Anthropic()
+    with open(image_path, "rb") as f:
+        img_b64 = base64.standard_b64encode(f.read()).decode()
+
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        max_tokens=1024,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
+                {"type": "text", "text": "Extract invoice data as JSON: {vendor, total_amount, date, line_items, confidence}. confidence=low if any ambiguity."},
+            ],
+        }],
+    )
+    data = json.loads(response.content[0].text)
+    return InvoiceData(**data)
+]]></code>
+      </example>
+
+      <example type="good" title="OpenAI structured document extraction">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import base64
+import json
+from typing import List
+
+client = OpenAI()
+
+def extract_structured_data(image_path: str, fields: List[str]) -> dict:
+    """Extract specific fields from a document image."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    fields_str = ", ".join(fields)
+    prompt = f"""Extract these fields from the document: {fields_str}
+
+Return JSON with the field names as keys. Use null for missing fields."""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]
+        }],
+        response_format={"type": "json_object"}
+    )
+    return json.loads(response.choices[0].message.content)
+
+# Usage
+data = extract_structured_data("invoice.jpg", ["vendor_name", "invoice_number", "date", "total_amount"])
+]]></code>
+      </example>
+    </section>
+
+    <section name="document-type-prompts">
+      <p>Invoice extraction prompt — full schema:</p>
+      <prompt purpose="invoice-extraction"><![CDATA[
+Analyze this invoice and extract all data into this exact JSON structure:
+{
+  "vendor": {
+    "name": "",
+    "address": "",
+    "phone": "",
+    "email": ""
+  },
+  "invoice_details": {
+    "number": "",
+    "date": "YYYY-MM-DD",
+    "due_date": "YYYY-MM-DD",
+    "po_number": ""
+  },
+  "customer": {
+    "name": "",
+    "address": ""
+  },
+  "line_items": [
+    {
+      "description": "",
+      "quantity": 0,
+      "unit_price": 0.00,
+      "total": 0.00
+    }
+  ],
+  "totals": {
+    "subtotal": 0.00,
+    "tax_rate": 0.00,
+    "tax_amount": 0.00,
+    "shipping": 0.00,
+    "total": 0.00
+  },
+  "payment": {
+    "terms": "",
+    "method": "",
+    "bank_details": ""
+  }
+}
+
+Use null for any field not visible in the document.
+Format all monetary values as numbers without currency symbols.
+]]></prompt>
+
+      <prompt purpose="receipt-extraction"><![CDATA[
+Extract receipt information into this JSON format:
+{
+  "merchant": {
+    "name": "",
+    "address": "",
+    "phone": ""
+  },
+  "transaction": {
+    "date": "YYYY-MM-DD",
+    "time": "HH:MM",
+    "receipt_number": "",
+    "cashier": ""
+  },
+  "items": [
+    {
+      "name": "",
+      "sku": "",
+      "quantity": 1,
+      "unit_price": 0.00,
+      "total": 0.00,
+      "discount": 0.00
+    }
+  ],
+  "totals": {
+    "subtotal": 0.00,
+    "tax": 0.00,
+    "total": 0.00,
+    "savings": 0.00
+  },
+  "payment": {
+    "method": "",
+    "card_type": "",
+    "last_four": "",
+    "amount_tendered": 0.00,
+    "change": 0.00
+  }
+}
+
+Parse all prices as decimal numbers.
+]]></prompt>
+
+      <prompt purpose="contract-key-terms"><![CDATA[
+Analyze this contract/agreement and extract key terms:
+{
+  "document_type": "contract type (NDA, Employment, Service Agreement, etc.)",
+  "parties": [
+    {"name": "", "role": "Party A/Party B/Vendor/Client/etc."}
+  ],
+  "effective_date": "YYYY-MM-DD",
+  "termination_date": "YYYY-MM-DD or conditions",
+  "key_terms": {
+    "payment_terms": "",
+    "deliverables": [],
+    "confidentiality_period": "",
+    "non_compete_period": "",
+    "termination_conditions": [],
+    "liability_cap": "",
+    "jurisdiction": ""
+  },
+  "important_clauses": [
+    {"clause_name": "", "summary": ""}
+  ],
+  "signatures": [
+    {"party": "", "signed": true, "date": ""}
+  ]
+}
+
+Focus on legally significant terms and obligations.
+]]></prompt>
+
+      <prompt purpose="ocr-basic"><![CDATA[
+Extract all text visible in this image.
+Maintain the original formatting, layout, and line breaks where possible.
+If text is unclear or partially visible, indicate with [unclear] or [partial].
+]]></prompt>
+
+      <prompt purpose="ocr-structured"><![CDATA[
+Extract all text from this image and return as JSON with this structure:
+{
+  "title": "main heading or title if present",
+  "body": "main body text",
+  "lists": ["any bulleted or numbered items"],
+  "tables": [{"headers": [], "rows": [[]]}],
+  "footnotes": "any footer or footnote text"
+}
+
+Use null for sections that don't exist in the image.
+]]></prompt>
+
+      <prompt purpose="handwriting-ocr"><![CDATA[
+This image contains handwritten text. Please:
+1. Transcribe all handwritten content you can read
+2. Maintain paragraph structure
+3. Use [illegible] for words you cannot decipher
+4. Note any crossed-out or corrected text in [brackets]
+
+Return the transcription with best effort accuracy.
+]]></prompt>
+    </section>
+
+    <section name="document-analyzer-template">
+      <p>Reusable DocumentAnalyzer class that wraps VisionService for invoice, receipt, and ID document extraction:</p>
+      <code lang="python"><![CDATA[
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+import json
+
+@dataclass
+class DocumentField:
+    """Definition of a field to extract."""
+    name: str
+    description: str
+    required: bool = True
+    field_type: str = "string"  # string, number, boolean, array
+
+class DocumentAnalyzer:
+    """Analyze documents and extract structured data."""
+
+    def __init__(self, model: str = "gpt-4o"):
+        from openai import OpenAI
+        self.client = OpenAI()
+        self.model = model
+
+    def extract_fields(
+        self,
+        image_path: str,
+        fields: List[DocumentField]
+    ) -> Dict[str, Any]:
+        """Extract specific fields from document."""
+        field_descriptions = "\n".join([
+            f"- {f.name} ({f.field_type}): {f.description}" + (" [REQUIRED]" if f.required else " [OPTIONAL]")
+            for f in fields
+        ])
+        import base64
+        with open(image_path, "rb") as fh:
+            image_data = base64.b64encode(fh.read()).decode()
+
+        prompt = f"""Extract these fields from the document:
+
+{field_descriptions}
+
+Return JSON with field names as keys.
+Use null for missing optional fields.
+For required fields that cannot be found, use null and explain in an "_errors" array."""
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]
+            }],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+
+    def analyze_invoice(self, image_path: str) -> Dict[str, Any]:
+        """Extract invoice data."""
+        fields = [
+            DocumentField("vendor_name", "Name of the vendor/seller"),
+            DocumentField("vendor_address", "Full address of vendor", required=False),
+            DocumentField("invoice_number", "Invoice or reference number"),
+            DocumentField("invoice_date", "Date of the invoice (YYYY-MM-DD format)"),
+            DocumentField("due_date", "Payment due date (YYYY-MM-DD format)", required=False),
+            DocumentField("line_items", "List of items with name, quantity, unit_price, total", field_type="array"),
+            DocumentField("subtotal", "Subtotal before tax", field_type="number"),
+            DocumentField("tax_amount", "Tax amount", field_type="number"),
+            DocumentField("total_amount", "Total amount due", field_type="number"),
+            DocumentField("currency", "Currency code (USD, EUR, etc.)"),
+        ]
+        return self.extract_fields(image_path, fields)
+
+    def analyze_receipt(self, image_path: str) -> Dict[str, Any]:
+        """Extract receipt data."""
+        fields = [
+            DocumentField("store_name", "Name of the store"),
+            DocumentField("store_address", "Store address", required=False),
+            DocumentField("date", "Transaction date (YYYY-MM-DD format)"),
+            DocumentField("time", "Transaction time (HH:MM format)", required=False),
+            DocumentField("items", "List of purchased items with name, quantity, price", field_type="array"),
+            DocumentField("subtotal", "Subtotal before tax", field_type="number"),
+            DocumentField("tax", "Tax amount", field_type="number"),
+            DocumentField("total", "Total amount", field_type="number"),
+            DocumentField("payment_method", "How payment was made", required=False),
+            DocumentField("card_last_four", "Last 4 digits of card", required=False),
+        ]
+        return self.extract_fields(image_path, fields)
+
+    def analyze_id_document(self, image_path: str) -> Dict[str, Any]:
+        """Extract ID document data (passport, driver's license, etc.)."""
+        fields = [
+            DocumentField("document_type", "Type of ID (passport, driver_license, id_card)"),
+            DocumentField("full_name", "Full name as shown"),
+            DocumentField("date_of_birth", "Date of birth (YYYY-MM-DD format)"),
+            DocumentField("document_number", "ID/document number"),
+            DocumentField("expiry_date", "Expiration date (YYYY-MM-DD format)", required=False),
+            DocumentField("issuing_country", "Country that issued the document"),
+            DocumentField("nationality", "Nationality", required=False),
+            DocumentField("gender", "Gender (M/F)", required=False),
+        ]
+        return self.extract_fields(image_path, fields)
+]]></code>
+    </section>
+
+    <section name="form-extraction-example">
+      <code lang="python"><![CDATA[
+def analyze_form(image_path: str) -> dict:
+    """Extract filled fields from a form."""
+    from openai import OpenAI
+    import base64
+    import json
+    client = OpenAI()
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    prompt = """Analyze this form and extract all filled fields.
+Return JSON with field names/labels as keys and filled values as values.
+For checkboxes, use true/false.
+For empty fields, use null."""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]
+        }],
+        response_format={"type": "json_object"}
+    )
+    return json.loads(response.choices[0].message.content)
+]]></code>
+    </section>
+
+    <antipattern>
+      <description>Validating extracted numerical data (totals, invoice amounts) from a single VLM pass without a verification step.</description>
+      <reason>Claude 4 and GPT-4o hallucinate specific numbers in charts and financial tables — always validate extracted numerical data against a second pass or a deterministic chart parser before writing to ERP or accounting systems.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using a single extraction prompt for all document types without schema specialisation.</description>
+      <reason>Generic prompts produce inconsistent field names and miss document-type-specific fields (e.g., PO number on invoices, card_last_four on receipts). Schema-per-type prompts yield 30-50% higher field accuracy on benchmarks.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Validate image format (JPEG, PNG, WebP, GIF) and size (max 5MB Anthropic, 20MB OpenAI) before API call.</check>
+      <check>Verify resolution — 300+ DPI for scanned documents; &lt;100px font size degrades all VLMs.</check>
+      <check>Enforce response_format=json_object or tool-use; never rely on prompt-only JSON enforcement.</check>
+      <check>Parse with Pydantic and catch ValidationError — re-prompt with error message on failure.</check>
+      <check>Set confidence field in prompt instructions; route confidence="low" to human review queue.</check>
+      <check>For financial documents: require human review when extracted total exceeds business threshold.</check>
+      <check>Cache extraction results keyed on image hash — the same invoice scanned twice should not hit the API twice.</check>
+      <check>Implement a second-pass validation call for extracted numeric totals on financial documents.</check>
+      <check>Create validation dataset (ground truth) and measure CER/WER before going to production.</check>
+      <check>Set retention policies for document images; audit-log all access.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+      <link href="https://docs.anthropic.com/en/docs/vision"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+    </see-also>
+  </content>
+</methodology>
