@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agentic-rag-tool-using">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Agentic RAG where the LLM selects from a tool registry (vector search, keyword search, SQL, web search) instead of always calling the vector store, enabling structured + unstructured data fusion.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>agentic</tag>
+      <tag>tool-use</tag>
+      <tag>function-calling</tag>
+      <tag>multi-modal-retrieval</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>llama-index</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-self-correction"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Agentic RAG — Tool-Using Agent</title>
+
+    <summary>Instead of always calling the vector store, a tool-using agentic RAG lets the LLM select from a registry of retrieval tools on each step: vector_search (semantic), keyword_search (exact match), sql_query (structured data), web_search (external). The agent loops up to a max_calls budget, then synthesizes a final answer from the accumulated multi-source context.</summary>
+
+    <why>
+      <p>Pure vector search cannot answer questions that mix structured and unstructured data (e.g., "What were the Q3 revenue figures mentioned in the earnings call?"). SQL can answer the structured part, but not the narrative. A tool-using agent routes each sub-question to the most appropriate retrieval mechanism, enabling queries that require combining a SQL result with a document chunk — impossible with a single vector store call.</p>
+      <p>Tool-using RAG also covers gaps in the vector corpus: when the vector store returns low-confidence results, the agent can fall back to keyword search or web search rather than hallucinating. Each tool selection decision is logged, making the retrieval process auditable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Questions require combining structured data (SQL/tables) with unstructured document retrieval.</item>
+        <item>The corpus has known coverage gaps that require web search as a fallback.</item>
+        <item>Different query types in the same application benefit from different retrieval strategies (semantic vs exact vs structured).</item>
+        <item>Auditable retrieval decisions are required — each tool call and its result is logged.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-corpus applications where all information lives in one vector store — tool selection overhead adds latency with no benefit.</item>
+        <item>When web_search is in the registry but the application has strict data governance preventing external lookups.</item>
+        <item>When the LLM model does not support structured function calling — tool selection degrades to unreliable free-text parsing.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tool-registry-pattern">
+      <p>The tool-using RAG agent maintains a dict of callable tools. On each loop iteration it asks the LLM which tool to invoke next, executes it, appends the result to the context, and repeats. The loop exits when the LLM selects "generate_answer" or when max tool calls are exhausted.</p>
+
+      <rule testable="true">
+        <statement>Cap the tool-using loop at max_calls (recommended 3). Each loop iteration MUST log the tool name, input query, and a truncated result summary for offline debugging.</statement>
+        <rationale>Without a cap, a confused tool selector can loop indefinitely. Without logging, tool selection decisions are a black box that is impossible to debug in production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The tool description passed to the LLM MUST be specific enough to distinguish tools: "vector_search: semantic similarity search in document database" vs "keyword_search: exact keyword matching for precise terms" — not just tool names.</statement>
+        <rationale>Ambiguous tool descriptions cause the LLM to default to the first tool in the list regardless of query type, defeating the purpose of the registry.</rationale>
+      </rule>
+
+      <example type="good" title="ToolUsingRAG with tool registry and selection loop">
+        <code lang="python"><![CDATA[
+from typing import Callable, List, Dict
+import openai
+
+class ToolUsingRAG:
+    """Agentic RAG with tool selection."""
+
+    def __init__(self):
+        self.tools = {
+            "vector_search": self._vector_search,
+            "keyword_search": self._keyword_search,
+            "sql_query": self._sql_query,
+            "web_search": self._web_search,
+        }
+
+    def answer(self, query: str) -> str:
+        """Answer query using appropriate tools."""
+        context = []
+
+        for _ in range(3):  # Max 3 tool calls
+            tool_name = self._select_tool(query, context)
+
+            if tool_name == "generate_answer":
+                break
+
+            result = self.tools[tool_name](query)
+            context.append({
+                "tool": tool_name,
+                "result": result
+            })
+
+        return self._generate_final(query, context)
+
+    def _select_tool(self, query: str, context: List[Dict]) -> str:
+        """LLM selects next tool to use."""
+        tools_desc = """
+Available tools:
+- vector_search: Semantic search in document database
+- keyword_search: Exact keyword matching
+- sql_query: Query structured data
+- web_search: Search external web
+- generate_answer: Generate final answer (when sufficient info)
+"""
+
+        context_summary = "\n".join([
+            f"{c['tool']}: {str(c['result'])[:100]}" for c in context
+        ])
+
+        prompt = f"""
+{tools_desc}
+
+Query: {query}
+Information gathered: {context_summary}
+
+Which tool should be used next? Return ONLY the tool name.
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        return response.choices[0].message.content.strip()
+
+    def _vector_search(self, query: str) -> List[Dict]:
+        pass  # semantic similarity search implementation
+
+    def _keyword_search(self, query: str) -> List[Dict]:
+        pass  # exact keyword matching implementation
+
+    def _sql_query(self, query: str) -> List[Dict]:
+        pass  # structured data query implementation
+
+    def _web_search(self, query: str) -> List[Dict]:
+        pass  # external web search implementation
+
+    def _generate_final(self, query: str, context: List[Dict]) -> str:
+        pass  # final answer synthesis implementation
+]]></code>
+        <note>Tool selector uses gpt-4o-mini; final generation can use a heavier model. Each tool result is capped at 100 chars in the context_summary passed to the selector to keep prompt size bounded.</note>
+      </example>
+    </section>
+
+    <section name="tool-selection-best-practices">
+      <p>Best practices for tool selection and management in agentic RAG.</p>
+
+      <rule testable="true">
+        <statement>Use fast/cheap models (Haiku or gpt-4o-mini) for tool routing. Reserve Opus or gpt-4o for final answer generation. Separate the routing budget from the synthesis budget.</statement>
+        <rationale>Tool routing is a classification task (which tool?) that does not require deep reasoning. Routing with Opus burns ~10x the budget for no quality gain on the routing decision itself.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cache tool results within a single agentic run. If the same tool is called with the same query in a later iteration, return the cached result without re-executing the tool.</statement>
+        <rationale>The same sub-query can recur across iterations; re-executing the tool wastes latency and API cost without adding new information.</rationale>
+      </rule>
+    </section>
+
+    <section name="use-case-routing">
+      <p>Different use cases map to different tool combinations. Use this as a routing guide when selecting tools for a new application.</p>
+
+      <section name="use-case-table">
+        <p>Multi-hop QA: vector_search primary, keyword_search fallback — pattern is query decomposition with iterative retrieval. Research synthesis: vector_search + web_search — iterative exploration. Fact-checking: vector_search + keyword_search — self-correction loops. Complex analytics: sql_query + vector_search — tool-using agent. Legal compliance: vector_search + keyword_search — verification loops.</p>
+      </section>
+    </section>
+
+    <section name="agent-model-selection">
+      <p>Model selection for each role in the tool-using agent.</p>
+
+      <section name="model-routing-table">
+        <p>Analyze and assess (sufficiency, routing): Sonnet — evaluation and planning tasks. Execute retrieval (tool calls): Haiku — apply established patterns quickly. Review and validate (faithfulness): Sonnet — quality assurance. Strategic decision (novel scenarios): Opus — novel, high-stakes routing. Optimize and refine (query rewriting): Haiku — performance tuning. Document approach: Haiku — create documentation and logs.</p>
+      </section>
+    </section>
+
+    <section name="cli-tools">
+      <p>Key libraries and services for tool-using agentic RAG.</p>
+
+      <list>
+        <item>langgraph — pip install langgraph — stateful agent graph for agentic RAG flows.</item>
+        <item>llama-index — pip install llama-index — agentic patterns: ReActAgent, FunctionCallingAgent.</item>
+        <item>ragas — pip install ragas — evaluate agentic RAG: context recall, faithfulness.</item>
+        <item>dspy — pip install dspy-ai — self-optimizing RAG pipelines with teleprompters.</item>
+        <item>openai — pip install openai — function calling for tool-using RAG agents.</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Hosted services that integrate with tool-using agentic RAG.</p>
+
+      <list>
+        <item>LangGraph Cloud (SaaS, agent-friendly) — hosted stateful agentic graph execution.</item>
+        <item>LlamaCloud (SaaS, agent-friendly) — managed agentic parsing and multi-hop retrieval.</item>
+        <item>Microsoft GraphRAG (OSS, partial) — knowledge graph-based agentic RAG; complex setup.</item>
+        <item>Cohere Rerank (SaaS, agent-friendly) — reranking between iterative retrieval passes.</item>
+        <item>Anthropic Messages API (SaaS, agent-friendly) — best-in-class agentic reasoning; use Sonnet for routing, Opus for synthesis.</item>
+      </list>
+    </section>
+
+    <section name="gotchas">
+      <antipattern>
+        <description>Passing full tool results (potentially thousands of tokens) to the tool selector on subsequent iterations.</description>
+        <reason>The selector only needs to know what was gathered to decide what to gather next — a one-line summary per tool call is sufficient. Full results in the selector prompt inflate cost and can exceed context windows.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Including web_search in the tool registry for applications with data governance requirements without an explicit allow-list of approved domains.</description>
+        <reason>Unrestricted web search can retrieve adversarial content, hallucinated pages, or out-of-date information that conflicts with the vetted internal corpus. Gate web_search behind an allow-list or disable it by default.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="agentic-rag-iterative-retrieval"/>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-self-correction"/>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/rag/langgraph_agentic_rag/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/agent/agentic_rag/"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use"/>
+      <link href="https://github.com/microsoft/graphrag"/>
+    </see-also>
+  </content>
+</methodology>
