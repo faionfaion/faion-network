@@ -12,6 +12,7 @@
 - decompose: guardrails → 5 slugs (guardrails-concepts, guardrails-nemo, guardrails-ai-framework, guardrails-custom-pipeline, guardrails-testing)
 - decompose: django-coding-standards → 5 slugs (django-project-structure, django-service-layer, django-selectors, django-serializers, django-constants)
 - decompose: django-pytest → 5 slugs (django-pytest-fixtures, django-pytest-factories, django-pytest-integration, django-pytest-parametrize, django-pytest-mocking)
+- decompose: python-testing-pytest → 5 slugs (python-pytest-fixtures, python-pytest-parametrize, python-pytest-mocking, python-pytest-async, python-pytest-setup)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: language-framework-guide, methodologies, mob-programming)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: e2e-testing, error-handling, files-reference)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: go-backend, go-concurrency, go-error-handling)
