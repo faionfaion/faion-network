@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-versioning">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Event versioning, upcasters, event catalog as committed source, breaking-change gate, GDPR crypto-shredding, and PII handling in event stores.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>event-versioning</tag>
+      <tag>upcaster</tag>
+      <tag>gdpr</tag>
+      <tag>event-catalog</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="event-sourcing-snapshots"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Event Versioning and GDPR</title>
+
+    <summary>Once an event class is published (consumed by any downstream system), its field contract is immutable. Breaking changes require an upcaster and a version bump committed to the event catalog. PII in events must be crypto-shredded or moved to a mutable side table to satisfy GDPR right-to-erasure.</summary>
+
+    <why>
+      <p>Event versioning is the most commonly underestimated operational challenge in event sourcing. Once consumers exist — projections, sagas, downstream microservices, audit exports — renaming or removing an event field silently breaks them. Most teams discover this on event #2 when they realize they cannot change the name of a field without coordinating a multi-team deployment or writing a migration that transforms stored event data.</p>
+      <p>GDPR right-to-erasure conflicts directly with the immutable append-only log. An erasure request on a customer who appears in 50,000 order events cannot be satisfied by deleting rows. The two viable strategies are crypto-shredding (encrypt PII fields per-subject, drop the key) and PII externalization (store only a customer_id in events, keep PII in a mutable side table that can be cleared).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any event class that has been consumed by more than one system (projection, saga, external subscriber) — version it from day one.</item>
+        <item>Systems processing personal data (names, addresses, payment tokens, health records) — apply PII strategy before publishing the first event.</item>
+        <item>Teams adopting a schema registry (Apicurio, Confluent) — event catalog is the local complement.</item>
+        <item>When adding a new field to a published event class (always backward-compatible with default value) or removing/renaming one (requires upcaster).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal events consumed only by the same aggregate's own projection and never published externally — version overhead may not be warranted, but keep PII strategy regardless.</item>
+        <item>Pre-PMF systems with zero external consumers — establish the pattern early but do not over-engineer the catalog tooling.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="versioning-rules">
+      <rule>
+        <statement>Every published event class MUST have an event_version field (integer, default 1). Any field rename, removal, or semantic change MUST bump event_version and register an upcaster that transforms the old shape to the new shape.</statement>
+        <rationale>Consumers reading historical events will encounter old-version events even after the producer deploys the new shape. Without an upcaster, old events either fail deserialization or produce wrong data. The upcaster is the migration contract.</rationale>
+      </rule>
+      <rule>
+        <statement>A committed .event-catalog.json (or equivalent schema registry export) MUST live in the repository. CI MUST fail when a published event class changes without a corresponding version bump and upcaster.</statement>
+        <rationale>Without a machine-enforceable catalog, breaking changes reach consumers silently. The catalog is the contract; the CI gate is the enforcement. Teams that rely on human review alone consistently miss schema breaks in PR review.</rationale>
+      </rule>
+      <rule>
+        <statement>PII MUST NOT appear in event payloads without a crypto-shredding plan or PII externalization. Either encrypt PII fields per-subject (crypto-shredding: drop the key on erasure request) or store only an opaque ID in the event and keep PII in a mutable GDPR-compliant side table.</statement>
+        <rationale>GDPR Article 17 right-to-erasure requires deletion of personal data on request. An immutable event log cannot delete rows. Crypto-shredding and PII externalization are the two architecturally sound solutions; ignoring this results in regulatory exposure and impossible retrofits.</rationale>
+      </rule>
+    </section>
+
+    <section name="event-catalog-lint">
+      <p>The event catalog lint script blocks breaking changes to published events. Wire it into pre-commit so renames or field drops fail locally before reaching CI.</p>
+      <example type="good" title="event-catalog-lint.py — block breaking changes to published events">
+        <code lang="python"><![CDATA[
+#!/usr/bin/env python3
+"""event-catalog-lint.py — block breaking changes to published events.
+Usage: event-catalog-lint.py <event-catalog.json> <events-package-path>
+event-catalog.json shape:
+  {"OrderPlaced": {"version": 1, "fields": ["order_id","customer_id","total"]}}
+"""
+import ast, json, sys, pathlib
+catalog = json.loads(pathlib.Path(sys.argv[1]).read_text())
+pkg = pathlib.Path(sys.argv[2])
+errs = []
+for src in pkg.rglob("*.py"):
+    tree = ast.parse(src.read_text())
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef): continue
+        if node.name not in catalog: continue
+        recorded = catalog[node.name]
+        # collect declared fields (dataclass attrs)
+        fields = [a.target.id for a in node.body
+                  if isinstance(a, ast.AnnAssign) and isinstance(a.target, ast.Name)]
+        missing = set(recorded["fields"]) - set(fields)
+        renamed = set(fields) - set(recorded["fields"]) - {"event_version"}
+        if missing:
+            errs.append(f"{src}:{node.lineno} {node.name} dropped fields {sorted(missing)} "
+                        f"-- add upcaster, bump event_version")
+        if renamed:
+            errs.append(f"{src}:{node.lineno} {node.name} new fields {sorted(renamed)} "
+                        f"-- bump event_version, add upcaster from v{recorded['version']}")
+if errs:
+    print("\n".join(errs)); sys.exit(1)
+print(f"event-catalog OK ({len(catalog)} events)")
+]]></code>
+        <note>Wire into pre-commit. The catalog file is committed; renames/drops fail CI until the developer acknowledges by bumping version and adding an upcaster.</note>
+      </example>
+
+      <example type="good" title=".event-catalog.json example">
+        <code lang="json"><![CDATA[
+{
+  "OrderCreated": {
+    "version": 1,
+    "fields": ["event_id", "occurred_at", "order_id", "customer_id"]
+  },
+  "OrderPlaced": {
+    "version": 2,
+    "fields": ["event_id", "occurred_at", "order_id", "shipping_address", "total_amount"]
+  },
+  "OrderShipped": {
+    "version": 1,
+    "fields": ["event_id", "occurred_at", "order_id", "tracking_number", "carrier"]
+  }
+}
+]]></code>
+        <note>Committed to the repo. CI blocks any PR that changes a listed event class without bumping its version and registering an upcaster.</note>
+      </example>
+    </section>
+
+    <section name="upcasters">
+      <p>An upcaster is a pure function that transforms an event from version N to version N+1. The event store calls the appropriate upcaster chain when loading historical events so consumers always receive the current shape.</p>
+      <example type="good" title="Upcaster pattern (Python)">
+        <code lang="python"><![CDATA[
+from typing import dict
+
+
+def upcast_order_placed_v1_to_v2(event_data: dict) -> dict:
+    """
+    v1: {order_id, customer_id, shipping_address, total_amount}
+    v2: adds placed_at field (was missing in v1; backfill from occurred_at)
+    """
+    result = dict(event_data)
+    result["placed_at"] = event_data.get("occurred_at")
+    result["event_version"] = 2
+    return result
+
+
+# Registry maps (event_type, version) -> upcaster
+UPCASTERS = {
+    ("OrderPlaced", 1): upcast_order_placed_v1_to_v2,
+}
+
+
+def load_and_upcast(event_type: str, event_version: int, event_data: dict) -> dict:
+    """Apply upcaster chain until we reach the current version."""
+    v = event_version
+    data = dict(event_data)
+    while (event_type, v) in UPCASTERS:
+        data = UPCASTERS[(event_type, v)](data)
+        v = data["event_version"]
+    return data
+]]></code>
+        <note>Upcasters are pure functions — no DB access, no side effects. Chain them: v1→v2→v3 if multiple schema bumps exist.</note>
+      </example>
+    </section>
+
+    <section name="gdpr-strategies">
+      <p>Crypto-shredding: encrypt PII fields in the event payload with a per-subject key stored in a separate erasable key store. On erasure request, delete the subject's encryption key. Historical events remain in the log but their PII fields become unreadable ciphertext.</p>
+      <p>PII externalization: store only an opaque identifier (customer_id, subject_id) in events. Keep all PII (name, address, email, payment tokens) in a mutable relational table that is subject to standard GDPR delete operations. Events reference the subject by ID; the PII table is cleared on erasure request.</p>
+      <p>Both approaches require a decision before publishing the first event containing personal data. Retrofitting either strategy to an existing event log is a major migration. Choose at design time.</p>
+
+      <antipattern>
+        <description>Copying command payload directly into event fields without a PII audit step — e.g. OrderPlaced(shipping_address={"name": "Alice", "email": "alice@example.com", ...}).</description>
+        <reason>Shipping addresses and emails are personal data. Once in the immutable event log without crypto-shredding, they cannot be erased. A future GDPR erasure request becomes technically impossible to satisfy without corrupting the event store.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding a field to a published event class "just to make a query easier" without bumping event_version and registering an upcaster.</description>
+        <reason>Consumers reading historical events receive old-shape events. If they expect the new field, they get AttributeError or None silently. The version bump + upcaster is the contract that allows consumers to upgrade independently.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Deleting or renaming a published event class without a coordinated multi-consumer deprecation and replacement plan.</description>
+        <reason>Consumers depend on the event class name for routing and deserialization. Silent removal breaks all consumers simultaneously. Human review is required — never auto-merge event class deletions.</reason>
+      </antipattern>
+    </section>
+
+    <section name="references-versioning">
+      <p>Key references for event versioning and GDPR in event-sourced systems:</p>
+      <list>
+        <item>Young, G. "CQRS Documents." https://cqrs.files.wordpress.com/2010/11/cqrs_documents.pdf</item>
+        <item>Vernon, V. "Implementing Domain-Driven Design," ch. 8 (Domain Events).</item>
+        <item>Helland, P. "Immutability Changes Everything." https://queue.acm.org/detail.cfm?id=2884038</item>
+        <item>Axon — Event Versioning. https://docs.axoniq.io/reference-guide/axon-framework/events/event-versioning</item>
+        <item>Apicurio / Confluent Schema Registry — schema versioning and compatibility checks.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <link href="https://docs.axoniq.io/reference-guide/axon-framework/events/event-versioning"/>
+      <link href="https://queue.acm.org/detail.cfm?id=2884038"/>
+    </see-also>
+  </content>
+</methodology>
