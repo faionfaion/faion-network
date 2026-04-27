@@ -34,6 +34,7 @@
 - decompose: kubernetes-deployment → 5 slugs (k8s-deployment-workloads, k8s-rolling-update, k8s-canary-progressive, k8s-scaling-availability, k8s-security-hardening)
 - decompose: k8s-resources → 3 slugs (k8s-resource-requests-limits, k8s-limitrange, k8s-resource-quota)
 - decompose: architectural-patterns → 4 slugs (arch-pattern-clean, arch-pattern-hexagonal, arch-pattern-onion, arch-pattern-ddd)
+- decompose: puppeteer-automation → 6 slugs (puppeteer-launch-setup, puppeteer-page-interaction, puppeteer-output-capture, puppeteer-session-management, puppeteer-stealth-proxy, puppeteer-agent-workflow)
 - decompose: trade-off-analysis → 6 slugs (trade-off-decision-methods, trade-off-decision-matrix, trade-off-quality-attributes, trade-off-build-vs-buy, trade-off-technical-debt, trade-off-stakeholder-communication)
 - decompose: caching-strategy → 5 slugs (caching-write-patterns, caching-invalidation, caching-stampede-prevention, caching-http-headers, caching-in-memory)
 - decompose: autonomous-agents → 5 slugs (agents-react-pattern, agents-memory-system, agents-safety-guardrails, agents-framework-selection, agents-production-deployment)
