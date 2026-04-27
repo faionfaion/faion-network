@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="serverless-iac-and-templates">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>IaC framework selection for serverless (AWS SAM vs Serverless Framework vs SST vs CDK), copy-paste templates for REST APIs, SQS processing, Step Functions, and Lambda handler patterns with Powertools.</summary>
+    <tags>
+      <tag>serverless</tag>
+      <tag>iac</tag>
+      <tag>sam</tag>
+      <tag>cdk</tag>
+      <tag>lambda</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-architecture-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Serverless IaC Frameworks and Templates</title>
+
+    <summary>Framework selection guide (SAM for AWS-native simplicity, Serverless Framework for multi-cloud plugins, SST for TypeScript full-stack DX, CDK for complex type-safe infra) plus production-ready templates for REST APIs, SQS event processing, Step Functions workflows, scheduled jobs, and Lambda handlers (Python Powertools and TypeScript).</summary>
+
+    <why>
+      <p>Choosing the right IaC framework locks in the developer experience, CI/CD integration story, and multi-cloud portability for the project lifetime. Starting from production-ready templates rather than bare-minimum examples avoids common misconfigurations: missing DLQs, ARM/x86 default, no PITR on DynamoDB, missing ReportBatchItemFailures on SQS consumers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new serverless project and selecting an IaC framework.</item>
+        <item>Scaffolding a Lambda REST API, SQS processor, Step Functions workflow, or scheduled job.</item>
+        <item>Generating production-ready Lambda handler code with structured logging, tracing, and idempotency.</item>
+        <item>Setting up IAM least-privilege policies for DynamoDB, S3, EventBridge, or Secrets Manager access.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Existing projects with established IaC — switching frameworks mid-project requires full resource migration.</item>
+        <item>Non-AWS serverless targets (Cloudflare Workers, Vercel) — use Wrangler or Vercel CLI instead of SAM/CDK.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="framework-selection">
+      <p>Framework selection decision tree:</p>
+      <list>
+        <item>Need multi-cloud? → Serverless Framework or Pulumi.</item>
+        <item>AWS-only, simple project? → AWS SAM (low learning curve, YAML, native transforms).</item>
+        <item>AWS-only, complex infra with type safety? → AWS CDK (TS/Python/Java, constructs, CDK Nag).</item>
+        <item>Full-stack TypeScript with live Lambda development? → SST (best DX for TS monorepos).</item>
+        <item>Need plugin ecosystem (offline, prune, esbuild)? → Serverless Framework.</item>
+        <item>Infrastructure team managing multiple providers? → Terraform or Pulumi.</item>
+      </list>
+
+      <p>Comparison matrix:</p>
+      <list>
+        <item>AWS SAM: High simplicity, AWS-native, no multi-cloud, no type safety, good local dev (sam local invoke).</item>
+        <item>Serverless Framework: Medium simplicity, plugin ecosystem (200+), multi-cloud via plugins, no type safety, good local dev (serverless offline).</item>
+        <item>SST: Medium simplicity, AWS-only, TypeScript type safety, excellent live Lambda dev (sst dev).</item>
+        <item>AWS CDK: Low-Medium simplicity, AWS-only, full type safety (TS/Python/Java/Go), manual local dev setup.</item>
+      </list>
+    </section>
+
+    <section name="sam-rest-api-template">
+      <p>AWS SAM — Basic REST API with Lambda and DynamoDB (production-ready):</p>
+      <example type="good" title="SAM REST API template">
+        <code lang="yaml"><![CDATA[
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Basic REST API with Lambda and DynamoDB
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Architectures:
+      - arm64
+    Timeout: 30
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref DataTable
+        LOG_LEVEL: INFO
+
+Resources:
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: prod
+      CorsConfiguration:
+        AllowOrigins:
+          - "https://example.com"
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  GetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/items.get_item
+      Description: Get item by ID
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref DataTable
+      Events:
+        GetItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /items/{id}
+            Method: GET
+
+  CreateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/items.create_item
+      Description: Create new item
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref DataTable
+      Events:
+        CreateItem:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /items
+            Method: POST
+
+  DataTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-items
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  TableName:
+    Value: !Ref DataTable
+]]></code>
+      </example>
+    </section>
+
+    <section name="sam-sqs-template">
+      <p>AWS SAM — Event-Driven Processing with SQS and Dead Letter Queue:</p>
+      <example type="good" title="SAM SQS processing template">
+        <code lang="yaml"><![CDATA[
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Event-driven processing with SQS and DLQ
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures:
+      - arm64
+    Timeout: 30
+    MemorySize: 512
+
+Resources:
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-processing
+      VisibilityTimeout: 180  # 6x Lambda timeout
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DeadLetterQueue.Arn
+        maxReceiveCount: 3
+
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${AWS::StackName}-dlq
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  ProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/processor.handler
+      ReservedConcurrentExecutions: 10
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ProcessingQueue.QueueName
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ProcessingQueue.Arn
+            BatchSize: 10
+            MaximumBatchingWindowInSeconds: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+]]></code>
+        <note>VisibilityTimeout must be at least 6x the Lambda timeout to prevent duplicate processing while a function is running.</note>
+      </example>
+    </section>
+
+    <section name="sam-step-functions-template">
+      <p>AWS SAM — Step Functions Workflow with retry and error handling:</p>
+      <example type="good" title="SAM Step Functions template">
+        <code lang="yaml"><![CDATA[
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Step Functions workflow with Lambda
+
+Resources:
+  ValidateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/steps/validate.handler
+      Runtime: python3.11
+      Timeout: 30
+
+  ProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/steps/process.handler
+      Runtime: python3.11
+      Timeout: 300
+
+  NotifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/steps/notify.handler
+      Runtime: python3.11
+      Timeout: 30
+
+  ProcessingStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      DefinitionUri: statemachine/processing.asl.json
+      DefinitionSubstitutions:
+        ValidateFunctionArn: !GetAtt ValidateFunction.Arn
+        ProcessFunctionArn: !GetAtt ProcessFunction.Arn
+        NotifyFunctionArn: !GetAtt NotifyFunction.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ValidateFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref ProcessFunction
+        - LambdaInvokePolicy:
+            FunctionName: !Ref NotifyFunction
+]]></code>
+      </example>
+    </section>
+
+    <section name="sam-scheduled-template">
+      <p>AWS SAM — Scheduled Job with EventBridge Scheduler:</p>
+      <example type="good" title="SAM scheduled job template">
+        <code lang="yaml"><![CDATA[
+# template.yaml
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ScheduledFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/scheduled.handler
+      Runtime: python3.11
+      Architectures:
+        - arm64
+      Timeout: 900  # 15 minutes
+      MemorySize: 512
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DataTable
+      Events:
+        HourlySchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: rate(1 hour)
+            ScheduleExpressionTimezone: UTC
+            RetryPolicy:
+              MaximumRetryAttempts: 2
+              MaximumEventAgeInSeconds: 3600
+]]></code>
+      </example>
+    </section>
+
+    <section name="python-powertools-handler">
+      <p>Python Lambda handler with Powertools (structured logging, tracing, metrics, idempotency):</p>
+      <example type="good" title="Python Powertools handler">
+        <code lang="python"><![CDATA[
+# src/handlers/items.py
+import json
+import os
+from aws_lambda_powertools import Logger, Tracer, Metrics
+from aws_lambda_powertools.event_handler import APIGatewayHttpResolver
+from aws_lambda_powertools.logging import correlation_paths
+from aws_lambda_powertools.utilities.typing import LambdaContext
+from aws_lambda_powertools.utilities.idempotency import (
+    idempotent,
+    DynamoDBPersistenceLayer,
+    IdempotencyConfig,
+)
+import boto3
+
+logger = Logger()
+tracer = Tracer()
+metrics = Metrics()
+app = APIGatewayHttpResolver()
+
+# Initialize outside handler (warm invocation reuse)
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table(os.environ['TABLE_NAME'])
+persistence_layer = DynamoDBPersistenceLayer(table_name=os.environ.get('IDEMPOTENCY_TABLE', 'IdempotencyTable'))
+idempotency_config = IdempotencyConfig(expires_after_seconds=3600)
+
+
+@app.get("/items/<item_id>")
+@tracer.capture_method
+def get_item(item_id: str):
+    logger.info("Getting item", item_id=item_id)
+    response = table.get_item(Key={'PK': 'ITEM', 'SK': item_id})
+    if 'Item' not in response:
+        return {"error": "Item not found"}, 404
+    metrics.add_metric(name="ItemsRetrieved", unit="Count", value=1)
+    return response['Item']
+
+
+@app.post("/items")
+@tracer.capture_method
+@idempotent(config=idempotency_config, persistence_store=persistence_layer)
+def create_item():
+    body = app.current_event.json_body
+    item = {'PK': 'ITEM', 'SK': body['id'], 'name': body['name']}
+    table.put_item(Item=item)
+    logger.info("Item created", item_id=body['id'])
+    metrics.add_metric(name="ItemsCreated", unit="Count", value=1)
+    return {"message": "Created", "item": item}, 201
+
+
+@logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_HTTP)
+@tracer.capture_lambda_handler
+@metrics.log_metrics(capture_cold_start_metric=True)
+def handler(event: dict, context: LambdaContext) -> dict:
+    return app.resolve(event, context)
+]]></code>
+      </example>
+    </section>
+
+    <section name="iam-templates">
+      <p>Least-privilege IAM policy templates:</p>
+      <example type="good" title="DynamoDB least-privilege read/write policy">
+        <code lang="yaml"><![CDATA[
+# Read access
+Statement:
+  - Effect: Allow
+    Action:
+      - dynamodb:GetItem
+      - dynamodb:Query
+    Resource:
+      - !GetAtt DataTable.Arn
+      - !Sub "${DataTable.Arn}/index/*"
+
+# Write access
+  - Effect: Allow
+    Action:
+      - dynamodb:PutItem
+      - dynamodb:UpdateItem
+      - dynamodb:DeleteItem
+    Resource:
+      - !GetAtt DataTable.Arn
+]]></code>
+      </example>
+
+      <example type="bad" title="Overly permissive IAM policy">
+        <code lang="yaml"><![CDATA[
+# BAD: Wildcard resource and action
+Statement:
+  - Effect: Allow
+    Action: dynamodb:*
+    Resource: "*"
+]]></code>
+        <note>Never use wildcard Resource or Action in Lambda IAM policies. Agents frequently generate this pattern — explicitly reject any diff containing * in Resource.</note>
+      </example>
+    </section>
+
+    <section name="project-structure">
+      <p>Recommended serverless project directory structure:</p>
+      <example type="good" title="Project structure">
+        <code lang="text"><![CDATA[
+project/
+├── src/
+│   ├── functions/
+│   │   ├── api/         # HTTP-triggered handlers
+│   │   ├── events/      # SQS/EventBridge/Kinesis handlers
+│   │   └── scheduled/   # EventBridge Scheduler handlers
+│   ├── lib/             # Shared business logic
+│   └── layers/          # Lambda layer code
+├── tests/
+│   ├── unit/
+│   └── integration/
+├── statemachine/        # ASL JSON for Step Functions
+├── template.yaml        # AWS SAM
+├── serverless.yml       # Serverless Framework alternative
+└── sst.config.ts        # SST alternative
+]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <p>Essential CLI tools for serverless development:</p>
+      <list>
+        <item>aws sam (SAM CLI): local invoke, build, deploy, sync for AWS-native serverless. Docs: https://docs.aws.amazon.com/serverless-application-model/</item>
+        <item>serverless (v4): multi-cloud framework with plugin ecosystem. Install: npm i -g serverless.</item>
+        <item>sst: TypeScript-first IaC with live Lambda dev. Install: npm i -g sst.</item>
+        <item>cdk: AWS CDK for TS/Python/Go/Java. Install: npm i -g aws-cdk.</item>
+        <item>wrangler: Cloudflare Workers deploy and tail. Install: npm i -g wrangler.</item>
+        <item>aws-lambda-power-tuning: Step-Functions-driven memory/cost optimizer. GitHub: alexcasalboni/aws-lambda-power-tuning.</item>
+        <item>cfn-lint: CFN/SAM template static analysis. Install: pip install cfn-lint.</item>
+        <item>cdk-nag: CDK rule pack flagging IAM and serverless misconfigurations. GitHub: cdklabs/cdk-nag.</item>
+      </list>
+    </section>
+
+    <section name="agent-prompts">
+      <prompt purpose="lambda-function-design"><![CDATA[
+Create a Lambda function for:
+
+Purpose: [description]
+Trigger: [API Gateway/SQS/S3/EventBridge/etc.]
+Runtime: [Python/Node.js/Go/etc.]
+Input: [expected event structure]
+Output: [expected response]
+
+Requirements:
+- Idempotency: [yes/no]
+- Retry behavior: [describe]
+- External dependencies: [APIs, databases]
+- Performance target: [X ms p95]
+
+Please provide:
+1. Complete handler code with best practices
+2. Error handling strategy
+3. Logging and tracing setup (Powertools)
+4. Unit test examples
+5. IAM policy (least privilege)
+6. SAM/CDK template snippet
+]]></prompt>
+
+      <prompt purpose="api-gateway-configuration"><![CDATA[
+Configure API Gateway for:
+
+Endpoints:
+- [METHOD /path - description]
+- [METHOD /path - description]
+
+Requirements:
+- Authentication: [Cognito/Lambda authorizer/API key]
+- Rate limiting: [requests/second per client]
+- Caching: [yes/no, TTL]
+- CORS: [allowed origins]
+- Request validation: [yes/no]
+
+Please provide:
+1. API Gateway configuration (OpenAPI or SAM)
+2. Lambda authorizer code (if needed)
+3. Request/response mapping
+4. Throttling and quota settings
+5. Custom domain setup
+]]></prompt>
+
+      <prompt purpose="generate-sam-template"><![CDATA[
+Generate AWS SAM template for:
+- [X] Lambda functions with [runtime]
+- API Gateway with [routes]
+- DynamoDB table for [entities]
+- Include proper IAM, logging, tracing, ARM/Graviton, and DLQ
+]]></prompt>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common agent mistakes when generating IaC and handler code:</p>
+      <list>
+        <item>LLMs default to arn:aws:s3:::* and dynamodb:* — explicitly demand Resource: lists in the prompt and reject diffs that contain * in Resource.</item>
+        <item>Generated Layers: ARNs are often wrong (region/version drift). Always parameterize via SSM Public Parameters or fetch latest ADOT layer in CI.</item>
+        <item>Step Functions ASL generated by LLMs frequently misuses ResultPath/OutputPath and mismatches States.TaskFailed retriers — human review of any Catch + compensating logic is mandatory.</item>
+        <item>For Cloudflare Workers, agents often miss the 50 subrequest / 30s CPU limits and produce code that works locally but throws Worker exceeded CPU time in production.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Set Architectures: [arm64] globally in SAM Globals.Function or CDK lambdaConfig.</check>
+      <check>Enable Tracing: Active on all functions for X-Ray distributed tracing.</check>
+      <check>Enable PointInTimeRecovery on all DynamoDB tables.</check>
+      <check>Set DynamoDB BillingMode to PAY_PER_REQUEST unless workload is predictable enough for provisioned.</check>
+      <check>Configure DLQ on all SQS queues with maxReceiveCount=3 and MessageRetentionPeriod=1209600 (14 days).</check>
+      <check>Set VisibilityTimeout on SQS queue to at least 6x the Lambda timeout.</check>
+      <check>Use SAM policy templates (DynamoDBReadPolicy, DynamoDBWritePolicy, SQSPollerPolicy) over hand-written IAM where available.</check>
+      <check>Add ReportBatchItemFailures to SQS event source for partial batch success support.</check>
+      <check>Run cfn-lint and cdk-nag on templates before commit — catch IAM wildcards and misconfigurations automatically.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://aws.amazon.com/serverless/sam/"/>
+      <link href="https://www.serverless.com/"/>
+      <link href="https://sst.dev/"/>
+      <link href="https://aws.amazon.com/cdk/"/>
+      <link href="https://docs.powertools.aws.dev/lambda/"/>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-architecture-patterns"/>
+    </see-also>
+  </content>
+</methodology>
