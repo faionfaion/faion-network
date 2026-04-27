@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gha-workflow-structure">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions workflow anatomy: trigger types, concurrency groups, job dependencies (needs: DAG), environment protection, scheduled workflows, and repository setup checklist for branch protection.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>workflow</tag>
+      <tag>ci</tag>
+      <tag>concurrency</tag>
+      <tag>triggers</tag>
+    </tags>
+    <category>ci</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>github-actions</tool>
+    </tools>
+    <related>
+      <ref slug="gha-matrix-builds"/>
+      <ref slug="gha-caching-artifacts"/>
+      <ref slug="gha-deployment-patterns"/>
+      <ref slug="gha-security-hardening"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitHub Actions Workflow Structure</title>
+
+    <summary>Model every workflow as a DAG of jobs using needs: before writing YAML. Assign concurrency groups per trigger context (PR builds cancel on new push; deployment jobs do not). Use environment: for all deploy targets so secrets are scoped and approvals are trackable. Run scheduled workflows at low-traffic UTC times and always add workflow_dispatch as a manual escape hatch.</summary>
+
+    <why>
+      <p>The most common structural mistake agents make is writing five sequential jobs that could be parallel — missing needs: relationships — or the inverse, wiring needs: dependencies that create unnecessary serialisation. Modelling the job DAG first (job, needs[], trigger, runs-on, permissions, timeout) prevents both mistakes. GitHub renders the dependency graph in the Actions UI and uses it for status-check routing.</p>
+      <p>Concurrency groups prevent two common failure modes: (1) redundant CI builds on rapid push accumulate runners and queue depth, slowing every contributor; (2) a new push to main cancels an in-flight production deployment because the group was set globally. The fix is one group per (workflow, ref) for PR builds and one group per (workflow, environment) for deploys.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Structuring a new workflow from scratch — model the DAG before writing YAML.</item>
+        <item>Diagnosing slow CI — look for unnecessary sequential jobs and missing cache/artifact handoffs.</item>
+        <item>Adding a new environment (staging, production, preview) — wire up GitHub Environment for scoped secrets and approvals.</item>
+        <item>Setting up scheduled maintenance (security scans, dependency updates, DB backups) — use schedule + workflow_dispatch.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-step workflows — a one-job workflow needs no DAG analysis.</item>
+        <item>Local-only prototyping without a GitHub remote — use act for local testing instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Design the job dependency graph (needs: relationships) as a DAG BEFORE writing YAML. Jobs without needs: run in parallel; jobs with needs: run after their dependencies. Never serialize jobs that can run in parallel.</statement>
+        <rationale>Sequential jobs on GHA-hosted runners waste wall-clock time and runner-minutes. A lint + test + build chain that could be lint → (test || build) in parallel cuts CI time by 30-50%.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Concurrency groups for PR/push CI workflows MUST use group: ${{ github.workflow }}-${{ github.ref }} with cancel-in-progress: true. Concurrency groups for deployment workflows MUST use group: deploy-${{ inputs.environment }} with cancel-in-progress: false.</statement>
+        <rationale>A shared global concurrency group cancels production deploys when a new commit to a feature branch triggers a CI run with the same group name. Per-ref grouping for CI and per-environment grouping for deploys prevents cross-contamination.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every scheduled workflow MUST also have a workflow_dispatch trigger so operators can run it manually outside the cron schedule during incidents.</statement>
+        <rationale>A scheduled backup or security scan that only runs at 02:00 UTC cannot be manually triggered after an incident that happened at 14:00. workflow_dispatch is a zero-cost safety valve.</rationale>
+      </rule>
+    </rules>
+
+    <section name="workflow-types">
+      <p>GHA supports six workflow trigger types, each suited to different pipeline stages.</p>
+      <list>
+        <item>CI — triggers: push + pull_request. Purpose: build, lint, test. Cancel redundant runs with concurrency.</item>
+        <item>CD — trigger: push to main. Purpose: deploy to environments. Requires environment protection gates.</item>
+        <item>Release — trigger: push tags (v*). Purpose: publish packages, create GitHub Release, build multi-arch Docker image.</item>
+        <item>Scheduled — trigger: schedule (cron) + workflow_dispatch. Purpose: security scans, dependency updates, DB backups, artifact cleanup.</item>
+        <item>Reusable — trigger: workflow_call. Purpose: shared deploy/build logic called from multiple repos. See gha-deployment-patterns.</item>
+        <item>Manual — trigger: workflow_dispatch. Purpose: on-demand deployments, incident response, one-off tasks.</item>
+      </list>
+    </section>
+
+    <section name="concurrency">
+      <example type="good" title="CI concurrency — cancel redundant PR builds">
+        <code lang="yaml"><![CDATA[
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+]]></code>
+        <note>When a new commit is pushed to a PR, the previous CI run is cancelled. Each PR and branch has its own group.</note>
+      </example>
+
+      <example type="good" title="Deploy concurrency — never cancel in-flight deploys">
+        <code lang="yaml"><![CDATA[
+concurrency:
+  group: deploy-${{ inputs.environment || 'staging' }}
+  cancel-in-progress: false
+]]></code>
+        <note>A new commit queues behind the in-flight deploy instead of killing it. Use per-environment group so staging and prod are independent.</note>
+      </example>
+
+      <example type="bad" title="Global concurrency group cancels prod deploys">
+        <code lang="yaml"><![CDATA[
+# ALL workflows — including prod deploy — share one group
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+]]></code>
+        <note>A feature branch CI run cancels an active production deployment. Both workflows share the same name-derived group.</note>
+      </example>
+    </section>
+
+    <section name="complete-ci-workflow">
+      <p>A full CI workflow for Node.js: lint → (test matrix + build) in parallel → upload artifact.</p>
+      <example type="good" title="CI pipeline with parallel test and build">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  checks: write
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+        exclude:
+          - os: windows-latest
+            node: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ matrix.node }}', cache: 'npm' }
+      - run: npm ci
+      - run: npm test -- --coverage
+      - if: matrix.os == 'ubuntu-latest' && matrix.node == '20'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci && npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: dist/
+          retention-days: 7
+]]></code>
+      </example>
+    </section>
+
+    <section name="scheduled-workflow">
+      <example type="good" title="Scheduled maintenance with workflow_dispatch escape hatch">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/scheduled.yml
+name: Scheduled Tasks
+on:
+  schedule:
+    - cron: '0 2 * * *'   # Daily at 02:00 UTC (low traffic)
+  workflow_dispatch:        # Manual trigger for incidents
+jobs:
+  cleanup:
+    name: Cleanup Old Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: c-hive/gha-remove-artifacts@v1
+        with: { age: '30 days', skip-recent: 5 }
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      - uses: github/codeql-action/upload-sarif@v3
+        with: { sarif_file: 'trivy-results.sarif' }
+
+  dependency-update:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm outdated || true
+      - run: npm audit --audit-level=high
+]]></code>
+      </example>
+    </section>
+
+    <section name="monorepo-path-filters">
+      <p>Monorepos benefit from path-filtered CI so only changed packages are built and tested.</p>
+      <example type="good" title="Monorepo CI with dorny/paths-filter">
+        <code lang="yaml"><![CDATA[
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'packages/frontend/**'
+              - 'packages/shared/**'
+            backend:
+              - 'packages/backend/**'
+              - 'packages/shared/**'
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci && npm run build --workspace=packages/frontend
+      - run: npm test --workspace=packages/frontend
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: cd packages/backend && pip install -r requirements.txt && pytest
+]]></code>
+      </example>
+    </section>
+
+    <section name="repository-setup">
+      <p>Before the first workflow runs, configure the repository correctly in GitHub Settings.</p>
+      <list>
+        <item>Create .github/workflows/ directory in the repo root.</item>
+        <item>Enable branch protection on main: require status checks (CI), require PR reviews, require branches to be up to date.</item>
+        <item>Create Environments (staging, production) under Settings → Environments with required reviewers and environment secrets.</item>
+        <item>Add all required secrets under Settings → Secrets and Variables → Actions.</item>
+        <item>Set Actions permissions under Settings → Actions to restrict which actions are allowed (preferably: allow only from the same org + verified Marketplace creators).</item>
+      </list>
+    </section>
+
+    <section name="action-versions">
+      <p>Canonical action versions as of 2026. Always pin to SHA — these version numbers are for reference only.</p>
+      <list>
+        <item>actions/checkout v4 — standard checkout.</item>
+        <item>actions/setup-node v4 — Node.js setup with built-in cache.</item>
+        <item>actions/setup-python v5 — Python setup.</item>
+        <item>actions/cache v4 — new cache service (rewritten Feb 2025).</item>
+        <item>docker/build-push-action v6 — multi-platform builds.</item>
+        <item>docker/setup-buildx-action v3 — Buildx setup.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Job DAG modelled before writing YAML — no unnecessary sequential jobs.</check>
+      <check>CI concurrency uses per-ref group with cancel-in-progress: true.</check>
+      <check>Deploy concurrency uses per-environment group with cancel-in-progress: false.</check>
+      <check>Every deploy job uses environment: name with a GitHub Environment configured.</check>
+      <check>Scheduled workflow includes workflow_dispatch trigger.</check>
+      <check>Scheduled cron runs at low-traffic UTC hour.</check>
+      <check>Branch protection rules configured: required CI checks, required reviews.</check>
+      <check>fetch-depth: 1 used on checkout unless full history is needed (e.g., changelog generation).</check>
+      <check>Monorepo workflows use path filtering to avoid rebuilding unchanged packages.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.github.com/en/actions"/>
+      <link href="https://docs.github.com/en/actions/using-workflows/about-workflows"/>
+      <link href="https://graphite.dev/guides/in-depth-guide-ci-cd-best-practices"/>
+      <ref slug="gha-matrix-builds"/>
+      <ref slug="gha-caching-artifacts"/>
+      <ref slug="gha-deployment-patterns"/>
+      <ref slug="gha-security-hardening"/>
+    </see-also>
+  </content>
+</methodology>
