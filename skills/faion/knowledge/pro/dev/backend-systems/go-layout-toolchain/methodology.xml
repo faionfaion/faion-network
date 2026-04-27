@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-layout-toolchain">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Go standard layout toolchain: CLI tools, linters, DB access generators, live-reload, migration runners, CI services, and testing infrastructure paired with the standard directory structure.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>toolchain</tag>
+      <tag>golangci-lint</tag>
+      <tag>testcontainers</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+    </languages>
+    <related>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-agentic-workflow"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Go Standard Layout — Toolchain Reference</title>
+
+    <summary>The Go standard layout is toolchain-agnostic, but each slot in the layout (cmd/, internal/handler, internal/repository, migrations/) maps to a preferred set of tools. This reference pairs tools to layout slots so agents select the right binary for the job rather than inventing combinations.</summary>
+
+    <why>
+      <p>Agents working on Go projects frequently mix incompatible tool choices: using GORM in a repo layer that was designed for sqlc, adding a zerolog init() alongside a pre-existing slog setup, or wiring cobra and urfave/cli in the same cmd/. A layout-aware toolchain reference prevents these collisions by mapping each tool to its layout slot and flagging common combination mistakes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new Go service and selecting tools for each layout layer.</item>
+        <item>Onboarding an agent to an existing Go service to prevent it from introducing incompatible tools.</item>
+        <item>Code review where the agent must verify that tools are used in the correct layer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Projects with a locked-in toolchain documented in go-stack.md — use the project-specific record instead.</item>
+        <item>Non-Go projects — toolchain selections are Go-specific.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cli-tools">
+      <p>Core CLI tools paired to their layout slot:</p>
+      <list>
+        <item>go — build, test, fmt, vet, mod. https://go.dev</item>
+        <item>golangci-lint — aggregator linter (errcheck, govet, staticcheck, revive, depguard). Commit .golangci.yml; run in CI on every PR. https://golangci-lint.run</item>
+        <item>depguard (golangci) — forbid imports across package boundaries. Key for enforcing handler/service/repository dependency direction. https://github.com/OpenPeeDeeP/depguard</item>
+        <item>gosec — security linter (hardcoded creds, weak crypto). Run in CI; alerts land in SARIF. https://github.com/securego/gosec</item>
+        <item>goimports / gofumpt — import ordering and stricter formatting (replaces gofmt). https://github.com/mvdan/gofumpt</item>
+        <item>gomod-outdated / go-mod-upgrade — track stale dependencies. https://github.com/psampaz/go-mod-outdated</item>
+        <item>mockgen (uber-go/mock) — generate mocks against interfaces. Pair with consumer-side interface placement. https://github.com/uber-go/mock</item>
+        <item>sqlc / gorm gen / ent — generate typed DB access from SQL schema. sqlc for strict SQL control; gorm gen or ent for ORM-first. https://sqlc.dev</item>
+        <item>air / wgo — live-reload during dev (inner loop). https://github.com/cosmtrek/air</item>
+        <item>delve (dlv) — debugger. https://github.com/go-delve/delve</item>
+        <item>pprof — CPU, alloc, goroutine, mutex profiling. Bundled with Go.</item>
+        <item>goreleaser — cross-compile and release artifacts from cmd/. https://goreleaser.com</item>
+        <item>cobra / urfave/cli — CLI scaffolding for cmd/* binaries. Pick one per repo. https://cobra.dev</item>
+        <item>koanf / viper — config loading from file/env/flag for internal/config. https://github.com/knadh/koanf</item>
+        <item>migrate / goose / atlas — schema migration runners driven by cmd/migrate. https://github.com/golang-migrate/migrate</item>
+      </list>
+    </section>
+
+    <section name="ci-services">
+      <p>CI and observability services that are agent-friendly for Go standard layout projects:</p>
+      <list>
+        <item>GitHub Actions with setup-go — standard CI for go test ./... and golangci-lint run. SaaS, agent-friendly.</item>
+        <item>SonarCloud / DeepSource / Codacy — architecture rules and smell detection per PR. SaaS, agent-friendly.</item>
+        <item>Renovate / Dependabot — auto-PR Go module bumps; agents triage. SaaS, agent-friendly.</item>
+        <item>Sentry / Honeycomb / Datadog APM — native Go SDKs; instrument internal/middleware. SaaS, agent-friendly.</item>
+        <item>OpenTelemetry Go SDK — one init in cmd/api/main.go, instrumentation across internal/*. OSS, agent-friendly.</item>
+        <item>Air / Tilt / Skaffold — inner dev loop with hot reload. OSS, agent-friendly.</item>
+        <item>testcontainers-go — real Postgres/Redis in tests; first-class for repository implementations. OSS, agent-friendly.</item>
+      </list>
+    </section>
+
+    <section name="agent-selection-model">
+      <p>Agent model selection by task type within Go standard layout work:</p>
+      <list>
+        <item>Database schema design and normalization — Opus. Requires architectural decisions and complex trade-offs.</item>
+        <item>Implement Go concurrency patterns — Sonnet. Coding with existing patterns, medium complexity.</item>
+        <item>Write database migration scripts — Haiku. Mechanical task using templates.</item>
+        <item>Review error handling implementation — Sonnet. Code review and refactoring.</item>
+        <item>Profile and optimize slow queries — Opus. Novel optimization problem, deep analysis.</item>
+        <item>Setup Redis caching layer — Sonnet. Medium complexity implementation task.</item>
+      </list>
+    </section>
+
+    <section name="tool-combination-rules">
+      <rules>
+        <rule>
+          <statement>Pick exactly one CLI framework per repo for cmd/* binaries (cobra OR urfave/cli). Do not mix them across cmd/ subdirectories.</statement>
+          <rationale>Mixed CLI frameworks in the same module produce inconsistent UX and make it impossible to share flag definitions or version output between binaries.</rationale>
+        </rule>
+        <rule>
+          <statement>Pick exactly one config library per repo (koanf OR viper). Initialize it once in internal/config and pass the config struct to constructors; do not call the config library from internal/service or internal/handler.</statement>
+          <rationale>Config libraries that are called from service or handler code create hidden coupling to environment variables that is invisible in unit tests.</rationale>
+        </rule>
+        <rule>
+          <statement>Pick exactly one migration tool per repo (migrate, goose, or atlas). Wire it to a dedicated cmd/migrate binary. Do not run migrations as a side effect of cmd/api startup.</statement>
+          <rationale>Running migrations at API startup couples the API service to schema change authority; this causes race conditions in horizontal scaling and prevents independent migration dry-runs.</rationale>
+        </rule>
+        <rule>
+          <statement>testcontainers-go MUST be used for repository-layer integration tests. Do not mock the database in repository tests — test against the real engine.</statement>
+          <rationale>In-memory fakes miss SQL dialect differences, constraint violations, and transaction semantics that only appear against the real engine. testcontainers-go starts the DB in Docker with no external setup.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="quick-reference-prompts">
+      <p>Prompt templates for common Go layout toolchain tasks:</p>
+      <prompt purpose="generate-implementation">
+<![CDATA[
+Generate go standard layout implementation for [language].
+
+Requirements:
+- Focus: Project layout conventions, best practices
+- Features:
+  - [Feature 1]
+  - [Feature 2]
+  - [Feature 3]
+- Error handling: [strategy]
+- Testing: [unit/integration]
+
+Include:
+1. Core implementation
+2. Error handling
+3. Logging
+4. Tests
+5. Documentation
+6. Usage examples
+]]>
+      </prompt>
+
+      <prompt purpose="best-practices-review">
+<![CDATA[
+Review my go standard layout implementation for best practices.
+
+Code:
+[paste implementation]
+
+Review for:
+1. Code quality
+2. Error handling
+3. Security issues
+4. Performance concerns
+5. Testing gaps
+6. Documentation completeness
+
+Provide specific recommendations with improved code.
+]]>
+      </prompt>
+
+      <prompt purpose="debug-issue">
+<![CDATA[
+Debug go standard layout issue:
+Error: [message]
+Code: [paste]
+Context: [details]
+
+Diagnose and provide fix.
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <link href="https://go.dev"/>
+      <link href="https://golangci-lint.run"/>
+      <link href="https://sqlc.dev"/>
+      <link href="https://goreleaser.com"/>
+      <link href="https://cobra.dev"/>
+      <link href="https://github.com/golang-migrate/migrate"/>
+      <link href="https://github.com/knadh/koanf"/>
+      <link href="https://github.com/cosmtrek/air"/>
+      <link href="https://github.com/go-delve/delve"/>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-agentic-workflow"/>
+    </see-also>
+  </content>
+</methodology>
