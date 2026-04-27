@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-accessibility">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Generate accurate alt text (125-char limit) and extended scene descriptions for images using VLMs, enabling WCAG-compliant accessibility for screen reader users at scale.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>accessibility</tag>
+      <tag>alt-text</tag>
+      <tag>wcag</tag>
+      <tag>vlm</tag>
+    </tags>
+    <category>vision</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Vision Accessibility: Alt Text and Scene Description</title>
+
+    <summary>VLMs generate WCAG-compliant alt text and extended scene descriptions for images at scale. The alt text must be concise (≤125 characters, no "image of" prefix), context-aware, and verbatim for embedded text. Extended descriptions cover spatial relationships, colors, mood, and key data points for charts. Keep alt-text generation in a separate subagent from data extraction to keep prompts focused.</summary>
+
+    <why>
+      <p>WCAG 2.1 requires alternative text for all non-decorative images. Manual alt text authoring does not scale beyond a few hundred images. VLMs can generate context-appropriate descriptions that match the surrounding page purpose — "bar chart showing Q4 revenue up 23% year-over-year" rather than "a bar chart". This is not achievable with traditional CV models that produce only category labels.</p>
+      <p>Separate alt text from data extraction in your pipeline — a focused accessibility prompt outperforms a combined prompt that also tries to extract structured data. The alt-text agent should receive optional context (page section, surrounding heading) to produce descriptions anchored to page purpose.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Accessibility tooling: auto-generating alt text and image descriptions at scale for CMS or e-commerce platforms.</item>
+        <item>Publishing pipelines where images arrive without alt text and must be WCAG-compliant before publication.</item>
+        <item>Retroactively making large image libraries accessible without manual review of every image.</item>
+        <item>Screen reader support for dynamically generated charts, graphs, and data visualisations.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Decorative images (spacers, backgrounds, borders) — set alt="" explicitly; do not generate descriptions that add noise for screen readers.</item>
+        <item>Images requiring medical/legal accuracy in descriptions — VLM descriptions may hallucinate or mischaracterise details; human review required.</item>
+        <item>Real-time descriptions during live video — VLM API latency (500 ms–2 s) makes synchronous video description impractical.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="alt-text-generation">
+      <rule>
+        <statement>Alt text MUST be ≤125 characters, MUST NOT start with "image of" or "picture of", MUST include any text embedded in the image verbatim, and MUST convey the functional purpose of the image in context (not just its visual content).</statement>
+        <rationale>Screen readers already announce "image" before reading alt text; "image of a dog" reads as "image, image of a dog". The 125-character limit matches the screen reader best-practice window before truncation. Embedded text read verbatim allows visually impaired users to receive the same information sighted users see.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Always pass the surrounding page context (heading, section purpose, URL slug) to the alt text generation prompt. Never generate alt text from the image alone without context.</statement>
+        <rationale>Context-free alt text describes what is in the image but not why it is on the page. "Golden retriever running in a field" vs "Golden retriever demonstrating the Recall training command" — the second is only possible with context.</rationale>
+      </rule>
+
+      <example type="good" title="Alt text generation with context">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import base64
+import json
+from typing import Optional
+from dataclasses import dataclass
+
+@dataclass
+class AltTextResult:
+    short_description: str  # For alt attribute (125 chars max)
+    long_description: str   # For extended description
+    key_elements: list      # Main visual elements identified
+
+class AltTextGenerator:
+    """Generate accessible alt text for images."""
+
+    def __init__(self, model: str = "gpt-4o"):
+        self.client = OpenAI()
+        self.model = model
+
+    def generate(self, image_path: str, context: Optional[str] = None) -> AltTextResult:
+        """Generate alt text for an image."""
+        context_note = f"\nContext: {context}" if context else ""
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode()
+
+        prompt = f"""Generate accessible alt text for this image.{context_note}
+
+Return JSON with:
+- short_description: Concise alt text (max 125 characters) for screen readers
+- long_description: Detailed description (2-3 sentences) for those who want more detail
+- key_elements: List of main visual elements in the image
+
+Guidelines:
+- Be specific and descriptive
+- Avoid "image of" or "picture of"
+- Include relevant text visible in the image
+- Describe the purpose/function if it's a functional image
+- For decorative images, indicate if description should be empty"""
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]
+            }],
+            response_format={"type": "json_object"}
+        )
+
+        data = json.loads(response.choices[0].message.content)
+        return AltTextResult(
+            short_description=data["short_description"][:125],
+            long_description=data["long_description"],
+            key_elements=data["key_elements"]
+        )
+]]></code>
+      </example>
+
+      <prompt purpose="alt-text-generation"><![CDATA[
+Generate accessible alt text for this image.
+
+Return:
+{
+  "alt_text": "concise description under 125 characters for alt attribute",
+  "long_description": "detailed 2-3 sentence description for aria-describedby",
+  "image_type": "photo/illustration/icon/chart/screenshot/etc.",
+  "is_decorative": false,
+  "contains_text": false,
+  "text_content": "any text visible in the image"
+}
+
+Guidelines:
+- Start with the most important information
+- Be specific (e.g., "Golden retriever puppy" not "dog")
+- Include relevant context for the page purpose
+- Mention text in images verbatim if important
+- For charts/graphs, summarize the key data point
+]]></prompt>
+
+      <prompt purpose="scene-description-for-visually-impaired"><![CDATA[
+Describe this image in detail for someone who cannot see it:
+
+1. Start with the main subject and action
+2. Describe the setting and background
+3. Note colors, lighting, and mood
+4. Mention any text visible
+5. Describe spatial relationships (left, right, foreground, background)
+6. Include relevant details that convey meaning
+
+Format as natural flowing prose, not a list.
+Write 3-4 sentences for a simple image, up to a paragraph for complex scenes.
+]]></prompt>
+    </section>
+
+    <section name="chart-and-data-descriptions">
+      <rule>
+        <statement>For charts and graphs, the alt text MUST state the chart type, the key data insight (trend, comparison, or extreme value), and the time period or comparison axis. Do not just say "bar chart showing sales data".</statement>
+        <rationale>Screen reader users cannot derive data insights from a visual — they need the conclusion the chart is meant to communicate, not a description of its visual form.</rationale>
+      </rule>
+
+      <prompt purpose="chart-graph-analysis"><![CDATA[
+Analyze this chart/graph and extract the data:
+{
+  "chart_type": "bar/line/pie/scatter/etc.",
+  "title": "",
+  "x_axis": {"label": "", "type": "categorical/numerical/date"},
+  "y_axis": {"label": "", "unit": ""},
+  "legend": ["series names if multiple"],
+  "data_points": [
+    {"x": "", "y": 0, "series": ""}
+  ],
+  "trends": "describe any notable trends",
+  "key_insights": ["main takeaways from this visualization"],
+  "source": "if attributed"
+}
+
+Extract actual numerical values where visible.
+]]></prompt>
+
+      <antipattern>
+        <description>Using VLM-extracted chart numbers directly in alt text without noting that numerical accuracy may be imperfect.</description>
+        <reason>VLMs hallucinate specific numbers in charts — always validate extracted numerical data against a second pass or source data before publishing as authoritative alt text.</reason>
+      </antipattern>
+    </section>
+
+    <section name="usage-examples">
+      <code lang="python"><![CDATA[
+# Usage examples
+alt_gen = AltTextGenerator()
+
+# Simple image
+alt_text = alt_gen.generate("hero_image.jpg", context="Homepage hero section")
+print(f'<img alt="{alt_text.short_description}" />')
+
+# With extended description for complex image
+if len(alt_text.key_elements) > 3:
+    desc_id = "desc-hero"
+    print(f'<img alt="{alt_text.short_description}" aria-describedby="{desc_id}" />')
+    print(f'<p id="{desc_id}" class="sr-only">{alt_text.long_description}</p>')
+]]></code>
+    </section>
+
+    <checklist>
+      <check>Alt text is ≤125 characters.</check>
+      <check>Alt text does not start with "image of", "picture of", or "photo of".</check>
+      <check>Any text visible in the image is included verbatim in alt text or long_description.</check>
+      <check>Decorative images have alt="" not a generated description.</check>
+      <check>Charts include the key insight (trend, comparison, conclusion) not just the chart type.</check>
+      <check>Context (page section, heading) was passed to the generation prompt.</check>
+      <check>Generated descriptions are reviewed for hallucinations on a representative sample before batch deployment.</check>
+      <check>Long descriptions are connected via aria-describedby for complex images (charts, infographics, diagrams).</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+      <link href="https://www.w3.org/WAI/tutorials/images/decision-tree/"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+    </see-also>
+  </content>
+</methodology>
