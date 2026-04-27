@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gha-matrix-builds">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions matrix strategy for parallel multi-OS and multi-version testing: configuration, exclusions, inclusions, fail-fast control, and per-combination artifacts.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>matrix</tag>
+      <tag>ci</tag>
+      <tag>parallel-testing</tag>
+      <tag>multi-platform</tag>
+    </tags>
+    <category>ci</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>github-actions</tool>
+    </tools>
+    <related>
+      <ref slug="gha-caching-artifacts"/>
+      <ref slug="gha-workflow-structure"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitHub Actions Matrix Builds</title>
+
+    <summary>Use GHA matrix strategy to execute jobs across multiple OS and language-version combinations in parallel. Always set fail-fast: false on test matrices so failures on one axis do not mask results on others. Upload per-combination artifacts using the matrix variables in the artifact name.</summary>
+
+    <why>
+      <p>Matrix builds surface cross-platform and cross-version regressions before they reach production. Without matrix strategy, a developer discovers "it works on Linux" but ships a Windows or Node 22 breakage that only appears in a customer environment. GHA's matrix is first-class: it parallelises natively, reports each combination as a named job, and integrates with branch protection required-status checks at per-combination granularity.</p>
+      <p>Setting fail-fast: true (the default) cancels all in-flight jobs when the first combination fails — you lose the signal on every other OS and version. On test matrices this is almost always wrong: you want the full picture.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Libraries or tools that must support multiple language versions (e.g., Python 3.10/3.11/3.12, Node 18/20/22).</item>
+        <item>Applications that ship to or run on multiple operating systems (Linux, Windows, macOS).</item>
+        <item>Monorepos where different packages may have differing runtime requirements.</item>
+        <item>Any project where a CI failure on one platform should not suppress results from others.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-platform, single-version apps — matrix overhead adds noise without value.</item>
+        <item>Deployment jobs — matrix is for testing; deploy jobs should run once with a specific artifact.</item>
+        <item>Jobs that already take over 30 minutes each — a 3x3 matrix could occupy 9 runner-hours; confirm quota first.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Test matrix jobs MUST set fail-fast: false so that a failure on one combination does not cancel the remaining combinations.</statement>
+        <rationale>The default fail-fast: true hides failures on secondary platforms. You need the full cross-product result to triage regressions accurately.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use exclude to remove invalid combinations and include to add special configurations with extra variables (e.g., coverage: true for one canonical combination).</statement>
+        <rationale>Phantom combinations waste CI minutes and can fail for unrelated reasons. Include allows attaching extra variables to a specific combination without duplicating the matrix.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>When uploading artifacts from a matrix job, embed the matrix variables in the artifact name: name: build-${{ matrix.os }}-${{ matrix.node }}.</statement>
+        <rationale>Artifacts with the same name overwrite each other. Matrix-keyed names allow the downstream combine job to download-artifact with pattern: build-* and merge-multiple: true.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set max-parallel only when runner quota is constrained; otherwise omit to let GHA schedule all combinations as fast as possible.</statement>
+        <rationale>Artificially serialising a matrix defeats its purpose. Throttle only when you know the concurrency limit of your runner pool.</rationale>
+      </rule>
+    </rules>
+
+    <section name="matrix-configuration">
+      <p>The matrix key accepts arrays for each dimension. GHA generates the Cartesian product. Use os, node, python-version, or any custom key.</p>
+      <example type="good" title="Node.js multi-OS multi-version matrix">
+        <code lang="yaml"><![CDATA[
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+        exclude:
+          - os: windows-latest
+            node: 18
+        include:
+          - os: ubuntu-latest
+            node: 22
+            coverage: true
+      max-parallel: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+      - run: npm ci
+      - run: npm test ${{ matrix.coverage && '-- --coverage' || '' }}
+      - uses: actions/upload-artifact@v4
+        if: matrix.coverage
+        with:
+          name: coverage-${{ matrix.os }}-node${{ matrix.node }}
+          path: coverage/
+          retention-days: 7
+]]></code>
+        <note>exclude removes windows+node18 (not supported). include adds coverage: true only on ubuntu+node22 — the canonical upload combination.</note>
+      </example>
+
+      <example type="good" title="Python multi-version matrix with per-version cache">
+        <code lang="yaml"><![CDATA[
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+            ${{ runner.os }}-pip-
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: ruff check . && ruff format --check .
+      - run: mypy src/
+      - run: pytest --cov=src --cov-report=xml
+      - uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.12'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+]]></code>
+        <note>Cache key includes the python-version so 3.10/3.11/3.12 each get their own cache bucket. Coverage upload scoped to 3.12 only.</note>
+      </example>
+
+      <example type="bad" title="Matrix with fail-fast: true (default)">
+        <code lang="yaml"><![CDATA[
+strategy:
+  matrix:
+    os: [ubuntu-latest, windows-latest, macos-latest]
+    node: [18, 20, 22]
+  # fail-fast not set — defaults to true
+]]></code>
+        <note>If Node 22 on Ubuntu fails, all Windows and macOS jobs are cancelled. You never learn whether the failure is OS-specific or version-specific.</note>
+      </example>
+
+      <antipattern>
+        <description>Uploading artifacts from all matrix combinations with the same name.</description>
+        <reason>Artifact names must be unique per workflow run. Duplicate names cause upload failures or silent overwrites; use matrix variables in the name.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running deployment or release jobs as a matrix.</description>
+        <reason>Deploys should target one specific artifact built from one specific combination, not fan out across platforms. Use needs: [test] and a single deploy job.</reason>
+      </antipattern>
+    </section>
+
+    <section name="combining-matrix-artifacts">
+      <p>When each matrix combination produces a build artifact (e.g., cross-compiled binaries), use a downstream combine job to merge them.</p>
+      <example type="good" title="Multi-OS build and combine pattern">
+        <code lang="yaml"><![CDATA[
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: dist/
+
+  combine:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: build-*
+          merge-multiple: true
+          path: all-builds/
+      - run: ls all-builds/
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>fail-fast: false set on all test matrices.</check>
+      <check>Invalid OS+version combinations removed via exclude.</check>
+      <check>Expensive side-effects (coverage upload, artifact upload) scoped to one canonical combination via if: or include variable.</check>
+      <check>Artifact names include matrix variables to avoid collisions.</check>
+      <check>max-parallel omitted unless runner quota is known to be constrained.</check>
+      <check>Matrix used only for test/build jobs, not deploy jobs.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs"/>
+      <link href="https://www.blacksmith.sh/blog/matrix-builds-with-github-actions"/>
+      <ref slug="gha-caching-artifacts"/>
+    </see-also>
+  </content>
+</methodology>
