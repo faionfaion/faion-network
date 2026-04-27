@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="llamaindex-production-gotchas">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>LlamaIndex production failure modes: async blocking, rate-limit traps in QueryFusionRetriever, ReActAgent error handling gaps, evaluation cost control, and observability via callbacks and tracing.</summary>
+    <tags>
+      <tag>llamaindex</tag>
+      <tag>production</tag>
+      <tag>async</tag>
+      <tag>evaluation</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>llamaindex</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="llamaindex-agents-eval"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+      <ref slug="llamaindex-indexes-queries"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>LlamaIndex Production Gotchas and Observability</title>
+
+    <summary>LlamaIndex has several non-obvious failure modes in production: SubQuestionQueryEngine.query() blocks async event loops, QueryFusionRetriever opens unbounded concurrent LLM calls, ReActAgent does not auto-recover from tool errors, and evaluation methods consume significant tokens. This methodology documents each trap with the fix and covers callbacks, caching, and tracing for production observability.</summary>
+
+    <why>
+      <p>LlamaIndex's abstractions hide implementation details that become critical at scale. SubQuestionQueryEngine is synchronous even inside an async agent — calling it in an async loop blocks every other coroutine until it completes. QueryFusionRetriever with use_async=True spawns one LLM call per query variant with no built-in rate limiting, which hammers API quotas under load. These are correctness and stability bugs, not performance tuning — they require specific patterns to fix.</p>
+      <p>Evaluation methods (FaithfulnessEvaluator, RelevancyEvaluator) use LLM calls per question. Batch evaluation of 100 questions at GPT-4o pricing is non-trivial cost. Production evaluation strategy requires pre-built test sets and caching, not ad-hoc bulk evaluation runs.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying any LlamaIndex component in an async web server (FastAPI, aiohttp) or async agent loop.</item>
+        <item>Using QueryFusionRetriever with use_async=True under production load.</item>
+        <item>Building evaluation pipelines with FaithfulnessEvaluator or RelevancyEvaluator at scale.</item>
+        <item>Debugging intermittent failures in ReActAgent tool calls.</item>
+        <item>Adding observability (traces, latency, token counts) to a LlamaIndex RAG pipeline.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development prototypes — most of these issues only surface under load or in async environments.</item>
+        <item>Simple synchronous scripts — async gotchas do not apply outside event loops.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="async-gotchas">
+      <p>The most common production failure: calling synchronous LlamaIndex methods inside an async context.</p>
+
+      <rule>
+        <statement>SubQuestionQueryEngine.query() is synchronous. Inside any async agent loop or async web handler, use SubQuestionQueryEngine.aquery() instead. Similarly, use chat_engine.astream_chat() not stream_chat() in async contexts.</statement>
+        <rationale>Calling a synchronous blocking function inside an async event loop blocks every other coroutine on that loop until the call returns. In a FastAPI endpoint with concurrent requests, one SubQuestionQueryEngine.query() call can block all other handlers for 5-30 seconds.</rationale>
+      </rule>
+
+      <rule>
+        <statement>QueryFusionRetriever with use_async=True opens one LLM call per query variant simultaneously with no built-in rate limiting. Wrap the retriever with asyncio.Semaphore(n) where n matches your API tier's request-per-second limit.</statement>
+        <rationale>At num_queries=3 and 10 concurrent users, QueryFusionRetriever fires 30 simultaneous LLM calls. Most LLM APIs rate-limit at the account level; 30 simultaneous calls from one account hit the RPM limit and trigger 429 errors across all concurrent requests.</rationale>
+      </rule>
+
+      <example type="good" title="aquery() for async SubQuestionQueryEngine">
+        <code lang="python"><![CDATA[
+import asyncio
+from llama_index.core.query_engine import SubQuestionQueryEngine
+
+# In an async context (FastAPI endpoint, async agent)
+async def query_multi_source(question: str) -> str:
+    response = await sub_question_engine.aquery(question)
+    return str(response)
+]]></code>
+      </example>
+
+      <example type="good" title="Semaphore for rate-limited async retrieval">
+        <code lang="python"><![CDATA[
+import asyncio
+from llama_index.core.retrievers import QueryFusionRetriever
+
+_semaphore = asyncio.Semaphore(5)  # max 5 concurrent retrieval calls
+
+async def retrieve_with_limit(query: str):
+    async with _semaphore:
+        nodes = await fusion_retriever.aretrieve(query)
+    return nodes
+]]></code>
+        <note>Semaphore(5) limits to 5 concurrent retrieval calls regardless of how many async handlers fire simultaneously.</note>
+      </example>
+
+      <antipattern>
+        <description>Calling SubQuestionQueryEngine.query() in a FastAPI async endpoint without asyncio.run_in_executor.</description>
+        <reason>Blocks the event loop. All other concurrent requests queue behind this one call. Under load, p99 latency spikes to seconds even for fast queries.</reason>
+      </antipattern>
+    </section>
+
+    <section name="react-agent-error-handling">
+      <p>ReActAgent does not automatically fall back when a tool returns an error. The agent will either retry in a loop, return a generic failure message, or hallucinate an answer if the error message is ambiguous.</p>
+
+      <rule>
+        <statement>Every tool function passed to ReActAgent MUST return a structured error string (not raise an exception) when it fails. Use the format: "ERROR: &lt;error_type&gt;: &lt;human-readable message&gt;". The agent uses the tool's return value as context for its next reasoning step.</statement>
+        <rationale>When a tool raises an exception, ReActAgent catches it but loses the error detail. Returning a structured error string lets the agent reason about the failure (retry with different parameters, report to user, try alternative tool) rather than making up an answer.</rationale>
+      </rule>
+
+      <example type="good" title="Tool with structured error return">
+        <code lang="python"><![CDATA[
+from llama_index.core.tools import FunctionTool
+
+def search_database(query: str) -> str:
+    """Search the product database for items matching the query."""
+    try:
+        results = db.search(query)
+        if not results:
+            return f"NO_RESULTS: No items found for query: {query}"
+        return str(results)
+    except Exception as e:
+        return f"ERROR: DatabaseError: {str(e)}"
+
+search_tool = FunctionTool.from_defaults(fn=search_database)
+]]></code>
+        <note>Structured error format lets the agent distinguish "no results" from "database error" and choose different recovery strategies.</note>
+      </example>
+
+      <antipattern>
+        <description>Tool function raises an unhandled exception on failure.</description>
+        <reason>ReActAgent catches the exception but the agent sees a generic error with no context. It typically retries the same call with the same parameters, hitting max_iterations and returning an unhelpful response.</reason>
+      </antipattern>
+    </section>
+
+    <section name="evaluation-cost-control">
+      <p>LlamaIndex evaluators (FaithfulnessEvaluator, RelevancyEvaluator, PairwiseComparisonEvaluator) use LLM calls per evaluation. Control cost with pre-built test sets and selective evaluator use.</p>
+
+      <rule>
+        <statement>Build evaluation datasets from real user queries using generate_question_context_pairs() once, then reuse the dataset for all evaluation runs. Do not regenerate the test set on each run. Disable PairwiseComparisonEvaluator enforce_consistency=True in bulk runs — it doubles LLM calls per pair.</statement>
+        <rationale>FaithfulnessEvaluator + RelevancyEvaluator on 100 questions fires 200 LLM calls per evaluation run. At daily CI runs, this is 6 000 calls per month just for evaluation. Pre-built fixed test sets make evaluation cost predictable and results comparable across runs.</rationale>
+      </rule>
+
+      <example type="good" title="Pre-built test set evaluation with BatchEvalRunner">
+        <code lang="python"><![CDATA[
+from llama_index.core.evaluation import (
+    FaithfulnessEvaluator,
+    RelevancyEvaluator,
+    BatchEvalRunner,
+    generate_question_context_pairs,
+)
+
+# Build test set ONCE, save to disk
+qa_dataset = generate_question_context_pairs(
+    nodes,
+    llm=Settings.llm,
+    num_questions_per_chunk=2,
+)
+# qa_dataset.save_json("eval_dataset.json")
+
+# Reuse on each run
+# qa_dataset = EmbeddingQAFinetuneDataset.from_json("eval_dataset.json")
+
+eval_runner = BatchEvalRunner(
+    evaluators={
+        "faithfulness": FaithfulnessEvaluator(),
+        "relevancy": RelevancyEvaluator(),
+    }
+)
+
+eval_results = eval_runner.evaluate_queries(
+    query_engine,
+    queries=list(qa_dataset.queries.values()),
+)
+]]></code>
+        <note>Save the QA dataset to disk after generation — regeneration fires LLM calls for every node in the corpus.</note>
+      </example>
+
+      <example type="good" title="Faithfulness check as a post-query gate">
+        <code lang="python"><![CDATA[
+from llama_index.core.evaluation import FaithfulnessEvaluator
+
+faithfulness_evaluator = FaithfulnessEvaluator()
+
+async def query_with_faithfulness_gate(question: str, threshold: float = 0.75):
+    response = await query_engine.aquery(question)
+    result = faithfulness_evaluator.evaluate_response(response=response)
+    if not result.passing or (result.score or 1.0) < threshold:
+        return {"pass": False, "reason": result.feedback, "answer": None}
+    return {"pass": True, "answer": str(response)}
+]]></code>
+        <note>Faithfulness gate fires one extra LLM call per query — use only for high-stakes queries, not bulk processing.</note>
+      </example>
+    </section>
+
+    <section name="observability">
+      <p>LlamaIndex provides callbacks and global handlers for tracing. Arize Phoenix and Langfuse offer full trace visualization per retrieval step including rerank scores.</p>
+
+      <rule>
+        <statement>Enable LlamaDebugHandler in development and a tracing integration (Arize Phoenix or Langfuse) in production. Log at minimum: query text, retrieval latency, number of nodes retrieved, reranker scores, and generation latency per query.</statement>
+        <rationale>Without tracing, diagnosing retrieval quality issues requires reproducing the exact query. With traces, each step (embed, retrieve, rerank, synthesize) shows latency and intermediate results, making it possible to identify which stage degrades quality or adds latency.</rationale>
+      </rule>
+
+      <example type="good" title="Debug handler for development">
+        <code lang="python"><![CDATA[
+from llama_index.core import Settings
+from llama_index.core.callbacks import CallbackManager, LlamaDebugHandler
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+llama_debug = LlamaDebugHandler(print_trace_on_end=True)
+callback_manager = CallbackManager([llama_debug])
+Settings.callback_manager = callback_manager
+]]></code>
+        <note>print_trace_on_end=True prints the full event trace after each query — disable in production to avoid log spam.</note>
+      </example>
+
+      <example type="good" title="Async batch queries">
+        <code lang="python"><![CDATA[
+import asyncio
+from llama_index.core import QueryBundle
+
+async def batch_query(questions: list[str]) -> list[str]:
+    tasks = [
+        query_engine.aquery(q)
+        for q in questions
+    ]
+    responses = await asyncio.gather(*tasks)
+    return [str(r) for r in responses]
+]]></code>
+        <note>asyncio.gather fires all queries concurrently. Apply the semaphore pattern from the async-gotchas section if hitting rate limits.</note>
+      </example>
+    </section>
+
+    <section name="caching">
+      <p>LlamaIndex supports response caching at the global handler level and via external Redis KV stores. Caching is essential for applications where the same or similar queries repeat.</p>
+
+      <example type="good" title="Redis KV cache for repeated queries">
+        <code lang="python"><![CDATA[
+from llama_index.storage.kvstore.redis import RedisKVStore
+
+kvstore = RedisKVStore(redis_uri="redis://localhost:6379")
+
+# Attach to storage context to cache node storage
+from llama_index.core import StorageContext
+storage_context = StorageContext.from_defaults(kvstore=kvstore)
+]]></code>
+        <note>Redis KV cache avoids re-embedding and re-fetching nodes for repeated queries. TTL configuration is managed at the Redis level.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Use aquery() not query() for SubQuestionQueryEngine in async contexts.</check>
+      <check>Wrap QueryFusionRetriever with asyncio.Semaphore under concurrent production load.</check>
+      <check>Return structured error strings from tool functions — never raise unhandled exceptions.</check>
+      <check>Build evaluation test sets once with generate_question_context_pairs() and save to disk; do not regenerate each run.</check>
+      <check>Disable enforce_consistency=True on PairwiseComparisonEvaluator in bulk evaluation runs.</check>
+      <check>Enable LlamaDebugHandler in development; wire Arize Phoenix or Langfuse in production.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="llamaindex-agents-eval"/>
+      <ref slug="llamaindex-hybrid-retrieval"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/evaluation/"/>
+      <link href="https://github.com/run-llama/llama_index/tree/main/docs/examples"/>
+      <link href="https://www.llamaindex.ai/blog"/>
+    </see-also>
+  </content>
+</methodology>
