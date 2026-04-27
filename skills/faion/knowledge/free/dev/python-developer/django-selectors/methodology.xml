@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-selectors">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Centralize Django read operations in keyword-only selector functions that return QuerySet with select_related/prefetch_related. Prevents N+1 queries and scattered query logic across views and tests.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>selectors</tag>
+      <tag>queryset</tag>
+      <tag>n-plus-one</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="django-project-structure"/>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-coding-standards"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Selectors Pattern</title>
+
+    <summary>Keyword-only functions in selectors.py that encapsulate read operations, return QuerySet with select_related/prefetch_related, and prevent N+1 queries. Query logic belongs in selectors, not in views, serializers, or tests.</summary>
+
+    <why>
+      <p>Without selectors, query logic scatters across views, serializers, and test setup. The same N+1-prone pattern gets copy-pasted in five places. A single optimization (adding a prefetch) must be applied everywhere. With selectors, changing one function propagates the fix automatically to all callers — views, tasks, admin, management commands. Selectors also make N+1 testing straightforward: the selector's test can assert the query count using django_assert_num_queries.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any list query with filtering, ordering, or pagination.</item>
+        <item>Fetching a single object by ID or unique field, especially with related data.</item>
+        <item>Queries with select_related or prefetch_related for related model data.</item>
+        <item>Queries used in more than one place (view, task, admin, management command).</item>
+        <item>Queries that need N+1 prevention guaranteed across all usage points.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple Model.objects.get(pk=pk) with no related data — inline is fine if only used once.</item>
+        <item>Write operations — those belong in services.</item>
+        <item>Annotations purely for display (computed fields in serializers via SerializerMethodField).</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Selector functions MUST use keyword-only arguments (asterisk). List selectors return QuerySet[Model]. Single-object selectors return Model and raise Model.DoesNotExist or NotFoundError if not found — never return None from a "get" selector. Selectors MUST include all prefetch_related and select_related calls needed for the data their callers will access.</statement>
+        <rationale>Returning QuerySet allows the caller to chain additional filters without making a new query. Consistent exception behavior (DoesNotExist raised, not None returned) prevents None-check errors downstream. Bundling all prefetches in the selector guarantees N+1 prevention for every caller.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use select_related for ForeignKey and OneToOne relations (single JOIN). Use prefetch_related for ManyToMany and reverse ForeignKey relations (separate query). Use Prefetch() object when the related queryset needs its own filter, ordering, or prefetch.</statement>
+        <rationale>select_related generates a SQL JOIN — right for FK/OneToOne where one related object per row. prefetch_related generates a separate query — right for M2M / reverse FK where multiple related objects per row. A blanket prefetch_related on an FK wastes round trips; a blanket select_related on a reverse FK causes cartesian product blowup.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use .exists() instead of .count() > 0 or len(queryset) > 0 for existence checks. Use .annotate() for aggregations that should be fetched in the same query. Use F() expressions for field references in filters and annotations.</statement>
+        <rationale>exists() generates SELECT 1 ... LIMIT 1 — O(1) DB cost. count() > 0 generates SELECT COUNT(*) — O(N) DB cost. len(queryset) materializes the entire queryset in Python memory just to check if it's non-empty.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="List selector with optimization">
+      <code lang="python"><![CDATA[
+# apps/orders/selectors.py
+from django.db.models import QuerySet, Prefetch
+
+from apps.orders.models import Order, OrderItem
+
+
+def order_list_for_user(
+    *,
+    user: "User",
+    status: str | None = None,
+    limit: int | None = None,
+) -> QuerySet[Order]:
+    """
+    Get orders for a user with optimized queries.
+
+    Args:
+        user: The user to get orders for
+        status: Optional status filter
+        limit: Optional result limit
+
+    Returns:
+        Optimized QuerySet of orders with prefetched items
+    """
+    queryset = (
+        Order.objects
+        .filter(user=user)
+        .select_related("shipping_method")
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related("product"),
+            )
+        )
+        .order_by("-created_at")
+    )
+
+    if status:
+        queryset = queryset.filter(status=status)
+
+    if limit:
+        queryset = queryset[:limit]
+
+    return queryset
+      ]]></code>
+    </example>
+
+    <example type="bad" title="Query in view (anti-pattern)">
+      <code lang="python"><![CDATA[
+# BAD — query in view, no optimization, duplicated across views
+class OrderListView(APIView):
+    def get(self, request):
+        orders = Order.objects.filter(user=request.user)  # N+1 when serializing items
+        return Response(OrderSerializer(orders, many=True).data)
+      ]]></code>
+      <note>Query logic in view: cannot be reused, no N+1 prevention, change must be applied in every view that lists orders.</note>
+    </example>
+
+    <example type="good" title="Single-object selector with optional ownership filter">
+      <code lang="python"><![CDATA[
+def order_get_by_id(
+    *,
+    order_id: int,
+    user: "User | None" = None,
+) -> Order:
+    """
+    Get single order by ID.
+
+    Args:
+        order_id: The order primary key
+        user: Optional user for ownership verification
+
+    Returns:
+        Order instance
+
+    Raises:
+        Order.DoesNotExist: If not found or not owned by user
+    """
+    queryset = Order.objects.select_related(
+        "user",
+        "shipping_method",
+    ).prefetch_related("items__product")
+
+    if user:
+        queryset = queryset.filter(user=user)
+
+    return queryset.get(id=order_id)
+      ]]></code>
+    </example>
+
+    <section name="advanced-queries">
+      <p>Selectors for complex query patterns:</p>
+
+      <example type="good" title="Selector with annotations and complex prefetch">
+        <code lang="python"><![CDATA[
+from django.db.models import Count, Prefetch, Q
+
+
+def order_list_with_summary(*, user: "User") -> QuerySet[Order]:
+    """Get orders with item counts and product details."""
+    return (
+        Order.objects
+        .filter(user=user)
+        .annotate(items_count=Count("items"))
+        .prefetch_related(
+            Prefetch(
+                "items",
+                queryset=OrderItem.objects.select_related("product"),
+            )
+        )
+    )
+
+
+def user_list_with_recent_orders(*, days: int = 30) -> QuerySet["User"]:
+    """Get users with orders in the last N days, annotated with order count."""
+    from django.utils import timezone
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(days=days)
+
+    return (
+        User.objects
+        .filter(orders__created_at__gte=cutoff)
+        .annotate(recent_order_count=Count("orders", filter=Q(orders__created_at__gte=cutoff)))
+        .distinct()
+        .order_by("-recent_order_count")
+    )
+        ]]></code>
+      </example>
+
+      <example type="good" title="Efficient existence check">
+        <code lang="python"><![CDATA[
+# GOOD — efficient existence check
+def order_has_pending_payment(*, user: "User") -> bool:
+    """Check if user has any orders pending payment."""
+    return Order.objects.filter(
+        user=user, status=OrderStatus.PENDING
+    ).exists()
+
+
+# BAD — fetches all data just to check existence
+def order_has_pending_payment_bad(*, user: "User") -> bool:
+    return Order.objects.filter(user=user, status='pending').count() > 0
+        ]]></code>
+      </example>
+
+      <example type="good" title="Bulk query optimization">
+        <code lang="python"><![CDATA[
+# GOOD — bulk update using F() expression
+from django.db.models import F
+from decimal import Decimal
+
+
+def product_increase_prices(*, increase_pct: Decimal) -> int:
+    """Increase all product prices by percentage. Returns updated count."""
+    return Product.objects.update(
+        price=F("price") * (1 + increase_pct),
+        updated_at=timezone.now(),
+    )
+
+
+# GOOD — bulk update with specific per-record values
+def product_bulk_update_prices(*, product_prices: dict[int, Decimal]) -> int:
+    """Update multiple products with specific prices."""
+    products = Product.objects.filter(id__in=product_prices.keys())
+
+    for product in products:
+        product.price = product_prices[product.id]
+
+    Product.objects.bulk_update(products, ["price", "updated_at"])
+    return len(products)
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="n-plus-one-detection">
+      <p>Always test selectors for N+1 queries using django_assert_num_queries fixture from pytest-django:</p>
+      <example type="good" title="N+1 test for selector">
+        <code lang="python"><![CDATA[
+class TestOrderListForUser:
+    def test_no_n_plus_one_queries(self, db, django_assert_num_queries):
+        """Selector uses optimal number of queries."""
+        user = UserFactory()
+        OrderFactory.create_batch(5, user=user)
+
+        with django_assert_num_queries(2):  # 1 for orders, 1 for items (prefetch)
+            orders = list(order_list_for_user(user=user))
+            for order in orders:
+                list(order.items.all())  # Access related data — must not trigger new queries
+        ]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Selector uses keyword-only arguments.</check>
+      <check>List selectors return QuerySet[Model], not list.</check>
+      <check>Single-object selectors raise DoesNotExist, not return None.</check>
+      <check>All ForeignKey traversals in callers are covered by select_related in the selector.</check>
+      <check>All reverse FK / M2M traversals are covered by prefetch_related in the selector.</check>
+      <check>Existence checks use .exists(), not count() > 0 or len().</check>
+      <check>Selector is tested for N+1 using django_assert_num_queries.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-project-structure"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide#selectors"/>
+      <link href="https://docs.djangoproject.com/en/6.0/ref/models/querysets/"/>
+    </see-also>
+  </content>
+</methodology>
