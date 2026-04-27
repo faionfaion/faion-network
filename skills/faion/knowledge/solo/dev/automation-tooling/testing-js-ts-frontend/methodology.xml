@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-js-ts-frontend">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Frontend JS/TS testing with vitest and Testing Library: component tests, DOM assertions, vitest vs jest choice, and LLM gotchas for React/Vue/Svelte stacks.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>vitest</tag>
+      <tag>jest</tag>
+      <tag>testing-library</tag>
+      <tag>typescript</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>react</framework>
+      <framework>vitest</framework>
+    </frameworks>
+    <languages>
+      <language>typescript</language>
+      <language>javascript</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Frontend JS/TS Testing with Vitest and Testing Library</title>
+
+    <summary>Frontend component tests MUST use @testing-library/react (or -vue, -svelte) for DOM-centric assertions. New projects default to vitest; legacy projects may remain on jest. Agents must be told the runner explicitly or they default to jest globals in vitest projects.</summary>
+
+    <why>
+      <p>Without a clear testing strategy, frontend codebases accumulate no tests, or snapshot tests that are too brittle to trust, or implementation-detail tests that break on refactor. Testing Library's philosophy (test what users see, not implementation) aligns tests with real regressions rather than internal structure.</p>
+      <p>Vitest is the Vite-native replacement for jest — same API, faster startup, ESM-first. For Vite-based projects (React, Nuxt, SvelteKit) it is always the right choice. For non-Vite projects (Create React App legacy, Next.js without custom Vite config) jest remains common.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Adding tests to a React/Vue/Svelte component that has no test coverage.</item>
+        <item>Standardising test style across a frontend codebase where engineers reinvent patterns per component.</item>
+        <item>Producing first-cut component tests during SDD in-progress/ so review focuses on behaviour, not boilerplate.</item>
+        <item>Any Vite-based frontend project — vitest is the canonical choice.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Browser E2E (multi-page flows, auth, navigation) — see playwright-automation.</item>
+        <item>Performance testing — see perf-test-basics.</item>
+        <item>Node.js backend JS/TS — Testing Library is DOM-only; use plain vitest/jest without render helpers.</item>
+        <item>When the project already has a strong jest configuration with custom matchers — migrating to vitest mid-project creates churn without value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="canonical-component-test">
+      <p>The canonical component test renders the component, queries by accessible role or visible text, and asserts DOM state. Never query by CSS class or test ID unless no accessible query is available.</p>
+
+      <rule testable="true">
+        <statement>Component tests MUST use @testing-library/react (or the framework equivalent) and query by accessible role, label text, or visible text — in that priority order. CSS class selectors and data-testid are last resorts and MUST have a comment explaining why no semantic query was possible.</statement>
+        <rationale>Testing by role and visible text tests what users actually see. CSS-class queries break silently on refactor; they test implementation details, not behaviour.</rationale>
+      </rule>
+
+      <example type="good" title="Component test with Testing Library">
+        <code lang="typescript"><![CDATA[
+import { render, screen } from '@testing-library/react';
+import { Button } from './Button';
+
+test('renders button with text', () => {
+  render(<Button variant="primary">Click me</Button>);
+  expect(screen.getByText('Click me')).toBeInTheDocument();
+});
+
+test('calls onClick handler when clicked', async () => {
+  const handleClick = vi.fn();
+  render(<Button onClick={handleClick}>Submit</Button>);
+  await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
+  expect(handleClick).toHaveBeenCalledOnce();
+});
+]]></code>
+        <note>getByRole is preferred over getByText when the element has a semantic role. vi.fn() is the vitest mock — use jest.fn() in jest projects.</note>
+      </example>
+
+      <example type="bad" title="CSS class query — tests implementation detail">
+        <code lang="typescript"><![CDATA[
+test('renders button', () => {
+  const { container } = render(<Button variant="primary">Click me</Button>);
+  expect(container.querySelector('.btn-primary')).toBeTruthy();
+});
+]]></code>
+        <note>CSS class name is an implementation detail; renaming the class breaks the test without breaking the UI. Use getByRole instead.</note>
+      </example>
+    </section>
+
+    <section name="vitest-vs-jest">
+      <p>vitest and jest share the same describe/test/expect API. The key difference for agents: in vitest projects, mocks use vi.fn() and import from 'vitest' must be explicit unless globals:true is configured in vitest.config.ts.</p>
+
+      <rule testable="true">
+        <statement>Vitest projects MUST either configure globals: true in vitest.config.ts OR import describe, it, expect, vi explicitly from 'vitest' at the top of every test file. Mixing jest globals with vitest without the globals flag causes silent pollution or compilation errors.</statement>
+        <rationale>Agents default to jest globals (no import needed) even in vitest projects, leading to TypeScript errors when @types/jest is not installed or to silent test pollution.</rationale>
+      </rule>
+
+      <example type="good" title="Explicit vitest imports">
+        <code lang="typescript"><![CDATA[
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { UserCard } from './UserCard';
+
+describe('UserCard', () => {
+  it('displays user name', () => {
+    render(<UserCard name="Alice" />);
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+});
+]]></code>
+      </example>
+
+      <example type="bad" title="Jest globals in a vitest project">
+        <code lang="typescript"><![CDATA[
+// Missing: import { describe, it, expect } from 'vitest'
+describe('UserCard', () => {
+  it('displays user name', () => {
+    // describe/it/expect from jest globals — fails when @types/jest absent
+    render(<UserCard name="Alice" />);
+    expect(screen.getByText('Alice')).toBeInTheDocument();
+  });
+});
+]]></code>
+        <note>Agent forgets to import from vitest; project either errors on unknown globals or silently uses jest globals polluting the test environment.</note>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <p>Standard CLI tools for JS/TS frontend test projects:</p>
+      <list>
+        <item>vitest — Vite-native runner: npm i -D vitest @vitest/ui — docs: https://vitest.dev</item>
+        <item>jest — legacy runner: npm i -D jest @types/jest ts-jest</item>
+        <item>@testing-library/react — DOM-centric component tests: npm i -D @testing-library/react @testing-library/jest-dom @testing-library/user-event</item>
+        <item>@testing-library/vue / @testing-library/svelte — same philosophy for other frameworks</item>
+        <item>c8 — coverage for vitest: built-in via vitest --coverage</item>
+        <item>@stryker-mutator/core — mutation testing: npm i -D @stryker-mutator/core @stryker-mutator/vitest-runner</item>
+      </list>
+    </section>
+
+    <section name="agent-workflow">
+      <p>Use this reference as a style anchor. Have the agent read the relevant component test file as a few-shot, then produce one test file at a time. Run vitest run (or npm test) immediately and feed failures back; do not let the agent move on until green.</p>
+
+      <prompt purpose="component-test-generation">
+<![CDATA[
+Project stack: React 18 + Vite + vitest + @testing-library/react.
+Existing style: see src/components/UserCard.test.tsx.
+Task: write tests for src/components/InvoiceTable.tsx covering:
+- renders all invoice rows from props
+- shows empty state when list is empty
+- calls onSelect when row is clicked
+Import from 'vitest'. Use getByRole/getByText queries. No CSS class selectors.
+Run `npx vitest run src/components/InvoiceTable.test.tsx` before returning.
+]]>
+      </prompt>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM failure modes for JS/TS frontend tests:</p>
+
+      <antipattern>
+        <description>Agent forgets to import describe/it/expect from 'vitest' when the project is on vitest without globals:true.</description>
+        <reason>Leads to silent global pollution or TypeScript errors. Explicitly include the import requirement in every vitest prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent queries by CSS class (container.querySelector('.btn')) instead of accessible role.</description>
+        <reason>CSS class tests break on style refactors without catching real regressions. Always specify the query priority in the prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent uses jest.fn() in a vitest project or vi.fn() in a jest project.</description>
+        <reason>The mock API name must match the test runner. Pin the runner name in every prompt.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent writes snapshot tests for every component as the default strategy.</description>
+        <reason>Snapshots are useful for serialisers but brittle for UI components; reviewable diffs only — never approve a 500-line snapshot blindly. Require explicit justification for any snapshot test.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://vitest.dev"/>
+      <link href="https://testing-library.com/docs/"/>
+      <link href="https://kentcdodds.com/blog/write-tests"/>
+      <ref slug="testing-django-pytest"/>
+      <ref slug="testing-backend-languages"/>
+      <ref slug="playwright-automation"/>
+    </see-also>
+  </content>
+</methodology>
