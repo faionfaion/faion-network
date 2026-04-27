@@ -1,0 +1,395 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="prompt-engineering-reasoning">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Advanced reasoning prompt patterns: chain-of-thought, self-consistency, critique-and-revise, multi-perspective analysis, tree-of-thought, and meta-prompting for complex LLM tasks.</summary>
+    <tags>
+      <tag>chain-of-thought</tag>
+      <tag>reasoning</tag>
+      <tag>self-consistency</tag>
+      <tag>prompt-engineering</tag>
+      <tag>cot</tag>
+    </tags>
+    <category>prompt</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="chain-of-thought"/>
+      <ref slug="prompt-engineering-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Prompt Engineering — Reasoning Patterns</title>
+
+    <summary>Complex tasks — math, multi-step logic, decision analysis, code review — require structured reasoning prompts. This methodology covers chain-of-thought, self-consistency, critique-and-revise, multi-perspective analysis, and tree-of-thought patterns, with complete templates and when-to-use guidance for each technique.</summary>
+
+    <why>
+      <p>LLMs commit to answers early in generation. Without explicit reasoning structure, the model skips steps, conflates assumptions, and produces wrong answers to complex problems. Chain-of-thought prompting forces intermediate reasoning to be visible and verifiable, reducing errors on tasks that require sequential logic. Self-consistency (multiple sample majority vote) adds reliability on top of CoT at the cost of more tokens.</p>
+      <p>Research papers anchoring these techniques: Chain-of-Thought Prompting (Wei et al., 2022); Self-Consistency (Wang et al., 2022); ReAct: Reasoning and Acting (Yao et al., 2022); Tree of Thoughts (Yao et al., 2023).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Math, calculation, or multi-step logic where intermediate steps matter.</item>
+        <item>Decision analysis with multiple options and trade-offs.</item>
+        <item>Code review or debugging where cause-and-effect reasoning is needed.</item>
+        <item>Tasks where you need verifiable, auditable reasoning (legal, medical, financial).</item>
+        <item>High-stakes outputs where reliability matters more than latency or cost.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple, well-defined tasks — CoT adds tokens and latency without quality gain.</item>
+        <item>Latency-sensitive real-time pipelines — CoT scratchpads can double or triple response time.</item>
+        <item>Self-consistency in production — multiple samples are expensive; reserve for offline evaluation.</item>
+        <item>Tasks where chain-of-thought is already embedded in the model via RLHF (modern instruction-tuned models often reason internally without explicit CoT prompting).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="chain-of-thought">
+      <p>Chain-of-thought prompting instructs the model to think step by step before committing to an answer. The reasoning is placed in a dedicated section (commonly a thinking tag), separated from the final answer.</p>
+
+      <rule testable="true">
+        <statement>When using CoT, MUST separate reasoning from the final answer using explicit XML tags or labeled sections. The final answer section MUST contain only the answer, not restated reasoning. The task MUST benefit from sequential reasoning (math, logic, multi-step) before applying CoT.</statement>
+        <rationale>Mixing reasoning and answer in one block causes the model to commit early. Separation allows the model to complete all reasoning before generating the final answer, reducing premature commitment errors.</rationale>
+      </rule>
+
+      <example type="good" title="Basic CoT template">
+        <code lang="text"><![CDATA[{TASK_DESCRIPTION}
+
+Problem:
+<problem>
+{PROBLEM}
+</problem>
+
+Think through this step by step:
+
+<thinking>
+Step 1: [First step of analysis]
+Step 2: [Second step]
+Step 3: [Continue as needed]
+...
+Final step: [Verification or conclusion]
+</thinking>
+
+<answer>
+[Final answer only]
+</answer>]]></code>
+      </example>
+
+      <example type="good" title="CoT for math — filled example">
+        <code lang="xml"><![CDATA[<thinking>
+1. Original price: $80
+2. Apply 20% discount: $80 * 0.20 = $16
+3. Price after discount: $80 - $16 = $64
+4. Apply $10 coupon: $64 - $10 = $54
+5. Calculate 8% tax: $54 * 0.08 = $4.32
+6. Final total: $54 + $4.32 = $58.32
+</thinking>
+
+<answer>$58.32</answer>]]></code>
+        <note>Each step is numbered, verifiable, and separated from the final answer.</note>
+      </example>
+
+      <example type="good" title="CoT checklist — when to apply">
+        <code lang="text"><![CDATA[CoT setup checklist:
+- Task benefits from reasoning (math, logic, multi-step)
+- Explicit instruction included: "Think step by step" or equivalent
+- Reasoning section defined: <thinking> or similar tag
+- Answer section defined: <answer> separate from reasoning
+- Example with reasoning shown in the prompt if needed]]></code>
+      </example>
+    </section>
+
+    <section name="self-consistency">
+      <p>Self-consistency generates multiple independent reasoning paths for the same problem, then selects the most common answer. It improves reliability at the cost of multiple API calls.</p>
+
+      <rule testable="true">
+        <statement>Self-consistency MUST only be used when output reliability is more important than latency and cost. MUST use at least 3 independent reasoning paths. MUST NOT be used in real-time or latency-sensitive pipelines.</statement>
+        <rationale>Self-consistency trades compute for reliability. Three samples provide a majority vote; fewer than three cannot establish a clear consensus.</rationale>
+      </rule>
+
+      <example type="good" title="Self-consistency template">
+        <code lang="text"><![CDATA[{TASK_DESCRIPTION}
+
+Problem:
+<problem>
+{PROBLEM}
+</problem>
+
+Solve this problem using three different approaches, then determine the most likely correct answer.
+
+<approach_1>
+[First method of solving]
+Result: [answer]
+</approach_1>
+
+<approach_2>
+[Second method of solving]
+Result: [answer]
+</approach_2>
+
+<approach_3>
+[Third method of solving]
+Result: [answer]
+</approach_3>
+
+<consensus>
+Most consistent answer: [answer]
+Confidence: high/medium/low
+Reasoning: [why this answer is most reliable]
+</consensus>]]></code>
+      </example>
+    </section>
+
+    <section name="critique-and-revise">
+      <p>Critique-and-revise prompts the model to generate an initial response, criticize it, then produce an improved version. This is a single-call alternative to iterative multi-turn refinement.</p>
+
+      <rule testable="true">
+        <statement>Critique-and-revise MUST include three labeled sections: initial response, critique (strengths + weaknesses + missing elements), and final response. The final response MUST address the critique, not merely restate the initial response.</statement>
+        <rationale>Without explicit critique structure, models skip self-correction and repeat the initial response. The three-section format forces genuine improvement.</rationale>
+      </rule>
+
+      <example type="good" title="Critique and revise template">
+        <code lang="text"><![CDATA[{TASK_DESCRIPTION}
+
+Input:
+<input>
+{INPUT}
+</input>
+
+First, generate an initial response:
+
+<initial_response>
+[Your first attempt at the task]
+</initial_response>
+
+Now, critique your response:
+
+<critique>
+Strengths:
+- [What was done well]
+
+Weaknesses:
+- [What could be improved]
+
+Missing elements:
+- [What was overlooked]
+</critique>
+
+Finally, provide an improved response:
+
+<final_response>
+[Revised response addressing the critique]
+</final_response>]]></code>
+      </example>
+    </section>
+
+    <section name="multi-perspective">
+      <p>Multi-perspective analysis prompts the model to examine a topic from named viewpoints before synthesizing a balanced conclusion. Useful for decision analysis, ethical review, and strategy.</p>
+
+      <example type="good" title="Multi-perspective analysis template">
+        <code lang="text"><![CDATA[{TASK_DESCRIPTION}
+
+Topic/Question:
+<topic>
+{TOPIC}
+</topic>
+
+Analyze from multiple perspectives:
+
+<perspective_1 name="{PERSPECTIVE_1_NAME}">
+[Analysis from this viewpoint]
+Key points: [bullet points]
+</perspective_1>
+
+<perspective_2 name="{PERSPECTIVE_2_NAME}">
+[Analysis from this viewpoint]
+Key points: [bullet points]
+</perspective_2>
+
+<perspective_3 name="{PERSPECTIVE_3_NAME}">
+[Analysis from this viewpoint]
+Key points: [bullet points]
+</perspective_3>
+
+<synthesis>
+Common ground: [points of agreement]
+Key differences: [points of disagreement]
+Balanced conclusion: [integrated view]
+</synthesis>]]></code>
+      </example>
+    </section>
+
+    <section name="decision-and-code-review">
+      <p>Two common reasoning-heavy use cases with dedicated templates:</p>
+
+      <example type="good" title="Decision analysis prompt">
+        <code lang="python"><![CDATA[DECISION_ANALYSIS_PROMPT = """Analyze the decision.
+
+Decision: {decision_question}
+
+Context:
+<context>
+{background_information}
+</context>
+
+Options:
+{options_list}
+
+Analyze:
+1. <pros_cons> - Pros and cons for each option
+2. <risks> - Key risks and likelihood
+3. <recommendation> - Recommended option with justification
+4. <conditions> - What would change recommendation
+
+Be objective. Consider short and long-term implications."""]]></code>
+      </example>
+
+      <example type="good" title="Code review reasoning prompt">
+        <code lang="python"><![CDATA[CODE_REVIEW_PROMPT = """Review the code for issues.
+
+Code:
+<code language="{language}">
+{code}
+</code>
+
+Analyze for:
+1. Bugs: Logic errors, edge cases
+2. Security: Vulnerabilities, injection risks
+3. Performance: Inefficiencies
+4. Readability: Naming, structure
+5. Best Practices: Patterns, standards
+
+Format:
+## Critical Issues
+[Must fix - bugs, security]
+
+## Improvements
+[Performance, readability]
+
+## Positive Aspects
+[What's done well]
+
+## Suggested Refactoring
+[Code suggestions]
+
+Be specific with line numbers."""]]></code>
+      </example>
+    </section>
+
+    <section name="meta-prompting">
+      <p>Meta-prompting uses the LLM to generate or improve prompts for downstream tasks. The model acts as a prompt engineering expert.</p>
+
+      <example type="good" title="Meta-prompt for prompt generation">
+        <code lang="text"><![CDATA[You are a prompt engineering expert. Generate an optimal prompt for the following task.
+
+Task requirements:
+{TASK_REQUIREMENTS}
+
+Constraints:
+{CONSTRAINTS}
+
+Target model: {MODEL}
+
+Your process:
+1. Understand the core task
+2. Identify key components needed
+3. Choose appropriate technique(s)
+4. Structure the prompt effectively
+5. Add necessary safeguards
+6. Optimize for the target model
+
+Generate:
+- Complete prompt
+- Explanation of design choices
+- Alternative approaches considered
+- Testing recommendations]]></code>
+      </example>
+
+      <example type="good" title="Iterative self-improvement prompt">
+        <code lang="text"><![CDATA[Iteratively improve this prompt through self-critique.
+
+Starting prompt:
+<prompt>
+{INITIAL_PROMPT}
+</prompt>
+
+Target performance: {TARGET}
+
+Perform 3 improvement iterations:
+
+Iteration 1:
+- Critique current version
+- Identify top 3 issues
+- Apply improvements
+- Show improved version
+
+Iteration 2:
+- Critique iteration 1 result
+- Identify remaining issues
+- Apply improvements
+- Show improved version
+
+Iteration 3:
+- Critique iteration 2 result
+- Final polish
+- Show final version
+
+Summary:
+- What changed from start to finish
+- Key improvements made
+- Remaining limitations]]></code>
+      </example>
+
+      <example type="good" title="Prompt decomposition for complex tasks">
+        <code lang="text"><![CDATA[Break down this complex task into a prompt chain.
+
+Complex task:
+{COMPLEX_TASK}
+
+Current single prompt (if exists):
+<prompt>
+{CURRENT_PROMPT}
+</prompt>
+
+Decompose into:
+1. Identify subtasks
+2. Define dependencies between subtasks
+3. Create prompt for each subtask
+4. Define data flow between prompts
+
+Output:
+- Decomposition diagram (text-based)
+- Individual prompts for each step
+- How to chain them together
+- Error handling between steps]]></code>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Agentic loop-specific reasoning hazards:</p>
+      <list>
+        <item>CoT scratchpads visible in context accumulate tokens fast in multi-turn agentic loops — compaction required.</item>
+        <item>When using structured output mode (JSON schema enforcement), CoT MUST be placed in a dedicated field, not suppressed silently.</item>
+        <item>Few-shot reasoning examples in long agentic sessions may be evicted from effective context — repeat critical examples or use system prompt.</item>
+        <item>For multi-step reasoning, instruct the model to reason first and answer last — prevents premature commitment.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2201.11903"/>
+      <link href="https://arxiv.org/abs/2203.11171"/>
+      <link href="https://arxiv.org/abs/2305.10601"/>
+      <link href="https://www.promptingguide.ai/"/>
+      <ref slug="chain-of-thought"/>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="prompt-engineering-production"/>
+    </see-also>
+  </content>
+</methodology>
