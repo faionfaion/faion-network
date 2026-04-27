@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops-secrets-security">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Secret management and security hardening for GitOps: SOPS with age/KMS, Sealed Secrets, External Secrets Operator, RBAC least-privilege, and AI-agent-specific security gotchas.</summary>
+    <tags>
+      <tag>gitops</tag>
+      <tag>secrets</tag>
+      <tag>sops</tag>
+      <tag>security</tag>
+      <tag>kubernetes</tag>
+    </tags>
+    <category>gitops</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="gitops-repository-structure"/>
+      <ref slug="secrets-management"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitOps Secret Management and Security</title>
+
+    <summary>Secrets in GitOps require explicit tooling because plaintext secrets in Git are a critical vulnerability. Three mature solutions exist: SOPS (encrypt-in-place, Git-native), Sealed Secrets (cluster-encrypted CRDs), and External Secrets Operator (pull from Vault/AWS SM/GCP SM). Each has distinct trust models. Security hardening covers RBAC, network policies, and AI-agent-specific risks.</summary>
+
+    <why>
+      <p>The GitOps pull model means the cluster operator reads from Git directly — any plaintext secret committed to the config repo is exposed to everyone with repo read access, CI logs, and any historical access. All three secret solutions solve this differently: SOPS encrypts the YAML value in-place (secret stays in Git, encrypted); Sealed Secrets uses asymmetric encryption tied to a specific cluster key (secret stays in Git, sealed); ESO references secrets stored in external vaults (no secret data ever in Git).</p>
+      <p>AI agents working on GitOps repos create additional secret exposure risks: they may summarize secret values in PR descriptions, commit decrypted files by accident, or leak credentials through helm values output.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any GitOps setup — secret management is mandatory, not optional.</item>
+        <item>SOPS: when the team controls key management (age keys, AWS KMS, GCP KMS) and wants secrets to live in Git in encrypted form.</item>
+        <item>Sealed Secrets: when secrets should be cluster-scoped and you want a simple CLI (kubeseal) without external KMS dependency.</item>
+        <item>External Secrets Operator: when secrets already live in Vault, AWS Secrets Manager, GCP Secret Manager, or Azure Key Vault and you want to avoid duplicating them.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Sealed Secrets: do not use across multiple clusters without managing cluster-specific keys — a sealed secret from cluster A cannot be decrypted by cluster B.</item>
+        <item>SOPS with shared age keys: avoid single shared key for all environments — use per-environment keys so staging keys cannot decrypt prod secrets.</item>
+        <item>External Secrets without network policy: ESO requires egress from the cluster to the secret store — ensure network policies allow this only from the ESO namespace.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="sops">
+      <p>SOPS (Secrets OPerationS) encrypts YAML/JSON values in-place. The file stays in Git; individual values are encrypted with AES256-GCM using a key from age, AWS KMS, GCP KMS, or Azure Key Vault. Flux natively supports SOPS decryption via the kustomize-controller.</p>
+      <example type="good" title="SOPS-encrypted Kubernetes Secret in Git">
+        <code lang="yaml"><![CDATA[
+# secrets/production/db-secret.yaml — committed to Git encrypted
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+data:
+  username: ENC[AES256_GCM,data:abc123==,iv:xyz==,tag:def==]
+  password: ENC[AES256_GCM,data:ghi456==,iv:uvw==,tag:jkl==]
+sops:
+  kms:
+    - arn: arn:aws:kms:us-east-1:123456789:key/abc-def-ghi
+  lastmodified: '2025-01-15T10:00:00Z'
+  mac: ENC[AES256_GCM,data:mac==,iv:maciv==,tag:mactag==]
+  version: 3.7.3
+]]></code>
+        <note>Only the values are encrypted; keys and structure are visible. sops.kms records which KMS key was used for auditing.</note>
+      </example>
+      <example type="good" title="Flux SOPS decryption configuration">
+        <code lang="yaml"><![CDATA[
+# clusters/production/flux-system/kustomization.yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: secrets
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: gitops-repo
+  path: ./secrets/production
+  prune: true
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age  # Kubernetes secret holding the age private key
+]]></code>
+      </example>
+    </section>
+
+    <section name="external-secrets">
+      <p>External Secrets Operator (ESO) creates Kubernetes Secrets by pulling values from external stores at reconcile time. No secret data ever lives in Git.</p>
+      <example type="good" title="ExternalSecret pulling from AWS Secrets Manager">
+        <code lang="yaml"><![CDATA[
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: db-credentials
+  namespace: my-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager
+  target:
+    name: db-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: username
+      remoteRef:
+        key: prod/my-app/db
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: prod/my-app/db
+        property: password
+]]></code>
+        <note>refreshInterval controls how often ESO polls the external store. ClusterSecretStore is shared cluster-wide; SecretStore is namespace-scoped.</note>
+      </example>
+    </section>
+
+    <section name="rbac-security">
+      <rules>
+        <rule>
+          <statement>Apply RBAC least-privilege to the GitOps operator's service account: it needs only the permissions to apply resources in target namespaces, not cluster-admin.</statement>
+          <rationale>A compromised GitOps operator with cluster-admin can apply arbitrary resources including ClusterRoleBindings — least-privilege limits blast radius to namespaces the operator manages.</rationale>
+        </rule>
+        <rule>
+          <statement>Configure network policies to restrict egress from GitOps operator pods to only: the Git provider (443), the container registry, and any secret stores (Vault, AWS SM endpoint).</statement>
+          <rationale>Without network policy, a compromised operator can exfiltrate secrets to arbitrary endpoints; restricting egress to known destinations contains the impact.</rationale>
+        </rule>
+        <rule>
+          <statement>Enable audit logging on the Kubernetes API server and configure alerts for: ClusterRoleBinding creation, Secret reads outside expected namespaces, and wildcard RBAC rules.</statement>
+          <rationale>GitOps changes are audited at the Git level, but direct kubectl or API calls bypass Git — audit logs catch out-of-band changes that indicate compromise or drift.</rationale>
+        </rule>
+        <rule>
+          <statement>Require human approval for any PR that modifies RBAC resources (ClusterRole, ClusterRoleBinding, Role, RoleBinding) — enforce via CODEOWNERS or branch protection requiring a security reviewer.</statement>
+          <rationale>RBAC widening is a privilege escalation vector; automated approvals or single-reviewer merges leave no second set of eyes on the most sensitive change type.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="agent-security-gotchas">
+      <p>AI-agent-specific security risks in GitOps workflows:</p>
+      <list>
+        <item>Secret leakage via PR description: agents may include decrypted values in PR body when explaining changes — instruct agents to never include secret values in commit messages or PR descriptions.</item>
+        <item>Accidental SOPS decryption: never run sops --decrypt in an agent's working directory and then let it git add .; always use git diff --staged to inspect before commit.</item>
+        <item>kubectl get secret -o yaml dump: agents debugging cluster state may emit plaintext base64-encoded secrets to logs or terminal output — route secret inspection through a password-scrubber-agent.</item>
+        <item>Helm values rendering: helm template --debug prints all values including secrets passed as --set; capture output and scrub before logging.</item>
+        <item>Auto-merge bots + ArgoCD auto-sync: an agent that auto-merges its own PRs combined with ArgoCD auto-sync creates zero-human-approval deployments to production — require at minimum one human review at the production boundary.</item>
+        <item>Cross-environment contamination: agents with access to both staging and prod config repos may accidentally commit a staging secret or image to the prod overlay.</item>
+      </list>
+    </section>
+
+    <section name="security-prompts">
+      <prompt purpose="secrets-management-design"><![CDATA[
+Design a secrets management strategy for GitOps.
+
+Requirements:
+- Secret types: [database creds / API keys / certificates]
+- Compliance requirements: [list]
+- Cloud provider: [AWS / GCP / Azure / on-prem]
+- Rotation requirements: [automatic / manual, frequency]
+
+Recommend:
+1. Secret management solution (SOPS / Sealed Secrets / External Secrets)
+2. Integration with GitOps workflow
+3. Key management strategy
+4. Rotation procedure
+5. Audit logging setup
+]]></prompt>
+      <prompt purpose="gitops-security-audit"><![CDATA[
+Perform a security audit of my GitOps setup.
+
+Current configuration:
+- GitOps tool: [ArgoCD / Flux]
+- Repository access: [describe]
+- RBAC: [describe]
+- Network policies: [yes / no]
+- Secrets management: [describe]
+
+Analyze:
+1. Attack surface assessment
+2. Credential exposure risks
+3. RBAC gaps
+4. Network security issues
+5. Recommended remediations prioritized by severity
+]]></prompt>
+    </section>
+
+    <section name="safe-sync-helper">
+      <p>Drift-aware ArgoCD sync helper script that refuses dangerous changes:</p>
+      <example type="good" title="argocd-safe-sync.sh — diff first, refuse on dangerous changes">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# argocd-safe-sync.sh — diff first, refuse on dangerous changes
+set -euo pipefail
+APP=${1:?app name}
+DIFF=$(argocd app diff "$APP" --output json || true)
+if echo "$DIFF" | jq -e '.[] | select(.kind=="Deployment") | .target.spec.replicas < .live.spec.replicas' >/dev/null; then
+  echo "REFUSE: replica decrease detected"; exit 2
+fi
+if echo "$DIFF" | jq -e '.[] | select(.kind=="ClusterRoleBinding")' >/dev/null; then
+  echo "REFUSE: RBAC change requires human approval"; exit 2
+fi
+argocd app sync "$APP" --prune --timeout 300
+argocd app wait "$APP" --health --timeout 600
+]]></code>
+        <note>Run this instead of bare argocd app sync in automated pipelines. Extend the jq selectors for your specific dangerous-change set.</note>
+      </example>
+    </section>
+
+    <checklist>
+      <check>No plaintext secrets in Git — either SOPS-encrypted, Sealed, or ESO-referenced.</check>
+      <check>Secret management solution deployed and tested (SOPS age key / Sealed Secrets controller / ESO ClusterSecretStore).</check>
+      <check>Per-environment keys for SOPS — staging key cannot decrypt prod secrets.</check>
+      <check>GitOps operator RBAC scoped to target namespaces only, no cluster-admin.</check>
+      <check>Network policies restrict operator egress to Git provider + registry + secret stores.</check>
+      <check>Audit logging enabled on API server; alerts for ClusterRoleBinding creation and wildcard RBAC.</check>
+      <check>CODEOWNERS requiring security reviewer for RBAC resource changes.</check>
+      <check>Agent workflows audited: no kubectl get secret -o yaml in CI logs; no helm template --debug output in PR bodies.</check>
+      <check>Backup of age private key or KMS key ARN stored separately from the cluster.</check>
+      <check>Secret rotation schedule documented and tested.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/getsops/sops"/>
+      <link href="https://external-secrets.io/"/>
+      <link href="https://sealed-secrets.netlify.app/"/>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="secrets-management"/>
+    </see-also>
+  </content>
+</methodology>
