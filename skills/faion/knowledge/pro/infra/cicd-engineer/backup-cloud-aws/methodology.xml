@@ -1,0 +1,434 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-cloud-aws">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement cloud-native backup with AWS Backup (vault, plan, cross-region), S3 lifecycle rules (IA/Glacier/Deep Archive), object lock for immutability, and Terraform IaC for the full stack.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>aws-backup</tag>
+      <tag>s3</tag>
+      <tag>terraform</tag>
+      <tag>immutable</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-kubernetes-velero"/>
+      <ref slug="backup-verification-dr"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud-Native Backup with AWS Backup and S3</title>
+
+    <summary>Implement AWS-native backup using AWS Backup service (vaults, plans, cross-region copy rules) for managed resources (RDS, DynamoDB, EBS, EFS), and S3 lifecycle policies for object storage tiering. Enable S3 Object Lock for immutable ransomware-resistant backups. Provision the full stack as Terraform IaC.</summary>
+
+    <why>
+      <p>AWS Backup provides a centralized control plane for backup operations across RDS, DynamoDB, EBS, EFS, S3, EC2, and FSx — replacing fragmented per-service backup configurations with a single policy layer. Cross-region copy rules address the "same-storage-system snapshot" failure mode by ensuring a copy exists in a separate AWS region. Vault Lock (or WORM policies) prevents deletion even by account administrators, satisfying compliance requirements for immutable backup storage.</p>
+      <p>S3 lifecycle rules automate the cost-tiering of backup objects: fresh backups stay in Standard for fast restores; older backups transition to Standard-IA (30d), Glacier (90d), and Deep Archive (365d). Without lifecycle rules, all backup objects stay in Standard and the storage bill grows linearly with retention. With well-tuned lifecycle rules, storage cost drops by 70-90% for long-retention policies.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>AWS-hosted workloads with RDS, DynamoDB, EBS, or EFS resources that need centralized backup policy management.</item>
+        <item>Compliance requirements mandating cross-region backup copies and immutable retention periods.</item>
+        <item>Cost optimization for existing backup buckets where objects never leave Standard storage class.</item>
+        <item>Ransomware protection requiring object lock (WORM) on backup storage.</item>
+        <item>Consolidating fragmented per-service backup scripts into a single Terraform-managed AWS Backup plan.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>On-premises or non-AWS workloads — use Restic, BorgBackup, or Velero with self-managed object storage instead.</item>
+        <item>Simple S3-bucket-to-bucket replication where S3 native replication (CRR) is sufficient and AWS Backup overhead is not justified.</item>
+        <item>Kubernetes workload backup — use Velero which understands K8s resource state; AWS Backup only covers underlying EBS/EFS volumes.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="s3-lifecycle">
+      <p>S3 lifecycle rules transition objects through storage classes based on age. The canonical tiering for backup buckets: Standard (0-30d, hot restores), Standard-IA (30-90d, infrequent restores), Glacier Instant Retrieval (90-365d, occasional DR), Deep Archive (365d+, compliance cold storage). Enable versioning to protect against accidental deletes; add noncurrent version transitions to expire old versions on the same schedule.</p>
+
+      <rule testable="true">
+        <statement>S3 backup buckets MUST have versioning enabled, public access blocked on all four dimensions (block_public_acls, block_public_policy, ignore_public_acls, restrict_public_buckets), server-side encryption with KMS, and at least one lifecycle rule transitioning objects to a cheaper storage class after 30 days.</statement>
+        <rationale>A public backup bucket is a data breach. An unencrypted bucket fails most compliance audits. A bucket without lifecycle rules grows unbounded and inflates storage costs. These four settings are the minimum viable backup bucket configuration.</rationale>
+      </rule>
+
+      <example type="good" title="AWS CLI: configure S3 bucket lifecycle">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# setup_s3_lifecycle.sh - Configure S3 bucket for backups
+
+BUCKET="company-backups"
+
+# Create lifecycle configuration
+cat > /tmp/lifecycle.json << 'EOF'
+{
+  "Rules": [
+    {
+      "ID": "backup-lifecycle",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "" },
+      "Transitions": [
+        { "Days": 30, "StorageClass": "STANDARD_IA" },
+        { "Days": 90, "StorageClass": "GLACIER" },
+        { "Days": 365, "StorageClass": "DEEP_ARCHIVE" }
+      ],
+      "NoncurrentVersionTransitions": [
+        { "NoncurrentDays": 30, "StorageClass": "GLACIER" }
+      ],
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 730 }
+    }
+  ]
+}
+EOF
+
+# Apply lifecycle configuration
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket "$BUCKET" \
+  --lifecycle-configuration file:///tmp/lifecycle.json
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+  --bucket "$BUCKET" \
+  --versioning-configuration Status=Enabled
+
+echo "S3 lifecycle configured for $BUCKET"
+]]></code>
+      </example>
+    </section>
+
+    <section name="terraform-aws-backup">
+      <p>Terraform modules for AWS Backup: vault (primary + DR region), plan (daily/weekly/monthly rules with lifecycle and cross-region copy), selection (tag-based resource targeting), IAM role, and KMS key. The DR vault in a separate region receives copies via the copy_action rule — this is the critical step that makes the backup survive a regional outage.</p>
+
+      <example type="good" title="Terraform: AWS Backup vault, plan, and cross-region copy">
+        <code lang="hcl"><![CDATA[
+# aws_backup.tf - Complete AWS Backup configuration
+
+resource "aws_backup_vault" "main" {
+  name        = "${var.project}-backup-vault"
+  kms_key_arn = aws_kms_key.backup.arn
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project
+  }
+}
+
+resource "aws_backup_vault" "dr_region" {
+  provider    = aws.dr_region
+  name        = "${var.project}-backup-vault-dr"
+  kms_key_arn = aws_kms_key.backup_dr.arn
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project
+  }
+}
+
+resource "aws_backup_plan" "daily" {
+  name = "${var.project}-daily-backup-plan"
+
+  rule {
+    rule_name         = "daily-backup"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 2 * * ? *)"
+    start_window      = 60
+    completion_window = 180
+
+    lifecycle {
+      cold_storage_after = 30
+      delete_after       = 365
+    }
+
+    copy_action {
+      destination_vault_arn = aws_backup_vault.dr_region.arn
+      lifecycle {
+        delete_after = 365
+      }
+    }
+  }
+
+  rule {
+    rule_name         = "weekly-backup"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 2 ? * SUN *)"
+    start_window      = 60
+    completion_window = 300
+
+    lifecycle {
+      cold_storage_after = 90
+      delete_after       = 730
+    }
+  }
+
+  rule {
+    rule_name         = "monthly-backup"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 2 1 * ? *)"
+    start_window      = 60
+    completion_window = 360
+
+    lifecycle {
+      cold_storage_after = 90
+      delete_after       = 2555  # 7 years
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+resource "aws_backup_selection" "databases" {
+  iam_role_arn = aws_iam_role.backup.arn
+  name         = "${var.project}-database-selection"
+  plan_id      = aws_backup_plan.daily.id
+
+  resources = [
+    "arn:aws:rds:*:${data.aws_caller_identity.current.account_id}:db:*",
+    "arn:aws:dynamodb:*:${data.aws_caller_identity.current.account_id}:table/*"
+  ]
+
+  selection_tag {
+    type  = "STRINGEQUALS"
+    key   = "Backup"
+    value = "true"
+  }
+}
+
+resource "aws_iam_role" "backup" {
+  name = "${var.project}-backup-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "backup.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "backup" {
+  role       = aws_iam_role.backup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+}
+
+resource "aws_iam_role_policy_attachment" "restore" {
+  role       = aws_iam_role.backup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores"
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Terraform: S3 backup bucket with lifecycle, encryption, object lock">
+        <code lang="hcl"><![CDATA[
+# s3_backup_bucket.tf - S3 bucket for backups with lifecycle rules
+
+resource "aws_s3_bucket" "backups" {
+  bucket = "${var.project}-backups-${var.environment}"
+
+  tags = {
+    Environment = var.environment
+    Purpose     = "Backups"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "backups" {
+  bucket = aws_s3_bucket.backups.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "backups" {
+  bucket = aws_s3_bucket.backups.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.backup.arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "backups" {
+  bucket = aws_s3_bucket.backups.id
+
+  rule {
+    id     = "backup-lifecycle"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    transition {
+      days          = 365
+      storage_class = "DEEP_ARCHIVE"
+    }
+
+    noncurrent_version_transition {
+      noncurrent_days = 30
+      storage_class   = "GLACIER"
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 730
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "backups" {
+  bucket = aws_s3_bucket.backups.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Object Lock for immutable backups (ransomware protection)
+resource "aws_s3_bucket_object_lock_configuration" "backups" {
+  count  = var.enable_object_lock ? 1 : 0
+  bucket = aws_s3_bucket.backups.id
+
+  rule {
+    default_retention {
+      mode = "GOVERNANCE"
+      days = 30
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="object-lock-immutability">
+      <rule testable="true">
+        <statement>Backup buckets containing critical data MUST enable S3 Object Lock in GOVERNANCE or COMPLIANCE mode with a minimum 30-day retention period. The IAM policy for the daily-runner account MUST NOT include `s3:DeleteObject`, `s3:DeleteObjectVersion`, or `s3:PutBucketObjectLockConfiguration` — only a separate break-glass account may hold those permissions.</statement>
+        <rationale>Immutable object lock prevents ransomware and rogue scripts from deleting backup objects. GOVERNANCE mode allows an account administrator to override (useful for testing); COMPLIANCE mode prevents any override including by root. Air-gapping the delete permission ensures the daily-runner account cannot be used to destroy backups even if compromised.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Enabling Object Lock + S3 lifecycle policies without testing their interaction — a lifecycle rule can delete objects that Object Lock should protect.</description>
+        <reason>Object Lock and lifecycle rules interact: a lifecycle noncurrent_version_expiration rule can attempt to delete locked versions. AWS will reject the delete request but may silently skip it, leaving locked but orphaned versions that consume storage. Always test on a non-prod bucket with short retention values before applying to production.</reason>
+      </antipattern>
+    </section>
+
+    <section name="setup-checklist">
+      <checklist>
+        <check>Create AWS Backup vault with KMS encryption key.</check>
+        <check>Create DR region vault in a separate AWS region.</check>
+        <check>Define backup plan with daily, weekly, and monthly rules.</check>
+        <check>Add copy_action to each rule pointing to the DR region vault.</check>
+        <check>Configure lifecycle policies: warm (30d IA), cold (90d Glacier), archive (365d Deep Archive).</check>
+        <check>Set up resource selection by tags (Backup=true) or explicit ARN list.</check>
+        <check>Apply selection_tag to all RDS, DynamoDB, EFS, EBS resources that should be backed up.</check>
+        <check>Enable S3 bucket versioning on all backup buckets.</check>
+        <check>Block all public access on backup buckets — all four settings.</check>
+        <check>Enable server-side encryption with KMS.</check>
+        <check>Configure MFA delete for critical buckets (root account required).</check>
+        <check>Enable Object Lock in GOVERNANCE mode with 30-day minimum retention for ransomware protection.</check>
+        <check>Test restore from vault in DR region to verify cross-region copy is functional.</check>
+        <check>Test that Object Lock actually prevents deletion on a non-prod bucket.</check>
+        <check>Air-gap credentials: daily-runner lacks s3:DeleteObject; break-glass account holds it in a separate vault.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent generates AWS Backup resource selection without selection_tag, causing the plan to match zero resources silently (no error, no backups).</description>
+        <reason>AWS Backup selection with no tag filter and no explicit resources list matches nothing. Always validate the selection produces at least one resource in a test plan before relying on it for production.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates cross-account restore IAM policy missing `kms:Decrypt` on the source key in the target account, producing a restore that fails with AccessDenied on the encrypted recovery point.</description>
+        <reason>Cross-account restores need the target account's role to assume the source KMS key's trust policy. Agents output happy-path policies that miss this KMS trust. Always validate restore in the target account, not just write success in the source.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent sets up S3 Object Lock + lifecycle noncurrent_version_expiration without testing their interaction on a non-prod bucket, relying on logic alone.</description>
+        <reason>Object Lock and lifecycle policies interact in non-obvious ways. A lifecycle rule attempting to delete a locked version is silently skipped by S3, which can leave orphaned locked versions consuming unbounded storage. Always test on a non-prod bucket with short retention values (minutes/hours) before applying to production.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-terraform-aws-backup">
+<![CDATA[
+Generate Terraform configuration for AWS Backup:
+
+Resources to backup:
+- RDS instances: [list or tag-based]
+- DynamoDB tables: [list or tag-based]
+- EBS volumes: [list or tag-based]
+- EFS filesystems: [list or tag-based]
+
+Policy:
+- Daily backup at: [time UTC]
+- Weekly backup on: [day]
+- Monthly backup on: [day]
+- Cross-region copy to: [region]
+- Lifecycle: [days to cold storage, days to delete]
+
+Generate:
+1. Backup vault with KMS encryption
+2. DR region vault
+3. Backup plan with all rules
+4. Resource selection by tags
+5. IAM roles and policies
+6. SNS notifications
+]]>
+      </prompt>
+
+      <prompt purpose="analyze-backup-costs">
+<![CDATA[
+Analyze and optimize backup storage costs:
+
+Current usage:
+- Storage backend: [S3/GCS/Azure Blob]
+- Current size: [TB]
+- Monthly growth: [%]
+- Current cost: [$]
+- Retention: [policy]
+
+Analyze:
+1. Current cost breakdown by tier
+2. Lifecycle optimization opportunities
+3. Deduplication potential
+4. Compression improvements
+5. Retention policy review
+6. Alternative storage classes
+7. Projected costs with recommendations
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-kubernetes-velero"/>
+      <ref slug="backup-verification-dr"/>
+      <link href="https://docs.aws.amazon.com/aws-backup/latest/devguide/"/>
+      <link href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html"/>
+      <link href="https://cloudcustodian.io/docs/"/>
+    </see-also>
+  </content>
+</methodology>
