@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-database-mysql-mongo">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement MySQL/MariaDB backup with mysqldump and XtraBackup, and MongoDB backup with mongodump including oplog capture for point-in-time recovery.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>mysql</tag>
+      <tag>mongodb</tag>
+      <tag>xtrabackup</tag>
+      <tag>database</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-postgres"/>
+      <ref slug="backup-verification-dr"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>MySQL and MongoDB Backup Implementation</title>
+
+    <summary>Implement MySQL/MariaDB backups with mysqldump (logical, portable) and Percona XtraBackup (hot physical, no locking for InnoDB). Implement MongoDB backups with mongodump including oplog capture for point-in-time recovery on replica sets.</summary>
+
+    <why>
+      <p>MySQL has two fundamentally different backup tools: mysqldump produces SQL that is portable but locks tables and is slow for large databases; XtraBackup copies the physical InnoDB data files online without locks, making it the correct choice for databases larger than a few gigabytes. Choosing the wrong tool results in either unacceptable maintenance windows (mysqldump on 100 GB) or backup scripts that break on non-InnoDB tables (XtraBackup skips MyISAM by default).</p>
+      <p>MongoDB logical backups with mongodump are only consistent when run with --oplog on a replica set, which captures any writes that occurred during the dump and replays them at restore time. Without --oplog, a dump of a busy replica set produces an inconsistent snapshot where some collections are newer than others.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up MySQL/MariaDB backup pipelines for databases that cannot afford write locking during backup.</item>
+        <item>Implementing binary-log-based PITR for MySQL — requires binary logging enabled plus a base backup.</item>
+        <item>MongoDB replica set backups requiring consistency across collections (requires --oplog).</item>
+        <item>Large MySQL databases (50+ GB) where mysqldump takes too long — switch to XtraBackup hot backup.</item>
+        <item>Migrating MySQL databases between environments using mysqldump portable SQL format.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fully managed services (RDS MySQL, Atlas MongoDB) where the provider already supplies automated backups — unless cross-account copies are needed.</item>
+        <item>Stateless microservices that reconstruct their state from event streams — backing up derived state is waste.</item>
+        <item>MongoDB Atlas with built-in cloud backup enabled and no cross-cloud requirement.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mysql-mysqldump">
+      <p>mysqldump is the standard logical backup tool. Use --single-transaction for InnoDB-only databases to get a consistent snapshot without locking. --routines and --triggers ensure stored procedures and triggers are included. For databases with MyISAM tables, --lock-all-tables is required instead (causes a full write lock).</p>
+
+      <rule testable="true">
+        <statement>MySQL backup scripts using mysqldump MUST include `--single-transaction` for InnoDB databases to avoid table locks. Scripts MUST also include `--routines` and `--triggers` to capture stored procedures and triggers that are silently excluded by default.</statement>
+        <rationale>Omitting --single-transaction on a busy InnoDB database causes a full table lock that blocks writes for the duration of the dump. Omitting --routines/--triggers silently produces an incomplete backup that fails application startup after restore.</rationale>
+      </rule>
+
+      <example type="good" title="MySQL backup with mysqldump">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# mysql_backup.sh - MySQL backup with compression
+set -euo pipefail
+
+DB_NAME="${DB_NAME:-mydb}"
+BACKUP_DIR="/var/backups/mysql"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p "$BACKUP_DIR"
+
+# Full backup with mysqldump
+mysqldump \
+  -u root \
+  -p"$MYSQL_PASSWORD" \
+  --single-transaction \
+  --routines \
+  --triggers \
+  --quick \
+  "$DB_NAME" | gzip > "$BACKUP_DIR/${DB_NAME}_${TIMESTAMP}.sql.gz"
+
+echo "Backup completed: ${DB_NAME}_${TIMESTAMP}.sql.gz"
+]]></code>
+      </example>
+
+      <example type="bad" title="mysqldump without --single-transaction">
+        <code lang="bash"><![CDATA[
+mysqldump -u root -pmypass mydb > backup.sql
+]]></code>
+        <note>No --single-transaction causes a write lock on all tables for the dump duration. No --routines/--triggers = incomplete backup. Plain SQL without gzip wastes disk.</note>
+      </example>
+    </section>
+
+    <section name="mysql-xtrabackup">
+      <p>Percona XtraBackup performs a hot physical backup of InnoDB data files without locking. The two-phase process (--backup then --prepare) copies the files while recording InnoDB redo log entries, then applies the log to produce a consistent state. The prepared backup can be directly copied to the MySQL datadir for a fast restore.</p>
+
+      <rule testable="true">
+        <statement>XtraBackup backups MUST run the `--prepare` phase before uploading to remote storage. An unprepared backup directory contains redo log entries that must be applied before the data is consistent — uploading raw backup files without prepare produces a backup that cannot be directly restored.</statement>
+        <rationale>The --backup phase produces a crash-consistent but not transaction-consistent state. --prepare applies the redo log to make it transaction-consistent. Skipping this step is the most common XtraBackup mistake and produces a "backup" that requires the prepare step at restore time — often under pressure.</rationale>
+      </rule>
+
+      <example type="good" title="XtraBackup for large MySQL databases">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# xtrabackup_full.sh - Percona XtraBackup for large databases
+set -euo pipefail
+
+BACKUP_DIR="/var/backups/mysql/xtrabackup"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+mkdir -p "$BACKUP_DIR"
+
+# Full backup (no locking for InnoDB)
+xtrabackup --backup \
+  --target-dir="$BACKUP_DIR/full_$TIMESTAMP" \
+  --user=root \
+  --password="$MYSQL_PASSWORD"
+
+# Prepare backup for restore (REQUIRED before upload)
+xtrabackup --prepare \
+  --target-dir="$BACKUP_DIR/full_$TIMESTAMP"
+
+echo "XtraBackup completed: $BACKUP_DIR/full_$TIMESTAMP"
+]]></code>
+      </example>
+
+      <example type="bad" title="XtraBackup without prepare phase">
+        <code lang="bash"><![CDATA[
+xtrabackup --backup --target-dir=/backup/full
+aws s3 sync /backup/full s3://bucket/mysql/
+# Missing --prepare step — backup is not transaction-consistent
+]]></code>
+        <note>Raw XtraBackup files without --prepare cannot be directly restored. The prepare step is mandatory before upload.</note>
+      </example>
+    </section>
+
+    <section name="mysql-setup-checklist">
+      <checklist>
+        <check>Configure backup user with RELOAD, LOCK TABLES, REPLICATION CLIENT, PROCESS, SHOW DATABASES privileges.</check>
+        <check>Enable binary logging in my.cnf: log_bin=ON, binlog_format=ROW for PITR.</check>
+        <check>Use --single-transaction for InnoDB-only databases in all mysqldump scripts.</check>
+        <check>Include --routines and --triggers in every mysqldump command.</check>
+        <check>Run XtraBackup --prepare phase before uploading to remote storage.</check>
+        <check>Test incremental backups with XtraBackup for large databases to reduce window.</check>
+        <check>Verify backup consistency after restore to test environment weekly.</check>
+      </checklist>
+    </section>
+
+    <section name="mongodb-backup">
+      <p>mongodump produces BSON exports. On a standalone instance, the dump may be inconsistent across collections because writes continue during the export. On a replica set, --oplog captures the oplog entries that occurred during the dump and replays them at restore time with mongorestore --oplogReplay, producing a consistent point-in-time snapshot.</p>
+
+      <rule testable="true">
+        <statement>MongoDB backups MUST use `mongodump --oplog` when targeting a replica set member to produce a consistent cross-collection snapshot. Restoring without `mongorestore --oplogReplay` on an oplog-captured backup produces an incomplete restore — the flag must be used on both sides.</statement>
+        <rationale>Without --oplog, mongodump dumps collections sequentially; a write to collection B after collection A was dumped produces an inconsistent state where A and B are at different points in time. The oplog captures the delta and replays it to bring all collections to the same timestamp.</rationale>
+      </rule>
+
+      <example type="good" title="MongoDB backup with oplog capture">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# mongodb_backup.sh - MongoDB backup with oplog
+set -euo pipefail
+
+BACKUP_DIR="/var/backups/mongodb"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+MONGO_URI="mongodb://localhost:27017"
+
+mkdir -p "$BACKUP_DIR"
+
+# Archive format with compression and oplog (replica set required)
+mongodump \
+  --uri="$MONGO_URI" \
+  --archive="$BACKUP_DIR/backup_$TIMESTAMP.gz" \
+  --oplog \
+  --gzip
+
+echo "MongoDB backup completed: backup_$TIMESTAMP.gz"
+]]></code>
+      </example>
+
+      <example type="good" title="MongoDB restore with oplog replay">
+        <code lang="bash"><![CDATA[
+# Restore from oplog-captured archive
+mongorestore \
+  --archive="$BACKUP_DIR/backup_$TIMESTAMP.gz" \
+  --oplogReplay \
+  --gzip
+
+# Verify BSON integrity
+mongorestore --dryRun \
+  --archive="$BACKUP_DIR/backup_$TIMESTAMP.gz" \
+  --gzip
+]]></code>
+      </example>
+
+      <example type="bad" title="mongodump without oplog on busy replica set">
+        <code lang="bash"><![CDATA[
+mongodump --out /backup/mongo/
+]]></code>
+        <note>No --oplog means collections are at different points in time on a busy replica set. No --archive means thousands of individual BSON files instead of a single portable archive.</note>
+      </example>
+
+      <checklist>
+        <check>Configure mongodump against a replica set secondary to reduce primary load.</check>
+        <check>Always use --oplog flag for consistent cross-collection snapshot on replica sets.</check>
+        <check>Use --archive format for a single portable file rather than directory of BSON files.</check>
+        <check>Verify BSON integrity with mongorestore --dryRun after every backup.</check>
+        <check>Test mongorestore --oplogReplay in isolated environment to confirm restore path works.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent generates mysqldump command without --single-transaction for an InnoDB database, causing production write locks during backup window.</description>
+        <reason>Always include --single-transaction for InnoDB. For mixed-engine databases (InnoDB + MyISAM), add --lock-all-tables explicitly and document the lock window.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates XtraBackup script that uploads the raw --backup output to S3 without running --prepare first.</description>
+        <reason>Raw XtraBackup output is crash-consistent only. --prepare applies the redo log to produce a transaction-consistent state needed for restore. Always prepare before upload.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates mongodump without --oplog for a replica set, producing an inconsistent cross-collection snapshot.</description>
+        <reason>--oplog is mandatory for consistent MongoDB backups on replica sets. Without it, a restore will have collections at different timestamps, causing application-level data corruption.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-database-backup-script">
+<![CDATA[
+Generate a production-ready backup script for [MySQL/MongoDB]:
+
+Requirements:
+- Database name: [name]
+- Backup location: [local path and/or S3 bucket]
+- Retention: [X days local, Y days remote]
+- PITR support: [Yes/No]
+- Compression: [Yes/No]
+- Encryption: [Yes/No, method]
+- Notification: [email/slack/none]
+
+Include:
+1. Error handling with proper exit codes
+2. Logging with timestamps
+3. Cleanup of old backups
+4. Verification step
+5. Cloud upload (if applicable)
+
+Output: Complete bash script with inline comments.
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-database-postgres"/>
+      <ref slug="backup-verification-dr"/>
+      <link href="https://docs.percona.com/percona-xtrabackup/"/>
+      <link href="https://www.mongodb.com/docs/database-tools/mongodump/"/>
+    </see-also>
+  </content>
+</methodology>
