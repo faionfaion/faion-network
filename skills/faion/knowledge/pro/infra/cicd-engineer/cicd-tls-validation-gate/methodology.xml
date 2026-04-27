@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cicd-tls-validation-gate">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Run testssl.sh, sslyze, and SSL Labs as CI gates on staging; enforce A+ grade, cipher-suite policy, and certificate chain validity before promoting to production.</summary>
+    <tags>
+      <tag>tls</tag>
+      <tag>ci-gate</tag>
+      <tag>security-scanning</tag>
+      <tag>testssl</tag>
+      <tag>ssl-labs</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="cicd-tls-renewal-automation"/>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>TLS Validation Gate in CI/CD</title>
+
+    <summary>Enforce TLS quality as a pipeline gate: run testssl.sh --severity HIGH and SSL Labs or sslyze against staging before every production promotion. Catch cipher regressions, broken chains, weak protocols, and HSTS misconfigurations before they reach users. Monitor Certificate Transparency logs for rogue issuance.</summary>
+
+    <why>
+      <p>Copy-pasted cipher lists from old guides re-introduce CBC, RC4, or 3DES. HSTS misconfiguration with preload and the wrong domain can permanently lock out a subdomain. Certificate chain errors only surface after deployment. Running TLS scanners as CI gates catches all of these before production traffic is affected.</p>
+      <p>testssl.sh is the right tool for local and pipeline scanning: it runs against any endpoint, outputs structured JSON for parsing, and supports severity-gating via --severity. SSL Labs is the external reference score used for reporting and client-facing guarantees. sslyze is the programmatic Python option for integration into test harnesses.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any deploy pipeline that provisions or modifies TLS configuration — run the gate on every change.</item>
+        <item>Post-cert-rotation validation before declaring a rotation complete.</item>
+        <item>Quarterly TLS hygiene review to catch protocol or cipher drift.</item>
+        <item>New domain onboarding: verify the full chain, HSTS headers, and OCSP stapling before public launch.</item>
+        <item>Post-nginx/HAProxy/Envoy upgrade to confirm TLS config survived the upgrade.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal-only endpoints not reachable from the scanner — use local openssl s_client checks instead.</item>
+        <item>Development environments where self-signed certs are intentional — the gate will always fail by design.</item>
+        <item>Pre-commit hooks — TLS scanning requires a live running server; it is a post-deploy check, not a pre-commit check.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="testssl-as-ci-gate">
+      <p>testssl.sh (https://testssl.sh/) is the standard tool for pipeline TLS validation. It runs locally, requires no account, supports JSON output, and the --severity HIGH flag makes it suitable as a binary pass/fail gate.</p>
+
+      <rule testable="true">
+        <statement>All CI/CD pipelines that deploy TLS-terminated services MUST run testssl.sh --severity HIGH --jsonfile output.json against the staging endpoint before promoting to production. The job MUST fail (exit 1) if any finding with severity HIGH or CRITICAL is present in the JSON output.</statement>
+        <rationale>testssl.sh --severity HIGH covers deprecated protocols (TLS 1.0/1.1), weak ciphers (RC4, 3DES, export-grade), missing HSTS, broken OCSP, and invalid chains. These are all exploitable conditions that automated cert management can accidentally reintroduce through config drift.</rationale>
+      </rule>
+
+      <example type="good" title="testssl.sh in a GitHub Actions pipeline step">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/tls-gate.yml
+name: TLS Validation Gate
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tls-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install testssl.sh
+        run: |
+          git clone --depth 1 https://github.com/drwetter/testssl.sh.git /opt/testssl
+          chmod +x /opt/testssl/testssl.sh
+
+      - name: Run TLS scan on staging
+        run: |
+          /opt/testssl/testssl.sh \
+            --severity HIGH \
+            --jsonfile /tmp/tls-scan.json \
+            --quiet \
+            staging.example.com:443
+          # Fail if any HIGH/CRITICAL findings
+          python3 -c "
+          import json, sys
+          with open('/tmp/tls-scan.json') as f:
+              findings = json.load(f)
+          bad = [x for x in findings if x.get('severity','') in ('HIGH','CRITICAL','WARN')]
+          if bad:
+              print('FAIL:', len(bad), 'findings')
+              for b in bad: print(' ', b.get('id'), b.get('severity'), b.get('finding'))
+              sys.exit(1)
+          print('PASS: no HIGH/CRITICAL findings')
+          "
+
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tls-scan
+          path: /tmp/tls-scan.json
+]]></code>
+        <note>Run against staging (not production) to catch issues before they reach users. Always upload results as artifacts for audit trail.</note>
+      </example>
+
+      <example type="good" title="testssl.sh quick local check commands">
+        <code lang="bash"><![CDATA[
+# Check certificate expiry
+openssl s_client -connect example.com:443 -servername example.com 2>/dev/null \
+  | openssl x509 -noout -dates
+
+# Check TLS 1.3 support
+openssl s_client -connect example.com:443 -tls1_3
+
+# Check cipher suites
+nmap --script ssl-enum-ciphers -p 443 example.com
+
+# Test certificate chain
+openssl verify -CAfile chain.pem cert.pem
+
+# Check OCSP stapling
+openssl s_client -connect example.com:443 -status 2>/dev/null \
+  | grep -A 17 "OCSP Response"
+
+# Full testssl.sh scan with severity gate
+testssl.sh --severity HIGH example.com:443
+
+# sslyze programmatic scan (Python)
+sslyze --json_out scan.json example.com:443
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Running the TLS gate only on initial setup and not on every deploy that touches TLS configuration.</description>
+        <reason>Config drift is the primary source of TLS regressions. A web server upgrade, cipher list copy-paste from a Stack Overflow answer, or nginx config refactor can silently re-enable TLS 1.1 or weak ciphers. The gate must run on every TLS-touching deploy, not just once at setup time.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ssl-labs-integration">
+      <p>SSL Labs (https://www.ssllabs.com/ssltest/) provides the external reference score used in client-facing SLAs and compliance reports. The API is rate-limited but usable for scheduled scans and pre-launch validation.</p>
+
+      <rule testable="true">
+        <statement>All public-facing HTTPS services MUST achieve A+ on SSL Labs before production launch and MUST maintain A+ through quarterly hygiene scans. A grade downgrade from A+ to A or below triggers an immediate investigation and remediation within 48 hours.</statement>
+        <rationale>SSL Labs A+ requires TLS 1.3, strong ciphers, HSTS with preload eligibility, OCSP stapling, and forward secrecy. It is the industry reference for TLS quality and is checked by security auditors, compliance frameworks (PCI-DSS, SOC2), and automated scanners used by enterprise customers.</rationale>
+      </rule>
+
+      <example type="good" title="SSL Labs API for automated grade check">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# ssl-labs-check.sh — poll SSL Labs API until grade is available
+DOMAIN=${1:?usage: ssl-labs-check.sh example.com}
+API="https://api.ssllabs.com/api/v3/analyze"
+echo "Triggering SSL Labs scan for $DOMAIN..."
+curl -s "$API?host=$DOMAIN&startNew=on&all=done" > /dev/null
+sleep 30
+while true; do
+  result=$(curl -s "$API?host=$DOMAIN&all=done")
+  status=$(echo "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('status',''))")
+  if [[ "$status" == "READY" ]]; then
+    grade=$(echo "$result" | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+grades=[e.get('grade','?') for e in d.get('endpoints',[])]
+print(','.join(grades))")
+    echo "Grade: $grade"
+    echo "$grade" | grep -qv 'A+' && { echo "FAIL: expected A+"; exit 1; }
+    echo "PASS"
+    break
+  fi
+  echo "Status: $status — waiting..."
+  sleep 30
+done
+]]></code>
+        <note>SSL Labs rate-limits to 1 assessment per minute per IP. Use --new=off after the first scan to retrieve cached results without triggering a new scan.</note>
+      </example>
+    </section>
+
+    <section name="cert-chain-verification">
+      <p>Certificate chain validation catches incomplete chains (missing intermediate), wrong order, and cross-signed roots that cause browser warnings in specific client configurations.</p>
+
+      <example type="good" title="Verify certificate chain completeness">
+        <code lang="bash"><![CDATA[
+# View full certificate details
+openssl x509 -in cert.pem -text -noout
+
+# Check expiration date
+openssl x509 -in cert.pem -enddate -noout
+
+# Verify certificate chain against CA bundle
+openssl verify -CAfile ca.crt server.crt
+
+# Check remote certificate and chain
+openssl s_client -connect example.com:443 -servername example.com
+
+# Get expiration from remote endpoint
+echo | openssl s_client -connect example.com:443 2>/dev/null \
+  | openssl x509 -noout -dates
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Web servers MUST be configured with fullchain.pem (cert.pem + chain.pem concatenated), NOT cert.pem alone. Serving only the leaf certificate causes chain validation failures on clients that do not have the intermediate cached.</statement>
+        <rationale>Mobile clients and non-browser HTTP clients frequently do not have intermediate CA certificates cached. Serving the full chain eliminates this class of certificate validation error entirely.</rationale>
+      </rule>
+    </section>
+
+    <section name="ct-log-monitoring">
+      <p>Certificate Transparency (CT) logs record every publicly-trusted certificate issued. Monitoring CT logs for unexpected issuances against your domains is the only reliable way to detect rogue certificates issued by a compromised or misbehaving CA.</p>
+
+      <rule testable="true">
+        <statement>All production domains MUST have Certificate Transparency monitoring configured via crt.sh or a commercial CT monitoring service. Alerts MUST fire within 24 hours of any unexpected certificate issuance. DNS CAA records MUST restrict issuance to the approved CAs only.</statement>
+        <rationale>CT log monitoring is often forgotten; rogue issuance goes undetected for months. CAA records provide a declarative CA allowlist that compliant CAs must check before issuance — they are the first line of defense; CT monitoring is the detection layer for CAA bypass or misbehaving CAs.</rationale>
+      </rule>
+
+      <example type="good" title="DNS CAA records restricting issuance to Let's Encrypt">
+        <code lang="text"><![CDATA[
+; CAA records for example.com
+example.com.  IN  CAA  0  issue "letsencrypt.org"
+example.com.  IN  CAA  0  issuewild "letsencrypt.org"
+example.com.  IN  CAA  0  iodef "mailto:security@example.com"
+]]></code>
+        <note>iodef sends email notification when a CA encounters a policy violation trying to issue for this domain. issuewild restricts wildcard issuance separately from single-domain issue.</note>
+      </example>
+    </section>
+
+    <section name="monitoring-alerting">
+      <p>Production monitoring thresholds for certificate expiry and TLS quality metrics:</p>
+
+      <rule testable="true">
+        <statement>Certificate expiry monitoring MUST alert at 30, 14, 7, and 3 days remaining validity. For short-lived certs (6-day, 45-day), thresholds MUST be 2 days (warning) and 1 day (critical). TLS version usage MUST be monitored in nginx/load balancer access logs to detect legacy client fallback to TLS 1.2.</statement>
+        <rationale>The standard 30-day alert gives no room for short-lived cert failures. Monitoring TLS version usage in logs surfaces the rare legacy client that forces TLS 1.2 negotiation and lets you plan protocol deprecation with real traffic data.</rationale>
+      </rule>
+
+      <list>
+        <item>certbot/cmctl: use `cmctl inspect secret example-tls -n production` to check current cert status in cert-manager</item>
+        <item>crt.sh: https://crt.sh/?q=example.com — search CT logs manually or via API</item>
+        <item>ct-monitor: https://github.com/google/ct-monitor — Google's CT monitoring daemon</item>
+        <item>SSL Labs: https://www.ssllabs.com/ssltest/ — external grade reference</item>
+        <item>Hardenize: https://www.hardenize.com/ — broader TLS + email security scan</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Install testssl.sh in CI runner image or as a pipeline step.</check>
+      <check>Run testssl.sh --severity HIGH against staging endpoint on every TLS-touching deploy.</check>
+      <check>Parse JSON output and fail the build on any HIGH or CRITICAL finding.</check>
+      <check>Upload testssl JSON output as pipeline artifact for audit trail.</check>
+      <check>Run SSL Labs API scan before production launch and confirm A+ grade.</check>
+      <check>Schedule quarterly SSL Labs scans for all production domains.</check>
+      <check>Verify fullchain.pem is served (not cert.pem alone) using openssl s_client chain inspection.</check>
+      <check>Configure DNS CAA records restricting issuance to approved CAs.</check>
+      <check>Set up CT log monitoring for all production domains via crt.sh or equivalent.</check>
+      <check>Alert on cert expiry: 30/14/7/3 days (90-day certs) or 2/1 days (short-lived certs).</check>
+      <check>Monitor TLS version usage in access logs to detect legacy fallback traffic.</check>
+      <check>Verify HSTS header presence and value in HTTP response headers after every deploy.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://testssl.sh/"/>
+      <link href="https://github.com/nabla-c0d3/sslyze"/>
+      <link href="https://www.ssllabs.com/ssltest/"/>
+      <link href="https://github.com/ssllabs/research/wiki/SSL-and-TLS-Deployment-Best-Practices"/>
+      <link href="https://crt.sh/"/>
+      <link href="https://github.com/google/ct-monitor"/>
+      <link href="https://ssl-config.mozilla.org/"/>
+      <ref slug="cicd-tls-renewal-automation"/>
+      <ref slug="cicd-cert-rotation-pipeline"/>
+    </see-also>
+  </content>
+</methodology>
