@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-serializers">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Django DRF serializer conventions: separate Input and Output serializers, no business logic in serializers, explicit field declarations, nested serializers with N+1-safe queries provided by selectors.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>serializers</tag>
+      <tag>drf</tag>
+      <tag>api</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-selectors"/>
+      <ref slug="django-coding-standards"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django DRF Serializer Conventions</title>
+
+    <summary>Use separate Input serializers (for request data validation) and Output serializers (for response formatting). Never put business logic in serializers. Declare all fields explicitly — avoid ModelSerializer's automatic field discovery. Nested serializers rely on selectors to provide pre-fetched data, never trigger their own queries.</summary>
+
+    <why>
+      <p>A single serializer used for both input and output accidentally exposes sensitive fields (password, is_staff, internal IDs) in responses, or ignores them on input. Separate serializers make the API surface explicit and auditable. Business logic in serializers bypasses the service layer and becomes hard to test in isolation. Explicit field declarations prevent accidental exposure of new model fields when they are added.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Django REST Framework API endpoint that accepts input data.</item>
+        <item>Any API endpoint that returns model data as JSON.</item>
+        <item>Views that need to validate request payload before passing to a service.</item>
+        <item>Endpoints with nested related data that must be serialized efficiently.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Internal utility functions that manipulate data in Python — no HTTP boundary, no serializer needed.</item>
+        <item>Admin-only views using Django admin's built-in forms — ModelAdmin handles that.</item>
+        <item>Django Ninja projects — use Pydantic schemas instead of DRF serializers.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Define separate Input serializers (named EntityCreateRequest, EntityUpdateRequest) and Output serializers (named EntityResponse, EntityListResponse). Never use ModelSerializer as a shared input-output serializer. Input serializers inherit from serializers.Serializer, not ModelSerializer.</statement>
+        <rationale>Shared serializers accidentally expose sensitive fields (password, is_staff, created_at) in responses because ModelSerializer's fields = '__all__' includes everything. Input serializers that inherit from ModelSerializer also accept fields they shouldn't (id, created_at). Explicit serializers make the API surface auditable and stable against model changes.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Serializers MUST NOT contain business logic. validate_*() and validate() methods may only check input shape and format — not query the database, not enforce business rules, not create or modify model instances.</statement>
+        <rationale>Business logic in validate() is untestable without constructing a full serializer and bypasses the service layer. Any database access in validate() runs outside the service transaction, leading to inconsistent state if the service transaction rolls back.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Output serializers inherit from serializers.Serializer and declare all fields explicitly. Fields that must not be exposed (password, secret tokens, internal flags) MUST be absent from the output serializer. Never use exclude = [...] in ModelSerializer as protection — it is too easy to miss new fields.</statement>
+        <rationale>Explicit field lists ensure new model fields are not accidentally exposed. exclude = ['password'] fails silently when a new sensitive field is added — the developer must remember to add it to the exclude list. An explicit include list is safe by default.</rationale>
+      </rule>
+    </rules>
+
+    <example type="bad" title="Shared ModelSerializer (anti-pattern)">
+      <code lang="python"><![CDATA[
+# BAD — Same serializer for input and output
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'name', 'password', 'is_staff', 'created_at']
+# Exposes password and is_staff in responses
+# Accepts id and created_at in create requests
+      ]]></code>
+    </example>
+
+    <example type="good" title="Separate Input and Output serializers">
+      <code lang="python"><![CDATA[
+# apps/users/serializers.py
+from rest_framework import serializers
+
+
+class UserCreateRequest(serializers.Serializer):
+    """Input serializer for user creation."""
+
+    email = serializers.EmailField()
+    name = serializers.CharField(max_length=100)
+    password = serializers.CharField(min_length=8, write_only=True)
+
+
+class UserUpdateRequest(serializers.Serializer):
+    """Input serializer for user updates. All fields optional."""
+
+    name = serializers.CharField(max_length=100, required=False)
+    bio = serializers.CharField(max_length=500, required=False, allow_blank=True)
+
+
+class UserResponse(serializers.Serializer):
+    """Output serializer for user data."""
+
+    id = serializers.IntegerField()
+    email = serializers.EmailField()
+    name = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    # Note: password, is_staff NOT included
+
+
+class UserDetailResponse(UserResponse):
+    """Extended user response with additional fields."""
+
+    orders_count = serializers.SerializerMethodField()
+    bio = serializers.CharField()
+
+    def get_orders_count(self, obj: "User") -> int:
+        return obj.orders.count()  # Only safe if orders is annotated or prefetched
+      ]]></code>
+    </example>
+
+    <section name="nested-serializers">
+      <p>Nested serializers for related data must rely on the selector to provide pre-fetched data. The serializer only formats it.</p>
+
+      <example type="bad" title="Nested serializer triggering N+1">
+        <code lang="python"><![CDATA[
+# BAD — items causes N+1 query if not prefetched
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)  # N+1 query — one query per order
+
+    class Meta:
+        model = Order
+        fields = ['id', 'items', 'total']
+        ]]></code>
+      </example>
+
+      <example type="good" title="Nested serializer with selector-provided prefetch">
+        <code lang="python"><![CDATA[
+# Selector provides pre-fetched data:
+# order_list_for_user prefetches items__product — zero extra queries in serializer
+
+class OrderItemResponse(serializers.Serializer):
+    """Order item with product details."""
+
+    id = serializers.IntegerField()
+    quantity = serializers.IntegerField()
+    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    product_name = serializers.CharField(source="product.name")  # prefetched — no query
+
+
+class OrderResponse(serializers.Serializer):
+    """Complete order response."""
+
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    items = OrderItemResponse(many=True)   # no new queries — items prefetched by selector
+    created_at = serializers.DateTimeField()
+
+
+class OrderListResponse(serializers.Serializer):
+    """Minimal order for list views."""
+
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    created_at = serializers.DateTimeField()
+    # Note: items NOT included — saves query on list views
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="view-pattern">
+      <p>Views follow a strict three-step pattern: validate input, call service or selector, serialize and return response.</p>
+
+      <example type="good" title="View using input/output serializers correctly">
+        <code lang="python"><![CDATA[
+class OrderCreateView(APIView):
+    """Create a new order for authenticated user."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Validate input
+        serializer = OrderCreateRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Call service
+        order = order_create(
+            user=request.user,
+            **serializer.validated_data,
+        )
+
+        # 3. Return response
+        return Response(
+            OrderResponse(order).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class OrderListView(APIView):
+    """List authenticated user's orders."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # 1. No input validation needed for list
+        orders = order_list_for_user(
+            user=request.user,
+            status=request.query_params.get("status"),
+        )
+
+        # 2. Paginate and serialize
+        paginator = LimitOffsetPagination()
+        page = paginator.paginate_queryset(orders, request)
+
+        return paginator.get_paginated_response(
+            OrderListResponse(page, many=True).data
+        )
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="validation-rules">
+      <p>Serializer validation rules for input serializers:</p>
+      <rules>
+        <rule testable="true">
+          <statement>Set required, allow_blank, allow_null, and default explicitly on every field of Input serializers. Do not rely on DRF defaults — they are not obvious and change between DRF versions.</statement>
+          <rationale>Explicit field options make the API contract visible in code. When a field is optional with a default, set required=False, default=value. When blank strings are allowed, set allow_blank=True. Implicit DRF defaults can silently accept or reject fields in unexpected ways.</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="Explicit field declarations in input serializer">
+        <code lang="python"><![CDATA[
+class OrderCreateRequest(serializers.Serializer):
+    """Input: all explicit, no ModelSerializer."""
+
+    # Required fields — no defaults
+    shipping_address = serializers.CharField(max_length=500)
+    items = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1,
+    )
+
+    # Optional with defaults
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        max_length=1000,
+    )
+    priority = serializers.ChoiceField(
+        choices=["standard", "express"],
+        required=False,
+        default="standard",
+    )
+        ]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Separate Input (Request) and Output (Response) serializers defined for each entity.</check>
+      <check>Input serializers inherit from serializers.Serializer, not ModelSerializer.</check>
+      <check>Output serializers declare all fields explicitly — no fields = '__all__'.</check>
+      <check>Sensitive fields (password, is_staff, secret tokens) absent from Output serializers.</check>
+      <check>No database queries or business logic inside validate_* or validate() methods.</check>
+      <check>Nested serializers rely on prefetched data from selectors, not their own queries.</check>
+      <check>All input fields have explicit required, allow_blank, allow_null settings.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-service-layer"/>
+      <ref slug="django-selectors"/>
+      <link href="https://www.django-rest-framework.org/api-guide/serializers/"/>
+      <link href="https://github.com/HackSoftware/Django-Styleguide#serializers"/>
+    </see-also>
+  </content>
+</methodology>
