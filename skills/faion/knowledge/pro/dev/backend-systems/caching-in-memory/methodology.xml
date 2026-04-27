@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="caching-in-memory">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Process-local L1 caching with lru_cache, TTLCache, and WarmableCache for hot paths, expensive computations, and semi-static config — when to use and when to prefer Redis instead.</summary>
+    <tags>
+      <tag>caching</tag>
+      <tag>in-memory</tag>
+      <tag>lru-cache</tag>
+      <tag>ttlcache</tag>
+      <tag>cache-warming</tag>
+    </tags>
+    <category>caching</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="caching-write-patterns"/>
+      <ref slug="caching-stampede-prevention"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>In-Memory Application Cache: lru_cache, TTLCache, and Cache Warming</title>
+
+    <summary>In-memory (process-local) caching is the L1 layer in a multi-level cache stack: requests that hit L1 never leave the process, achieving sub-millisecond latency with zero network overhead. Python's lru_cache is appropriate for deterministic pure functions with stable inputs; cachetools TTLCache adds TTL expiry and thread-safety; WarmableCache adds preload-on-startup for predictable hot keys. L1 is not a replacement for Redis — it cannot be shared across processes and does not survive restarts.</summary>
+
+    <why>
+      <p>Redis round-trips add 1–5ms of network latency even on local deployments. For hot paths called thousands of times per second (permission lookups, config reads, feature flags), an in-process L1 cache eliminates the Redis call entirely and reduces both latency and Redis I/O pressure. The tradeoff: each process maintains its own copy of the cached data, which means stale data after writes cannot be invalidated globally without a shared signal (pub/sub or version check).</p>
+      <p>The canonical multi-level architecture is: L1 = process-local (lru_cache / TTLCache), L2 = Redis distributed cache, L3 = database. L1 hit: sub-millisecond. L2 hit: 1–15ms. L3 hit: 10–100ms. For read-heavy, rarely-updated data like config, feature flags, and permission tables, hitting L1 for 90% of requests while Redis handles cold starts and cross-process coherence is the correct architecture.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Static or semi-static config loaded from DB at startup — warmable, never stale.</item>
+        <item>Permission and role tables accessed on every authenticated request — high hit rate, infrequent updates, short TTL acceptable.</item>
+        <item>Feature flags polled per request — low-cardinality keys, bounded staleness acceptable (30–300s).</item>
+        <item>Expensive pure computations with stable inputs (hash functions, Markdown rendering, regex compilation) — lru_cache without TTL is correct when the input space is bounded.</item>
+        <item>Hot product or article data in a read-heavy API serving one process per machine — L1 reduces Redis load by the L1 hit rate.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>User session data — must be shared across all processes; use Redis.</item>
+        <item>Data requiring cross-process invalidation after writes — L1 has no shared invalidation signal without a Redis pub/sub or version-check mechanism.</item>
+        <item>High-cardinality data (one key per user per request) — L1 cache fills with cold entries, evicting hot ones; hit rate collapses.</item>
+        <item>Large values (&gt;1MB per entry) — in-process caches constrained to &lt;20% of total RAM; a few large values exhaust the maxsize budget.</item>
+        <item>Multi-worker deployments where each worker serves different traffic — L1 caches are independent per worker and cannot be coordinated.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="lru-cache">
+      <p>Python's functools.lru_cache is the simplest in-process cache: pure decorator, bounded by maxsize entries, LRU eviction, no TTL. It is correct for deterministic functions with a bounded input space where stale data after a write is not a concern (content rendering, computation results, immutable lookups).</p>
+
+      <rule testable="true">
+        <statement>lru_cache MUST only be applied to pure functions whose output depends solely on the input arguments — never to functions with side effects, external I/O, or time-dependent results. maxsize MUST be set explicitly; never use maxsize=None (unbounded cache grows without limit until OOM kill).</statement>
+        <rationale>Caching a function with side effects or I/O makes those effects invisible on cache hits — the test may verify the result but the side effect only fires on the first call. An unbounded cache on a high-cardinality function is a memory leak that causes OOM under load without any warning.</rationale>
+      </rule>
+
+      <example type="good" title="lru_cache for pure computation (Python)">
+        <code lang="python"><![CDATA[
+from functools import lru_cache
+
+# Correct: pure function, bounded input, no side effects
+@lru_cache(maxsize=1000)
+def expensive_computation(input_data: str) -> str:
+    return perform_heavy_calculation(input_data)
+
+# Invalidate when underlying data changes
+expensive_computation.cache_clear()
+]]></code>
+      </example>
+    </section>
+
+    <section name="ttlcache">
+      <p>cachetools TTLCache adds expiry to in-process caching. Unlike lru_cache, it bounds both size (maxsize) and time (ttl), making it safe for data that changes on a schedule. The thread-safety issue is critical: TTLCache is not thread-safe by default; a threading.Lock must be passed via the lock parameter of the cached decorator.</p>
+
+      <rule testable="true">
+        <statement>TTLCache instances used in multi-threaded applications MUST be wrapped with a threading.Lock via cachetools.cached(cache, lock=cache_lock). The lock MUST be created once at module level and shared with the cache instance — never created inside the decorated function.</statement>
+        <rationale>TTLCache mutates shared state (eviction, size tracking) on every get and set. Without a lock, concurrent access causes dictionary corruption errors or silent data loss under the GIL race. The lock must be module-level so all threads share the same lock instance.</rationale>
+      </rule>
+
+      <example type="good" title="TTLCache with thread safety (Python)">
+        <code lang="python"><![CDATA[
+from cachetools import TTLCache, cached
+import threading
+
+# TTL cache with thread safety
+cache = TTLCache(maxsize=1000, ttl=300)
+cache_lock = threading.Lock()
+
+@cached(cache, lock=cache_lock)
+def get_config(key: str) -> dict:
+    return load_config_from_db(key)
+]]></code>
+      </example>
+    </section>
+
+    <section name="warmable-cache">
+      <p>WarmableCache preloads known hot keys at process startup, eliminating cold-start latency for the most frequent accesses. It uses double-checked locking to prevent concurrent cache misses from triggering duplicate loads for the same key.</p>
+
+      <rule testable="true">
+        <statement>WarmableCache MUST implement double-checked locking (check outside lock, acquire lock, check again inside lock) on cache miss to prevent concurrent duplicate loads for the same key. The warm() method MUST be called after DB migrations and during rolling deploys before traffic is routed to the new instance.</statement>
+        <rationale>Without double-checked locking, two concurrent misses for the same key both acquire the loader, executing two identical DB queries and one of them being discarded. Under high concurrency this multiplies origin load by the number of concurrent workers.</rationale>
+      </rule>
+
+      <example type="good" title="WarmableCache with double-checked locking (Python)">
+        <code lang="python"><![CDATA[
+from cachetools import TTLCache
+import threading
+
+class WarmableCache:
+    def __init__(self, loader, ttl: int = 300):
+        self.cache = TTLCache(maxsize=10000, ttl=ttl)
+        self.loader = loader
+        self.lock = threading.Lock()
+
+    def get(self, key: str):
+        # First check (no lock) — fast path for cache hits
+        if key not in self.cache:
+            with self.lock:
+                # Second check (with lock) — prevents duplicate loads
+                if key not in self.cache:
+                    self.cache[key] = self.loader(key)
+        return self.cache[key]
+
+    def warm(self, keys: list):
+        """Preload known hot keys before traffic arrives."""
+        for key in keys:
+            self.cache[key] = self.loader(key)
+
+# Usage
+config_cache = WarmableCache(
+    loader=lambda key: load_config_from_db(key),
+    ttl=300
+)
+
+# Warm on startup with known hot keys
+config_cache.warm(["feature_flags", "rate_limits", "allowed_origins"])
+]]></code>
+      </example>
+
+      <example type="good" title="Multi-layer caching: L1 in-process + L2 Redis">
+        <code lang="python"><![CDATA[
+from functools import lru_cache
+import redis
+import json
+
+redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+class MultiLayerProductCache:
+    """L1: process-local lru_cache, L2: Redis, L3: database."""
+
+    # L1: Process-local cache for hot products (40% hit rate)
+    @lru_cache(maxsize=1000)
+    def _get_hot_product_local(self, product_id: str):
+        return None  # Cache miss triggers L2 lookup
+
+    # L2: Redis distributed cache
+    def _get_product_redis(self, product_id: str):
+        cached = redis_client.get(f"product:{product_id}")
+        if cached:
+            return json.loads(cached)
+        return None
+
+    # L3: Database
+    def _get_product_db(self, product_id: str):
+        return self.db.products.find_one({"_id": product_id})
+
+    def get_product(self, product_id: str):
+        # Try L1 (local, sub-ms)
+        data = self._get_hot_product_local(product_id)
+
+        # Try L2 (Redis, 1-5ms)
+        if not data:
+            data = self._get_product_redis(product_id)
+
+        # Try L3 (Database, 10-100ms)
+        if not data:
+            data = self._get_product_db(product_id)
+            if data:
+                redis_client.setex(f"product:{product_id}", 3600, json.dumps(data))
+
+        return data
+
+    def update_product(self, product_id: str, updates: dict):
+        self.db.products.update_one({"_id": product_id}, {"$set": updates})
+        # Invalidate all cache layers — top-down
+        self._get_hot_product_local.cache_clear()
+        redis_client.delete(f"product:{product_id}")
+
+# Typical metrics: L1 hit 40% (5ms), L2 hit 50% (15ms), L3 hit 10% (50ms)
+]]></code>
+        <note>Write-through to all levels but invalidate top-down (L1 first, then L2). For multi-worker deployments, L1 invalidation requires either a process-local cache_clear (affects only this worker) or a Redis pub/sub signal to all workers.</note>
+      </example>
+    </section>
+
+    <section name="sizing-and-limits">
+      <p>In-memory caches must be sized to stay within the process memory budget. The rule of thumb is less than 20% of total available RAM for the cache. Monitor memory fragmentation (RSS vs. VmRSS) and L1 hit rate; a hit rate below 30% for a warmable cache indicates wrong key selection or excessive cardinality.</p>
+
+      <rule testable="true">
+        <statement>In-memory cache maxsize MUST be set to keep total cache memory below 20% of the process's total RAM allocation. Large values (&gt;1KB per entry) MUST be stored in Redis, not L1. Cache memory usage MUST be monitored; alerts MUST fire when cache grows to 80% of the allocated budget.</statement>
+        <rationale>An unbounded or oversized L1 cache competes with heap allocation and triggers GC pressure or OOM kills. The 20% rule leaves headroom for request processing, connection pools, and library buffers. Values above 1KB in an in-process dict with 10k entries become 10GB of heap — use Redis for large objects.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Define maxsize for every lru_cache and TTLCache instance — never unbounded.</check>
+        <check>Set cache memory limit to less than 20% of total process RAM.</check>
+        <check>Use threading.Lock with cachetools.cached in multi-threaded applications.</check>
+        <check>Wire cache.clear() or cache_clear() into write paths for affected entities.</check>
+        <check>Log L1 hit rate; alert if it falls below 50% for a warmable cache.</check>
+        <check>For multi-process deployments, decide: accept per-process staleness, or add Redis pub/sub invalidation signal.</check>
+        <check>Store values larger than 1KB in Redis, not L1.</check>
+      </checklist>
+
+      <antipattern>
+        <description>Using lru_cache on a function that calls external I/O (DB, HTTP, filesystem).</description>
+        <reason>lru_cache decorates at import time and cannot be easily cleared by entity ID. When the underlying data changes, there is no invalidation path short of cache_clear() (which clears ALL entries). Use TTLCache with a short TTL instead so stale data expires automatically.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using in-process L1 cache for user session state in a multi-worker deployment.</description>
+        <reason>Each worker has its own L1 cache. A session written by worker A is invisible to worker B. Sticky sessions mitigate this at the load-balancer level but break on worker restarts. Session state requires a shared store (Redis).</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://redis.io/docs/manual/patterns/"/>
+      <link href="https://cachetools.readthedocs.io/"/>
+      <ref slug="caching-write-patterns"/>
+      <ref slug="caching-stampede-prevention"/>
+    </see-also>
+  </content>
+</methodology>
