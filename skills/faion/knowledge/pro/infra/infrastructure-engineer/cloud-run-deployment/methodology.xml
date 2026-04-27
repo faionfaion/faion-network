@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-deployment">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run service deployment: container preparation, health checks, resource configuration, Dockerfile patterns, and gcloud/Terraform/YAML deployment commands.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>deployment</tag>
+      <tag>containers</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-autoscaling"/>
+      <ref slug="cloud-run-traffic-management"/>
+      <ref slug="cloud-run-vpc-access"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run Service Deployment</title>
+
+    <summary>Cloud Run services accept HTTP requests and scale automatically. Deploy from a container image or source, set resource limits, configure health checks, and use Secret Manager for credentials. The container MUST listen on the PORT environment variable.</summary>
+
+    <why>
+      <p>Cloud Run abstracts server management: you ship a container, set limits, and it handles scaling, TLS, and request routing. Proper container preparation (listening on PORT, graceful shutdown, startup time under 10s) is what separates flaky cold starts from reliable production deployments.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying a stateless HTTP API or web application as a containerized service.</item>
+        <item>Migrating from Cloud Functions to a container-based runtime.</item>
+        <item>Setting up a new Cloud Run service with Terraform or gcloud in production.</item>
+        <item>Configuring health check probes for a Cloud Run service.</item>
+        <item>Building a Dockerfile for a Cloud Run target container.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Long-running background tasks without HTTP triggers — use Cloud Run Jobs instead.</item>
+        <item>Stateful services requiring persistent local disk — use Compute Engine or GKE.</item>
+        <item>Workloads exceeding 8 vCPU or 32 GB memory — use GKE.</item>
+        <item>Autoscaling configuration details — see cloud-run-autoscaling.</item>
+        <item>Traffic splitting and canary patterns — see cloud-run-traffic-management.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="container-requirements">
+      <rule>
+        <statement>The container MUST listen on the port specified by the PORT environment variable (default 8080). It MUST start responding within 10 seconds (ideally under 4 seconds). It MUST handle SIGTERM for graceful shutdown of in-flight requests. No secrets may be baked into the image — use Secret Manager references.</statement>
+        <rationale>Cloud Run sends SIGTERM when scaling down or replacing a revision. Failing to drain in-flight requests within the timeout causes request errors. PORT is injected at runtime; hardcoding a port breaks deployments in different environments.</rationale>
+      </rule>
+
+      <example type="good" title="Python FastAPI Dockerfile for Cloud Run">
+        <code lang="dockerfile"><![CDATA[
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+RUN adduser --disabled-password --gecos "" appuser
+USER appuser
+
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+]]></code>
+      </example>
+
+      <example type="good" title="Go distroless Dockerfile for Cloud Run">
+        <code lang="dockerfile"><![CDATA[
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /server ./cmd/server
+
+FROM gcr.io/distroless/static-debian12
+
+COPY --from=builder /server /server
+
+USER nonroot:nonroot
+
+ENV PORT=8080
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+      </example>
+
+      <example type="good" title="Node.js Dockerfile for Cloud Run">
+        <code lang="dockerfile"><![CDATA[
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+
+USER node
+
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["node", "server.js"]
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Hardcoding PORT=8080 in CMD or application config without reading from the PORT environment variable.</description>
+        <reason>Cloud Run injects PORT at runtime. If a future revision or environment sets a different port, the container silently fails to serve traffic.</reason>
+      </antipattern>
+    </section>
+
+    <section name="gcloud-deployment">
+      <rule>
+        <statement>Production Cloud Run services MUST specify: --service-account (dedicated per-service SA), --set-secrets for all credentials (never --set-env-vars for sensitive values), --memory and --cpu, --timeout, --ingress=internal-and-cloud-load-balancing (not all), --no-allow-unauthenticated. Push to Artifact Registry, not Container Registry (gcr.io is deprecated).</statement>
+        <rationale>The default compute SA has project-wide permissions. --set-secrets binds at runtime from Secret Manager with audit logging. Public ingress (all) exposes services to the internet without authentication — use GCLB or internal access instead.</rationale>
+      </rule>
+
+      <example type="good" title="Production service deployment">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-api \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-api:v1.2.3 \
+    --region=us-central1 \
+    --service-account=my-api-sa@my-project.iam.gserviceaccount.com \
+    --memory=2Gi \
+    --cpu=2 \
+    --concurrency=80 \
+    --min-instances=1 \
+    --max-instances=100 \
+    --timeout=300 \
+    --set-env-vars=ENV=production,LOG_LEVEL=info \
+    --set-secrets=DATABASE_URL=db-connection-string:latest,API_KEY=api-key:latest \
+    --cpu-boost \
+    --ingress=internal-and-cloud-load-balancing \
+    --no-allow-unauthenticated
+]]></code>
+      </example>
+
+      <example type="good" title="Deploy from source (Buildpacks)">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-service \
+    --source=. \
+    --region=us-central1 \
+    --allow-unauthenticated
+]]></code>
+        <note>Source-based deploys use Buildpacks to auto-detect language and build the container. Good for development; for production, build and pin image tags explicitly.</note>
+      </example>
+
+      <example type="good" title="Deploy with health checks">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-service \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-service:v1 \
+    --region=us-central1 \
+    --startup-probe-http-get-path=/health \
+    --startup-probe-initial-delay-seconds=5 \
+    --startup-probe-timeout-seconds=3 \
+    --startup-probe-period-seconds=10 \
+    --startup-probe-failure-threshold=3 \
+    --liveness-probe-http-get-path=/health \
+    --liveness-probe-period-seconds=30 \
+    --liveness-probe-timeout-seconds=5 \
+    --liveness-probe-failure-threshold=3
+]]></code>
+      </example>
+    </section>
+
+    <section name="terraform-deployment">
+      <rule>
+        <statement>Terraform deployments MUST use google_cloud_run_v2_service (V2 API), set startup_cpu_boost = true for services with variable load, and reference secrets via secret_key_ref inside env value_source blocks. Never put plaintext secrets in env value blocks.</statement>
+        <rationale>The V2 API supports direct VPC access, multi-container, and GPU. The V1 resource (google_cloud_run_service) is deprecated. startup_cpu_boost allocates extra CPU during container initialization, reducing cold start time.</rationale>
+      </rule>
+
+      <example type="good" title="Production Terraform service with VPC and secrets">
+        <code lang="hcl"><![CDATA[
+resource "google_cloud_run_v2_service" "production" {
+  name     = var.service_name
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+
+  template {
+    service_account = var.service_account_email
+
+    vpc_access {
+      network_interfaces {
+        network    = var.vpc_network
+        subnetwork = var.vpc_subnet
+      }
+      egress = "ALL_TRAFFIC"
+    }
+
+    containers {
+      image = var.image
+
+      resources {
+        limits = {
+          cpu    = "2"
+          memory = "2Gi"
+        }
+        cpu_idle          = false
+        startup_cpu_boost = true
+      }
+
+      ports {
+        container_port = 8080
+      }
+
+      env {
+        name  = "ENV"
+        value = "production"
+      }
+
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = "database-url"
+            version = "latest"
+          }
+        }
+      }
+
+      startup_probe {
+        http_get {
+          path = "/health"
+          port = 8080
+        }
+        initial_delay_seconds = 5
+        period_seconds        = 10
+        timeout_seconds       = 3
+        failure_threshold     = 3
+      }
+
+      liveness_probe {
+        http_get {
+          path = "/health"
+          port = 8080
+        }
+        period_seconds    = 30
+        timeout_seconds   = 5
+        failure_threshold = 3
+      }
+    }
+
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 100
+    }
+
+    max_instance_request_concurrency = 80
+    timeout                          = "300s"
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+}
+
+resource "google_cloud_run_v2_service_iam_member" "invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.production.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.service_account_email}"
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloudbuild-cicd">
+      <example type="good" title="Cloud Build: build, push, deploy">
+        <code lang="yaml"><![CDATA[
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+
+substitutions:
+  _REGION: us-central1
+  _REPO: my-repo
+  _SERVICE: my-service
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+]]></code>
+      </example>
+
+      <example type="good" title="Cloud Build: test + build + blue-green deploy">
+        <code lang="yaml"><![CDATA[
+steps:
+  - name: 'python:3.12'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        pip install -r requirements.txt
+        pytest tests/
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--no-traffic'
+      - '--tag=green'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'services'
+      - 'update-traffic'
+      - '${_SERVICE}'
+      - '--region=${_REGION}'
+      - '--to-tags=green=100'
+
+substitutions:
+  _REGION: us-central1
+  _REPO: my-repo
+  _SERVICE: my-service
+]]></code>
+      </example>
+    </section>
+
+    <section name="deployment-checklist">
+      <checklist>
+        <check>Container image built, tested locally, and pushed to Artifact Registry.</check>
+        <check>Base image is actively maintained and secure (no Container Registry / gcr.io).</check>
+        <check>No secrets baked into the image — all from Secret Manager.</check>
+        <check>Container listens on PORT environment variable.</check>
+        <check>Container starts in under 10 seconds (ideally under 4s).</check>
+        <check>Container handles SIGTERM gracefully.</check>
+        <check>Region selected for latency and compliance.</check>
+        <check>Memory limit set appropriately (right-sized, not default).</check>
+        <check>CPU limit set (1-8 vCPU).</check>
+        <check>Request timeout configured.</check>
+        <check>Concurrency limit set (default 80).</check>
+        <check>Dedicated service account assigned (not default compute SA).</check>
+        <check>Ingress setting restricted (not all unless public access required).</check>
+        <check>Startup probe configured for slow-starting services.</check>
+        <check>Structured logging implemented (JSON to stdout).</check>
+      </checklist>
+    </section>
+
+    <section name="management-commands">
+      <commands>
+        <command name="list-services">gcloud run services list --region=us-central1</command>
+        <command name="describe-service">gcloud run services describe my-service --region=us-central1</command>
+        <command name="get-url">gcloud run services describe my-service --region=us-central1 --format='value(status.url)'</command>
+        <command name="view-logs">gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=my-service" --limit=100</command>
+        <command name="stream-logs">gcloud beta run services logs tail my-service --region=us-central1</command>
+        <command name="delete-service">gcloud run services delete my-service --region=us-central1</command>
+      </commands>
+    </section>
+
+    <see-also>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-autoscaling"/>
+      <ref slug="cloud-run-traffic-management"/>
+      <ref slug="cloud-run-jobs"/>
+      <ref slug="cloud-run-vpc-access"/>
+      <ref slug="cloud-run-monitoring"/>
+      <link href="https://cloud.google.com/run/docs"/>
+      <link href="https://cloud.google.com/run/docs/tips/general"/>
+    </see-also>
+  </content>
+</methodology>
