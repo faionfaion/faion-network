@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="nosql-redis-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Redis data structure patterns: strings, hashes, lists, sets, sorted sets for caching, leaderboards, rate limiting, pub/sub messaging, and event streams.</summary>
+    <tags>
+      <tag>redis</tag>
+      <tag>nosql</tag>
+      <tag>caching</tag>
+      <tag>rate-limiting</tag>
+      <tag>pub-sub</tag>
+    </tags>
+    <category>nosql</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>redis</framework>
+    </frameworks>
+    <related>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+      <ref slug="nosql-neo4j-patterns"/>
+      <ref slug="caching-in-memory"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Redis Data Structure Patterns</title>
+
+    <summary>Choose the right Redis data structure for each use case: strings for simple caching, hashes for object fields, lists for queues and stacks, sets for unique membership, sorted sets for leaderboards and rate limiting, pub/sub for real-time fan-out, and streams for durable event sourcing. Always set EXPIRE or use key namespacing to prevent silent key leaks.</summary>
+
+    <why>
+      <p>Redis is an in-memory data structure server, not just a key-value cache. Each data type (String, Hash, List, Set, Sorted Set, Stream) is backed by a specific encoding that gives O(1) or O(log N) operations for its intended access pattern. Using the wrong type — e.g., serialized JSON strings when a Hash would allow field-level HINCRBY — wastes memory and loses atomic operation support.</p>
+      <p>The most common Redis anti-pattern is forgetting TTLs. Without expiry, keys accumulate silently until the server hits maxmemory and starts evicting data the application still needs. Consistent key naming conventions and per-key EXPIRE calls (or key-level TTL at write time) are the primary defense.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>High-speed caching layer in front of a slower database (sub-millisecond reads).</item>
+        <item>Session storage with automatic TTL-based expiry.</item>
+        <item>Real-time leaderboards, ranking, or scoring systems using Sorted Sets.</item>
+        <item>Distributed rate limiting using sliding-window Sorted Sets or token-bucket Strings.</item>
+        <item>Lightweight task queues (List LPUSH/BRPOP) where message durability is handled by the application.</item>
+        <item>Real-time pub/sub notifications or fan-out messaging.</item>
+        <item>Durable ordered event streams (Redis Streams with consumer groups).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Durable primary data store — Redis persistence (RDB/AOF) is not a substitute for a proper database; use as a cache or secondary store only.</item>
+        <item>Large binary objects (images, videos) — object storage (S3) is more appropriate; Redis memory is expensive.</item>
+        <item>Complex relational queries — Redis has no query language; use PostgreSQL or MongoDB.</item>
+        <item>Long-lived event streams requiring replay and strong ordering guarantees — Kafka provides durable, partitioned, replayable logs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-structures">
+      <rule testable="true">
+        <statement>Select the Redis data type that matches the access pattern: String for atomic cache values with SETEX; Hash for objects where individual fields are read or incremented without deserializing the whole object; List for FIFO queues (LPUSH + BRPOP) or recent-N stacks; Set for unique membership tests and set operations (SINTER, SUNION); Sorted Set for ranked data and sliding-window rate limits; Stream for ordered, replayable event logs with consumer groups.</statement>
+        <rationale>Each Redis type maps to a specific server-side data structure with distinct time complexity guarantees. Using String + JSON serialization for an object prevents field-level atomic operations (HINCRBY). Using a List when uniqueness matters silently allows duplicates.</rationale>
+      </rule>
+
+      <example type="good" title="Five core data structures in Python">
+        <code lang="python"><![CDATA[
+import redis, json, time
+
+r = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+# String - Simple caching with TTL
+r.setex("user:123:profile", 3600, json.dumps(user_data))
+profile = json.loads(r.get("user:123:profile"))
+
+# Hash - Object storage with per-field atomic ops
+r.hset("user:123", mapping={
+    "name": "John Doe",
+    "email": "john@example.com",
+    "login_count": 42
+})
+r.hincrby("user:123", "login_count", 1)
+
+# List - FIFO queue with blocking pop
+r.lpush("task:queue", json.dumps(task))         # enqueue
+task = r.brpop("task:queue", timeout=30)        # blocking dequeue
+
+# Set - Unique collections and membership checks
+r.sadd("user:123:tags", "premium", "verified", "beta")
+r.sismember("user:123:tags", "premium")         # O(1) membership test
+r.sinter("user:123:tags", "user:456:tags")      # common tags
+
+# Sorted Set - Leaderboards
+r.zadd("leaderboard", {"player1": 1500, "player2": 1200})
+r.zincrby("leaderboard", 50, "player1")
+top_10 = r.zrevrange("leaderboard", 0, 9, withscores=True)
+]]></code>
+      </example>
+    </section>
+
+    <section name="rate-limiting">
+      <rule testable="true">
+        <statement>Implement sliding-window rate limiting using a Sorted Set per user/IP with the request timestamp as both member and score. Use a pipeline to atomically remove expired entries, add the new request, count the window, and reset the TTL. Never implement rate limiting with a single counter (String INCR) — it resets at fixed clock boundaries and allows burst at window edges.</statement>
+        <rationale>A fixed-window counter (INCR + EXPIRE) allows up to 2x the rate limit at window boundaries: all requests in the last second of window N and all in the first second of window N+1. The sliding-window Sorted Set prevents this by evicting entries older than the window on every check.</rationale>
+      </rule>
+
+      <example type="good" title="Sliding-window rate limit with Sorted Set pipeline">
+        <code lang="python"><![CDATA[
+def is_rate_limited(user_id: str, limit: int = 100, window: int = 60) -> bool:
+    key = f"ratelimit:{user_id}"
+    now = time.time()
+
+    pipe = r.pipeline()
+    pipe.zremrangebyscore(key, 0, now - window)   # evict old requests
+    pipe.zadd(key, {str(now): now})               # record this request
+    pipe.zcard(key)                               # count window
+    pipe.expire(key, window)                      # auto-cleanup
+    results = pipe.execute()
+
+    return results[2] > limit
+]]></code>
+        <note>Pipeline executes atomically from the server's perspective; four commands round-trip as one. results[2] is the zcard result (total requests in window).</note>
+      </example>
+    </section>
+
+    <section name="pubsub-and-streams">
+      <rule testable="true">
+        <statement>Use Redis Pub/Sub for ephemeral real-time fan-out where message loss is acceptable (at-most-once). Use Redis Streams (XADD + XREADGROUP) for durable ordered event logs where consumers must process every message exactly once and may lag behind producers. Consumer groups in Streams provide distributed processing with per-consumer pending-entry lists for failure recovery.</statement>
+        <rationale>Pub/Sub messages are not stored — a subscriber that disconnects misses all messages sent while offline. Streams store every message in order until explicitly acknowledged (XACK) or trimmed; a consumer that crashes can re-read its pending entries on restart.</rationale>
+      </rule>
+
+      <example type="good" title="Pub/Sub for real-time notifications">
+        <code lang="python"><![CDATA[
+# Pub/Sub for real-time messaging (at-most-once, ephemeral)
+def publisher():
+    r.publish("notifications", json.dumps({
+        "type": "order_update",
+        "order_id": "123",
+        "status": "shipped"
+    }))
+
+def subscriber():
+    pubsub = r.pubsub()
+    pubsub.subscribe("notifications")
+    for message in pubsub.listen():
+        if message["type"] == "message":
+            data = json.loads(message["data"])
+            handle_notification(data)
+]]></code>
+      </example>
+
+      <example type="good" title="Redis Streams with consumer group for durable event sourcing">
+        <code lang="python"><![CDATA[
+# Streams for event sourcing (durable, ordered, exactly-once per group)
+# Add event to stream
+r.xadd("orders:events", {
+    "type": "order_created",
+    "order_id": "123",
+    "user_id": "456",
+    "total": "99.99"
+})
+
+# Create consumer group (once, at startup)
+r.xgroup_create("orders:events", "order-processors", id="0", mkstream=True)
+
+# Read as consumer (blocking, up to 10 messages)
+events = r.xreadgroup(
+    groupname="order-processors",
+    consumername="worker-1",
+    streams={"orders:events": ">"},
+    count=10,
+    block=5000
+)
+
+# Acknowledge processed messages to remove from pending
+for stream, messages in (events or []):
+    for msg_id, fields in messages:
+        process_event(fields)
+        r.xack("orders:events", "order-processors", msg_id)
+]]></code>
+        <note>Use &gt; as the ID to read only new (undelivered) messages. Use 0 or a specific ID to re-read pending messages after a crash.</note>
+      </example>
+    </section>
+
+    <section name="key-hygiene">
+      <rule testable="true">
+        <statement>Every Redis key MUST have an expiry set at write time (via SETEX, EXPIRE, or the px/ex option) or belong to a key namespace that is periodically swept by a maintenance job. Document the TTL or sweep interval next to the key pattern in the schema file. Never write keys with no expiry unless the data must survive indefinitely (e.g., permanent user records stored in Redis as primary store, which is itself an antipattern).</statement>
+        <rationale>Keys without TTLs accumulate silently. Redis does not warn when memory grows; it evicts data when maxmemory is reached using the configured eviction policy (often LRU), which may evict keys the application still considers live. Silent data loss under load is the result.</rationale>
+      </rule>
+
+      <example type="good" title="Key naming convention with TTL documentation">
+        <code lang="python"><![CDATA[
+# Key patterns with documented TTLs
+# user:{id}:profile      TTL: 3600s (1 hour)
+# user:{id}:session      TTL: 86400s (24 hours)
+# ratelimit:{user_id}    TTL: window seconds (auto-reset)
+# leaderboard            TTL: none (permanent, daily reset via ZADD)
+# task:queue             TTL: none (queue; items popped by consumers)
+
+r.setex(f"user:{user_id}:profile", 3600, json.dumps(profile))
+r.setex(f"user:{user_id}:session", 86400, session_token)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Writing cache keys with no TTL using SET instead of SETEX.</description>
+        <reason>Under memory pressure Redis silently evicts data. If the eviction policy is noeviction, writes fail. Key leaks are invisible until the OOM event.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM mistakes when generating Redis usage:</p>
+      <list>
+        <item>Agents over-trust eventual consistency for counters and balances. Force them to use atomic operators (HINCRBY, INCR, INCRBY) rather than GET + increment + SET, which has a race condition.</item>
+        <item>Agents use String + JSON serialization for objects where Hash gives per-field atomicity and lower memory footprint. Prompt: "use the data type that matches the access pattern".</item>
+        <item>Agents forget to set TTLs on session and cache keys. Add "always set EXPIRE" to the system prompt and checklist.</item>
+        <item>Agents implement fixed-window rate limiting with INCR + EXPIRE — this allows 2x rate at window boundary. Use sliding-window Sorted Set instead.</item>
+        <item>Agents use Pub/Sub for critical notifications where the subscriber might be offline. Use Streams with consumer groups for durability.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Select the Redis data type that matches the access pattern before writing any code.</check>
+      <check>Set TTL (SETEX / EXPIRE / px option) on every cache and session key at write time.</check>
+      <check>Document key naming pattern and TTL in the schema file.</check>
+      <check>Use atomic operators (HINCRBY, INCR, ZADD/ZINCRBY) for counters — never GET+SET.</check>
+      <check>Implement rate limiting with sliding-window Sorted Set, not fixed-window INCR.</check>
+      <check>Use Pub/Sub only for ephemeral fan-out; use Streams + consumer groups for durable event processing.</check>
+      <check>Add XACK after processing each Stream message to remove it from the pending-entry list.</check>
+      <check>Pipeline multiple commands that should execute together to reduce round-trip overhead.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://redis.io/docs/data-types/"/>
+      <link href="https://redis.io/docs/manual/patterns/"/>
+      <ref slug="nosql-mongodb-patterns"/>
+      <ref slug="nosql-cassandra-patterns"/>
+      <ref slug="caching-in-memory"/>
+    </see-also>
+  </content>
+</methodology>
