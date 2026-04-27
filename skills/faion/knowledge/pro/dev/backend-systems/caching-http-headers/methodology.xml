@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="caching-http-headers">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>HTTP cache-control headers for browser and CDN caching: Cache-Control directives, ETag/Vary, s-maxage, stale-while-revalidate, and when to use private vs public caching.</summary>
+    <tags>
+      <tag>caching</tag>
+      <tag>http</tag>
+      <tag>cdn</tag>
+      <tag>cache-control</tag>
+      <tag>etag</tag>
+    </tags>
+    <category>caching</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+    </frameworks>
+    <related>
+      <ref slug="caching-write-patterns"/>
+      <ref slug="caching-invalidation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>HTTP Caching Headers: Cache-Control, ETag, Vary, and CDN Edge Caching</title>
+
+    <summary>HTTP caching is the highest-leverage caching layer: a correctly set Cache-Control header eliminates origin requests entirely for eligible responses, reducing latency to near-zero and offloading up to 90% of traffic to CDN edge nodes. The four critical headers are Cache-Control (freshness policy), ETag (conditional revalidation), Vary (cache key dimensions), and Surrogate-Key/Cache-Tag (CDN group invalidation).</summary>
+
+    <why>
+      <p>HTTP caching operates at L1 (browser) and L3 (CDN edge) — before the request even reaches the application server. A CDN-cacheable API response costs $0 to serve after the first fetch. Without correct headers, every browser and CDN revalidates on every request, bypassing the cache and sending full responses even for unchanged content. The Cache-Control header is the primary control surface; getting it wrong in either direction (too aggressive = stale data, too conservative = cache miss on everything) is a common performance anti-pattern.</p>
+      <p>The distinction between public and private caching is a security requirement: user-specific responses (profile data, inbox, payment info) set with public may be stored by a shared CDN cache and served to other users. The Vary header tells CDN nodes to maintain separate cache entries per request dimension (Accept-Encoding, Accept-Language, Authorization).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Public API endpoints serving read-heavy data that changes on a predictable schedule (product catalog, article content, pricing).</item>
+        <item>Static assets (JS, CSS, images, fonts) — set immutable + long max-age after content-hashing the filename.</item>
+        <item>Personalized API responses — set private to allow browser caching but prevent CDN from serving one user's data to another.</item>
+        <item>Any endpoint where reducing origin request volume or improving time-to-first-byte is a requirement.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Endpoints returning real-time data (live scores, auction prices, stock quotes) — set no-store or max-age=0 must-revalidate to prevent any caching.</item>
+        <item>POST/PUT/DELETE responses — HTTP caching applies only to GET and HEAD by default; non-idempotent responses should not be cached.</item>
+        <item>Responses containing authentication tokens or session cookies in the body — use private at minimum; prefer no-store.</item>
+        <item>Endpoints where cache invalidation is impossible or impractical without a CDN purge API — prefer short max-age over surrogate keys when CDN purge is not available.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cache-control-directives">
+      <p>Cache-Control is the authoritative header for freshness policy. The most important directives: max-age (browser TTL), s-maxage (CDN TTL, overrides max-age for shared caches), public (CDN may cache), private (browser only), no-cache (must revalidate before use), no-store (never cache), stale-while-revalidate (serve stale while fetching fresh in background), and immutable (static assets that never change).</p>
+
+      <rule testable="true">
+        <statement>Public API responses MUST use Cache-Control: public, max-age=N, stale-while-revalidate=M where N is the freshness TTL in seconds and M is the background-revalidation window. Private user-specific responses MUST use Cache-Control: private, max-age=0, must-revalidate. Responses that must never be cached MUST use Cache-Control: no-store.</statement>
+        <rationale>Omitting Cache-Control leaves the decision to heuristic caching rules in browsers and CDNs, which vary by implementation and produce unpredictable behavior. Explicit headers make the intent auditable and the behavior deterministic across all intermediaries.</rationale>
+      </rule>
+
+      <example type="good" title="Cache-Control headers in FastAPI (Python)">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Response
+import hashlib
+import json
+
+app = FastAPI()
+
+@app.get("/api/products/{product_id}")
+async def get_product(product_id: str, response: Response):
+    product = get_product_from_db(product_id)
+
+    # Generate ETag from content hash
+    etag = hashlib.md5(json.dumps(product).encode()).hexdigest()
+
+    # Cache-Control directives:
+    # - public: CDN can cache
+    # - max-age=300: Fresh for 5 minutes in browser
+    # - stale-while-revalidate=60: Serve stale up to 1 min while fetching fresh
+    response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=60"
+    response.headers["ETag"] = f'"{etag}"'
+    response.headers["Vary"] = "Accept-Encoding"
+
+    return product
+
+@app.get("/api/user/profile")
+async def get_profile(response: Response):
+    # Private data — browser-only cache, must revalidate
+    response.headers["Cache-Control"] = "private, max-age=0, must-revalidate"
+    return get_current_user_profile()
+
+@app.get("/api/catalog")
+async def get_catalog(response: Response):
+    # CDN-cacheable: s-maxage overrides max-age for CDN, browser uses max-age=300
+    response.headers["Cache-Control"] = "public, s-maxage=600, max-age=300"
+    response.headers["Surrogate-Key"] = "catalog products"  # For CDN tag invalidation
+    return get_product_catalog()
+]]></code>
+        <note>Cache-Control directives: public (CDN can cache), private (browser only), max-age=N (fresh for N seconds), s-maxage=N (CDN-specific max-age), stale-while-revalidate=N (serve stale while fetching fresh), no-cache (must revalidate), no-store (never cache).</note>
+      </example>
+
+      <example type="good" title="HTTP cache headers in Express.js (Node.js)">
+        <code lang="typescript"><![CDATA[
+import express from 'express';
+const app = express();
+
+// Static assets — long cache with immutable flag after content-hashing filename
+app.use('/static', express.static('public', {
+  maxAge: '1y',
+  immutable: true
+}));
+
+// Public API with ETag for conditional requests
+app.get('/api/products/:id', async (req, res) => {
+  const product = await getProduct(req.params.id);
+
+  // Generate ETag
+  const etag = hashObject(product);
+
+  // Check If-None-Match for conditional request (304 Not Modified)
+  if (req.headers['if-none-match'] === etag) {
+    return res.status(304).end();
+  }
+
+  res.set({
+    'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+    'ETag': etag,
+    'Vary': 'Accept-Encoding'
+  });
+
+  res.json(product);
+});
+
+// Private user data — no shared cache
+app.get('/api/user/profile', async (req, res) => {
+  const profile = await getUserProfile(req.user.id);
+
+  res.set({
+    'Cache-Control': 'private, no-cache, must-revalidate'
+  });
+
+  res.json(profile);
+});
+]]></code>
+      </example>
+    </section>
+
+    <section name="etag-and-conditional-requests">
+      <p>ETags enable conditional GET requests: the client sends If-None-Match with the ETag from a previous response, and the server returns 304 Not Modified (no body) if the content is unchanged. This eliminates response body bandwidth for unchanged resources while still validating freshness.</p>
+
+      <rule testable="true">
+        <statement>ETag values MUST be generated from a deterministic hash of the response content (MD5 or SHA-256 of the serialized body). Weak ETags (W/"...") MUST be used when byte-for-byte identity is not required; strong ETags require exact byte equality. Servers MUST respond with 304 when If-None-Match matches the current ETag.</statement>
+        <rationale>ETags based on modification timestamps are unreliable when multiple servers or processes handle requests (clock skew, timestamp granularity). Content hashes are deterministic across servers and correct for conditional request handling regardless of deployment topology.</rationale>
+      </rule>
+
+      <example type="good" title="ETag generation and conditional response">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Request, Response
+import hashlib
+import json
+
+app = FastAPI()
+
+@app.get("/api/articles/{article_id}")
+async def get_article(article_id: str, request: Request, response: Response):
+    article = get_article_from_db(article_id)
+
+    # Generate strong ETag from content hash
+    content_hash = hashlib.sha256(
+        json.dumps(article, sort_keys=True).encode()
+    ).hexdigest()[:16]
+    etag = f'"{content_hash}"'
+
+    # Check If-None-Match header from client
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match == etag:
+        # Content unchanged — return 304, no body
+        return Response(status_code=304, headers={"ETag": etag})
+
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "public, max-age=600"
+    return article
+]]></code>
+      </example>
+    </section>
+
+    <section name="vary-header">
+      <p>The Vary header tells CDN and browser caches to treat requests with different values of the named headers as separate cache entries. Without Vary, a CDN might serve a gzip-compressed response to a client that sent no Accept-Encoding, or serve an English response to a French-language client.</p>
+
+      <rule testable="true">
+        <statement>Any response whose content depends on a request header MUST include that header name in Vary. At minimum: responses with content-negotiation compression MUST set Vary: Accept-Encoding. Responses with per-language content MUST set Vary: Accept-Language. Responses with authentication MUST NOT set Vary: Authorization — use private instead to prevent shared-cache pollution.</statement>
+        <rationale>Missing Vary on a compressed response causes CDN to serve compressed content to clients that cannot decompress it. Vary: Authorization creates one cache entry per auth token — effectively no caching. The correct approach for authenticated content is Cache-Control: private.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Setting Vary: * on public API responses.</description>
+        <reason>Vary: * tells CDN nodes the response cannot be cached at all (every request is unique). This is correct for truly request-specific responses but is routinely misapplied to public endpoints, eliminating all CDN caching benefit.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Cache-Control: public on responses that contain user-specific data.</description>
+        <reason>A shared CDN cache will store the response and serve it to subsequent users. One user's profile, orders, or session data becomes visible to other users matching the same cache key. This is a security vulnerability, not just a caching mistake.</reason>
+      </antipattern>
+    </section>
+
+    <section name="cdn-invalidation">
+      <p>CDN edge caching (Cloudflare, Fastly, AWS CloudFront) requires a purge API to invalidate content before TTL expiry. Surrogate-Key (Fastly) and Cache-Tag (Cloudflare) headers enable tag-based bulk purges: tag all product responses with the product ID and category, then invalidate the tag when the product changes.</p>
+
+      <rule testable="true">
+        <statement>CDN-cached API responses MUST include a Surrogate-Key (Fastly) or Cache-Tag (Cloudflare) header with the entity type and ID so that point-in-time purges can be issued by entity rather than requiring a full cache flush. The purge API call MUST be wired into the write path immediately after the database write.</statement>
+        <rationale>Without tag-based CDN purge, the only option after a data change is to wait for TTL expiry (serves stale data) or flush the entire CDN cache (serves zero cached data, origin takes full traffic). Tag-based purge is selective and instantaneous.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Classify every API endpoint: public (CDN-cacheable), private (browser-only), sensitive (no-store).</check>
+        <check>Set Cache-Control with explicit max-age — never rely on heuristic caching.</check>
+        <check>Add Vary: Accept-Encoding to all compressed responses.</check>
+        <check>Generate ETag from content hash, not modification timestamp.</check>
+        <check>Wire CDN tag invalidation (Surrogate-Key or Cache-Tag) into write paths for CDN-cached endpoints.</check>
+        <check>Test conditional request handling: send If-None-Match, verify 304 is returned for unchanged content.</check>
+        <check>Verify private endpoints never appear in CDN cache: check CDN HIT headers on user-specific endpoints.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching"/>
+      <link href="https://developers.cloudflare.com/cache/"/>
+      <link href="https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/BestPractices.html"/>
+      <link href="https://developers.cloudflare.com/cache/how-to/purge-cache/purge-cache-tags/"/>
+      <ref slug="caching-write-patterns"/>
+    </see-also>
+  </content>
+</methodology>
