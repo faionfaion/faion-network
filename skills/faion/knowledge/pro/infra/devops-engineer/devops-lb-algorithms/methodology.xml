@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-lb-algorithms">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Load balancer types (L4/L7/DNS/Global) and algorithms (round robin, weighted, least-conn, IP hash, consistent hashing) with a decision guide for selecting the right algorithm.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>algorithms</tag>
+      <tag>l4</tag>
+      <tag>l7</tag>
+      <tag>networking</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-lb-health-checks"/>
+      <ref slug="devops-lb-ssl-tls"/>
+      <ref slug="devops-lb-high-availability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer Types and Algorithm Selection</title>
+
+    <summary>Choosing the correct load balancer type and algorithm is the first architectural decision. Layer 4 (TCP/UDP) optimises for throughput; Layer 7 (HTTP) enables content-based routing. Algorithms range from stateless round robin to stateful consistent hashing — each with distinct trade-offs.</summary>
+
+    <why>
+      <p>Load balancing distributes network traffic across multiple servers to ensure high availability, reliability, and performance. Selecting the wrong type or algorithm leads to uneven load, broken session persistence, or unnecessary latency. The right choice depends on traffic patterns, session requirements, and server heterogeneity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scaling applications horizontally across multiple backend instances.</item>
+        <item>Ensuring high availability where single-server failure must not interrupt service.</item>
+        <item>Improving application performance by distributing requests evenly.</item>
+        <item>Implementing zero-downtime deployments with traffic draining.</item>
+        <item>Managing traffic spikes or geographic distribution of traffic.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-instance deployments where a single server is sufficient — adds complexity without benefit.</item>
+        <item>Applications with shared mutable state that cannot be distributed (use sticky sessions or a shared store instead).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="lb-types">
+      <p>Four load balancer types cover different OSI layers and scopes:</p>
+      <list>
+        <item>L4 (Transport, Layer 4): TCP/UDP routing, fast, low latency. Best for high throughput, gaming, streaming, and database connections.</item>
+        <item>L7 (Application, Layer 7): HTTP routing, SSL termination, content-based routing. Best for web applications, APIs, and microservices.</item>
+        <item>DNS (Layer 3): Geographic distribution, simple failover. Best for global load balancing and CDN routing.</item>
+        <item>Global (Multi-layer): Cross-region failover, latency-based routing. Best for multi-cloud and disaster recovery.</item>
+      </list>
+      <p>L4 vs L7 trade-offs: L4 is faster (no payload inspection) but limited to IP/port routing. L7 is slower (parses HTTP) but supports header, cookie, and path-based routing plus SSL inspection. L4 handles database and mail traffic; L7 handles web apps, APIs, and microservices.</p>
+    </section>
+
+    <section name="algorithms">
+      <p>Eight standard algorithms cover the major use cases:</p>
+      <list>
+        <item>Round Robin: Requests distributed evenly in sequence. Simple and fair for equal-capacity servers, but ignores actual server load.</item>
+        <item>Weighted Round Robin: Servers assigned numeric weights proportional to capacity. Accounts for capacity differences but uses static weights.</item>
+        <item>Least Connections: New requests sent to the server with the fewest active connections. Adapts dynamically to load, best for long-lived connections. Requires connection tracking overhead.</item>
+        <item>Weighted Least Connections: Combines capacity weights with connection counts. Best overall distribution for heterogeneous server pools with long-lived connections. Complex calculation.</item>
+        <item>IP Hash: Client IP hashed to select a backend. Provides sticky sessions without cookies. May produce uneven distribution if client IPs are not diverse.</item>
+        <item>Least Response Time: Requests sent to the server with the lowest current response time. Optimises latency directly. Requires continuous health probes.</item>
+        <item>Random: Backend selected randomly. No state required; useful for stateless apps. May be uneven under small backend counts.</item>
+        <item>Consistent Hashing: Keys (URL, user ID) mapped to a ring; minimal rehashing on server add/remove. Ideal for caching layers and sharding. Complex to implement.</item>
+      </list>
+    </section>
+
+    <section name="algorithm-selection-guide">
+      <p>Use this decision sequence to select an algorithm:</p>
+      <list>
+        <item>Need session persistence? → IP Hash or Cookie-based sticky sessions.</item>
+        <item>No persistence needed but servers have unequal capacity? → Weighted Round Robin or Weighted Least Connections.</item>
+        <item>Equal capacity servers with long-lived connections (WebSocket, gRPC, DB)? → Least Connections.</item>
+        <item>Performance critical, latency is the primary metric? → Least Response Time.</item>
+        <item>Stateless application with equal-capacity servers? → Round Robin (simplest, zero overhead).</item>
+        <item>Caching or sharding layer where cache locality matters? → Consistent Hashing.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Select L7 load balancing for HTTP/HTTPS applications and APIs; select L4 only for non-HTTP traffic (databases, mail, game servers, raw TCP/UDP).</statement>
+        <rationale>L7 enables content-based routing, SSL termination, and header manipulation that are required for modern web workloads. L4's speed advantage only matters when HTTP parsing overhead is unacceptable.</rationale>
+      </rule>
+      <rule>
+        <statement>Default to Round Robin for stateless equal-capacity backends; switch to Least Connections when request duration variance exceeds 10x (e.g. mix of fast and slow API calls).</statement>
+        <rationale>Round Robin distributes requests fairly but assigns slow requests and fast requests equally, causing fast servers to idle while slow requests queue on a single server. Least Connections rebalances dynamically.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Consistent Hashing only for cache-tier load balancers (Varnish, Redis cluster, CDN origin selection); do not use it as a general-purpose algorithm for web backends.</statement>
+        <rationale>Consistent Hashing improves cache hit rates by routing the same key to the same backend, but it produces uneven distribution if key space is skewed — unsuitable for general HTTP traffic.</rationale>
+      </rule>
+    </rules>
+
+    <antipattern>
+      <description>Using IP Hash for general web traffic as a substitute for proper session management.</description>
+      <reason>IP Hash breaks when clients share a NAT gateway (all traffic hits one backend) or use mobile networks (IP changes break session). Use server-side session storage (Redis) or cookie-based affinity instead.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Choosing L4 for microservices to "avoid overhead".</description>
+      <reason>Microservices require path-based routing, header injection (trace IDs, auth), and SSL termination — none of which L4 provides. The overhead of L7 HTTP parsing is negligible compared to the routing flexibility gained.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://www.haproxy.org/documentation.html"/>
+      <link href="https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/"/>
+      <link href="https://blog.algomaster.io/p/how-load-balancers-actually-work"/>
+      <link href="https://www.loadbalancer.org/blog/load-balancing-methods/"/>
+    </see-also>
+  </content>
+</methodology>
