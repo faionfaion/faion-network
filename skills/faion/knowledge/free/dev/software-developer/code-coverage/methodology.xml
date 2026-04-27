@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-coverage">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Coverage measures which lines and branches execute during tests. Use branch coverage as the gate metric, enforce it on diffs, and pair with mutation testing on critical modules.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>coverage</tag>
+      <tag>quality-assurance</tag>
+      <tag>ci</tag>
+      <tag>metrics</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Code Coverage</title>
+
+    <summary>Coverage measures which lines and branches execute during tests. Use branch coverage (not line-only) as the gate metric, enforce it on diffs (new code), set per-module thresholds via diff-cover, and pair with mutation testing on critical modules to validate assertion quality. High line coverage can coexist with completely missing branches and zero-assertion tests. Branch coverage + diff gating closes the two most common loopholes: the "test exists but asserts nothing" gap and the "legacy code drags total down" excuse.</summary>
+
+    <why>
+      <p>High line coverage can coexist with completely missing branches and zero-assertion tests. Branch coverage + diff gating closes the two most common loopholes: the "test exists but asserts nothing" gap and the "legacy code drags total down" excuse. Mutation testing (mutmut) is the only reliable way to distinguish coverage that tests behavior from coverage that merely executes lines.</p>
+      <p>The naive line-coverage gate creates perverse incentives: teams write tests that call functions without asserting outcomes, gaming the metric while missing real bugs. Branch coverage forces both sides of conditionals to execute, catching the "if taken but else untaken" scenario. Diff coverage on CI gates only the code the team just wrote, avoiding blockage on legacy code while ensuring quality on new contributions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting a CI gate on new-code diff coverage (not absolute repo total)</item>
+        <item>Identifying critical untested paths in legacy code prior to refactor</item>
+        <item>Pre-release: surface modules below threshold, prioritize test work there</item>
+        <item>Code review: confirm new code is covered without chasing 100% globally</item>
+        <item>Onboarding tests for a third-party library wrapper before upgrading the dep</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>As the primary quality metric — 100% coverage with no assertions is worse than 60% with rich ones</item>
+        <item>Generated code (migrations, OpenAPI clients, protobuf stubs) — exclude in .coveragerc</item>
+        <item>UI / E2E smoke tests where flakiness outweighs coverage signal</item>
+        <item>Single-file scripts or spike code — instrumentation overhead not justified</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="coverage-taxonomy">
+      <rule testable="true">
+        <statement>Use branch coverage (--cov-branch in pytest, --branches in nyc) as the minimum CI gate, not line coverage. Line coverage misses uncovered else branches on covered if lines.</statement>
+        <rationale>A test that exercises the if-True path covers all lines containing the if statement and the if-body, but the else branch is untested. Branch coverage requires both paths to execute.</rationale>
+      </rule>
+
+      <p>Coverage comes in four types: line (which lines executed), branch (both sides of each conditional), path (all execution paths through the code), and condition (each boolean sub-expression). Line coverage is the weakest signal; it catches obvious omissions but misses entire conditional branches. Branch coverage is the practical minimum for meaningful gates because it catches the "if taken but else not taken" scenario.</p>
+
+      <note>Coverage types:
+        - LINE COVERAGE — which lines executed; misses untaken else branches
+        - BRANCH COVERAGE — both sides of each conditional tested; practical floor
+        - PATH COVERAGE — all execution paths; exponential complexity, no mainstream Python tool
+        - CONDITION COVERAGE — each boolean sub-expression in compound conditions
+      </note>
+    </section>
+
+    <section name="coverage-thresholds">
+      <rule testable="true">
+        <statement>Gate diff coverage (new code) at 90% via diff-cover, not repo total. Set repo total as a soft trend target (80%), not a hard gate.</statement>
+        <rationale>Hard gates on repo total block PRs on codebases with legacy untested code. Diff gating locks new code without requiring full uplift in one go.</rationale>
+      </rule>
+
+      <p>The key insight is that diff coverage and total coverage measure different things. Diff coverage gates the code the team just wrote; total coverage measures the entire codebase, which may include years of legacy code. High diff + lower total is healthy; it shows new work is tested while acknowledging the backlog. Hard gates on total coverage create perverse incentives: teams ignore new coverage and focus on lifting total by writing low-quality tests on legacy code.</p>
+
+      <note>Coverage thresholds:
+        - New code diff gate: 90% (fail-under in diff-cover)
+        - Overall project target: 80% (soft warning, not hard gate)
+        - Critical business logic: 90%+
+        - Generated / migration / boilerplate: exclude explicitly
+      </note>
+
+      <rule testable="true">
+        <statement>Stop chasing 100% coverage. Set 80–90 as the practical ceiling; remaining 10–20% is defensive guards and error paths better validated by integration tests.</statement>
+        <rationale>Chasing 100% leads to testing trivial getters, mocking everything, and writing assertions that mirror implementation rather than verify behavior.</rationale>
+      </rule>
+    </section>
+
+    <section name="python-pytest-cov-configuration">
+      <p>Python projects use pytest-cov to instrument code during test runs. Configuration lives in pyproject.toml under [tool.coverage.run] and [tool.coverage.report]. The key settings are source (which code to measure), branch (enable branch coverage), omit (exclude test files and generated code), and fail_under (the gate threshold).</p>
+
+      <example type="good" title="pytest-cov configuration in pyproject.toml">
+        <code lang="toml"><![CDATA[
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/migrations/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+]
+fail_under = 80
+show_missing = true
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-branch --cov-report=term-missing --cov-report=html --cov-fail-under=80"
+]]></code>
+        <note>Always set omit = ["*/tests/*"] — otherwise test files inflate coverage numbers.</note>
+      </example>
+      <reference path="templates/coverage.toml">Ready-to-paste pyproject.toml coverage block</reference>
+    </section>
+
+    <section name="typescript-jest-coverage-thresholds">
+      <p>TypeScript projects using Jest define coverage thresholds in jest.config.js. Thresholds can be global (applying to all code) or per-directory (tight gates on critical modules, relaxed on peripheral code). The collectCoverageFrom pattern controls which files to measure; exclude test files, type definitions, and auto-generated index files.</p>
+
+      <example type="good" title="Jest coverage thresholds in jest.config.js">
+        <code lang="javascript"><![CDATA[
+// jest.config.js
+module.exports = {
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/index.ts',
+    '!src/**/*.test.{ts,tsx}',
+  ],
+  coverageThreshold: {
+    global: { branches: 80, functions: 80, lines: 80, statements: 80 },
+    './src/services/': { branches: 90, functions: 90, lines: 90 },
+  },
+};
+]]></code>
+      </example>
+      <reference path="templates/jest.coverage.js">Jest coverage config with per-directory thresholds</reference>
+    </section>
+
+    <section name="ci-diff-cover-gating">
+      <rule testable="true">
+        <statement>Run diff-cover --fail-under=90 --compare-branch=origin/main after generating coverage.xml. This gates only changed lines, not legacy code.</statement>
+        <rationale>diff-cover compares the coverage report against the git diff, reporting coverage only for lines added or changed in the PR. Legacy untested code does not trigger failures.</rationale>
+      </rule>
+
+      <p>The typical CI workflow is: (1) run pytest --cov and generate a coverage.xml report, (2) run diff-cover comparing the XML against the base branch (main), (3) fail the build if new code is below 90%. diff-cover automatically fetches the base branch from git, diffs the files, and reports coverage for only the lines added or modified. This decouples new code quality (what we control) from total coverage (which includes legacy).</p>
+
+      <reference path="templates/diff-cover-ci.sh">CI script combining pytest + diff-cover</reference>
+    </section>
+
+    <section name="coverage-antipatterns">
+      <antipattern>
+        <description>Writing tests that execute code but contain no assertions (coverage gaming).</description>
+        <reason>Lines are marked covered without any verification. Mutation testing (mutmut) reveals this: surviving mutants mean the code changed but tests still passed. The test calls mod.func() without asserting the return value or side effects, so the function's behavior is never verified.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using # pragma: no cover on production business logic to hit a target.</description>
+        <reason>pragma: no cover should only exclude generated code, abstract stubs, and unreachable defensive guards. Reviewers must check every pragma in code review.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Measuring only repo total coverage instead of diff coverage on new code.</description>
+        <reason>Legacy untested code drags total coverage down. Teams game the metric by writing trivial tests or marking exceptions. Diff coverage gates the thing the team controls: new code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running pytest --cov without omit = ["*/tests/*"] in coverage config.</description>
+        <reason>pytest-cov instruments test files themselves. Without omit, test lines inflate the total, hiding low coverage in production code.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using --cov-append without awareness in parallel pytest runs (pytest-xdist).</description>
+        <reason>Each xdist worker writes a separate .coverage.N file. Without coverage combine, only the last worker's data is reported. Set parallel=True in .coveragerc and combine after the run.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <warning>
+        <p>README pushes "branch coverage > line coverage" but doesn't show how to assert each branch with pytest --cov-branch + --cov-fail-under on branch alone.</p>
+        <p>Path coverage section warns "exponential complexity" but doesn't show that no mainstream Python tool actually does path coverage — agents may waste time looking.</p>
+        <p>No diff-coverage tooling mentioned (diff-cover, pytest-cov-context) — leads to "100% on new files only" trick getting gamed.</p>
+        <p>No mention of mutation testing (mutmut, cosmic-ray) — the real way to validate test quality, complementary to coverage.</p>
+        <p>Excludes are easy to abuse: # pragma: no cover on the hot path zeros the metric without changing risk.</p>
+        <p>Coverage on async / threading is unreliable in some runners (multiprocessing requires coverage combine with --parallel-mode).</p>
+        <p>pytest --cov collected coverage of test files themselves unless [tool.coverage.run] omit = ['tests/*'].</p>
+      </warning>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>For coverage uplift: (1) run baseline pytest --cov=src --cov-branch --cov-report=term-missing, (2) parse the missing-lines report, (3) for each module below threshold, identify smallest set of new tests covering the largest contiguous miss block, (4) write tests with real assertions (not just mod.func()), (5) re-run coverage; require both line and branch deltas. CI: enforce diff-cover --fail-under=90 on new code, soft warn on repo total.</p>
+
+      <note>Recommended subagents:
+        - faion-test-agent — Default for writing tests targeting uncovered lines/branches.
+        - faion-code-agent — Refactor untestable code (deep mocks needed) into smaller seams.
+        - faion-software-architect — Decides exclusions (generated code, migrations) and per-package thresholds.
+        - faion-sdd-execution — Wraps coverage uplift as a feature with milestones.
+        - faion-devtools-developer — Owns coverage CI, badge, history tracking.
+      </note>
+
+      <rule testable="true">
+        <statement>Prompt pattern for per-module uplift: "Read coverage report for src/&lt;module&gt;. Identify the largest uncovered branch (use --cov-report=term-missing). Write 2-4 pytest tests that: (1) Cover the missed branches, (2) Assert observable behavior (return value, side effect), not implementation detail, (3) Reuse existing fixtures from tests/conftest.py. Run: pytest tests/test_&lt;module&gt;.py --cov=src.&lt;module&gt; --cov-branch --cov-report=term-missing --cov-fail-under=90."</statement>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/coverage.toml" purpose="pytest-cov configuration block for pyproject.toml"/>
+      <template path="templates/jest.coverage.js" purpose="Jest coverage config with per-directory thresholds"/>
+      <template path="templates/diff-cover-ci.sh" purpose="CI script: run pytest + diff-cover --fail-under=90 vs origin/main"/>
+    </templates>
+
+    <see-also>
+      <link href="https://coverage.readthedocs.io/"/>
+      <link href="https://jestjs.io/docs/configuration#coveragethreshold"/>
+      <link href="https://pytest-cov.readthedocs.io/"/>
+      <link href="https://github.com/Bachmann1234/diff-cover"/>
+      <link href="https://mutmut.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>

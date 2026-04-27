@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="bun-runtime">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Bun is a JavaScript/TypeScript runtime, bundler, test runner, and package manager in a single binary with measurably faster startup, install, and test speed than Node equivalents.</summary>
+    <tags>
+      <tag>bun</tag>
+      <tag>javascript</tag>
+      <tag>typescript</tag>
+      <tag>runtime</tag>
+      <tag>package-manager</tag>
+      <tag>test-runner</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Bun Runtime</title>
+
+    <summary>Bun is a JavaScript/TypeScript runtime, bundler, test runner, and package manager in a single binary. It runs TypeScript directly without transpilation, provides native HTTP via Bun.serve, and replaces the npm + tsx + jest + esbuild stack. Startup latency, install time, and test speed are all significantly faster than Node equivalents. Default framework pairing is Hono; database ORM is Drizzle with bun:sqlite.</summary>
+
+    <why>
+      <p>Startup latency, install time, and test speed are all significantly faster than Node equivalents. Eliminating the ts-node/tsx transpilation layer removes a common misconfiguration surface. The "one binary" model simplifies CI and reduces agent tooling errors. Bun.serve and Bun.file are measurably faster than Node counterparts for I/O-heavy routes.</p>
+      <p>Bun runs TypeScript directly without transpilation, provides native HTTP via Bun.serve, and replaces the npm + tsx + jest + esbuild stack with a single coherent tool. Default framework pairing is Hono; database ORM is Drizzle with bun:sqlite. All three are tightly integrated and battle-tested.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield TypeScript backends where cold-start latency or CI install speed matters.</item>
+        <item>CLI tools and build scripts that need fast execution.</item>
+        <item>Hono / Elysia API servers targeting Bun.serve natively.</item>
+        <item>Replacing npm + tsx + jest stack with a single dependency.</item>
+        <item>Monorepos with frequent install cycles — Bun install is 10-30x faster.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Long-running production Node.js services already battle-tested — Bun's Node compat is strong (&gt;95%) but not 100%; surprising failures in node:cluster, worker_threads, native modules with node-gyp. Don't migrate stable infra without a parallel test rig.</item>
+        <item>Apps depending on niche npm packages with native bindings (some Postgres / image libs) — Bun's NAPI is improving but not flawless.</item>
+        <item>Edge providers (Vercel, Cloudflare Workers) that don't support Bun runtime — your app runs on V8, not Bun.</item>
+        <item>Teams wedded to Jest's ecosystem (snapshot tooling, transformers) — bun test is fast and Jest-compatible-ish, but plugin ecosystem is thin.</item>
+        <item>Windows-first dev teams — Bun on Windows works (since 2024) but lags macOS/Linux.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="initialization">
+      <rule testable="true">
+        <statement>Pin the Bun version in package.json packageManager field and in CI (oven-sh/setup-bun@v2 with bun-version). Never use "latest".</statement>
+        <rationale>Reproducibility requires identical Bun versions across developer machines, CI, and production containers. LLMs default to "latest" which breaks builds across teams.</rationale>
+      </rule>
+
+      <p>Initialize a new Bun project with bun init, which scaffolds a minimal package.json. Add dependencies for the intended runtime and framework — Hono for API servers, Elysia as an alternative, Drizzle for database access.</p>
+
+      <example type="good" title="Bun project initialization">
+        <code lang="bash"><![CDATA[
+bun init
+bun add hono zod
+bun add -d @types/bun
+]]></code>
+      </example>
+    </section>
+
+    <section name="scripts">
+      <rule testable="true">
+        <statement>Define dev, start, test, and build scripts in package.json. Use bun --watch for dev (full restart) not bun --hot (persists state).</statement>
+        <rationale>--hot keeps top-level singletons alive across reloads; edited config does not take effect until a full restart. Always prefer --watch for development to ensure clean module reloads.</rationale>
+      </rule>
+
+      <example type="good" title="package.json scripts for Bun">
+        <code lang="json"><![CDATA[
+{
+  "scripts": {
+    "dev": "bun --watch run src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build ./src/index.ts --outdir ./dist --target bun --minify"
+  },
+  "packageManager": "bun@1.1.34"
+}
+]]></code>
+      </example>
+      <reference path="templates/package.json">Full package.json manifest.</reference>
+    </section>
+
+    <section name="bunfig-toml">
+      <rule testable="true">
+        <statement>Set frozen-lockfile = true under [install] in bunfig.toml. Enable coverage under [test].</statement>
+        <rationale>Frozen lockfile in CI detects lockfile drift, identical to npm ci behavior.</rationale>
+      </rule>
+      <reference path="templates/bunfig.toml">bunfig.toml with CI and test settings.</reference>
+    </section>
+
+    <section name="tsconfig-requirements">
+      <rule testable="true">
+        <statement>Set moduleResolution to "bundler" in tsconfig.json. This is required for Bun's native module resolution.</statement>
+        <rationale>Bun handles modern resolution natively; "bundler" mode enables Bun-specific path resolution without ts-node shims.</rationale>
+      </rule>
+    </section>
+
+    <section name="bun-serve">
+      <rule testable="true">
+        <statement>Use Bun.serve (or a framework like Hono on top of it) for HTTP servers. Do not use node:http when running on Bun.</statement>
+        <rationale>Bun.serve is measurably faster than node:http for I/O-heavy routes due to JavaScriptCore optimizations. The API is web standard — takes a Request, returns a Response, making it compatible with edge runtimes and HTTP specs.</rationale>
+      </rule>
+
+      <p>Bun.serve accepts a configuration object with port, fetch handler, and optional error handler. The fetch handler receives a standard Web API Request object and must return a Response or Promise&lt;Response&gt;. This makes Bun servers trivial to port to edge functions or standard Web APIs.</p>
+
+      <example type="good" title="Bun.serve basic usage">
+        <code lang="typescript"><![CDATA[
+const server = Bun.serve({
+  port: Bun.env.PORT || 3000,
+  fetch(request: Request): Response | Promise<Response> {
+    const url = new URL(request.url)
+    if (url.pathname === "/health") return new Response("ok")
+    return new Response("Not Found", { status: 404 })
+  },
+  error(error: Error): Response {
+    return new Response("Internal Server Error", { status: 500 })
+  },
+})
+]]></code>
+      </example>
+      <reference path="templates/hono-server.ts">Full Hono server with middleware, Zod validation, JWT routes.</reference>
+    </section>
+
+    <section name="bun-file">
+      <rule testable="true">
+        <statement>Use Bun.file() for static reads — it is lazy-loaded and faster than fs.readFileSync.</statement>
+        <rationale>Bun.file returns a lazy Blob; data is only read when text()/json()/arrayBuffer() is called.</rationale>
+      </rule>
+
+      <example type="good" title="Bun.file usage">
+        <code lang="typescript"><![CDATA[
+const file = Bun.file("data.json")
+const json = await file.json()
+await Bun.write("output.txt", "Hello World")
+const exists = await Bun.file("path.txt").exists()
+]]></code>
+      </example>
+    </section>
+
+    <section name="bun-env">
+      <rule testable="true">
+        <statement>Wrap Bun.env access in a typed validation function using Zod. Never access Bun.env directly in business logic.</statement>
+        <rationale>Bun.env values are strings; Zod coercion handles number/boolean conversion and provides helpful missing-var errors at startup.</rationale>
+      </rule>
+
+      <example type="good" title="Typed environment with Zod">
+        <code lang="typescript"><![CDATA[
+import { z } from "zod"
+
+const EnvSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+  PORT: z.coerce.number().int().positive().default(3000),
+})
+
+export const env = EnvSchema.parse(Bun.env)
+]]></code>
+      </example>
+    </section>
+
+    <section name="bun-password">
+      <rule testable="true">
+        <statement>Use Bun.password.hash / Bun.password.verify for password hashing. Do not import bcrypt.</statement>
+        <rationale>Bun.password uses bcrypt or argon2 natively; no npm dependency needed.</rationale>
+      </rule>
+
+      <example type="good" title="Bun.password usage">
+        <code lang="typescript"><![CDATA[
+const hash = await Bun.password.hash(password)
+const valid = await Bun.password.verify(password, hash)
+]]></code>
+      </example>
+    </section>
+
+    <section name="bun-test">
+      <rule testable="true">
+        <statement>Use describe/it/expect from bun:test. Avoid jest.mock — use mock.module() for ESM mocking in Bun.</statement>
+        <rationale>bun:test is Jest-compatible at the describe/it/expect level but ESM module mocking uses a different API.</rationale>
+      </rule>
+    </section>
+
+    <section name="drizzle-bun-sqlite">
+      <reference path="templates/drizzle-schema.ts">Drizzle ORM schema with bun:sqlite.</reference>
+    </section>
+
+    <section name="mixed-package-managers">
+      <antipattern>
+        <description>Running npm install after bun install, creating both package-lock.json and bun.lockb</description>
+        <reason>package-lock.json takes precedence in some tools, causing non-deterministic dependency resolution. Pick one package manager and lock to it.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Use --frozen-lockfile in all CI bun install calls. Commit bun.lockb. Do not run npm/yarn/pnpm in the same project.</statement>
+        <rationale>Frozen lockfile in CI detects drift immediately rather than silently updating dependencies.</rationale>
+      </rule>
+    </section>
+
+    <section name="node-only-apis">
+      <antipattern>
+        <description>Importing node:cluster, node:vm, or process.binding() — these differ or fail under Bun</description>
+        <reason>Bun's Node compat is >95% but not 100%. These specific APIs have known gaps; use Bun.spawn or single-process multi-worker alternatives.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using child_process.exec instead of Bun's $ shell API or Bun.spawn</description>
+        <reason>Bun provides $ (shell) and Bun.spawn as native alternatives with better ergonomics.</reason>
+      </antipattern>
+
+      <example type="good" title="Bun shell API">
+        <code lang="typescript"><![CDATA[
+import { $ } from "bun"
+await $`ls -la`
+
+const proc = Bun.spawn(["ls", "-la"])
+const output = await new Response(proc.stdout).text()
+]]></code>
+      </example>
+    </section>
+
+    <section name="bun-native-in-shared-libs">
+      <antipattern>
+        <description>Using Bun.file() or Bun.serve() in a package consumed by both Bun and Node apps</description>
+        <reason>Node import crashes with "Bun is not defined". Restrict Bun-native APIs to entry points or dev tooling; use isomorphic alternatives in shared packages.</reason>
+      </antipattern>
+    </section>
+
+    <section name="edge-deploy-mismatch">
+      <antipattern>
+        <description>Writing Bun.serve for a Cloudflare Workers deploy target</description>
+        <reason>Workers run on V8 isolates, not Bun. Workers expect export default { fetch }. Use bun build --target=browser for Workers.</reason>
+      </antipattern>
+    </section>
+
+    <section name="hot-reload-production">
+      <antipattern>
+        <description>Using bun --hot in production</description>
+        <reason>--hot persists module state across reloads (DB pools, singletons). After config changes, old instances remain alive. Use --watch for dev; deploy a built bundle for prod.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <warning>
+        <p>Node compat surprises. node:vm, node:cluster, parts of node:tls (e.g., custom cipher) work differently. Symptom: prod-style libs throw on Bun.</p>
+        <p>NPM packages with postinstall native builds sometimes fail under Bun's installer. Workarounds: bun pm trust, or fall back to npm for that step.</p>
+        <p>bun.lockb is binary. Conflicts in Git can't be resolved manually; use bun install again. Some teams prefer bun install --frozen-lockfile + JSON lockfile (v1.1+ supports --save-text-lockfile).</p>
+        <p>Test runner gaps. bun test lacks Jest's full snapshot mocking parity (less mature jest.mock). Mocking ESM modules differs.</p>
+        <p>Hot reload via --hot keeps process alive but persists module state across reloads — not always desired. --watch restarts cleanly.</p>
+        <p>Bundler quirks. bun build --target bun produces Bun-only output; deploying that to Node runs but loses Bun-specific imports (Bun.serve, Bun.file).</p>
+        <p>Logging differences. Bun streams stdout differently; CI log buffers may flush late. process.stdout.write works but flush behavior varies.</p>
+        <p>Memory profile. Bun's JavaScriptCore engine has different GC behavior than V8; high-allocation workloads behave differently.</p>
+        <p>Edge-deploy mismatch. bun dev on Mac, node on prod Vercel — Bun.env, Bun.file calls crash. Force isomorphic patterns or restrict Bun-only APIs to dev tooling.</p>
+      </warning>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive Bun work in 4 stages: (1) a runtime-detector subagent inspects target deploy environment (Vercel / Render / VPS / Docker / edge) and decides whether code can use Bun-native APIs or must stay isomorphic-Node; (2) an install-and-bootstrap subagent runs bun init / bun add and pins Bun version in package.json packageManager field + Dockerfile; (3) a server-author subagent generates Hono/Elysia routes via Bun.serve; (4) a test-author subagent writes bun test specs, exclusively using Jest-compatible API (describe/it/expect) to keep portability. Always pin Bun version (oven-sh/setup-bun@v2 with bun-version) in CI; LLMs default to "latest" which breaks builds across teams.</p>
+
+      <note>Recommended subagents:
+        - faion-sdd-executor-agent — quality gate runs bun install --frozen-lockfile &amp;&amp; bun run typecheck &amp;&amp; bun test &amp;&amp; bun build.
+        - bun-compat-agent (worth creating): scans for Node-only APIs (node:cluster, node:vm, process.binding) and reports compatibility risk before migration.
+        - bun-perf-agent (worth creating): runs bun --bun run vs node benchmarks (start time, RSS, RPS) and emits a comparison table.
+        - lockfile-agent (worth creating): converts between package-lock.json ↔ bun.lockb and validates dep versions match.
+        - dockerfile-agent that emits a multi-stage Bun Dockerfile pinned to oven/bun:1.1.x-alpine.
+        - password-scrubber-agent — scrub .env, bunfig.toml, fixture credentials before commit.
+      </note>
+
+      <rule testable="true">
+        <statement>Prompt pattern for server scaffold: "You are a Bun 1.1.x + Hono engineer. Generate src/index.ts: Hono app with routes: GET /health, POST /api/users; Validate body with zod (UserCreateSchema); Use Bun.serve via Hono adapter, port from process.env.PORT; Logging: console.info {method, path, status, latencyMs}; Tests in src/index.test.ts using bun:test. Do NOT import 'node:cluster' or 'node:worker_threads'. Run: bun install &amp;&amp; bun test &amp;&amp; bun --watch run src/index.ts".</statement>
+      </rule>
+
+      <rule testable="true">
+        <statement>Prompt pattern for compat audit: "Scan src/ for Node-only API usage that breaks under Bun: node:cluster, node:vm, node:async_hooks (custom hooks), process.binding(*), native packages requiring node-gyp. Output: file:line, API, risk (high/med/low), workaround."</statement>
+      </rule>
+    </section>
+
+    <section name="cli-tools">
+      <note>Bun CLI Tools:
+        - bun — Runtime, package manager, test runner, bundler (https://bun.sh)
+        - bun init — Scaffold new project (bundled)
+        - bun install — npm-compat installer (10-30x faster) (bundled)
+        - bun add / bun remove — Manage deps (bundled)
+        - bun run — Run scripts / TS files directly (bundled)
+        - bun test — Jest-compatible test runner (https://bun.sh/docs/cli/test)
+        - bun build — Bundler with --target=bun|node|browser (https://bun.sh/docs/bundler)
+        - bun pm trust — Allow lifecycle scripts (postinstall) (https://bun.sh/docs/cli/pm)
+        - bun --hot — Hot reload (persist state) (bundled)
+        - bun --watch — Watch + restart (bundled)
+        - bun upgrade — Update Bun itself (bundled)
+      </note>
+    </section>
+
+    <templates>
+      <template path="templates/package.json" purpose="Project manifest with scripts, packageManager pin, Hono + Zod deps."/>
+      <template path="templates/bunfig.toml" purpose="Bun configuration: frozen lockfile in CI, test coverage, build minify."/>
+      <template path="templates/hono-server.ts" purpose="Hono server with middleware, Zod validation, JWT-protected routes."/>
+      <template path="templates/drizzle-schema.ts" purpose="Drizzle ORM schema with bun:sqlite."/>
+      <template path="templates/dockerfile" purpose="Multi-stage Bun Dockerfile pinned to oven/bun:1.1.x-alpine."/>
+    </templates>
+
+    <see-also>
+      <link href="https://bun.sh"/>
+      <link href="https://hono.dev"/>
+      <link href="https://orm.drizzle.team"/>
+      <link href="https://docs.anthropic.com/en/docs/claude-code"/>
+    </see-also>
+  </content>
+</methodology>

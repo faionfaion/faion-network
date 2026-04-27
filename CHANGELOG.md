@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: best-practices-2026, bun-runtime, code-coverage)
 - refactor: 3/3 code-quality methodologies migrated to methodology.xml (batch: code-quality-trends, code-review, code-review-basics)
 - refactor: 3/3 code-quality methodologies migrated to methodology.xml (batch: pair-programming, refactoring-patterns, tech-debt-basics)
 - refactor: 3/3 javascript-developer methodologies migrated to methodology.xml (batch: nodejs-fastify, nodejs-patterns, typescript-react-2026)
