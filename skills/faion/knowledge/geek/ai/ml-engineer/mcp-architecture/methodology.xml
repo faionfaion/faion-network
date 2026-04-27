@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-architecture">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Model Context Protocol: open standard (JSON-RPC 2.0) enabling LLMs to access tools, resources, and prompts via a host/client/server architecture.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>llm</tag>
+      <tag>protocol</tag>
+      <tag>tools</tag>
+      <tag>integration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="mcp-server-implementation"/>
+      <ref slug="mcp-client-integration"/>
+      <ref slug="mcp-security"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Model Context Protocol — Architecture and Core Primitives</title>
+
+    <summary>MCP is an open standard enabling seamless integration between LLM applications and external data sources and tools. It provides a universal interface for reading files, executing functions, and handling contextual prompts via JSON-RPC 2.0 over stateful sessions. Protocol version 2025-11-25. Governance: Linux Foundation (Agentic AI Foundation). Adopters: Anthropic, OpenAI, Google DeepMind, Microsoft, AWS.</summary>
+
+    <why>
+      <p>Before MCP, every LLM host (Claude Desktop, VS Code Copilot, custom agents) needed a custom integration per tool. MCP standardizes the interface so one server implementation works across all hosts without modification. The host/client/server separation enforces clean security boundaries: the host enforces consent, clients negotiate capability, and servers remain stateless providers that expose primitives.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Exposing internal tools (database queries, file system, APIs) to LLM hosts without custom integration per host.</item>
+        <item>Building reusable tool servers that work across Claude Desktop, VS Code Copilot, and custom agents simultaneously.</item>
+        <item>Giving agents access to resources that need app-controlled (not model-controlled) presentation of context.</item>
+        <item>Standardizing tool interfaces across a team — one MCP server, many AI clients.</item>
+        <item>Enabling sampling: MCP server needs to make LLM calls back through the host (avoids embedding API keys in servers).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple single-purpose agent that only needs 1-2 hardcoded tool functions — direct SDK tool definitions are simpler.</item>
+        <item>Latency-critical paths — MCP stdio transport adds ~5-20ms per round trip; HTTP transport adds network overhead.</item>
+        <item>Teams without TypeScript or Python experience — MCP SDK requires one of these; no other mature options.</item>
+        <item>Environments where stdio process management is unreliable (some containerized setups need explicit lifecycle management).</item>
+        <item>When the tool surface changes frequently — MCP server restarts are required to reload tool definitions in most clients.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="components">
+      <p>MCP uses a three-tier architecture: Host, Client, and Server.</p>
+      <list>
+        <item>Host — Container application (Claude Desktop, IDE). Manages clients, enforces security policies, handles AI/LLM integration.</item>
+        <item>Client — Connector inside the host. Maintains one server session per server, handles protocol negotiation.</item>
+        <item>Server — Provider process. Exposes resources, tools, and prompts via MCP primitives. One server per domain of capability.</item>
+      </list>
+      <p>Communication: JSON-RPC 2.0, stateful sessions. Transports: stdio (local process), HTTP+SSE, WebSockets, Streamable HTTP.</p>
+    </section>
+
+    <section name="primitives">
+      <p>MCP defines three core primitive types, each with a different control model:</p>
+      <list>
+        <item>Tools — Model-controlled functions the LLM can invoke. Examples: API calls, file writes, computations. The model decides when to call them based on the tool description.</item>
+        <item>Resources — App-controlled contextual data provided to the LLM. Examples: file contents, git history, database records. The host application decides what to expose.</item>
+        <item>Prompts — User-controlled instruction templates. Examples: slash commands, review workflows. The user selects them from a menu.</item>
+      </list>
+
+      <example type="good" title="Tool definition (JSON Schema)">
+        <code lang="json"><![CDATA[{
+  "name": "get_weather",
+  "description": "Get current weather for a location",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "location": { "type": "string" }
+    },
+    "required": ["location"]
+  }
+}]]></code>
+        <note>The description is the model's selection signal — make it precise and action-oriented.</note>
+      </example>
+
+      <example type="good" title="Resource descriptor">
+        <code lang="json"><![CDATA[{
+  "uri": "file:///project/src/main.rs",
+  "name": "main.rs",
+  "mimeType": "text/x-rust"
+}]]></code>
+      </example>
+
+      <example type="good" title="Prompt definition">
+        <code lang="json"><![CDATA[{
+  "name": "code_review",
+  "description": "Analyze code quality",
+  "arguments": [
+    { "name": "code", "required": true }
+  ]
+}]]></code>
+      </example>
+    </section>
+
+    <section name="additional-features">
+      <p>Three server-to-client features extend the base protocol:</p>
+      <list>
+        <item>Sampling — Server requests LLM completions from the client host. Avoids embedding API keys in servers. Requires explicit host approval.</item>
+        <item>Roots — Server inquires about URI and filesystem boundaries the client is willing to expose.</item>
+        <item>Elicitation — Server requests additional user context mid-session.</item>
+      </list>
+    </section>
+
+    <section name="lifecycle">
+      <p>Every MCP session follows a four-phase lifecycle:</p>
+      <list>
+        <item>Initialize — Client sends init request including its capabilities.</item>
+        <item>Negotiate — Server responds with the subset of capabilities it supports.</item>
+        <item>Active — Exchange requests, responses, and notifications.</item>
+        <item>Terminate — Clean session shutdown.</item>
+      </list>
+
+      <example type="good" title="Capability negotiation message">
+        <code lang="json"><![CDATA[{
+  "capabilities": {
+    "tools": { "listChanged": true },
+    "resources": { "subscribe": true, "listChanged": true },
+    "prompts": { "listChanged": true }
+  }
+}]]></code>
+        <note>listChanged: true means the server will emit notifications when the list changes. Clients that do not support notifications should set this to false.</note>
+      </example>
+
+      <example type="good" title="Initialize request (JSON-RPC 2.0)">
+        <code lang="json"><![CDATA[{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+      "sampling": {}
+    },
+    "clientInfo": {
+      "name": "my-client",
+      "version": "1.0.0"
+    }
+  }
+}]]></code>
+      </example>
+
+      <example type="good" title="Initialize response">
+        <code lang="json"><![CDATA[{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+      "tools": { "listChanged": true },
+      "resources": { "subscribe": true }
+    },
+    "serverInfo": {
+      "name": "my-server",
+      "version": "1.0.0"
+    }
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="sdks">
+      <p>Official and community SDKs for building MCP servers and clients:</p>
+      <list>
+        <item>TypeScript: @modelcontextprotocol/sdk — official; FastMCP wraps it for rapid server development.</item>
+        <item>Python: mcp — official low-level SDK; FastMCP (pip install fastmcp) provides high-level decorators.</item>
+        <item>C#: Microsoft.ModelContextProtocol — official.</item>
+        <item>Go: github.com/mark3labs/mcp-go — community.</item>
+      </list>
+      <p>For rapid server development in Python, prefer FastMCP: it handles JSON-RPC boilerplate automatically and exposes tools, resources, and prompts as decorated functions.</p>
+    </section>
+
+    <see-also>
+      <link href="https://modelcontextprotocol.io/specification/2025-11-25"/>
+      <link href="https://github.com/modelcontextprotocol"/>
+      <link href="https://github.com/modelcontextprotocol/typescript-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/python-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <link href="https://www.anthropic.com/news/model-context-protocol"/>
+      <ref slug="mcp-server-implementation"/>
+      <ref slug="mcp-client-integration"/>
+      <ref slug="mcp-security"/>
+    </see-also>
+  </content>
+</methodology>
