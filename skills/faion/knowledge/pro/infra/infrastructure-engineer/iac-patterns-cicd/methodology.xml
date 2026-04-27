@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="iac-patterns-cicd">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>IaC CI/CD pipeline patterns: GitHub Actions workflow with format/validate/lint/security/plan/apply stages, OIDC authentication, drift detection, and production approval gates.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>cicd</tag>
+      <tag>github-actions</tag>
+      <tag>iac</tag>
+      <tag>drift-detection</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>yaml</language>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="iac-patterns-testing"/>
+      <ref slug="iac-patterns-composition"/>
+      <ref slug="terraform-modules-structure"/>
+    </related>
+  </metadata>
+  <content>
+    <title>IaC CI/CD Integration Patterns</title>
+    <summary>CI/CD pipeline patterns for Terraform: a six-stage GitHub Actions workflow (fmt/validate/lint/security/plan/apply), OIDC for credential-free cloud authentication, PR plan comments for review, environment-specific apply jobs with approval gates, and scheduled drift detection.</summary>
+
+    <why>
+      <p>Manual terraform apply without a pipeline gate is the single largest source of infrastructure incidents: stale plans applied after force-pushes, no peer review of the plan output, no audit trail. A CI/CD pipeline enforces the review-before-apply contract, uses short-lived OIDC tokens instead of long-lived IAM keys, and provides an audit log of every apply. Drift detection closes the loop by alerting when infrastructure diverges from the declared state.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Terraform project with more than one contributor — enforce plan-before-apply via CI.</item>
+        <item>Infrastructure with compliance or audit requirements — CI provides an immutable apply log.</item>
+        <item>Multi-environment deployments (dev/staging/prod) — use matrix strategy to plan all environments on PR.</item>
+        <item>Production infrastructure — add approval gates before apply on merge to main.</item>
+        <item>Long-lived infrastructure — add scheduled drift detection to catch out-of-band changes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway or one-time environments — pipeline setup overhead exceeds value for ephemeral infra.</item>
+        <item>Local development inner loop — run fmt/validate locally; reserve CI for pre-merge gates.</item>
+        <item>Drift detection when environment changes are expected (active development phase) — generates false-positive noise.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pipeline-stages">
+      <p>The canonical six-stage Terraform pipeline:</p>
+      <rule testable="true">
+        <statement>The CI pipeline MUST run: (1) fmt -check, (2) validate, (3) tflint, (4) security scan (checkov/tfsec), (5) plan on PR with comment output, (6) apply only on merge to main. Apply MUST require all previous stages to pass.</statement>
+        <rationale>Each stage catches a different failure class: fmt catches formatting drift, validate catches syntax errors, tflint catches provider-specific issues, security scan catches policy violations, and the plan review is the human gate before any cloud mutation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Cloud authentication in CI MUST use OIDC (id-token: write permission + configure-aws-credentials with role-to-assume). NEVER store long-lived IAM access keys as CI secrets.</statement>
+        <rationale>OIDC tokens are short-lived (15 minutes) and scoped to the specific workflow run; a leaked token has minimal blast radius compared to a long-lived IAM key that persists until manually rotated.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Production apply jobs MUST use a GitHub Environments deployment gate requiring manual approval. Apply from main branch only; never allow direct apply from feature branches.</statement>
+        <rationale>An approval gate before production apply is the last human checkpoint; it prevents accidental production deploys from merged-but-unreviewd PRs.</rationale>
+      </rule>
+    </section>
+
+    <section name="github-actions-workflow">
+      <example type="good" title="Complete GitHub Actions Terraform workflow">
+        <code lang="yaml"><![CDATA[# .github/workflows/terraform.yml
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/**'
+  push:
+    branches:
+      - main
+    paths:
+      - 'infrastructure/**'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  TF_VERSION: "1.6.0"
+  AWS_REGION: "us-east-1"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+        working-directory: infrastructure
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: infrastructure/environments/dev
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: infrastructure/environments/dev
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v4
+
+      - name: TFLint
+        run: |
+          tflint --init
+          tflint --recursive
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infrastructure
+          framework: terraform
+          output_format: sarif
+
+  plan:
+    needs: [validate, lint, security]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging, prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/TerraformCI
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+        working-directory: infrastructure/environments/${{ matrix.environment }}
+
+      - name: Comment Plan
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Terraform Plan - ${{ matrix.environment }}
+            \`\`\`
+            ${{ steps.plan.outputs.stdout }}
+            \`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+  apply:
+    needs: plan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/TerraformCI
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Terraform Apply
+        run: |
+          terraform init
+          terraform apply -auto-approve
+        working-directory: infrastructure/environments/prod]]></code>
+      </example>
+    </section>
+
+    <section name="makefile-template">
+      <p>A local Makefile for developer workflow — mirrors the CI stages for consistent local execution:</p>
+      <example type="good" title="Makefile for Terraform operations">
+        <code lang="makefile"><![CDATA[# Makefile for Terraform operations
+
+ENV ?= dev
+MODULE ?= .
+
+.PHONY: init plan apply destroy fmt validate lint test
+
+init:
+	cd environments/$(ENV) && terraform init
+
+plan:
+	cd environments/$(ENV) && terraform plan
+
+apply:
+	cd environments/$(ENV) && terraform apply
+
+destroy:
+	cd environments/$(ENV) && terraform destroy
+
+fmt:
+	terraform fmt -recursive
+
+validate:
+	@for env in environments/*/; do \
+		echo "Validating $$env..."; \
+		cd $$env && terraform init -backend=false && terraform validate && cd ../..; \
+	done
+
+lint:
+	tflint --recursive
+
+security:
+	checkov -d . --framework terraform
+
+test:
+	cd modules/$(MODULE)/tests && terraform test
+
+test-all:
+	@for module in modules/*/; do \
+		if [ -d "$$module/tests" ]; then \
+			echo "Testing $$module..."; \
+			cd $$module/tests && terraform test && cd ../../..; \
+		fi \
+	done
+
+docs:
+	@for module in modules/*/; do \
+		terraform-docs markdown $$module > $$module/README.md; \
+	done]]></code>
+      </example>
+    </section>
+
+    <section name="drift-detection">
+      <p>Drift detection runs terraform plan on a schedule and alerts when the plan is non-empty (resources have drifted from declared state):</p>
+      <rule testable="true">
+        <statement>Configure a scheduled drift detection job that runs terraform plan daily (or hourly for critical infrastructure) and alerts when plan output is non-empty. Do NOT auto-apply drift remediation — require human review of each drift incident.</statement>
+        <rationale>Auto-remediation of drift can destroy intentional manual changes made during an incident response. Alert and require human judgment for each drift detection event.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-checklist">
+      <checklist>
+        <check>Credentials from vault/secrets manager — no long-lived IAM keys in CI secrets</check>
+        <check>OIDC for cloud authentication (id-token: write permission)</check>
+        <check>Least privilege for pipeline service account (plan vs apply roles separate)</check>
+        <check>No secrets in state (use data sources for runtime secrets)</check>
+        <check>Audit logging enabled for all apply operations</check>
+        <check>Apply only from main/protected branch</check>
+        <check>Production apply requires manual approval gate</check>
+        <check>PR requires plan output for review</check>
+        <check>Drift detection scheduled</check>
+        <check>Security scan (checkov/tfsec) runs before plan</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts-cicd">
+      <prompt purpose="Create a Terraform CI/CD pipeline">
+        <![CDATA[Create a CI/CD pipeline for Terraform using [GitHub Actions/GitLab CI/Jenkins]:
+
+Requirements:
+1. Format check on PRs
+2. Validation and linting
+3. Security scanning (checkov/tfsec)
+4. Plan on PR with comment output
+5. Apply on merge to main
+6. Environment-specific workflows
+
+Security requirements:
+- OIDC authentication (no long-lived credentials)
+- Approval gates for production
+- Audit logging
+
+Provide complete workflow file with comments.]]>
+      </prompt>
+      <prompt purpose="Set up drift detection">
+        <![CDATA[Set up drift detection for Terraform-managed infrastructure:
+
+Requirements:
+- Scheduled runs (frequency: [SCHEDULE])
+- Alert on detected drift
+- Option to auto-remediate or report only
+- Integration with [ALERTING_SYSTEM]
+
+Provide:
+1. Workflow/job configuration
+2. Drift detection script
+3. Alerting configuration
+4. Remediation options]]>
+      </prompt>
+      <prompt purpose="Debug a failed Terraform apply">
+        <![CDATA[Help debug this failed Terraform apply:
+
+Error message:
+[PASTE_ERROR]
+
+Configuration:
+[PASTE_RELEVANT_CONFIG]
+
+Context:
+- Environment: [ENV]
+- Last successful apply: [TIMESTAMP]
+- Recent changes: [DESCRIBE_CHANGES]
+
+Provide:
+1. Root cause analysis
+2. Potential solutions ranked by likelihood
+3. Verification steps
+4. Prevention recommendations]]>
+      </prompt>
+      <prompt purpose="Full module development flow (chained prompts)">
+        <![CDATA[Step 1: Analyze requirements
+"Analyze these requirements for a [MODULE_TYPE] module: [REQUIREMENTS]
+Identify: inputs needed, outputs expected, resources to create, edge cases."
+
+Step 2: Design module interface
+"Based on the analysis, design the module interface:
+- variables.tf with types, defaults, validation
+- outputs.tf with descriptions
+- Example usage in README"
+
+Step 3: Implement module
+"Implement main.tf following these patterns: [REFERENCE_PATTERNS]
+Include: resource definitions, locals, data sources"
+
+Step 4: Add tests
+"Write tests for the module covering:
+- Happy path with defaults
+- All optional parameters
+- Validation failures
+- Integration verification"
+
+Step 5: Documentation
+"Complete the README with:
+- Purpose and use cases
+- Requirements table
+- Input/output tables
+- Examples (basic and advanced)
+- Related modules"]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="iac-patterns-testing"/>
+      <ref slug="iac-patterns-composition"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/recommended-patterns"/>
+      <link href="https://articles.mergify.com/infrastructure-as-code-best-practices/"/>
+    </see-also>
+  </content>
+</methodology>
