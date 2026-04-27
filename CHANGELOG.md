@@ -11,6 +11,7 @@
 - decompose: chunking-advanced → 4 slugs (chunking-semantic, chunking-document-structure, chunking-code-ast, chunking-production-service)
 - decompose: trunk-based-dev-patterns → 4 slugs (trunk-based-feature-flags, trunk-based-branch-by-abstraction, trunk-based-ci-gates, trunk-based-challenges)
 - decompose: event-sourcing → 6 slugs (event-sourcing-fundamentals, event-sourcing-aggregate, event-sourcing-projections, event-sourcing-snapshots, event-sourcing-versioning, event-sourcing-agentic)
+- decompose: strategy-analysis → 5 slugs (strategy-analysis-business-need, strategy-analysis-current-state, strategy-analysis-future-state, strategy-analysis-gap-analysis, strategy-analysis-change-strategy)
 - decompose: dev-methodologies-practices → 5 slugs (practices-django-coding, practices-python-ecosystem, practices-js-ts-stack, practices-backend-languages, practices-frontend-components)
 - decompose: web-scraping → 4 slugs (web-scraping-element-extraction, web-scraping-pagination, web-scraping-resilience, web-scraping-agentic-workflow)
 - decompose: feature-flags → 4 slugs (feature-flags-types-lifecycle, feature-flags-core-implementation, feature-flags-rollout-targeting, feature-flags-services-testing)
