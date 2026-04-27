@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-network-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GCP VPC design patterns: Single VPC, Shared VPC, hub-and-spoke, IP planning for GKE, Private Service Connect, Cloud NAT, and Terraform templates for multi-environment networks.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>vpc</tag>
+      <tag>networking</tag>
+      <tag>terraform</tag>
+      <tag>shared-vpc</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="gcp-landing-zone"/>
+      <ref slug="gcp-gke-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Network Architecture Patterns</title>
+
+    <summary>GCP networking centers on VPC design (Single, Shared, Hub-and-Spoke), IP address planning for GKE secondary ranges, Private Service Connect for private Google API access, Cloud NAT for egress, and hierarchical firewall policies for org-wide security. Shared VPC is the standard pattern for multi-project environments.</summary>
+
+    <why>
+      <p>Poor IP planning causes CIDR overlap between environments and on-premises networks, forcing painful re-addressing later. GKE requires secondary IP ranges for pods and services; allocating insufficient space at design time limits cluster growth. Shared VPC centralizes network administration and prevents service project teams from creating uncontrolled firewall rules.</p>
+      <p>Private Service Connect replaces VPC peering for Google API access: it provides a single private IP that routes to all Google APIs, eliminating the peering route-limit problem and the risk of transitive routing.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing a multi-project GCP environment — use Shared VPC to centralize network control.</item>
+        <item>Deploying GKE clusters — plan pod and service secondary CIDR ranges before creating subnets.</item>
+        <item>Private instances needing Google API access (Cloud SQL, Storage, BigQuery) — use Private Service Connect.</item>
+        <item>Private instances needing internet egress without public IPs — use Cloud NAT.</item>
+        <item>Enterprise environments with on-premises connectivity — design hub-and-spoke topology with VPN or Interconnect.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-project sandbox environments — Shared VPC overhead is not justified; use a simple single VPC.</item>
+        <item>Fully public serverless workloads (Cloud Run with default networking) — VPC plumbing adds complexity with no benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="vpc-patterns">
+      <p>Choose the VPC topology based on organizational complexity and network isolation requirements. Shared VPC is the default for any multi-project setup.</p>
+
+      <rule>
+        <statement>Use Shared VPC for any environment with more than one GCP project. Create a dedicated host project for the VPC. Service projects attach to the host but cannot create or modify subnets or firewall rules in the host — only the network admin role on the host can.</statement>
+        <rationale>Shared VPC enforces network governance: service teams deploy workloads but cannot exfiltrate data by modifying firewall rules or creating rogue peerings. Centralized administration also simplifies security audits — one place to review all firewall rules.</rationale>
+      </rule>
+
+      <example type="good" title="VPC pattern selection">
+        <code lang="text"><![CDATA[
+Pattern         | Use case                                     | Complexity
+----------------|----------------------------------------------|----------
+Single VPC      | Small projects, simple networking            | Low
+Shared VPC      | Multi-project, centralized network admin     | Medium
+Hub-and-Spoke   | Enterprise, multiple environments, hybrid    | High
+]]></code>
+      </example>
+    </section>
+
+    <section name="ip-planning">
+      <p>IP address planning must account for VPC, subnets, GKE pod and service secondary ranges, and Private Service Connect. Non-overlapping CIDRs across environments and with on-premises networks are mandatory before any subnet is created.</p>
+
+      <rule>
+        <statement>Allocate /16 per environment VPC (65,536 IPs). Within each VPC: /20 to /24 for primary subnet (regional workloads), /18 to /20 for GKE pods (secondary range), /24 for GKE services (secondary range), /28 for GKE master CIDR (private cluster control plane).</statement>
+        <rationale>GKE node-to-pod scaling requires the pod CIDR to be large enough to hold max_nodes * pods_per_node IPs. Under-sizing the pod range is the most common cause of GKE cluster scale failures — it cannot be expanded without recreating the cluster.</rationale>
+      </rule>
+
+      <example type="good" title="IP plan for multi-environment deployment">
+        <code lang="text"><![CDATA[
+Resource          | Recommended range | Notes
+------------------|-------------------|------------------------------
+VPC               | /16               | 65,536 IPs per VPC
+Subnet            | /20 to /24        | Based on region and workload
+GKE Pods          | /18 to /20        | Secondary range
+GKE Services      | /24               | Secondary range
+Master CIDR       | /28               | Private cluster control plane
+
+Environment  | VPC CIDR      | Subnet        | Pods          | Services
+-------------|---------------|---------------|---------------|------------------
+Production   | 10.0.0.0/16   | 10.0.0.0/20   | 10.0.16.0/14  | 10.0.32.0/20
+Staging      | 10.1.0.0/16   | 10.1.0.0/20   | 10.1.16.0/14  | 10.1.32.0/20
+Development  | 10.2.0.0/16   | 10.2.0.0/20   | 10.2.16.0/14  | 10.2.32.0/20
+]]></code>
+      </example>
+    </section>
+
+    <section name="shared-vpc-terraform">
+      <p>Terraform configuration for a Shared VPC: host project, subnets with VPC Flow Logs, Cloud NAT, and service project attachment with network user IAM.</p>
+
+      <example type="good" title="Shared VPC — Terraform">
+        <code lang="hcl"><![CDATA[
+# shared-vpc.tf
+
+# Host project VPC
+resource "google_compute_network" "shared_vpc" {
+  name                    = "shared-vpc"
+  project                 = var.host_project_id
+  auto_create_subnetworks = false
+  routing_mode            = "GLOBAL"
+}
+
+# Enable Shared VPC
+resource "google_compute_shared_vpc_host_project" "host" {
+  project = var.host_project_id
+}
+
+# Production subnet
+resource "google_compute_subnetwork" "production" {
+  name          = "production-subnet"
+  project       = var.host_project_id
+  region        = var.region
+  network       = google_compute_network.shared_vpc.name
+  ip_cidr_range = "10.0.0.0/20"
+
+  private_ip_google_access = true
+
+  secondary_ip_range {
+    range_name    = "pods"
+    ip_cidr_range = "10.0.16.0/14"
+  }
+
+  secondary_ip_range {
+    range_name    = "services"
+    ip_cidr_range = "10.0.32.0/20"
+  }
+
+  log_config {
+    aggregation_interval = "INTERVAL_10_MIN"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+}
+
+# Staging subnet
+resource "google_compute_subnetwork" "staging" {
+  name          = "staging-subnet"
+  project       = var.host_project_id
+  region        = var.region
+  network       = google_compute_network.shared_vpc.name
+  ip_cidr_range = "10.1.0.0/20"
+
+  private_ip_google_access = true
+
+  secondary_ip_range {
+    range_name    = "pods"
+    ip_cidr_range = "10.1.16.0/14"
+  }
+
+  secondary_ip_range {
+    range_name    = "services"
+    ip_cidr_range = "10.1.32.0/20"
+  }
+}
+
+# Attach service project
+resource "google_compute_shared_vpc_service_project" "production" {
+  host_project    = var.host_project_id
+  service_project = var.production_project_id
+
+  depends_on = [google_compute_shared_vpc_host_project.host]
+}
+
+# Grant network user role to service project
+resource "google_project_iam_member" "production_network_user" {
+  project = var.host_project_id
+  role    = "roles/compute.networkUser"
+  member  = "serviceAccount:${var.production_project_number}@cloudservices.gserviceaccount.com"
+}
+
+# Cloud Router
+resource "google_compute_router" "router" {
+  name    = "shared-vpc-router"
+  project = var.host_project_id
+  region  = var.region
+  network = google_compute_network.shared_vpc.name
+}
+
+# Cloud NAT
+resource "google_compute_router_nat" "nat" {
+  name                               = "shared-vpc-nat"
+  project                            = var.host_project_id
+  router                             = google_compute_router.router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+
+  log_config {
+    enable = true
+    filter = "ERRORS_ONLY"
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Firewall rules — deny-all with targeted allows">
+        <code lang="hcl"><![CDATA[
+# Firewall rules
+resource "google_compute_firewall" "deny_all_ingress" {
+  name     = "deny-all-ingress"
+  project  = var.host_project_id
+  network  = google_compute_network.shared_vpc.name
+  priority = 65534
+
+  direction = "INGRESS"
+
+  deny {
+    protocol = "all"
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+}
+
+resource "google_compute_firewall" "allow_internal" {
+  name     = "allow-internal"
+  project  = var.host_project_id
+  network  = google_compute_network.shared_vpc.name
+  priority = 1000
+
+  direction = "INGRESS"
+
+  allow { protocol = "tcp" }
+  allow { protocol = "udp" }
+  allow { protocol = "icmp" }
+
+  source_ranges = ["10.0.0.0/8"]
+}
+
+resource "google_compute_firewall" "allow_iap" {
+  name     = "allow-iap"
+  project  = var.host_project_id
+  network  = google_compute_network.shared_vpc.name
+  priority = 1000
+
+  direction = "INGRESS"
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22", "3389"]
+  }
+
+  source_ranges = ["35.235.240.0/20"]  # IAP CIDR
+  target_tags   = ["allow-iap"]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="private-service-connect">
+      <p>Private Service Connect (PSC) allows private instances to reach Google APIs (Storage, BigQuery, Pub/Sub, etc.) via a single internal IP, without traversing the public internet or creating VPC peering routes.</p>
+
+      <rule>
+        <statement>Use Private Service Connect for all GCP projects where instances have no public IP and need to call Google APIs. Create a PSC forwarding rule targeting "all-apis" and add private DNS zones for googleapis.com and gcr.io pointing to the PSC address.</statement>
+        <rationale>VPC peering for Google API access consumes peering route quota (max 25 peerings per VPC) and leaks routes between peered networks. PSC uses a single internal IP and does not consume peering slots or expose routes.</rationale>
+      </rule>
+
+      <example type="good" title="Private Service Connect — Terraform">
+        <code lang="hcl"><![CDATA[
+# private-service-connect.tf
+resource "google_compute_global_address" "psc_apis" {
+  name         = "psc-google-apis"
+  project      = var.project_id
+  purpose      = "PRIVATE_SERVICE_CONNECT"
+  address_type = "INTERNAL"
+  network      = google_compute_network.main.id
+  address      = "10.255.255.254"
+}
+
+resource "google_compute_global_forwarding_rule" "psc_apis" {
+  name                  = "psc-google-apis"
+  project               = var.project_id
+  network               = google_compute_network.main.id
+  ip_address            = google_compute_global_address.psc_apis.id
+  target                = "all-apis"
+  load_balancing_scheme = ""
+}
+
+# DNS zone for googleapis.com
+resource "google_dns_managed_zone" "googleapis" {
+  name        = "googleapis"
+  project     = var.project_id
+  dns_name    = "googleapis.com."
+  description = "Private zone for Google APIs"
+  visibility  = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_dns_record_set" "googleapis" {
+  name         = "*.googleapis.com."
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.googleapis.name
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.psc_apis.address]
+}
+
+# DNS zone for gcr.io
+resource "google_dns_managed_zone" "gcr" {
+  name        = "gcr-io"
+  project     = var.project_id
+  dns_name    = "gcr.io."
+  description = "Private zone for GCR"
+  visibility  = "private"
+
+  private_visibility_config {
+    networks {
+      network_url = google_compute_network.main.id
+    }
+  }
+}
+
+resource "google_dns_record_set" "gcr" {
+  name         = "*.gcr.io."
+  project      = var.project_id
+  managed_zone = google_dns_managed_zone.gcr.name
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.psc_apis.address]
+}
+]]></code>
+      </example>
+
+      <example type="good" title="PSC — gcloud equivalent">
+        <code lang="bash"><![CDATA[
+# Reserve PSC address
+gcloud compute addresses create psc-google-apis \
+    --global \
+    --purpose=PRIVATE_SERVICE_CONNECT \
+    --network=my-vpc \
+    --addresses=10.255.255.254
+
+# Create PSC forwarding rule
+gcloud compute forwarding-rules create psc-google-apis \
+    --global \
+    --network=my-vpc \
+    --address=psc-google-apis \
+    --target-google-apis-bundle=all-apis
+
+# Create private DNS zone
+gcloud dns managed-zones create googleapis \
+    --dns-name="googleapis.com." \
+    --visibility=private \
+    --networks=my-vpc
+
+# Create DNS record
+gcloud dns record-sets create "*.googleapis.com." \
+    --zone=googleapis \
+    --type=A \
+    --ttl=300 \
+    --rrdatas=10.255.255.254
+]]></code>
+      </example>
+    </section>
+
+    <section name="network-checklist">
+      <checklist>
+        <check>VPC design: choose pattern (single/shared/hub-spoke), design non-overlapping IP plan with future growth, document network topology.</check>
+        <check>Shared VPC (if applicable): create host project, configure shared VPC, define service project attachment process, set up network IAM delegation.</check>
+        <check>Subnets: create per-region, configure GKE secondary ranges (pods + services), enable Private Google Access, configure VPC Flow Logs.</check>
+        <check>Connectivity: set up Cloud NAT for private instances, configure Private Service Connect for Google APIs, plan hybrid connectivity (VPN/Interconnect), configure Cloud DNS.</check>
+        <check>Firewall: define hierarchical policy, create base deny-all ingress, add allow rules by service tag (IAP, health-checks, internal), document all rules.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="vpc-design"><![CDATA[
+Design VPC architecture:
+
+Scope: {Single project|Multi-project|Organization-wide}
+Environments: {LIST}
+Regions: {LIST}
+
+Requirements:
+- Shared VPC: {yes|no}
+- Hybrid connectivity: {none|VPN|Interconnect}
+- Private Google Access: {yes|no}
+- Service endpoints: {LIST}
+
+Constraints:
+- Existing CIDRs to avoid: {LIST}
+- Security requirements: {DESCRIBE}
+
+Provide:
+1. VPC design (single vs multiple)
+2. Subnet layout per region
+3. IP address plan
+4. Firewall strategy
+5. NAT configuration
+6. DNS setup
+7. Private connectivity (PSC, Private Access)
+8. Terraform configuration
+]]></prompt>
+
+      <prompt purpose="ip-address-planning"><![CDATA[
+Create IP address plan for:
+
+Environments: {LIST}
+Regions: {LIST}
+GKE clusters: {NUMBER per environment}
+Cloud SQL instances: {NUMBER per environment}
+Other services: {LIST}
+
+Constraints:
+- On-premises CIDR (avoid): {CIDR}
+- Other cloud CIDRs (avoid): {LIST}
+- Future growth: {percentage}
+
+Requirements:
+- Pod CIDR per cluster
+- Service CIDR per cluster
+- Private service access range
+- VPN/Interconnect considerations
+
+Provide:
+1. Complete IP allocation table
+2. Subnet design per region
+3. Secondary ranges for GKE
+4. Validation of no overlaps
+5. Future expansion recommendations
+]]></prompt>
+
+      <prompt purpose="hybrid-connectivity"><![CDATA[
+Design hybrid connectivity:
+
+On-premises environment:
+- Location: {LOCATION}
+- Bandwidth: {CURRENT_BANDWIDTH}
+- Latency requirement: {MS}
+- Redundancy: {REQUIRED_LEVEL}
+
+GCP environment:
+- Region: {REGION}
+- Services to access: {LIST}
+- Traffic volume: {GB/month}
+
+Options to evaluate:
+- Cloud VPN
+- Partner Interconnect
+- Dedicated Interconnect
+
+Provide:
+1. Connectivity recommendation
+2. Redundancy design
+3. IP routing configuration
+4. Firewall rules
+5. DNS resolution strategy
+6. Cost comparison
+7. Implementation steps
+8. Terraform configuration
+]]></prompt>
+    </section>
+
+    <templates>
+      <template path="templates/shared-vpc.tf" purpose="Shared VPC host project, subnets with secondary ranges, Cloud NAT, firewall rules, and service project attachment."/>
+    </templates>
+
+    <see-also>
+      <ref slug="gcp-landing-zone"/>
+      <ref slug="gcp-gke-architecture"/>
+      <link href="https://docs.cloud.google.com/architecture/best-practices-vpc-design"/>
+    </see-also>
+  </content>
+</methodology>

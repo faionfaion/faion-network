@@ -4,6 +4,7 @@
 
 ### Changed
 - decompose: decision-trees → 5 slugs (decision-tree-architecture-style, decision-tree-tech-stack, decision-tree-cloud-provider, decision-tree-build-vs-buy, decision-tree-process)
+- decompose: gcp-architecture → 4 slugs (gcp-landing-zone, gcp-gke-architecture, gcp-storage-cdn, gcp-network-architecture)
 - decompose: kubernetes-deployment → 5 slugs (k8s-deployment-workloads, k8s-rolling-update, k8s-canary-progressive, k8s-scaling-availability, k8s-security-hardening)
 - decompose: architectural-patterns → 4 slugs (arch-pattern-clean, arch-pattern-hexagonal, arch-pattern-onion, arch-pattern-ddd)
 - decompose: trade-off-analysis → 6 slugs (trade-off-decision-methods, trade-off-decision-matrix, trade-off-quality-attributes, trade-off-build-vs-buy, trade-off-technical-debt, trade-off-stakeholder-communication)
