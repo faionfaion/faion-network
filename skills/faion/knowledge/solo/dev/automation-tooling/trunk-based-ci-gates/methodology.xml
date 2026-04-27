@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trunk-based-ci-gates">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Pre-commit hooks and CI pipeline configuration that keep trunk continuously releasable: local hooks under 1s, CI under 10 min, branch protection enforced, auto-revert on red trunk.</summary>
+    <tags>
+      <tag>trunk-based-development</tag>
+      <tag>ci-cd</tag>
+      <tag>pre-commit</tag>
+      <tag>github-actions</tag>
+      <tag>branch-protection</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trunk-based-dev-principles"/>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-challenges"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>CI Gates for Trunk-Based Development</title>
+
+    <summary>Trunk-Based Development requires two quality gates: a fast local pre-commit hook that completes in under one second (lint + type-check on staged files only) and a CI pipeline under 10 minutes wall time that gates merge to main. Branch protection must require both. A broken trunk is auto-reverted by bot, never by humans.</summary>
+
+    <why>
+      <p>Without quality gates, trunk breaks frequently and developers lose trust, reverting to long-lived branches. Two distinct gates solve this at different timescales: the pre-commit hook gives sub-second feedback on the developer's machine, catching syntax and lint issues before they reach CI. The CI pipeline runs full tests, type-check, and coverage in a clean environment. Crucially, CI must stay under 10 minutes — if it takes longer, developers batch pushes, lose fast-feedback benefits, and start using --no-verify. Auto-revert-on-red (bot runs git revert -m 1, not humans) keeps trunk green without blocking other work.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any repository practising trunk-based development that pushes to main at least once per day.</item>
+        <item>Setting up a new Python + GitHub Actions project and need a working quality gate from day one.</item>
+        <item>Existing CI that takes more than 10 minutes — this pattern shows where to cut.</item>
+        <item>Codebases where developers routinely use --no-verify — replace the slow hook causing the habit.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Mobile/desktop projects where the store review cycle makes daily deploys impossible — CI gating still applies but the deploy stage is different.</item>
+        <item>Pure data science / notebook repos where pre-commit hook overhead is irrelevant and CI is a batch job, not a merge gate.</item>
+        <item>Throwaway prototypes where the overhead of setting up hooks is not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pre-commit-hook-setup">
+      <p>Pre-commit hooks must run in under one second on a developer laptop. Run only on staged files (not the full repo). Use native binary tools (ruff, mypy on src/ only) — never run the full pytest suite in a pre-commit hook.</p>
+
+      <rule>
+        <statement>Pre-commit hooks MUST run on staged files only and complete in under one second. MUST NOT run pytest in a pre-commit hook on real-size repositories — the full test suite belongs in CI. If a hook takes more than a few seconds, developers will use --no-verify and the gate dies.</statement>
+        <rationale>Pre-commit hooks are run on every commit; a slow hook trains developers to bypass it. pytest on full codebase can take minutes. The hook's job is to catch the obvious (syntax, lint, type errors) fast; deep correctness is CI's responsibility.</rationale>
+      </rule>
+
+      <example type="good" title="Lean pre-commit config for TBD">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: lint
+        name: Lint code (staged files)
+        entry: ruff check .
+        language: system
+        pass_filenames: false
+
+      - id: type-check
+        name: Type check (src/ only)
+        entry: mypy src/
+        language: system
+        pass_filenames: false
+]]></code>
+        <note>pytest is NOT in this hook. Type-check scopes to src/ — not the whole repo. Both complete in under one second on a modern laptop.</note>
+      </example>
+
+      <example type="bad" title="Full pytest in pre-commit — kills TBD">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml — DO NOT add pytest here
+repos:
+  - repo: local
+    hooks:
+      - id: tests
+        name: Run tests
+        entry: pytest --tb=short -q
+        language: system
+        pass_filenames: false
+]]></code>
+        <note>On a 500-test suite this takes 30-120 seconds. Developers disable the hook within a week. Move pytest to CI.</note>
+      </example>
+    </section>
+
+    <section name="ci-pipeline-setup">
+      <p>The CI pipeline is the authoritative gate for merging to trunk. It must complete in under 10 minutes wall time. Structure: one job for build + test + lint + type-check; a second job for staging deploy gated on the first. Cache dependencies aggressively. Parallelise test shards if the suite grows past 5 minutes.</p>
+
+      <rule>
+        <statement>CI MUST complete in under 10 minutes wall time. If it exceeds this, parallelise tests, cache pip/npm, or move slow integration suites to a nightly job. CI MUST require passing status checks and linear history on main via branch protection. After adding a new CI job, verify via gh api repos/:owner/:repo/branches/main/protection that the new job is in the required-status list.</statement>
+        <rationale>CI slower than 10 minutes means developers batch pushes and lose the rapid feedback loop that makes TBD safe. Branch protection that does not include new jobs silently stops gating when jobs are renamed or added — the validator step prevents this drift.</rationale>
+      </rule>
+
+      <example type="good" title="TBD CI pipeline — Python, GitHub Actions">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/trunk.yml
+name: Trunk CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest --cov=src --cov-fail-under=80
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Type check
+        run: mypy src/
+
+      # Fast feedback is crucial — total time MUST be < 10 minutes
+
+  deploy-to-staging:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to staging
+        run: ./deploy.sh staging
+]]></code>
+        <note>pip cache on line 17 halves install time on repeat runs. Coverage threshold of 80% prevents regressions.</note>
+      </example>
+    </section>
+
+    <section name="branch-protection-rules">
+      <p>Branch protection is the mechanical enforcement of TBD. Without it, a developer or agent can direct-push to main and bypass the CI gate entirely.</p>
+
+      <rule>
+        <statement>main MUST have branch protection with: require pull request reviews (at least 1), require status checks to pass (all CI jobs listed), require linear history, restrict direct pushes to automation only. After any CI change that adds or renames jobs, re-verify the required-status list via gh api.</statement>
+        <rationale>Branch protection prevents the most common TBD failure: a hot-fix direct push that skips CI and leaves main in an untested state. Linear history ensures git bisect works reliably, which is critical when trunk breaks and needs rapid diagnosis.</rationale>
+      </rule>
+
+      <commands>
+        <command name="verify-branch-protection">gh api repos/:owner/:repo/branches/main/protection</command>
+        <command name="list-required-status-checks">gh api repos/:owner/:repo/branches/main/protection/required_status_checks</command>
+      </commands>
+
+      <antipattern>
+        <description>Adding a new CI job without updating branch protection required-status list.</description>
+        <reason>The new job runs but does not gate merges. A red job is invisible to reviewers. PRs merge with failing checks and trunk breaks silently.</reason>
+      </antipattern>
+    </section>
+
+    <section name="auto-revert-policy">
+      <p>When trunk goes red, do not ask humans to manually revert. Set up a bot (GitHub Action or internal automation) that triggers on a failed CI run on main, runs git revert -m 1 of the breaking commit, and opens a PR with the revert. Fix forward in a fresh PR.</p>
+
+      <rule>
+        <statement>A PR that broke main MUST be reverted by bot (git revert -m 1), not by humans manually reverting changes. The fix goes in a new PR. This enforces "fix forward" culture and keeps trunk green without blocking other developers' work.</statement>
+        <rationale>Human-managed reverts are slow (30+ minutes in async teams) and often incomplete. Bot revert is instantaneous and deterministic. Fix-forward in a new PR gives a clean blame trail and prevents the "let me just push one more fix on top" spiral that further destabilises trunk.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Agents working on TBD codebases must be aware of CI gate state before and after their changes. Key checklist for agent CI tasks:</p>
+
+      <checklist>
+        <check>Never use --no-verify on pre-commit hooks; fix the root cause.</check>
+        <check>After adding a new CI job, verify it appears in branch protection required-status via gh api.</check>
+        <check>If CI exceeds 10 minutes after your change, investigate and optimise before merging.</check>
+        <check>Never add pytest to .pre-commit-config.yaml; it belongs in CI only.</check>
+        <check>Any pragma addition (# type: ignore, # noqa) requires a diff review comment explaining why.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="trunk-based-feature-flags"/>
+      <ref slug="trunk-based-challenges"/>
+      <link href="https://trunkbaseddevelopment.com/"/>
+      <link href="https://pre-commit.com/"/>
+      <link href="https://cli.github.com/"/>
+    </see-also>
+  </content>
+</methodology>
