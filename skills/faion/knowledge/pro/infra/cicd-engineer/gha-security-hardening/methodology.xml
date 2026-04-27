@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gha-security-hardening">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions security: SHA-pin all actions, use OIDC for cloud auth, restrict GITHUB_TOKEN permissions per job, forbid pull_request_target misuse, audit workflows with actionlint and gha-audit.py.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>security</tag>
+      <tag>oidc</tag>
+      <tag>supply-chain</tag>
+      <tag>permissions</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>github-actions</tool>
+    </tools>
+    <related>
+      <ref slug="gha-deployment-patterns"/>
+      <ref slug="gha-workflow-structure"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitHub Actions Security Hardening</title>
+
+    <summary>Pin every action reference to a 40-char SHA, not a tag. Set permissions: explicitly at the job level with minimum required scope. Use OIDC (id-token: write) for all cloud authentication — no long-lived AWS_ACCESS_KEY, GCP_SERVICE_ACCOUNT_KEY, or AZURE_CREDENTIALS secrets. Never use pull_request_target without a protected environment gate. Run actionlint and gha-audit.py on every PR touching .github/.</summary>
+
+    <why>
+      <p>The Tj-actions/changed-files supply-chain incident (March 2025) demonstrated that moving a tag from a safe SHA to a malicious one in a third-party action executes attacker code with full GITHUB_TOKEN permissions in every repo that references that action by tag. SHA pinning is the only defense: an attacker cannot retroactively change a commit SHA. Renovate automates keeping pinned SHAs current.</p>
+      <p>pull_request_target runs in the context of the target repository and has access to its secrets — including prod credentials. A malicious PR can exfiltrate every secret in the repo if the workflow checks out the PR's code and runs it. This is the most dangerous anti-pattern in GHA. The pull_request trigger runs in the fork's context with no secrets by default; prefer it for all code that touches user-contributed changes.</p>
+      <p>Long-lived cloud credentials (AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY in repository secrets) are a persistent blast radius: if they leak, they remain valid until manually rotated. OIDC tokens are short-lived (15 minutes) and scoped to the specific workflow run; there is nothing to rotate.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any workflow that runs on a PR or push to a shared branch — SHA pinning is non-negotiable.</item>
+        <item>Any workflow that deploys to a cloud provider — replace long-lived credentials with OIDC.</item>
+        <item>Any workflow that uses third-party Marketplace actions — audit before use, pin by SHA.</item>
+        <item>Repos with required status checks — add actionlint as a required check.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway local-only repos with no secrets — overhead is not worth it, but still good practice.</item>
+        <item>Disabling OIDC for a provider that does not support it — use short-lived API tokens from a secrets manager instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Every uses: reference MUST be pinned to a full 40-character SHA commit hash, not a tag or branch. Add the version number as a comment: uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1</statement>
+        <rationale>Tags are mutable. A supply-chain attack replaces the tag on the upstream repo and every downstream workflow runs malicious code on the next trigger. SHA is immutable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set permissions: at the job level (not workflow level) with only the scopes the job needs. Start with contents: read and add scopes incrementally. Never set permissions: write-all.</statement>
+        <rationale>Workflow-level permissions apply to every job. A test job that only reads code should never have packages: write or deployments: write. Job-level scope limits the blast radius of a compromised step.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>All cloud authentication MUST use OIDC. Add id-token: write permission, configure the provider's trust policy to accept the GH OIDC issuer, and use the provider's official configure-credentials action.</statement>
+        <rationale>Long-lived cloud credentials stored as repo secrets persist until manually rotated. An OIDC token is valid for 15 minutes and is scoped to the specific workflow run; a leaked token is useless after the run completes.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>NEVER use pull_request_target to get secrets for fork PRs. Use pull_request with minimal token scopes. If fork PRs genuinely need secrets, deploy to a sandbox environment protected by required reviewers and check out only the base ref, never the PR head.</statement>
+        <rationale>pull_request_target runs in the target repo context with all its secrets. A PR with malicious workflow changes can exfiltrate every secret on the first trigger. This is the most common critical GHA vulnerability pattern.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Avoid ${{ github.event.* }} interpolation directly in run: shell commands. Assign to an env: variable and reference the env var with $VARNAME to prevent shell injection.</statement>
+        <rationale>A PR title like "; rm -rf /" interpolated directly into run: echo "${{ github.event.pull_request.title }}" executes as a shell command. env: variables are passed safely without shell evaluation.</rationale>
+      </rule>
+    </rules>
+
+    <section name="sha-pinning">
+      <example type="good" title="SHA-pinned action references with version comments">
+        <code lang="yaml"><![CDATA[
+steps:
+  - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+  - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+  - uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+]]></code>
+        <note>Use Renovate (renovatebot) to automatically open PRs updating pinned SHAs when new versions are released.</note>
+      </example>
+
+      <example type="bad" title="Tag-pinned action references">
+        <code lang="yaml"><![CDATA[
+steps:
+  - uses: actions/checkout@v4         # tag can be moved
+  - uses: tj-actions/changed-files@v44  # vulnerable to supply-chain attack (March 2025 incident)
+  - uses: some-org/some-action@main   # branch tip changes on every push
+]]></code>
+        <note>All three forms are exploitable. Only a full 40-char SHA is immutable.</note>
+      </example>
+    </section>
+
+    <section name="oidc-authentication">
+      <example type="good" title="AWS OIDC authentication">
+        <code lang="yaml"><![CDATA[
+jobs:
+  deploy:
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+          # role-session-name defaults to GitHubActions
+]]></code>
+        <note>The AWS trust policy must allow sts:AssumeRoleWithWebIdentity from token.actions.githubusercontent.com with conditions matching the repo and ref.</note>
+      </example>
+
+      <example type="bad" title="Long-lived AWS credentials">
+        <code lang="yaml"><![CDATA[
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+]]></code>
+        <note>These credentials persist until manually rotated. OIDC eliminates the long-lived secret entirely.</note>
+      </example>
+    </section>
+
+    <section name="permissions-model">
+      <example type="good" title="Per-job minimum permissions">
+        <code lang="yaml"><![CDATA[
+jobs:
+  lint:
+    permissions:
+      contents: read        # checkout only
+    runs-on: ubuntu-latest
+    steps: ...
+
+  test:
+    permissions:
+      contents: read
+      checks: write         # report test results
+      pull-requests: write  # post coverage comment
+    runs-on: ubuntu-latest
+    steps: ...
+
+  release:
+    permissions:
+      contents: write       # create GitHub Release
+      packages: write       # push to GHCR
+      id-token: write       # OIDC for cloud
+    runs-on: ubuntu-latest
+    steps: ...
+]]></code>
+      </example>
+
+      <example type="bad" title="Workflow-level write-all permissions">
+        <code lang="yaml"><![CDATA[
+permissions: write-all   # grants everything to every job
+]]></code>
+        <note>A compromised test step can now write to packages, deployments, and issues. Always set permissions per job.</note>
+      </example>
+    </section>
+
+    <section name="audit-tooling">
+      <p>Run actionlint and gha-audit.py on every PR that touches .github/. Both tools are agent-runnable.</p>
+      <example type="good" title="Permissions auditor script (gha-audit.py)">
+        <code lang="python"><![CDATA[
+# scripts/gha-audit.py — run on every PR touching .github/workflows/
+import sys, yaml, re, json, pathlib
+SHA = re.compile(r"^[0-9a-f]{40}$")
+issues = []
+for path in pathlib.Path(".github/workflows").glob("*.y*ml"):
+    wf = yaml.safe_load(path.read_text())
+    for job_name, job in (wf.get("jobs") or {}).items():
+        perms = job.get("permissions", wf.get("permissions", "default"))
+        if perms == "write-all" or (
+            isinstance(perms, dict)
+            and perms.get("contents") == "write"
+            and "pull_request" in (wf.get("on") or {})
+        ):
+            issues.append({
+                "file": str(path), "job": job_name,
+                "issue": "broad_permissions_on_pr_trigger",
+            })
+        for step in job.get("steps", []):
+            uses = step.get("uses", "")
+            if "@" in uses:
+                ref = uses.rsplit("@", 1)[1]
+                if not SHA.match(ref):
+                    issues.append({
+                        "file": str(path), "job": job_name,
+                        "issue": "unpinned_action", "ref": uses,
+                    })
+print(json.dumps(issues, indent=2))
+sys.exit(1 if issues else 0)
+]]></code>
+        <note>Run as: python3 scripts/gha-audit.py. Exits 1 if any unpinned action or over-permissioned job is found.</note>
+      </example>
+
+      <example type="good" title="CI job to run actionlint on PRs">
+        <code lang="yaml"><![CDATA[
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - name: Install actionlint
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          sudo mv actionlint /usr/local/bin/
+      - run: actionlint .github/workflows/*.yml
+]]></code>
+      </example>
+    </section>
+
+    <section name="self-hosted-runner-security">
+      <p>Self-hosted runners require additional configuration to prevent fork PR exploitation.</p>
+      <rule testable="true">
+        <statement>Self-hosted runners MUST use specific labels (e.g., runs-on: [self-hosted, repo-name, ephemeral]) and MUST be ephemeral (Actions Runner Controller on K8s, not long-lived VMs). Public repos MUST NOT use self-hosted runners for PR workflows.</statement>
+        <rationale>runs-on: self-hosted without labels targets any available runner. A fork PR can run on a privileged runner with access to internal network resources. Ephemeral ARC runners are isolated per job.</rationale>
+      </rule>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Agents generate insecure GHA workflows more often than humans due to pattern-copying from pre-2025 documentation.</p>
+      <list>
+        <item>Agents copy public marketplace actions referenced by tag; tag gets force-moved. SHA-pin is non-negotiable.</item>
+        <item>pull_request_target looks like pull_request — agents wire it up to "get secrets working for fork PRs" and create a code-execution-with-secrets vulnerability. Forbid PR-target unless behind environment + base-ref-only checkout.</item>
+        <item>${{ ... }} interpolation in run: is shell-injection: run: echo "${{ github.event.pull_request.title }}" — a PR title "; rm -rf / runs. Use env vars + reference $TITLE, not ${{ ... }}.</item>
+        <item>GHA's secrets inheritance via secrets: inherit in reusable workflows passes everything — agents do this for convenience and over-expose.</item>
+        <item>Concurrency cancellation kills in-flight prod deploys when a new commit lands. Agents set cancel-in-progress: true globally; deploys must be false.</item>
+        <item>outputs: from a job require id: on the producing step AND outputs: mapping at job level — agents miss one half and the consumer job sees empty string.</item>
+        <item>Caching is global per repo — a malicious PR populates node_modules cache; main branch restores it next run. Scope caches by branch or invalidate on lockfile change.</item>
+        <item>actions/cache@v4 API change in Feb 2025 — agents using v3 silently fail. Bump version and verify cache hits in logs.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Every uses: pinned to 40-char SHA with version comment.</check>
+      <check>permissions: set at job level, not workflow level, with minimum required scopes.</check>
+      <check>No permissions: write-all anywhere.</check>
+      <check>All cloud auth uses OIDC — no long-lived AWS/GCP/Azure credentials in secrets.</check>
+      <check>No pull_request_target trigger on workflows that check out PR code.</check>
+      <check>No ${{ github.event.* }} interpolated directly into run: shell commands.</check>
+      <check>actionlint passes on all workflow files.</check>
+      <check>gha-audit.py exits 0 on all workflow files.</check>
+      <check>Renovate or Dependabot configured to keep action SHAs current.</check>
+      <check>Self-hosted runners use specific labels and are ephemeral.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions"/>
+      <link href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect"/>
+      <link href="https://github.com/rhysd/actionlint"/>
+      <link href="https://www.stepsecurity.io/blog/harden-runner-detection-tj-actions-changed-files-action-is-compromised"/>
+      <link href="https://github.com/step-security/harden-runner"/>
+      <ref slug="gha-deployment-patterns"/>
+    </see-also>
+  </content>
+</methodology>
