@@ -1,0 +1,670 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker-language-templates">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Production-ready Dockerfile and Docker Compose templates for Python, Node.js, Go, Rust, Java, and static sites — multi-stage, non-root, health-checked.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>dockerfile</tag>
+      <tag>docker-compose</tag>
+      <tag>templates</tag>
+      <tag>containerization</tag>
+    </tags>
+    <category>docker</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>typescript</language>
+      <language>go</language>
+      <language>rust</language>
+      <language>java</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+      <framework>fastapi</framework>
+      <framework>nextjs</framework>
+      <framework>nestjs</framework>
+      <framework>spring</framework>
+    </frameworks>
+    <related>
+      <ref slug="docker-image-optimization"/>
+      <ref slug="docker-security-hardening"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Docker Language Templates</title>
+
+    <summary>Copy-paste Dockerfile and Docker Compose templates for the most common language and framework combinations. Every template uses multi-stage builds, non-root users, HEALTHCHECK instructions, and pinned base images. Pick the template matching your stack and apply the optimization and security methodologies on top.</summary>
+
+    <why>
+      <p>Writing a correct production Dockerfile from scratch requires knowing the right base image variant, the wheel/npm-ci/go-mod-download caching pattern, the correct non-root user creation syntax per OS family, and the health check invocation for each language runtime. Templates encode these decisions so teams do not reinvent them per project or leave one-off mistakes in place.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new service — copy the matching template and customize entry point and port.</item>
+        <item>Auditing an existing Dockerfile against best practices — compare line-by-line with the reference template.</item>
+        <item>Onboarding junior engineers — templates serve as canonical examples that encode team standards.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the language or framework is not listed — derive from the generic multi-stage template and document the specialization.</item>
+        <item>When the app has unusual runtime requirements (GPU, FUSE mounts, privileged sockets) — start from the template but expect significant adaptation.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="python-templates">
+      <p>Python multi-stage builds use pip wheel in the build stage to pre-compile wheels, then install from the wheel cache in the production stage. This avoids installing build-essential in production.</p>
+
+      <example type="good" title="Python generic (pip + gunicorn)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+# Stage 2: Production
+FROM python:3.12-slim AS production
+
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+WORKDIR /app
+
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/* && rm -rf /wheels
+
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "app:application"]
+]]></code>
+      </example>
+
+      <example type="good" title="Django (with libpq and static files)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
+
+# Stage 2: Production
+FROM python:3.12-slim
+
+RUN groupadd -r django && useradd -r -g django django
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache /wheels/* && rm -rf /wheels
+
+COPY --chown=django:django . .
+
+RUN python manage.py collectstatic --noinput
+
+USER django
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/')"
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "config.wsgi:application"]
+]]></code>
+      </example>
+
+      <example type="good" title="FastAPI (uvicorn)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /wheels -r requirements.txt
+
+# Stage 2: Production
+FROM python:3.12-slim
+
+RUN groupadd -r api && useradd -r -g api api
+
+WORKDIR /app
+
+COPY --from=builder /wheels /wheels
+RUN pip install --no-cache /wheels/* && rm -rf /wheels
+
+COPY --chown=api:api . .
+
+USER api
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="nodejs-templates">
+      <p>Node.js builds separate dependency installation (npm ci) from the build step and carry only the built dist into the production stage. Alpine is preferred for size; node:slim for compatibility with glibc-linked native modules.</p>
+
+      <example type="good" title="Node.js generic (three-stage)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+# Stage 2: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 3: Production
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs && adduser -S app -u 1001
+
+WORKDIR /app
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder --chown=app:nodejs /app/dist ./dist
+COPY --from=builder /app/package*.json ./
+
+USER app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+EXPOSE 3000
+
+CMD ["node", "dist/server.js"]
+]]></code>
+      </example>
+
+      <example type="good" title="Next.js standalone mode">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Dependencies
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+
+# Stage 2: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# Stage 3: Production
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+CMD ["node", "server.js"]
+]]></code>
+      </example>
+
+      <example type="good" title="NestJS">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm prune --production
+
+# Stage 2: Production
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
+
+WORKDIR /app
+
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+
+USER nestjs
+
+ENV NODE_ENV=production
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="go-templates">
+      <p>Go produces a statically linked binary when CGO_ENABLED=0. Distroless or scratch final stages deliver the smallest possible image with no shell attack surface.</p>
+
+      <example type="good" title="Go binary with distroless final stage">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/server ./cmd/server
+
+# Stage 2: Production (distroless)
+FROM gcr.io/distroless/static-debian12
+
+COPY --from=builder /app/server /server
+
+USER nonroot:nonroot
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+      </example>
+
+      <example type="good" title="Go binary with scratch final stage (includes CA certs)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /app/server ./cmd/server
+
+# Stage 2: Production (scratch — minimal)
+FROM scratch
+
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /app/server /server
+
+USER 65534:65534
+
+EXPOSE 8080
+
+ENTRYPOINT ["/server"]
+]]></code>
+        <note>scratch has no shell, no libc, no package manager — only the binary and CA certs. Use distroless if you need debugging tools in non-production builds.</note>
+      </example>
+    </section>
+
+    <section name="other-language-templates">
+      <example type="good" title="Rust binary">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM rust:1.75-slim AS builder
+
+WORKDIR /app
+
+# Cache dependencies separately
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release && rm -rf src
+
+# Build app
+COPY . .
+RUN touch src/main.rs && cargo build --release
+
+# Stage 2: Production
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r app && useradd -r -g app app
+
+COPY --from=builder /app/target/release/app /usr/local/bin/
+
+USER app
+
+EXPOSE 8080
+
+CMD ["app"]
+]]></code>
+      </example>
+
+      <example type="good" title="Spring Boot (Java 21)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM eclipse-temurin:21-jdk-alpine AS builder
+
+WORKDIR /app
+
+COPY gradlew build.gradle settings.gradle ./
+COPY gradle ./gradle
+RUN ./gradlew dependencies --no-daemon
+
+COPY src ./src
+RUN ./gradlew bootJar --no-daemon
+
+# Stage 2: Production
+FROM eclipse-temurin:21-jre-alpine
+
+RUN addgroup -g 1001 -S spring && adduser -S spring -u 1001
+
+WORKDIR /app
+
+COPY --from=builder --chown=spring:spring /app/build/libs/*.jar app.jar
+
+USER spring
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+]]></code>
+      </example>
+
+      <example type="good" title="Static site (React/Vue/Angular + Nginx)">
+        <code lang="dockerfile"><![CDATA[
+# Stage 1: Build
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: Production
+FROM nginx:alpine
+
+RUN rm /etc/nginx/conf.d/default.conf
+
+COPY nginx.conf /etc/nginx/conf.d/
+
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
+
+CMD ["nginx", "-g", "daemon off;"]
+]]></code>
+      </example>
+    </section>
+
+    <section name="docker-compose-templates">
+      <p>Docker Compose templates cover the three most common scenarios: single service, full-stack (app + Postgres + Redis), and development environment with live reload.</p>
+
+      <example type="good" title="Docker Compose: single service with resource limits">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME:-myapp}:${IMAGE_TAG:-latest}
+    container_name: myapp
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+    env_file:
+      - .env
+    volumes:
+      - app_data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 128M
+
+volumes:
+  app_data:
+]]></code>
+      </example>
+
+      <example type="good" title="Docker Compose: full stack (app + Postgres + Redis)">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://cache:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 1G
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-app}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  cache:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+volumes:
+  postgres_data:
+  redis_data:
+]]></code>
+      </example>
+
+      <example type="good" title="Docker Compose: development environment with live reload">
+        <code lang="yaml"><![CDATA[
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "${PORT:-3000}:3000"
+      - "9229:9229"
+    environment:
+      - NODE_ENV=development
+      - DEBUG=*
+    command: npm run dev
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_DB=app_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev:/var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+
+volumes:
+  postgres_dev:
+]]></code>
+      </example>
+    </section>
+
+    <section name="nginx-config-template">
+      <p>Nginx configuration for static site containers. Includes security headers, gzip, SPA routing, and a health check endpoint.</p>
+
+      <example type="good" title="Nginx config for static SPA">
+        <code lang="nginx"><![CDATA[
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript;
+
+    location /health {
+        access_log off;
+        return 200 "OK";
+        add_header Content-Type text/plain;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="docker-image-optimization"/>
+      <ref slug="docker-security-hardening"/>
+      <link href="https://docs.docker.com/"/>
+      <link href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"/>
+    </see-also>
+  </content>
+</methodology>
