@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gha-deployment-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>GitHub Actions CD patterns: staged deploys with environment protection, reusable workflows, composite actions, canary and blue-green strategies, and release automation with changelog generation.</summary>
+    <tags>
+      <tag>github-actions</tag>
+      <tag>cd</tag>
+      <tag>deployment</tag>
+      <tag>reusable-workflows</tag>
+      <tag>release</tag>
+    </tags>
+    <category>cd</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>github-actions</tool>
+    </tools>
+    <related>
+      <ref slug="gha-security-hardening"/>
+      <ref slug="gha-workflow-structure"/>
+      <ref slug="gha-caching-artifacts"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GitHub Actions Deployment Patterns</title>
+
+    <summary>Structure CD pipelines as staged deploy jobs (staging auto, production manual approval) backed by GitHub Environments. Extract shared deploy logic into reusable workflows called with workflow_call and shared steps into composite actions. For production, implement canary (10% traffic, metrics gate, full rollout) or blue-green (swap load balancer after validation). Release workflows trigger on version tags and publish packages plus Docker images.</summary>
+
+    <why>
+      <p>Ad-hoc deploy steps inlined in a single monolithic workflow are the root cause of most CD failures: no environment protection means one commit pushes directly to production; no concurrency control means two deploys race; no reuse means the same deploy logic is copied across 10 repos with inconsistent security settings. GitHub Environments provide approval gates, environment-scoped secrets, and deployment timelines out of the box — they are free for all public repos and included in Teams/Enterprise.</p>
+      <p>Reusable workflows (workflow_call) let you define deploy logic once in a centralised repo and call it from every service repo. Composite actions share steps within a single repo. Together they enforce consistency: every service gets the same OIDC configuration, the same health check, the same Slack notification format.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any push to main that should automatically deploy to staging and optionally to production after review.</item>
+        <item>Organisations with multiple service repos that share the same deploy target (K8s cluster, ECS, Vercel org).</item>
+        <item>Release pipelines that must publish npm/PyPI packages and Docker images together on a version tag.</item>
+        <item>Workflows that need to deploy to more than two environments (dev, staging, prod) with different approval requirements.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Long-running batch jobs exceeding GHA's 6-hour job limit — use Argo Workflows or Airflow instead.</item>
+        <item>Deployments requiring shared mutable state between jobs — GHA jobs run on isolated runners; passing large state via artifacts is slow and fragile.</item>
+        <item>Heavy parallel fanout (1000+ jobs at once) — GHA concurrency limits and queuing cause stalls; use BuildKit cluster or Buildbarn.</item>
+        <item>Repos on GitLab/Bitbucket — a GHA mirror creates a dual source of truth and fragments PR review.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Production deploy jobs MUST use a GitHub Environment with required reviewers. Set cancel-in-progress: false on deploy concurrency groups so in-flight production deploys are never cancelled by a new commit.</statement>
+        <rationale>cancel-in-progress: true on a production deploy group kills an active rollout when a new commit is pushed — a partial deploy is worse than a delayed one.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reusable workflows MUST pass only the secrets they need, not secrets: inherit. Each secret must be listed explicitly in the secrets: block with a description.</statement>
+        <rationale>secrets: inherit passes every secret in the calling repo's scope. Over-exposure of prod secrets to staging workflows violates least privilege and creates blast radius if the workflow is compromised.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every job in a CD workflow MUST declare timeout-minutes. Use 15-30 for tests, 60 for builds, 120 for deploys. The default 360-minute timeout is too long and leaves runners occupied during an outage.</statement>
+        <rationale>A hung Kubernetes rollout will silently occupy a runner for 6 hours without a timeout. Explicit timeouts surface stuck deployments early and free runners for other work.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Reusable workflows MUST define outputs for any value downstream workflows need (e.g., deployment-url). Producing steps MUST have id: and the job MUST have an outputs: mapping.</statement>
+        <rationale>Agents commonly miss one half of the output chain: a step with id: but no job-level outputs: produces empty string for consumers, causing silent failures.</rationale>
+      </rule>
+    </rules>
+
+    <section name="staged-cd-pipeline">
+      <p>A canonical CD pipeline: build Docker image → deploy to staging (auto) → deploy to production (manual approval). All environment secrets are scoped to their environment in GitHub Settings.</p>
+      <example type="good" title="CD with staging auto-deploy and production approval">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/cd.yml
+name: CD
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false  # never cancel in-flight deploys
+
+jobs:
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: https://staging.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+      - uses: azure/setup-kubectl@v4
+        with: { version: 'v1.29.0' }
+      - run: aws eks update-kubeconfig --name staging-cluster --region eu-central-1
+      - run: |
+          kubectl set image deployment/app \
+            app=ghcr.io/${{ github.repository }}:${{ github.sha }} \
+            -n staging
+          kubectl rollout status deployment/app -n staging --timeout=5m
+      - name: Run smoke tests
+        run: npm ci && npm run test:smoke -- --url=https://staging.example.com
+      - if: failure()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: '{"text": ":x: Staging deploy failed: ${{ github.repository }}"}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: staging
+    timeout-minutes: 120
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://example.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PROD_ROLE_ARN }}
+          aws-region: eu-central-1
+      - uses: azure/setup-kubectl@v4
+        with: { version: 'v1.29.0' }
+      - run: aws eks update-kubeconfig --name production-cluster --region eu-central-1
+      - name: Deploy canary (10% traffic)
+        run: |
+          kubectl set image deployment/app-canary \
+            app=ghcr.io/${{ github.repository }}:${{ github.sha }} \
+            -n production
+          kubectl rollout status deployment/app-canary -n production --timeout=5m
+          sleep 300
+          kubectl set image deployment/app \
+            app=ghcr.io/${{ github.repository }}:${{ github.sha }} \
+            -n production
+          kubectl rollout status deployment/app -n production --timeout=10m
+      - uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        with:
+          environment: production
+          version: ${{ github.sha }}
+]]></code>
+      </example>
+    </section>
+
+    <section name="reusable-workflows">
+      <p>Extract the deploy logic into a reusable workflow (workflow_call) under .github/workflows/_reusable-deploy.yml. Callers pass environment, image-tag, cluster, and namespace as inputs.</p>
+      <example type="good" title="Reusable deploy workflow with typed inputs">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/_reusable-deploy.yml
+name: Reusable Deploy
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      image-tag:
+        required: true
+        type: string
+      cluster-name:
+        required: true
+        type: string
+      namespace:
+        required: true
+        type: string
+      timeout:
+        required: false
+        type: string
+        default: '10m'
+    secrets:
+      AWS_ROLE_ARN:
+        required: true
+      SLACK_WEBHOOK:
+        required: false
+    outputs:
+      deployment-url:
+        description: "URL of deployed environment"
+        value: ${{ jobs.deploy.outputs.url }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+      - uses: azure/setup-kubectl@v4
+      - run: aws eks update-kubeconfig --name ${{ inputs.cluster-name }} --region eu-central-1
+      - id: deploy
+        run: |
+          kubectl set image deployment/app app=${{ inputs.image-tag }} -n ${{ inputs.namespace }}
+          kubectl rollout status deployment/app -n ${{ inputs.namespace }} --timeout=${{ inputs.timeout }}
+          echo "url=https://${{ inputs.environment }}.example.com" >> $GITHUB_OUTPUT
+      - if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: '{"text": "Deploy to ${{ inputs.environment }}: ${{ job.status }}"}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+]]></code>
+      </example>
+
+      <example type="good" title="Caller using the reusable workflow">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/deploy-all.yml
+jobs:
+  staging:
+    uses: ./.github/workflows/_reusable-deploy.yml
+    with:
+      environment: staging
+      image-tag: ghcr.io/org/app:${{ github.sha }}
+      cluster-name: staging-cluster
+      namespace: staging
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+  production:
+    needs: staging
+    uses: ./.github/workflows/_reusable-deploy.yml
+    with:
+      environment: production
+      image-tag: ghcr.io/org/app:${{ github.sha }}
+      cluster-name: production-cluster
+      namespace: production
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_PROD_ROLE_ARN }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+]]></code>
+        <note>Secrets passed explicitly, not via secrets: inherit. Prod uses AWS_PROD_ROLE_ARN, staging uses AWS_ROLE_ARN.</note>
+      </example>
+    </section>
+
+    <section name="release-workflow">
+      <p>Release workflows trigger on version tags (v*) and publish packages, Docker images, and GitHub Releases with generated changelogs.</p>
+      <example type="good" title="Release workflow: changelog + npm + Docker">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/release.yml
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+      - run: npm ci && npm run build
+      - id: changelog
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.changelog.outputs.content }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          files: |
+            dist/*.tar.gz
+            dist/*.zip
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+]]></code>
+      </example>
+    </section>
+
+    <section name="composite-action">
+      <p>Composite actions share steps within a repo without the overhead of a full workflow. They live under .github/actions/{name}/action.yml.</p>
+      <example type="good" title="Composite action template">
+        <code lang="yaml"><![CDATA[
+# .github/actions/setup-node-app/action.yml
+name: 'Setup Node App'
+description: 'Checkout, setup Node, install deps with cache'
+inputs:
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '20'
+outputs:
+  cache-hit:
+    description: 'Whether the cache was hit'
+    value: ${{ steps.cache.outputs.cache-hit }}
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v4
+    - id: cache
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+    - shell: bash
+      run: npm ci
+]]></code>
+      </example>
+    </section>
+
+    <section name="deployment-targets">
+      <p>Common deployment target patterns for SSH, Vercel, and Netlify.</p>
+      <example type="good" title="SSH deploy">
+        <code lang="yaml"><![CDATA[
+- uses: appleboy/ssh-action@v1.0.3
+  with:
+    host: ${{ secrets.SSH_HOST }}
+    username: ${{ secrets.SSH_USER }}
+    key: ${{ secrets.SSH_KEY }}
+    port: ${{ secrets.SSH_PORT }}
+    script: |
+      cd /var/www/app
+      git pull origin main
+      npm ci
+      npm run build
+      pm2 restart app
+]]></code>
+      </example>
+      <example type="good" title="Vercel deploy">
+        <code lang="yaml"><![CDATA[
+- uses: amondnet/vercel-action@v25
+  with:
+    vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    vercel-args: '--prod'
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Production environment has required reviewers configured in GitHub Settings.</check>
+      <check>Deploy concurrency group uses cancel-in-progress: false.</check>
+      <check>timeout-minutes set on every deploy job (not default 360).</check>
+      <check>Reusable workflows pass secrets explicitly, not via secrets: inherit.</check>
+      <check>Reusable workflow outputs have both a step id: and a job-level outputs: mapping.</check>
+      <check>Release workflow triggered on tag push (v*), not on branch push.</check>
+      <check>Docker images tagged with both version and latest in release workflow.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.github.com/en/actions/using-workflows/reusing-workflows"/>
+      <link href="https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment"/>
+      <ref slug="gha-security-hardening"/>
+    </see-also>
+  </content>
+</methodology>
