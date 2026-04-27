@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graph-rag-indexing">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Build a knowledge graph from documents via LLM entity/relationship extraction, community detection, and hierarchical summarization for global-query Graph RAG.</summary>
+    <tags>
+      <tag>graph-rag</tag>
+      <tag>knowledge-graph</tag>
+      <tag>entity-extraction</tag>
+      <tag>community-detection</tag>
+      <tag>neo4j</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>networkx</framework>
+      <framework>neo4j</framework>
+    </frameworks>
+    <related>
+      <ref slug="graph-rag-retrieval"/>
+      <ref slug="graph-rag-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Graph RAG Indexing: Entity Extraction, Graph Construction, and Hierarchical Summarization</title>
+
+    <summary>Standard vector RAG retrieves chunks by semantic similarity and fails on global questions, entity relationships, and multi-hop reasoning. Graph RAG fixes this by building a knowledge graph from documents — entities become nodes, relationships become edges — then running community detection and hierarchical summarization so global queries can be answered from pre-computed summaries instead of brute-force chunk retrieval.</summary>
+
+    <why>
+      <p>Vector RAG retrieves by embedding proximity. When the answer requires synthesizing the entire corpus ("What are the main themes?"), finding cross-document entity connections ("Who worked with whom?"), or traversing multi-hop chains ("How are A and B connected?"), no single chunk contains the answer and similarity search returns irrelevant fragments. Knowledge graphs encode entity relationships explicitly. Community detection groups densely connected entities, and hierarchical summarization pre-computes multi-grain summaries (entity → community → global) that can be served at query time without live traversal.</p>
+      <p>Microsoft GraphRAG benchmarks show: global queries improve from 45% to 78% accuracy, multi-hop QA from 52% to 81%, entity relationship queries from 38% to 85%, and hallucination rate drops from 18% to 8%.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Corpus-wide thematic summarization: "What are the main topics across all 10,000 documents?"</item>
+        <item>Entity relationship questions that a single chunk cannot answer (org charts, citation networks, drug interactions).</item>
+        <item>Domain corpora with dense cross-references: legal case law, medical literature, research paper networks.</item>
+        <item>Multi-hop reasoning required: "How are entity A and entity B connected through intermediaries?"</item>
+        <item>Existing vector RAG answers global questions with low confidence or hallucinated relationships.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Corpora where questions are local and chunk-answerable — vector RAG is 10-100x cheaper and faster.</item>
+        <item>Corpora with fewer than 1,000 documents — graph overhead exceeds quality gain.</item>
+        <item>Real-time indexing required — entity/relationship extraction costs one LLM call per chunk and takes seconds each.</item>
+        <item>No graph database or networkx/Neo4j infra in deployment — infrastructure cost is non-trivial.</item>
+        <item>Team has no graph query skills (Cypher) — maintainability cost is high.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="graph-rag-architecture">
+      <p>The Graph RAG indexing pipeline has six stages: chunk documents, extract entities and relationships via LLM structured output, build the knowledge graph (NetworkX for dev, Neo4j for production), detect communities using the Louvain algorithm, generate community summaries via LLM, and generate a global summary from all community summaries. The result is a three-level hierarchy: entity descriptions (finest grain), community summaries (medium grain), and a global summary (coarsest grain).</p>
+    </section>
+
+    <section name="entity-relationship-extraction">
+      <p>Entity and relationship extraction uses an LLM with temperature=0 and structured JSON output to minimize hallucinations. Each chunk produces entities (name, type, description) and relationships (source, target, type, description). The extraction must be run with a progress checkpoint every 100 chunks so a large corpus re-index can resume after failure.</p>
+
+      <rule testable="true">
+        <statement>Run entity extraction with temperature=0 and response_format=json_object. Deduplicate entities by normalized name (lowercase, strip punctuation) before inserting into the graph. Cap at 15 entities and 20 relationships per chunk to prevent noise from dense passages.</statement>
+        <rationale>LLM extraction at nonzero temperature introduces variant spellings ("OpenAI" vs "openai") that create duplicate nodes. Without a cap, dense academic or legal text generates hundreds of low-signal entities per chunk that degrade community quality.</rationale>
+      </rule>
+
+      <example type="good" title="Entity extraction with structured output">
+        <code lang="python"><![CDATA[
+import openai, json
+from typing import Dict
+
+def extract_entities_relationships(text: str) -> Dict:
+    prompt = f"""
+Extract entities and relationships from this text.
+
+Text: {text}
+
+Return JSON:
+{{
+  "entities": [
+    {{"name": "...", "type": "PERSON|ORG|CONCEPT|EVENT", "description": "..."}},
+  ],
+  "relationships": [
+    {{"source": "...", "target": "...", "type": "...", "description": "..."}},
+  ]
+}}
+"""
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0
+    )
+    return json.loads(response.choices[0].message.content)
+
+graph_data = {"entities": [], "relationships": []}
+for chunk in chunks:
+    extracted = extract_entities_relationships(chunk["text"])
+    graph_data["entities"].extend(extracted["entities"])
+    graph_data["relationships"].extend(extracted["relationships"])
+]]></code>
+      </example>
+
+      <example type="good" title="Resumable extraction with progress checkpoint">
+        <code lang="python"><![CDATA[
+import json, hashlib
+from pathlib import Path
+
+def extract_graph_resumable(chunks: list[dict], progress_file: str, extract_fn) -> dict:
+    progress_path = Path(progress_file)
+    done = set(json.loads(progress_path.read_text())["done"]) if progress_path.exists() else set()
+    graph = {"entities": [], "relationships": []}
+
+    for chunk in chunks:
+        cid = hashlib.md5(chunk["text"].encode()).hexdigest()
+        if cid in done:
+            continue
+        result = extract_fn(chunk["text"])
+        graph["entities"].extend(result.get("entities", []))
+        graph["relationships"].extend(result.get("relationships", []))
+        done.add(cid)
+        progress_path.write_text(json.dumps({"done": list(done)}))
+
+    return graph
+]]></code>
+        <note>Checkpoint after every chunk. Full re-index of 10k-doc corpus at $0.004/chunk = $40; a crash without checkpointing loses all progress.</note>
+      </example>
+    </section>
+
+    <section name="graph-construction">
+      <p>Use NetworkX for development and exploratory work. Use Neo4j for production deployments where the graph will be queried concurrently or where Cypher traversal is needed. The MERGE pattern in Neo4j ensures idempotent inserts — running the indexer twice on the same corpus does not create duplicate nodes.</p>
+
+      <example type="good" title="NetworkX graph construction">
+        <code lang="python"><![CDATA[
+import networkx as nx
+from typing import Dict
+
+def build_knowledge_graph(data: Dict) -> nx.Graph:
+    G = nx.Graph()
+    for entity in data["entities"]:
+        G.add_node(
+            entity["name"],
+            type=entity["type"],
+            description=entity.get("description", "")
+        )
+    for rel in data["relationships"]:
+        G.add_edge(
+            rel["source"],
+            rel["target"],
+            type=rel["type"],
+            description=rel.get("description", "")
+        )
+    return G
+]]></code>
+      </example>
+
+      <example type="good" title="Neo4j production graph builder">
+        <code lang="python"><![CDATA[
+from neo4j import GraphDatabase
+
+class Neo4jGraphBuilder:
+    def __init__(self, uri: str, user: str, password: str):
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+
+    def add_entity(self, name: str, entity_type: str, description: str):
+        with self.driver.session() as session:
+            session.run(
+                """
+                MERGE (e:Entity {name: $name})
+                SET e.type = $type, e.description = $description
+                """,
+                name=name, type=entity_type, description=description
+            )
+
+    def add_relationship(self, source: str, target: str, rel_type: str, description: str):
+        with self.driver.session() as session:
+            session.run(
+                """
+                MATCH (a:Entity {name: $source})
+                MATCH (b:Entity {name: $target})
+                MERGE (a)-[r:RELATES_TO {type: $rel_type}]->(b)
+                SET r.description = $description
+                """,
+                source=source, target=target, rel_type=rel_type, description=description
+            )
+]]></code>
+      </example>
+    </section>
+
+    <section name="community-detection-and-summarization">
+      <p>Community detection groups densely connected entity clusters using the Louvain algorithm. Each community gets an LLM-generated summary. Communities are then summarized again into a single global summary. This three-level hierarchy is the core structural advantage of Graph RAG over flat vector retrieval.</p>
+
+      <rule testable="true">
+        <statement>Only summarize communities with 5 or more nodes. Do not use community IDs as persistent identifiers across re-index runs — use a content hash of the sorted node set instead, because Louvain output order is non-deterministic.</statement>
+        <rationale>Singleton and 2-3 node communities produce summaries with no semantic breadth ("this community contains entity X and entity Y"). Non-deterministic community IDs break any system that caches summaries by ID after a re-index.</rationale>
+      </rule>
+
+      <example type="good" title="Community detection and hierarchical summarization">
+        <code lang="python"><![CDATA[
+import networkx as nx
+from networkx.algorithms import community
+from typing import Dict, List
+import openai
+
+def detect_communities(G: nx.Graph) -> Dict[int, List[str]]:
+    communities = community.louvain_communities(G)
+    return {idx: list(comm) for idx, comm in enumerate(communities)}
+
+def summarize_community(community_nodes: List[str], G: nx.Graph) -> str:
+    subgraph = G.subgraph(community_nodes)
+    nodes_desc = "\n".join([
+        f"- {node}: {G.nodes[node].get('description', '')}"
+        for node in community_nodes
+    ])
+    edges_desc = "\n".join([
+        f"- {u} {data['type']} {v}"
+        for u, v, data in subgraph.edges(data=True)
+    ])
+    prompt = f"""Summarize this community of related entities:
+
+Entities:
+{nodes_desc}
+
+Relationships:
+{edges_desc}
+
+Provide a concise summary of what this community represents."""
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    return response.choices[0].message.content
+
+def hierarchical_summarization(G: nx.Graph) -> Dict:
+    summaries = {"global": None, "communities": {}, "entities": {}}
+    for node in G.nodes():
+        summaries["entities"][node] = G.nodes[node].get("description", "")
+    communities = detect_communities(G)
+    for comm_id, nodes in communities.items():
+        if len(nodes) >= 5:  # skip trivial communities
+            summaries["communities"][comm_id] = summarize_community(nodes, G)
+    all_community_summaries = "\n\n".join(summaries["communities"].values())
+    prompt = f"""Summarize the main themes across all communities:
+
+{all_community_summaries}
+
+Provide a high-level summary of the entire knowledge graph."""
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    summaries["global"] = response.choices[0].message.content
+    return summaries
+]]></code>
+      </example>
+    </section>
+
+    <section name="indexing-agent-workflow">
+      <p>Graph RAG requires a two-agent workflow. The indexing agent handles entity/relationship extraction, graph construction, community detection, and hierarchical summarization. The retrieval agent handles query routing and context assembly. The indexing agent must checkpoint every 100 chunks and be fully resumable. Human review of graph quality is recommended before promoting a new index to production. Hierarchical summaries go stale when documents are updated — re-summarization must be triggered on any corpus change.</p>
+
+      <prompt purpose="entity-relationship-extraction">
+<![CDATA[<task>Extract entities and relationships from the text below.</task>
+<output_format>
+{
+  "entities": [{"name": str, "type": "PERSON|ORG|CONCEPT|EVENT|LOCATION", "description": str}],
+  "relationships": [{"source": str, "target": str, "type": str, "description": str}]
+}
+</output_format>
+<constraints>
+- Only extract entities explicitly mentioned, not implied
+- Relationship type must be a verb phrase (e.g., "works_at", "cites", "contradicts")
+- Max 15 entities, max 20 relationships per chunk
+</constraints>
+<text>{{chunk_text}}</text>]]>
+      </prompt>
+    </section>
+
+    <antipattern>
+      <description>Re-running indexing on the same corpus without using a versioned graph namespace or progress checkpoint.</description>
+      <reason>Entity extraction LLM calls cost $4-20 per million tokens. A 10k-doc corpus without checkpointing wastes the full cost on every crash or restart. Use a content-hash progress file and a versioned collection prefix (e.g., corpus-v2-2026-04) so a re-index does not corrupt an in-use production graph.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Assuming all entities in a corpus are present in the graph.</description>
+      <reason>LLM entity extraction has recall of 70-85%. Agents must fall back to vector search for entities not found in the graph rather than reporting "no information found".</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="graph-rag-retrieval"/>
+      <ref slug="graph-rag-production"/>
+      <link href="https://arxiv.org/abs/2404.16130"/>
+      <link href="https://github.com/microsoft/graphrag"/>
+      <link href="https://networkx.org/documentation/stable/"/>
+      <link href="https://neo4j.com/developer/rag/"/>
+    </see-also>
+  </content>
+</methodology>
