@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reranking-two-stage">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Two-stage retrieval: fast bi-encoder first pass (top 100), then cross-encoder reranking for high-precision top-k results in RAG pipelines.</summary>
+    <tags>
+      <tag>reranking</tag>
+      <tag>rag</tag>
+      <tag>cross-encoder</tag>
+      <tag>retrieval</tag>
+      <tag>bi-encoder</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="reranking-pipeline-integration"/>
+      <ref slug="reranking-diversity-mmr"/>
+      <ref slug="reranking-models"/>
+      <ref slug="hybrid-search-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Two-Stage Retrieval with Cross-Encoder Reranking</title>
+
+    <summary>Reranking is a second-stage retrieval technique that refines initial search results using more sophisticated models. While first-stage retrieval prioritizes speed (bi-encoders), reranking uses slower but more accurate cross-encoders to improve result quality. The two stages work together: fast vector search retrieves candidates, cross-encoder scores each (query, doc) pair jointly for high accuracy.</summary>
+
+    <why>
+      <p>Bi-encoders encode query and document independently into embeddings, enabling precomputed document storage and fast ANN search, but the independence means subtle semantic matching is lost. Cross-encoders process query and document jointly, attending to every token interaction, which yields significantly higher precision — but only works on a small candidate pool because it cannot precompute document representations. The two-stage architecture gets the best of both: speed from the bi-encoder first pass, precision from the cross-encoder rerank pass.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Initial retrieval returns noisy results and top-k precision must improve.</item>
+        <item>High-precision requirements (legal, medical, compliance) where the top result must be correct.</item>
+        <item>After hybrid search to reconcile BM25 + vector rankings into a single ordered list.</item>
+        <item>When latency budget exceeds 200ms per query and quality is the priority metric.</item>
+        <item>Improving RAG answer accuracy when initial retrieval recall is adequate but ranking is poor.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Latency-critical paths with &lt;50ms budget — cross-encoders add 100-500ms per call.</item>
+        <item>Candidate pool is already 5 or fewer results — overhead exceeds benefit.</item>
+        <item>Simple keyword lookup tasks — BM25 alone outperforms reranking for exact-match queries.</item>
+        <item>Corpus is multilingual and no suitable multilingual cross-encoder exists for the language mix.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="architecture">
+      <p>Two-stage retrieval splits the retrieval problem into a fast broad pass and a slow precise pass:</p>
+      <p>Stage 1 — RETRIEVAL: Query encoded by bi-encoder into a vector. ANN search returns top 50-100 candidates in approximately 10ms. Documents are precomputed and indexed; only the query embedding is computed at runtime.</p>
+      <p>Stage 2 — RERANKING: Each (query, document) pair is passed jointly through a cross-encoder. The cross-encoder attends to all token interactions and produces a relevance score. Candidates are sorted by score; top-k are returned. This stage takes 100-500ms depending on candidate pool size and model.</p>
+
+      <rule testable="true">
+        <statement>Retrieve 3-10x more candidates than the final top-k before reranking. If the final answer requires top-5, retrieve top-50 minimum. The reranker cannot recover relevant documents absent from the candidate pool.</statement>
+        <rationale>Reranker precision is bounded by retrieval recall. A 3-10x oversampling factor provides headroom for the reranker to surface buried relevant documents while keeping reranking latency manageable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Cross-encoder scores are NOT comparable across different model families. Never mix or average scores from two different rerankers (e.g., ms-marco-MiniLM and Cohere) — the score scales are entirely different.</statement>
+        <rationale>ms-marco models output logits in unbounded range; Cohere returns 0-1 relevance probabilities; Voyage uses its own scale. Treating them as the same quantity produces incorrect rankings.</rationale>
+      </rule>
+    </section>
+
+    <section name="bi-encoder-vs-cross-encoder">
+      <p>Bi-encoder encodes query and document independently. Fast — both can be precomputed. Good accuracy. Used in first-stage retrieval. Cross-encoder encodes query and document jointly. Slow — cannot precompute document representations. Excellent accuracy. Used in reranking stage only.</p>
+
+      <rule testable="true">
+        <statement>Cross-encoders MUST NOT be used as first-stage retrieval over large corpora (millions of documents). They have no precomputation capability; scoring every document at query time is O(corpus_size) and infeasible beyond a few thousand documents.</statement>
+        <rationale>A corpus of 1M documents at 50ms per pair = 50,000 seconds per query. The two-stage architecture exists precisely to avoid this.</rationale>
+      </rule>
+    </section>
+
+    <section name="cross-encoder-implementation">
+      <p>Use sentence-transformers CrossEncoder for local inference. The standard model for English is cross-encoder/ms-marco-MiniLM-L-12-v2 (balanced accuracy/speed). Faster option: MiniLM-L-6-v2. Higher accuracy: ms-marco-electra-base. Multilingual: mmarco-mMiniLMv2-L12-H384-v1.</p>
+
+      <example type="good" title="Basic cross-encoder reranking with sentence-transformers">
+        <code lang="python"><![CDATA[
+from sentence_transformers import CrossEncoder
+import numpy as np
+
+# Load reranking model
+reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
+
+def cross_encoder_rerank(
+    query: str,
+    documents: list[str],
+    top_k: int = 5
+) -> list[dict]:
+    """
+    Rerank using local cross-encoder model.
+    """
+    # Create query-document pairs
+    pairs = [[query, doc] for doc in documents]
+
+    # Score pairs
+    scores = reranker.predict(pairs)
+
+    # Sort by score
+    sorted_indices = np.argsort(scores)[::-1][:top_k]
+
+    return [
+        {
+            "document": documents[idx],
+            "score": float(scores[idx]),
+            "index": idx
+        }
+        for idx in sorted_indices
+    ]
+
+# More powerful model options
+RERANKER_MODELS = {
+    "fast": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "balanced": "cross-encoder/ms-marco-MiniLM-L-12-v2",
+    "accurate": "cross-encoder/ms-marco-electra-base",
+    "multilingual": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
+}
+]]></code>
+        <note>cross-encoder/ms-marco-MiniLM-L-12-v2 is the default for English — best accuracy/latency ratio. Use MiniLM-L-6-v2 when latency is tight.</note>
+      </example>
+
+      <antipattern>
+        <description>Using an English-only cross-encoder (cross-encoder/ms-marco-*) on multilingual corpora containing Ukrainian, French, German, or other non-English content.</description>
+        <reason>ms-marco models were trained on English MS MARCO pairs; they produce degraded and unreliable scores for non-English text, silently reducing precision without any error signal.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Truncating documents aggressively (below 256 tokens) before passing to the cross-encoder to save latency.</description>
+        <reason>Cross-encoders rely on full context. Truncating at 256 tokens cuts off the part of the document that may contain the answer. Truncate at 512 tokens (the model's practical limit) rather than lower.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <rule testable="true">
+        <statement>Truncate documents to 512 tokens before passing to cross-encoder. Inputs longer than the model's max sequence length are silently truncated by the tokenizer, potentially discarding relevant tail content unpredictably. Explicit truncation is deterministic.</statement>
+        <rationale>Predictable truncation at 512 tokens gives the cross-encoder full allowed context while preventing the implicit silent truncation that happens inside the model at arbitrary boundaries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Log initial_rank vs rerank_rank for every query in production. When documents consistently rank low in initial retrieval but get promoted by the reranker, this indicates an embedding model mismatch that should be fixed at the retrieval layer rather than relying on reranking as a permanent crutch.</statement>
+        <rationale>Systematic rank promotion signals that the bi-encoder embeddings are misaligned with the query distribution. Fixing the embedding model reduces the reranker's load and improves recall before reranking.</rationale>
+      </rule>
+    </section>
+
+    <section name="limitations">
+      <p>Cross-encoder latency scales linearly with candidate pool size — 100 candidates at 5ms each is 500ms, which may exceed latency budgets. Reduce candidate pool if latency is tight, or use FlashRank (CPU-optimized) or the Cohere API for managed inference.</p>
+      <p>Cross-encoders run on CPU by default in sentence-transformers. On CPU-only infra, use FlashRank (designed for CPU efficiency) or the Cohere API instead of the full CrossEncoder class.</p>
+    </section>
+
+    <see-also>
+      <ref slug="reranking-pipeline-integration"/>
+      <ref slug="reranking-diversity-mmr"/>
+      <ref slug="reranking-models"/>
+      <link href="https://www.sbert.net/examples/applications/cross-encoder/README.html"/>
+      <link href="https://arxiv.org/abs/2112.09118"/>
+    </see-also>
+  </content>
+</methodology>
