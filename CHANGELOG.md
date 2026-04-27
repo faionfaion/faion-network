@@ -32,7 +32,7 @@
 - decompose: platform-engineering → 5 slugs (devops-platform-idp-core, devops-platform-golden-paths, devops-platform-backstage, devops-platform-crossplane, devops-platform-policy-finops)
 - decompose: gcp-cloud-run → 6 slugs (cloud-run-deployment, cloud-run-autoscaling, cloud-run-traffic-management, cloud-run-jobs, cloud-run-vpc-access, cloud-run-monitoring)
 - decompose: iac-patterns → 5 slugs (iac-patterns-module-design, iac-patterns-dry, iac-patterns-composition, iac-patterns-testing, iac-patterns-cicd)
-- decompose: finops-cloud-cost-optimization → 5 slugs (fco-rightsizing, fco-commitment-pricing, fco-spot-instances, fco-cost-allocation, fco-waste-elimination)
+- decompose: finops-cloud-cost-optimization → 5 slugs (finops-devops-cost-rightsizing, finops-devops-cost-commitments, finops-devops-cost-tagging, finops-devops-cost-alerts, finops-devops-cost-kubernetes)
 - decompose: backup-implementation → 6 slugs (backup-database-postgres, backup-database-mysql-mongo, backup-filesystem-restic, backup-kubernetes-velero, backup-cloud-aws, backup-verification-dr)
 - decompose: terraform-modules → 5 slugs (terraform-modules-structure, terraform-modules-versioning, terraform-modules-composition, terraform-modules-security, terraform-modules-prompts)
 - decompose: image-analysis-vision → 5 slugs (vision-provider-selection, vision-document-extraction, vision-classification-moderation, vision-accessibility, vision-agentic-pipeline)

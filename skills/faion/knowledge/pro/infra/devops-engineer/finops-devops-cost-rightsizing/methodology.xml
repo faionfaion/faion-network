@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finops-devops-cost-rightsizing">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Eliminate cloud waste by rightsizing compute/DB instances and removing idle resources (unattached volumes, unused IPs, orphaned snapshots) to cut 15-25% of cloud spend.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>rightsizing</tag>
+      <tag>cloud-cost</tag>
+      <tag>waste-elimination</tag>
+      <tag>cloud-optimization</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="finops-devops-cost-commitments"/>
+      <ref slug="finops-devops-cost-tagging"/>
+      <ref slug="finops-framework"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Cost Rightsizing and Waste Elimination</title>
+
+    <summary>Rightsizing reduces compute and database instance costs 15-25% by matching resource allocation to actual utilization. Waste elimination (unattached volumes, idle IPs, orphaned snapshots) delivers quick 10-20% savings with low risk. Together these are the highest-ROI first actions in any FinOps engagement.</summary>
+
+    <why>
+      <p>Cloud providers default to over-allocation — customers provision for peak and forget. AWS Compute Optimizer, Azure Advisor, and GCP Active Assist all show average CPU utilization below 20% on a significant fraction of production instances. Organizations waste 32% of cloud budget on average, the majority attributable to oversized instances and resources that were never decommissioned.</p>
+      <p>Rightsizing is reversible and testable: downsize a non-production instance, measure for a week, roll back if needed. This makes it the safest category of cloud optimization — unlike commitment discounts which lock spend for 1-3 years.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Average CPU utilization below 20% or memory below 30% across production instances — provider tools surface these automatically.</item>
+        <item>Dev/test environments running 24/7 with no scheduling — scheduling to office hours yields 64% savings on dev compute.</item>
+        <item>Unattached EBS volumes, unused Elastic IPs, orphaned snapshots older than 90 days present in the account.</item>
+        <item>Post-migration environments where instance types were lifted-and-shifted from on-prem without rightsizing.</item>
+        <item>Before purchasing Reserved Instances or Savings Plans — commit to rightsized baseline, not the current wasteful one.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Instances with spiky, unpredictable CPU (e.g. event-driven services) — utilization averages are misleading; rightsize only after enabling autoscaling.</item>
+        <item>Stateful services mid-migration — measure steady state first, then rightsize.</item>
+        <item>Production databases before a load test validates the new size in staging.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rightsizing-strategy">
+      <p>Rightsize in order of risk: non-production first, then stateless production compute, then stateful services (databases, queues). Document decisions in a rightsizing review template so stakeholders can see CPU headroom kept, not just the savings number.</p>
+
+      <rule testable="true">
+        <statement>Before rightsizing any production instance, verify average CPU is below 20% AND average memory is below 30% over a 14-day window. Maintain 20% headroom above peak (not average) in the target size. Always rightsize non-production environments first.</statement>
+        <rationale>Using averages without checking peaks causes performance incidents. A 14-day window captures weekly traffic patterns. Non-production first gives evidence of safe sizing before applying to production.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Consider ARM-based instances (AWS Graviton, Azure Ampere) for eligible workloads (web servers, containerized apps, batch jobs). ARM instances deliver 20-40% better price-performance vs x86 equivalents for these workloads.</statement>
+        <rationale>Graviton3/Ampere benchmarks show consistent throughput-per-dollar gains for Linux workloads. The migration cost is a one-time recompile/test; the savings are permanent.</rationale>
+      </rule>
+
+      <example type="good" title="E-Commerce rightsizing: $24k/month savings">
+        <code lang="text"><![CDATA[
+Before: 50x m5.2xlarge (avg 15% CPU utilization)
+After:  50x m5.large + autoscaling (target 60% CPU)
+Savings: 75% compute reduction = $24,000/month
+
+Before: Dev/staging running 24/7 ($12,500/month)
+After:  Scheduled 7am-7pm weekdays only (12h x 5d = 60h/week)
+Savings: 64% of dev compute = $8,000/month
+]]></code>
+        <note>$80k EC2 spend reduced to $48k. Rightsizing done before RI purchase locked in 40% less baseline to commit on.</note>
+      </example>
+
+      <example type="bad" title="Rightsizing before establishing autoscaling">
+        <code lang="text"><![CDATA[
+Instance: api-server-prod (m5.4xlarge)
+Avg CPU: 12%
+Action: Downsized to m5.large without autoscaling
+
+Result: CPU spike to 100% during flash sale event
+Incident: 45-minute degradation, SLA breach
+]]></code>
+        <note>Average CPU of 12% masks peak spikes to 80%. Enable autoscaling first, then rightsize the base.</note>
+      </example>
+    </section>
+
+    <section name="waste-elimination">
+      <p>Idle resource cleanup is the lowest-risk FinOps action because it targets resources with zero legitimate utilization — unattached volumes, unused IPs, orphaned snapshots. The only risk is an edge case where a "detached" volume is intentionally kept as a cold backup; tag it explicitly or it will be cleaned up.</p>
+
+      <rule testable="true">
+        <statement>Run a monthly waste scan identifying: unattached EBS volumes/Azure Disks/GCP Persistent Disks, unused Elastic IPs/Public IPs, idle load balancers (zero healthy targets for 14+ days), orphaned snapshots older than 90 days beyond retention policy, unused NAT Gateways. Tag intentionally-retained resources with `keep=true` before the scan. Delete the rest after 5-business-day approval window.</statement>
+        <rationale>Untagged idle resources accumulate silently. A monthly cadence prevents the backlog from exceeding one month of waste. The 5-day window catches false positives before deletion.</rationale>
+      </rule>
+
+      <example type="good" title="Waste scan checklist (monthly)">
+        <code lang="text"><![CDATA[
+AWS waste targets:
+- Unattached EBS volumes (ec2 describe-volumes --filters Name=status,Values=available)
+- Unused Elastic IPs (ec2 describe-addresses --filters Name=association-id,Values=null)
+- Idle load balancers (no healthy targets 14+ days via CloudWatch HealthyHostCount = 0)
+- Orphaned snapshots > 90 days (ec2 describe-snapshots --owner-ids self)
+- Unused NAT Gateways ($0.045/hr idle = $32/month each)
+- Container images not pulled in 90 days (ECR lifecycle policy)
+]]></code>
+        <note>Run as monthly automation in Lambda/Cloud Functions. Output to Slack channel with 5-day approval before deletion.</note>
+      </example>
+
+      <antipattern>
+        <description>Rightsizing databases by comparing CPU utilization alone without checking connection count, IOPS, and buffer pool hit rate.</description>
+        <reason>A database may show 5% CPU but use 95% of provisioned IOPS or hold all data in buffer pool at the current memory size. Downsizing causes latency spikes that CPU metrics do not predict.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running rightsizing recommendations directly from cloud provider tools without a staging validation step.</description>
+        <reason>Provider tools optimize for cost, not performance headroom. AWS Compute Optimizer p99 recommendation may still saturate under a real traffic spike. Always validate in staging first.</reason>
+      </antipattern>
+    </section>
+
+    <section name="database-rightsizing">
+      <p>Database rightsizing requires additional dimensions beyond CPU: connection count, IOPS usage, buffer pool hit rate, and read/write split. Common pattern: move dev/staging Multi-AZ RDS to Single-AZ; eliminate up to 50% of RDS cost immediately.</p>
+
+      <rule testable="true">
+        <statement>Dev and staging RDS/Cloud SQL instances MUST NOT use Multi-AZ or read replicas. Multi-AZ doubles cost for availability that non-production environments do not require. Remove Multi-AZ from all non-production databases as a first-week action.</statement>
+        <rationale>Multi-AZ provides synchronous standby for production HA. Dev/staging have no SLA requiring this. Typical savings: $35k/month on a $70k RDS bill where dev had Multi-AZ.</rationale>
+      </rule>
+
+      <example type="good" title="Database optimization: $35k/month savings">
+        <code lang="text"><![CDATA[
+Before: dev/staging RDS instances with Multi-AZ (same spec as prod)
+After:  Single-AZ, downsized db.m5.large (was db.r5.2xlarge)
+Savings: ~50% of $35k/month RDS line = $17,500/month
+
+Storage: No lifecycle policies on RDS automated snapshots
+After:  Set retention to 7 days (dev), 30 days (staging)
+Savings: $2,100/month snapshot storage
+]]></code>
+        <note>Database rightsizing contributes ~25% of total savings in typical AWS bills where RDS is 20-30% of spend.</note>
+      </example>
+    </section>
+
+    <section name="review-cadence">
+      <rule testable="true">
+        <statement>Establish a weekly rightsizing review cycle: pull Compute Optimizer/Azure Advisor/GCP Active Assist recommendations, triage by savings impact, implement top recommendations within the sprint. Track implemented vs deferred count and cumulative monthly savings.</statement>
+        <rationale>Cloud provider recommendation engines update as new utilization data arrives. Checking weekly ensures new waste is caught within days, not months.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Pull Compute Optimizer / Azure Advisor / GCP Active Assist recommendations — note instances below 20% CPU and 30% memory average over 14 days.</check>
+      <check>Start rightsizing with non-production environments — measure for 7 days before applying to production.</check>
+      <check>Remove Multi-AZ from all dev/staging RDS instances.</check>
+      <check>Enable autoscaling on variable workloads before downsizing base instance type.</check>
+      <check>Consider ARM (Graviton/Ampere) for web servers, containerized apps, batch jobs.</check>
+      <check>Run waste scan: unattached volumes, unused IPs, idle LBs, orphaned snapshots, unused NAT Gateways.</check>
+      <check>Tag intentionally-retained idle resources with keep=true to exclude from cleanup automation.</check>
+      <check>Schedule dev/test environment downtime (office hours only: 7am-7pm weekdays).</check>
+      <check>Document rightsizing decisions in review template: current type, recommended type, avg CPU/mem, peak CPU/mem, estimated savings.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="finops-devops-cost-commitments"/>
+      <ref slug="finops-devops-cost-tagging"/>
+      <ref slug="finops-devops-cost-kubernetes"/>
+      <ref slug="finops-framework"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://aws.amazon.com/aws-cost-management/aws-compute-optimizer/"/>
+      <link href="https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html"/>
+      <link href="https://azure.microsoft.com/en-us/products/cost-management"/>
+    </see-also>
+  </content>
+</methodology>
