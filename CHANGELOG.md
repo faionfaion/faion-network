@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: django-coding-standards → 5 slugs (django-project-structure, django-service-layer, django-selectors, django-serializers, django-constants)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: language-framework-guide, methodologies, mob-programming)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: e2e-testing, error-handling, files-reference)
 - refactor: 3/3 software-developer methodologies migrated to methodology.xml (batch: go-backend, go-concurrency, go-error-handling)
