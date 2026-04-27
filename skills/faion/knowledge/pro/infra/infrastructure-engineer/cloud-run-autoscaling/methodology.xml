@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-autoscaling">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run autoscaling configuration: min/max instances, concurrency tuning, cold start elimination, startup CPU boost, billing modes, and performance optimization patterns.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>autoscaling</tag>
+      <tag>cold-start</tag>
+      <tag>performance</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="cloud-run-monitoring"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run Autoscaling and Performance</title>
+
+    <summary>Cloud Run scales from 0 to 1000+ instances based on concurrent requests. Concurrency per instance (default 80), min instances (default 0), and startup CPU boost are the three primary levers for balancing cost, latency, and throughput. Billing mode switches between request-based and instance-based depending on whether background work is needed.</summary>
+
+    <why>
+      <p>Cloud Run's autoscaler adds instances when the number of in-flight requests divided by containerConcurrency exceeds the current instance count. Misconfigured concurrency (too high for CPU-bound work, too low for I/O-bound) either overloads instances or wastes capacity. Min instances = 0 eliminates cost at idle but introduces cold-start latency on the first request after a quiet period. Understanding the interaction between concurrency, min instances, and billing mode is essential for production stability.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Configuring min/max instances for a production Cloud Run service.</item>
+        <item>Tuning concurrency for CPU-bound vs I/O-bound workloads.</item>
+        <item>Eliminating cold start latency for critical services.</item>
+        <item>Choosing between request-based and instance-based billing.</item>
+        <item>Optimizing container startup time to reduce cold start duration.</item>
+        <item>Troubleshooting latency spikes under variable load.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cloud Run Jobs (run-to-completion) — Jobs use task parallelism, not request-based autoscaling.</item>
+        <item>GKE workloads — GKE uses HorizontalPodAutoscaler with different levers (CPU/memory metrics).</item>
+        <item>Service deployment commands — see cloud-run-deployment.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="concurrency">
+      <rule>
+        <statement>Set containerConcurrency based on workload type: CPU-bound workloads (ML inference, image processing) should use concurrency 1-10 to prevent CPU contention across simultaneous requests. I/O-bound workloads (database APIs, proxy services) should use concurrency 80-1000 to maximize throughput per instance. Default is 80. Do NOT use concurrency=1 for I/O-bound services — it forces horizontal scale-out at low load.</statement>
+        <rationale>Cloud Run allocates CPU fractionally: at concurrency=80, one instance handles 80 simultaneous requests. CPU-bound tasks competing for the same CPU cause latency spikes and timeouts. I/O-bound tasks are mostly waiting for network/database — high concurrency packs more requests per instance, reducing cost and cold starts.</rationale>
+      </rule>
+
+      <example type="good" title="Recommended scaling config for production API (YAML)">
+        <code lang="yaml"><![CDATA[
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "100"
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+]]></code>
+        <note>minScale=1 eliminates cold starts. maxScale=100 caps cost. containerConcurrency=80 is the default; tune down for CPU-heavy workloads.</note>
+      </example>
+
+      <example type="bad" title="Concurrency=1 for an I/O-bound REST API">
+        <code lang="yaml"><![CDATA[
+spec:
+  template:
+    spec:
+      containerConcurrency: 1
+]]></code>
+        <note>With concurrency=1, a 100 RPS API needs 100 instances. Cold starts multiply. Instance cost skyrockets compared to concurrency=80 (2 instances).</note>
+      </example>
+    </section>
+
+    <section name="cold-start">
+      <rule>
+        <statement>For production services where cold-start latency is unacceptable, set --min-instances=1 (or higher for bursty traffic). Enable --cpu-boost (startup CPU boost) to allocate extra CPU during container initialization. Container startup MUST complete in under 10 seconds; target under 4 seconds. Use lazy initialization: defer expensive setup (database connections, model loading) until first request, not startup, if startup time matters.</statement>
+        <rationale>Cold starts occur when the autoscaler adds new instances and must initialize the container. Startup CPU boost temporarily increases CPU allocation during initialization, reducing startup time by up to 50% for CPU-bound init work. min-instances=1 keeps one warm instance alive to absorb traffic spikes without cold start penalty.</rationale>
+      </rule>
+
+      <example type="good" title="Production service with min instances and CPU boost">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-api \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-api:v1 \
+    --region=us-central1 \
+    --min-instances=1 \
+    --max-instances=100 \
+    --cpu-boost \
+    --concurrency=80 \
+    --memory=2Gi \
+    --cpu=2
+]]></code>
+      </example>
+
+      <example type="good" title="High-throughput service: pre-warmed pool">
+        <code lang="bash"><![CDATA[
+# For a service handling 500 RPS baseline with bursts to 2000 RPS
+# concurrency=80, so 500/80 = ~7 warm instances
+gcloud run services update my-api \
+    --region=us-central1 \
+    --min-instances=8 \
+    --max-instances=30
+]]></code>
+        <note>Pre-warm enough instances to absorb baseline load without cold starts. maxScale=30 caps cost: 30 * 80 = 2400 concurrent requests.</note>
+      </example>
+
+      <antipattern>
+        <description>Loading ML models, database connection pools, or large config files inside the request handler on every call.</description>
+        <reason>Request-time initialization kills throughput. Load heavy resources once at container startup (or lazily on first request), then reuse across requests for the lifetime of the instance.</reason>
+      </antipattern>
+    </section>
+
+    <section name="billing-modes">
+      <rule>
+        <statement>Use request-based billing (default) for stateless HTTP APIs where the container is idle between requests. Switch to instance-based billing (--no-cpu-throttling or cpu_idle=false in Terraform) when the service runs background goroutines, scheduled tasks, or message queue consumers that need CPU between HTTP requests. Sidecars always require instance-based billing.</statement>
+        <rationale>With request-based billing, CPU is throttled to near-zero between requests. Background work (goroutines, polling, caches) is paused without instance-based billing, causing correctness bugs — not just performance issues.</rationale>
+      </rule>
+
+      <example type="good" title="Instance-based billing for background worker">
+        <code lang="bash"><![CDATA[
+gcloud run deploy my-worker \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-worker:v1 \
+    --region=us-central1 \
+    --no-cpu-throttling \
+    --min-instances=1
+]]></code>
+        <note>--no-cpu-throttling keeps CPU allocated between requests. Combined with min-instances=1, the worker is always ready and never CPU-starved between poll cycles.</note>
+      </example>
+
+      <example type="good" title="Terraform: instance-based billing (cpu_idle=false)">
+        <code lang="hcl"><![CDATA[
+containers {
+  resources {
+    limits = {
+      cpu    = "2"
+      memory = "2Gi"
+    }
+    cpu_idle          = false
+    startup_cpu_boost = true
+  }
+}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Running a Pub/Sub message consumer or cron job inside Cloud Run with request-based billing and concurrency=1.</description>
+        <reason>CPU throttling between requests pauses the message consumer goroutine, causing message lag and invisible failures. Use instance-based billing or switch to a Pub/Sub push subscription that delivers messages as HTTP requests.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance-optimization">
+      <rule>
+        <statement>Optimize container startup by: using slim or distroless base images, leveraging multi-stage builds, pre-compiling bytecode (Python: compile to .pyc), ordering Dockerfile layers from least to most frequently changed, and using --cpu-boost. For requests exceeding 60 seconds, increase --timeout up to 3600s (service) — but evaluate if the workload is better suited to Cloud Run Jobs.</statement>
+        <rationale>Container image size directly affects pull time during cold starts. Distroless images (gcr.io/distroless) are 5-10x smaller than debian:latest equivalents. Multi-stage builds exclude build tools from the runtime image. Layer ordering maximizes Docker cache hits during image rebuilds.</rationale>
+      </rule>
+
+      <example type="good" title="Optimize Cloud Run for high throughput (gcloud update)">
+        <code lang="bash"><![CDATA[
+gcloud run services update my-service \
+    --region=us-central1 \
+    --concurrency=1000 \
+    --memory=4Gi \
+    --cpu=4 \
+    --min-instances=2 \
+    --max-instances=50 \
+    --timeout=60
+]]></code>
+        <note>concurrency=1000 for a pure I/O-bound proxy: 2 instances handle 2000 concurrent requests. CPU=4 allows true parallelism for Go/Java services with multiple goroutines/threads.</note>
+      </example>
+    </section>
+
+    <section name="scaling-checklist">
+      <checklist>
+        <check>Min instances set for production services to avoid cold starts (min=1+).</check>
+        <check>Max instances set for cost control.</check>
+        <check>Concurrency tuned: low (1-10) for CPU-bound, high (80-1000) for I/O-bound.</check>
+        <check>Startup CPU boost enabled for services with slow initialization.</check>
+        <check>Billing mode: instance-based for background workers, request-based for pure HTTP APIs.</check>
+        <check>Container startup time verified under 10 seconds.</check>
+        <check>Application warm-up handled (lazy init or min-instances).</check>
+        <check>Connection pooling implemented (do not create DB connections per request).</check>
+        <check>Graceful shutdown drains in-flight requests before SIGTERM timeout.</check>
+        <check>CPU allocation matches workload type (CPU-idle=false for background workers).</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-monitoring"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <link href="https://cloud.google.com/run/docs/tips/general"/>
+      <link href="https://cloud.google.com/run/docs/configuring/min-instances"/>
+      <link href="https://cloud.google.com/run/docs/configuring/concurrency"/>
+    </see-also>
+  </content>
+</methodology>
