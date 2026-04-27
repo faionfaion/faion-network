@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-layout-directory-structure">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Canonical Go project directory structure: cmd/, internal/, pkg/, migrations/ — one agreed-upon layout that cuts bikeshedding and scales from small service to multi-binary monorepo.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>project-structure</tag>
+      <tag>directory-layout</tag>
+      <tag>backend</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+    </languages>
+    <related>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-agentic-workflow"/>
+      <ref slug="go-layout-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Go Standard Layout — Directory Structure</title>
+
+    <summary>Organize every Go service under a four-directory skeleton: cmd/ (binaries), internal/ (private app code), pkg/ (public libraries), migrations/ (schema files). The layout is a community convention — not enforced by the toolchain — so teams must agree on it once and commit it to docs.</summary>
+
+    <why>
+      <p>Without an agreed-upon layout, package placement is decided per-PR, accumulating in a different shape each time. The Go community converged on the golang-standards/project-layout convention because it maps naturally to how the Go compiler resolves import paths: internal/ makes everything under it importable only within the module, cmd/ makes the entry-point intent obvious, and pkg/ signals deliberate external API.</p>
+      <p>The layout is a navigability contract: a developer (or agent) landing on an unfamiliar service knows where handlers live, where domain models live, and where the database migration runner is, without reading any documentation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield Go services where the team wants a single, agreed-upon directory convention to cut bikeshedding about "where does this go?"</item>
+        <item>Mid-size services with multiple binaries (cmd/api, cmd/worker, cmd/migrate) sharing a domain core under internal/.</item>
+        <item>Monorepos that need to publish reusable libraries via pkg/ while keeping app code private under internal/.</item>
+        <item>Onboarding-heavy teams where a navigable layout matters more than micro-optimisations to package shape.</item>
+        <item>Refactoring a "single-package" Go app that grew past ~3k LOC and now wants explicit handler/service/repository seams.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny CLIs (500 LOC or fewer, one binary) — main.go plus a couple of files is sufficient; the layout is a tax.</item>
+        <item>Library-only modules — the golang-standards/project-layout doc explicitly states it is not for libraries.</item>
+        <item>Teams that have already converged on a different convention (e.g., Domain-driven internal/context/... package-by-feature) — switching mid-flight churns the diff for no win.</item>
+        <item>Hyper-optimised single-package code where every package boundary is a string-allocating call.</item>
+        <item>Educational or demo repos where the layout obscures the lesson — keep flat.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="canonical-layout">
+      <p>The standard skeleton for a Go service or multi-binary project:</p>
+      <example type="good" title="Standard project tree">
+        <code lang="text"><![CDATA[
+project/
+├── cmd/
+│   └── api/
+│       └── main.go           # Entry point
+├── internal/
+│   ├── handler/              # HTTP handlers
+│   ├── service/              # Business logic
+│   ├── repository/           # Data access
+│   ├── model/                # Domain models
+│   ├── middleware/           # HTTP middleware
+│   └── config/               # Configuration
+├── pkg/                      # Public packages (optional — add only when you have a real external API)
+├── migrations/               # Database migrations
+├── go.mod
+└── go.sum
+]]></code>
+        <note>pkg/ is optional. Do not add it until you have a documented external consumer.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>cmd/name is wiring only — read config, build dependencies, start the server. No business logic, no goroutines spawning workers (compose them in services).</statement>
+        <rationale>Keeping cmd/ thin makes every entry point a readable composition root and prevents business logic from being unreachable by tests.</rationale>
+      </rule>
+      <rule>
+        <statement>internal/ is the default home for all new code. Promote to pkg/ only when a documented external consumer exists.</statement>
+        <rationale>internal/ enforces the Go compiler's import restriction, preventing accidental external imports before the API is stable.</rationale>
+      </rule>
+      <rule>
+        <statement>Small, focused packages. Aim for one responsibility per package (handlers, services, repos). A long file is acceptable; a long package is not.</statement>
+        <rationale>Package-level cohesion makes dependencies explicit; a package that mixes HTTP, persistence, and domain logic forces callers to import everything.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not export what you do not have to. Lowercase types in internal/ keep the package surface small.</statement>
+        <rationale>Unexported types are impossible to depend on from outside, which gives the author freedom to refactor without breaking callers.</rationale>
+      </rule>
+      <rule>
+        <statement>Migrations versioned as migrations/NNNN_description.up.sql + .down.sql. Apply via cmd/migrate or golang-migrate.</statement>
+        <rationale>Numbered migration files give both humans and automated runners a deterministic apply order and a safe rollback path.</rationale>
+      </rule>
+      <rule>
+        <statement>A Makefile or Taskfile.yml documents canonical commands (make test, make lint, make migrate-up). Commit it to the repo.</statement>
+        <rationale>Without a canonical command reference, every developer and every agent invents a different invocation; the Makefile is the single source of truth for local dev workflow.</rationale>
+      </rule>
+    </rules>
+
+    <section name="handler-example">
+      <p>Handlers live in internal/handler/ and depend on service interfaces (defined in internal/service/), never directly on repositories. The handler receives a context.Context from the request and passes it downstream.</p>
+      <example type="good" title="HTTP handler in internal/handler/">
+        <code lang="go"><![CDATA[
+// internal/handler/user.go
+package handler
+
+import (
+    "net/http"
+    "github.com/gin-gonic/gin"
+    "project/internal/service"
+)
+
+type UserHandler struct {
+    userService service.UserService
+}
+
+func NewUserHandler(us service.UserService) *UserHandler {
+    return &UserHandler{userService: us}
+}
+
+func (h *UserHandler) GetUser(c *gin.Context) {
+    id := c.Param("id")
+    user, err := h.userService.GetByID(c.Request.Context(), id)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(http.StatusOK, user)
+}
+]]></code>
+        <note>Handler depends on service.UserService interface, not on a concrete repository. The layout works with chi/echo/net/http too — do not mix routers across handler files.</note>
+      </example>
+    </section>
+
+    <section name="anti-patterns">
+      <antipattern>
+        <description>pkg/ cargo-cult: adding pkg/ from the layout template without anything to publish, so it becomes a second random bin of utilities.</description>
+        <reason>Skip pkg/ until you have a real external API. Empty or utility-only pkg/ trees signal layout-as-ritual rather than layout-as-architecture.</reason>
+      </antipattern>
+      <antipattern>
+        <description>internal/ tree too deep: internal/service/order/v2/usecases/... defeats the navigability the layout was supposed to bring.</description>
+        <reason>Depth beyond three levels negates the benefit of a flat layout; flatten or use package-by-feature inside internal/ instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Config sprawl: internal/config becomes a god struct that depends on every package's options.</description>
+        <reason>Each package should own its own config struct; internal/config should compose them, not import them all directly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Migrations + binary coupling: migrations/ lives at the root but there is no cmd/migrate, so the dance of applying migrations is undiscoverable.</description>
+        <reason>Without cmd/migrate and a Makefile target, every developer invents a different apply command; this silently skips migrations in CI.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>cmd/ contains only wiring: config load, dependency construction, server start.</check>
+      <check>internal/ contains all application code not intended for external import.</check>
+      <check>pkg/ exists only if at least one documented external consumer exists.</check>
+      <check>migrations/ has numbered .up.sql and .down.sql pairs.</check>
+      <check>Makefile or Taskfile.yml documents test, lint, and migrate-up commands.</check>
+      <check>No business logic in cmd/.</check>
+      <check>No deeply nested internal/ paths (more than 3 levels).</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/golang-standards/project-layout"/>
+      <link href="https://go.dev/doc/effective_go"/>
+      <link href="https://github.com/golang/go/wiki/CodeReviewComments"/>
+      <ref slug="go-layout-layer-rules"/>
+      <ref slug="go-layout-agentic-workflow"/>
+    </see-also>
+  </content>
+</methodology>
