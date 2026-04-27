@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>python-developer</domain>
-    <summary>Routing-layer methodology for classifying Python projects by domain (web/data/ML/automation), selecting toolchain (uv, ruff, mypy), and deciding optimization strategy. Use as first-pass router before loading framework-specific methodology.</summary>
+    <summary>Classify Python projects by domain (web/data/ML/automation), select modern toolchain, route to specific methodology, and profile before optimizing.</summary>
     <tags>
       <tag>python</tag>
       <tag>routing</tag>
@@ -135,7 +135,7 @@ py-spy top --pid <pid>
       </antipattern>
       <antipattern>
         <description>Upgrading an existing Python 3.10/3.11 codebase to 3.12+ without checking dependency compatibility.</description>
-        <reason>numpy<2, tensorflow, and psycopg2/psycopg3 have Python version lockstep issues. Always audit with pip-audit or safety before upgrading.</reason>
+        <reason>numpy&lt;2, tensorflow, and psycopg2/psycopg3 have Python version lockstep issues. Always audit with pip-audit or safety before upgrading.</reason>
       </antipattern>
       <antipattern>
         <description>Enabling ruff select = ["ALL"] in pyproject.toml.</description>
@@ -157,6 +157,28 @@ py-spy top --pid <pid>
         <statement>Any change to lockfile, CI workflow, Dockerfile, or pyproject.toml [project] section requires human review.</statement>
         <rationale>These files define the environment for all contributors and CI. Incorrect lockfile regeneration propagates across all machines on next sync.</rationale>
       </rule>
+    </section>
+
+    <section name="routing-table">
+      <rule>
+        <statement>For web projects: if framework is already chosen, load only the framework-specific methodology. Load python-web-frameworks only when the choice is still open.</statement>
+        <rationale>python-web-frameworks is a routing layer — it adds overhead when the choice is already made. Skip it once domain is locked.</rationale>
+      </rule>
+      <p>Recommended routing: FastAPI for new async REST APIs (python-fastapi); Django for admin-heavy apps (django-models, django-pytest); Flask for prototypes (python-web-frameworks first). Data science routes to data-science methodologies in separate skills. ML routes to ml-engineer skill. Automation routes to automation methodologies.</p>
+    </section>
+
+    <section name="cli-tools">
+      <rule>
+        <statement>Master the key tools: uv (package+Python+venv), ruff (lint+format), pytest (testing), mypy/pyright (type check), cProfile/py-spy (profiling).</statement>
+        <rationale>These five tools cover 90% of Python workflow. Other tools are domain-specific.</rationale>
+      </rule>
+      <p>Daily usage: uv init, uv add, uv sync, uv run pytest. uv run ruff check . --fix &amp;&amp; uv run ruff format . before commits. cProfile -s cumulative for hotspot discovery. py-spy for live process profiling. One type checker in CI (mypy or pyright, not both).</p>
+    </section>
+
+    <section name="common-patterns">
+      <p>Pattern: Algorithm optimization (10-1000x, easiest). Always profile first — agents that skip profiling recommend wrong strategies. NumPy vectorization (10-100x) for numeric code only. Cython (10-50x) for tight loops. Rust+PyO3 (10-100x, highest complexity). PyPy (2-10x, pure Python only). Free-threading (experimental in 3.13, production-ready 3.14+).</p>
+      <p>Best practice: Lock Python version via .python-version and requires-python. Commit lockfile. Keep requires-python, ruff target-version, mypy python_version, and pyright pythonVersion in exact sync. Run ruff check --select UP --fix as one-shot migration, not constantly. Use src/ layout for packages. Cache ~/.cache/uv in CI keyed on uv.lock hash.</p>
+      <p>Gotchas: Agents pin python>=3.12 then use 3.13-only features; never check dependency compatibility before upgrading; enable ruff ALL rules causing false positives; swap requirements.txt without updating CI/Docker to use lockfile; recommend 3.13 free-threading for production prematurely; apply Numba/Cython to I/O-bound code; conflate python3.13t (free-threaded) with stock python3.13.</p>
     </section>
 
     <templates>
