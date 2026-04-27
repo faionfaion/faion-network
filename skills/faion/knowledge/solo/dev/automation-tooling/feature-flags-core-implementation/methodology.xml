@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="feature-flags-core-implementation">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Build a FeatureFlagManager in Python: register typed flags, load overrides from env and config file, check is_enabled() with user context. Includes decorator and context-manager integration patterns.</summary>
+    <tags>
+      <tag>feature-flags</tag>
+      <tag>python</tag>
+      <tag>implementation</tag>
+      <tag>decorator</tag>
+      <tag>middleware</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <ref slug="feature-flags-services-testing"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Feature Flag Core Implementation</title>
+
+    <summary>A FeatureFlagManager registers typed FeatureFlag dataclasses, loads overrides from environment variables (FF_* prefix) and a JSON config file, and exposes is_enabled(flag_name, user_id) as the single call site. The decorator pattern (@feature_flag) and a context-manager middleware layer are the two standard integration points for web frameworks.</summary>
+
+    <why>
+      <p>A centralized flag manager prevents the anti-pattern of scattered ad-hoc environment variable checks throughout the codebase. Registering flags with explicit type, default, owner, and description creates a machine-readable registry that agents can audit for stale flags, missing owners, or hardcoded defaults.</p>
+      <p>Loading overrides from both env vars (FF_FLAG_NAME=true) and a JSON config file allows the same codebase to be tested locally with specific flags, deployed with CI overrides, and managed in production via a config file — without changing source code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building an in-process flag manager without a SaaS dependency (self-hosted, cost-sensitive, or offline-first).</item>
+        <item>Wrapping an existing code path in a flag to enable progressive rollout of a new implementation.</item>
+        <item>Adding a kill switch to a risky third-party integration that needs instant disable without redeploy.</item>
+        <item>Integrating flag evaluation into a FastAPI or Django request lifecycle via middleware.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Teams that need targeting rules, percentage rollout, or real-time flag updates without code deploys — use a dedicated service instead (see feature-flags-services-testing).</item>
+        <item>Single env-var toggling that will never need targeting or rollout — direct os.getenv() is simpler.</item>
+        <item>Cases where flag evaluation latency must be zero — compile the flag out at build time.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-manager">
+      <p>The FeatureFlagManager holds a registry of FeatureFlag dataclasses and a separate overrides dict. Overrides take precedence — they allow test fixtures and deployment config to override code-level defaults without touching flag definitions.</p>
+
+      <example type="good" title="FeatureFlagManager with env and file overrides">
+        <code lang="python"><![CDATA[
+from enum import Enum
+from typing import Optional
+from dataclasses import dataclass
+import os
+import json
+
+
+class FlagType(Enum):
+    RELEASE = "release"
+    EXPERIMENT = "experiment"
+    OPS = "ops"
+    PERMISSION = "permission"
+
+
+@dataclass
+class FeatureFlag:
+    name: str
+    flag_type: FlagType
+    default: bool = False
+    description: str = ""
+    owner: str = ""
+
+
+class FeatureFlagManager:
+    """Simple feature flag manager."""
+
+    def __init__(self):
+        self._flags: dict[str, FeatureFlag] = {}
+        self._overrides: dict[str, bool] = {}
+        self._load_overrides()
+
+    def _load_overrides(self):
+        """Load flag overrides from environment or config."""
+        # From environment: FF_FLAG_NAME=true|1|yes
+        for key, value in os.environ.items():
+            if key.startswith("FF_"):
+                flag_name = key[3:].lower()
+                self._overrides[flag_name] = value.lower() in ("true", "1", "yes")
+
+        # From config file: FEATURE_FLAGS_CONFIG=/path/to/flags.json
+        config_path = os.getenv("FEATURE_FLAGS_CONFIG")
+        if config_path and os.path.exists(config_path):
+            with open(config_path) as f:
+                self._overrides.update(json.load(f))
+
+    def register(self, flag: FeatureFlag):
+        """Register a feature flag."""
+        self._flags[flag.name] = flag
+
+    def is_enabled(
+        self,
+        flag_name: str,
+        user_id: Optional[str] = None,
+        attributes: Optional[dict] = None,
+    ) -> bool:
+        """Check if a feature flag is enabled."""
+        # Overrides take priority (env, config file, test fixtures)
+        if flag_name in self._overrides:
+            return self._overrides[flag_name]
+
+        flag = self._flags.get(flag_name)
+        if not flag:
+            return False  # Unknown flag → off; never default True
+
+        return flag.default
+
+    def get_all_flags(self, user_id: Optional[str] = None) -> dict[str, bool]:
+        """Get all flag states for a user."""
+        return {
+            name: self.is_enabled(name, user_id)
+            for name in self._flags
+        }
+
+
+# Global instance
+feature_flags = FeatureFlagManager()
+
+feature_flags.register(FeatureFlag(
+    name="new_checkout",
+    flag_type=FlagType.RELEASE,
+    default=False,
+    description="New checkout flow",
+    owner="payments-team",
+))
+
+feature_flags.register(FeatureFlag(
+    name="maintenance_mode",
+    flag_type=FlagType.OPS,
+    default=False,
+    description="Enable maintenance mode",
+    owner="platform-team",
+))
+
+# Usage
+if feature_flags.is_enabled("new_checkout", user_id=user.id):
+    return render_new_checkout(cart)
+else:
+    return render_old_checkout(cart)
+]]></code>
+        <note>Unknown flag name always returns False — never True. This ensures that a missing flag registration keeps the old behavior, not the new one.</note>
+      </example>
+    </section>
+
+    <section name="decorator-pattern">
+      <p>The @feature_flag decorator is the cleanest integration point when both the new and old code paths are complete functions. It selects between the two at call time without littering if/else into the calling code.</p>
+
+      <example type="good" title="feature_flag decorator with fallback">
+        <code lang="python"><![CDATA[
+from functools import wraps
+from typing import Callable, Optional
+
+
+def feature_flag(
+    flag_name: str,
+    fallback: Optional[Callable] = None,
+    default_return=None,
+):
+    """Decorator to conditionally execute function based on flag."""
+    def decorator(func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            user_id = kwargs.get("user_id") or (args[0] if args else None)
+
+            if feature_flags.is_enabled(flag_name, user_id=user_id):
+                return func(*args, **kwargs)
+            elif fallback:
+                return fallback(*args, **kwargs)
+            else:
+                return default_return
+
+        return wrapper
+    return decorator
+
+
+@feature_flag("new_recommendation_engine", fallback=get_recommendations_v1)
+def get_recommendations_v2(user_id: str, limit: int = 10):
+    """New ML-based recommendations."""
+    return ml_service.get_recommendations(user_id, limit)
+
+
+def get_recommendations_v1(user_id: str, limit: int = 10):
+    """Legacy rule-based recommendations."""
+    return rule_engine.get_recommendations(user_id, limit)
+]]></code>
+        <note>The decorator extracts user_id from kwargs or the first positional arg by convention. If your calling convention differs, pass user_id explicitly via kwargs.</note>
+      </example>
+    </section>
+
+    <section name="context-manager-middleware">
+      <p>Evaluating all flags once at request start and storing the result in a ContextVar avoids redundant evaluations per request and makes the flag state observable in logs. The FastAPI middleware example shows the full integration.</p>
+
+      <example type="good" title="Context manager and FastAPI middleware">
+        <code lang="python"><![CDATA[
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Optional
+import structlog
+
+logger = structlog.get_logger()
+
+enabled_flags_var: ContextVar[set] = ContextVar("enabled_flags", default=set())
+
+
+@contextmanager
+def feature_flag_context(user_id: Optional[str] = None, attributes: dict = None):
+    """Evaluate all flags once at request start; store in context."""
+    enabled = set()
+    for flag_name in feature_flags._flags:
+        if feature_flags.is_enabled(flag_name, user_id, attributes):
+            enabled.add(flag_name)
+
+    token = enabled_flags_var.set(enabled)
+    logger.info("Feature flags evaluated", enabled_flags=list(enabled), user_id=user_id)
+
+    try:
+        yield enabled
+    finally:
+        enabled_flags_var.reset(token)
+
+
+def is_flag_enabled(flag_name: str) -> bool:
+    """Quick check using pre-evaluated context; zero latency."""
+    return flag_name in enabled_flags_var.get()
+
+
+# FastAPI middleware
+@app.middleware("http")
+async def feature_flag_middleware(request: Request, call_next):
+    user_id = getattr(request.state, "user_id", None)
+
+    with feature_flag_context(user_id=user_id):
+        response = await call_next(request)
+        return response
+
+
+@app.get("/products")
+async def list_products():
+    if is_flag_enabled("new_product_page"):
+        return await get_products_v2()
+    return await get_products_v1()
+]]></code>
+        <note>Log the enabled_flags list with sample-rate at request start. During incidents, the flag state is critical for triage — which variant did this user see?</note>
+      </example>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>These are the most common mistakes AI agents make when implementing or modifying flag code.</p>
+      <antipattern>
+        <description>Agents add if flag_enabled("foo") at every call site instead of at a single decision point.</description>
+        <reason>Scattered flag checks multiply branches exponentially. A flag should wrap the outermost decision, not be sprinkled inside helper functions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Generating a flag-eval client with default=True so tests pass locally.</description>
+        <reason>A True default leaks the new feature to 100% of production traffic when the flag is not yet configured in the flag store.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Targeting rules that pass entire user objects to the flag service.</description>
+        <reason>User objects often contain PII; flag services log evaluation context. Whitelist only the attributes needed for targeting (id, tier, groups).</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="feature-flags-types-lifecycle"/>
+      <ref slug="feature-flags-rollout-targeting"/>
+      <ref slug="feature-flags-services-testing"/>
+    </see-also>
+  </content>
+</methodology>
