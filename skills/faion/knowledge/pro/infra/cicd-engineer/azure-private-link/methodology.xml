@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-private-link">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Connect Azure PaaS services privately via Private Endpoints and Private DNS zones. Covers PE creation, DNS zone naming, VNet links, public access disabling, and validation from within VNet.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>private-link</tag>
+      <tag>private-endpoint</tag>
+      <tag>private-dns</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+      <language>bash</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-front-door"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure Private Link and Private Endpoints</title>
+
+    <summary>Private Endpoints inject a NIC with a private IP from your VNet into an Azure PaaS service (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service, etc.). Combined with a Private DNS zone and a VNet link, DNS resolution for the service FQDN returns the private IP instead of the public one — all traffic stays on the Azure backbone. Public access on the target resource MUST be disabled to eliminate the public endpoint.</summary>
+
+    <why>
+      <p>Service Endpoints (the older alternative) route traffic from a subnet identity over Microsoft backbone but the PaaS service still has a public IP and is reachable from other networks — exfiltration is possible. Private Endpoints inject an IP into your VNet. The service is genuinely private: only resources in the VNet (or peered VNets with the DNS zone linked) can reach it by FQDN.</p>
+      <p>The most common failure mode: Private Endpoint is created and DNS zone is created, but the zone is NOT linked to the consumer VNet. DNS resolution from that VNet lands on the public IP and connects fine — to the public endpoint, defeating the entire purpose. No error is raised; it looks like it works.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All PaaS services (Storage, Key Vault, SQL, PostgreSQL, ACR, App Service) in production environments.</item>
+        <item>Compliance requirements (HIPAA, PCI-DSS, SOC2) mandating data exfiltration controls and private connectivity.</item>
+        <item>Migrating from Service Endpoints to Private Endpoints for stronger isolation guarantees.</item>
+        <item>Exposing internal services to other VNets or subscriptions via Private Link Service (your own service behind an internal load balancer).</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Dev/test environments where the Private DNS zone complexity adds debugging overhead for no compliance value.</item>
+        <item>When the platform team cannot reliably operate Private DNS zones — broken DNS makes Private Link a debugging nightmare with no obvious error.</item>
+        <item>Services that have no private endpoint support (some preview services, some third-party Azure Marketplace offerings).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="dns-zone-requirement">
+      <rule testable="true">
+        <statement>Every Private Endpoint MUST have a matching Private DNS zone linked to every VNet that needs to resolve it. The zone name MUST match the service-specific `privatelink.*` zone (see table below). The VNet link MUST have `registration_enabled = false`. Without a valid zone link, DNS from the consumer VNet falls back to the public IP silently.</statement>
+        <rationale>Private Endpoint DNS works by overriding the public CNAME chain. Without the Private DNS zone and VNet link, `nslookup storage.blob.core.windows.net` from inside the VNet returns the public IP — the connection works but goes over the internet, defeating the Private Endpoint entirely.</rationale>
+      </rule>
+      <example type="good" title="Private DNS zone names by service">
+        <code lang="text"><![CDATA[
+Storage Blob:          privatelink.blob.core.windows.net
+Storage File:          privatelink.file.core.windows.net
+Storage Queue:         privatelink.queue.core.windows.net
+Storage Table:         privatelink.table.core.windows.net
+SQL Database:          privatelink.database.windows.net
+PostgreSQL Flex:       privatelink.postgres.database.azure.com
+MySQL Flex:            privatelink.mysql.database.azure.com
+Cosmos DB:             privatelink.documents.azure.com
+Key Vault:             privatelink.vaultcore.azure.net
+Container Registry:    privatelink.azurecr.io
+App Service:           privatelink.azurewebsites.net
+Event Hub / Service Bus: privatelink.servicebus.windows.net
+Redis Cache:           privatelink.redis.cache.windows.net
+]]></code>
+      </example>
+    </section>
+
+    <section name="private-endpoint-terraform">
+      <example type="good" title="Private Endpoint for Storage with DNS zone (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_storage_account" "main" {
+  name                     = "${var.project}${var.environment}sa"
+  resource_group_name      = azurerm_resource_group.main.name
+  location                 = azurerm_resource_group.main.location
+  account_tier             = "Standard"
+  account_replication_type = "ZRS"
+
+  # Disable public access - REQUIRED for Private Link
+  public_network_access_enabled = false
+
+  tags = local.common_tags
+}
+
+resource "azurerm_private_dns_zone" "blob" {
+  name                = "privatelink.blob.core.windows.net"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "blob" {
+  name                  = "blob-link"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.blob.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  registration_enabled  = false
+  tags                  = local.common_tags
+}
+
+resource "azurerm_private_endpoint" "blob" {
+  name                = "${var.project}-${var.environment}-blob-pe"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  subnet_id           = azurerm_subnet.endpoints.id
+
+  private_service_connection {
+    name                           = "blob-connection"
+    private_connection_resource_id = azurerm_storage_account.main.id
+    subresource_names              = ["blob"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "blob-dns-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.blob.id]
+  }
+
+  tags = local.common_tags
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Private Endpoint for Key Vault (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_key_vault" "main" {
+  name                = "${var.project}-${var.environment}-kv"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "standard"
+
+  public_network_access_enabled = false
+  purge_protection_enabled      = true
+  soft_delete_retention_days    = 90
+
+  tags = local.common_tags
+}
+
+resource "azurerm_private_dns_zone" "vault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "vault" {
+  name                  = "vault-link"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.vault.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  registration_enabled  = false
+  tags                  = local.common_tags
+}
+
+resource "azurerm_private_endpoint" "vault" {
+  name                = "${var.project}-${var.environment}-vault-pe"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  subnet_id           = azurerm_subnet.endpoints.id
+
+  private_service_connection {
+    name                           = "vault-connection"
+    private_connection_resource_id = azurerm_key_vault.main.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+
+  private_dns_zone_group {
+    name                 = "vault-dns-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.vault.id]
+  }
+
+  tags = local.common_tags
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Hub-managed Private DNS zones for all services (Terraform)">
+        <code lang="hcl"><![CDATA[
+# private-dns.tf — manage all zones in hub, link to hub and all spokes
+locals {
+  private_dns_zones = {
+    blob     = "privatelink.blob.core.windows.net"
+    file     = "privatelink.file.core.windows.net"
+    queue    = "privatelink.queue.core.windows.net"
+    table    = "privatelink.table.core.windows.net"
+    sql      = "privatelink.database.windows.net"
+    postgres = "privatelink.postgres.database.azure.com"
+    vault    = "privatelink.vaultcore.azure.net"
+    acr      = "privatelink.azurecr.io"
+    web      = "privatelink.azurewebsites.net"
+    eventhub = "privatelink.servicebus.windows.net"
+    redis    = "privatelink.redis.cache.windows.net"
+  }
+}
+
+resource "azurerm_private_dns_zone" "zones" {
+  for_each            = local.private_dns_zones
+  name                = each.value
+  resource_group_name = azurerm_resource_group.hub.name
+  tags                = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "hub" {
+  for_each              = local.private_dns_zones
+  name                  = "hub-link"
+  resource_group_name   = azurerm_resource_group.hub.name
+  private_dns_zone_name = azurerm_private_dns_zone.zones[each.key].name
+  virtual_network_id    = azurerm_virtual_network.hub.id
+  registration_enabled  = false
+  tags                  = local.common_tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "spoke" {
+  for_each              = local.private_dns_zones
+  name                  = "${var.environment}-link"
+  resource_group_name   = azurerm_resource_group.hub.name
+  private_dns_zone_name = azurerm_private_dns_zone.zones[each.key].name
+  virtual_network_id    = azurerm_virtual_network.spoke.id
+  registration_enabled  = false
+  tags                  = local.common_tags
+}
+]]></code>
+        <note>Managing DNS zones in the hub and linking to all spokes is the standard pattern. Avoid creating zone per-spoke — duplicate zone names in the same VNet cause resolution conflicts.</note>
+      </example>
+    </section>
+
+    <section name="validation-script">
+      <p>Validate that Private Endpoint DNS resolves to the private IP (not the public IP) from inside the VNet. Run this from a debug VM in the same subnet:</p>
+      <example type="good" title="Private Endpoint DNS validation script (bash)">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# Verify private endpoint resolves privately from inside the VNet.
+# Usage: ./check_private_endpoint.sh <fqdn> <vnet> <subnet>
+set -euo pipefail
+
+PE_FQDN="${1:?usage: $0 <fqdn> <vnet> <subnet>}"
+VNET="${2}"
+SUBNET="${3}"
+
+# 1. Public DNS — should NOT return the private IP
+PUBLIC_IP=$(dig +short "$PE_FQDN" @1.1.1.1 | tail -1)
+echo "Public DNS resolution (1.1.1.1): $PUBLIC_IP"
+
+# 2. Create a debug VM in the target subnet
+DEBUG_VM=$(az vm create -g rg-net-debug -n debug-$RANDOM \
+  --image Ubuntu2204 --size Standard_B1s \
+  --vnet-name "$VNET" --subnet "$SUBNET" \
+  --admin-username azureuser --generate-ssh-keys --public-ip-address "" \
+  --query 'privateIpAddress' -o tsv)
+
+echo "Debug VM private IP: $DEBUG_VM"
+
+# 3. Resolve from inside the VNet
+PRIVATE_RESOLUTION=$(az vm run-command invoke \
+  -g rg-net-debug -n "$DEBUG_VM" \
+  --command-id RunShellScript \
+  --scripts "getent hosts $PE_FQDN | awk '{print \$1}'" \
+  --query 'value[0].message' -o tsv)
+
+echo "Private DNS resolution from VNet: $PRIVATE_RESOLUTION"
+
+# 4. Validate: private resolution must NOT equal public IP
+if [ "$PRIVATE_RESOLUTION" = "$PUBLIC_IP" ]; then
+  echo "FAIL: DNS resolves to public IP from inside VNet — Private DNS zone not linked!"
+  exit 1
+else
+  echo "PASS: DNS resolves to private IP from inside VNet."
+fi
+]]></code>
+      </example>
+    </section>
+
+    <section name="private-link-checklist">
+      <checklist>
+        <check>Private endpoint created in dedicated private-endpoints subnet (not in delegated subnets).</check>
+        <check>Private DNS zone created with correct `privatelink.*` zone name for the service type.</check>
+        <check>Private DNS zone linked to every VNet that needs to resolve the service (hub + all spokes).</check>
+        <check>DNS A record automatically registered (check Private DNS zone Records after PE creation).</check>
+        <check>Connection approved on the target resource (auto-approve or manual approval).</check>
+        <check>Public network access disabled on the target resource (`public_network_access_enabled = false`).</check>
+        <check>Connectivity tested from within VNet (nslookup or getent hosts returning private IP).</check>
+        <check>No duplicate Private DNS zones for the same service within the same VNet.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>Private Endpoints break public DNS by default in the same VNet. Without the `privatelink.*` zone linked to every consumer VNet, resolution lands on the public IP and connects fine — to the public endpoint, defeating the entire purpose.</description>
+        <reason>Azure DNS resolver checks for Private DNS zone overrides. If no zone is linked, the standard CNAME chain resolves to the public IP. There is no error — the connection succeeds, but it goes over the internet instead of the Azure backbone.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Service Endpoints and Private Endpoints look interchangeable but are not: Service Endpoints leak via subnet identity; Private Endpoints inject an IP into your VNet.</description>
+        <reason>Service Endpoints allow subnet-based access to PaaS services but the service still has a public IP. Private Endpoints make the service genuinely private — no public IP exposure.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Private Endpoints in module or Bicep loops without unique `name` collide silently — last-write-wins.</description>
+        <reason>When creating multiple Private Endpoints via `for_each` or `count`, each must have a unique name. Duplicate names cause silent overwrites in Terraform state or ARM deployment failures.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="configure-private-endpoints"><![CDATA[
+Configure Private Endpoints for the following Azure PaaS services:
+
+Services:
+- Storage Account (blob, file): {storage_name}
+- Key Vault: {keyvault_name}
+- PostgreSQL Flexible Server: {postgres_name}
+- Container Registry: {acr_name}
+
+VNet: {vnet_name}
+Subnet for endpoints: {subnet_name}
+
+Requirements:
+- Private DNS zones with VNet links for hub and all spoke VNets
+- Disable public access on all services
+- Test connectivity from VNet
+
+Output:
+1. Terraform code for private endpoints
+2. Private DNS zone configuration
+3. VNet link configuration
+4. Validation commands
+]]></prompt>
+      <prompt purpose="migrate-service-endpoints-to-pe"><![CDATA[
+Plan migration from service endpoints to private endpoints:
+
+Current state:
+- Services using service endpoints: {service_list}
+- VNets: {vnet_list}
+- Applications: {app_list}
+
+Migration requirements:
+- Zero downtime
+- Rollback plan
+- DNS transition strategy
+- Testing checklist
+
+Output:
+1. Migration plan with phases
+2. Terraform code for private endpoints
+3. DNS transition steps
+4. Testing and validation steps
+5. Rollback procedure
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/private-link/"/>
+      <link href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns"/>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-front-door"/>
+    </see-also>
+  </content>
+</methodology>
