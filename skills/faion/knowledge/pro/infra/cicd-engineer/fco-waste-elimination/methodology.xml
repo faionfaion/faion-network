@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fco-waste-elimination">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Identify and remove idle cloud resources (unattached volumes, orphaned snapshots, stopped instances) and schedule non-production environments to stop during off-hours for 65-70% non-prod savings.</summary>
+    <tags>
+      <tag>finops</tag>
+      <tag>waste-elimination</tag>
+      <tag>cloud-cost</tag>
+      <tag>idle-resources</tag>
+      <tag>non-prod-scheduling</tag>
+    </tags>
+    <category>finops</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-cost-allocation"/>
+      <ref slug="finops-cost-visibility"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Waste Elimination and Non-Production Scheduling</title>
+
+    <summary>Cloud waste elimination targets idle and orphaned resources that generate cost with zero value: unattached EBS volumes, orphaned snapshots, stopped instances, unused Elastic IPs, and idle load balancers. Non-production scheduling shuts down dev, staging, and QA environments during off-hours, achieving 65-70% savings on non-prod compute. These are the fastest FinOps quick wins — implementation in hours, savings immediate.</summary>
+
+    <why>
+      <p>Idle resources accumulate invisibly. A developer launches a test instance, forgets it, and it runs for 6 months. A snapshot retention policy is never set, and snapshots from deleted volumes persist for years. Non-production environments run 24/7 despite being used only during business hours — paying for 168 hours per week when 50 are needed.</p>
+      <p>A real enterprise case: staging ($40,000/month), development ($35,000/month), and QA ($15,000/month) all running 24/7. After implementing scheduling, the combined non-prod bill dropped to $28,200/month — a 69% reduction with no engineering effort beyond initial setup.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>First FinOps action in any environment — waste elimination has zero risk and immediate ROI.</item>
+        <item>Non-production environments that are only used during business hours or weekdays.</item>
+        <item>Any environment where a resource audit has not been performed in the past 30 days.</item>
+        <item>Before a quarterly FinOps review — clean waste first, then analyze the remaining spend meaningfully.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Automated deletion without a dry-run step first — always audit before destroying.</item>
+        <item>Non-production environments that require 24/7 availability for on-call, customer demos, or automated overnight jobs — define explicit exceptions before enabling scheduling.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="idle-resource-categories">
+      <p>Idle resource categories and typical quick-win commands:</p>
+
+      <example type="good" title="Find unattached EBS volumes (AWS CLI)">
+        <code lang="bash"><![CDATA[# Find unattached volumes (status=available means not attached to any instance)
+aws ec2 describe-volumes \
+  --filters Name=status,Values=available \
+  --query 'Volumes[*].{ID:VolumeId,Size:Size,Type:VolumeType,CreateTime:CreateTime}' \
+  --output table
+
+# Typical savings: $500-5,000/month depending on environment size
+# Action: snapshot then delete, or delete directly if clearly orphaned]]></code>
+      </example>
+
+      <example type="good" title="Find unused Elastic IPs (AWS CLI)">
+        <code lang="bash"><![CDATA[# Find unassociated Elastic IPs (charged $3.60/IP/month when not attached)
+aws ec2 describe-addresses \
+  --query 'Addresses[?AssociationId==null].{IP:PublicIp,AllocationId:AllocationId}' \
+  --output table
+
+# Release unused EIPs
+aws ec2 release-address --allocation-id eipalloc-xxxxxxxx]]></code>
+        <note>Small individual savings ($3.60/IP/month) but easy wins. Large environments accumulate dozens of orphaned EIPs.</note>
+      </example>
+
+      <example type="good" title="Find stopped instances (AWS CLI)">
+        <code lang="bash"><![CDATA[# Find instances stopped for more than 7 days
+aws ec2 describe-instances \
+  --filters Name=instance-state-name,Values=stopped \
+  --query 'Reservations[].Instances[*].{ID:InstanceId,Type:InstanceType,StopTime:StateTransitionReason,Tags:Tags}' \
+  --output table
+
+# Note: stopped instances still incur EBS storage charges
+# Terminate if not needed; storage charges stop only after termination]]></code>
+      </example>
+    </section>
+
+    <section name="non-prod-scheduling">
+      <rule testable="true">
+        <statement>All non-production environments (dev, staging, QA, sandbox) MUST implement scheduled shutdown during off-hours. Minimum schedule: stop at 20:00, start at 06:00 on weekdays; stop Friday 20:00, start Monday 06:00 for weekends. Target 70% cost reduction on non-prod compute.</statement>
+        <rationale>Non-production environments are used during business hours only. Running them 24/7 wastes 65-70% of their cost. The AWS Instance Scheduler, Lambda cron, or Terraform scheduled actions implement this in under 2 hours with 65-70% immediate savings.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Instance Scheduler configuration">
+        <code lang="yaml"><![CDATA[# Development schedule: weekdays 08:00-20:00
+dev-schedule:
+  periods:
+    - name: weekday-work-hours
+      begintime: "08:00"
+      endtime: "20:00"
+      weekdays: "mon-fri"
+  timezone: "Europe/Warsaw"
+
+# Staging schedule: broader window for automated tests
+staging-schedule:
+  periods:
+    - name: business-hours-plus
+      begintime: "06:00"
+      endtime: "22:00"
+      weekdays: "mon-fri"
+
+# Results (real case):
+# Staging:     $40,000 → $13,500/month (66% savings)
+# Development: $35,000 → $10,200/month (71% savings)
+# QA:          $15,000 →  $4,500/month (70% savings)
+# Total non-prod: $90,000 → $28,200/month (69% savings)]]></code>
+      </example>
+
+      <example type="bad" title="Non-production environments running 24/7">
+        <code lang="text"><![CDATA[# Staging: $40,000/month running 24/7
+# Used: weekdays 09:00-18:00 = 45 hours/week out of 168 hours total
+# Usage rate: 27%
+# Waste rate: 73%
+# Annual waste: ~$352,000 in staging alone]]></code>
+        <note>A single non-production environment running 24/7 when used 9 hours/day is wasting 73% of its compute cost. Scheduling is the fastest FinOps ROI available.</note>
+      </example>
+    </section>
+
+    <section name="cleanup-automation">
+      <p>Cleanup automation prevents waste from re-accumulating after the initial sweep:</p>
+
+      <rule testable="true">
+        <statement>Implement automated idle resource detection to run weekly. Alerts MUST include: resource ID, age, estimated monthly cost, and last-active date. Cleanup MUST require human approval for production resources; non-production cleanup can be automated with a 7-day warning period.</statement>
+        <rationale>Manual audits decay — after the initial cleanup sprint, the process is forgotten and waste re-accumulates within 3-6 months. Automated weekly scanning with human-readable alerts keeps the pipeline clean continuously.</rationale>
+      </rule>
+
+      <example type="good" title="Lambda cleanup script skeleton (Python)">
+        <code lang="python"><![CDATA[import boto3
+from datetime import datetime, timezone, timedelta
+
+def find_idle_resources(dry_run=True):
+    ec2 = boto3.client('ec2')
+    findings = []
+
+    # Unattached EBS volumes
+    volumes = ec2.describe_volumes(
+        Filters=[{'Name': 'status', 'Values': ['available']}]
+    )['Volumes']
+    for vol in volumes:
+        age_days = (datetime.now(timezone.utc) - vol['CreateTime']).days
+        if age_days > 7:
+            monthly_cost = estimate_ebs_cost(vol['Size'], vol['VolumeType'])
+            findings.append({
+                'type': 'unattached_volume',
+                'id': vol['VolumeId'],
+                'age_days': age_days,
+                'monthly_cost': monthly_cost,
+                'action': 'delete' if dry_run is False else 'review'
+            })
+
+    return findings
+
+# Always run with dry_run=True first
+findings = find_idle_resources(dry_run=True)
+for f in findings:
+    print(f"{f['type']}: {f['id']} | {f['age_days']}d old | ${f['monthly_cost']:.0f}/mo")]]></code>
+        <note>Always implement dry-run mode. Running cleanup without preview destroys legitimate resources and erodes trust in FinOps automation.</note>
+      </example>
+    </section>
+
+    <section name="network-waste">
+      <p>Network cost waste is often overlooked but significant at scale:</p>
+      <list>
+        <item>Keep compute and data in the same region — cross-region data transfer is billed both directions</item>
+        <item>Use VPC Endpoints to avoid NAT Gateway charges for S3 and DynamoDB access</item>
+        <item>Implement CDN for static content — CloudFront egress is cheaper than EC2 egress</item>
+        <item>Review NAT Gateway usage — NAT Gateway charges per GB of data processed, not just hourly</item>
+        <item>Audit API Gateway usage — idle API Gateways with no traffic still incur monthly charges</item>
+      </list>
+    </section>
+
+    <section name="success-metrics">
+      <p>Success metrics for waste elimination program:</p>
+      <list>
+        <item>Cloud waste reduction: target above 25% of baseline spend</item>
+        <item>Untagged resources: target below 5%</item>
+        <item>Spot adoption for eligible workloads: target above 50%</item>
+        <item>Non-prod scheduled savings: target 70% reduction on non-prod compute</item>
+        <item>Budget variance: target below 5% month-over-month</item>
+      </list>
+    </section>
+
+    <section name="prompts">
+      <prompt purpose="identify-idle-resources"><![CDATA[Analyze this resource inventory for potential waste:
+
+[Paste resource list with utilization metrics]
+
+Categories to check:
+- Unattached volumes
+- Unused load balancers
+- Idle instances (< 5% CPU for 7+ days)
+- Orphaned snapshots
+- Unused Elastic IPs
+- Oversized databases
+
+For each category, provide:
+1. Count of wasteful resources
+2. Monthly cost of waste
+3. Confidence level (high/medium/low)
+4. Recommended action (terminate/review/monitor)
+5. Automation script or CLI command to clean up]]></prompt>
+
+      <prompt purpose="non-prod-scheduling"><![CDATA[Design a scheduling strategy for non-production environments:
+
+Environments:
+[List environments with current 24/7 costs]
+
+Usage patterns:
+- Development: [describe when used]
+- Staging: [describe when used]
+- QA: [describe when used]
+
+Constraints:
+- Timezone: [timezone]
+- On-call requirements: [any]
+- Exception process needed: [yes/no]
+
+Please provide:
+1. Recommended schedule per environment
+2. Expected savings calculation
+3. Implementation approach (Instance Scheduler, Lambda, etc.)
+4. Exception handling for after-hours access
+5. Monitoring and alerting setup
+6. Sample schedule configuration]]></prompt>
+
+      <prompt purpose="generate-cleanup-script"><![CDATA[Generate a cleanup script for [AWS/GCP/Azure] to remove:
+
+Resources to clean:
+- Unattached EBS volumes older than [X] days
+- Snapshots older than [X] days without tags
+- Stopped instances for more than [X] days
+- Unused Elastic IPs
+
+Requirements:
+- Dry-run mode first
+- Logging of all actions
+- Exclude resources with specific tags: [list]
+
+Output:
+1. Bash/Python script
+2. IAM permissions required
+3. Scheduling recommendation (cron/Lambda)
+4. Rollback procedure]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Audit for unattached EBS volumes and delete or snapshot-then-delete</check>
+      <check>Find and release orphaned Elastic IPs</check>
+      <check>Identify stopped instances older than 7 days and terminate or restart</check>
+      <check>Review orphaned snapshots older than 90 days without associated volumes</check>
+      <check>Audit idle load balancers with zero traffic</check>
+      <check>Check for unused RDS instances (stopped but still accruing storage cost)</check>
+      <check>Implement scheduled shutdown for all non-prod environments</check>
+      <check>Target 70% non-prod cost reduction via scheduling</check>
+      <check>Set up automated weekly idle resource detection with human-readable alerts</check>
+      <check>Implement S3 lifecycle policies for log buckets and temp storage</check>
+      <check>Enable S3 Intelligent-Tiering for buckets with variable access patterns</check>
+      <check>Review NAT Gateway usage and implement VPC Endpoints where applicable</check>
+      <check>Set up automated dev environment auto-stop after N hours of inactivity</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="fco-rightsizing"/>
+      <ref slug="fco-cost-allocation"/>
+      <ref slug="finops-cost-visibility"/>
+      <link href="https://aws.amazon.com/solutions/implementations/instance-scheduler-on-aws/"/>
+    </see-also>
+  </content>
+</methodology>
