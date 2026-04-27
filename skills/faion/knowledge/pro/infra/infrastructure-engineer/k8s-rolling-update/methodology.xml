@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-rolling-update">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Configure zero-downtime Kubernetes rolling updates with maxUnavailable/maxSurge tuning, minReadySeconds, rollback procedure, and pre/post-update verification.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>rolling-update</tag>
+      <tag>zero-downtime</tag>
+      <tag>rollback</tag>
+      <tag>deployment</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="k8s-deployment-workloads"/>
+      <ref slug="k8s-canary-progressive"/>
+      <ref slug="k8s-scaling-availability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Rolling Update Strategy</title>
+
+    <summary>Rolling update is the default and safest Kubernetes deployment strategy for most production workloads. It gradually replaces old pods with new ones, keeping the service available throughout. Zero-downtime requires maxUnavailable: 0 plus a properly configured readiness probe and minReadySeconds delay. kubectl rollout undo enables fast rollback to any revision in history.</summary>
+
+    <why>
+      <p>The Recreate strategy terminates all old pods before starting new ones — acceptable only in development when running two versions simultaneously is impossible. Rolling update avoids this downtime window, but naive settings (maxUnavailable 25% with no readiness probe) still cause brief outages when pods serve traffic before they are ready. The zero-downtime formula — maxUnavailable: 0, maxSurge: 1, minReadySeconds, readiness probe — is the correct baseline for all production HTTP services.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Updating image versions, configuration, or environment variables on any Deployment.</item>
+        <item>Tuning rollout speed vs. availability for high-replica Deployments.</item>
+        <item>Debugging a stuck or failed rollout.</item>
+        <item>Executing or documenting a rollback procedure.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-risk releases where you need percentage-based traffic control and automated metric analysis — use canary/Argo Rollouts (k8s-canary-progressive).</item>
+        <item>StatefulSets requiring controlled partition rollouts — use updateStrategy.rollingUpdate.partition.</item>
+        <item>Development environments where downtime is acceptable and Recreate is simpler.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strategy-comparison">
+      <list>
+        <item>Rolling Update: zero downtime, kubectl rollout undo for rollback, no traffic control. Low complexity. Default.</item>
+        <item>Recreate: causes downtime (all pods terminated before new ones start), simple rollback. Use only when two versions cannot run simultaneously.</item>
+        <item>Blue-Green: zero downtime, instant rollback via service selector switch, binary traffic control. Medium complexity.</item>
+        <item>Canary: zero downtime, gradual rollback, percentage-based traffic. High complexity — see k8s-canary-progressive.</item>
+      </list>
+    </section>
+
+    <section name="zero-downtime-config">
+      <p>Three settings control the rolling update budget. maxUnavailable: maximum pods that can be down relative to desired replicas (0 = never reduce below desired count). maxSurge: extra pods allowed above desired replicas during the update. minReadySeconds: seconds a new pod must be Running and passing readiness before it is considered Available — catching early failures before the old pod is terminated.</p>
+
+      <rule>
+        <statement>For zero-downtime rolling updates set maxUnavailable: 0 and maxSurge: 1 (or 25% for large Deployments). Set minReadySeconds to 10-30s to catch early probe failures before old pods are removed. The readiness probe MUST validate that the new version can serve traffic.</statement>
+        <rationale>maxUnavailable: 0 guarantees full capacity throughout the update. Without minReadySeconds a crashing new pod can be marked Available before its first restart, causing a brief window where old pods are removed and the new pod has already crashed. The readiness probe is the actual gate — if it is missing or returns 200 immediately regardless of state, minReadySeconds provides no protection.</rationale>
+      </rule>
+
+      <example type="good" title="Zero-downtime rolling update">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0    # Never reduce below desired replicas
+      maxSurge: 1          # Add one pod at a time
+  minReadySeconds: 10      # Wait 10s before considering pod ready
+]]></code>
+        <note>Update sequence: [v1,v1,v1] → [v1,v1,v1,v2-starting] → [v1,v1,v2] → [v1,v1,v2,v2-starting] → ... → [v2,v2,v2]. Three pods always available.</note>
+      </example>
+
+      <example type="good" title="Fast rolling update for large Deployments">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  replicas: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2    # Allow 2 pods down
+      maxSurge: 3          # Allow 3 extra pods
+  minReadySeconds: 5
+]]></code>
+        <note>Accepts brief reduction to 8/10 pods in exchange for faster rollout. Use when cluster capacity allows surge and brief under-capacity is acceptable.</note>
+      </example>
+
+      <example type="bad" title="Missing minReadySeconds with fast-crashing app">
+        <code lang="yaml"><![CDATA[
+strategy:
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 1
+# No minReadySeconds — new pod marked Available immediately
+# If it crashes after 2s, old pod is already gone
+]]></code>
+        <note>A new pod that passes its startup probe but fails 3 seconds later will be marked Available before the crash, allowing the old pod to be terminated and creating a brief outage.</note>
+      </example>
+    </section>
+
+    <section name="rollout-commands">
+      <commands>
+        <command name="trigger-by-image">kubectl set image deployment/web web=registry.example.com/web:2.0.0</command>
+        <command name="trigger-by-apply">kubectl apply -f deployment.yaml</command>
+        <command name="watch-progress">kubectl rollout status deployment/web</command>
+        <command name="pause">kubectl rollout pause deployment/web</command>
+        <command name="resume">kubectl rollout resume deployment/web</command>
+        <command name="view-history">kubectl rollout history deployment/web</command>
+        <command name="rollback-previous">kubectl rollout undo deployment/web</command>
+        <command name="rollback-to-revision">kubectl rollout undo deployment/web --to-revision=3</command>
+        <command name="watch-pods">kubectl get pods -l app=web -w</command>
+        <command name="check-logs">kubectl logs -l app=web --tail=100 -f</command>
+      </commands>
+    </section>
+
+    <section name="pre-update-checklist">
+      <checklist>
+        <check>Current deployment healthy (all pods ready).</check>
+        <check>PodDisruptionBudget configured.</check>
+        <check>HPA behaviour understood (consider disabling during update if metric spikes expected).</check>
+        <check>New image tested in staging.</check>
+        <check>Rollback plan documented.</check>
+        <check>Alert thresholds reviewed.</check>
+        <check>Zero-downtime settings confirmed (maxUnavailable: 0).</check>
+        <check>minReadySeconds set to catch early failures.</check>
+        <check>Readiness probe validates new version.</check>
+      </checklist>
+    </section>
+
+    <section name="during-update-checklist">
+      <checklist>
+        <check>Monitor rollout status: kubectl rollout status.</check>
+        <check>Watch pod transitions: kubectl get pods -w.</check>
+        <check>Check error logs: kubectl logs -f deployment/name.</check>
+        <check>Verify metrics in monitoring system.</check>
+        <check>Test application functionality incrementally.</check>
+      </checklist>
+    </section>
+
+    <section name="post-update-checklist">
+      <checklist>
+        <check>All pods in Running state.</check>
+        <check>All pods pass readiness checks.</check>
+        <check>Application metrics normal.</check>
+        <check>Error rates within threshold.</check>
+        <check>Old ReplicaSet scaled to 0.</check>
+        <check>Document version in changelog.</check>
+      </checklist>
+    </section>
+
+    <section name="rollback-procedure">
+      <p>When to rollback: error rate exceeds threshold (more than 1% increase), P99 latency exceeds threshold (more than 10% increase), crash loop detected, critical functionality broken, security vulnerability discovered.</p>
+
+      <example type="good" title="Full rollback procedure">
+        <code lang="bash"><![CDATA[
+# 1. Check current status
+kubectl rollout status deployment/<name>
+
+# 2. View revision history
+kubectl rollout history deployment/<name>
+
+# 3. Execute rollback
+kubectl rollout undo deployment/<name>
+
+# 4. Monitor rollback
+kubectl rollout status deployment/<name>
+
+# 5. Verify pods
+kubectl get pods -l app=<name>
+
+# 6. Test application
+curl https://app.example.com/health
+]]></code>
+      </example>
+
+      <checklist>
+        <check>Incident documented.</check>
+        <check>Root cause analysis started.</check>
+        <check>Stakeholders notified.</check>
+        <check>Fix branch created.</check>
+        <check>Additional tests added.</check>
+      </checklist>
+    </section>
+
+    <section name="quick-verification">
+      <commands>
+        <command name="deployment-status">kubectl get deployment &lt;name&gt; -o wide</command>
+        <command name="describe-deployment">kubectl describe deployment &lt;name&gt;</command>
+        <command name="pod-status">kubectl get pods -l app=&lt;name&gt; -o wide</command>
+        <command name="rollout-history">kubectl rollout history deployment/&lt;name&gt;</command>
+        <command name="resource-usage">kubectl top pods -l app=&lt;name&gt;</command>
+        <command name="events">kubectl get events --sort-by='.lastTimestamp' | grep &lt;name&gt;</command>
+      </commands>
+    </section>
+
+    <see-also>
+      <link href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment"/>
+      <link href="https://scaleops.com/blog/kubectl-rollout-7-best-practices-for-production-2025/"/>
+      <ref slug="k8s-deployment-workloads"/>
+      <ref slug="k8s-canary-progressive"/>
+      <ref slug="k8s-scaling-availability"/>
+    </see-also>
+  </content>
+</methodology>
