@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-client-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Connect to MCP servers from TypeScript/Python agents and Claude Code. List tools, call tools, read resources, get prompts, handle notifications, and configure hosts.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>client</tag>
+      <tag>agent</tag>
+      <tag>claude-code</tag>
+      <tag>integration</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+      <language>python</language>
+    </languages>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-server-implementation"/>
+      <ref slug="mcp-security"/>
+    </related>
+    <requires>
+      <ref slug="mcp-architecture"/>
+    </requires>
+  </metadata>
+
+  <content>
+    <title>MCP Client Integration — Agents, Claude Code, and Host Configuration</title>
+
+    <summary>Agents consume MCP as clients: the host (Claude Desktop, VS Code, or custom Claude SDK app) launches MCP servers and exposes their tools to the model. In a custom agent, use the MCP Python or TypeScript SDK client to connect to servers, list tools, and forward tool calls the model makes. The model sees MCP tools exactly like native SDK tools — no special handling needed.</summary>
+
+    <why>
+      <p>MCP client code is the bridge between the AI model and the tool server. Correct client implementation ensures capability negotiation, clean reconnection logic, proper user consent gates before sensitive operations, and structured handling of both success and error responses. Without a proper client, the model cannot discover which tools are available or handle tool failures gracefully.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Custom agent that needs to connect programmatically to MCP servers to discover and invoke tools.</item>
+        <item>Claude Code or Claude Desktop setup needing to register local or remote MCP servers.</item>
+        <item>Agent that needs to read resources (files, database schemas) provided by an MCP server.</item>
+        <item>Building a host application that orchestrates multiple MCP servers.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the host (Claude Desktop, VS Code) already handles MCP connections — you only need to add the server to the host config JSON, not write client code.</item>
+        <item>Agent with inline tool definitions that do not need to span multiple hosts — MCP client overhead is not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agentic-workflow">
+      <p>Agents consume MCP as clients: the host (Claude Desktop, VS Code, or custom Claude SDK app) launches MCP servers and exposes their tools to the model. In a custom agent, use the MCP Python or TypeScript SDK client to connect to servers, list tools, and forward tool calls the model makes. The model sees MCP tools exactly like native SDK tools — no special handling needed. For agent-specific server implementations, use FastMCP (Python) for rapid server development; it handles JSON-RPC boilerplate automatically.</p>
+      <list>
+        <item>Recommended for: custom Claude Code agents (~/.claude/agents/) that expose domain tools via MCP servers.</item>
+        <item>Recommended for: any agent needing database, filesystem, or external API access without hardcoded tool code.</item>
+      </list>
+    </section>
+
+    <section name="python-client">
+      <example type="good" title="Python: MCP client in agent (stdio transport)">
+        <code lang="python"><![CDATA[from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def run_with_mcp():
+    async with stdio_client(StdioServerParameters(command="python", args=["server.py"])) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            tools = await session.list_tools()
+            # Pass tools to Claude as tool definitions
+
+async def main():
+    async with stdio_client(
+        command="python",
+        args=["server.py"]
+    ) as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            # Initialize
+            await session.initialize()
+
+            # List tools
+            tools = await session.list_tools()
+            print(f"Available tools: {[t.name for t in tools.tools]}")
+
+            # Call tool
+            result = await session.call_tool(
+                name="get_weather",
+                arguments={"location": "New York"}
+            )
+            print(f"Result: {result.content}")
+
+            # List resources
+            resources = await session.list_resources()
+            print(f"Available resources: {[r.uri for r in resources.resources]}")
+
+            # Read resource
+            content = await session.read_resource(uri="file:///project/README.md")
+            print(f"Content: {content.contents[0].text}")
+
+            # Get prompt
+            prompt = await session.get_prompt(
+                name="code_review",
+                arguments={"code": "def hello(): print('world')"}
+            )
+            print(f"Messages: {prompt.messages}")
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())]]></code>
+        <note>The session context manager handles protocol handshake and cleanup. Always call session.initialize() before listing or calling tools.</note>
+      </example>
+    </section>
+
+    <section name="typescript-client">
+      <example type="good" title="TypeScript: MCP client">
+        <code lang="typescript"><![CDATA[import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+// Create transport to server process
+const transport = new StdioClientTransport({
+  command: "node",
+  args: ["server.js"],
+});
+
+const client = new Client({
+  name: "my-client",
+  version: "1.0.0",
+});
+
+await client.connect(transport);
+
+// List available tools
+const { tools } = await client.listTools();
+console.log("Available tools:", tools.map((t) => t.name));
+
+// Call a tool
+const result = await client.callTool({
+  name: "get_weather",
+  arguments: { location: "New York" },
+});
+console.log("Result:", result.content);
+
+// List resources
+const { resources } = await client.listResources();
+console.log("Available resources:", resources.map((r) => r.uri));
+
+// Read a resource
+const { contents } = await client.readResource({
+  uri: "file:///project/README.md",
+});
+console.log("Content:", contents[0].text);
+
+// Get a prompt
+const { messages } = await client.getPrompt({
+  name: "code_review",
+  arguments: { code: "def hello(): print('world')" },
+});
+console.log("Prompt messages:", messages);
+
+await client.close();]]></code>
+      </example>
+    </section>
+
+    <section name="host-configuration">
+      <p>Claude Desktop and Claude Code load MCP server configurations from JSON config files. No client code is needed — just add the server entry.</p>
+
+      <example type="good" title="claude_desktop_config.json">
+        <code lang="json"><![CDATA[{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/files"]
+    },
+    "database": {
+      "command": "python",
+      "args": ["~/mcp-servers/database-server.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://localhost/mydb"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}]]></code>
+        <note>macOS path: ~/Library/Application Support/Claude/claude_desktop_config.json. Windows: %APPDATA%\Claude\claude_desktop_config.json. Linux: ~/.config/Claude/claude_desktop_config.json.</note>
+      </example>
+
+      <example type="good" title=".claude/settings.json (Claude Code)">
+        <code lang="json"><![CDATA[{
+  "mcpServers": {
+    "project-tools": {
+      "command": "node",
+      "args": ["./mcp/server.js"],
+      "cwd": "${workspaceFolder}"
+    },
+    "database": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "${workspaceFolder}/mcp",
+      "env": {
+        "DATABASE_URL": "${env:DATABASE_URL}"
+      }
+    }
+  }
+}]]></code>
+      </example>
+
+      <example type="good" title="Tool call with structured output (JSON-RPC 2.0)">
+        <code lang="json"><![CDATA[{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"temperature\": 22.5, \"conditions\": \"Partly cloudy\"}"
+      }
+    ],
+    "structuredContent": {
+      "temperature": 22.5,
+      "conditions": "Partly cloudy"
+    }
+  }
+}]]></code>
+      </example>
+
+      <example type="good" title="Resource with annotations">
+        <code lang="json"><![CDATA[{
+  "uri": "file:///project/README.md",
+  "name": "README.md",
+  "mimeType": "text/markdown",
+  "annotations": {
+    "audience": ["user", "assistant"],
+    "priority": 0.8,
+    "lastModified": "2025-01-12T15:00:58Z"
+  }
+}]]></code>
+        <note>Annotations allow the host to prioritize which resources to include in context. priority: 0.8 means high relevance.</note>
+      </example>
+    </section>
+
+    <section name="available-servers">
+      <p>Well-maintained reference MCP servers that integrate directly in Claude Desktop and Claude Code configurations:</p>
+      <list>
+        <item>GitHub MCP Server (OSS) — exposes repos, PRs, issues as tools. Official.</item>
+        <item>Filesystem MCP Server (OSS) — reference server for local file access.</item>
+        <item>Brave Search MCP (OSS) — web search tool via Brave API.</item>
+        <item>Claude Desktop (SaaS client) — natively loads MCP servers from config JSON.</item>
+        <item>VS Code / Copilot (SaaS client) — MCP server support in agent mode.</item>
+        <item>Anthropic SDK (OSS) — custom clients can connect to MCP servers programmatically.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>mcp (Python SDK) — pip install mcp — build MCP servers and clients in Python.</item>
+        <item>@modelcontextprotocol/sdk — npm install @modelcontextprotocol/sdk — TypeScript MCP SDK.</item>
+        <item>fastmcp — pip install fastmcp — high-level Python MCP server framework.</item>
+        <item>mcp-go — go get github.com/mark3labs/mcp-go — Go MCP SDK.</item>
+        <item>mcp inspector — npx @modelcontextprotocol/inspector — debug MCP servers interactively.</item>
+      </list>
+    </section>
+
+    <section name="client-checklist">
+      <checklist>
+        <check>Send initialize request with client capabilities; handle server capability response; store negotiated capabilities.</check>
+        <check>Implement reconnection logic for dropped connections.</check>
+        <check>Call tools/list to discover tools; parse tool schemas for LLM tool definitions.</check>
+        <check>Handle tool results (content array) and tool errors (isError: true).</check>
+        <check>Implement user confirmation for sensitive operations.</check>
+        <check>Subscribe to notifications/tools/list_changed if the server supports it.</check>
+        <check>Call resources/list with pagination; implement resources/read for content retrieval; handle text and binary content.</check>
+        <check>Implement resources/subscribe for updates; handle notifications/resources/updated.</check>
+        <check>Call prompts/list with pagination; implement prompts/get with arguments; parse prompt messages for LLM consumption.</check>
+        <check>If supporting sampling: declare sampling capability; handle sampling/createMessage requests; implement user approval flow.</check>
+        <check>Obtain user consent before tool invocations; show tool inputs before sending to server.</check>
+        <check>Validate tool results before passing to LLM; implement timeouts for all requests; log all operations for audit.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://modelcontextprotocol.io/specification/2025-11-25"/>
+      <link href="https://github.com/modelcontextprotocol/python-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/typescript-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-server-implementation"/>
+      <ref slug="mcp-security"/>
+    </see-also>
+  </content>
+</methodology>
