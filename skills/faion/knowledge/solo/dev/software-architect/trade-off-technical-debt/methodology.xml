@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trade-off-technical-debt">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Technical debt trade-off framework: Fowler quadrant, debt classification, speed vs quality decisions, debt registry template, repayment triggers, and LLM prompts.</summary>
+    <tags>
+      <tag>technical-debt</tag>
+      <tag>trade-off</tag>
+      <tag>refactoring</tag>
+      <tag>architecture</tag>
+      <tag>speed-vs-quality</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trade-off-decision-matrix"/>
+      <ref slug="trade-off-decision-methods"/>
+      <ref slug="architecture-decision-records"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Technical Debt Trade-off Framework</title>
+
+    <summary>Technical debt is the implied cost of rework caused by choosing an easier but limited solution now instead of a better approach that would take longer. The Fowler quadrant classifies debt by deliberate/inadvertent and reckless/prudent axes. The key decision: is the deadline real and is the debt localized? Maintain a 15-20% debt budget; document every deliberate debt item with a trigger for repayment.</summary>
+
+    <why>
+      <p>Technical debt is not inherently bad — deliberate prudent debt (ship now, fix later) is a valid trade-off when the deadline is real and the debt is localized. The cost is future velocity: developer time spent on workarounds, increased bug frequency, deployment friction. The framework gives teams a shared vocabulary (Fowler's quadrant), a debt budget, and a registry that converts implicit debt into trackable artifacts. Without this, teams either over-engineer (no debt ever) or accumulate reckless debt that collapses velocity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deciding whether to ship a feature with shortcuts or invest in clean implementation first.</item>
+        <item>Deciding whether to refactor existing code before adding a new feature in the same area.</item>
+        <item>Prioritizing which technical debt items to pay off in a given sprint or quarter.</item>
+        <item>Classifying existing debt to communicate its severity and repayment urgency to stakeholders.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the "debt" is actually a fundamental design flaw — classify as an architectural risk requiring ATAM analysis, not a debt item.</item>
+        <item>When the code area will not be touched again for 2+ years — low future impact means debt repayment ROI is negative; document and accept.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fowler-quadrant">
+      <p>Martin Fowler's Technical Debt Quadrant classifies debt on two axes:</p>
+      <list>
+        <item>Deliberate Reckless — "We do not have time for design." Fastest short-term, most destructive long-term. Should not be accepted.</item>
+        <item>Deliberate Prudent — "We must ship now and deal with it later." Acceptable when the deadline is real and the team commits to repayment. Must be documented.</item>
+        <item>Inadvertent Reckless — "What is layering?" Caused by lack of knowledge or skill. Address through training and code review, not just documentation.</item>
+        <item>Inadvertent Prudent — "Now we know a better approach." Inevitable and healthy; the code was right given what the team knew. Refactor when the area is next touched.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every deliberate debt item MUST be classified by Fowler quadrant, documented in the debt registry with location, business reason, severity, developer impact per week, and a trigger for repayment. Reckless deliberate debt MUST NOT be accepted without escalation to engineering leadership.</statement>
+        <rationale>Undocumented debt converts deliberate prudent debt into inadvertent reckless debt over time as the original context is lost. The registry creates accountability and prevents the "we'll fix it later" promise from evaporating.</rationale>
+      </rule>
+    </section>
+
+    <section name="speed-vs-quality-decision">
+      <p>Decision framework for speed vs quality trade-offs. For a given feature, apply this quick assessment:</p>
+
+      <how-to>
+        <step>Classify the proposed debt: what type (Fowler quadrant) and where is it located (code, architectural, test, documentation, infrastructure)?</step>
+        <step>Assess current impact: developer time per week on workarounds, bug frequency in affected area, deployment friction level (H/M/L), customer impact (H/M/L).</step>
+        <step>Evaluate time pressure: is the deadline real? What is the cost of missing it? Can scope be reduced instead of taking debt?</step>
+        <step>Check the debt budget: is the team within 15-20% debt allocation? Is existing debt manageable?</step>
+        <step>Check future touch frequency: will this area be changed again in the next quarter? Will 2 or more additional features land in this code? If yes, repayment ROI is high.</step>
+        <step>Make decision: ship on debt (document immediately, set trigger), refactor first (justify against deadline), incremental refactor (Boy Scout Rule — clean what you touch), or scope reduction (preferred over reckless debt).</step>
+      </how-to>
+
+      <example type="good" title="Discount codes feature — technical debt decision">
+        <code lang="text"><![CDATA[Context: Add discount codes to checkout. Checkout code is messy (MVP technical debt, 8 months old).
+Business: Marketing campaign launching in 3 weeks, Q4 revenue target depends on it.
+2 more checkout features planned this quarter.
+
+Options:
+A: Ship on debt — add to messy code — 1 week
+B: Refactor first — clean checkout then add — 3 weeks
+C: Parallel refactor — new service, gradual migration — 4 weeks
+D: Incremental — Boy Scout Rule, refactor touched code only — 2 weeks
+
+Analysis:
+- Is deadline real? Yes — marketing campaign, revenue impact.
+- Will this area be touched again? Yes — 2 more features planned.
+- Current debt budget? At 25% (above 15-20% target).
+- Is debt localized? Yes — checkout service only.
+
+Decision: Option D (Incremental Refactor)
+  Get: meet deadline, reduce some debt, better test coverage, team morale
+  Lose: 1 week longer than shipping dirty, not full cleanup, not perfect architecture]]></code>
+      </example>
+
+      <antipattern>
+        <description>Accepting deliberate reckless debt ("no time for design") without documentation or escalation.</description>
+        <reason>Reckless deliberate debt compounds. Without documentation, the next engineer adds more shortcuts on top, never knowing that refactoring was intended. This transforms a one-time trade-off into permanent architectural entropy.</reason>
+      </antipattern>
+    </section>
+
+    <section name="debt-registry">
+      <p>Every deliberate debt item must be documented in the debt registry. Minimum required fields:</p>
+      <list>
+        <item>Debt ID (DEBT-NNN).</item>
+        <item>Classification: Fowler quadrant (deliberate/inadvertent, prudent/reckless), debt type (code/architectural/test/documentation/infrastructure), severity (critical/high/medium/low).</item>
+        <item>Description: what shortcut was taken, why it was necessary.</item>
+        <item>Location: affected files/services.</item>
+        <item>Impact: developer time per week, bug frequency, deployment friction, customer impact.</item>
+        <item>Remediation plan: step-by-step approach.</item>
+        <item>Trigger for repayment: specific sprint/quarter or trigger conditions (next feature in this area, third bug related, deadline date).</item>
+      </list>
+
+      <example type="good" title="Debt registry entry">
+        <code lang="text"><![CDATA[## Technical Debt Item: DEBT-042
+
+**Location:** checkout/services/order_processor.py
+**Type:** Deliberate prudent
+**Created:** 2025-01-15
+**Severity:** Medium
+**Impact:** 2-3 hours/week developer friction
+
+**Description:**
+Order calculation logic duplicated, discount logic added incrementally.
+
+**Remediation Plan:**
+- Extract PricingService (2 days)
+- Add comprehensive unit tests (1 day)
+- Refactor order_processor to use PricingService (2 days)
+
+**Trigger for Remediation:**
+- Next major checkout feature OR
+- Third bug in this area OR
+- Q2 2025 (whichever first)
+
+**Status:** Partial remediation in Sprint 24]]></code>
+      </example>
+    </section>
+
+    <section name="post-debt-review">
+      <p>Post-Decision Review Checklist — for reviewing trade-off decisions after implementation:</p>
+      <checklist>
+        <check>Collect outcome data: did we achieve expected benefits, did predicted risks materialize, were there unexpected consequences?</check>
+        <check>Validate trade-offs: were trade-offs as expected, any trade-offs we did not anticipate?</check>
+        <check>Document lessons learned: what would we do differently, what worked well?</check>
+        <check>Update decision records: mark decision status, add outcome notes, link to follow-up decisions.</check>
+        <check>Share learnings: team retrospective, knowledge base update.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="debt assessment">
+<![CDATA[Assess this technical debt and advise on the trade-off:
+
+Code/System affected: [description]
+Current state: [what's wrong]
+How it happened: [deliberate/accidental, reason]
+
+Impact:
+- Developer time wasted: [estimate]
+- Bug frequency: [history]
+- Customer impact: [description]
+
+Our situation:
+- Upcoming deadline: [date] for [feature]
+- Team capacity: [availability]
+- Current debt load: [high/medium/low]
+
+Analyze:
+1. Classify using Fowler's Technical Debt Quadrant
+2. Should we pay this debt now or accept it?
+3. If accept: what is the trigger to revisit?
+4. If pay: what is the incremental approach?
+5. What is the cost of NOT addressing this in 6 months?]]>
+      </prompt>
+
+      <prompt purpose="speed vs quality decision">
+<![CDATA[Help me make a speed vs quality trade-off decision:
+
+Feature needed: [description]
+Deadline: [date and why it matters]
+
+Options:
+A) Ship fast with shortcuts: [specific shortcuts being considered]
+B) Build properly: [what "properly" means here]
+C) Reduce scope: [what could be cut]
+
+Questions:
+1. How real is this deadline? What if we miss it?
+2. What is the true cost of each shortcut?
+3. Will we actually fix this later? (Be honest about typical behavior)
+4. Is there a creative Option D?
+
+Include: A framework for when to accept vs reject speed trade-offs.]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="trade-off-decision-matrix"/>
+      <ref slug="architecture-decision-records"/>
+      <link href="https://martinfowler.com/bliki/TechnicalDebtQuadrant.html"/>
+    </see-also>
+  </content>
+</methodology>
