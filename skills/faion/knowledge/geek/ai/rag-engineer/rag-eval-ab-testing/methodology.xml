@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-eval-ab-testing">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Compare two RAG configurations (chunk size, embedding model, reranker, top-K) side-by-side using a shared question set, measuring latency, source count, and quality metrics per configuration.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>ab-testing</tag>
+      <tag>evaluation</tag>
+      <tag>configuration</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-test-set-generation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>RAG A/B Testing Framework</title>
+
+    <summary>A/B testing for RAG configurations runs the same question set through two pipeline variants and compares their results. The baseline framework measures latency and source count; a full quality comparison requires integrating the RAGAS evaluation loop per configuration. Use A/B testing to validate parameter changes (chunk size, embedding model, top-K, reranker) before promoting config B to production.</summary>
+
+    <why>
+      <p>RAG pipelines have many interacting configuration parameters — chunk size, chunk overlap, embedding model, top-K, similarity threshold, reranker. Changing one parameter can improve faithfulness while degrading precision@5. The only reliable way to validate a configuration change is to run the same test set through both variants and compare metrics head-to-head. Without A/B testing, the team is flying blind on config changes, and "feels better" is the decision criterion.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Comparing different chunk sizes (e.g., 500 vs 1000 tokens) for the same corpus.</item>
+        <item>Evaluating the impact of adding or swapping a reranker model.</item>
+        <item>Comparing embedding models (text-embedding-3-large vs voyage-3) on retrieval quality.</item>
+        <item>Validating any config parameter change before promoting it to production.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When the test set has fewer than 20 questions — sample size is too small for reliable comparison; differences are within noise.</item>
+        <item>When the two configurations are not isolated — if they share index state or caches, results are not comparable.</item>
+        <item>When only comparing latency matters and quality is irrelevant — skip A/B testing, just benchmark directly.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule>
+        <statement>RAGABTest.compare_results() as shown compares only latency and source count — not quality metrics. Extend it with the full RAGAS eval loop before using it for config promotion decisions.</statement>
+        <rationale>Latency alone is an insufficient proxy for quality. A configuration that returns fewer, lower-quality sources faster looks better in the baseline compare_results() but will score worse on faithfulness and precision@5 in production.</rationale>
+      </rule>
+      <rule>
+        <statement>Run A/B test questions in interleaved order (one question through A then immediately through B) to minimize temporal bias from corpus or model changes.</statement>
+        <rationale>If all A questions are run first and the index is updated or the LLM provider changes between runs, the comparison is confounded by timing, not configuration.</rationale>
+      </rule>
+    </rules>
+
+    <section name="ab-test-class">
+      <p>The RAGABTest class takes two configuration dicts and two RAG pipeline instances, runs the test question set through both, and produces a comparison summary. The compare_results method aggregates latency and source count; extend it with the RAGAS loop to add quality metrics.</p>
+
+      <example type="good" title="A/B test: compare chunk sizes">
+        <code lang="python"><![CDATA[
+from typing import List
+
+class RAGABTest:
+    """A/B testing for RAG configurations."""
+
+    def __init__(self, config_a: dict, config_b: dict):
+        self.config_a = config_a
+        self.config_b = config_b
+        self.results_a = []
+        self.results_b = []
+
+    def run_test(
+        self,
+        test_questions: List[str],
+        rag_a,  # RAG pipeline with config A
+        rag_b   # RAG pipeline with config B
+    ):
+        """Run A/B test on both configurations."""
+        for question in test_questions:
+            # Test config A
+            response_a = rag_a.query(question)
+            eval_a = self._evaluate(question, response_a)
+            self.results_a.append(eval_a)
+
+            # Test config B
+            response_b = rag_b.query(question)
+            eval_b = self._evaluate(question, response_b)
+            self.results_b.append(eval_b)
+
+    def _evaluate(self, question: str, response: dict) -> dict:
+        """Quick evaluation of single response."""
+        return {
+            "question": question,
+            "answer": response["answer"],
+            "latency": response.get("latency", 0),
+            "num_sources": len(response.get("sources", []))
+        }
+
+    def compare_results(self) -> dict:
+        """Compare results between configurations."""
+        def avg_metric(results: List[dict], key: str) -> float:
+            values = [r.get(key, 0) for r in results]
+            return sum(values) / len(values) if values else 0
+
+        return {
+            "config_a": {
+                "name": self.config_a.get("name", "Config A"),
+                "avg_latency": avg_metric(self.results_a, "latency"),
+                "total_questions": len(self.results_a)
+            },
+            "config_b": {
+                "name": self.config_b.get("name", "Config B"),
+                "avg_latency": avg_metric(self.results_b, "latency"),
+                "total_questions": len(self.results_b)
+            }
+        }
+
+# Example: Compare chunk sizes
+config_a = {"name": "Chunk 500", "chunk_size": 500}
+config_b = {"name": "Chunk 1000", "chunk_size": 1000}
+
+ab_test = RAGABTest(config_a, config_b)
+# ab_test.run_test(test_questions, rag_pipeline_500, rag_pipeline_1000)
+# comparison = ab_test.compare_results()
+]]></code>
+      </example>
+
+      <example type="bad" title="Using latency-only comparison for config promotion">
+        <code lang="python"><![CDATA[
+# Promoting config B because it's 200ms faster — without quality check
+comparison = ab_test.compare_results()
+if comparison["config_b"]["avg_latency"] < comparison["config_a"]["avg_latency"]:
+    promote_to_production(config_b)  # WRONG: quality not checked
+]]></code>
+        <note>Config B may be faster because it returns fewer (or less relevant) chunks. Always compare quality metrics alongside latency.</note>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Running all A questions first, then all B questions, without interleaving.</description>
+      <reason>LLM API performance, index state, and model weight updates can differ between batch runs. Non-interleaved A/B tests confound configuration differences with temporal effects, producing unreliable comparisons.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Treating compare_results() latency output as a sufficient signal for configuration decisions.</description>
+      <reason>The baseline RAGABTest only measures latency and source count. Quality metrics (faithfulness, precision@5, MRR) are not computed. A faster config that returns less relevant sources looks better in compare_results but is worse for users.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-test-set-generation"/>
+      <link href="https://docs.ragas.io/"/>
+      <link href="https://www.pinecone.io/learn/rag-evaluation/"/>
+    </see-also>
+  </content>
+</methodology>
