@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="chunking-document-structure">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Split Markdown by header hierarchy and HTML by sectioning elements, injecting parent header paths into each chunk to preserve document context for retrieval.</summary>
+    <tags>
+      <tag>chunking</tag>
+      <tag>markdown</tag>
+      <tag>html</tag>
+      <tag>document-structure</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>chunking</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-semantic"/>
+      <ref slug="chunking-code-ast"/>
+      <ref slug="chunking-production-service"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>beautifulsoup4</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>Document Structure Chunking (Markdown and HTML)</title>
+
+    <summary>MarkdownChunker splits documents at header boundaries while propagating parent headers into child chunks as a header_path. HTMLChunker uses BeautifulSoup to split by section/article/div elements. Both strategies preserve navigational context inside every chunk, improving embedding quality and retrieval traceability.</summary>
+
+    <why>
+      <p>Markdown and HTML documents organize information hierarchically. Splitting them by character count discards the hierarchy: a chunk that says "The method returns None" without its enclosing section header "Error Handling" loses the context a retriever needs to decide relevance. MarkdownChunker captures that context by inheriting parent headers and embedding their titles inside each chunk text.</p>
+      <p>HTML sectioning elements (section, article, div with headings) carry the same structural signal. HTMLChunker uses BeautifulSoup to walk the DOM rather than text patterns, handling attributes, nested elements, and script/style tags correctly.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Processing Markdown documentation sites, wikis, or README files where header hierarchy must be preserved.</item>
+        <item>Indexing HTML pages that use semantic sectioning elements (section, article).</item>
+        <item>Any corpus where retrieval queries reference section context ("what does the authentication section say about tokens?").</item>
+        <item>Documentation RAG pipelines for LLM tool/API references, where a function's section parent provides critical context.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Flat HTML pages with no sectioning elements — HTMLChunker produces one giant chunk because there are no div/section/article boundaries.</item>
+        <item>Code files — use chunking-code-ast; MarkdownChunker can produce very small chunks on single-line code blocks that embed poorly.</item>
+        <item>Unstructured prose (news, essays) without headers — use chunking-semantic or RecursiveChunker instead.</item>
+        <item>MarkdownChunker without min_chunk_size guard on documentation with many shallow headers — single-line list items produce near-zero vectors that pollute nearest-neighbor results.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="markdown-chunker-impl">
+      <rule testable="true">
+        <statement>MarkdownChunker MUST set include_header_in_chunk=True by default. Every produced chunk MUST carry a header_path field that is the concatenation of all ancestor header titles joined by " > ". When a content block exceeds max_chunk_size, MarkdownChunker MUST split it and carry the same header_path into each sub-chunk.</statement>
+        <rationale>Embedding the header path inside the chunk text improves retrieval recall for queries that reference section context. Without header_path propagation, sub-chunks of large sections lose their navigational anchor and become indistinguishable from each other in embedding space.</rationale>
+      </rule>
+
+      <example type="good" title="MarkdownChunker with header path propagation">
+        <code lang="python"><![CDATA[
+import re
+from typing import List, Dict
+
+class MarkdownChunker:
+    """Chunk Markdown documents by headers and structure."""
+
+    def __init__(
+        self,
+        max_chunk_size: int = 1000,
+        include_header_in_chunk: bool = True
+    ):
+        self.max_chunk_size = max_chunk_size
+        self.include_header = include_header_in_chunk
+
+    def chunk(self, text: str) -> List[Dict]:
+        """Split Markdown by headers."""
+        # Pattern for headers
+        header_pattern = r'^(#{1,6})\s+(.+)$'
+
+        lines = text.split('\n')
+        chunks = []
+        current_chunk = {"headers": [], "content": [], "level": 0}
+
+        for line in lines:
+            header_match = re.match(header_pattern, line)
+
+            if header_match:
+                # Save current chunk if not empty
+                if current_chunk["content"]:
+                    chunks.append(self._finalize_chunk(current_chunk))
+
+                # Start new chunk
+                level = len(header_match.group(1))
+                title = header_match.group(2)
+
+                # Inherit higher-level headers
+                parent_headers = [
+                    h for h in current_chunk["headers"]
+                    if h["level"] < level
+                ]
+
+                current_chunk = {
+                    "headers": parent_headers + [{"level": level, "title": title}],
+                    "content": [],
+                    "level": level
+                }
+
+                if self.include_header:
+                    current_chunk["content"].append(line)
+            else:
+                current_chunk["content"].append(line)
+
+                # Check size
+                content_text = '\n'.join(current_chunk["content"])
+                if len(content_text.split()) > self.max_chunk_size:
+                    # Split current chunk
+                    chunks.append(self._finalize_chunk(current_chunk))
+                    current_chunk["content"] = []
+
+        # Don't forget last chunk
+        if current_chunk["content"]:
+            chunks.append(self._finalize_chunk(current_chunk))
+
+        return chunks
+
+    def _finalize_chunk(self, chunk: Dict) -> Dict:
+        """Prepare chunk for output."""
+        header_path = " > ".join(h["title"] for h in chunk["headers"])
+        return {
+            "text": '\n'.join(chunk["content"]).strip(),
+            "header_path": header_path,
+            "level": chunk["level"],
+            "metadata": {
+                "headers": [h["title"] for h in chunk["headers"]]
+            }
+        }
+]]></code>
+        <note>header_path can exceed 200 chars for deeply nested docs. Verify against vector DB metadata field limits before indexing.</note>
+      </example>
+
+      <antipattern>
+        <description>Running MarkdownChunker without a min_chunk_size guard on documentation heavy with one-line code blocks or list items.</description>
+        <reason>MarkdownChunker can produce very small chunks (single-line code blocks, list items) that embed poorly. min_chunk_size guard is essential — empty code blocks and single-word paragraphs produce near-zero vectors that pollute nearest-neighbor results.</reason>
+      </antipattern>
+    </section>
+
+    <section name="html-chunker-impl">
+      <rule testable="true">
+        <statement>HTMLChunker MUST use BeautifulSoup with find_all(['section', 'article', 'div']) as the primary splitting surface. For each element, it MUST extract the nearest heading (h1-h6) as the chunk header. Elements exceeding max_chunk_size MUST be word-split into numbered parts carrying the same header. The caller MUST pass well-formed HTML; malformed input behavior is undefined.</statement>
+        <rationale>Flat text splitting of HTML includes tag noise and misses structural boundaries. BeautifulSoup's DOM walk respects nesting and script/style tags. Numbered parts preserve source traceability when a large section splits into multiple chunks.</rationale>
+      </rule>
+
+      <example type="good" title="HTMLChunker using BeautifulSoup">
+        <code lang="python"><![CDATA[
+from typing import List, Dict
+
+class HTMLChunker:
+    """Chunk HTML documents by structure."""
+
+    def __init__(self, max_chunk_size: int = 1000):
+        self.max_chunk_size = max_chunk_size
+
+    def chunk(self, html: str) -> List[Dict]:
+        """Split HTML by structural elements."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(html, 'html.parser')
+        chunks = []
+
+        # Process by sections
+        for section in soup.find_all(['section', 'article', 'div']):
+            # Get section header if exists
+            header = section.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+            header_text = header.get_text() if header else ""
+
+            # Get text content
+            text = section.get_text(separator=' ', strip=True)
+
+            if len(text.split()) <= self.max_chunk_size:
+                chunks.append({
+                    "text": text,
+                    "header": header_text,
+                    "tag": section.name
+                })
+            else:
+                # Split large sections
+                sub_chunks = self._split_text(text, header_text)
+                chunks.extend(sub_chunks)
+
+        return chunks
+
+    def _split_text(self, text: str, header: str) -> List[Dict]:
+        """Split large text sections."""
+        words = text.split()
+        chunks = []
+
+        for i in range(0, len(words), self.max_chunk_size):
+            chunk_words = words[i:i + self.max_chunk_size]
+            chunks.append({
+                "text": " ".join(chunk_words),
+                "header": header,
+                "part": i // self.max_chunk_size + 1
+            })
+
+        return chunks
+]]></code>
+        <note>Flat HTML pages with no section/article/div elements produce one giant chunk — validate input has structural elements before using HTMLChunker.</note>
+      </example>
+
+      <antipattern>
+        <description>Using HTMLChunker on flat HTML pages (marketing landing pages, email templates) that have no semantic sectioning elements.</description>
+        <reason>HTMLChunker targets section/article/div; flat HTML pages with no sectioning elements produce one giant chunk. Pre-check structure with soup.find('section') or soup.find('article') before choosing this chunker.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tooling">
+      <list>
+        <item>langchain-text-splitters — MarkdownHeaderTextSplitter: `pip install langchain-text-splitters`</item>
+        <item>beautifulsoup4 — HTML parsing for HTMLChunker: `pip install beautifulsoup4`</item>
+        <item>Unstructured.io — pre-processes PDFs/DOCX into clean structural elements before MarkdownChunker</item>
+        <item>LlamaParse (SaaS) — table-aware PDF parsing; critical before MarkdownChunker on academic/legal PDFs</item>
+        <item>Docling (IBM OSS) — local, preserves document layout hierarchy; good for enterprise air-gap deployments</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>MarkdownChunker inherits parent headers into sub-chunks — this is intentional but can cause header_path to be more than 200 chars for deeply nested docs, which breaks some vector DB metadata limits. Truncate or hash header_path before storing in the index.</p>
+      <p>When MarkdownChunker is used with include_header_in_chunk=True, the header line appears in the chunk text, so embedding the chunk naturally includes section context without an extra metadata field lookup at query time.</p>
+    </section>
+
+    <checklist>
+      <check>Set include_header_in_chunk=True — embedding header path inside chunk text improves retrieval recall.</check>
+      <check>Guard against header_path exceeding vector DB metadata limits (commonly 200 chars) for deeply nested documents.</check>
+      <check>Pre-validate HTML input has sectioning elements before applying HTMLChunker.</check>
+      <check>Apply a min_chunk_size filter after chunking to discard near-empty chunks from single-line code blocks or list items.</check>
+      <check>Verify chunk size distribution: log warning if more than 5% of chunks exceed max_chunk_size.</check>
+      <check>Use LlamaParse or Docling to pre-process PDFs before applying MarkdownChunker — raw PDF text lacks structural markers.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="chunking-basics"/>
+      <ref slug="chunking-semantic"/>
+      <ref slug="chunking-production-service"/>
+      <link href="https://python.langchain.com/docs/modules/data_connection/document_transformers/"/>
+    </see-also>
+  </content>
+</methodology>
