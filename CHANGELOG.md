@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- refactor: 3/3 free-tier methodologies migrated to new shape (batch: python-typing, python-web-frameworks, api-testing)
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-coverage, code-decomposition-patterns, code-decomposition-principles)
 - refactor: 3/3 javascript-developer methodologies migrated to new shape (batch: decomposition-react, javascript-testing, nodejs-express)
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-review-process, documentation, mob-programming)
