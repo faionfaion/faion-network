@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="arch-pattern-ddd">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Domain-Driven Design (DDD): ubiquitous language, bounded contexts, aggregates, domain events, and context maps for complex multi-subdomain systems.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>bounded-context</tag>
+      <tag>aggregate</tag>
+      <tag>domain-events</tag>
+      <tag>ubiquitous-language</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-hexagonal"/>
+      <ref slug="arch-pattern-onion"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Domain-Driven Design (DDD)</title>
+
+    <summary>Eric Evans (2003) defined DDD as a way to tackle complexity in the heart of software by building a shared model between developers and domain experts. Strategic DDD identifies bounded contexts, subdomains, and context maps. Tactical DDD provides building blocks: Entities, Value Objects, Aggregates, Domain Events, Repositories, Domain Services, and Factories.</summary>
+
+    <why>
+      <p>Large software systems fail not because of technical complexity but because of domain complexity: multiple teams using the same words to mean different things, models that work in one context but break in another, and business rules that are scattered across layers. DDD addresses this by making the domain model the center of the design process and by enforcing explicit boundaries (bounded contexts) where each model is internally consistent.</p>
+      <p>DDD is complementary to, not a replacement for, Clean or Hexagonal Architecture. It typically layers on top: each bounded context implements its own Clean or Hexagonal structure, while DDD's strategic patterns define the boundaries between contexts and the relationships between teams and models.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Complex domains with intricate, non-obvious business rules that require close collaboration with domain experts.</item>
+        <item>Systems with multiple clearly identifiable bounded contexts where the same concept (e.g., "Customer") means different things in different parts of the domain.</item>
+        <item>Large-scale applications where consistency boundaries (aggregate invariants) are critical and transaction scope must be explicit.</item>
+        <item>Microservices systems where bounded context boundaries map naturally to service boundaries.</item>
+        <item>Teams with access to domain experts willing to develop and maintain a ubiquitous language.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD domains with no real business rules — Entities, Aggregates, and Repositories are overhead with nothing to protect.</item>
+        <item>Teams without access to domain experts — DDD requires collaborative domain modeling; without it, you get well-named but shallow domains.</item>
+        <item>Prototypes where the domain is still being discovered — stabilise the model first, then apply DDD structure.</item>
+        <item>Time-pressured MVPs — the investment in ubiquitous language and context mapping pays off over months, not days.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="strategic-ddd">
+      <p>Strategic DDD shapes the large-scale system structure before any code is written.</p>
+
+      <list>
+        <item>Bounded Context: an explicit boundary within which a domain model is internally consistent and unambiguous. The same word means the same thing inside a context; different contexts may use the same word differently.</item>
+        <item>Ubiquitous Language: the shared vocabulary between developers and domain experts, used consistently in code, conversations, documentation, and tests.</item>
+        <item>Subdomain: a part of the problem space. Core subdomains are the competitive differentiator; supporting subdomains enable the core; generic subdomains are commodity (buy or use open source).</item>
+        <item>Context Map: explicit documentation of relationships between bounded contexts (Partnership, Customer-Supplier, Conformist, Anti-Corruption Layer, Open Host Service, Published Language).</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every bounded context MUST have its own ubiquitous language documented. Terms that exist in multiple contexts MUST be explicitly mapped in the context map with their translation rules. Never share a single model across context boundaries — cross-context references use IDs only.</statement>
+        <rationale>Shared models across contexts create coupling that forces coordinated changes across teams and contexts. Context isolation is the key mechanism that allows bounded contexts to evolve independently.</rationale>
+      </rule>
+
+      <example type="good" title="Context map (text diagram)">
+        <code lang="text"><![CDATA[
+E-Commerce Context Map
+────────────────────────────────────────────────────────
+Ordering Context
+  - "Customer" = buyer with shipping address and order history
+  - "Product" = item identifier + price snapshot (no inventory data)
+  ↔ Partnership ↔ Payments Context (shared domain events)
+  → Customer-Supplier → Inventory Context (Ordering consumes reservation events)
+
+Payments Context
+  - "Customer" = billing entity with payment methods
+  - No concept of "Product" — only amount and currency
+
+Inventory Context
+  - "Product" = physical SKU with warehouse location and stock count
+  - No concept of "Customer"
+
+Shared Kernel: Money (Amount + Currency), UserId
+────────────────────────────────────────────────────────
+]]></code>
+      </example>
+    </section>
+
+    <section name="tactical-ddd">
+      <p>Tactical DDD building blocks for implementing a bounded context:</p>
+
+      <list>
+        <item>Entity: an object defined by its identity (ID) rather than its attributes. Two entities with the same ID are the same entity regardless of attribute differences.</item>
+        <item>Value Object: an immutable object defined by its attributes. Two value objects with the same attributes are equal. Has no identity. Examples: Money, Address, Email.</item>
+        <item>Aggregate: a cluster of entities and value objects treated as a single transactional unit. The Aggregate Root is the only entry point; external objects reference the aggregate by root ID only.</item>
+        <item>Domain Event: a fact that something significant happened in the domain. Past tense: OrderPlaced, PaymentFailed, StockReserved. Events decouple contexts.</item>
+        <item>Repository: a collection-like interface for aggregates. Returns fully-formed aggregate roots. Never returns raw ORM rows.</item>
+        <item>Domain Service: stateless service for domain logic that spans multiple aggregates or does not naturally belong to any single entity.</item>
+        <item>Factory: encapsulates complex aggregate creation logic. Ensures the aggregate is valid on construction.</item>
+      </list>
+    </section>
+
+    <section name="aggregate-rules">
+      <p>Aggregate design rules are the most critical tactical decisions in DDD:</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>Aggregates MUST reference each other by ID only, never by direct object reference. Cross-aggregate operations MUST NOT be wrapped in a single database transaction.</statement>
+          <rationale>Direct object references create hidden transactional coupling. Each aggregate is a consistency boundary; cross-aggregate consistency is achieved through eventual consistency via domain events.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>One aggregate = one transaction boundary. A use case that modifies two aggregates MUST use domain events or a Saga/process-manager pattern for cross-aggregate coordination.</statement>
+          <rationale>Multi-aggregate transactions in a single database transaction are a common DDD mistake. They scale poorly and blur the consistency boundaries.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>All access to entities within an aggregate MUST go through the aggregate root. External code MUST NOT hold references to child entities.</statement>
+          <rationale>The aggregate root enforces all invariants for the cluster. Bypassing it via direct child entity access can leave the aggregate in an invalid state.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>When the aggregate root is deleted, all entities and value objects within the aggregate MUST be deleted.</statement>
+          <rationale>The aggregate root is the lifecycle controller for the entire cluster. Orphaned child entities represent data integrity violations.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="folder-structure">
+      <p>Canonical TypeScript folder layout for DDD with multiple bounded contexts:</p>
+      <code lang="text"><![CDATA[
+src/
+├── bounded-contexts/
+│   ├── ordering/                  # Ordering bounded context
+│   │   ├── domain/
+│   │   │   ├── aggregates/
+│   │   │   │   └── Order/
+│   │   │   │       ├── Order.ts          # Aggregate root
+│   │   │   │       ├── OrderItem.ts      # Child entity
+│   │   │   │       └── OrderStatus.ts    # Value object
+│   │   │   ├── events/
+│   │   │   │   ├── OrderPlaced.ts        # Domain event
+│   │   │   │   └── OrderShipped.ts
+│   │   │   ├── repositories/
+│   │   │   │   └── IOrderRepository.ts   # Interface only
+│   │   │   └── services/
+│   │   │       └── OrderPricingService.ts
+│   │   ├── application/
+│   │   │   ├── commands/
+│   │   │   │   └── PlaceOrder.ts         # Command handler
+│   │   │   ├── queries/
+│   │   │   │   └── GetOrderHistory.ts
+│   │   │   └── event-handlers/
+│   │   │       └── OnPaymentReceived.ts
+│   │   └── infrastructure/
+│   │       └── persistence/
+│   │           └── PostgresOrderRepository.ts
+│   │
+│   ├── inventory/                 # Inventory bounded context
+│   │   ├── domain/
+│   │   ├── application/
+│   │   └── infrastructure/
+│   │
+│   └── payments/                  # Payments bounded context
+│       ├── domain/
+│       ├── application/
+│       └── infrastructure/
+│
+└── shared-kernel/                 # Shared between contexts (keep minimal)
+    ├── domain/
+    │   └── Money.ts               # Shared value object
+    └── events/
+        └── EventBus.ts
+]]></code>
+    </section>
+
+    <section name="implementation-examples">
+      <example type="good" title="Aggregate root (TypeScript)">
+        <code lang="typescript"><![CDATA[
+// src/bounded-contexts/ordering/domain/aggregates/Order/Order.ts
+
+export class Order {
+  private readonly id: OrderId;
+  private items: OrderItem[];
+  private status: OrderStatus;
+  private readonly events: DomainEvent[] = [];
+
+  private constructor(id: OrderId, items: OrderItem[], status: OrderStatus) {
+    if (items.length === 0) throw new DomainError('Order must have at least one item');
+    this.id = id;
+    this.items = items;
+    this.status = status;
+  }
+
+  static create(customerId: CustomerId, items: OrderItem[]): Order {
+    const order = new Order(OrderId.generate(), items, OrderStatus.PENDING);
+    order.events.push(new OrderCreated(order.id, customerId));
+    return order;
+  }
+
+  static reconstitute(id: OrderId, items: OrderItem[], status: OrderStatus): Order {
+    return new Order(id, items, status);
+  }
+
+  place(): void {
+    this.assertStatus(OrderStatus.PENDING, 'place');
+    this.status = OrderStatus.PLACED;
+    this.events.push(new OrderPlaced(this.id));
+  }
+
+  ship(trackingId: TrackingId): void {
+    this.assertStatus(OrderStatus.PLACED, 'ship');
+    this.status = OrderStatus.SHIPPED;
+    this.events.push(new OrderShipped(this.id, trackingId));
+  }
+
+  // Access child entities only through root — never expose them directly
+  getItemCount(): number { return this.items.length; }
+  getTotal(): Money { return this.items.reduce((s, i) => s.add(i.subtotal), Money.zero()); }
+
+  pullEvents(): DomainEvent[] {
+    const evts = [...this.events];
+    this.events.length = 0;
+    return evts;
+  }
+
+  private assertStatus(expected: OrderStatus, operation: string): void {
+    if (this.status !== expected) {
+      throw new DomainError(`Cannot ${operation} order in status ${this.status}`);
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Domain event (TypeScript)">
+        <code lang="typescript"><![CDATA[
+// src/bounded-contexts/ordering/domain/events/OrderPlaced.ts
+
+export class OrderPlaced implements DomainEvent {
+  readonly eventName = 'OrderPlaced';
+  readonly occurredOn: Date;
+
+  constructor(
+    readonly orderId: OrderId,
+    readonly customerId: CustomerId,
+    readonly total: Money,
+  ) {
+    this.occurredOn = new Date();
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Command handler (Application layer)">
+        <code lang="typescript"><![CDATA[
+// src/bounded-contexts/ordering/application/commands/PlaceOrder.ts
+
+export class PlaceOrderHandler {
+  constructor(
+    private readonly orderRepository: IOrderRepository,
+    private readonly eventPublisher: IEventPublisher,
+  ) {}
+
+  async handle(command: PlaceOrderCommand): Promise<void> {
+    const order = await this.orderRepository.findById(command.orderId);
+    if (!order) throw new OrderNotFoundError(command.orderId);
+
+    order.place();
+    await this.orderRepository.save(order);
+
+    const events = order.pullEvents();
+    await this.eventPublisher.publishAll(events);
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Cross-aggregate transaction (DDD violation)">
+        <code lang="typescript"><![CDATA[
+// BAD: two aggregates in one transaction
+async function placeOrder(orderId: string, inventoryId: string) {
+  await db.transaction(async (tx) => {
+    const order = await orderRepo.findById(orderId, tx);
+    const inventory = await inventoryRepo.findById(inventoryId, tx);
+    order.place();
+    inventory.reserve(order.getItemCount()); // WRONG: cross-aggregate transaction
+    await orderRepo.save(order, tx);
+    await inventoryRepo.save(inventory, tx);
+  });
+}
+]]></code>
+        <note>Use domain events instead: OrderPlaced event triggers an InventoryReservationHandler in a separate transaction. If inventory reservation fails, publish an OrderCancellationRequested event.</note>
+      </example>
+    </section>
+
+    <section name="testing-strategy">
+      <p>DDD testing approach:</p>
+      <list>
+        <item>Aggregate unit tests — verify invariants, state transitions, and domain events raised. No mocks, no infrastructure.</item>
+        <item>Domain Service tests — unit tests with real aggregate instances. No infrastructure mocks.</item>
+        <item>Application Command/Query Handler tests — unit tests mocking repository interfaces and event publisher.</item>
+        <item>Context integration tests — E2E tests spanning the full bounded context (command → aggregate → event → handler).</item>
+        <item>Cross-context integration tests — verify event-driven choreography between contexts in a test environment.</item>
+      </list>
+    </section>
+
+    <section name="llm-gotchas">
+      <p>AI-agent common mistakes when implementing DDD:</p>
+      <list>
+        <item>Anaemic domain models — LLMs generate entities with only getters/setters and put all logic in services. Force a "behaviour-on-entity" rule and reject service-only logic in domain reviews.</item>
+        <item>Conflating Clean and Hexagonal vocabulary — agents mix terminology across patterns. Pick one per project.</item>
+        <item>Missing mappers — domain entities leak into the HTTP layer or get serialised with persistence IDs. Require explicit DTOs at adapter boundaries.</item>
+        <item>Cross-aggregate direct transactions — agents implement cross-aggregate updates with multi-aggregate transactions. Require an explicit Saga or event-driven step in the spec when a use case spans aggregates.</item>
+        <item>Over-applying DDD vocabulary without the underlying analysis — well-named but shallow domains. Force aggregate boundary justification (what invariant does this boundary protect?).</item>
+      </list>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Sharing the same domain model across multiple bounded contexts ("God Context").</description>
+        <reason>As the system grows, different teams need to evolve their models independently. A shared model creates deployment coupling and forces coordinated changes across context boundaries.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Designing aggregates around database tables rather than business invariants.</description>
+        <reason>Aggregates are consistency boundaries, not persistence units. An aggregate boundary is justified by the invariant it protects. Designing from tables produces anemic aggregates with no real business logic.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Making aggregates too large (aggregate includes everything related to an order: customer, items, inventory, payment, shipping).</description>
+        <reason>Large aggregates create contention under concurrency, force large transactions, and make domain events coarse-grained. Keep aggregates small — one to three entities plus value objects is a healthy starting size.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Developing the ubiquitous language without domain experts ("developer language").</description>
+        <reason>Without domain expert input, the model reflects developer intuition, not domain reality. Misleading models produce software that is technically correct but solves the wrong problem.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Each bounded context has its own ubiquitous language documented and enforced in code naming.</check>
+      <check>Cross-context references use IDs only — no shared object references across boundaries.</check>
+      <check>Each aggregate has a documented invariant that justifies its boundary.</check>
+      <check>Cross-aggregate workflows use domain events or Sagas, never multi-aggregate transactions.</check>
+      <check>All access to aggregate child entities goes through the aggregate root.</check>
+      <check>Domain events are named in past tense (OrderPlaced, PaymentFailed).</check>
+      <check>Repository interfaces live in the domain layer; implementations in infrastructure.</check>
+      <check>Aggregate unit tests cover all state transitions and event emissions.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://www.domainlanguage.com/ddd/"/>
+      <link href="https://vaughnvernon.com/"/>
+      <link href="https://martinfowler.com/bliki/AnaemicDomainModel.html"/>
+      <link href="https://github.com/ddd-crew/ddd-starter-modelling-process"/>
+      <link href="https://contextmapper.org/"/>
+      <link href="https://github.com/Sairyss/domain-driven-hexagon"/>
+      <ref slug="arch-pattern-clean"/>
+      <ref slug="arch-pattern-hexagonal"/>
+    </see-also>
+  </content>
+</methodology>
