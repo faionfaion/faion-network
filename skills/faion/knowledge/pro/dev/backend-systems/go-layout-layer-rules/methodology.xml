@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="go-layout-layer-rules">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Enforce Go layout dependency direction: handler imports service interface, service imports repository interface, repository implements it. Depguard + golangci-lint as the automated gate.</summary>
+    <tags>
+      <tag>go</tag>
+      <tag>dependency-direction</tag>
+      <tag>layer-architecture</tag>
+      <tag>golangci-lint</tag>
+    </tags>
+    <category>backend</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>go</language>
+    </languages>
+    <related>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-agentic-workflow"/>
+      <ref slug="go-layout-toolchain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Go Standard Layout — Layer Dependency Rules</title>
+
+    <summary>The Go standard layout only enforces package visibility via internal/ — it does NOT enforce dependency direction between layers. Without depguard or equivalent import linting, handler packages freely import repository packages directly, bypassing the service layer. Explicit rules + automated linting are required to make the layout load-bearing.</summary>
+
+    <why>
+      <p>Layered packages do not enforce dependency direction by themselves. Go's compiler will happily compile internal/handler importing internal/repository, bypassing internal/service entirely. Without depguard or import linting, the layout is decorative — it looks like Clean Architecture but does not prevent the shortcut imports that accumulate into a big ball of mud.</p>
+      <p>Interface placement is the second common failure: when interfaces are declared in the producer package (e.g., repository.UserRepository in internal/repository), every consumer must import the producer, creating fan-in coupling. The correct Go pattern is interfaces at the consumer side — service.UserRepository lives in internal/service and internal/repository implements it — enabling dependency inversion without import cycles.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Go service following the standard layout where you want the layer seams to be mechanically enforced, not just conventional.</item>
+        <item>Team or multi-agent settings where different authors might shortcut handler-to-repository imports.</item>
+        <item>Services large enough that a single violated import boundary significantly increases coupling.</item>
+        <item>CI pipelines that must gate on architecture violations the way they gate on test failures.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny CLIs or scripts — the overhead of a linter config and interface-at-consumer discipline exceeds the value.</item>
+        <item>Services already using a different architecture (hexagonal, package-by-feature) — applying these rules on top of a different model causes confusion.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule>
+        <statement>Interfaces MUST be defined at the consumer side. service.UserRepository lives in internal/service; internal/repository implements it. Handler interfaces (if any) live in internal/handler. Never declare an interface in its own implementation package.</statement>
+        <rationale>Consumer-side interfaces enable dependency inversion: the service layer owns the contract; the repository layer provides the implementation. This prevents import cycles and allows repository implementations to be replaced without touching consumers.</rationale>
+      </rule>
+      <rule>
+        <statement>handler MUST NOT import repository directly. The allowed import chain is: handler imports service interface; service imports repository interface; repository implementation imports model and DB driver. Enforce via depguard in .golangci.yml.</statement>
+        <rationale>Skipping the service layer in a handler couples HTTP concerns directly to persistence, making it impossible to test the handler with a mock repository or the service with a mock DB without spinning up the full stack.</rationale>
+      </rule>
+      <rule>
+        <statement>service MUST NOT import the web framework (e.g., gin-gonic/gin). Service methods receive context.Context and domain types only.</statement>
+        <rationale>A service that imports gin is untestable without an HTTP server. Keeping framework types at the handler boundary makes services trivially testable with table-driven unit tests.</rationale>
+      </rule>
+      <rule>
+        <statement>model (domain types) MUST NOT import database/sql or any ORM. The translation from DB rows to domain types happens in the repository implementation, not in the model package.</statement>
+        <rationale>Domain types that import DB drivers couple the domain model to infrastructure, preventing reuse across different storage backends and making the model hard to test in isolation.</rationale>
+      </rule>
+      <rule>
+        <statement>Every service and repository method signature MUST take ctx context.Context as the first parameter. Errors crossing a layer boundary MUST be wrapped with fmt.Errorf("...: %w", err).</statement>
+        <rationale>Context-first ensures cancellation propagates; %w-wrapped errors preserve the error chain so errors.Is and errors.As work across layers and in log aggregators.</rationale>
+      </rule>
+      <rule>
+        <statement>Repository implementations MUST return domain models, not ORM rows or raw sql.Rows. The translation happens inside the repository impl.</statement>
+        <rationale>Service and handler layers that receive domain types instead of ORM objects are decoupled from the choice of persistence library.</rationale>
+      </rule>
+      <rule>
+        <statement>Global state (var DB *sql.DB, var logger *zerolog.Logger) MUST NOT appear at package scope in any package other than cmd/name/main.go. Use constructor injection from the entry point.</statement>
+        <rationale>Package-global state makes test isolation impossible without os.Setenv hacks or singleton resets; constructor injection from main makes every dependency explicit and replaceable.</rationale>
+      </rule>
+      <rule>
+        <statement>init() functions MUST NOT register handlers, apply migrations, or perform I/O. Use explicit constructors called from main.</statement>
+        <rationale>init() side effects execute during import, making test-suite startup order brittle and preventing targeted disabling of components in integration tests.</rationale>
+      </rule>
+      <rule>
+        <statement>One linter config per repo. Commit .golangci.yml; CI runs golangci-lint run --timeout=3m on every PR. Do not rely on per-developer local setup.</statement>
+        <rationale>Without a committed linter config, lint rules drift per developer and per CI run; the config file is the authoritative record of what the team agreed to enforce.</rationale>
+      </rule>
+    </rules>
+
+    <section name="depguard-config">
+      <p>Add a .golangci.yml to the repo root enforcing the layer dependency rules. The depguard section forbids the critical shortcut imports:</p>
+      <example type="good" title=".golangci.yml with depguard layer rules">
+        <code lang="yaml"><![CDATA[
+linters:
+  enable: [depguard, errcheck, govet, staticcheck, revive, gocyclo, gosec]
+linters-settings:
+  depguard:
+    rules:
+      handler:
+        files: ["internal/handler/**"]
+        deny:
+          - pkg: "project/internal/repository"
+            desc: "handler must call service, not repository"
+      service:
+        files: ["internal/service/**"]
+        deny:
+          - pkg: "github.com/gin-gonic/gin"
+            desc: "service must not depend on web framework"
+      domain:
+        files: ["internal/model/**"]
+        deny:
+          - pkg: "database/sql"
+            desc: "model must not depend on DB driver"
+]]></code>
+        <note>Replace "project" with your actual module path from go.mod.</note>
+      </example>
+    </section>
+
+    <section name="layout-lint-script">
+      <p>A lightweight shell script for fast local layout sanity checks, independent of golangci-lint. Run it as a pre-push hook or in CI alongside the linter:</p>
+      <example type="good" title="go-layout-lint.sh — quick import sanity checks">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# go-layout-lint.sh — quick layout sanity checks
+set -euo pipefail
+root="${1:-.}"
+fail=0
+echo "## handler importing repository directly"
+grep -rEn '"[^"]+/internal/repository"' "$root/internal/handler" 2>/dev/null && fail=1 || true
+echo "## interface in producer (repo) package"
+for f in "$root"/internal/repository/*.go; do
+  grep -Eq '^type [A-Z][a-zA-Z]+ interface' "$f" && { echo "iface in producer: $f"; fail=1; }
+done
+echo "## pkg/ with no consumer outside repo"
+[[ -d "$root/pkg" ]] && for d in "$root"/pkg/*/; do
+  name=$(basename "$d")
+  grep -rEq "\"[^\"]+/pkg/$name\"" "$root" --exclude-dir="pkg" || { echo "unused pkg/$name"; fail=1; }
+done
+exit "$fail"
+]]></code>
+        <note>Pass the repo root as the first argument: bash go-layout-lint.sh ./myservice. Exits 1 on any violation.</note>
+      </example>
+    </section>
+
+    <section name="test-placement">
+      <p>Test co-location and black-box testing convention:</p>
+      <rule>
+        <statement>Tests MUST be placed next to the code they test (*_test.go co-located). For black-box style, use package handler_test (external test package) to avoid accessing unexported internals. Use testcontainers-go for repository tests requiring real Postgres/Redis.</statement>
+        <rationale>Black-box tests prevent tests from becoming coupled to internal implementation details; testcontainers-go gives repository tests a real DB without mocks, catching SQL dialect issues that in-memory fakes miss.</rationale>
+      </rule>
+      <example type="bad" title="Testing on the wrong layer">
+        <code lang="go"><![CDATA[
+// Testing handlers via the real router with a real DB — do not do this
+func TestGetUser(t *testing.T) {
+    db, _ := sql.Open("postgres", os.Getenv("DATABASE_URL"))
+    repo := repository.NewUserRepo(db)
+    svc := service.NewUserService(repo)
+    h := handler.NewUserHandler(svc)
+    // ... fires real HTTP against real DB
+}
+]]></code>
+        <note>Force handler tests with mocked services; force repository tests with testcontainers-go. Never wire the full stack in a handler test.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/OpenPeeDeeP/depguard"/>
+      <link href="https://golangci-lint.run/usage/linters/"/>
+      <link href="https://github.com/golang/go/wiki/CodeReviewComments"/>
+      <ref slug="go-layout-directory-structure"/>
+      <ref slug="go-layout-agentic-workflow"/>
+      <ref slug="go-layout-toolchain"/>
+    </see-also>
+  </content>
+</methodology>
