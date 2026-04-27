@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="security-sast">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Integrate Static Application Security Testing (SAST) into CI/CD pipelines using Semgrep, CodeQL, or Bandit to catch vulnerabilities before deployment.</summary>
+    <tags>
+      <tag>sast</tag>
+      <tag>semgrep</tag>
+      <tag>codeql</tag>
+      <tag>security</tag>
+      <tag>cicd</tag>
+    </tags>
+    <category>security</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="security-dast"/>
+      <ref slug="security-container-scanning"/>
+      <ref slug="security-supply-chain"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Static Application Security Testing (SAST) in CI/CD</title>
+
+    <summary>SAST analyzes source code before execution to identify vulnerabilities early ("shift-left" security). Integrate Semgrep, CodeQL, or SonarQube into every PR pipeline and block on CRITICAL+HIGH findings only; expose MEDIUM/LOW as informational at first, then tighten over time.</summary>
+
+    <why>
+      <p>SAST catches vulnerabilities before deployment but may miss runtime issues. It is the fastest feedback loop in the security pipeline — running on the diff at PR time. CodeQL uses semantic analysis (88% accuracy, 5% false positives), Semgrep uses pattern matching (82% accuracy, 12% FP) and is highly extensible with custom rules; Snyk Code applies AI-driven analysis. Early detection reduces remediation cost by orders of magnitude compared to finding the same issue in production.</p>
+      <p>Agent workflow: SAST results arrive as SARIF; agents read the SARIF via `gh api`, triage with reachability/exploitability evidence, and open single-purpose fix PRs. Pin scanner versions and rule packs — silent updates create flaky CI.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any project that ships code to production — SAST is the minimum viable security gate.</item>
+        <item>Wiring SAST into a PR check so developers get feedback before merge.</item>
+        <item>Custom rule authoring for domain-specific patterns (e.g., hardcoded secrets, SQL interpolation).</item>
+        <item>Generating SARIF for GitHub Advanced Security / GitLab Code Quality.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Replacing DAST — SAST cannot find runtime vulnerabilities (auth bypass, business logic, SSRF).</item>
+        <item>Greenfield exploration with fluid requirements — false-positive volume will drown the team before rules are tuned.</item>
+        <item>One-off scripts or scratch repos — overhead exceeds value.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="tool-selection">
+      <p>Choose the SAST tool that fits your stack and hosting:</p>
+      <list>
+        <item>CodeQL — semantic analysis, GitHub-native, best accuracy, runs as GitHub Action. Best for GitHub-centric teams.</item>
+        <item>Semgrep — pattern matching, custom rules, fast, CI-agnostic. Best when you need custom rule flexibility or cross-platform CI.</item>
+        <item>Snyk Code — AI-driven, strong autofix PRs, SaaS-hosted. Best for open-source-heavy projects.</item>
+        <item>SonarQube — code quality + security combined, self-hostable. Best when code quality metrics matter alongside security.</item>
+        <item>Bandit (Python), gosec (Go), Brakeman (Rails) — language-native SAST, zero config for single-language repos.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule testable="true">
+        <statement>Block PR merge on CRITICAL and HIGH SAST findings only; expose MEDIUM and LOW as informational annotations. Tighten thresholds over time as baseline noise decreases.</statement>
+        <rationale>Blocking on every finding causes alert fatigue and trains developers to ignore or bypass the gate. Start narrow and expand coverage as the team becomes comfortable with the tool's signal-to-noise ratio.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Pin scanner image digests and rule-pack versions in CI; bump them on a defined schedule (e.g., monthly), never silently via floating tags.</statement>
+        <rationale>Silent rule-pack updates change what is flagged, causing previously-passing PRs to fail without any code change — making CI untrustworthy.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Set a baseline on first integration to ignore pre-existing issues; only gate on new issues introduced in the PR diff.</statement>
+        <rationale>Retrofitting SAST into a legacy codebase without a baseline produces thousands of findings in the first run, blocking all new work. Address technical security debt separately with a dedicated sprint.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Semgrep CI integration with SARIF upload">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/semgrep.yml
+name: Semgrep
+on:
+  pull_request: {}
+  push:
+    branches: [main, master]
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep ci --sarif --output semgrep.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+]]></code>
+      <note>Using `semgrep ci` respects the project's .semgrepignore and pulls managed rules from the Semgrep AppSec Platform when a token is provided.</note>
+    </example>
+
+    <example type="good" title="CodeQL GitHub Actions integration">
+      <code lang="yaml"><![CDATA[
+# .github/workflows/codeql.yml
+name: CodeQL
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6AM
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    strategy:
+      matrix:
+        language: [javascript, python]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-extended,security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+]]></code>
+    </example>
+
+    <example type="good" title="Custom Semgrep rule for hardcoded secrets">
+      <code lang="yaml"><![CDATA[
+# .semgrep/rules/no-hardcoded-secrets.yaml
+rules:
+  - id: hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: passwd = "..."
+    message: "Hardcoded password detected"
+    languages: [python, javascript, typescript]
+    severity: ERROR
+
+  - id: hardcoded-api-key
+    pattern-regex: '(?i)(api[_-]?key|apikey)\s*[=:]\s*["\'][a-zA-Z0-9]{20,}["\']'
+    message: "Possible hardcoded API key"
+    languages: [generic]
+    severity: WARNING
+]]></code>
+    </example>
+
+    <example type="bad" title="Blocking on every severity level">
+      <code lang="yaml"><![CDATA[
+# Semgrep configured to fail on all severities including INFO/WARNING
+- name: Run Semgrep
+  run: semgrep ci --error --severity WARNING
+]]></code>
+      <note>This blocks PRs on low-signal findings, trains the team to add `--no-verify` flags or ignore CI, and makes the security gate useless.</note>
+    </example>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-semgrep-rule"><![CDATA[
+Create a Semgrep rule that detects [vulnerability type] in [language].
+
+Requirements:
+- Pattern should match [specific code pattern]
+- Severity: [critical/high/medium/low]
+- Include message explaining the vulnerability
+- Add fix suggestion if possible
+- Include test cases (positive and negative)
+
+Output format: YAML rule with comments
+]]></prompt>
+
+      <prompt purpose="analyze-sast-findings"><![CDATA[
+Analyze these SAST findings and provide:
+
+1. Risk assessment for each finding
+2. False positive likelihood (low/medium/high)
+3. Prioritized remediation order
+4. Code fix suggestions
+
+Findings:
+[paste SAST output]
+
+Consider:
+- Exploitability
+- Data sensitivity
+- Attack surface exposure
+- Existing mitigations
+]]></prompt>
+
+      <prompt purpose="create-codeql-query"><![CDATA[
+Write a CodeQL query for [language] that detects [vulnerability type].
+
+Requirements:
+- Query should find [specific pattern]
+- Include metadata (name, description, severity)
+- Optimize for performance
+- Include query help documentation
+
+Example vulnerable code:
+[paste example]
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Evaluate tools for your language stack: CodeQL (GitHub repos), Semgrep (custom rules needed), Snyk Code (open-source heavy), SonarQube (code quality + security).</check>
+      <check>Configure IDE integration for immediate developer feedback before commit.</check>
+      <check>Add SAST to CI pipeline as a PR check with SARIF upload to GitHub Security tab.</check>
+      <check>Configure severity thresholds: block on CRITICAL+HIGH, annotate MEDIUM+LOW.</check>
+      <check>Set up baseline to ignore existing issues on first integration.</check>
+      <check>Document custom rules and exceptions with justification and owner.</check>
+      <check>Review and update custom rules quarterly; track false positive rate and tune.</check>
+      <check>Keep scanner versions pinned; bump on a schedule.</check>
+    </checklist>
+
+    <section name="ai-agent-gotchas">
+      <p>Auto-fix bots regress functionality: they upgrade a transitive dep across a major version and break the build silently — require full test pass and human review before merging any auto-fix PR.</p>
+      <p>Severity inflation: CVSS scores often overestimate real risk; agents that gate on CVSS alone block trivial PRs. Use reachability evidence (Endor Labs, Snyk Reachability, Semgrep) to reduce false positives 70-90%.</p>
+      <p>Prompt injection via dependency README: an attacker-controlled README can change LLM behavior during scan triage; fence inputs when feeding README content to the triage agent.</p>
+    </section>
+
+    <see-also>
+      <link href="https://semgrep.dev/docs/"/>
+      <link href="https://codeql.github.com/"/>
+      <link href="https://owasp.org/www-project-devsecops-maturity-model/"/>
+      <ref slug="security-dast"/>
+      <ref slug="security-container-scanning"/>
+    </see-also>
+  </content>
+</methodology>
