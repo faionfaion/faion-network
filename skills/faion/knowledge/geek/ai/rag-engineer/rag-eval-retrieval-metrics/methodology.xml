@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-eval-retrieval-metrics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Retrieval quality metrics for RAG: Precision@K, Recall@K, MRR, NDCG@K, Hit Rate — pure-Python implementations, no external deps, no API cost.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>evaluation</tag>
+      <tag>retrieval</tag>
+      <tag>metrics</tag>
+      <tag>information-retrieval</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="rag-eval-generation-metrics"/>
+      <ref slug="rag-eval-strategy"/>
+      <ref slug="rag-eval-pipeline"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>RAG Retrieval Quality Metrics</title>
+
+    <summary>Retrieval metrics measure whether the RAG system fetches the right documents before generation happens. The five core metrics — Precision@K, Recall@K, MRR, NDCG@K, and Hit Rate — are pure-Python computations with zero API cost and should run on every test evaluation.</summary>
+
+    <why>
+      <p>Retrieval quality is the upstream determinant of generation quality: high faithfulness with low Precision@K means the generator is hallucinating from insufficient context. Measuring retrieval separately isolates root causes — a pipeline can have good end-to-end answer accuracy while silently degrading on recall, which becomes visible only when a new document category is introduced. All five metrics are computable with no LLM calls, making them free to run on every test batch.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Measuring whether the retriever returns relevant documents for a labeled test set (ground-truth relevant doc IDs available).</item>
+        <item>Selecting or tuning the retrieval top-K — Precision@K and Recall@K give direct feedback on the K parameter.</item>
+        <item>Ranking-quality comparison between two retrieval strategies (e.g., dense vs. hybrid) — use NDCG@K for graded relevance.</item>
+        <item>CI quality gate: fail a deployment if Hit Rate drops below 0.90 or Precision@5 drops below 0.70.</item>
+        <item>Diagnosing a generation quality problem: if faithfulness is low but Precision@K is high, the problem is the generator, not the retriever.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>When no ground-truth relevant doc IDs exist — Precision@K, Recall@K, MRR, and NDCG@K all require labeled sets; collect labels via human annotation or synthetic test-set generation before applying these metrics.</item>
+        <item>Real-time per-query scoring in production — these metrics require a labeled test set comparison, not a single live query; for online monitoring use generation-side signals (faithfulness sampling) instead.</item>
+        <item>Replacing generation metrics — high Precision@K says nothing about whether the generator produces faithful, relevant answers; always pair with generation metrics.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="metric-definitions">
+      <p>Each metric captures a different aspect of ranking quality. Use the selection table to pick the right metric for the evaluation goal.</p>
+
+      <rule testable="true">
+        <statement>Always run all five retrieval metrics together, not just one. Precision@K and Hit Rate together distinguish "few but precise" from "at least one hit" retrieval failures. MRR and NDCG distinguish rank-position quality from recall breadth.</statement>
+        <rationale>A retriever can have Hit Rate=1.0 (always returns at least one relevant doc) while Precision@K=0.20 (4 out of 5 docs are irrelevant noise that pollutes the generation context). Single-metric optimization creates blind spots.</rationale>
+      </rule>
+
+      <section name="metric-selection-table">
+        <p>Metric selection guide:</p>
+        <list>
+          <item>Precision@K — care about accuracy in top-K; range 0-1; higher means fewer irrelevant docs; divides by K not by number retrieved</item>
+          <item>Recall@K — need to find all relevant docs; range 0-1; higher means fewer missed docs</item>
+          <item>MRR — first relevant result position matters; range 0-1; penalizes harshly when first relevant doc is ranked 3rd or lower</item>
+          <item>NDCG@K — graded relevance (not binary); range 0-1; higher means better ranking quality; requires graded scores</item>
+          <item>Hit Rate — only need one relevant doc; binary 0 or 1; insensitive to how many relevant docs were retrieved</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="implementations">
+      <p>Complete standalone retrieval metric suite — no external dependencies beyond numpy for NDCG:</p>
+
+      <example type="good" title="Complete retrieval metrics suite">
+        <code lang="python"><![CDATA[
+from typing import List, Set, Dict
+import numpy as np
+
+
+def precision_at_k(retrieved: List[str], relevant: Set[str], k: int) -> float:
+    """
+    Precision@K: How many retrieved docs are relevant?
+
+    Args:
+        retrieved: List of retrieved document IDs (ordered by rank)
+        relevant: Set of relevant document IDs
+        k: Number of top results to consider
+
+    NOTE: divides by k, not by len(retrieved). Pass the correct k
+    matching the retrieval top-K, not the actual result count.
+    """
+    retrieved_at_k = set(retrieved[:k])
+    relevant_retrieved = retrieved_at_k.intersection(relevant)
+    return len(relevant_retrieved) / k
+
+
+def recall_at_k(retrieved: List[str], relevant: Set[str], k: int) -> float:
+    """
+    Recall@K: How many relevant docs were retrieved?
+    """
+    retrieved_at_k = set(retrieved[:k])
+    relevant_retrieved = retrieved_at_k.intersection(relevant)
+    return len(relevant_retrieved) / len(relevant) if relevant else 0
+
+
+def mean_reciprocal_rank(retrieved: List[str], relevant: Set[str]) -> float:
+    """
+    MRR: How highly is the first relevant doc ranked?
+    Returns 0.0 when no relevant doc is retrieved — distinguish this from
+    MRR=0.0 due to ranking failures when computing macro-average over a test set.
+    """
+    for i, doc_id in enumerate(retrieved):
+        if doc_id in relevant:
+            return 1.0 / (i + 1)
+    return 0.0
+
+
+def ndcg_at_k(retrieved: List[str], relevance_scores: Dict[str, float], k: int) -> float:
+    """
+    NDCG@K: Normalized Discounted Cumulative Gain.
+    Considers graded relevance (not just binary).
+
+    If only binary labels exist, set relevance_scores = {doc_id: 1.0 for doc_id in relevant}
+    and NDCG degrades to AP (average precision).
+    """
+    def dcg(scores: List[float]) -> float:
+        return sum(
+            (2**score - 1) / np.log2(i + 2)
+            for i, score in enumerate(scores)
+        )
+
+    actual_scores = [relevance_scores.get(doc_id, 0) for doc_id in retrieved[:k]]
+    actual_dcg = dcg(actual_scores)
+
+    ideal_scores = sorted(relevance_scores.values(), reverse=True)[:k]
+    ideal_dcg = dcg(ideal_scores)
+
+    return actual_dcg / ideal_dcg if ideal_dcg > 0 else 0
+
+
+def hit_rate(retrieved: List[str], relevant: Set[str]) -> float:
+    """
+    Hit Rate: Was at least one relevant doc retrieved?
+    Binary metric — insensitive to how many relevant docs were retrieved.
+    """
+    return 1.0 if any(doc_id in relevant for doc_id in retrieved) else 0.0
+
+
+def compute_retrieval_metrics(
+    retrieved: List[str],
+    relevant: Set[str],
+    k: int = 5,
+    relevance_scores: Dict[str, float] = None
+) -> dict:
+    """Compute all retrieval metrics in one call."""
+    result = {
+        f"precision@{k}": precision_at_k(retrieved, relevant, k),
+        f"recall@{k}": recall_at_k(retrieved, relevant, k),
+        "mrr": mean_reciprocal_rank(retrieved, relevant),
+        "hit_rate": hit_rate(retrieved, relevant),
+    }
+    if relevance_scores:
+        result[f"ndcg@{k}"] = ndcg_at_k(retrieved, relevance_scores, k)
+    return result
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Passing k different from the actual retrieval top-K when calling precision_at_k.</description>
+        <reason>precision_at_k divides by k, not by number of retrieved docs. If you retrieve top-10 but pass k=5, you measure a different cut than what the retriever actually returned, producing misleading results.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Computing macro-average MRR without distinguishing MRR=0.0 (no relevant doc retrieved) from low-but-positive MRR.</description>
+        <reason>mean_reciprocal_rank returns 0.0 when no relevant doc appears in the result list. Averaging this with true MRR scores conflates two different failure modes: missing relevance entirely vs. poor rank position.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using NDCG@K with binary labels directly from a relevant set without converting to graded scores.</description>
+        <reason>NDCG@K requires graded relevance scores (float dict). With binary labels, construct relevance_scores = {doc_id: 1.0 for doc_id in relevant} — this converts NDCG to equivalent of average precision and is explicit about the binary assumption.</reason>
+      </antipattern>
+    </section>
+
+    <section name="per-use-case">
+      <p>Recommended metric combinations by retrieval use case:</p>
+      <list>
+        <item>Question Answering: Faithfulness (generation) + Precision@3 + MRR — small K because Q&amp;A benefits from precision over breadth</item>
+        <item>Document Search: NDCG@10 + Recall@20 + MRR — large K to measure breadth; graded relevance matters</item>
+        <item>Chatbot: Context Relevance (generation) + Hit Rate — at least one hit ensures context exists; relevance of that context is the generation-side check</item>
+        <item>Summarization: Recall@K dominates — missing a relevant document is worse than including an irrelevant one</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Ground-truth relevant doc IDs collected for the test set before running any retrieval metric.</check>
+      <check>k parameter in precision_at_k and recall_at_k matches the actual top-K used in retrieval.</check>
+      <check>All five metrics computed together — no single-metric evaluation.</check>
+      <check>NDCG@K uses graded scores or explicit binary-to-float conversion.</check>
+      <check>Macro-average MRR computation distinguishes 0.0-miss from 0.0-not-found.</check>
+      <check>Retrieval metrics paired with at least one generation metric (faithfulness or context relevance).</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rag-eval-generation-metrics"/>
+      <ref slug="rag-eval-strategy"/>
+      <ref slug="rag-eval-pipeline"/>
+      <link href="https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)"/>
+      <link href="https://en.wikipedia.org/wiki/Discounted_cumulative_gain"/>
+    </see-also>
+  </content>
+</methodology>
