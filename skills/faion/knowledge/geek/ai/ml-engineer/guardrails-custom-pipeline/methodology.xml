@@ -1,0 +1,571 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="guardrails-custom-pipeline">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Custom LLM guardrails pipeline: PII detection and masking, prompt injection detection, tiered checking, async execution, hallucination detection, FastAPI/LangChain/LlamaIndex integration patterns.</summary>
+    <tags>
+      <tag>guardrails</tag>
+      <tag>pii-detection</tag>
+      <tag>prompt-injection</tag>
+      <tag>custom-pipeline</tag>
+      <tag>fastapi</tag>
+    </tags>
+    <category>safety</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+      <framework>langchain</framework>
+    </frameworks>
+    <related>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-nemo"/>
+      <ref slug="guardrails-ai-framework"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Custom LLM Guardrails Pipeline</title>
+
+    <summary>Custom guardrail implementation gives maximum control and minimum dependency footprint. The canonical pattern combines a PIIDetector (regex-based masking), a PromptInjectionDetector (pattern library), a ContentModerator (OpenAI moderation API), and an optional HallucinationDetector (LLM-as-judge) into a GuardrailsPipeline class with process_input() and process_output() methods.</summary>
+
+    <why>
+      <p>NeMo and Guardrails AI are powerful but opinionated frameworks. Custom pipelines are appropriate when: the application has specific validation rules not covered by existing validators; the latency budget is tight enough to require precise control over which checks run; the team wants no external framework dependency; or when integrating with existing infrastructure (FastAPI, LangChain, LlamaIndex) that has its own middleware patterns.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Specific requirements not covered by NeMo or Guardrails AI validators.</item>
+        <item>Maximum control over latency with tiered checking (regex first, LLM last).</item>
+        <item>Lightweight deployments where framework overhead is not acceptable.</item>
+        <item>Existing FastAPI, LangChain, or LlamaIndex applications where guardrails integrate as middleware or runnables.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Complex multi-turn dialog control — NeMo Guardrails Colang DSL is purpose-built for this.</item>
+        <item>Teams that need rapid iteration on validators — Guardrails Hub ecosystem is faster to use than building from scratch.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-components">
+      <rule>
+        <statement>Build the custom pipeline from four independent components: PIIDetector (regex patterns for email, phone, SSN, credit card, IP), PromptInjectionDetector (compiled regex for common injection signatures), ContentModerator (OpenAI moderation API), HallucinationDetector (LLM-as-judge). Each component is independently testable.</statement>
+        <rationale>Separation into single-purpose components enables unit testing each check independently, swapping implementations (e.g., replacing OpenAI moderation with a local classifier), and composing only the checks needed for a given pipeline configuration.</rationale>
+      </rule>
+      <example type="good" title="PII detector with masking">
+        <code lang="python"><![CDATA[
+import re
+from typing import List, Dict, Tuple
+
+class PIIDetector:
+    """Detect and mask PII in text."""
+
+    PATTERNS = {
+        'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
+        'phone': r'\b(?:\+?1[-.]?)?\(?[0-9]{3}\)?[-.]?[0-9]{3}[-.]?[0-9]{4}\b',
+        'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
+        'credit_card': r'\b(?:\d{4}[-\s]?){3}\d{4}\b',
+        'ip_address': r'\b(?:\d{1,3}\.){3}\d{1,3}\b',
+    }
+
+    def detect(self, text: str) -> List[Dict]:
+        """Detect PII in text."""
+        findings = []
+        for pii_type, pattern in self.PATTERNS.items():
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                findings.append({
+                    'type': pii_type,
+                    'value': match.group(),
+                    'start': match.start(),
+                    'end': match.end()
+                })
+        return findings
+
+    def mask(self, text: str) -> Tuple[str, List[Dict]]:
+        """Mask PII in text."""
+        findings = self.detect(text)
+        masked_text = text
+        # Sort by position (reverse) to avoid offset issues
+        for finding in sorted(findings, key=lambda x: x['start'], reverse=True):
+            placeholder = f"[{finding['type'].upper()}]"
+            masked_text = (
+                masked_text[:finding['start']] +
+                placeholder +
+                masked_text[finding['end']:]
+            )
+        return masked_text, findings
+]]></code>
+      </example>
+      <example type="good" title="Prompt injection detector">
+        <code lang="python"><![CDATA[
+class PromptInjectionDetector:
+    """Detect prompt injection attempts."""
+
+    PATTERNS = [
+        r'ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?)',
+        r'forget\s+(everything|all|your)\s+(instructions?|training)',
+        r'you\s+are\s+now\s+(in\s+)?(developer|debug|admin)\s+mode',
+        r'pretend\s+(you\'re|you\s+are|to\s+be)\s+a',
+        r'act\s+as\s+(if\s+you\s+were|a)',
+        r'system\s*:\s*',
+        r'\[INST\]|\[/INST\]',
+        r'<\|im_start\|>|<\|im_end\|>',
+        r'###\s*(Instruction|Response|Input|Output)\s*:',
+    ]
+
+    def __init__(self):
+        self.compiled_patterns = [
+            re.compile(p, re.IGNORECASE) for p in self.PATTERNS
+        ]
+
+    def detect(self, text: str) -> Tuple[bool, List[str]]:
+        """Detect injection attempts."""
+        detections = []
+        for pattern in self.compiled_patterns:
+            matches = pattern.findall(text)
+            if matches:
+                detections.extend(
+                    matches if isinstance(matches[0], str) else [m[0] for m in matches]
+                )
+        return len(detections) > 0, detections
+]]></code>
+      </example>
+    </section>
+
+    <section name="hallucination-detection">
+      <rule>
+        <statement>Implement HallucinationDetector as an LLM-as-judge component: pass the bot response and the retrieval context to a separate LLM call with a structured JSON prompt. Use response_format json_object to get a grounded/unsupported_claims/confidence verdict.</statement>
+        <rationale>Hallucination detection requires semantic reasoning over both the response and the source context. Only an LLM can reliably perform this check — regex and classifier approaches produce high false positive rates on factual content.</rationale>
+      </rule>
+      <example type="good" title="Hallucination detector with LLM-as-judge">
+        <code lang="python"><![CDATA[
+import json
+from openai import OpenAI
+
+class HallucinationDetector:
+    """Detect hallucinations in LLM output."""
+
+    def __init__(self, client: OpenAI, model: str = "gpt-4o"):
+        self.client = client
+        self.model = model
+
+    def check(self, response: str, context: str) -> dict:
+        """Check if response is grounded in context."""
+        prompt = f"""Analyze if the following response is fully supported by the given context.
+
+Context:
+{context}
+
+Response to verify:
+{response}
+
+Return JSON:
+{{
+    "is_grounded": true/false,
+    "unsupported_claims": ["list of claims not in context"],
+    "confidence": 0.0-1.0
+}}"""
+
+        result = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        return json.loads(result.choices[0].message.content)
+]]></code>
+      </example>
+    </section>
+
+    <section name="full-pipeline">
+      <rule>
+        <statement>Compose components into a GuardrailsPipeline with process_input() and process_output() methods. process_input() returns (sanitized_input, violations) — None for sanitized_input means block the request. process_output() returns (filtered_output, violations). The run() method chains both with an LLM call.</statement>
+        <rationale>Separating input and output processing allows testing each stage independently and enables partial pipeline execution (e.g., input-only for preprocessing). The None-means-block convention makes the blocking decision explicit and type-safe.</rationale>
+      </rule>
+      <example type="good" title="Complete guardrails pipeline">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import List, Dict, Optional, Tuple
+from openai import OpenAI
+
+@dataclass
+class GuardrailConfig:
+    max_input_length: int = 4000
+    max_output_length: int = 8000
+    enable_pii_detection: bool = True
+    enable_injection_detection: bool = True
+    enable_content_moderation: bool = True
+    enable_hallucination_detection: bool = False
+
+@dataclass
+class GuardrailResult:
+    is_safe: bool
+    input_modified: bool
+    output_modified: bool
+    original_input: str
+    sanitized_input: Optional[str]
+    original_output: Optional[str]
+    filtered_output: Optional[str]
+    violations: List[Dict]
+    metadata: Dict
+
+class GuardrailsPipeline:
+    """Complete guardrails pipeline for LLM applications."""
+
+    def __init__(self, client: OpenAI, model: str = "gpt-4o", config: Optional[GuardrailConfig] = None):
+        self.client = client
+        self.model = model
+        self.config = config or GuardrailConfig()
+        self.pii_detector = PIIDetector()
+        self.injection_detector = PromptInjectionDetector()
+        self.hallucination_detector = HallucinationDetector(client, model)
+
+    def process_input(self, user_input: str) -> Tuple[Optional[str], List[Dict]]:
+        violations = []
+        sanitized = user_input
+
+        if len(sanitized) > self.config.max_input_length:
+            violations.append({'type': 'length', 'detail': f'Input exceeds {self.config.max_input_length} chars'})
+            sanitized = sanitized[:self.config.max_input_length]
+
+        if self.config.enable_pii_detection:
+            sanitized, pii_findings = self.pii_detector.mask(sanitized)
+            if pii_findings:
+                violations.append({'type': 'pii', 'detail': 'PII detected and masked', 'findings': pii_findings})
+
+        if self.config.enable_injection_detection:
+            is_injection, detections = self.injection_detector.detect(sanitized)
+            if is_injection:
+                violations.append({'type': 'injection', 'detail': 'Potential prompt injection detected', 'detections': detections})
+                return None, violations  # Block request
+
+        if self.config.enable_content_moderation:
+            moderation = self.client.moderations.create(input=sanitized)
+            result = moderation.results[0]
+            if result.flagged:
+                violations.append({'type': 'moderation', 'detail': 'Content flagged'})
+                return None, violations  # Block request
+
+        return sanitized, violations
+
+    def process_output(self, output: str, context: Optional[str] = None) -> Tuple[str, List[Dict]]:
+        violations = []
+        filtered = output
+
+        if len(filtered) > self.config.max_output_length:
+            filtered = filtered[:self.config.max_output_length]
+            violations.append({'type': 'length', 'detail': 'Output truncated'})
+
+        if self.config.enable_content_moderation:
+            moderation = self.client.moderations.create(input=filtered)
+            if moderation.results[0].flagged:
+                violations.append({'type': 'moderation', 'detail': 'Output flagged'})
+                filtered = "[Response filtered due to content policy]"
+
+        if self.config.enable_hallucination_detection and context:
+            check = self.hallucination_detector.check(filtered, context)
+            if not check.get('is_grounded', True):
+                violations.append({'type': 'hallucination', 'detail': 'Response may contain unsupported claims', 'claims': check.get('unsupported_claims', [])})
+
+        return filtered, violations
+
+    def run(self, user_input: str, system_prompt: str = "", context: Optional[str] = None) -> GuardrailResult:
+        all_violations = []
+
+        sanitized_input, input_violations = self.process_input(user_input)
+        all_violations.extend(input_violations)
+
+        if sanitized_input is None:
+            return GuardrailResult(
+                is_safe=False, input_modified=True, output_modified=False,
+                original_input=user_input, sanitized_input=None,
+                original_output=None, filtered_output=None,
+                violations=all_violations, metadata={'stage': 'input_blocked'}
+            )
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": sanitized_input})
+
+        response = self.client.chat.completions.create(model=self.model, messages=messages)
+        original_output = response.choices[0].message.content
+
+        filtered_output, output_violations = self.process_output(original_output, context)
+        all_violations.extend(output_violations)
+
+        return GuardrailResult(
+            is_safe=len([v for v in all_violations if v['type'] in ['injection', 'moderation']]) == 0,
+            input_modified=sanitized_input != user_input,
+            output_modified=filtered_output != original_output,
+            original_input=user_input, sanitized_input=sanitized_input,
+            original_output=original_output, filtered_output=filtered_output,
+            violations=all_violations, metadata={'model': self.model}
+        )
+]]></code>
+      </example>
+    </section>
+
+    <section name="tiered-checking">
+      <rule>
+        <statement>Implement tiered guardrails: Tier 1 runs fast local checks (under 1ms) — length and regex injection patterns. Tier 2 runs moderate-cost checks (10-50ms) — PII detection. Tier 3 runs expensive API checks (500ms+) — content moderation. Short-circuit on failure: if Tier 1 fails, do not proceed to Tier 2 or 3.</statement>
+        <rationale>Tiered checking optimizes for the common case: most requests are benign and clear all tiers quickly. Expensive LLM-based checks only run on requests that pass the cheap gates. This pattern reduces median latency by 10-100x compared to always running all checks.</rationale>
+      </rule>
+      <example type="good" title="Tiered guardrails with short-circuit">
+        <code lang="python"><![CDATA[
+class TieredGuardrails:
+    """Tiered guardrails for cost optimization."""
+
+    def __init__(self, client: OpenAI):
+        self.client = client
+        self.pii_detector = PIIDetector()
+        self.injection_detector = PromptInjectionDetector()
+
+    def tier1_fast_checks(self, text: str) -> Tuple[bool, List[str]]:
+        """Tier 1: Fast, local checks (< 1ms)."""
+        issues = []
+        if len(text) > 10000:
+            issues.append("Input too long")
+        is_injection, _ = self.injection_detector.detect(text)
+        if is_injection:
+            issues.append("Injection detected")
+        return len(issues) == 0, issues
+
+    def tier2_moderate_checks(self, text: str) -> Tuple[bool, List[str]]:
+        """Tier 2: Moderate cost checks (10-50ms)."""
+        issues = []
+        findings = self.pii_detector.detect(text)
+        if findings:
+            issues.append(f"PII detected: {len(findings)} instances")
+        return len(issues) == 0, issues
+
+    async def tier3_expensive_checks(self, text: str) -> Tuple[bool, List[str]]:
+        """Tier 3: Expensive API checks (500ms+)."""
+        issues = []
+        response = await self.client.moderations.create(input=text)
+        if response.results[0].flagged:
+            issues.append("Content moderation flagged")
+        return len(issues) == 0, issues
+
+    async def check(self, text: str) -> Tuple[bool, List[str]]:
+        """Run tiered checks, short-circuiting on failure."""
+        passed, issues = self.tier1_fast_checks(text)
+        if not passed:
+            return False, issues
+
+        passed, issues = self.tier2_moderate_checks(text)
+        if not passed:
+            return False, issues
+
+        passed, issues = await self.tier3_expensive_checks(text)
+        return passed, issues
+]]></code>
+      </example>
+    </section>
+
+    <section name="framework-integration">
+      <rule>
+        <statement>Integrate the GuardrailsPipeline into FastAPI as a singleton dependency. Raise HTTPException(400) for blocked inputs. Return warnings for non-blocking violations (e.g., PII masking) in the response body.</statement>
+        <rationale>FastAPI's dependency injection pattern is the correct integration point for request-scoped guardrails. HTTP 400 for blocked requests provides a clear signal to clients without exposing violation details that could help attackers tune their inputs.</rationale>
+      </rule>
+      <example type="good" title="FastAPI integration">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+import logging
+
+app = FastAPI()
+logger = logging.getLogger(__name__)
+
+client = OpenAI()
+guardrails = GuardrailsPipeline(client, config=GuardrailConfig())
+
+class ChatRequest(BaseModel):
+    message: str
+    system_prompt: Optional[str] = "You are a helpful assistant."
+    context: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    response: str
+    is_safe: bool
+    warnings: list = []
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    """Chat endpoint with guardrails."""
+    result = guardrails.run(
+        user_input=request.message,
+        system_prompt=request.system_prompt,
+        context=request.context
+    )
+
+    if not result.is_safe:
+        logger.warning(f"Blocked request: {result.violations}")
+        raise HTTPException(status_code=400, detail="Your request could not be processed.")
+
+    warnings = [v['detail'] for v in result.violations if v['type'] == 'pii']
+
+    return ChatResponse(
+        response=result.filtered_output,
+        is_safe=result.is_safe,
+        warnings=warnings
+    )
+]]></code>
+      </example>
+      <example type="good" title="LangChain integration as runnable">
+        <code lang="python"><![CDATA[
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableLambda
+
+def create_guardrailed_chain(config: GuardrailConfig = None):
+    """Create a LangChain chain with guardrails."""
+    client = OpenAI()
+    pipeline = GuardrailsPipeline(client, config=config or GuardrailConfig())
+    llm = ChatOpenAI(model="gpt-4o")
+
+    def input_guardrail(input_dict: dict) -> dict:
+        sanitized, violations = pipeline.process_input(input_dict["message"])
+        if sanitized is None:
+            raise ValueError(f"Input blocked: {violations}")
+        return {"message": sanitized, "original": input_dict["message"], "violations": violations}
+
+    def output_guardrail(output: str, context: dict = None) -> str:
+        filtered, violations = pipeline.process_output(output, context or {})
+        return filtered
+
+    chain = (
+        RunnableLambda(input_guardrail)
+        | (lambda x: llm.invoke([
+            SystemMessage(content="You are a helpful assistant."),
+            HumanMessage(content=x["message"])
+        ]).content)
+        | RunnableLambda(lambda x: output_guardrail(x, {}))
+    )
+
+    return chain
+
+chain = create_guardrailed_chain()
+response = chain.invoke({"message": "What is machine learning?"})
+print(response)
+]]></code>
+      </example>
+      <example type="good" title="LlamaIndex RAG with guardrails">
+        <code lang="python"><![CDATA[
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.query_engine import CustomQueryEngine
+from llama_index.core.retrievers import BaseRetriever
+from llama_index.core.response_synthesizers import BaseSynthesizer
+
+class GuardrailedQueryEngine(CustomQueryEngine):
+    """Query engine with guardrails for RAG applications."""
+
+    retriever: BaseRetriever
+    response_synthesizer: BaseSynthesizer
+    guardrails: GuardrailsPipeline
+
+    def custom_query(self, query_str: str) -> str:
+        sanitized, violations = self.guardrails.process_input(query_str)
+        if sanitized is None:
+            return "I'm sorry, but I cannot process that request."
+
+        nodes = self.retriever.retrieve(sanitized)
+        context = "\n".join([n.text for n in nodes])
+
+        response = self.response_synthesizer.synthesize(query=sanitized, nodes=nodes)
+
+        filtered, out_violations = self.guardrails.process_output(str(response), context=context)
+        return filtered
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-pipeline">
+      <rule>
+        <statement>Use AsyncOpenAI and async methods throughout the pipeline for production deployments. Run synchronous checks (regex, PII masking) inline; use await for API calls (content moderation). Do not mix sync and async in the same execution path.</statement>
+        <rationale>Async execution prevents blocking the event loop on I/O-bound operations (API calls, database queries). Mixing sync and async contexts causes runtime errors and unpredictable performance under concurrent load.</rationale>
+      </rule>
+      <example type="good" title="Async guardrails pipeline">
+        <code lang="python"><![CDATA[
+from openai import AsyncOpenAI
+
+class AsyncGuardrailsPipeline:
+    """Async version of guardrails pipeline for better performance."""
+
+    def __init__(self, client: AsyncOpenAI, config: GuardrailConfig):
+        self.client = client
+        self.config = config
+        self.pii_detector = PIIDetector()
+        self.injection_detector = PromptInjectionDetector()
+
+    async def moderate_content(self, text: str) -> dict:
+        response = await self.client.moderations.create(input=text)
+        result = response.results[0]
+        return {
+            'is_flagged': result.flagged,
+            'categories': [c for c, f in result.categories.model_dump().items() if f]
+        }
+
+    async def process_input_async(self, user_input: str) -> Tuple[Optional[str], List[Dict]]:
+        violations = []
+        sanitized = user_input
+
+        # Synchronous checks (fast)
+        if len(sanitized) > self.config.max_input_length:
+            sanitized = sanitized[:self.config.max_input_length]
+            violations.append({'type': 'length', 'detail': 'Truncated'})
+
+        sanitized, pii = self.pii_detector.mask(sanitized)
+        if pii:
+            violations.append({'type': 'pii', 'detail': 'Masked'})
+
+        is_injection, _ = self.injection_detector.detect(sanitized)
+        if is_injection:
+            return None, [{'type': 'injection', 'detail': 'Blocked'}]
+
+        # Async check (slower)
+        if self.config.enable_content_moderation:
+            moderation = await self.moderate_content(sanitized)
+            if moderation['is_flagged']:
+                return None, [{'type': 'moderation', 'detail': 'Blocked'}]
+
+        return sanitized, violations
+]]></code>
+      </example>
+    </section>
+
+    <section name="monitoring">
+      <p>Structured logging and metrics are essential for tuning guardrail thresholds and detecting attacks.</p>
+      <rule>
+        <statement>Log every guardrail event with: timestamp, request_id, guardrail_type, result (pass/fail/warn), latency_ms, violation_details. Use a structured formatter (JSON). Never log raw input or output — log sanitized versions with violation metadata only.</statement>
+        <rationale>Structured logs enable automated alerting on violation rate spikes, false positive analysis, and security incident investigation. JSON format integrates with log aggregation tools (Datadog, Splunk, ELK) without parsing.</rationale>
+      </rule>
+    </section>
+
+    <antipattern>
+      <description>Running content moderation on every request without tiering, including the LLM-as-judge hallucination check.</description>
+      <reason>LLM-based checks add 500ms-2s per call. Running them on every request multiplies the pipeline latency. Reserve expensive checks for ambiguous cases that pass the fast tiers, or for post-hoc sampling in production monitoring.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Building a GuardrailsPipeline singleton that holds OpenAI client state across concurrent requests without connection pooling.</description>
+      <reason>The OpenAI client is not thread-safe by default when the same underlying HTTP connection is reused. Use an AsyncOpenAI client with the async pipeline for concurrent request handling, or use a thread-local client pattern.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="guardrails-nemo"/>
+      <ref slug="guardrails-ai-framework"/>
+      <link href="https://microsoft.github.io/presidio/"/>
+      <link href="https://lakera.ai/blog/prompt-injection-attacks"/>
+    </see-also>
+  </content>
+</methodology>
