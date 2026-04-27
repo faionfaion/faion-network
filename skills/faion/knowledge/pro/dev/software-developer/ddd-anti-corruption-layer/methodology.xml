@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ddd-anti-corruption-layer">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>DDD Anti-Corruption Layer: adapter class in the infrastructure layer that translates between external/legacy API models and your domain model, preventing foreign concepts from leaking in.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>anti-corruption-layer</tag>
+      <tag>adapter</tag>
+      <tag>bounded-context</tag>
+      <tag>integration</tag>
+    </tags>
+    <category>ddd</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>DDD Anti-Corruption Layer: Translation Adapters for External Systems</title>
+
+    <summary>The Anti-Corruption Layer (ACL) is an adapter in the infrastructure layer that translates between the external system's model (a legacy API, a third-party service, another Bounded Context) and your domain model. The domain defines an interface (InventoryChecker, PaymentGateway) that speaks the domain's Ubiquitous Language. The ACL implementation translates to and from the external system's terminology, data shapes, and error types — preventing the external model from leaking into your domain.</summary>
+
+    <why>
+      <p>External systems and legacy APIs use terminology, data shapes, and error models that differ from your domain. Without an ACL, their concepts leak directly into your domain objects: an Order starts using the external inventory system's "SKU" and "availableUnits" instead of the domain's "product_id" and "quantity". When the external API changes, you must update domain code.</p>
+      <p>The ACL eliminates this coupling by concentrating all translation in one place. If the external API changes its field names or response format, only the ACL changes. The domain interface, domain objects, and all domain tests remain unchanged. The ACL also translates errors: an external ExternalApiError becomes a domain InventoryUnavailableError with domain semantics.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Integrating with any external or third-party API (payment gateways, shipping carriers, inventory services, CRMs).</item>
+        <item>Integrating with a legacy system that uses a different model or Ubiquitous Language than your bounded context.</item>
+        <item>Integrating with another Bounded Context in the same organization that has its own model — the ACL prevents model contamination across context boundaries.</item>
+        <item>Any integration where you want to isolate your domain from external API versioning and breaking changes.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>The external system's model is identical to your domain model and you control both — a direct call is simpler.</item>
+        <item>Throwaway integrations that will be replaced within a sprint — overhead exceeds value for very short-lived adapters.</item>
+        <item>The integration is purely read-only and the external data maps trivially to a DTO used only in the application layer (not in the domain).</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>The domain layer MUST define an interface for the external dependency (e.g., InventoryChecker, PaymentGateway) using only domain types and domain terminology. The ACL implementation in the infrastructure layer MUST implement this interface and be the ONLY place that imports the external client SDK or legacy API types.</statement>
+        <rationale>Domain code importing external SDK types is a direct coupling: SDK upgrades, API changes, and provider swaps require domain code changes. The interface + ACL pattern confines that coupling to the infrastructure layer.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The ACL MUST translate external error types into domain exceptions. An ExternalApiError from the inventory service MUST become InventoryUnavailableError (a domain concept) before it crosses the ACL boundary. Raw external exceptions MUST NOT propagate into domain or application layer code.</statement>
+        <rationale>External error types leak external semantics into domain error handling. Domain code should reason about domain outcomes (inventory unavailable) not external infrastructure outcomes (HTTP 503).</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The ACL MUST define a fail-safe default for non-critical integrations (e.g., if the inventory API is unreachable, assume available rather than crashing the order flow). Document the failure mode explicitly in the ACL implementation.</statement>
+        <rationale>External services are unreliable. Domain flows should degrade gracefully rather than propagate transient infrastructure errors as hard domain failures.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="InventoryChecker ACL for external inventory API">
+      <code lang="python"><![CDATA[
+# order/domain/interfaces.py  -- domain layer, no external imports
+from abc import ABC, abstractmethod
+from uuid import UUID
+
+
+class InventoryChecker(ABC):
+    """Domain interface for inventory availability checks."""
+
+    @abstractmethod
+    async def check_availability(self, product_id: UUID, quantity: int) -> bool:
+        """Return True if product is available in required quantity."""
+        pass
+
+    @abstractmethod
+    async def reserve(self, product_id: UUID, quantity: int) -> str:
+        """Reserve inventory. Returns reservation reference."""
+        pass
+
+
+# order/infrastructure/acl/inventory_adapter.py  -- infrastructure layer
+from uuid import UUID
+
+from order.domain.interfaces import InventoryChecker
+from external.inventory_api import InventoryApiClient, ExternalApiError
+
+
+class InventoryAdapter(InventoryChecker):
+    """Anti-corruption layer for external inventory service."""
+
+    def __init__(self, client: InventoryApiClient):
+        self._client = client
+
+    async def check_availability(self, product_id: UUID, quantity: int) -> bool:
+        """Check if product is available in required quantity."""
+        try:
+            # External API uses different terminology
+            response = await self._client.get_stock_level(str(product_id))
+
+            # Translate external model to our domain concepts
+            available_quantity = response.get("availableUnits", 0)
+            return available_quantity >= quantity
+
+        except ExternalApiError:
+            # Fail safely -- assume available; order flow must not be blocked by
+            # transient inventory API outages. Inventory will catch discrepancies later.
+            return True
+
+    async def reserve(self, product_id: UUID, quantity: int) -> str:
+        """Reserve inventory for order."""
+        try:
+            response = await self._client.create_reservation({
+                "sku": str(product_id),      # External uses "sku"; domain uses product_id
+                "units": quantity,            # External uses "units"; domain uses quantity
+                "type": "CUSTOMER_ORDER",
+            })
+            return response["reservationId"]  # Translate to domain reservation reference
+        except ExternalApiError as e:
+            raise InventoryReservationError(
+                f"Could not reserve {quantity} units of {product_id}"
+            ) from e
+]]></code>
+      <note>The domain only sees InventoryChecker with domain vocabulary (product_id, quantity). The ACL translates to the external API's vocabulary (sku, units, availableUnits). ExternalApiError never crosses the boundary.</note>
+    </example>
+
+    <example type="bad" title="External model leaking into domain Aggregate">
+      <code lang="python"><![CDATA[
+# BAD: Order aggregate importing external SDK and using external terminology
+from external.inventory_api import InventoryApiClient
+
+class Order:
+    async def place(self, client: InventoryApiClient):
+        # External SDK imported directly into domain
+        # External terminology ("sku", "availableUnits") leaking in
+        for line in self.lines:
+            response = await client.get_stock_level(str(line.product_id))
+            if response["availableUnits"] < line.quantity:
+                raise Error("Insufficient inventory")
+        self.status = OrderStatus.PLACED
+]]></code>
+      <note>InventoryApiClient import in the domain couples the domain to the external SDK version. "availableUnits" is external terminology, not domain vocabulary. Any API change breaks the Aggregate.</note>
+    </example>
+
+    <section name="domain-service-usage">
+      <p>Domain Services are the typical consumer of ACL interfaces. A Domain Service holds pure domain logic that spans multiple entities or requires external data, but it depends on the domain interface, not the ACL implementation.</p>
+      <example type="good" title="Domain service using ACL interface">
+        <code lang="python"><![CDATA[
+# order/domain/services.py
+from decimal import Decimal
+from typing import List
+
+from .entities.order import Order, OrderLine
+from .value_objects import Money
+from .interfaces import InventoryChecker
+
+
+class PricingService:
+    """Domain service for pricing calculations."""
+
+    def __init__(self, discount_rules: List["DiscountRule"]):
+        self._discount_rules = discount_rules
+
+    def calculate_total(self, order: Order) -> Money:
+        """Calculate order total with applicable discounts."""
+        subtotal = order.total
+
+        # Apply discount rules
+        discount = Decimal("0")
+        for rule in self._discount_rules:
+            if rule.applies_to(order):
+                discount += rule.calculate_discount(subtotal)
+
+        final_amount = subtotal.amount - discount
+        return Money(max(final_amount, Decimal("0")), subtotal.currency)
+
+
+class ShippingService:
+    """Domain service for shipping calculations."""
+
+    def calculate_shipping_cost(self, order: Order) -> Money:
+        """Calculate shipping cost based on destination and weight."""
+        base_cost = Decimal("5.99")
+
+        # Free shipping for orders over $50
+        if order.total.amount >= Decimal("50"):
+            return Money(Decimal("0"), order.total.currency)
+
+        return Money(base_cost, order.total.currency)
+]]></code>
+      </example>
+    </section>
+
+    <section name="tools-and-services">
+      <p>Tools and services useful for ACL and cross-context integration in DDD systems.</p>
+      <list>
+        <item>mermaid-cli (mmdc): render Bounded Context maps from Markdown — npm i -g @mermaid-js/mermaid-cli</item>
+        <item>context-mapper: DSL for Bounded Context maps and context relationship analysis — https://contextmapper.org</item>
+        <item>pact-broker / pactflow: consumer-driven contract testing across Bounded Contexts — https://pactflow.io</item>
+        <item>archunit (Java), dependency-cruiser (TS): enforce layer and Bounded Context boundaries in code — https://www.archunit.org</item>
+        <item>tach (Python), nx (TS monorepo): module-boundary enforcement — https://github.com/gauge-sh/tach</item>
+        <item>Kafka / Redpanda + Outbox pattern: Domain Events across contexts with at-least-once delivery; pair with debezium for CDC-based outbox relay.</item>
+        <item>Temporal: long-running domain workflows (sagas) that span multiple Bounded Contexts.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>DDD ACL work is well-suited to a dedicated subagent that generates adapters from domain interface specifications.</p>
+      <prompt purpose="acl-generation"><![CDATA[
+Phase 1 (modeler):
+Domain: subscription billing. Produce:
+- Bounded Contexts (Subscription, Billing, Notifications) with relationships
+  (Customer-Supplier, Shared Kernel, ACL)
+- Aggregates per context with root + invariants list
+- Domain events crossing contexts
+- Ubiquitous Language glossary (term -> definition)
+Output as Markdown for human review. STOP. Do not write code.
+
+Phase 2 (acl-builder, after sign-off):
+Generate Anti-Corruption Layer adapters for each external integration point
+identified in the locked spec. For each adapter:
+- Domain interface in domain/interfaces.py (domain types only)
+- ACL implementation in infrastructure/acl/ (external SDK imports here only)
+- Unit tests using a mock of the external client
+- Error translation: map all external exceptions to domain exceptions
+]]></prompt>
+    </section>
+
+    <section name="agentic-gotchas">
+      <p>ACLs are consistently under-built by agents. Common failure modes to check explicitly.</p>
+      <list>
+        <item>Agents skip the domain interface and import the external SDK directly in application or domain services — require the ABC interface pattern in the prompt.</item>
+        <item>External exceptions propagate through the ACL boundary unchanged — require explicit try/except with domain exception re-raise in every ACL method.</item>
+        <item>ACLs are missing entirely when integrating legacy systems — agents are trained to use direct API calls. Flag any direct external SDK import in non-infrastructure code.</item>
+        <item>LLMs invent Bounded Contexts that do not reflect actual organizational boundaries — the context map must come from real domain experts; the agent only formalizes it. Human-in-loop checkpoint before any code generation.</item>
+        <item>Agents add business logic inside ACL adapters (pricing calculations, discount rules) — ACL translates only; domain logic belongs in Domain Services or Aggregates.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Domain interface defined in domain layer with no external SDK imports</check>
+      <check>ACL implementation lives in infrastructure layer, is the only place with external SDK imports</check>
+      <check>All external exceptions caught and re-raised as domain exceptions before crossing the boundary</check>
+      <check>Fail-safe default documented for non-critical integrations</check>
+      <check>ACL unit tests use a mock of the external client, not the real API</check>
+      <check>No business logic inside ACL adapters — translation only</check>
+      <check>Ubiquitous Language glossary documents the mapping between external and domain terminology</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+      <link href="https://www.domainlanguage.com/ddd/reference/"/>
+      <link href="https://martinfowler.com/bliki/BoundedContext.html"/>
+      <link href="https://contextmapper.org"/>
+    </see-also>
+  </content>
+</methodology>
