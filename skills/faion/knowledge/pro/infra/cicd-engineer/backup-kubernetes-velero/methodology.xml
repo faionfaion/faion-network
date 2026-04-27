@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-kubernetes-velero">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement Kubernetes cluster backup with Velero using CSI snapshots and Kopia data mover. Covers installation, Schedule CRDs, pre/post hooks for stateful apps, and Restic deprecation in v1.15+.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>velero</tag>
+      <tag>kubernetes</tag>
+      <tag>csi-snapshots</tag>
+      <tag>kopia</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-verification-dr"/>
+      <ref slug="backup-cloud-aws"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes Backup with Velero and CSI Snapshots</title>
+
+    <summary>Implement Kubernetes cluster backup using Velero with CSI volume snapshots and Kopia as the file system backup (FSB) data mover. Starting Velero v1.15, Restic is deprecated as the FSB data mover — use Kopia. CSI snapshots are the preferred method for PersistentVolume backups when the storage driver supports them.</summary>
+
+    <why>
+      <p>Kubernetes workloads require backing up both the cluster resource state (Deployments, Services, ConfigMaps, Secrets, PVCs) and the underlying volume data. Velero handles both surfaces in a single tool: it uses the Kubernetes API to serialize resources to object storage and either CSI VolumeSnapshot or a file system backup (FSB) mover to copy volume data. Without Velero, restoring a stateful workload after cluster failure requires manually recreating every resource — an error-prone process that violates any reasonable RTO.</p>
+      <p>The Restic deprecation in Velero v1.15+ is a breaking change that many agents trained on older documentation still miss. Emitting `--default-volumes-to-restic` on Velero v1.15+ produces a warning or error. The correct flag is `--default-volumes-to-fs-backup` and the correct mover is Kopia.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Kubernetes clusters running stateful workloads (databases, file stores) that need namespace-level or cluster-level restore capability.</item>
+        <item>Multi-namespace applications where a single Velero Schedule covers all namespaces in one backup.</item>
+        <item>Disaster recovery drills that require restoring a namespace to a different cluster or region.</item>
+        <item>Migrating workloads between clusters or cloud providers using Velero backup + restore to the target.</item>
+        <item>Compliance requirements mandating point-in-time recovery for Kubernetes state.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Stateless workloads with no PersistentVolumeClaims — restoring from Git + CI/CD pipeline is faster and more reliable than a Velero restore.</item>
+        <item>Databases managed by operators (PostgreSQL, MySQL) — use the operator's native backup mechanism (pgBackRest, XtraBackup) and back up the exports with Restic or Velero as a second layer.</item>
+        <item>Clusters on storage drivers that do not support CSI snapshots and where FSB (Kopia) copy time exceeds the backup window.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="velero-install">
+      <p>Install Velero with the cloud provider plugin matching the cluster's storage backend. Use --use-node-agent to enable the node agent pod required for file system backup (Kopia). Use --default-volumes-to-fs-backup to enable FSB for volumes that don't have a CSI VolumeSnapshot class configured.</p>
+
+      <rule testable="true">
+        <statement>Velero installations on v1.15+ MUST NOT use `--default-volumes-to-restic`. Use `--default-volumes-to-fs-backup` and Kopia as the data mover. The Restic integration path in Velero v1.15 is deprecated and will be removed in a future version.</statement>
+        <rationale>Velero deprecated the Restic FSB path in v1.15 in favor of Kopia, which has better performance and active maintenance. Scripts with `--default-volumes-to-restic` on v1.15+ produce a deprecation warning or error; on future versions they will fail entirely.</rationale>
+      </rule>
+
+      <example type="good" title="Velero installation with AWS provider and Kopia">
+        <code lang="bash"><![CDATA[
+# Install Velero with AWS provider
+velero install \
+  --provider aws \
+  --plugins velero/velero-plugin-for-aws:v1.10.0 \
+  --bucket velero-backups \
+  --backup-location-config region=us-east-1 \
+  --snapshot-location-config region=us-east-1 \
+  --secret-file ./credentials-velero \
+  --use-node-agent \
+  --default-volumes-to-fs-backup
+]]></code>
+        <note>--use-node-agent deploys the node agent DaemonSet required for Kopia FSB. --default-volumes-to-fs-backup sets FSB as fallback for volumes without a CSI snapshot class.</note>
+      </example>
+
+      <example type="bad" title="Velero with deprecated Restic flag on v1.15+">
+        <code lang="bash"><![CDATA[
+# WRONG for Velero v1.15+
+velero install \
+  --provider aws \
+  --plugins velero/velero-plugin-for-aws:v1.10.0 \
+  --bucket velero-backups \
+  --use-restic \
+  --default-volumes-to-restic
+]]></code>
+        <note>--use-restic and --default-volumes-to-restic are deprecated in v1.15+. Use --use-node-agent and --default-volumes-to-fs-backup with Kopia instead.</note>
+      </example>
+    </section>
+
+    <section name="velero-backup-commands">
+      <p>One-time backups and scheduled backups both produce Backup objects stored in object storage. Schedules use cron syntax. TTL controls how long the Backup object and its data are retained before Velero automatically deletes them.</p>
+
+      <example type="good" title="Velero backup and restore commands">
+        <code lang="bash"><![CDATA[
+# Create one-time backup of specific namespace
+velero backup create myapp-backup \
+  --include-namespaces myapp \
+  --include-resources pods,deployments,services,configmaps,secrets,pvc
+
+# Backup with label selector
+velero backup create labeled-backup \
+  --selector app=myapp
+
+# Create scheduled backup (daily at 2am UTC)
+velero schedule create daily-backup \
+  --schedule="0 2 * * *" \
+  --include-namespaces myapp,myapp-db \
+  --ttl 720h
+
+# List backups
+velero backup get
+
+# Describe backup details
+velero backup describe myapp-backup --details
+
+# Restore from backup
+velero restore create --from-backup myapp-backup
+
+# Restore to different namespace
+velero restore create --from-backup myapp-backup \
+  --namespace-mappings myapp:myapp-restored
+]]></code>
+      </example>
+    </section>
+
+    <section name="velero-crds">
+      <p>The Backup and Schedule CRDs define the backup scope and retention. The BackupStorageLocation defines where backups are stored. Use excluded resources to omit noise (events, nodes). Use Kopia FSB (defaultVolumesToFsBackup: false means prefer CSI snapshots; set to true to default to FSB).</p>
+
+      <example type="good" title="Velero Backup CRD">
+        <code lang="yaml"><![CDATA[
+# velero-backup.yaml - Backup resource definition
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  name: myapp-backup
+  namespace: velero
+  labels:
+    app.kubernetes.io/name: velero-backup
+    app.kubernetes.io/component: backup
+spec:
+  includedNamespaces:
+    - myapp
+    - myapp-db
+  includedResources:
+    - pods
+    - deployments
+    - replicasets
+    - services
+    - configmaps
+    - secrets
+    - persistentvolumeclaims
+    - ingresses
+  excludedResources:
+    - events
+    - nodes
+  labelSelector:
+    matchLabels:
+      backup: "true"
+  storageLocation: default
+  volumeSnapshotLocations:
+    - default
+  ttl: 720h0m0s
+  snapshotVolumes: true
+  # Use CSI snapshots (preferred); set defaultVolumesToFsBackup: true to use Kopia FSB as fallback
+  defaultVolumesToFsBackup: false
+]]></code>
+      </example>
+
+      <example type="good" title="Velero Schedule CRD for daily and weekly backups">
+        <code lang="yaml"><![CDATA[
+# velero-schedule.yaml - Scheduled backup definition
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"  # 2 AM daily UTC
+  template:
+    includedNamespaces:
+      - myapp
+      - myapp-db
+    includedResources:
+      - "*"
+    excludedResources:
+      - events
+    storageLocation: default
+    volumeSnapshotLocations:
+      - default
+    ttl: 720h0m0s  # 30 days
+    snapshotVolumes: true
+
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: weekly-backup
+  namespace: velero
+spec:
+  schedule: "0 3 * * 0"  # 3 AM Sunday UTC
+  template:
+    includedNamespaces:
+      - "*"
+    excludedNamespaces:
+      - kube-system
+      - velero
+    storageLocation: default
+    ttl: 2160h0m0s  # 90 days
+]]></code>
+      </example>
+
+      <example type="good" title="Velero BackupStorageLocation for AWS S3">
+        <code lang="yaml"><![CDATA[
+# velero-bsl.yaml - Backup storage location for AWS S3
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: aws
+  objectStorage:
+    bucket: velero-backups
+    prefix: cluster-prod
+  config:
+    region: us-east-1
+    s3ForcePathStyle: "false"
+    s3Url: ""
+  credential:
+    name: velero-aws-credentials
+    key: cloud
+  accessMode: ReadWrite
+  default: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="velero-agent-prompt">
+      <p>Use this prompt pattern when asking an agent to generate a Velero Schedule for a specific namespace and storage location.</p>
+
+      <prompt purpose="generate-velero-schedule">
+<![CDATA[
+Generate a Velero Schedule for namespace=<ns>, frequency=daily 02:00 UTC,
+TTL=720h, storage location=aws-us-east-1, snapshot location=aws-csi.
+Use Kopia data mover (no Restic). Include excluded resources: events, pods.
+Output YAML only. After generation, run `velero schedule create --dry-run -f -`
+and report any validation error verbatim.
+]]>
+      </prompt>
+    </section>
+
+    <section name="setup-checklist">
+      <checklist>
+        <check>Install Velero CLI matching the server version.</check>
+        <check>Deploy Velero server with correct cloud provider plugin.</check>
+        <check>Configure BackupStorageLocation pointing to a dedicated backup bucket.</check>
+        <check>Configure VolumeSnapshotLocation for CSI-based volume snapshots.</check>
+        <check>Verify CSI driver supports VolumeSnapshot API (check CSI driver docs).</check>
+        <check>Use --use-node-agent (not --use-restic) for node agent DaemonSet.</check>
+        <check>Use Kopia as data mover (not Restic — deprecated in v1.15+).</check>
+        <check>Define namespace inclusion/exclusion to avoid backing up kube-system and velero namespaces in regular schedules.</check>
+        <check>Configure resource filters to exclude events and pods (ephemeral, not useful to restore).</check>
+        <check>Set TTL values: daily=720h (30d), weekly=2160h (90d).</check>
+        <check>Configure pre/post hooks for stateful apps (databases) to ensure quiescence during snapshot.</check>
+        <check>Test scheduled backup execution and verify backup object reaches Completed status.</check>
+        <check>Test restore to a separate namespace (--namespace-mappings) as DR drill.</check>
+        <check>Add timezone prefix to cron schedule or document that schedule runs in UTC.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent emits `--default-volumes-to-restic` or `--use-restic` for Velero v1.15+ installations.</description>
+        <reason>Restic path is deprecated in Velero v1.15. Use --use-node-agent and --default-volumes-to-fs-backup with Kopia. Anchor the prompt to the exact installed Velero version to avoid this.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates Velero Schedule with cron expression "0 2 * * *" without noting the timezone, causing the schedule to run at 2 AM UTC regardless of the team's local time — potentially during peak traffic hours for non-UTC teams.</description>
+        <reason>Velero schedules run in UTC by default. "0 2 * * *" stomps on traffic peaks for teams in UTC+3 to UTC+8 time zones. Add a comment documenting the UTC schedule and its local equivalent for the ops team.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates Velero Backup that includes kube-system, velero, and other platform namespaces in the includedNamespaces wildcard without explicitly excluding them.</description>
+        <reason>Backing up kube-system and velero namespaces adds noise, inflates backup size, and can cause restore conflicts. Always exclude them with excludedNamespaces in wildcard schedules.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent treats Velero CSI snapshot as equivalent to an off-cluster backup — "snapshot = backup".</description>
+        <reason>CSI snapshots live on the same storage system. If the storage system fails (cloud provider outage, cluster deletion), all snapshots go with it. Always configure a BackupStorageLocation in a separate account/region that copies backup data off the cluster's storage.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="generate-velero-config">
+<![CDATA[
+Generate Velero backup configuration for Kubernetes:
+
+Cluster details:
+- Kubernetes version: [version]
+- Cloud provider: [AWS/GCP/Azure/on-prem]
+- Storage class: [name]
+- CSI driver: [Yes/No, which one]
+
+Backup requirements:
+- Namespaces: [list]
+- Excluded namespaces: [list]
+- Schedule: [cron expression]
+- Retention: [days]
+- Cross-region: [Yes/No]
+
+Generate:
+1. velero install command (use --use-node-agent, no --use-restic)
+2. BackupStorageLocation YAML
+3. VolumeSnapshotLocation YAML
+4. Schedule YAML for daily/weekly backups
+5. Pre/post backup hooks for stateful apps
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-verification-dr"/>
+      <ref slug="backup-cloud-aws"/>
+      <link href="https://velero.io/docs/main/"/>
+      <link href="https://kopia.io/docs/"/>
+    </see-also>
+  </content>
+</methodology>
