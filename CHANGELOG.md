@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: serverless-architecture → 5 slugs (serverless-foundations, serverless-architecture-patterns, serverless-cold-start-optimization, serverless-cost-optimization, serverless-iac-and-templates)
 - decompose: guardrails → 5 slugs (guardrails-concepts, guardrails-nemo, guardrails-ai-framework, guardrails-custom-pipeline, guardrails-testing)
 - decompose: django-coding-standards → 5 slugs (django-project-structure, django-service-layer, django-selectors, django-serializers, django-constants)
 - decompose: django-pytest → 5 slugs (django-pytest-fixtures, django-pytest-factories, django-pytest-integration, django-pytest-parametrize, django-pytest-mocking)
