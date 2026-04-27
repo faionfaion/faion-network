@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: kubernetes-deployment → 5 slugs (k8s-deployment-workloads, k8s-rolling-update, k8s-canary-progressive, k8s-scaling-availability, k8s-security-hardening)
 - decompose: autonomous-agents → 5 slugs (agents-react-pattern, agents-memory-system, agents-safety-guardrails, agents-framework-selection, agents-production-deployment)
 - decompose: prompt-engineering → 5 slugs (prompt-engineering-fundamentals, prompt-engineering-reasoning, prompt-engineering-security, prompt-engineering-evaluation, prompt-engineering-production)
 - decompose: aws → 5 slugs (aws-cli-compute, aws-cli-containers-iac, aws-cfn-terraform-templates, aws-well-architected-checklists, aws-infra-llm-prompts)
