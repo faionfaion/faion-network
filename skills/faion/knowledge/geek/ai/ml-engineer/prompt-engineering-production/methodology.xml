@@ -1,0 +1,608 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="prompt-engineering-production">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production prompt patterns: versioning, retry-with-escalation, structured output validation, prompt management classes, ReAct templates, function calling, and agentic pipeline best practices.</summary>
+    <tags>
+      <tag>prompt-engineering</tag>
+      <tag>production</tag>
+      <tag>function-calling</tag>
+      <tag>react</tag>
+      <tag>structured-output</tag>
+    </tags>
+    <category>prompt</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="prompt-engineering-evaluation"/>
+      <ref slug="tool-use-function-calling"/>
+      <ref slug="structured-output"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Prompt Engineering — Production Patterns</title>
+
+    <summary>Production prompts require versioning, retry logic, structured output validation, and tool-use scaffolding. This methodology covers: prompt versioning in code, retry-with-escalation, the PromptTemplate and PromptManager classes, Pydantic-based structured output handling, ReAct agent scaffolding, function calling templates, and agentic workflow design patterns.</summary>
+
+    <why>
+      <p>Prompts in production degrade silently: models update, context fills, edge cases emerge. Without versioning you cannot roll back; without retry logic validated outputs fail at the first malformed response; without structured output handling the downstream pipeline breaks on every schema deviation. Production prompt engineering is software engineering — it requires the same discipline as application code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any LLM call in a production pipeline where reliability matters.</item>
+        <item>Structured output use cases where the downstream system depends on schema correctness.</item>
+        <item>Tool-use and agent architectures where the model selects and calls external functions.</item>
+        <item>Multi-turn agentic workflows where intermediate prompts are generated programmatically.</item>
+        <item>Pipelines where prompt changes must be reviewed via git diff and rolled back if needed.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Exploratory one-off prompts — versioning overhead is not justified.</item>
+        <item>Prompts that are user-authored at runtime — manage as user content, not code artifacts.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="prompt-versioning">
+      <p>Prompts are code. Version them in the source repository, not in external dashboards. Changes become reviewable via git diff and rollback-able via git revert.</p>
+
+      <rule testable="true">
+        <statement>All production prompts MUST be stored in source control as Python string constants, dataclasses, or files — not in external prompt management dashboards that are not in the code review path. Each prompt constant MUST include a version comment and the date of last change.</statement>
+        <rationale>External dashboards break the code review workflow — a prompt change that ships without review can cause a production incident with no audit trail. Source control provides diff, blame, and revert for free.</rationale>
+      </rule>
+
+      <example type="good" title="PromptVersion dataclass">
+        <code lang="python"><![CDATA[from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, Any
+
+@dataclass
+class PromptVersion:
+    id: str
+    version: str
+    template: str
+    created_at: datetime
+    metadata: Dict[str, Any]
+    metrics: Dict[str, float]
+
+PROMPTS = {
+    "sentiment_v1": PromptVersion(
+        id="sentiment",
+        version="1.0",
+        template="Classify: {text}\nOutput: positive/negative/neutral",
+        created_at=datetime(2024, 1, 1),
+        metadata={"model": "gpt-4", "temperature": 0},
+        metrics={"accuracy": 0.85}
+    ),
+    "sentiment_v2": PromptVersion(
+        id="sentiment",
+        version="2.0",
+        template="[few-shot version]",
+        created_at=datetime(2024, 6, 1),
+        metadata={"model": "gpt-4", "temperature": 0},
+        metrics={"accuracy": 0.92}
+    ),
+}
+
+def get_prompt(name: str, version: str = "latest") -> PromptVersion:
+    if version == "latest":
+        versions = [p for p in PROMPTS.values() if p.id == name]
+        return max(versions, key=lambda x: x.created_at)
+    return PROMPTS.get(f"{name}_v{version}")]]></code>
+      </example>
+
+      <example type="good" title="Full PromptManager class with persistence">
+        <code lang="python"><![CDATA[from dataclasses import dataclass
+from typing import Dict, Optional
+from datetime import datetime
+import json
+from pathlib import Path
+
+@dataclass
+class PromptVersion:
+    template: str
+    version: str
+    created_at: datetime
+    metadata: Dict
+
+class PromptManager:
+    """Manage prompt versions and A/B testing."""
+
+    def __init__(self, storage_path: str = "./prompts"):
+        self.storage_path = Path(storage_path)
+        self.storage_path.mkdir(exist_ok=True)
+        self.prompts: Dict[str, Dict[str, PromptVersion]] = {}
+
+    def register(
+        self,
+        name: str,
+        template: str,
+        version: str,
+        metadata: Optional[Dict] = None
+    ) -> None:
+        """Register a new prompt version."""
+        if name not in self.prompts:
+            self.prompts[name] = {}
+
+        self.prompts[name][version] = PromptVersion(
+            template=template,
+            version=version,
+            created_at=datetime.now(),
+            metadata=metadata or {}
+        )
+
+    def get(self, name: str, version: str = "latest") -> PromptVersion:
+        """Get a prompt by name and version."""
+        if name not in self.prompts:
+            raise KeyError(f"Prompt '{name}' not found")
+
+        versions = self.prompts[name]
+
+        if version == "latest":
+            return max(versions.values(), key=lambda x: x.created_at)
+
+        if version not in versions:
+            raise KeyError(f"Version '{version}' not found for prompt '{name}'")
+
+        return versions[version]
+
+    def save(self) -> None:
+        """Save prompts to disk."""
+        data = {}
+        for name, versions in self.prompts.items():
+            data[name] = {
+                v: {
+                    "template": pv.template,
+                    "version": pv.version,
+                    "created_at": pv.created_at.isoformat(),
+                    "metadata": pv.metadata
+                }
+                for v, pv in versions.items()
+            }
+
+        with open(self.storage_path / "prompts.json", "w") as f:
+            json.dump(data, f, indent=2)
+
+    def load(self) -> None:
+        """Load prompts from disk."""
+        path = self.storage_path / "prompts.json"
+        if not path.exists():
+            return
+
+        with open(path) as f:
+            data = json.load(f)
+
+        for name, versions in data.items():
+            for v, pv_data in versions.items():
+                self.prompts.setdefault(name, {})[v] = PromptVersion(
+                    template=pv_data["template"],
+                    version=pv_data["version"],
+                    created_at=datetime.fromisoformat(pv_data["created_at"]),
+                    metadata=pv_data["metadata"]
+                )
+
+
+# Usage
+manager = PromptManager()
+manager.register(
+    name="summarize",
+    version="1.0",
+    template="Summarize this text in {num_sentences} sentences:\n{text}",
+    metadata={"author": "team", "tested": True}
+)
+
+prompt = manager.get("summarize")
+formatted = prompt.template.format(num_sentences=3, text="Long text here...")]]></code>
+      </example>
+    </section>
+
+    <section name="prompt-template-class">
+      <example type="good" title="PromptTemplate with few-shot and chat format">
+        <code lang="python"><![CDATA[from dataclasses import dataclass, field
+from typing import List, Dict, Optional
+import re
+
+@dataclass
+class PromptTemplate:
+    """Reusable prompt template with variable substitution."""
+
+    name: str
+    template: str
+    system_prompt: Optional[str] = None
+    examples: List[Dict[str, str]] = field(default_factory=list)
+
+    def format(self, **kwargs) -> str:
+        """Format template with provided variables."""
+        required = set(re.findall(r'\{(\w+)\}', self.template))
+        provided = set(kwargs.keys())
+        missing = required - provided
+
+        if missing:
+            raise ValueError(f"Missing variables: {missing}")
+
+        return self.template.format(**kwargs)
+
+    def to_messages(self, **kwargs) -> List[Dict[str, str]]:
+        """Convert to chat message format."""
+        messages = []
+
+        if self.system_prompt:
+            messages.append({
+                "role": "system",
+                "content": self.system_prompt
+            })
+
+        for example in self.examples:
+            messages.append({"role": "user", "content": example["input"]})
+            messages.append({"role": "assistant", "content": example["output"]})
+
+        messages.append({
+            "role": "user",
+            "content": self.format(**kwargs)
+        })
+
+        return messages
+
+
+# Usage
+classification_template = PromptTemplate(
+    name="sentiment_classification",
+    system_prompt="You are a sentiment classifier.",
+    template="Classify the sentiment of: {text}\nOutput: positive/negative/neutral",
+    examples=[
+        {"input": "Classify: I love this!", "output": "positive"},
+        {"input": "Classify: This is terrible", "output": "negative"}
+    ]
+)
+
+messages = classification_template.to_messages(text="Great product!")]]></code>
+      </example>
+    </section>
+
+    <section name="retry-with-escalation">
+      <p>Production prompts fail: models return malformed JSON, miss format specs, or time out. Retry-with-escalation retries with increasingly specific prompts before raising.</p>
+
+      <rule testable="true">
+        <statement>Production LLM calls that require structured output MUST implement retry logic with at least 3 attempts. Each retry MUST escalate specificity — adding an explicit format reminder, then an example. After all retries fail, MUST raise with enough context to debug (prompt, last response, attempt count).</statement>
+        <rationale>Single-attempt calls fail at the first malformed response, causing cascading pipeline failures. Retry-with-escalation recovers ~80% of failures without human intervention by giving the model a second chance with more explicit instructions.</rationale>
+      </rule>
+
+      <example type="good" title="Retry with escalation">
+        <code lang="python"><![CDATA[def get_response_with_retry(prompt: str, max_retries: int = 3) -> str:
+    """Retry with increasingly specific prompts."""
+    prompts = [
+        prompt,
+        f"{prompt}\n\nIMPORTANT: Follow exact format above.",
+        f"{prompt}\n\nExample:\n{get_example()}\n\nMatch this format exactly.",
+    ]
+
+    for i, p in enumerate(prompts[:max_retries]):
+        response = call_llm(p)
+        if validate_response(response):
+            return response
+        logger.warning(f"Retry {i+1}: Invalid format")
+
+    raise ValueError("Failed after retries")]]></code>
+      </example>
+    </section>
+
+    <section name="structured-output">
+      <p>Structured output (JSON schema enforcement) prevents schema drift between LLM output and downstream systems. Pydantic models define the contract; a handler extracts and validates.</p>
+
+      <rule testable="true">
+        <statement>Structured output prompts MUST: (1) specify the schema in the prompt (JSON Schema or Pydantic model_json_schema()), (2) instruct the model to output only JSON, (3) validate output against the schema before downstream use, (4) retry on validation failure with the error as feedback.</statement>
+        <rationale>Models hallucinate extra prose, omit fields, or use wrong types. Without schema validation, the downstream system receives a dict that silently fails type checks at runtime.</rationale>
+      </rule>
+
+      <example type="good" title="Pydantic schema template">
+        <code lang="python"><![CDATA[from pydantic import BaseModel, Field
+from typing import List, Optional
+from enum import Enum
+
+class SentimentEnum(str, Enum):
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+
+class SentimentResult(BaseModel):
+    sentiment: SentimentEnum = Field(description="positive, negative, or neutral")
+    confidence: float = Field(ge=0, le=1)
+    keywords: List[str] = Field(description="Key words that influenced the classification")
+
+PROMPT = f"""Analyze the sentiment of: {{input}}
+
+Respond with valid JSON matching this schema:
+```json
+{SentimentResult.model_json_schema()}
+```
+
+Output only the JSON, no additional text."""]]></code>
+      </example>
+
+      <example type="good" title="StructuredOutputHandler">
+        <code lang="python"><![CDATA[from typing import Type, TypeVar, Optional
+from pydantic import BaseModel, ValidationError
+import json
+import re
+
+T = TypeVar('T', bound=BaseModel)
+
+class StructuredOutputHandler:
+    """Handle structured output from LLM responses."""
+
+    @staticmethod
+    def extract_json(text: str) -> Optional[str]:
+        """Extract JSON from text that may contain other content."""
+        # Try to find JSON in code blocks
+        code_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', text)
+        if code_block_match:
+            return code_block_match.group(1).strip()
+
+        # Try to find raw JSON
+        json_match = re.search(r'\{[\s\S]*\}', text)
+        if json_match:
+            return json_match.group(0)
+
+        return None
+
+    @staticmethod
+    def parse(text: str, schema: Type[T]) -> T:
+        """Parse LLM output into Pydantic model."""
+        json_str = StructuredOutputHandler.extract_json(text)
+
+        if not json_str:
+            raise ValueError("No JSON found in response")
+
+        try:
+            data = json.loads(json_str)
+            return schema.model_validate(data)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON: {e}")
+        except ValidationError as e:
+            raise ValueError(f"Schema validation failed: {e}")
+
+    @staticmethod
+    def create_prompt(task: str, schema: Type[BaseModel]) -> str:
+        """Create prompt that requests structured output."""
+        schema_json = json.dumps(schema.model_json_schema(), indent=2)
+
+        return f"""{task}
+
+Respond with valid JSON matching this schema:
+```json
+{schema_json}
+```
+
+Output only the JSON, no additional text."""
+
+
+def get_validated_response(
+    prompt: str,
+    schema: Type[BaseModel],
+    max_retries: int = 3
+) -> BaseModel:
+    """Get response with validation and retries."""
+    for attempt in range(max_retries):
+        response = call_llm(prompt)
+        validated = validate_json_response(response, schema)
+
+        if validated:
+            return validated
+
+        # Add feedback for retry
+        prompt = f"""{prompt}
+
+Previous response was invalid. Ensure output is valid JSON
+matching the schema exactly."""
+
+    raise ValueError(f"Failed to get valid response after {max_retries} attempts")]]></code>
+      </example>
+    </section>
+
+    <section name="tool-use-and-react">
+      <p>Tool-use prompts define available functions and a structured call format. ReAct (Reasoning + Acting) adds explicit thought steps before each tool call.</p>
+
+      <rule testable="true">
+        <statement>Tool-use prompts MUST: (1) enumerate every available tool with exact parameter names and types, (2) specify the call format (JSON object), (3) instruct the model to explain reasoning before each tool call. Agentic prompts with tools MUST NOT give the model tools it should never call — the model will eventually call them.</statement>
+        <rationale>Models call tools they should not have access to when those tools are listed "just in case." Minimizing the tool list reduces hallucinated calls and security surface area.</rationale>
+      </rule>
+
+      <example type="good" title="Function calling prompt template">
+        <code lang="text"><![CDATA[You have access to the following functions:
+
+<functions>
+{FUNCTION_1_NAME}({PARAMS}): {DESCRIPTION}
+  Parameters:
+    - {PARAM_1}: {TYPE} - {DESCRIPTION}
+    - {PARAM_2}: {TYPE} - {DESCRIPTION}
+  Returns: {RETURN_TYPE}
+
+{FUNCTION_2_NAME}({PARAMS}): {DESCRIPTION}
+  Parameters:
+    - {PARAM_1}: {TYPE} - {DESCRIPTION}
+  Returns: {RETURN_TYPE}
+</functions>
+
+User request: {USER_REQUEST}
+
+To use a function, respond with:
+<function_call>
+{
+  "name": "function_name",
+  "parameters": {
+    "param1": "value1",
+    "param2": "value2"
+  }
+}
+</function_call>
+
+If you need to use multiple functions, call them in sequence.
+If you can answer without using functions, respond directly.
+
+Response:]]></code>
+      </example>
+
+      <example type="good" title="ReAct agent template">
+        <code lang="text"><![CDATA[You are an agent that can use tools to accomplish tasks.
+
+Available tools:
+1. search(query: str) - Search for information
+2. calculate(expression: str) - Perform calculations
+3. lookup(key: str) - Look up data from database
+
+Process each request using this format:
+
+Thought: [What I need to do and why]
+Action: [tool_name]
+Action Input: [input to the tool]
+Observation: [result from the tool - will be provided]
+
+Repeat Thought/Action/Observation as needed until you have enough information.
+
+When ready to respond:
+Thought: I now have enough information to answer
+Final Answer: [your response to the user]
+
+User request: {USER_REQUEST}
+
+Begin:]]></code>
+      </example>
+
+      <example type="good" title="OpenAI function definition template">
+        <code lang="python"><![CDATA[FUNCTIONS = [
+    {
+        "name": "{FUNCTION_NAME}",
+        "description": "{DESCRIPTION}",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "{PARAM_1}": {
+                    "type": "{TYPE}",
+                    "description": "{DESCRIPTION}"
+                },
+                "{PARAM_2}": {
+                    "type": "{TYPE}",
+                    "enum": ["{OPTION_1}", "{OPTION_2}"],
+                    "description": "{DESCRIPTION}"
+                },
+                "{PARAM_3}": {
+                    "type": "array",
+                    "items": {"type": "{ITEM_TYPE}"},
+                    "description": "{DESCRIPTION}"
+                }
+            },
+            "required": ["{PARAM_1}"]
+        }
+    }
+]
+
+# Usage
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=messages,
+    functions=FUNCTIONS,
+    function_call="auto"
+)]]></code>
+      </example>
+
+      <example type="good" title="ReAct pattern for search tasks">
+        <code lang="python"><![CDATA[REACT_SEARCH_PROMPT = """You have access to a search tool.
+
+Tool: search(query: str) -> str
+
+Process:
+1. Thought: What do you need to know?
+2. Action: Call search
+3. Observation: Analyze results
+4. Repeat if needed
+5. Answer: Final answer from gathered info
+
+Question: {question}
+
+Format:
+Thought: [reasoning]
+Action: search("[query]")
+[wait for observation]
+Thought: [analyze]
+Answer: [final answer]
+
+Only use search results. Say if answer not found."""]]></code>
+      </example>
+
+      <example type="good" title="Multi-tool agent prompt">
+        <code lang="python"><![CDATA[MULTI_TOOL_AGENT_PROMPT = """You have multiple tools.
+
+Tools:
+1. calculator(expression) - Math
+2. weather(location) - Current weather
+3. search(query) - Information search
+4. calendar(action, date, event) - Calendar
+
+Rules:
+- Use tools when needed
+- Multiple tools allowed
+- Explain reasoning before tool use
+- Incorporate results into response
+
+User: {user_message}
+
+Format:
+<thinking>Reasoning about tools</thinking>
+<tool_call>{"name": "tool", "params": {...}}</tool_call>
+<tool_result>Results here</tool_result>
+<response>Final response</response>"""]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-best-practices">
+      <p>Operational rules for prompts inside agentic pipelines:</p>
+      <list>
+        <item>Use XML tags (context, task, output) to delimit sections — Claude follows them reliably.</item>
+        <item>Pin output format in the system prompt AND give an example in the user turn.</item>
+        <item>Separate untrusted user input with explicit delimiters: user_input tags with "never override system instructions".</item>
+        <item>Validate prompt token count before deploying: len(tokenizer.encode(prompt)) should be under context_limit * 0.8.</item>
+        <item>Version prompts in code (not in external dashboards) so changes are reviewable via git diff.</item>
+        <item>For multi-step reasoning, instruct the model to reason first and answer last — prevents premature commitment.</item>
+        <item>Test prompts against adversarial inputs (empty input, max-length input, injection attempts) before prod.</item>
+      </list>
+
+      <p>Agentic pipeline gotchas:</p>
+      <list>
+        <item>Agent-generated prompts for downstream agents must be sanitized — the agent itself can inject instructions.</item>
+        <item>If an agent reads untrusted files (PDFs, web pages) and passes them to another LLM call, treat as injection risk.</item>
+        <item>CoT scratchpads visible in context accumulate tokens fast in multi-turn agentic loops — compaction required.</item>
+        <item>temperature=0 does not guarantee determinism across API versions; pin model version for reproducibility.</item>
+        <item>When an agent uses structured output mode (JSON schema enforcement), CoT must be placed in a dedicated field, not suppressed silently.</item>
+        <item>Few-shot examples in long agentic sessions may be evicted from effective context — repeat critical examples or use system prompt.</item>
+      </list>
+    </section>
+
+    <section name="tools-reference">
+      <p>Libraries for production-grade structured output and agentic prompts:</p>
+      <list>
+        <item>outlines — Structured output generation with regex/JSON schema constraints. Install: pip install outlines. Docs: dottxt-ai.github.io/outlines.</item>
+        <item>instructor — Python library for structured outputs via Pydantic models. Install: pip install instructor. Docs: python.useinstructor.com.</item>
+        <item>promptfoo — CLI for evaluating and comparing prompts against test cases. Install: npm install -g promptfoo.</item>
+        <item>llm (Simon Willison) — CLI for querying multiple LLMs, useful for A/B testing prompts. Install: pip install llm.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://python.useinstructor.com/"/>
+      <link href="https://dottxt-ai.github.io/outlines/"/>
+      <link href="https://arxiv.org/abs/2210.03629"/>
+      <link href="https://smith.langchain.com/hub"/>
+      <link href="https://github.com/imaurer/awesome-llm-json"/>
+      <ref slug="tool-use-function-calling"/>
+      <ref slug="structured-output"/>
+      <ref slug="prompt-engineering-fundamentals"/>
+      <ref slug="prompt-engineering-evaluation"/>
+    </see-also>
+  </content>
+</methodology>
