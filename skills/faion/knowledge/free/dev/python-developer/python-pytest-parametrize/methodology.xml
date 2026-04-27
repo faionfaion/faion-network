@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-pytest-parametrize">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>@pytest.mark.parametrize runs one test against many inputs. Covers basic use, descriptive IDs, stacked parametrize for cartesian products, indirect fixture parametrize, and skip/xfail per param.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>parametrize</tag>
+      <tag>testing</tag>
+      <tag>python</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="python-pytest-mocking"/>
+      <ref slug="python-pytest-setup"/>
+      <ref slug="django-pytest-parametrize"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>pytest Parametrize — Input Matrices, IDs, Stacking, and Indirect</title>
+
+    <summary>@pytest.mark.parametrize eliminates repeated test functions by running a single test body against multiple (input, expected) pairs. Use pytest.param() for per-case marks and ids; stack decorators for cartesian products; use indirect=True to feed params through fixtures.</summary>
+
+    <why>
+      <p>Repetitive tests that differ only in their inputs are hard to maintain and easy to forget when adding edge cases. Parametrize declares the full input matrix in one place — adding a new case is one line. Descriptive IDs make failure messages readable: "FAILED test_email[empty_email]" instead of "FAILED test_email[arg0]". Stacked parametrize generates cartesian products automatically, replacing nested loops.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Validation functions with many valid/invalid input cases.</item>
+        <item>Business logic with multiple branches that need individual coverage.</item>
+        <item>Boundary conditions: empty string, None, zero, max value, off-by-one.</item>
+        <item>Cross-product testing: multiple statuses × multiple roles, or multiple backends.</item>
+        <item>Converting repetitive similar tests into a single parametrized test.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tests that require entirely different setup per case — use separate test functions or fixtures instead.</item>
+        <item>More than ~20 params in one decorator — split into multiple focused test functions for readability.</item>
+        <item>Cases where the "expected" differs so much that the test body becomes a conditional — that is multiple tests.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-parametrize">
+      <p>Declare parameters as a comma-separated string of names and a list of value tuples. Each tuple becomes one test case.</p>
+      <rule testable="true">
+        <statement>Every @pytest.mark.parametrize call that produces more than three test cases MUST supply ids= (or use pytest.param(..., id=...)) so failures print as test_x[descriptive-id] rather than test_x[arg0-arg1].</statement>
+        <rationale>Opaque IDs like "arg0" force developers to count positions in the params list to understand which case failed. Descriptive IDs make CI output actionable without opening the source file.</rationale>
+      </rule>
+      <example type="good" title="Email validation with descriptive IDs">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize("email,is_valid", [
+    ("user@example.com", True),
+    ("user.name@example.co.uk", True),
+    ("user+tag@example.com", True),
+    ("invalid", False),
+    ("@example.com", False),
+    ("user@", False),
+    ("", False),
+    (None, False),
+])
+def test_email_validation(email, is_valid):
+    assert validate_email(email) == is_valid
+]]></code>
+      </example>
+      <example type="bad" title="Parametrize without IDs — opaque failures">
+        <code lang="python"><![CDATA[
+# Failure: "FAILED test_validate[arg2]" — which case is arg2?
+@pytest.mark.parametrize("value,expected", [
+    ("hello", 5),
+    ("world", 5),
+    ("", 0),
+])
+def test_length(value, expected):
+    assert len(value) == expected
+]]></code>
+        <note>Add ids=["hello", "world", "empty"] or use pytest.param(..., id="...").</note>
+      </example>
+    </section>
+
+    <section name="pytest-param-marks">
+      <p>pytest.param() wraps a parameter set and lets you attach marks or an id to individual cases without affecting others.</p>
+      <example type="good" title="Parametrize with per-case IDs and marks">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize(
+    "input_data,expected_error",
+    [
+        pytest.param(
+            {"email": ""},
+            "Email is required",
+            id="empty_email",
+        ),
+        pytest.param(
+            {"email": "invalid"},
+            "Invalid email format",
+            id="invalid_format",
+        ),
+        pytest.param(
+            {"email": "existing@example.com"},
+            "Email already exists",
+            id="duplicate_email",
+        ),
+    ],
+)
+def test_registration_validation_errors(input_data, expected_error, user_factory):
+    if expected_error == "Email already exists":
+        user_factory(email="existing@example.com")
+
+    with pytest.raises(ValidationError) as exc_info:
+        register_user(**input_data)
+
+    assert expected_error in str(exc_info.value)
+]]></code>
+      </example>
+      <example type="good" title="Skip and xfail per param case">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize("browser", [
+    "chrome",
+    "firefox",
+    pytest.param("safari", marks=pytest.mark.skip(reason="Safari not installed")),
+    pytest.param("edge", marks=pytest.mark.xfail(reason="Known bug #123")),
+])
+def test_browser_compatibility(browser):
+    result = run_browser_test(browser)
+    assert result.success
+]]></code>
+        <note>marks= accepts a single mark or a list. This is cleaner than a conditional skip inside the test body.</note>
+      </example>
+    </section>
+
+    <section name="stacked-parametrize">
+      <p>Stacking two @pytest.mark.parametrize decorators generates the cartesian product — every combination of the two lists. N x M test cases from N + M declarations.</p>
+      <example type="good" title="Cartesian product: status × role matrix (9 tests)">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize("status", ["active", "inactive", "suspended"])
+@pytest.mark.parametrize("role", ["user", "admin", "moderator"])
+def test_permission_matrix(status, role):
+    """Test all combinations of status and role (9 tests total)."""
+    user = create_user(status=status, role=role)
+    permissions = get_user_permissions(user)
+    assert_valid_permissions(permissions, status, role)
+]]></code>
+        <note>Stacking generates 3 × 3 = 9 tests. Use sparingly — large products are slow and the intent gets lost.</note>
+      </example>
+    </section>
+
+    <section name="indirect-parametrize">
+      <p>indirect=True routes param values through a fixture before passing to the test. The fixture receives the param via request.param. Use this when each case needs different expensive setup (e.g., a different user type loaded from the database).</p>
+      <example type="good" title="Indirect: user subscription plan via fixture">
+        <code lang="python"><![CDATA[
+@pytest.fixture
+def user_with_plan(request, user_factory):
+    """Create user with specified subscription plan."""
+    plan = request.param
+    user = user_factory()
+    user.subscription = create_subscription(plan)
+    return user
+
+
+@pytest.mark.parametrize(
+    "user_with_plan,expected_features",
+    [
+        ("free", ["basic_feature"]),
+        ("pro", ["basic_feature", "pro_feature"]),
+        ("enterprise", ["basic_feature", "pro_feature", "enterprise_feature"]),
+    ],
+    indirect=["user_with_plan"],
+)
+def test_user_features_by_plan(user_with_plan, expected_features):
+    features = get_user_features(user_with_plan)
+    assert set(features) == set(expected_features)
+]]></code>
+      </example>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Parametrize pitfalls agents commonly hit:</p>
+      <list>
+        <item>Mutable default in params: the same list or dict object is shared across runs if it is constructed once and mutated in a test. Use a fresh copy or a tuple.</item>
+        <item>Omitting ids= for more than 3 cases — CI output shows "arg0-arg1" and is unactionable without the source.</item>
+        <item>Stacking more than two parametrize decorators — the resulting cartesian product is usually too large to maintain.</item>
+        <item>Using parametrize where separate tests with different fixtures are clearer — forcing a single test body to handle radically different scenarios via conditionals is an antipattern.</item>
+      </list>
+    </section>
+
+    <section name="parametrize-checklist">
+      <checklist>
+        <check>Supply ids= or use pytest.param(..., id=...) for every case when the test has more than 3 params.</check>
+        <check>Include edge cases: empty, None, zero, max, off-by-one, duplicate.</check>
+        <check>Group related parameters together in the params list.</check>
+        <check>Use pytest.param(..., marks=pytest.mark.skip(...)) per case instead of a conditional skip inside the body.</check>
+        <check>Prefer indirect parametrize when each case requires different fixture-level setup.</check>
+        <check>Avoid mutable objects (lists, dicts) as param values — use immutable types or tuples.</check>
+        <check>Keep stacked parametrize to at most 2 decorators; beyond that, use a single params list of tuples.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://docs.pytest.org/en/stable/how-to/parametrize.html"/>
+      <link href="https://www.fiddler.ai/blog/advanced-pytest-patterns-harnessing-the-power-of-parametrization-and-factory-methods"/>
+      <ref slug="python-pytest-fixtures"/>
+      <ref slug="django-pytest-parametrize"/>
+    </see-also>
+  </content>
+</methodology>
