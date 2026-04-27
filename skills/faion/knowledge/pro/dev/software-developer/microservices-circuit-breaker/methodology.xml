@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-circuit-breaker">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Circuit breaker pattern for microservice resilience: three-state machine (CLOSED/OPEN/HALF_OPEN) that stops cascading failures by short-circuiting calls to unhealthy dependencies.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>circuit-breaker</tag>
+      <tag>resilience</tag>
+      <tag>fault-tolerance</tag>
+      <tag>distributed-systems</tag>
+    </tags>
+    <category>resilience</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-saga-pattern"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Circuit Breaker Pattern for Microservice Resilience</title>
+
+    <summary>The circuit breaker wraps outbound calls to a dependency in a three-state machine: CLOSED (normal), OPEN (dependency down — fast-fail without calling it), and HALF_OPEN (recovery probe). It prevents cascading failures across services when a downstream dependency degrades or fails.</summary>
+
+    <why>
+      <p>Without a circuit breaker, a slow or unavailable downstream service causes the caller to queue requests, exhaust its connection pool, and eventually fail all of its own callers — a cascading failure that takes down unrelated services. The circuit breaker turns a slow failure (connection queue exhaustion) into a fast failure (immediate CircuitOpenError) once a threshold is exceeded.</p>
+      <p>The HALF_OPEN state allows automatic recovery: after a configurable timeout, a limited number of probe calls are allowed through. If they succeed, the circuit closes; if they fail, it reopens.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any outbound HTTP or gRPC call to another service in a microservices cluster.</item>
+        <item>Calls to external third-party APIs where availability SLOs are not guaranteed.</item>
+        <item>Message consumers that call downstream services to process each event.</item>
+        <item>Any call where the acceptable failure rate exceeds zero under load.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Calls that must never fast-fail (idempotent writes to the primary DB of the same service) — use retries with backoff instead.</item>
+        <item>In-process calls to the same service's domain layer — no network hop, no circuit needed.</item>
+        <item>Calls where all failures must be surfaced immediately to the caller with no fast-fail window.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="circuit-breaker-impl">
+      <rule testable="true">
+        <statement>Every outbound call to an external service MUST be wrapped in a circuit breaker. The circuit breaker MUST be configured with an explicit failure_threshold, recovery_timeout, and half_open_max_calls.</statement>
+        <rationale>Unconfigured or absent circuit breakers allow cascading failures. Explicit configuration makes failure policy visible and auditable.</rationale>
+      </rule>
+
+      <example type="good" title="Three-state circuit breaker implementation">
+        <code lang="python"><![CDATA[
+# Circuit breaker pattern for resilience
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Callable, TypeVar
+import asyncio
+
+T = TypeVar('T')
+
+
+class CircuitState(Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+@dataclass
+class CircuitBreakerConfig:
+    failure_threshold: int = 5
+    recovery_timeout: timedelta = timedelta(seconds=30)
+    half_open_max_calls: int = 3
+
+
+class CircuitBreaker:
+    """Circuit breaker for handling service failures."""
+
+    def __init__(self, name: str, config: CircuitBreakerConfig = None):
+        self.name = name
+        self._config = config or CircuitBreakerConfig()
+        self._state = CircuitState.CLOSED
+        self._failure_count = 0
+        self._last_failure_time = None
+        self._half_open_calls = 0
+
+    @property
+    def state(self) -> CircuitState:
+        if self._state == CircuitState.OPEN:
+            if self._should_attempt_reset():
+                self._state = CircuitState.HALF_OPEN
+                self._half_open_calls = 0
+        return self._state
+
+    async def call(self, func: Callable[..., T], *args, **kwargs) -> T:
+        """Execute function through circuit breaker."""
+        if self.state == CircuitState.OPEN:
+            raise CircuitOpenError(self.name)
+
+        try:
+            result = await func(*args, **kwargs)
+            self._on_success()
+            return result
+        except Exception as e:
+            self._on_failure()
+            raise
+
+    def _on_success(self) -> None:
+        if self._state == CircuitState.HALF_OPEN:
+            self._half_open_calls += 1
+            if self._half_open_calls >= self._config.half_open_max_calls:
+                self._state = CircuitState.CLOSED
+                self._failure_count = 0
+        else:
+            self._failure_count = 0
+
+    def _on_failure(self) -> None:
+        self._failure_count += 1
+        self._last_failure_time = datetime.utcnow()
+
+        if self._state == CircuitState.HALF_OPEN:
+            self._state = CircuitState.OPEN
+        elif self._failure_count >= self._config.failure_threshold:
+            self._state = CircuitState.OPEN
+
+    def _should_attempt_reset(self) -> bool:
+        if self._last_failure_time is None:
+            return True
+        return datetime.utcnow() - self._last_failure_time > self._config.recovery_timeout
+]]></code>
+      </example>
+
+      <example type="good" title="Resilient service client using circuit breaker">
+        <code lang="python"><![CDATA[
+# Usage with HTTP client
+class ResilientServiceClient:
+    def __init__(self, base_url: str):
+        self._client = AsyncClient(base_url=base_url, timeout=10.0)
+        self._circuit_breaker = CircuitBreaker("order-service")
+
+    async def get_orders(self, user_id: UUID) -> list:
+        return await self._circuit_breaker.call(
+            self._fetch_orders, user_id
+        )
+
+    async def _fetch_orders(self, user_id: UUID) -> list:
+        response = await self._client.get(f"/orders?user_id={user_id}")
+        response.raise_for_status()
+        return response.json()
+]]></code>
+        <note>Circuit breaker wraps the actual fetch, not the public method. Timeout is set on the HTTP client independently.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Circuit breakers on every outbound call. Config from a central place; per-call timeouts shorter than the request budget. Wire httpx timeout in addition to the circuit breaker.</item>
+        <item>Name circuit breakers by the downstream service, not by the calling method, so monitoring dashboards aggregate by dependency.</item>
+        <item>Expose circuit breaker state on the service health endpoint so orchestrators and load balancers can route around open circuits.</item>
+        <item>Log state transitions (CLOSED to OPEN, HALF_OPEN probe result) at WARN level with the service name, failure count, and timestamp.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Agents create AsyncClient(base_url=...) without timeout= and without a circuit breaker. Both are required; neither alone is sufficient.</item>
+        <item>Agents place the circuit breaker around the entire client class instead of around individual calls. Per-operation granularity matters when a service has both fast and slow endpoints.</item>
+        <item>Agents skip the HALF_OPEN recovery logic and implement only CLOSED/OPEN. Without HALF_OPEN, recovery requires a manual restart.</item>
+        <item>Hallucinated mesh APIs: agents invent Istio CRDs (TrafficPolicy, RouteSpec) that do not exist. If using a service mesh for circuit breaking, pin to the actual version's CRD list.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="microservices-inter-service-comm"/>
+      <ref slug="microservices-saga-pattern"/>
+      <ref slug="microservices-observability"/>
+      <link href="https://microservices.io/patterns/reliability/circuit-breaker.html"/>
+    </see-also>
+  </content>
+</methodology>
