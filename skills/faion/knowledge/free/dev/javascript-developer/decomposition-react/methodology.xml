@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decomposition-react">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>javascript-developer</domain>
+    <summary>Break large React components into smaller, composable pieces using custom hooks, feature folders, and service layers to keep files under 80 lines for LLM readability.</summary>
+    <tags>
+      <tag>react</tag>
+      <tag>component-architecture</tag>
+      <tag>typescript</tag>
+      <tag>hooks</tag>
+      <tag>nextjs</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>React Decomposition Patterns</title>
+
+    <summary>LLM-friendly code organization for React and Next.js projects. Break god components (600+ lines, 20+ hooks) into focused pieces: reusable UI components in components/ui/, feature-specific logic in features/, custom hooks in hooks/, data fetching in services/, types in types/, and shared utilities in utils/. Target 30-80 lines per file for maximum LLM context efficiency.</summary>
+
+    <why>
+      <p>Large monolithic React components exceed LLM context windows and force agents to make refactors blind — unable to see the whole component and proposed changes together. Decomposition keeps files small enough that agents can reason about the entire file in a single API call, enable better composition patterns, reduce prop-drilling through hooks, and match the mental model of modern feature-based development (Next.js App Router, feature-sliced design).</p>
+      <p>The 30-80 line target is empirically driven: files exceeding 150 lines in production codebases are correlated with higher defect density and longer code review times. Agents working within 80-line boundaries produce more cohesive, less coupled code.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Refactoring god components (200+ lines, 10+ hooks, mixed API/UI/state).</item>
+        <item>Greenfield React/Next.js where early directory layout predicts team velocity for months.</item>
+        <item>Reducing per-file token counts so agents can read whole files in single tool calls.</item>
+        <item>Migrating from flat components/ layout to feature-based modules with co-located hooks, types, services, stores.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny apps (&lt;20 components) — feature/services/stores split is overhead and makes scaffolding slower.</item>
+        <item>One-shot prototypes and spikes — premature decomposition adds lines for less value.</item>
+        <item>Codebases dominated by Server Components — file-size reasoning differs; `.server.tsx` boundaries override the layout.</item>
+        <item>UI-only design-system repositories (Storybook component libraries) — they need a different shape (`packages/ui/&lt;Component&gt;`).</item>
+      </list>
+    </when-not-to-use>
+
+    <how-to>
+      <step>Review the target component and identify candidate splits: state management (pull out with useState), data fetching (extract into useDashboardData hook), sub-components (break layout into logical sections like Header, Metrics, Chart, Table), side effects (custom hooks for effects).</step>
+      <step>Plan before moving: produce a target tree listing file paths, approximate line counts, and imports. Identify state owners (which component holds useState, which uses the hook). Create a moves table mapping old paths to new paths.</step>
+      <step>Execute moves using git mv to preserve history: move files, update imports, run tsc --noEmit to catch type breaks. After each move, re-run tests to ensure behavior is preserved.</step>
+      <step>Create barrel (index.ts) files for public exports from each feature folder. Keep internal files private; only export what other features need.</step>
+      <step>Run full test suite and type check. Verify no file exceeds 80 lines. Measure test coverage — aim for 80%+ on new components.</step>
+      <step>Code review checkpoint: human reviews the moves table and proposed splits before the executor runs unattended. Verify state ownership is clear (who owns useState, who owns queries) and imports follow patterns (features/ → ui/ and lib/ only, never cross-feature deep imports).</step>
+    </how-to>
+
+    <section name="llm-friendly-structure">
+      <p>Core principle: small, single-responsibility files that fit on screen and in LLM context. The target structure partitions code by domain (UI primitives, features, cross-feature logic, infrastructure) and encourages co-location of related code within each domain.</p>
+
+      <rule testable="true">
+        <statement>MUST organize directory structure as: src/components/ui/ (reusable primitives, 30-50 lines each), src/components/features/ (domain-specific features, 40-70 lines), src/hooks/ (cross-feature hooks), src/services/ (API clients, 50-70 lines), src/stores/ (state management, 40-60 lines), src/types/ (TypeScript type files), src/utils/ (utilities, 40-60 lines). Each component MUST have max 80 lines; tests and stories co-locate with the component.</statement>
+        <rationale>This layout matches feature-sliced design and Next.js conventions. Files stay readable on screen (30-80 lines). LLMs can load full files without truncation. Co-location (test + story + component in same folder) reduces imports and keeps related code visible together.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Components MUST be composed from smaller components: a `Dashboard` feature fetches data via `useDashboardData` hook, then renders subcomponents (`DashboardHeader`, `DashboardMetrics`, `DashboardChart`, `DashboardTable`). No component MUST exceed 80 lines; if a component exceeds this, split it before coding.</statement>
+        <rationale>Component composition is the only composable pattern in React. Splitting early prevents god components and trains agents to think in terms of interfaces, not monoliths. Subcomponents are private (in features/Dashboard/) unless needed elsewhere (promote to ui/); this enforces encapsulation.</rationale>
+      </rule>
+
+      <example type="good" title="Decomposed feature-folder layout">
+        <code lang="text"><![CDATA[src/
+├── components/
+│   ├── ui/                           # Reusable UI components
+│   │   ├── Button/
+│   │   │   ├── Button.tsx            # Component (30-50 lines)
+│   │   │   ├── Button.styles.ts      # Styles (20-40 lines)
+│   │   │   ├── Button.types.ts       # Types (10-20 lines)
+│   │   │   ├── Button.test.tsx
+│   │   │   └── index.ts              # Export
+│   │   ├── Input/
+│   │   ├── Card/
+│   │   └── Modal/
+│   └── features/
+│       └── Dashboard/
+│           ├── Dashboard.tsx         # Main component (40-60 lines)
+│           ├── DashboardHeader.tsx   # Header (30-50 lines)
+│           ├── DashboardMetrics.tsx  # Metrics (50-70 lines)
+│           ├── DashboardChart.tsx    # Chart (40-60 lines)
+│           ├── DashboardTable.tsx    # Table (60-80 lines)
+│           ├── index.ts
+│           └── hooks/
+│               ├── useDashboardData.ts
+│               └── useDashboardFilters.ts
+├── hooks/
+│   ├── useAuth.ts
+│   ├── useApi.ts
+│   └── useDebounce.ts
+├── services/
+│   ├── api/
+│   │   ├── client.ts
+│   │   ├── users.ts
+│   │   └── orders.ts
+│   └── auth/
+│       └── authService.ts
+├── stores/
+│   ├── authStore.ts
+│   └── uiStore.ts
+├── types/
+│   ├── user.types.ts
+│   ├── order.types.ts
+│   └── api.types.ts
+└── utils/
+    ├── formatters.ts
+    └── validators.ts]]></code>
+        <note>Each file is 30-80 lines. Features own their hooks; reuse promotes to src/hooks/. Barrel exports (index.ts) provide clean import paths.</note>
+      </example>
+
+      <example type="bad" title="God component (anti-pattern)">
+        <code lang="tsx"><![CDATA[// BAD: Dashboard.tsx (600+ lines)
+export function Dashboard() {
+  // 20 useState hooks
+  // 10 useEffect hooks
+  // 15 handler functions
+  // Inline styles
+  // API calls mixed with UI
+  // 300+ line render logic
+}]]></code>
+        <note>Monolithic. LLM cannot see full component. Refactors are blind. Prop-drilling is rampant. Tests are coupled to implementation details.</note>
+      </example>
+
+      <antipattern>
+        <description>Over-splitting for cosmetics: splitting a 90-line cohesive form into five 20-line files because "the style guide says max 80 lines".</description>
+        <reason>Premature splitting increases import noise and cognitive load without improving code. A 90-line cohesive form is more readable than five fragment files. Use the 80-line target as guidance, not a hard constraint.</reason>
+      </antipattern>
+
+      <note>Key principles: (1) Component Composition — Small components composed into larger ones. (2) Custom Hooks — Reusable stateful logic extracted. (3) Separation of Concerns — UI, logic, data fetching separated. (4) Co-location — Feature-specific code grouped together. (5) Type Safety — TypeScript for all components and hooks.</note>
+
+      <note>Agent selection: Component decomposition strategy uses sonnet for refactoring expertise. Reusability analysis uses sonnet for code quality assessment. The agentic workflow recommended is: planner produces target tree and moves table, implementer executes one file move per task with git mv, reviewer verifies no file regrows past 80 lines and imports use feature-relative paths.</note>
+
+      <checklist>
+        <check>Identify and list all god components (200+ lines) in the codebase.</check>
+        <check>Plan the decomposition: produce target directory tree with estimated line counts per file.</check>
+        <check>Create the moves table: old path → new path, renames, new files to create.</check>
+        <check>Execute moves with git mv; run tsc --noEmit after each move.</check>
+        <check>Create barrel (index.ts) files with explicit exports.</check>
+        <check>Update imports across the codebase; run tsc again.</check>
+        <check>Run full test suite: vitest run --coverage.</check>
+        <check>Verify coverage: aim for 80%+ on new/refactored files.</check>
+        <check>Code review: human checks file sizes (max 80), import patterns, state ownership.</check>
+        <check>Measure velocity improvement: compare time-to-understand before and after decomposition.</check>
+      </checklist>
+    </section>
+
+    <section name="source-file-size-targets">
+      <p>The following table provides target file sizes for different code patterns. These are guidelines, not hard constraints, but exceeding the max suggests refactoring is needed.</p>
+
+      <rule testable="true">
+        <statement>Components MUST target 50-80 lines; absolute max 150 lines. Hooks MUST target 40-60 lines; absolute max 100 lines. Services MUST target 50-70 lines; absolute max 150 lines. Pages (Next.js) MUST target 50-70 lines; absolute max 150 lines. Server Actions MUST target 60-80 lines; absolute max 150 lines. Tests MUST target 100-150 lines; absolute max 300 lines.</statement>
+        <rationale>Files under 80 lines fit on a laptop screen without scrolling. LLMs with 4k-token context windows can load multiple 80-line files in parallel. Larger files require pagination or truncation, reducing reasoning quality and increasing the chance of missed edge cases. File size limits force modularity: small files are easier to test, understand, and reuse.</rationale>
+      </rule>
+    </section>
+
+    <section name="custom-hooks-pattern">
+      <p>Custom hooks encapsulate stateful logic and data fetching. They are the inverse of components: reusable business logic in isolation, ready to be plugged into multiple views.</p>
+
+      <rule testable="true">
+        <statement>Custom hooks MUST extract stateful logic (useState + effects), API calls (useQuery, useFetch), or form state. Hooks SHOULD be 40-60 lines; if a hook exceeds 100 lines, split it or consider a state-management library. Hook names MUST start with `use` and describe the behavior (useDashboardData, useDashboardFilters, useDebounce).</statement>
+        <rationale>Reusable logic outside components is the core of React composition. Named hooks telegraph intent. Hooks under 100 lines are testable and reusable. Larger hooks become implicit state machines; use Zustand or TanStack Query instead.</rationale>
+      </rule>
+
+      <example type="good" title="Focused custom hook with TanStack Query">
+        <code lang="typescript"><![CDATA[// src/components/features/Dashboard/hooks/useDashboardData.ts (~50 lines)
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '@/services/api/dashboard';
+import type { DashboardFilters, DashboardData } from '@/types';
+
+export function useDashboardData(filters: DashboardFilters) {
+  return useQuery<DashboardData>({
+    queryKey: ['dashboard', filters],
+    queryFn: () => dashboardApi.getData(filters),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}]]></code>
+        <note>Clean separation: hook handles data fetching and caching, component handles UI.</note>
+      </example>
+
+      <antipattern>
+        <description>Hooks that manage both form state and API calls, mixing input validation, submission, and error handling.</description>
+        <reason>Mixing concerns makes hooks hard to test and reuse. Split into `useForm` (input state + validation) and `useSubmit` (mutation). Let React Hook Form handle the form part.</reason>
+      </antipattern>
+
+      <example type="good" title="Server Actions pattern in Next.js">
+        <code lang="typescript"><![CDATA[// lib/actions/users.ts (~70 lines)
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { z } from 'zod';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { createUserSchema, updateUserSchema } from '@/lib/validations/user';
+
+export async function createUser(formData: FormData) {
+  const validated = createUserSchema.parse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+
+  await db.insert(users).values(validated);
+
+  revalidatePath('/users');
+  redirect('/users');
+}
+
+export async function updateUser(id: string, formData: FormData) {
+  const validated = updateUserSchema.parse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+
+  await db.update(users)
+    .set(validated)
+    .where(eq(users.id, id));
+
+  revalidatePath(`/users/${id}`);
+  revalidatePath('/users');
+}
+
+export async function deleteUser(id: string) {
+  await db.delete(users).where(eq(users.id, id));
+
+  revalidatePath('/users');
+  redirect('/users');
+}]]></code>
+        <note>Server Actions encapsulate backend logic, called from form actions. RevalidatePath triggers recomputation on the server.</note>
+      </example>
+    </section>
+
+    <section name="next-js-app-router-structure">
+      <p>Next.js 13+ App Router has its own file structure conventions. Pages are in app/, shared components live in root-level src/components/, and server actions are co-located with the pages that use them.</p>
+
+      <rule testable="true">
+        <statement>MUST organize Next.js app as: app/ (page.tsx per route, layout.tsx for shared structure, _components/ for route-local components), lib/actions/ (Server Actions), lib/db/ (database layer), lib/validations/ (Zod schemas). Route-specific components live in _components/ (underscore prevents them being routes). Each page.tsx MUST be 40-60 lines.</statement>
+        <rationale>Next.js enforces file-based routing; the underscore convention hides internal components. Server Actions co-locate with the pages that call them. This layout keeps secrets (database, API keys) in lib/, not exposed in app/.</rationale>
+      </rule>
+
+      <example type="good" title="Next.js App Router structure">
+        <code lang="text"><![CDATA[app/
+├── (auth)/
+│   ├── login/
+│   │   └── page.tsx                  # Login page (40-60 lines)
+│   └── register/
+│       └── page.tsx                  # Register page (40-60 lines)
+├── (dashboard)/
+│   ├── layout.tsx                    # Dashboard layout (30-50 lines)
+│   ├── page.tsx                      # Dashboard home (40-60 lines)
+│   └── users/
+│       ├── page.tsx                  # Users list (50-70 lines)
+│       ├── [id]/
+│       │   └── page.tsx              # User detail (40-60 lines)
+│       └── _components/
+│           ├── UserList.tsx          # List component (50-70 lines)
+│           └── UserCard.tsx          # Card component (30-50 lines)
+├── api/
+│   └── users/
+│       ├── route.ts                  # GET, POST (40-60 lines)
+│       └── [id]/
+│           └── route.ts              # GET, PUT, DELETE (50-70 lines)
+lib/
+├── actions/
+│   └── users.ts                      # Server Actions (60-80 lines)
+├── db/
+│   ├── schema.ts                     # DB schema (50-80 lines)
+│   └── queries/
+│       └── users.ts                  # User queries (40-60 lines)
+└── validations/
+    └── user.ts                       # Zod schemas (30-50 lines)]]></code>
+        <note>Pages in app/, actions in lib/actions/, internal components in _components/. Server Actions and schemas co-locate for maintainability.</note>
+      </example>
+
+      <antipattern>
+        <description>Storing API routes and pages in the same app/ structure without clear mental boundaries, mixing route handlers and page rendering logic.</description>
+        <reason>API routes (app/api/...) and pages (app/...) are conceptually different — one returns JSON, one returns HTML. Mixing them confuses static analysis and agent reasoning. Enforce a clear separation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="file-size-guidelines">
+      <p>Target file sizes for different code types. Exceeding the max suggests either missing abstraction or overcomplicated logic.</p>
+
+      <rule testable="true">
+        <statement>Components MUST target 50-80 lines; max 150. Hooks MUST target 40-60 lines; max 100. Services MUST target 50-70 lines; max 150. Pages (Next.js) MUST target 50-70 lines; max 150. Server Actions MUST target 60-80 lines; max 150. Tests MUST target 100-150 lines; max 300. If a file exceeds max, it is a refactoring candidate.</statement>
+        <rationale>Limits force modularity. Files fitting one screen (50-80 lines at 100 chars/line) are readable on laptop displays without scrolling. LLMs with 4k-token context windows can load multiple 80-line files in parallel. Larger files require truncation or pagination, reducing reasoning quality.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/alan2207/bulletproof-react"/>
+      <link href="https://react.dev/learn/thinking-in-react"/>
+      <link href="https://nextjs.org/docs/app"/>
+      <link href="https://feature-sliced.design/"/>
+      <link href="https://kentcdodds.com/blog/colocation"/>
+    </see-also>
+  </content>
+</methodology>
