@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-gateway-patterns">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Choose and implement the right API gateway pattern (simple routing, BFF, aggregation, edge+mesh) and select the right gateway technology for the system context.</summary>
+    <tags>
+      <tag>api-gateway</tag>
+      <tag>architecture</tag>
+      <tag>microservices</tag>
+      <tag>bff</tag>
+      <tag>routing</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="api-gateway-resilience"/>
+      <ref slug="api-gateway-security"/>
+      <ref slug="api-gateway-observability"/>
+      <ref slug="api-gateway-graphql"/>
+      <ref slug="microservices-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>API Gateway Patterns and Technology Selection</title>
+
+    <summary>An API gateway is a single entry point for all client requests to backend services, acting as a reverse proxy for cross-cutting concerns. Pick the right pattern (simple routing, BFF, aggregation, or edge+mesh) based on client diversity and backend topology, then select the right technology from Kong, AWS API Gateway, Traefik, Envoy, APISIX, Apigee, or Apollo Router.</summary>
+
+    <why>
+      <p>API gateways decouple clients from backend service topology, centralize cross-cutting concerns (auth, rate limiting, observability), enable independent service evolution, and simplify client development. Without a gateway, every client must know every service's address, handle auth separately, and negotiate failures independently — making backend refactoring impossible without client updates.</p>
+      <p>Pattern choice is architectural: BFF gives each client type its own optimized surface; aggregation reduces round trips by composing responses; edge+mesh separates north-south traffic (gateway) from east-west traffic (service mesh). Picking the wrong pattern adds operational complexity without benefit.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing the front door for a new microservices or serverless system.</item>
+        <item>Multiple client types (web, mobile, IoT, partner APIs) with different data and auth needs.</item>
+        <item>Centralizing auth, rate limiting, routing, or observability across services.</item>
+        <item>Migrating from monolith to microservices and needing a stable external surface.</item>
+        <item>Selecting between gateway technologies given infra, team, and performance constraints.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single monolith with one host — a reverse proxy (nginx, Caddy) is sufficient; gateway adds latency and ops cost without benefit.</item>
+        <item>Internal east-west traffic between services on a service mesh — that is mesh territory (Istio/Linkerd), not edge gateway.</item>
+        <item>Simple Lambda + Function URL deployments where API Gateway adds no value over direct invocation.</item>
+        <item>Real-time bidirectional streams that need persistent connections at scale — use AppSync, a dedicated WS gateway, or NATS/Centrifugo instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="what-is-an-api-gateway">
+      <p>An API Gateway is a single entry point for all client requests to backend services. It acts as a reverse proxy that handles cross-cutting concerns like authentication, rate limiting, routing, and observability.</p>
+      <p>Core value: decouples clients from backend service topology; centralizes cross-cutting concerns; enables independent service evolution; simplifies client development.</p>
+    </section>
+
+    <section name="gateway-functions">
+      <p>Standard gateway functions by priority:</p>
+      <list>
+        <item>Routing — direct requests to appropriate backend services (critical)</item>
+        <item>Authentication — validate tokens, API keys, mTLS (critical)</item>
+        <item>Authorization — enforce access policies (critical)</item>
+        <item>Rate Limiting — prevent abuse, protect backends (high)</item>
+        <item>Load Balancing — distribute traffic across instances (high)</item>
+        <item>Circuit Breaking — handle backend failures gracefully (high)</item>
+        <item>Observability — metrics, logging, distributed tracing (high)</item>
+        <item>Request Transformation — modify headers, body, path (medium)</item>
+        <item>Response Aggregation — combine multiple backend responses (medium)</item>
+        <item>Caching — cache responses to reduce backend load (medium)</item>
+        <item>API Versioning — route to different API versions (medium)</item>
+      </list>
+    </section>
+
+    <section name="pattern-simple-routing">
+      <p>Routes requests to appropriate backend services based on path, host, or headers.</p>
+      <rule testable="true">
+        <statement>Use simple routing when the architecture has a direct mapping between client requests and backend services with minimal transformation needed and a single client type or uniform client needs.</statement>
+        <rationale>Simple routing avoids operational overhead of BFF or aggregation patterns. Adding patterns prematurely creates maintenance burden without benefit.</rationale>
+      </rule>
+      <example type="good" title="Simple routing path mapping">
+        <code lang="text"><![CDATA[
+Client: GET /users/123  → API Gateway → User Service (GET /123)
+Client: GET /orders/456 → API Gateway → Order Service (GET /456)
+]]></code>
+        <note>One gateway, direct path-to-service mapping, no transformation.</note>
+      </example>
+    </section>
+
+    <section name="pattern-bff">
+      <p>Backend for Frontend (BFF): separate gateways optimized for each client type.</p>
+      <rule testable="true">
+        <statement>Use BFF when different clients have vastly different data needs, mobile needs optimized payloads, third-party integrations require different contracts, or different security requirements exist per client type.</statement>
+        <rationale>A single gateway serving all clients tends to accumulate client-specific logic and becomes a bottleneck; BFF pushes that complexity to per-client surfaces owned by the teams that know those clients.</rationale>
+      </rule>
+      <example type="good" title="BFF topology">
+        <code lang="text"><![CDATA[
+Mobile App    --> Mobile BFF Gateway  --> Backend Services
+Web App       --> Web BFF Gateway     --> Backend Services
+Admin         --> Admin BFF Gateway   --> Backend Services
+Partner       --> Partner API Gateway --> Backend Services
+]]></code>
+      </example>
+    </section>
+
+    <section name="pattern-aggregation">
+      <p>Aggregation gateway combines responses from multiple backend services into a single response, reducing client-side complexity and network round trips for composite API views.</p>
+      <rule testable="true">
+        <statement>Use aggregation when reducing client-side complexity is a primary goal, when minimizing network round trips matters (mobile, low-bandwidth), or when creating composite API views from independently deployed services.</statement>
+        <rationale>Without aggregation, clients make N parallel requests; mobile clients on slow links feel latency multiplied by the number of services. Aggregation at the gateway trades gateway complexity for client simplicity.</rationale>
+      </rule>
+      <example type="good" title="Aggregation pattern">
+        <code lang="text"><![CDATA[
+Client: GET /dashboard
+    |
+API Gateway --- User Svc
+            --- Order Svc  --> Aggregated Response
+            --- Stats Svc
+]]></code>
+      </example>
+    </section>
+
+    <section name="pattern-edge-plus-mesh">
+      <p>Edge Gateway with Service Mesh: gateway handles north-south traffic; service mesh handles east-west. External traffic hits an edge gateway (Kong/Envoy); internal service-to-service uses the mesh (Istio/Linkerd) for mTLS, fine-grained traffic management, and zero-trust security.</p>
+      <rule testable="true">
+        <statement>Use edge+mesh when services require mutual TLS between them, when fine-grained traffic management between services is needed, or when a zero-trust security model is required. Do NOT use a service mesh for a simple two-tier app — the operational overhead is substantial.</statement>
+        <rationale>The mesh handles east-west (service-to-service) while the gateway handles north-south (client-to-gateway). Combining them avoids duplicating concerns at both layers.</rationale>
+      </rule>
+    </section>
+
+    <section name="technology-selection">
+      <p>Gateway solution comparison (2025-2026):</p>
+      <list>
+        <item>Kong (OSS/Enterprise) — multi-cloud, plugin extensibility, ~50k TPS/node, 100+ plugins. Best: multi-cloud + plugin needs.</item>
+        <item>AWS API Gateway — managed, AWS-native, serverless, auto-scaling. Best: AWS-native + serverless.</item>
+        <item>Traefik — OSS, Kubernetes-native, GitOps, ~30k QPS, middleware plugins. Best: K8s + GitOps workflow.</item>
+        <item>Envoy — OSS, service mesh, high performance, ~35k QPS, WASM extensible. Best: service mesh architecture.</item>
+        <item>APISIX — OSS, high performance, dashboard, ~50k+ QPS, 80+ plugins. Best: maximum throughput.</item>
+        <item>Apigee — enterprise, API management, monetization, auto-scaling. Best: enterprise + monetization.</item>
+        <item>Tyk — OSS/enterprise, GraphQL support, analytics, OpenAPI native. Best: GraphQL + analytics.</item>
+        <item>Apollo Router — OSS/SaaS, purpose-built GraphQL federation, Rust-based. Best: GraphQL federation.</item>
+      </list>
+      <p>Selection decision tree:</p>
+      <list>
+        <item>Need managed service + AWS ecosystem? → AWS API Gateway</item>
+        <item>Need extensive plugin ecosystem + multi-cloud? → Kong or APISIX</item>
+        <item>Kubernetes-native with GitOps workflow? → Traefik</item>
+        <item>Building service mesh architecture? → Envoy (with Istio/Solo)</item>
+        <item>Need GraphQL federation? → Apollo Router or Tyk</item>
+        <item>Enterprise API management with monetization? → Apigee or Kong Enterprise</item>
+      </list>
+    </section>
+
+    <section name="agent-agentic-workflow">
+      <p>Drive design with sonnet (pick gateway product and patterns), generate config with haiku from templates, then opus reviews for security and anti-patterns. Always pair the gateway agent with the security and observability methodology folders in context — auth and tracing are inseparable from gateway design.</p>
+      <p>Output required: gateway config (Kong YAML / CFN / xDS), OpenAPI doc, OTEL pipeline, and load-test script. Reject diffs without all four.</p>
+    </section>
+
+    <section name="requirements-checklist">
+      <p>Phase 1 requirements analysis checklist:</p>
+      <checklist>
+        <check>Estimate expected requests per second (RPS) and peak traffic patterns</check>
+        <check>Identify burst capacity requirements and payload size distribution</check>
+        <check>List all client types (web, mobile, IoT, partners) and their authentication methods</check>
+        <check>Document payload format preferences (JSON, Protocol Buffers) per client</check>
+        <check>Inventory all backend services: endpoints, protocols (REST, gRPC, GraphQL), health check endpoints</check>
+        <check>Define latency SLA (p50, p95, p99) and availability target (99.9%, 99.99%)</check>
+        <check>Identify compliance requirements (GDPR, HIPAA, PCI-DSS)</check>
+        <check>Document geographic distribution needs</check>
+      </checklist>
+      <p>Phase 2 architecture selection checklist:</p>
+      <checklist>
+        <check>Evaluate Simple Routing vs BFF vs Aggregation patterns against client diversity</check>
+        <check>Assess need for multiple gateways (regional, client-specific)</check>
+        <check>Determine if service mesh integration is needed for east-west traffic</check>
+        <check>Compare gateway solutions against requirements (open-source, managed, plugin ecosystem, K8s integration, vendor lock-in, cost at scale)</check>
+        <check>Decide on deployment environment (Kubernetes, ECS, VMs) and HA configuration</check>
+        <check>Plan blue-green/canary deployment approach for gateway itself</check>
+      </checklist>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Business logic in gateway plugins (Lua, Wasm, Lambda authorizers).</description>
+        <reason>Gateway becomes a deployment bottleneck and an invisible monolith; debt accumulates silently. Keep gateway thin — routing, auth, rate-limit, observability only. Push domain logic to services.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Gateway as orchestrator — using it to call multiple services sequentially and assemble responses with conditional branching.</description>
+        <reason>Tight coupling and bottleneck; use choreography or a dedicated orchestrator (Temporal, Step Functions) instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Single gateway as a single point of failure.</description>
+        <reason>Regional gateways and high availability are required. A single gateway instance fails the entire platform.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Wildcard upstreams — agents emit paths: ["/"] catch-all routes.</description>
+        <reason>Explicitly enumerate paths; catch-alls route unexpected traffic to wrong backends and make security audits impossible.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="initial-architecture-design"><![CDATA[
+I need to design an API gateway architecture for the following system:
+
+Context:
+- System type: [e-commerce / SaaS / B2B API / internal microservices]
+- Expected traffic: [X RPS peak, Y average]
+- Client types: [web, mobile, IoT, partner APIs]
+- Backend services: [list services with protocols]
+- Current infrastructure: [Kubernetes / AWS / GCP / on-premise]
+
+Requirements:
+- Availability target: [99.9% / 99.99%]
+- Latency SLA: p95 < [X]ms
+- Security: [public API / internal only / mixed]
+- Compliance: [GDPR / HIPAA / PCI-DSS / none]
+
+Please provide:
+1. Recommended gateway pattern (simple routing / BFF / aggregation)
+2. Technology recommendation with reasoning
+3. High-level architecture description
+4. Key configuration considerations
+5. Potential risks and mitigations
+]]></prompt>
+      <prompt purpose="gateway-selection"><![CDATA[
+Help me choose between API gateway solutions for my use case:
+
+Requirements:
+- Deployment: [Kubernetes / AWS / GCP / Docker]
+- Scale: [X RPS, Y services]
+- Features needed: [list required features]
+- Team expertise: [languages/tools familiar with]
+- Budget: [open source only / enterprise budget / managed OK]
+
+Compare: Kong, AWS API Gateway, Traefik, Envoy, APISIX.
+
+Provide a comparison matrix and final recommendation with reasoning.
+]]></prompt>
+      <prompt purpose="migration-planning"><![CDATA[
+I need to migrate from [current gateway] to [target gateway].
+
+Current State:
+- Gateway: [current solution]
+- Routes: [X routes]
+- Plugins/features in use: [list]
+- Traffic: [X RPS]
+- Pain points: [why migrating]
+
+Target State:
+- Gateway: [target solution]
+- Additional requirements: [new features needed]
+
+Please provide:
+1. Migration strategy (big bang vs incremental)
+2. Feature mapping from old to new
+3. Risk assessment
+4. Rollback plan
+5. Estimated complexity (high/medium/low)
+]]></prompt>
+    </section>
+
+    <see-also>
+      <ref slug="api-gateway-resilience"/>
+      <ref slug="api-gateway-security"/>
+      <ref slug="api-gateway-observability"/>
+      <ref slug="api-gateway-graphql"/>
+      <link href="https://microservices.io/patterns/apigateway.html"/>
+      <link href="https://learn.microsoft.com/en-us/azure/architecture/microservices/design/gateway"/>
+    </see-also>
+  </content>
+</methodology>
