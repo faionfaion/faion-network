@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: azure-networking → 6 slugs (azure-vnet-hub-spoke, azure-nsg-rules, azure-nat-gateway, azure-app-gateway-waf, azure-front-door, azure-private-link)
 - decompose: security-as-code → 5 slugs (security-sast, security-dast, security-container-scanning, security-policy-as-code, security-supply-chain)
 - decompose: fine-tuning-openai → 5 slugs (fine-tuning-openai-sft, fine-tuning-openai-dpo, fine-tuning-openai-data-prep, fine-tuning-openai-eval, fine-tuning-openai-deployment)
 - decompose: load-balancing-implementation → 7 slugs (lb-technology-selection, lb-health-checks, lb-haproxy-production, lb-nginx-production, lb-kubernetes-ingress, lb-monitoring, lb-cloud-terraform)
