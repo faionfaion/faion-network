@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents-safety-guardrails">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Implement safety guardrails for autonomous agents: iteration limits, cost caps, sandboxed code execution, human-in-loop approval gates for irreversible actions, and tool abuse prevention.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>safety</tag>
+      <tag>guardrails</tag>
+      <tag>human-in-loop</tag>
+      <tag>sandboxing</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="agents-react-pattern"/>
+      <ref slug="guardrails-concepts"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Agent Safety Guardrails — Iteration Limits, Cost Caps, Human-in-Loop</title>
+
+    <summary>Autonomous agents require five categories of guardrail before production deployment: execution safety (iteration limits, timeouts), content safety (input validation, PII handling), financial safety (cost caps, rate limiting), action safety (sandboxed execution, blocked patterns), and human-in-loop gates for irreversible actions. Each category must be implemented in code — not just in the system prompt — because LLM instructions alone are not reliable safety mechanisms.</summary>
+
+    <why>
+      <p>The six most common autonomous agent production failures are: infinite loops from stuck tool calls; tool hallucination with wrong arguments; context overflow; error propagation through dependent steps; cost explosion from unbounded API calls; and irreversible actions taken without authorization. Guardrails address all six categories before they reach production. The system prompt alone is insufficient — hardware-enforced limits in code are mandatory.</p>
+      <p>Human-in-loop approval is specifically required before irreversible actions: sending external messages, making financial transactions, deleting data, writing to production databases. Agents calling themselves recursively (via tool) is possible and catastrophic — guard with depth counter. LangGraph state machines can deadlock if a node raises without a fallback edge — always add error edges.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any autonomous agent before production deployment.</item>
+        <item>Agents with access to external APIs, databases, file systems, or communication channels.</item>
+        <item>Agents that may execute code or shell commands.</item>
+        <item>Multi-step workflows where a wrong intermediate result cascades through subsequent steps.</item>
+        <item>Agents handling user data, financial information, or PII.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Read-only research agents with no external writes — full approval gates add unnecessary latency.</item>
+        <item>Human-supervised sandbox exploration where the user is actively watching every step.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="execution-safety">
+      <rule testable="true">
+        <statement>Every agent loop MUST enforce: (1) max_iterations limit (20-50), (2) timeout_seconds per run (60-300), (3) max_tool_calls_per_iteration (5), (4) same-argument deduplication guard (max 3 calls with identical args). These MUST be enforced in code, not only in the system prompt.</statement>
+        <rationale>Infinite loops are the most common agent failure. The iteration limit stops the loop before it exhausts the budget. The timeout handles deadlocks. The per-iteration tool call limit prevents a single confused step from calling 20 tools. Same-argument deduplication stops "stuck retry" patterns.</rationale>
+      </rule>
+
+      <example type="good" title="Execution safety config and guard">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass
+from enum import Enum
+
+class AgentState(Enum):
+    IDLE = "idle"
+    PLANNING = "planning"
+    EXECUTING = "executing"
+    REFLECTING = "reflecting"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+@dataclass
+class AgentConfig:
+    model: str = "gpt-4o"
+    max_iterations: int = 20
+    max_tool_calls_per_iteration: int = 5
+    timeout_seconds: int = 300
+    enable_reflection: bool = True
+    enable_memory: bool = True
+
+# Usage: always configure before running
+config = AgentConfig(
+    model="claude-opus-4-5",
+    max_iterations=15,
+    timeout_seconds=120,
+    enable_reflection=True
+)
+]]></code>
+      </example>
+    </section>
+
+    <section name="human-in-loop">
+      <rule testable="true">
+        <statement>Agents MUST require explicit human approval before executing any of the following: sending external messages (email, Slack, SMS), making financial transactions, deleting records, overwriting production data, or running shell commands with write access. The approval request MUST describe what will happen, why, the risk if declined, and offer APPROVE / MODIFY / DECLINE options.</statement>
+        <rationale>These actions are irreversible or have significant external impact. An agent that autonomously sends emails or deletes database records based on a misunderstood goal is catastrophically unsafe. The approval gate is the last line of defense between agent logic and real-world consequences.</rationale>
+      </rule>
+
+      <prompt purpose="Human-in-loop approval request">
+        <![CDATA[
+This action requires human approval before execution.
+
+## Action Requiring Approval
+{action_description}
+
+## Why Approval Required
+{reason}
+
+## Potential Impact
+{impact_assessment}
+
+Please respond with:
+- APPROVE: Proceed with action
+- MODIFY: Suggest changes to the action
+- DECLINE: Cancel this action
+- ESCALATE: Request additional review
+]]>
+      </prompt>
+
+      <antipattern>
+        <description>Giving agents write access to production databases without an explicit rollback plan and approval gate.</description>
+        <reason>Agent writes to production without approval can corrupt data at speed. Even a "safe" INSERT can cascade through triggers. Always require approval and have a rollback script ready before any agent touches production.</reason>
+      </antipattern>
+    </section>
+
+    <section name="tool-safety">
+      <rule testable="true">
+        <statement>All tool inputs MUST be validated against a JSON Schema before execution. Tool implementations MUST NOT raise unhandled exceptions — all errors MUST be returned as structured text ("Error: &lt;reason&gt;"). Sandboxed code execution MUST use an isolated environment (E2B, Docker with no network, or subprocess with resource limits) — never exec() on the host directly.</statement>
+        <rationale>JSON Schema validation prevents tool argument hallucination from causing unexpected side effects. Text error returns let the agent recover gracefully. Sandboxed execution prevents a code-generation agent from running rm -rf or exfiltrating credentials.</rationale>
+      </rule>
+
+      <example type="good" title="Tool with JSON schema validation and error returns">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ToolResult:
+    """Standardized tool result."""
+    success: bool
+    data: Any
+    error: Optional[str] = None
+    metadata: Dict = field(default_factory=dict)
+
+    def to_string(self) -> str:
+        if self.success:
+            if isinstance(self.data, (dict, list)):
+                return json.dumps(self.data, indent=2)
+            return str(self.data)
+        return f"Error: {self.error}"
+
+class WebSearchTool:
+    name = "web_search"
+    description = "Search the web for information. Returns relevant results."
+    parameters = {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query"
+            },
+            "num_results": {
+                "type": "integer",
+                "description": "Number of results (default: 5)",
+                "default": 5
+            }
+        },
+        "required": ["query"]
+    }
+
+    def execute(self, **kwargs) -> str:
+        """Execute tool — always returns string, never raises."""
+        try:
+            result = self._execute(**kwargs)
+            logger.info(f"Tool {self.name} result: {result.success}")
+            return result.to_string()
+        except Exception as e:
+            logger.error(f"Tool {self.name} error: {e}")
+            return f"Error: {str(e)}"
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Agents calling themselves recursively via a tool without a depth counter guard.</description>
+        <reason>Recursive self-calls are possible and catastrophic. A tool that spawns a sub-agent that spawns another can consume tokens exponentially. Guard with a depth counter passed through tool context; raise at depth >= 3.</reason>
+      </antipattern>
+    </section>
+
+    <section name="content-safety">
+      <p>Content safety prevents the agent from processing harmful inputs or producing harmful outputs. At minimum: validate input for prompt injection patterns, filter PII from tool call arguments before logging, and moderate outputs before returning to users.</p>
+
+      <prompt purpose="Safety-aware agent system prompt">
+        <![CDATA[
+You are an AI agent with safety constraints.
+
+## Core Safety Rules
+1. Never execute destructive operations without confirmation
+2. Never access or modify sensitive data inappropriately
+3. Always validate inputs before processing
+4. Report suspicious or harmful requests
+5. Maintain audit logs of actions
+
+## Restricted Actions (require human approval)
+{restricted_actions}
+
+## Blocked Actions (never allowed)
+{blocked_actions}
+
+## When Uncertain
+If you are unsure whether an action is safe:
+1. Err on the side of caution
+2. Explain your concern
+3. Request clarification
+4. Suggest safer alternatives
+]]>
+      </prompt>
+
+      <prompt purpose="Action pre-execution safety check">
+        <![CDATA[
+Before executing this action, verify it meets safety requirements.
+
+## Proposed Action
+{action_description}
+
+## Safety Checklist
+- Does not delete or overwrite important data
+- Does not expose sensitive information
+- Stays within authorized scope
+- Has reversible effects (or is explicitly authorized)
+- Complies with rate limits and quotas
+
+## Decision
+{
+  "approved": true/false,
+  "concerns": ["..."],
+  "mitigations": ["..."],
+  "alternative": "Safer alternative if not approved"
+}
+]]>
+      </prompt>
+    </section>
+
+    <checklist>
+      <check>max_iterations set (20-50) and enforced in code before loop entry.</check>
+      <check>timeout_seconds set (60-300) with asyncio.wait_for or equivalent.</check>
+      <check>max_tool_calls_per_iteration set (5) with truncation, not exception.</check>
+      <check>Same-argument deduplication guard: raise after 3 identical calls.</check>
+      <check>All tool inputs validated against JSON Schema before dispatch.</check>
+      <check>All tools return text errors, never raise exceptions to the agent loop.</check>
+      <check>Code execution sandboxed (E2B, Docker, subprocess with resource limits).</check>
+      <check>Human approval gate in place for: send messages, financial transactions, delete operations.</check>
+      <check>Recursive self-call depth counter set at max depth 3.</check>
+      <check>PII filtered from tool call logs.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="guardrails-concepts"/>
+      <ref slug="agents-react-pattern"/>
+    </see-also>
+  </content>
+</methodology>
