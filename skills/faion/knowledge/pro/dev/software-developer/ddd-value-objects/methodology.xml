@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ddd-value-objects">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>DDD Value Objects: immutable, identity-free domain types defined entirely by their attributes. Self-validate in constructor, implement domain operations, replace primitives.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>value-objects</tag>
+      <tag>immutability</tag>
+      <tag>domain-model</tag>
+      <tag>primitive-obsession</tag>
+    </tags>
+    <category>ddd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>DDD Value Objects: Immutable Self-Validating Domain Types</title>
+
+    <summary>A Value Object is a domain concept defined entirely by its attributes, not by identity. Two Value Objects with the same attributes are equal. Value Objects are immutable: instead of mutating state, operations return new instances. They encapsulate validation, making illegal states unrepresentable. Use them to replace primitive obsession (raw strings, ints, Decimals) with meaningful types (Money, Email, Address, PhoneNumber).</summary>
+
+    <why>
+      <p>Primitive obsession is the root cause of a class of bugs: passing a price where a quantity is expected, storing an email without format validation, adding two Decimals in different currencies. Value Objects solve this by wrapping primitives in types that carry both the value and its invariants. A Money(amount=Decimal("-1"), currency="USD") cannot exist because the constructor raises ValueError. A money addition that mixes currencies fails explicitly.</p>
+      <p>Immutability eliminates a second class of bugs: shared mutable value leaking between callers. Because Value Objects are frozen, equality is structural (by value), and aliasing is harmless.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any domain primitive with validation rules: email addresses, phone numbers, monetary amounts, postal codes, URLs, percentages.</item>
+        <item>Any primitive whose meaning is context-dependent: a "quantity" VO in the order context vs. an "inventory level" VO in the warehouse context.</item>
+        <item>Compound values that always travel together: street + city + postal + country = Address; amount + currency = Money.</item>
+        <item>Replacing repeated inline validation scattered across the codebase.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Objects with identity that persist across time — those are Entities, not Value Objects.</item>
+        <item>Simple configuration tuples or DTOs in the application/infrastructure layer where domain semantics do not apply.</item>
+        <item>Extremely performance-sensitive hot paths where object allocation cost is measurable — profile first.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Value Objects MUST be immutable. In Python use @dataclass(frozen=True). In Java/Kotlin use records or final fields with no setters. In C# use readonly structs or record types. Mutation must be impossible by the type system, not by convention.</statement>
+        <rationale>Mutable Value Objects create aliasing bugs: two callers share the same instance and one mutates it, silently affecting the other. Immutability makes Value Objects safe to pass, store, and compare by value.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Value Objects MUST validate their invariants in __post_init__ (Python) or the constructor (Java/C#/TS). An invalid Value Object MUST NOT be constructible — it must raise/throw immediately.</statement>
+        <rationale>Deferred validation (checking after construction) allows invalid objects to propagate through the system. Fail-fast construction makes illegal states unrepresentable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Value Object operations that produce a new value MUST return a new instance, never mutate the existing one. Example: Money.add(other) returns Money(self.amount + other.amount, self.currency).</statement>
+        <rationale>Mutation methods on a supposedly immutable object are a trap: frozen dataclasses prevent this in Python, but in Java/C# the invariant must be enforced by code review or tests.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Money, Address, Email, PhoneNumber Value Objects">
+      <code lang="python"><![CDATA[
+# order/domain/value_objects.py
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Optional
+import re
+
+
+@dataclass(frozen=True)
+class Money:
+    """Value object representing monetary amount."""
+
+    amount: Decimal
+    currency: str
+
+    def __post_init__(self):
+        if self.amount < 0:
+            raise ValueError("Amount cannot be negative")
+        if len(self.currency) != 3:
+            raise ValueError("Currency must be 3-letter code")
+
+    def __add__(self, other: "Money") -> "Money":
+        if self.currency != other.currency:
+            raise ValueError("Cannot add different currencies")
+        return Money(self.amount + other.amount, self.currency)
+
+    def __mul__(self, multiplier: int) -> "Money":
+        return Money(self.amount * multiplier, self.currency)
+
+
+@dataclass(frozen=True)
+class Address:
+    """Value object representing a shipping address."""
+
+    street: str
+    city: str
+    state: str
+    postal_code: str
+    country: str
+
+    def __post_init__(self):
+        if not all([self.street, self.city, self.postal_code, self.country]):
+            raise ValueError("Address fields cannot be empty")
+
+    def format(self) -> str:
+        return f"{self.street}, {self.city}, {self.state} {self.postal_code}, {self.country}"
+
+
+@dataclass(frozen=True)
+class Email:
+    """Value object representing an email address."""
+
+    value: str
+
+    def __post_init__(self):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, self.value):
+            raise ValueError(f"Invalid email: {self.value}")
+        object.__setattr__(self, 'value', self.value.lower())
+
+
+@dataclass(frozen=True)
+class PhoneNumber:
+    """Value object representing a phone number."""
+
+    country_code: str
+    number: str
+
+    def __post_init__(self):
+        # Remove non-digits
+        cleaned = re.sub(r'\D', '', self.number)
+        if len(cleaned) < 10:
+            raise ValueError("Phone number too short")
+        object.__setattr__(self, 'number', cleaned)
+
+    def format(self) -> str:
+        return f"+{self.country_code} {self.number}"
+]]></code>
+      <note>frozen=True makes Python raise FrozenInstanceError on any attribute assignment after construction. object.__setattr__ is used inside __post_init__ only to normalize the value before freezing.</note>
+    </example>
+
+    <example type="bad" title="Primitive obsession — raw types leaking validation everywhere">
+      <code lang="python"><![CDATA[
+# BAD: amount and currency are raw primitives
+class OrderLine:
+    def __init__(self, product_id, quantity, unit_price_amount, currency):
+        self.unit_price_amount = unit_price_amount  # Could be negative
+        self.currency = currency                    # Could be "INVALID"
+
+# Validation scattered all over the codebase:
+if order_line.unit_price_amount < 0:
+    raise ValueError(...)
+if len(order_line.currency) != 3:
+    raise ValueError(...)
+]]></code>
+      <note>Validation is duplicated at every call site. A caller that skips the check creates an invalid order silently.</note>
+    </example>
+
+    <section name="domain-operations">
+      <p>Value Objects should carry domain operations relevant to their concept, not just hold data. This keeps domain logic inside the type rather than scattered across services.</p>
+      <example type="good" title="Money with domain arithmetic">
+        <code lang="python"><![CDATA[
+@dataclass(frozen=True)
+class Money:
+    amount: Decimal
+    currency: str
+
+    def apply_discount(self, percent: Decimal) -> "Money":
+        """Apply a percentage discount. Returns new Money."""
+        if not (0 <= percent <= 100):
+            raise ValueError("Discount must be 0-100")
+        discounted = self.amount * (1 - percent / 100)
+        return Money(discounted, self.currency)
+
+    def is_zero(self) -> bool:
+        return self.amount == Decimal("0")
+
+    def __gt__(self, other: "Money") -> bool:
+        if self.currency != other.currency:
+            raise ValueError("Cannot compare different currencies")
+        return self.amount > other.amount
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-gotchas">
+      <p>Agents routinely produce mutable Value Objects or skip self-validation. Pin these rules in the implementation prompt.</p>
+      <list>
+        <item>Verify frozen=True (Python), record (Java/Kotlin), or readonly struct (C#) — agents often omit the immutability annotation.</item>
+        <item>Check that __post_init__ / constructor raises immediately on invalid input — agents often add a validate() method that must be called separately.</item>
+        <item>Ensure equality is structural: two Money(10, "USD") instances must be equal. Agents sometimes add an id field to Value Objects accidentally.</item>
+        <item>Watch for mutation methods like set_amount() on a "frozen" VO — these are invariant violations that Python's type system will catch, Java/C# will not.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Value Object uses frozen=True / record / readonly struct</check>
+      <check>Constructor validates all invariants and raises on invalid input</check>
+      <check>No setter methods or mutation after construction</check>
+      <check>Operations that produce new values return new instances</check>
+      <check>Equality is structural (same attributes = equal objects)</check>
+      <check>No identity field (no id, no uuid) — that would make it an Entity</check>
+      <check>Unit tests cover invalid construction cases</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="arch-pattern-ddd"/>
+      <link href="https://martinfowler.com/bliki/ValueObject.html"/>
+      <link href="https://www.domainlanguage.com/ddd/reference/"/>
+    </see-also>
+  </content>
+</methodology>
