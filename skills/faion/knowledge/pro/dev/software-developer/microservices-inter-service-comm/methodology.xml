@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="microservices-inter-service-comm">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Synchronous HTTP clients, async message bus publish/consume, and service discovery with round-robin load balancing for microservice-to-microservice communication.</summary>
+    <tags>
+      <tag>microservices</tag>
+      <tag>inter-service</tag>
+      <tag>message-bus</tag>
+      <tag>service-discovery</tag>
+      <tag>async</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Microservices Inter-Service Communication</title>
+
+    <summary>Microservices communicate either synchronously (HTTP/REST or gRPC for queries) or asynchronously (message bus for mutations and events). Async by default, sync when proven needed. Service discovery via Consul, Kubernetes DNS, or similar eliminates hardcoded URLs.</summary>
+
+    <why>
+      <p>Choosing the wrong communication pattern is the primary source of distributed-monolith failures. Synchronous chains across multiple services create availability coupling: every service in the chain must be up for the caller to succeed. Async event-driven communication removes this coupling at the cost of eventual consistency.</p>
+      <p>Service discovery replaces hardcoded addresses with dynamic lookup so services can scale, move, and restart without consumer reconfiguration.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Synchronous HTTP: queries where the caller needs an immediate response and the dependency is a single hop (user profile lookup, product detail fetch).</item>
+        <item>Async message bus: mutations that span multiple services, events that fan out to multiple consumers, workflows where eventual consistency is acceptable.</item>
+        <item>Service discovery: any environment with dynamic service registration (Kubernetes, Consul, ECS) where DNS or a registry replaces static config.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Do not use synchronous HTTP chains longer than two hops inside a request handler — rewrite as saga or precomputed projection.</item>
+        <item>Do not use async messaging when the caller requires guaranteed immediate consistency (payment authorization, inventory hard-reserve under contention).</item>
+        <item>Do not hardcode service addresses — always use discovery or environment-injected config.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="sync-http-client">
+      <rule testable="true">
+        <statement>Every synchronous service client MUST set an explicit timeout (e.g. httpx timeout=10.0). Clients without a timeout wait indefinitely and exhaust connection pools.</statement>
+        <rationale>Default "wait forever" behaviour means a slow dependency stalls all callers and exhausts the thread/connection pool under load.</rationale>
+      </rule>
+
+      <example type="good" title="Typed HTTP client for inter-service calls">
+        <code lang="python"><![CDATA[
+# Synchronous - HTTP/REST
+from httpx import AsyncClient
+
+
+class OrderServiceClient:
+    """Client for Order Service."""
+
+    def __init__(self, base_url: str):
+        self._base_url = base_url
+        self._client = AsyncClient(base_url=base_url, timeout=10.0)
+
+    async def get_orders_for_user(self, user_id: UUID) -> list:
+        response = await self._client.get(
+            f"/api/v1/orders",
+            params={"user_id": str(user_id)},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def close(self):
+        await self._client.aclose()
+]]></code>
+        <note>timeout=10.0 is mandatory. base_url injected from config, never hardcoded.</note>
+      </example>
+    </section>
+
+    <section name="async-message-bus">
+      <rule testable="true">
+        <statement>Every event class MUST carry schema_version, occurred_at, and aggregate_id. Events without these fields cannot be versioned, replayed, or debugged across service boundaries.</statement>
+        <rationale>Schema version enables consumers to handle breaking changes gracefully. occurred_at enables ordering and deduplication. aggregate_id enables correlation across the event log.</rationale>
+      </rule>
+
+      <example type="good" title="Event dataclass and publisher using aio_pika">
+        <code lang="python"><![CDATA[
+# Asynchronous - Message Bus
+from dataclasses import dataclass
+from datetime import datetime
+from uuid import UUID
+import json
+
+import aio_pika
+
+
+@dataclass
+class UserCreatedEvent:
+    user_id: UUID
+    email: str
+    name: str
+    occurred_at: datetime
+
+
+class MessagePublisher:
+    """Publish events to message bus."""
+
+    def __init__(self, channel: aio_pika.Channel):
+        self._channel = channel
+
+    async def publish(self, event: UserCreatedEvent) -> None:
+        exchange = await self._channel.get_exchange("events")
+
+        message = aio_pika.Message(
+            body=json.dumps({
+                "type": "user.created",
+                "data": {
+                    "user_id": str(event.user_id),
+                    "email": event.email,
+                    "name": event.name,
+                },
+                "occurred_at": event.occurred_at.isoformat(),
+            }).encode(),
+            content_type="application/json",
+        )
+
+        await exchange.publish(
+            message,
+            routing_key="user.created",
+        )
+
+
+class MessageConsumer:
+    """Consume events from message bus."""
+
+    def __init__(self, channel: aio_pika.Channel):
+        self._channel = channel
+        self._handlers = {}
+
+    def register(self, event_type: str, handler):
+        self._handlers[event_type] = handler
+
+    async def start(self, queue_name: str) -> None:
+        queue = await self._channel.declare_queue(queue_name, durable=True)
+
+        async with queue.iterator() as messages:
+            async for message in messages:
+                async with message.process():
+                    data = json.loads(message.body)
+                    handler = self._handlers.get(data["type"])
+                    if handler:
+                        await handler(data["data"])
+]]></code>
+      </example>
+    </section>
+
+    <section name="service-discovery">
+      <rule testable="true">
+        <statement>Service addresses MUST be resolved via a registry (Consul, Kubernetes DNS, ECS Service Connect) or environment-injected config, never hardcoded strings like http://order-service:8000.</statement>
+        <rationale>Hardcoded addresses prevent independent scaling, blue/green deployment, and service relocation. They also create a hidden dependency that fails silently when the target moves.</rationale>
+      </rule>
+
+      <example type="good" title="Consul-based service registry with health checks">
+        <code lang="python"><![CDATA[
+# Using Consul for service discovery
+from consul.aio import Consul
+
+
+class ServiceRegistry:
+    """Service registry using Consul."""
+
+    def __init__(self, consul_host: str = "localhost", consul_port: int = 8500):
+        self._consul = Consul(host=consul_host, port=consul_port)
+
+    async def register(
+        self,
+        service_name: str,
+        service_id: str,
+        address: str,
+        port: int,
+        health_check_url: str,
+    ) -> None:
+        """Register service with health check."""
+        await self._consul.agent.service.register(
+            name=service_name,
+            service_id=service_id,
+            address=address,
+            port=port,
+            check={
+                "http": health_check_url,
+                "interval": "10s",
+                "timeout": "5s",
+            },
+        )
+
+    async def deregister(self, service_id: str) -> None:
+        await self._consul.agent.service.deregister(service_id)
+
+    async def get_service(self, service_name: str) -> list:
+        """Get healthy instances of a service."""
+        _, services = await self._consul.health.service(
+            service_name, passing=True
+        )
+        return [
+            {
+                "address": s["Service"]["Address"],
+                "port": s["Service"]["Port"],
+            }
+            for s in services
+        ]
+]]></code>
+      </example>
+
+      <example type="good" title="Round-robin load balancer over discovered instances">
+        <code lang="python"><![CDATA[
+# Load balancing
+import random
+
+
+class LoadBalancer:
+    """Simple round-robin load balancer."""
+
+    def __init__(self, registry: ServiceRegistry):
+        self._registry = registry
+        self._index = {}
+
+    async def get_instance(self, service_name: str) -> dict:
+        instances = await self._registry.get_service(service_name)
+        if not instances:
+            raise ServiceUnavailableError(service_name)
+
+        # Round-robin selection
+        idx = self._index.get(service_name, 0)
+        instance = instances[idx % len(instances)]
+        self._index[service_name] = idx + 1
+
+        return instance
+]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Async by default, sync when proven needed. REST/gRPC is fine for queries; mutations across services should publish events and let consumers project.</item>
+        <item>Idempotency-key on every command. Caller generates it; handler dedups. Without this, retries double-charge.</item>
+        <item>Schema registry is non-optional. Every event has schema_version, occurred_at, aggregate_id. Compatibility checks block breaking changes pre-merge.</item>
+        <item>Outbox pattern for atomicity: write the event to the same DB transaction as the state change; a relay process publishes to the bus. Eliminates "wrote DB but bus lost the event."</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Forgotten timeout: agents create AsyncClient(base_url=...) without timeout=; default is "wait forever." Pin timeouts in templates.</item>
+        <item>Event payload bloat: agents copy entity state into events ("OrderCreated with full Order JSON"). Events should carry intent and minimal facts.</item>
+        <item>Versioning drift: service A sends OrderCreated v2; service B still parses v1. No integration test caught it because tests stubbed v1.</item>
+        <item>Trace propagation gaps: agents start a span on inbound but do not pass traceparent on outbound HTTP or bus messages. Provide a single helper and require its use.</item>
+      </list>
+    </section>
+
+    <section name="tools">
+      <list>
+        <item>consul CLI — service registry, KV, intentions. https://www.consul.io</item>
+        <item>nats CLI — JetStream subjects, streams, consumers. https://nats.io</item>
+        <item>kcat (Kafka) — inspect events, replay from offset. https://github.com/edenhill/kcat</item>
+        <item>buf — Protobuf lint and breaking-change detection. https://buf.build</item>
+        <item>spectral — OpenAPI / AsyncAPI lint. https://stoplight.io/open-source/spectral</item>
+        <item>dapr CLI — sidecar runtime for service-to-service and bindings. https://dapr.io</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="microservices-service-boundaries"/>
+      <ref slug="microservices-circuit-breaker"/>
+      <ref slug="microservices-saga-pattern"/>
+      <link href="https://microservices.io/patterns/"/>
+      <link href="https://www.asyncapi.com"/>
+    </see-also>
+  </content>
+</methodology>
