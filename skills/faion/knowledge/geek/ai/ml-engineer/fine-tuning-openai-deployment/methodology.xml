@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-deployment">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production deployment of OpenAI fine-tuned models: pipeline, job manager, cost estimation, monitoring, gradual rollout, model lifecycle, and agent-specific gotchas.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>openai</tag>
+      <tag>deployment</tag>
+      <tag>production</tag>
+      <tag>job-management</tag>
+    </tags>
+    <category>ml</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-eval"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>OpenAI Fine-Tuned Model Production Deployment</title>
+
+    <summary>Deploying a fine-tuned OpenAI model to production requires: a production pipeline with logging and error handling, gradual rollout (10% → 50% → 100%), inference cost monitoring, model ID management in version control, and agent-specific patterns for asynchronous polling and event parsing.</summary>
+
+    <why>
+      <p>Fine-tuned model inference costs are 2-3x the base model at equivalent quality for some tasks. Gradual rollout prevents a degraded model from affecting 100% of users. The model lifecycle requires tracking: model IDs change on every retrain, training data hashes must be versioned alongside model IDs, and deprecated models must be deleted to avoid storage costs.</p>
+      <p>Agentic workflows introduce additional failure modes: fine-tuning jobs run 15-120 minutes so the agent must poll asynchronously. A failed job still returns 200 OK on creation, so status checks must inspect job.status, not HTTP status. The model ID must be written to a config file, never hardcoded.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Fine-tuned model has passed quality gates (accuracy, format compliance, human preference rate).</item>
+        <item>Managing multiple fine-tuning jobs in a pipeline (list, cancel, monitor, delete).</item>
+        <item>Integrating fine-tuning into an agentic SDD workflow with async polling.</item>
+        <item>Planning model lifecycle: versioning, retraining triggers, storage cleanup.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Model has not passed evaluation quality gates — do not deploy a model that has not been benchmarked against the base model.</item>
+        <item>Experimental or exploratory fine-tuning — use ephemeral jobs, do not productionize until requirements are stable.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="production-pipeline">
+      <p>The FineTuningPipeline class encapsulates the full SFT workflow with logging, error handling, train/validation splitting, and async job monitoring.</p>
+      <example type="good" title="FineTuningPipeline — production class">
+        <code lang="python"><![CDATA[from openai import OpenAI
+from dataclasses import dataclass
+from typing import List, Dict, Optional, Literal
+import json
+import time
+import logging
+import os
+
+@dataclass
+class FineTuneConfig:
+    """Configuration for OpenAI fine-tuning job."""
+    base_model: str = "gpt-4o-mini-2024-07-18"
+    suffix: Optional[str] = None
+    n_epochs: int | Literal["auto"] = "auto"
+    batch_size: int | Literal["auto"] = "auto"
+    learning_rate_multiplier: float | Literal["auto"] = "auto"
+    method: Literal["supervised", "dpo"] = "supervised"
+    dpo_beta: float = 0.1
+    validation_split: float = 0.1
+    min_examples: int = 10
+    enable_data_sharing: bool = False
+
+    def to_api_params(self) -> dict:
+        params = {"model": self.base_model}
+        if self.suffix:
+            params["suffix"] = self.suffix
+        hyperparams = {}
+        if self.n_epochs != "auto":
+            hyperparams["n_epochs"] = self.n_epochs
+        if self.batch_size != "auto":
+            hyperparams["batch_size"] = self.batch_size
+        if self.learning_rate_multiplier != "auto":
+            hyperparams["learning_rate_multiplier"] = self.learning_rate_multiplier
+        if hyperparams:
+            params["hyperparameters"] = hyperparams
+        if self.method == "dpo":
+            params["method"] = {
+                "type": "dpo",
+                "dpo": {"hyperparameters": {"beta": self.dpo_beta}}
+            }
+        return params
+
+class FineTuningPipeline:
+    """Production fine-tuning pipeline with logging and error handling."""
+
+    def __init__(self, config: FineTuneConfig, data_dir: str = "./data"):
+        self.config = config
+        self.data_dir = data_dir
+        self.client = OpenAI()
+        self.logger = self._setup_logging()
+
+    def _setup_logging(self) -> logging.Logger:
+        logger = logging.getLogger("fine_tuning")
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler("fine_tuning.log")
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        )
+        logger.addHandler(handler)
+        return logger
+
+    def run(self, training_data: List[Dict], wait_for_completion: bool = True) -> Dict:
+        """Execute fine-tuning pipeline."""
+        self.logger.info(f"Starting pipeline with {len(training_data)} examples")
+
+        if len(training_data) < self.config.min_examples:
+            raise ValueError(
+                f"Need at least {self.config.min_examples} examples, "
+                f"got {len(training_data)}"
+            )
+
+        # Split data
+        split_idx = int(len(training_data) * (1 - self.config.validation_split))
+        train_data = training_data[:split_idx]
+        val_data = training_data[split_idx:]
+
+        # Upload files
+        train_file_id = self._upload_file(train_data, "train")
+        val_file_id = self._upload_file(val_data, "val") if val_data else None
+
+        # Create job
+        params = self.config.to_api_params()
+        params["training_file"] = train_file_id
+        if val_file_id:
+            params["validation_file"] = val_file_id
+
+        job = self.client.fine_tuning.jobs.create(**params)
+        self.logger.info(f"Created job: {job.id}")
+
+        if not wait_for_completion:
+            return {"job_id": job.id, "status": "started"}
+
+        return self._wait_for_completion(job.id)
+
+    def _upload_file(self, data: List[Dict], name: str) -> str:
+        filepath = f"{self.data_dir}/{name}_data.jsonl"
+        os.makedirs(self.data_dir, exist_ok=True)
+        with open(filepath, 'w') as f:
+            for example in data:
+                f.write(json.dumps(example) + "\n")
+        with open(filepath, "rb") as f:
+            response = self.client.files.create(file=f, purpose="fine-tune")
+        self.logger.info(f"Uploaded {name} file: {response.id}")
+        return response.id
+
+    def _wait_for_completion(self, job_id: str) -> Dict:
+        while True:
+            job = self.client.fine_tuning.jobs.retrieve(job_id)
+            self.logger.info(f"Job status: {job.status}")
+            if job.status == "succeeded":
+                self.logger.info(f"Model ready: {job.fine_tuned_model}")
+                return {
+                    "status": "succeeded",
+                    "model": job.fine_tuned_model,
+                    "trained_tokens": job.trained_tokens
+                }
+            if job.status in ["failed", "cancelled"]:
+                self.logger.error(f"Job failed: {job.error}")
+                return {"status": job.status, "error": str(job.error)}
+            time.sleep(60)]]></code>
+      </example>
+    </section>
+
+    <section name="job-manager">
+      <p>The FineTuneJobManager provides list, status, cancel, and model deletion operations for managing multiple fine-tuning jobs.</p>
+      <example type="good" title="FineTuneJobManager — job lifecycle management">
+        <code lang="python"><![CDATA[from openai import OpenAI
+from typing import List, Optional
+from datetime import datetime
+
+class FineTuneJobManager:
+    """Manage multiple fine-tuning jobs."""
+
+    def __init__(self):
+        self.client = OpenAI()
+
+    def list_jobs(self, limit: int = 10, after: Optional[str] = None) -> List[dict]:
+        """List fine-tuning jobs."""
+        jobs = self.client.fine_tuning.jobs.list(limit=limit, after=after)
+        return [
+            {
+                "id": job.id,
+                "model": job.model,
+                "status": job.status,
+                "fine_tuned_model": job.fine_tuned_model,
+                "created_at": datetime.fromtimestamp(job.created_at),
+                "trained_tokens": job.trained_tokens
+            }
+            for job in jobs.data
+        ]
+
+    def get_job(self, job_id: str) -> dict:
+        """Get job details including hyperparameters."""
+        job = self.client.fine_tuning.jobs.retrieve(job_id)
+        return {
+            "id": job.id,
+            "model": job.model,
+            "status": job.status,
+            "fine_tuned_model": job.fine_tuned_model,
+            "created_at": datetime.fromtimestamp(job.created_at),
+            "finished_at": datetime.fromtimestamp(job.finished_at) if job.finished_at else None,
+            "trained_tokens": job.trained_tokens,
+            "error": str(job.error) if job.error else None,
+            "hyperparameters": {
+                "n_epochs": job.hyperparameters.n_epochs,
+                "batch_size": job.hyperparameters.batch_size,
+                "learning_rate_multiplier": job.hyperparameters.learning_rate_multiplier
+            }
+        }
+
+    def get_events(self, job_id: str, limit: int = 20) -> List[dict]:
+        """Get job events including training loss values."""
+        events = self.client.fine_tuning.jobs.list_events(job_id, limit=limit)
+        return [
+            {
+                "created_at": datetime.fromtimestamp(event.created_at),
+                "level": event.level,
+                "message": event.message,
+                "data": event.data
+            }
+            for event in events.data
+        ]
+
+    def cancel_job(self, job_id: str) -> dict:
+        """Cancel a running job."""
+        job = self.client.fine_tuning.jobs.cancel(job_id)
+        return {"id": job.id, "status": job.status}
+
+    def list_models(self) -> List[str]:
+        """List all fine-tuned models."""
+        models = self.client.models.list()
+        return [
+            model.id for model in models.data
+            if model.id.startswith("ft:")
+        ]
+
+    def delete_model(self, model_id: str) -> dict:
+        """Delete a fine-tuned model to free storage."""
+        result = self.client.models.delete(model_id)
+        return {"id": result.id, "deleted": result.deleted}]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tool">
+      <p>CLI for fine-tuning operations (upload, train, status, list, cancel, evaluate):</p>
+      <example type="good" title="Fine-tuning CLI skeleton">
+        <code lang="python"><![CDATA[#!/usr/bin/env python3
+"""CLI for OpenAI fine-tuning operations."""
+
+import argparse
+import json
+from pathlib import Path
+
+def main():
+    parser = argparse.ArgumentParser(description="OpenAI Fine-Tuning CLI")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # Upload command
+    upload_parser = subparsers.add_parser("upload", help="Upload training file")
+    upload_parser.add_argument("file", type=Path, help="JSONL file path")
+    upload_parser.add_argument("--validate", action="store_true", help="Validate before upload")
+
+    # Train command
+    train_parser = subparsers.add_parser("train", help="Start fine-tuning")
+    train_parser.add_argument("--training-file", required=True, help="Training file ID")
+    train_parser.add_argument("--validation-file", help="Validation file ID")
+    train_parser.add_argument("--model", default="gpt-4o-mini-2024-07-18")
+    train_parser.add_argument("--suffix", help="Model suffix")
+    train_parser.add_argument("--epochs", type=int, default=3)
+    train_parser.add_argument("--method", choices=["supervised", "dpo"], default="supervised")
+
+    # Status command
+    status_parser = subparsers.add_parser("status", help="Check job status")
+    status_parser.add_argument("job_id", help="Job ID")
+
+    # List command
+    list_parser = subparsers.add_parser("list", help="List jobs")
+    list_parser.add_argument("--limit", type=int, default=10)
+
+    # Cancel command
+    cancel_parser = subparsers.add_parser("cancel", help="Cancel job")
+    cancel_parser.add_argument("job_id", help="Job ID")
+
+    args = parser.parse_args()
+
+    if args.command == "status":
+        from openai import OpenAI
+        client = OpenAI()
+        job = client.fine_tuning.jobs.retrieve(args.job_id)
+        print(f"Status: {job.status}")
+        print(f"Model: {job.fine_tuned_model or 'Not ready'}")
+        if job.error:
+            print(f"Error: {job.error}")
+
+    elif args.command == "list":
+        from openai import OpenAI
+        client = OpenAI()
+        jobs = client.fine_tuning.jobs.list(limit=args.limit)
+        for job in jobs.data:
+            print(f"{job.id} | {job.status} | {job.model} | {job.fine_tuned_model or '-'}")
+
+    elif args.command == "cancel":
+        from openai import OpenAI
+        client = OpenAI()
+        job = client.fine_tuning.jobs.cancel(args.job_id)
+        print(f"Cancelled: {job.id}")
+
+if __name__ == "__main__":
+    main()]]></code>
+      </example>
+    </section>
+
+    <section name="deployment-checklist">
+      <p>Production deployment checklist phases:</p>
+      <list>
+        <item>Pre-production: test with production-like traffic, verify error handling, confirm rate limits sufficient, set up monitoring/logging.</item>
+        <item>Staging rollout: deploy to staging environment, run smoke tests with representative queries.</item>
+        <item>Gradual rollout: 10% → 50% → 100% with monitoring at each stage. Roll back on error rate increase or quality regression.</item>
+        <item>Post-launch: monitor inference costs, track quality metrics over time, collect user feedback, plan retraining if quality degrades.</item>
+      </list>
+    </section>
+
+    <section name="model-lifecycle">
+      <p>Model lifecycle management best practices:</p>
+      <list>
+        <item>Version every model: document fine-tuned model ID + training data hash + hyperparameters + eval results in version control alongside application config.</item>
+        <item>Retraining triggers: quality degradation (eval score drops), distribution shift (new user query patterns), new training data availability.</item>
+        <item>Model deletion: delete superseded models via client.models.delete() to avoid storage costs. Retain only the current production model and one previous version for rollback.</item>
+        <item>Model ID format: ft:gpt-4.1-mini-2025-01-01:org::xxxxx — store in config files, never hardcode in application code.</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Agent-specific failure modes and patterns:</p>
+      <list>
+        <item>Fine-tuning jobs run 15-120 minutes — agent must poll asynchronously (60s interval), not block a synchronous thread.</item>
+        <item>A failed job still returns 200 OK on creation — always check job.status, not HTTP status code.</item>
+        <item>client.fine_tuning.jobs.list_events(job_id) is the only way to see training progress — parse these for loss values.</item>
+        <item>Human checkpoint before routing live traffic is mandatory — automated eval on synthetic data is insufficient.</item>
+        <item>Do not share training data containing PII with OpenAI unless a Data Processing Agreement is in place and users have consented.</item>
+        <item>Enable data sharing (integrations param) for inference discounts only if training data is non-sensitive.</item>
+      </list>
+    </section>
+
+    <section name="services-and-tools">
+      <p>Services and tools for fine-tuning workflows:</p>
+      <list>
+        <item>openai Python SDK — jobs, file upload, model listing. Install: pip install openai.</item>
+        <item>tiktoken — count tokens in training file before upload. Install: pip install tiktoken.</item>
+        <item>jsonlines — read/write JSONL files. Install: pip install jsonlines.</item>
+        <item>openai-evals — eval harness for comparing base vs fine-tuned. Install: pip install evals (github.com/openai/evals).</item>
+        <item>promptfoo — A/B eval fine-tuned vs base. Install: npx promptfoo (promptfoo.dev).</item>
+        <item>Weights and Biases — log eval metrics, track model versions, agent reads via API. SaaS.</item>
+        <item>Braintrust — eval and tracing for OpenAI models, agent-friendly REST API. SaaS.</item>
+        <item>Langfuse — observability, compare base vs fine-tuned via traces. OSS/SaaS.</item>
+      </list>
+    </section>
+
+    <antipattern>
+      <description>Hardcoding the fine-tuned model ID in application source code.</description>
+      <reason>Model IDs change on every retrain. Hardcoded IDs require a code deploy to update, coupling the retraining pipeline to the application release cycle. Store model IDs in config files or environment variables, updated by the pipeline on successful completion.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Routing 100% of production traffic immediately to a new fine-tuned model.</description>
+      <reason>Even a model that passes eval can fail on real production traffic due to distribution differences. Gradual rollout (10% → 50% → 100%) limits blast radius and provides real traffic signals for quality monitoring before full deployment.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Not tracking which training data produced which model version.</description>
+      <reason>Without version tracking, debugging quality regressions is impossible. When a model degrades, you need to know what changed: training data, hyperparameters, or base model version. Document model ID + training data hash + eval results in version control on every retrain.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-eval"/>
+      <link href="https://platform.openai.com/docs/api-reference/fine-tuning"/>
+      <link href="https://openai.com/api/pricing/"/>
+    </see-also>
+  </content>
+</methodology>
