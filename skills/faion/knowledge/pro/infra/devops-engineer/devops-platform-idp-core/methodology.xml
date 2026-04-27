@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-platform-idp-core">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Build Internal Developer Platforms that reduce cognitive load 40-50% by providing self-service infrastructure, standardized tooling, and transparent abstractions over cloud complexity.</summary>
+    <tags>
+      <tag>platform-engineering</tag>
+      <tag>idp</tag>
+      <tag>developer-experience</tag>
+      <tag>self-service</tag>
+      <tag>cognitive-load</tag>
+    </tags>
+    <category>platform</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-backstage"/>
+      <ref slug="devops-platform-crossplane"/>
+      <ref slug="devops-platform-policy-finops"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Internal Developer Platform (IDP) Core Concepts</title>
+
+    <summary>An IDP is a self-service layer between developers and infrastructure. It absorbs infrastructure complexity so developers provision resources, deploy applications, and manage services without becoming infrastructure experts. By 2026, 80% of large software engineering orgs have platform teams (Gartner).</summary>
+
+    <why>
+      <p>Developers spend 40%+ of their time on infrastructure instead of features. Context switching between tools, waiting for operations teams, and learning infrastructure details creates friction that slows delivery. An IDP reduces this overhead by providing standardized self-service workflows, cutting DevOps ticket volume by 40%, reducing cognitive load 40-50%, and accelerating new developer onboarding by 60% in mature orgs.</p>
+      <p>The 2025 Google "Shift Down" strategy formalizes this: rather than pushing responsibilities earlier in the dev cycle (shift left), embed decisions into the platform itself (shift down), so developers only make intentional, high-value choices — roughly 20% of decisions — while the platform handles the other 80%.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Engineering org with 20+ developers where infrastructure requests are a bottleneck.</item>
+        <item>Multiple teams repeatedly solving the same infrastructure problems independently.</item>
+        <item>Onboarding time for new developers exceeds 1 week due to environment setup complexity.</item>
+        <item>DevOps/Ops ticket queue dominates team capacity (over 30% of requests are repetitive).</item>
+        <item>Need to enforce security, compliance, or cost standards across many services consistently.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Teams under 10 developers — overhead of building a platform exceeds value; shared runbooks suffice.</item>
+        <item>Single-service or single-language projects — a Makefile and a CI template provide equivalent self-service at near-zero cost.</item>
+        <item>Early-stage startups pre-product-market-fit — platform investment delays product iteration; standardize later.</item>
+        <item>Orgs without dedicated platform team capacity — an unmaintained IDP becomes a blocker, not an enabler.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-components">
+      <p>A production IDP requires six components working together. Missing any one degrades the self-service experience to the point where developers route around the platform.</p>
+
+      <rule testable="true">
+        <statement>An IDP MUST provide all six core components: Self-Service Portal (provision without tickets), Golden Paths (opinionated templates for common patterns), Service Catalog (discover and manage services), Environment Management (automated setup for dev/staging/prod), Policy Enforcement (security and compliance automation), and Developer Documentation (centralized, searchable knowledge base). Partial implementations that omit the Service Catalog or Golden Paths reduce adoption below the 50% threshold required for ROI.</statement>
+        <rationale>Each component addresses a distinct developer friction category. A portal without a catalog forces developers to discover services through Slack. Golden paths without a portal are just documentation. Policy enforcement without self-service creates a new gating bottleneck identical to the ticket queue being replaced.</rationale>
+      </rule>
+    </section>
+
+    <section name="key-principles">
+      <p>Five principles distinguish successful IDPs from internal tooling graveyards. Violations of any single principle are the primary cause of platform abandonment.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>Treat the platform as a product: assign a product owner, measure developer adoption (target greater than 50% new services via golden paths), run quarterly NPS surveys (target greater than 7/10), and maintain a public roadmap. Platform teams MUST NOT operate as a purely reactive ops function.</statement>
+          <rationale>Platforms built without product discipline accumulate features no one uses and miss the pain points developers actually have. Spotify Backstage succeeded because Spotify ran it as an internal product with a dedicated team and user research, achieving 2.3x GitHub activity increase among frequent users.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Golden paths MUST be opinionated but optional. They MUST NOT be mandatory guardrails that block deviation. Provide a documented escape hatch for every golden path so non-standard use cases can proceed without platform team involvement.</statement>
+          <rationale>Mandatory golden paths recreate the ticket queue. Spotify's key decision was "nudge toward best practices without forcing compliance" — this preserved autonomous engineering culture and drove voluntary adoption above 89% for the new-service template.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>The platform MUST provide transparent abstraction: self-service access to infrastructure WITHOUT hiding the underlying systems. Developers MUST be able to inspect what the platform provisions (e.g., view the generated Terraform or Kubernetes manifests). Black-box abstractions are forbidden.</statement>
+          <rationale>When platform abstractions are opaque, debugging becomes impossible and trust collapses. Developers abandon the platform and provision directly, creating shadow infrastructure that the platform team cannot maintain or secure.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="architecture-layers">
+      <p>A standard IDP architecture is five layers. Each layer communicates only with the layer immediately below it. Skipping layers creates tight coupling that makes platform evolution expensive.</p>
+
+      <rule testable="true">
+        <statement>IDP architecture MUST follow five layers in order: (1) Developer Experience — portals, CLIs, IDE integrations; (2) Golden Paths — templates, scaffolding, self-service workflows; (3) Platform APIs — standardized interfaces for infrastructure; (4) Orchestration — pipeline-based (linear CI/CD-style for simple deployments) or graph-based (dependency-aware for complex enterprise architectures); (5) Infrastructure — cloud resources, Kubernetes, networking. Each layer MUST expose an API to the layer above; no cross-layer direct calls.</statement>
+        <rationale>Layer isolation allows swapping orchestration backends (e.g., migrating from pipeline-based to graph-based Crossplane as complexity grows) without rebuilding the developer experience layer. Cross-layer coupling is the primary cause of "big bang" platform rewrites.</rationale>
+      </rule>
+
+      <example type="good" title="Two backend orchestration patterns">
+        <code lang="text"><![CDATA[
+Pipeline-based (CI/CD style):
+  Developer request → Backstage form → GitHub Actions workflow → Terraform apply → Done
+  Use case: simple service deployments, database provisioning in single cloud
+
+Graph-based (dependency-aware):
+  Developer claim → Kubernetes CRD → Crossplane composition → multi-resource reconciliation
+  Use case: complex enterprise architectures, multi-cloud, resources with interdependencies
+]]></code>
+        <note>Pick pipeline-based first; migrate to graph-based only when dependency complexity outgrows linear workflows.</note>
+      </example>
+    </section>
+
+    <section name="tool-selection">
+      <p>Tool selection must match org size, existing stack, and build-vs-buy posture. The most common mistake is adopting all tools simultaneously; start with the service catalog and one golden path.</p>
+
+      <rule testable="true">
+        <statement>Select IDP tooling in this priority order: (1) Service catalog first (Backstage for open-source orgs; Port or Cortex if commercial scorecards are needed); (2) one golden path template per top-3 developer use case; (3) orchestration backend only after the catalog proves adoption. Do NOT deploy Backstage plus Crossplane plus Humanitec simultaneously in the first 90 days — tool sprawl kills platform adoption before it starts.</statement>
+        <rationale>Each additional tool multiplies integration surface and on-call burden. Spotify started with the catalog alone; the scaffolder (golden paths) came six months later. Starting with all tools forces developers to learn too much at once and pushes NPS negative.</rationale>
+      </rule>
+
+      <example type="good" title="Tool selection matrix">
+        <code lang="text"><![CDATA[
+Tool          Purpose                   Type
+-----         -------                   ----
+Backstage     Service catalog, portal   CNCF Open Source
+Port          IDP with scorecards       Commercial
+Humanitec     Platform orchestration    Commercial
+Crossplane    Kubernetes-native IaC     CNCF Open Source
+Kratix        Platform framework        Open Source
+Cortex        Service catalog+scorecards Commercial
+Pulumi        IaC with languages        Open Source/Commercial
+]]></code>
+        <note>Backstage + Crossplane is the most common open-source IDP stack in 2026.</note>
+      </example>
+    </section>
+
+    <section name="measurement">
+      <p>Platform ROI is validated through six measurement dimensions. Instrument all six from day one; retroactive measurement after 12 months is too late to course-correct.</p>
+
+      <checklist>
+        <check>Flow Time — measure sustained developer focus periods without infrastructure interruption; baseline before platform launch.</check>
+        <check>Friction Points — track cognitive and systemic blockers; integrate with support ticket system to capture automated count.</check>
+        <check>Throughput Patterns — commit-to-deployment efficiency; measure lead time for change (DORA metric).</check>
+        <check>Capacity Allocation — feature work vs maintenance ratio per team per sprint; target less than 30% infrastructure overhead.</check>
+        <check>Developer Satisfaction — platform NPS and golden path adoption rate; survey quarterly.</check>
+        <check>Time-to-First-Deployment — track from new developer start date to first production deploy; target under 1 day.</check>
+      </checklist>
+
+      <example type="good" title="MVP and mature platform success targets">
+        <code lang="text"><![CDATA[
+MVP Success Targets:
+  Golden path adoption: >50% new services
+  Self-service usage:   >70% infra requests
+  Developer NPS:        >7/10
+  Onboarding time:      <1 day for new devs
+
+Mature Platform Targets:
+  Ticket reduction:      -40% ops tickets
+  Deployment frequency:  2x increase
+  Lead time:             -50%
+  Service reliability:   >99.5%
+]]></code>
+      </example>
+    </section>
+
+    <section name="ai-integration-2026">
+      <p>In 2026, AI agents are first-class platform citizens, not afterthoughts. The platform must provision AI workloads with the same self-service model as human-operated services.</p>
+
+      <rule testable="true">
+        <statement>AI agents running on the platform MUST be provisioned through the same self-service golden paths as human-initiated workloads, with RBAC, resource quotas, and governance policies. AI workloads MUST NOT bypass the platform's policy enforcement layer. Predictive FinOps controls MUST be applied to AI inference workloads at provisioning time, not post-hoc.</statement>
+        <rationale>AI workloads have non-deterministic resource consumption patterns that make post-hoc cost controls insufficient. Platforms without AI governance policies in 2026 face runaway inference costs and compliance failures in regulated industries.</rationale>
+      </rule>
+    </section>
+
+    <section name="phase1-checklist">
+      <p>Phase 1 (Foundation) establishes the prerequisites for a successful IDP. Skipping assessment and strategy phases is the single most common cause of platform abandonment at 6-12 months.</p>
+
+      <checklist>
+        <check>Audit current developer workflows and pain points — interview at least 10 developers across 3 teams.</check>
+        <check>Measure time spent on infrastructure vs feature work — baseline must be established before platform launches.</check>
+        <check>Identify most common developer requests to operations — top 5 request types become the first 5 golden paths.</check>
+        <check>Map existing tools and their integration points — prevents duplicate tooling in the IDP.</check>
+        <check>Survey developers on friction points — NPS baseline for later comparison.</check>
+        <check>Document current deployment processes — inputs for golden path design.</check>
+        <check>Define platform vision and success metrics before writing any code.</check>
+        <check>Identify initial golden paths (top 3-5 use cases) — build these first.</check>
+        <check>Select platform tooling (Backstage, Port, custom) — decision documented with rationale.</check>
+        <check>Plan integration with existing CI/CD — no forklift replacement in phase 1.</check>
+        <check>Establish platform team structure — minimum one dedicated engineer and one product owner.</check>
+        <check>Define platform SLOs — availability and latency targets for portal and self-service APIs.</check>
+      </checklist>
+    </section>
+
+    <section name="impact-statistics">
+      <p>Industry data on IDP adoption impact, validated from Spotify, Netflix, and Google case studies.</p>
+
+      <example type="good" title="Validated IDP impact numbers">
+        <code lang="text"><![CDATA[
+Environment setup:     Days to minutes
+DevOps ticket volume:  -40%
+Cognitive load:        40-50% reduction
+Developer onboarding:  -60% (mature orgs)
+Deployment frequency:  4x improvement (Spotify post-Backstage)
+
+Spotify Backstage users vs non-users:
+  GitHub activity:       2.3x more active
+  Code changes:          2x more
+  Cycle time:            17% less
+  Deployment frequency:  2x
+  Deployment stability:  3x longer
+
+Industry adoption:
+  By 2026: 80% of large software engineering orgs have platform teams (Gartner)
+  By 2027: 80% of large enterprises leverage platform engineering for hybrid cloud DevOps
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="devops-platform-golden-paths"/>
+      <ref slug="devops-platform-backstage"/>
+      <ref slug="devops-platform-crossplane"/>
+      <ref slug="devops-platform-policy-finops"/>
+      <link href="https://teamtopologies.com/book"/>
+      <link href="https://www.gartner.com/en/documents/platform-engineering"/>
+      <link href="https://cloud.google.com/blog/products/application-modernization/a-guide-to-platform-engineering"/>
+    </see-also>
+  </content>
+</methodology>
