@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="testing-django-pytest">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Django testing with pytest: function-style tests, @pytest.mark.django_db, factory_boy, parametrize, and agent gotchas for Python test suites.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>pytest</tag>
+      <tag>django</tag>
+      <tag>python</tag>
+      <tag>factory-boy</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+      <framework>pytest</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Django Testing with pytest</title>
+
+    <summary>Use pytest function-style tests with @pytest.mark.django_db for Django services. Anchor tests to factory_boy factories for object graphs, parametrize to remove duplication, and feed failures back immediately with pytest -x before moving on.</summary>
+
+    <why>
+      <p>Inconsistent test patterns across a Django codebase slow review and cause agents to drift into generic styles (unittest.TestCase) that fight with project conventions. A single canonical pattern — pytest function style + django_db marker + factories — reduces noise and lets the agent scaffold one test class at a time without needing re-instruction.</p>
+      <p>pytest over unittest: fixtures compose, parametrize is first-class, output is readable, and the plugin ecosystem (pytest-django, pytest-cov, pytest-socket) covers every Django need without boilerplate base classes.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a test suite for a new Django service — use this reference as the style anchor.</item>
+        <item>Filling coverage holes on an existing module — feed source + this reference and ask for unit/integration tests in the project idiom.</item>
+        <item>Producing first-cut tests during SDD in-progress/ so review focuses on logic, not boilerplate.</item>
+        <item>Standardising test style across a Django monorepo where engineers reinvent layouts per app.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Performance / load testing — see perf-test-basics, perf-test-tools.</item>
+        <item>Browser E2E — see playwright-automation / puppeteer-automation.</item>
+        <item>Specifying what to test (acceptance criteria) — that belongs in test-plan.md of an SDD feature.</item>
+        <item>When the project already has a strong test convention with custom factories — agent will drift into the generic style here and create churn.</item>
+        <item>Non-Django Python projects — the @pytest.mark.django_db marker and DRF fixtures are irrelevant; use plain pytest patterns instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="canonical-pattern">
+      <p>The canonical Django/pytest pattern uses function-style tests (not class-based) with the @pytest.mark.django_db marker. Services are called directly; assertions check domain objects, not HTTP responses unless testing views.</p>
+
+      <rule testable="true">
+        <statement>Django tests MUST use pytest function style (def test_...) with @pytest.mark.django_db rather than unittest.TestCase subclasses. Object graphs MUST be built with factory_boy factories, not raw ORM creates or fixtures that rot with model changes.</statement>
+        <rationale>Function style composes with pytest fixtures without super() calls. factory_boy factories evolve with the model and produce readable, minimal object graphs. Raw ORM creates in tests produce fragile tests that break on field additions.</rationale>
+      </rule>
+
+      <example type="good" title="Service test with django_db marker and fixtures">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_activate_item_success(user, item):
+    result = services.activate_user_item(
+        user=user,
+        item_code=item.code,
+    )
+    assert result.is_active is True
+    assert result.user == user
+]]></code>
+        <note>user and item are pytest fixtures backed by factory_boy. One concept per test, named after the concept.</note>
+      </example>
+
+      <example type="bad" title="unittest.TestCase style in a pytest project">
+        <code lang="python"><![CDATA[
+class UserItemTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='test', password='pass')
+        self.item = Item.objects.create(code='X1', name='Widget')
+
+    def test_activate(self):
+        result = services.activate_user_item(user=self.user, item_code=self.item.code)
+        self.assertTrue(result.is_active)
+]]></code>
+        <note>setUp is not composable; raw ORM create breaks on nullable field additions; agents default to this style — explicitly disallow in prompt.</note>
+      </example>
+    </section>
+
+    <section name="conftest-fixtures">
+      <p>Shared fixtures live in conftest.py at the test root. The canonical DRF fixture pair is an APIClient fixture and an authenticated-client fixture that wraps it. Both use factory_boy to create users.</p>
+
+      <example type="good" title="conftest.py DRF fixtures">
+        <code lang="python"><![CDATA[
+import pytest
+from rest_framework.test import APIClient
+
+@pytest.fixture
+def api_client():
+    return APIClient()
+
+@pytest.fixture
+def authed_client(db, api_client, user_factory):
+    user = user_factory()
+    api_client.force_authenticate(user=user)
+    return api_client, user
+]]></code>
+        <note>db fixture (not django_db marker) used inside fixtures. user_factory is a factory_boy factory registered as a pytest fixture via pytest-factoryboy.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>conftest.py MUST NOT use raw User.objects.create_user() calls. All object creation MUST go through factory_boy factories so tests survive model changes without fixture rewrites.</statement>
+        <rationale>Fixtures that call ORM directly accumulate required-field calls that break silently when the model gains non-nullable fields. factory_boy factories define sensible defaults and require only the fields relevant to the test.</rationale>
+      </rule>
+    </section>
+
+    <section name="parametrize-and-coverage">
+      <p>Use @pytest.mark.parametrize to collapse identical test logic into a single parameterized test. Speed budgets: unit tests under 50 ms each, integration tests under 1 s each, full unit suite under 60 s total.</p>
+
+      <rule testable="true">
+        <statement>Duplicate test functions that differ only in input/output MUST be collapsed into a single @pytest.mark.parametrize block. Test names MUST describe the concept being tested, not a sequence number (test_create_1, test_create_2 is forbidden).</statement>
+        <rationale>One assertion concept per test named after the concept. Sequential names make failures uninterpretable without reading the body.</rationale>
+      </rule>
+
+      <example type="good" title="Parametrized edge cases">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+@pytest.mark.parametrize("amount,expected_status", [
+    (100, "approved"),
+    (0, "rejected"),
+    (-1, "rejected"),
+])
+def test_payment_status_by_amount(payment_factory, amount, expected_status):
+    payment = payment_factory(amount=amount)
+    result = services.process_payment(payment)
+    assert result.status == expected_status
+]]></code>
+      </example>
+    </section>
+
+    <section name="cli-tools">
+      <p>Standard CLI tools for Django/pytest projects:</p>
+      <list>
+        <item>pytest — test runner: pip install pytest pytest-django pytest-cov</item>
+        <item>pytest -x — stop on first failure; use this when the agent iterates</item>
+        <item>pytest --durations=20 — profile slow tests when the suite grows</item>
+        <item>coverage.py — line/branch coverage: pip install pytest-cov</item>
+        <item>mutmut — mutation testing on critical modules: pip install mutmut</item>
+        <item>pytest-socket — forbid network calls in unit tests: pip install pytest-socket</item>
+      </list>
+    </section>
+
+    <section name="agent-workflow">
+      <p>Use this reference as a style anchor, not as a generator. Have the agent read the relevant section plus the project's existing test file as a few-shot, then produce one test class at a time. Run the resulting suite immediately (pytest -x) and feed failures back; do not let the agent move on until green.</p>
+
+      <prompt purpose="test-generation">
+<![CDATA[
+Project stack: Django 5 + pytest + factory_boy.
+Existing style: see tests/test_orders.py.
+Task: write tests for apps/billing/services/refund.py covering:
+- happy path (full refund)
+- partial refund with rounding
+- idempotency on retry
+- raises BillingError on closed period
+Use @pytest.mark.django_db, parametrize where it removes duplication.
+Run `pytest tests/billing -x` before returning.
+]]>
+      </prompt>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common LLM failure modes when generating Django/pytest tests:</p>
+
+      <antipattern>
+        <description>LLMs default to unittest.TestCase even in pytest projects.</description>
+        <reason>Explicitly say "use pytest function-style tests" in every prompt — agents ignore implicit project style when the default is well-known.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Generated assertions re-run the SUT in the assertion body: assert service.do() == service.do().</description>
+        <reason>Side-effect doubling — the service is called twice. Always capture the result in a variable first, then assert on the variable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents reach for Mock(spec=...) after one failure and over-mock the entire call graph.</description>
+        <reason>Cap mock depth in the prompt. Prefer pure functions + thin integration tests over deep mocks; mocks freeze refactors.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agents write assert True tests to hit coverage threshold.</description>
+        <reason>Require mutation score on critical modules, not just line coverage. Use mutmut to catch meaningless assertions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent edits production code to make a failing test pass without surfacing the diff.</description>
+        <reason>This is the core TDD failure mode for LLMs — human-in-loop checkpoint required: never allow production edits to fix a test without showing the diff.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>One assertion concept per test — name the test after the concept; agents naming test_1, test_2 is a smell.</item>
+        <item>Prefer pure functions + thin integration tests over deep mocks; mocks freeze refactors.</item>
+        <item>Use factories (factory_boy) over fixtures for object graphs — fixtures rot, factories evolve with the model.</item>
+        <item>Speed budget: unit under 50 ms, integration under 1 s, full unit suite under 60 s; profile with pytest --durations=20 if it grows.</item>
+        <item>Fail loud on flaky tests: quarantine with a marker, do not use pytest.mark.flaky retry — that hides race conditions.</item>
+        <item>Forbid network in unit tests via pytest-socket; agents otherwise add live API calls.</item>
+        <item>Snapshot tests are fine for serialisers but reviewable diffs only — never approve a 500-line snapshot blindly.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.pytest.org/en/stable/"/>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://martinfowler.com/articles/practical-test-pyramid.html"/>
+      <ref slug="testing-js-ts-frontend"/>
+      <ref slug="testing-backend-languages"/>
+    </see-also>
+  </content>
+</methodology>
