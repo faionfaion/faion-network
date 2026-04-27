@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graph-rag-retrieval">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Route Graph RAG queries by type (GLOBAL/ENTITY/RELATIONSHIP/LOCAL) and combine vector search with graph expansion for hybrid retrieval that outperforms pure graph or pure vector approaches.</summary>
+    <tags>
+      <tag>graph-rag</tag>
+      <tag>query-routing</tag>
+      <tag>hybrid-retrieval</tag>
+      <tag>graph-traversal</tag>
+      <tag>rag</tag>
+    </tags>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>networkx</framework>
+    </frameworks>
+    <requires>
+      <ref slug="graph-rag-indexing"/>
+    </requires>
+    <related>
+      <ref slug="graph-rag-production"/>
+      <ref slug="hybrid-search-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Graph RAG Retrieval: Query Routing and Hybrid Vector+Graph Retrieval</title>
+
+    <summary>After the knowledge graph is built, retrieval requires classifying each query into one of four types (GLOBAL, ENTITY, RELATIONSHIP, LOCAL) and routing it to the appropriate retrieval strategy. Hybrid retrieval — vector search followed by graph neighbor expansion — outperforms both pure vector and pure graph approaches for most query distributions.</summary>
+
+    <why>
+      <p>A single retrieval strategy cannot serve all query types efficiently. Global queries need pre-computed hierarchical summaries, not live traversal. Entity queries need graph neighbor context, not raw chunk similarity. Relationship queries need shortest-path computation. Local factual queries are best served by vector search. Without routing, either all queries pay the cost of graph traversal (slow) or global queries fall back to vector search (inaccurate).</p>
+      <p>Hybrid retrieval (vector search + graph expansion) outperforms pure graph for most queries because it leverages dense semantic similarity for initial candidate selection, then uses graph structure to expand into related entity context that pure vector search would miss.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>A Graph RAG index already exists (graph-rag-indexing completed) and query traffic is mixed across global, entity, and local question types.</item>
+        <item>Query latency budget allows LLM-based query classification (one fast model call per query).</item>
+        <item>Hybrid retrieval — start here before committing to full graph-only retrieval.</item>
+        <item>Entity relationship questions where vector similarity alone retrieves irrelevant chunks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>No knowledge graph exists — run graph-rag-indexing first.</item>
+        <item>All queries are purely local and chunk-answerable — skip routing, use vector search directly.</item>
+        <item>Graph has more than 50k nodes and global queries are frequent — pre-compute summaries offline rather than routing to live traversal.</item>
+        <item>Graph is densely connected and relationship queries require full path enumeration — cap hop depth to 3 or queries hit exponential path counts.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="query-classification">
+      <p>Query classification uses a fast LLM (gpt-4o-mini or equivalent) with temperature=0 to map the incoming question to one of four types. Classification is cheap and fast enough to do on every query. GLOBAL maps to corpus-level hierarchical summaries. ENTITY maps to graph neighbor lookup. RELATIONSHIP maps to shortest-path traversal. LOCAL maps to vector search.</p>
+
+      <rule testable="true">
+        <statement>Classify every query before retrieval using a fast LLM call. Use the four canonical types: GLOBAL (main themes, overall trends), ENTITY (specific entity details), RELATIONSHIP (connections between entities), LOCAL (single-chunk-answerable facts). Fall back to LOCAL on classification failure.</statement>
+        <rationale>Without classification, a system must either run all retrieval paths (3-5x latency) or pick one strategy that degrades accuracy for the wrong query types. Classification adds one cheap LLM call but routes the query to the strategy where it performs best.</rationale>
+      </rule>
+
+      <example type="good" title="Query type classification">
+        <code lang="python"><![CDATA[
+from enum import Enum
+import openai
+
+class QueryType(Enum):
+    GLOBAL = "global"
+    ENTITY = "entity"
+    RELATIONSHIP = "relationship"
+    LOCAL = "local"
+
+def classify_query(query: str) -> QueryType:
+    prompt = f"""Classify this query:
+
+Query: {query}
+
+Types:
+- GLOBAL: Questions about main themes, overall trends
+- ENTITY: Questions about specific entities
+- RELATIONSHIP: Questions about connections between entities
+- LOCAL: Questions answerable with single chunk
+
+Return ONLY the type."""
+    response = openai.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0
+    )
+    try:
+        return QueryType[response.choices[0].message.content.strip()]
+    except KeyError:
+        return QueryType.LOCAL  # safe fallback
+]]></code>
+      </example>
+    </section>
+
+    <section name="retrieval-routing">
+      <p>Each query type maps to a distinct retrieval path. GLOBAL queries use the pre-computed global summary from hierarchical summarization — never live traversal. ENTITY queries get the entity description plus its neighbors from the graph. RELATIONSHIP queries use nx.shortest_path between two extracted entities. LOCAL queries use vector similarity search. The routing function assembles context for the LLM synthesis step.</p>
+
+      <rule testable="true">
+        <statement>For global queries, always use pre-computed hierarchical summaries, not live graph traversal. For relationship queries, wrap every nx.shortest_path call in try/except NetworkXNoPath — disconnected subgraphs are common. Cap relationship query path depth to 3 hops.</statement>
+        <rationale>Live graph traversal at query time is too slow for graphs with more than 50k nodes. nx.shortest_path raises NetworkXNoPath on disconnected subgraphs; uncaught, this crashes the retrieval step for valid relationship queries where the entities happen to be in separate components.</rationale>
+      </rule>
+
+      <example type="good" title="Query routing with all four paths">
+        <code lang="python"><![CDATA[
+import networkx as nx
+from typing import Dict
+
+def retrieve_for_query(
+    query: str,
+    query_type: QueryType,
+    G: nx.Graph,
+    summaries: Dict,
+    vector_store
+) -> str:
+    if query_type == QueryType.GLOBAL:
+        return summaries["global"]
+
+    elif query_type == QueryType.ENTITY:
+        entity = extract_entity_from_query(query)
+        if entity in G:
+            neighbors = list(G.neighbors(entity))
+            context = f"Entity: {summaries['entities'].get(entity, '')}\n"
+            context += f"Connected to: {', '.join(neighbors)}"
+            return context
+        # fall back to vector search if entity not in graph
+        results = vector_store.search(query, k=5)
+        return "\n\n".join([r["text"] for r in results])
+
+    elif query_type == QueryType.RELATIONSHIP:
+        entities = extract_entities_from_query(query)
+        if len(entities) >= 2:
+            try:
+                path = nx.shortest_path(G, entities[0], entities[1])
+                return format_path(path, G)
+            except nx.NetworkXNoPath:
+                return "No direct connection found between these entities."
+            except nx.NodeNotFound as e:
+                return f"Entity not in graph: {e}"
+        results = vector_store.search(query, k=5)
+        return "\n\n".join([r["text"] for r in results])
+
+    else:  # LOCAL
+        results = vector_store.search(query, k=5)
+        return "\n\n".join([r["text"] for r in results])
+]]></code>
+      </example>
+    </section>
+
+    <section name="hybrid-vector-graph-retrieval">
+      <p>Hybrid retrieval combines vector search for initial candidate selection with graph expansion to surface related entity context. The five-step pattern: vector search for top-k chunks, extract entities from those chunks, expand to graph neighbors, retrieve chunks mentioning the expanded entity set, deduplicate and rank. This outperforms pure graph retrieval for most query distributions because it anchors on semantic relevance before expanding via graph structure.</p>
+
+      <rule testable="true">
+        <statement>Start with hybrid retrieval (vector + graph expansion) before committing to pure graph-only retrieval. Limit graph neighbor expansion to 3 neighbors per entity to prevent context explosion. Deduplicate by chunk ID before returning the final candidate set.</statement>
+        <rationale>Pure graph retrieval without a vector anchor can return structurally connected but semantically irrelevant chunks. The hybrid approach inherits the precision of embedding similarity and the recall of graph traversal. Unbounded neighbor expansion causes context windows to fill with low-relevance entity chunks.</rationale>
+      </rule>
+
+      <example type="good" title="Hybrid vector+graph retrieval">
+        <code lang="python"><![CDATA[
+from typing import List, Dict
+
+def hybrid_graph_vector_retrieval(
+    query: str,
+    G: nx.Graph,
+    vector_store,
+    k: int = 10
+) -> List[Dict]:
+    # Step 1: Vector search for initial chunks
+    initial_results = vector_store.search(query, k=k)
+
+    # Step 2: Extract entities from retrieved chunks
+    all_entities = []
+    for result in initial_results:
+        entities = extract_entities_from_text(result["text"])
+        all_entities.extend(entities)
+
+    # Step 3: Expand with graph neighbors (cap at 3 per entity)
+    expanded_entities = set(all_entities)
+    for entity in all_entities:
+        if entity in G:
+            neighbors = list(G.neighbors(entity))[:3]
+            expanded_entities.update(neighbors)
+
+    # Step 4: Retrieve chunks mentioning expanded entities
+    expanded_results = []
+    for entity in expanded_entities:
+        chunks = vector_store.search(entity, k=2)
+        expanded_results.extend(chunks)
+
+    # Step 5: Deduplicate and return top-k
+    seen = set()
+    final_results = []
+    for chunk in initial_results + expanded_results:
+        if chunk["id"] not in seen:
+            seen.add(chunk["id"])
+            final_results.append(chunk)
+
+    return final_results[:k]
+]]></code>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Using community summaries as the answer for ENTITY or RELATIONSHIP queries instead of routing to the appropriate graph traversal path.</description>
+      <reason>Community summaries are coarse-grained and mix multiple entities; they answer global thematic questions but blur the specific entity details and relationship paths that ENTITY and RELATIONSHIP queries need. Route by query type, not by what is cheapest to retrieve.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Running live graph traversal for GLOBAL queries at query time on graphs larger than 50k nodes.</description>
+      <reason>Full-graph traversal to assemble a global answer can take tens of seconds on large graphs. Pre-computed hierarchical summaries serve GLOBAL queries in milliseconds. The entire point of offline summarization in graph-rag-indexing is to make GLOBAL queries fast at retrieval time.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="graph-rag-indexing"/>
+      <ref slug="graph-rag-production"/>
+      <ref slug="hybrid-search-basics"/>
+      <link href="https://arxiv.org/abs/2404.16130"/>
+      <link href="https://github.com/microsoft/graphrag"/>
+    </see-also>
+  </content>
+</methodology>
