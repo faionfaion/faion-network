@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="fine-tuning-openai-data-prep">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Data preparation for OpenAI fine-tuning: JSONL validation, token counting, CSV conversion, TrainingDataBuilder, TrainingDataValidator, and dataset quality assessment.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>openai</tag>
+      <tag>data-preparation</tag>
+      <tag>jsonl</tag>
+      <tag>validation</tag>
+    </tags>
+    <category>ml</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-dpo"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>OpenAI Fine-Tuning Data Preparation</title>
+
+    <summary>High-quality training data is the primary determinant of fine-tuning success. This methodology covers JSONL format requirements, validation procedures, token counting, train/validation splitting, CSV conversion, and reusable Python builders and validators for OpenAI fine-tuning datasets.</summary>
+
+    <why>
+      <p>Training data quality is the main failure mode in fine-tuning. A JSONL file with 10% noisy examples degrades the entire run. Malformed JSONL fails only at job start — not at upload — so validation before upload is essential. Token counting before upload prevents cost surprises and ensures examples stay under the 4K per-example limit.</p>
+      <p>The OpenAI fine-tuning API is strict about format: missing "messages" keys, non-list message arrays, missing "role" or "content" fields all cause job failure with minimal error messages.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Before every fine-tuning job upload — validate JSONL format and count tokens.</item>
+        <item>When building training data from CSV, database exports, or human annotations.</item>
+        <item>When assessing dataset quality: coverage, balance, duplicates, PII exposure.</item>
+        <item>When generating training examples programmatically from existing documents.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Data is already validated and in correct JSONL format — skip re-validation to save time.</item>
+        <item>Using the OpenAI Playground dataset builder — it validates format automatically.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="data-requirements">
+      <p>Minimum data requirements for OpenAI fine-tuning:</p>
+      <list>
+        <item>Examples: minimum 10, recommended 50-100+.</item>
+        <item>Validation split: 10% minimum, 10-20% recommended.</item>
+        <item>Example length: under 4K tokens each recommended.</item>
+        <item>Total tokens: 10K-100K+ for meaningful fine-tuning.</item>
+      </list>
+      <rule>
+        <statement>Collect 50-100+ high-quality examples before starting fine-tuning. Ensure diversity across edge cases. Include examples of the desired output format. Balance categories if the task is classification.</statement>
+        <rationale>With fewer than 50 examples the model memorizes rather than generalizes. Imbalanced categories produce a model biased toward the overrepresented class. Edge case coverage determines out-of-distribution robustness.</rationale>
+      </rule>
+    </section>
+
+    <section name="jsonl-validation">
+      <p>Validate JSONL format before uploading to catch errors early. The validator checks JSON syntax, required keys, message structure, and role presence.</p>
+      <example type="good" title="JSONL validator">
+        <code lang="python"><![CDATA[import json
+from typing import List, Tuple
+
+def validate_jsonl(filepath: str) -> Tuple[bool, List[str]]:
+    """Validate JSONL training file format."""
+
+    errors = []
+
+    with open(filepath, 'r') as f:
+        for i, line in enumerate(f, 1):
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as e:
+                errors.append(f"Line {i}: Invalid JSON - {e}")
+                continue
+
+            # Check for messages key
+            if "messages" not in data:
+                errors.append(f"Line {i}: Missing 'messages' key")
+                continue
+
+            messages = data["messages"]
+
+            # Check messages is a list
+            if not isinstance(messages, list):
+                errors.append(f"Line {i}: 'messages' must be a list")
+                continue
+
+            # Check each message
+            roles_seen = []
+            for j, msg in enumerate(messages):
+                if "role" not in msg:
+                    errors.append(f"Line {i}, msg {j}: Missing 'role'")
+                if "content" not in msg:
+                    errors.append(f"Line {i}, msg {j}: Missing 'content'")
+
+                if "role" in msg:
+                    roles_seen.append(msg["role"])
+
+            # Check for required roles
+            if "assistant" not in roles_seen:
+                errors.append(f"Line {i}: No assistant message")
+
+            if "user" not in roles_seen:
+                errors.append(f"Line {i}: No user message")
+
+    return len(errors) == 0, errors
+
+# Usage
+valid, errors = validate_jsonl("training.jsonl")
+if not valid:
+    for error in errors:
+        print(error)]]></code>
+      </example>
+    </section>
+
+    <section name="token-counting">
+      <p>Count tokens before uploading to estimate training cost and verify per-example limits.</p>
+      <example type="good" title="Token counter with cost estimation">
+        <code lang="python"><![CDATA[import tiktoken
+import json
+
+def count_tokens(filepath: str, model: str = "gpt-4o") -> dict:
+    """Count tokens in training file."""
+
+    encoding = tiktoken.encoding_for_model(model)
+
+    total_tokens = 0
+    example_count = 0
+    token_counts = []
+
+    with open(filepath, 'r') as f:
+        for line in f:
+            data = json.loads(line)
+            example_tokens = 0
+
+            for msg in data["messages"]:
+                # Count message tokens
+                example_tokens += len(encoding.encode(msg.get("content", "")))
+                # Add overhead for role and formatting
+                example_tokens += 4
+
+            example_tokens += 2  # Conversation overhead
+            token_counts.append(example_tokens)
+            total_tokens += example_tokens
+            example_count += 1
+
+    return {
+        "total_tokens": total_tokens,
+        "example_count": example_count,
+        "avg_tokens_per_example": total_tokens / example_count,
+        "max_tokens": max(token_counts),
+        "min_tokens": min(token_counts)
+    }
+
+# Training cost estimator
+def estimate_training_cost(
+    jsonl_path: str,
+    model: str = "gpt-4.1-mini",
+    epochs: int = 3
+) -> float:
+    prices = {"gpt-4.1": 25, "gpt-4.1-mini": 3, "gpt-4.1-nano": 1}  # $ per 1M tokens
+    enc = tiktoken.encoding_for_model(model.replace("gpt-4.1", "gpt-4o"))
+    total_tokens = 0
+    with open(jsonl_path) as f:
+        for line in f:
+            row = json.loads(line)
+            for msg in row["messages"]:
+                total_tokens += len(enc.encode(msg["content"]))
+    cost = (total_tokens / 1_000_000) * prices.get(model, 3) * epochs
+    print(f"Tokens: {total_tokens:,} | Epochs: {epochs} | Est. cost: ${cost:.2f}")
+    return cost
+
+# Usage
+stats = count_tokens("training.jsonl")
+print(f"Total tokens: {stats['total_tokens']:,}")
+print(f"Estimated cost (3 epochs, gpt-4o-mini): ${stats['total_tokens'] * 3 * 3 / 1_000_000:.2f}")]]></code>
+      </example>
+    </section>
+
+    <section name="csv-conversion">
+      <p>Convert tabular data (CSV with input/output columns) to JSONL format for fine-tuning.</p>
+      <example type="good" title="CSV to JSONL converter">
+        <code lang="python"><![CDATA[import csv
+import json
+
+def csv_to_jsonl(
+    csv_path: str,
+    jsonl_path: str,
+    system_prompt: str,
+    input_col: str,
+    output_col: str
+):
+    """Convert CSV with input/output columns to JSONL."""
+
+    with open(csv_path, 'r') as csv_file, \
+         open(jsonl_path, 'w') as jsonl_file:
+
+        reader = csv.DictReader(csv_file)
+
+        for row in reader:
+            example = {
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": row[input_col]},
+                    {"role": "assistant", "content": row[output_col]}
+                ]
+            }
+            jsonl_file.write(json.dumps(example) + "\n")
+
+# Usage
+csv_to_jsonl(
+    csv_path="data.csv",
+    jsonl_path="training.jsonl",
+    system_prompt="You are a helpful assistant.",
+    input_col="question",
+    output_col="answer"
+)]]></code>
+      </example>
+    </section>
+
+    <section name="training-data-builder">
+      <p>The TrainingDataBuilder class provides a fluent API for constructing SFT and DPO training datasets programmatically.</p>
+      <example type="good" title="TrainingDataBuilder — fluent API">
+        <code lang="python"><![CDATA[from typing import List, Dict, Optional
+import json
+
+class TrainingDataBuilder:
+    """Build training data in correct format."""
+
+    def __init__(self, system_prompt: Optional[str] = None):
+        self.system_prompt = system_prompt
+        self.examples: List[Dict] = []
+
+    def add_example(
+        self,
+        user_message: str,
+        assistant_response: str,
+        system_prompt: Optional[str] = None
+    ) -> "TrainingDataBuilder":
+        """Add single-turn example."""
+
+        messages = []
+
+        sys_prompt = system_prompt or self.system_prompt
+        if sys_prompt:
+            messages.append({"role": "system", "content": sys_prompt})
+
+        messages.extend([
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": assistant_response}
+        ])
+
+        self.examples.append({"messages": messages})
+        return self
+
+    def add_conversation(
+        self,
+        turns: List[tuple],  # [(user, assistant), ...]
+        system_prompt: Optional[str] = None
+    ) -> "TrainingDataBuilder":
+        """Add multi-turn conversation."""
+
+        messages = []
+
+        sys_prompt = system_prompt or self.system_prompt
+        if sys_prompt:
+            messages.append({"role": "system", "content": sys_prompt})
+
+        for user_msg, assistant_msg in turns:
+            messages.append({"role": "user", "content": user_msg})
+            messages.append({"role": "assistant", "content": assistant_msg})
+
+        self.examples.append({"messages": messages})
+        return self
+
+    def add_dpo_example(
+        self,
+        user_message: str,
+        preferred: str,
+        non_preferred: str
+    ) -> "TrainingDataBuilder":
+        """Add DPO preference pair."""
+
+        self.examples.append({
+            "input": [{"role": "user", "content": user_message}],
+            "preferred_output": [{"role": "assistant", "content": preferred}],
+            "non_preferred_output": [{"role": "assistant", "content": non_preferred}]
+        })
+        return self
+
+    def save(self, filepath: str):
+        """Save to JSONL file."""
+        with open(filepath, 'w') as f:
+            for example in self.examples:
+                f.write(json.dumps(example) + "\n")
+
+    def get_examples(self) -> List[Dict]:
+        return self.examples.copy()
+
+# Usage
+builder = TrainingDataBuilder(system_prompt="You are a helpful assistant.")
+builder.add_example("Hello", "Hi! How can I help you today?")
+builder.add_example("What's 2+2?", "2 + 2 equals 4.")
+builder.save("training.jsonl")]]></code>
+      </example>
+    </section>
+
+    <section name="training-data-validator">
+      <p>The TrainingDataValidator class provides comprehensive format and quality validation with structured results.</p>
+      <example type="good" title="TrainingDataValidator — full validation">
+        <code lang="python"><![CDATA[import json
+from typing import List
+from dataclasses import dataclass
+
+@dataclass
+class ValidationResult:
+    valid: bool
+    errors: List[str]
+    warnings: List[str]
+    stats: dict
+
+class TrainingDataValidator:
+    """Validate training data format and quality."""
+
+    def __init__(
+        self,
+        min_examples: int = 10,
+        max_tokens_per_example: int = 4096
+    ):
+        self.min_examples = min_examples
+        self.max_tokens = max_tokens_per_example
+
+    def validate_file(self, filepath: str) -> ValidationResult:
+        """Validate JSONL file."""
+        errors = []
+        warnings = []
+
+        examples = []
+        with open(filepath, 'r') as f:
+            for i, line in enumerate(f, 1):
+                try:
+                    data = json.loads(line)
+                    examples.append(data)
+                except json.JSONDecodeError as e:
+                    errors.append(f"Line {i}: Invalid JSON - {e}")
+
+        # Check minimum examples
+        if len(examples) < self.min_examples:
+            errors.append(
+                f"Insufficient examples: {len(examples)} < {self.min_examples}"
+            )
+
+        # Validate each example
+        for i, example in enumerate(examples, 1):
+            example_errors = self._validate_example(example, i)
+            errors.extend(example_errors)
+
+        # Quality warnings
+        quality_warnings = self._check_quality(examples)
+        warnings.extend(quality_warnings)
+
+        # Stats
+        stats = self._calculate_stats(examples)
+
+        return ValidationResult(
+            valid=len(errors) == 0,
+            errors=errors,
+            warnings=warnings,
+            stats=stats
+        )
+
+    def _validate_example(self, example: dict, index: int) -> List[str]:
+        errors = []
+
+        # SFT format
+        if "messages" in example:
+            messages = example["messages"]
+
+            if not isinstance(messages, list):
+                errors.append(f"Example {index}: 'messages' must be list")
+                return errors
+
+            roles = [m.get("role") for m in messages]
+
+            if "assistant" not in roles:
+                errors.append(f"Example {index}: No assistant message")
+            if "user" not in roles:
+                errors.append(f"Example {index}: No user message")
+
+        # DPO format
+        elif "input" in example:
+            required = ["input", "preferred_output", "non_preferred_output"]
+            for key in required:
+                if key not in example:
+                    errors.append(f"Example {index}: Missing '{key}'")
+
+        else:
+            errors.append(f"Example {index}: Unknown format")
+
+        return errors
+
+    def _check_quality(self, examples: List[dict]) -> List[str]:
+        warnings = []
+
+        # Check for duplicates
+        seen = set()
+        for i, ex in enumerate(examples):
+            key = json.dumps(ex, sort_keys=True)
+            if key in seen:
+                warnings.append(f"Duplicate example at index {i}")
+            seen.add(key)
+
+        return warnings
+
+    def _calculate_stats(self, examples: List[dict]) -> dict:
+        return {
+            "total_examples": len(examples),
+            "format": "sft" if examples and "messages" in examples[0] else "dpo"
+        }]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompts-data-gen">
+      <p>LLM prompts for generating and improving training examples:</p>
+      <prompt purpose="generate-training-from-document"><![CDATA[Generate training examples from this document for fine-tuning a customer support assistant.
+
+Document:
+{document}
+
+System Prompt for Training:
+{system_prompt}
+
+Generate 5-10 diverse question-answer pairs that:
+1. Cover different aspects of the document
+2. Include both simple and complex questions
+3. Have clear, helpful answers
+4. Match the system prompt's style
+
+Return JSON array:
+[
+  {
+    "user": "User question",
+    "assistant": "Assistant response"
+  },
+  ...
+]]]></prompt>
+      <prompt purpose="generate-edge-cases"><![CDATA[Generate edge case training examples for this task.
+
+Task Description:
+{task_description}
+
+Existing Examples:
+{examples}
+
+Generate 5 edge case examples that:
+1. Test boundary conditions
+2. Include unusual inputs
+3. Cover error scenarios
+4. Test ambiguous situations
+
+Return JSON array:
+[
+  {
+    "user": "Edge case input",
+    "assistant": "Appropriate response",
+    "edge_case_type": "what makes this an edge case"
+  },
+  ...
+]]]></prompt>
+      <prompt purpose="improve-existing-example"><![CDATA[Improve this training example for better fine-tuning results.
+
+Original Example:
+User: {user_message}
+Assistant: {assistant_message}
+
+Improvement Goals:
+{improvement_goals}
+
+Suggest improvements for:
+1. Clarity of the assistant response
+2. Completeness of information
+3. Tone and style
+4. Format and structure
+
+Return JSON:
+{
+  "improved_assistant": "Improved response",
+  "changes_made": ["list of changes"],
+  "reasoning": "Why these changes improve quality"
+}]]></prompt>
+      <prompt purpose="assess-dataset-quality"><![CDATA[Assess the quality of this training dataset.
+
+Sample Examples:
+{examples}
+
+Evaluate:
+1. Example quality and clarity
+2. Diversity of topics/scenarios
+3. Consistency of format
+4. Presence of edge cases
+5. Balance across categories
+
+Return JSON:
+{
+  "quality_score": 1-10,
+  "strengths": ["list"],
+  "weaknesses": ["list"],
+  "recommendations": ["list"],
+  "estimated_examples_needed": N
+}]]></prompt>
+    </section>
+
+    <section name="quality-checklist">
+      <p>Pre-upload quality checks for training data:</p>
+      <list>
+        <item>Minimum 50 examples — reject if fewer.</item>
+        <item>Consistent format across all examples (same message structure, same system prompt pattern).</item>
+        <item>No contradictory examples — conflicting input-output pairs cause random model behavior.</item>
+        <item>Balanced category distribution — for classification tasks.</item>
+        <item>Examples cover edge cases — test boundary conditions explicitly.</item>
+        <item>System prompts are consistent — use identical wording across all examples.</item>
+        <item>No PII or sensitive data — check name, email, phone, SSN patterns before uploading.</item>
+        <item>No duplicate examples — duplicates bias the model toward memorizing those examples.</item>
+      </list>
+    </section>
+
+    <antipattern>
+      <description>Uploading training data without format validation.</description>
+      <reason>Malformed JSONL fails only at job start, not at upload. A job that runs for 30 minutes before failing on a malformed line wastes API time and budget. Always validate locally before uploading.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Including PII in training data without a Data Processing Agreement.</description>
+      <reason>OpenAI processes training data on their infrastructure. Uploading data containing personal information (names, emails, health records) without a DPA and explicit user consent violates GDPR and may violate the OpenAI Terms of Service. Scrub PII before uploading.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using inconsistent system prompts across training examples.</description>
+      <reason>Inconsistent system prompts teach the model conflicting behavior baselines. The fine-tuned model learns to respond differently based on minor system prompt variations, producing unpredictable production behavior. Use identical wording for all examples.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="fine-tuning-openai-sft"/>
+      <ref slug="fine-tuning-openai-dpo"/>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning"/>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning-best-practices"/>
+    </see-also>
+  </content>
+</methodology>
