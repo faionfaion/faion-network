@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-high-availability">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Design high-availability load balancer topologies: active-active vs active-passive LB pairs, multi-region GSLB patterns, zone redundancy, connection draining, and zero-downtime deployment practices.</summary>
+    <tags>
+      <tag>load-balancing</tag>
+      <tag>high-availability</tag>
+      <tag>multi-region</tag>
+      <tag>gslb</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-layer-selection"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-algorithms"/>
+      <ref slug="lb-session-persistence"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer High Availability Patterns</title>
+
+    <summary>High availability for load-balanced systems requires redundancy at both the load balancer tier and the backend tier, distributed across availability zones or regions. Single-region HA uses active-active or active-passive LB pairs with zone-spread backends. Multi-region HA adds Global Server Load Balancing (GSLB) via anycast or DNS-based routing. Connection draining and readiness-probe coordination enable zero-downtime deployments.</summary>
+
+    <why>
+      <p>A single load balancer is itself a single point of failure. Active-passive or active-active LB pairs eliminate this SPOF. Without zone redundancy, an AZ outage takes down the entire backend pool even with multiple instances. GSLB is only meaningful if failover timing meets the SLO — DNS-based GSLB failover is 30 seconds to 5 minutes in practice (not sub-second), while anycast failover is seconds.</p>
+      <p>Agents frequently design "HA" setups that have hidden SPOFs: a single LB instance in front of multiple backends, or multi-region DNS failover with 60-second TTLs that violate a 99.99% SLA. Every HA design needs explicit failure domain analysis: "If X fails, what happens?"</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing a new load-balanced service with an availability SLA ≥99.9%.</item>
+        <item>Reviewing an architecture proposal for hidden SPOFs at the load balancer tier.</item>
+        <item>Planning a zero-downtime deployment or maintenance procedure.</item>
+        <item>Adding multi-region failover to an existing single-region deployment.</item>
+        <item>Post-incident review after a load balancer failure caused an outage.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development or staging environments where downtime is acceptable — HA adds cost without value there.</item>
+        <item>Internal tools with no SLA — single instance is fine.</item>
+        <item>Load balancing algorithm selection — see lb-algorithms.</item>
+        <item>Health check configuration depth — see lb-health-checks.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="single-region-ha">
+      <p>Single-region HA eliminates the load balancer as a SPOF and ensures backend failure does not cascade:</p>
+
+      <rule testable="true">
+        <statement>Production load-balanced services MUST deploy at minimum 2 load balancer instances in active-active or active-passive configuration, AND distribute backend instances across at least 2 availability zones, AND maintain a minimum of 2 healthy backend instances in each zone. A configuration with 1 LB instance is not HA regardless of how many backends exist behind it.</statement>
+        <rationale>A single load balancer instance fails (process crash, instance host failure, network partition) and takes down the entire service. Zone spreading for backends ensures an AZ failure eliminates at most half the capacity rather than all of it. The 2-instance minimum for both LB and backend tiers is the smallest configuration that provides N-1 redundancy.</rationale>
+      </rule>
+
+      <example type="good" title="Active-passive LB pair with keepalived (on-premises)">
+        <code lang="text"><![CDATA[
+# Active-passive VIP failover using keepalived + VRRP
+# LB1 (active): holds VIP 10.0.0.10, priority 100
+# LB2 (standby): priority 90, takes VIP if LB1 fails
+
+# keepalived.conf on LB1:
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 51
+    priority 100
+    advert_int 1
+    virtual_ipaddress {
+        10.0.0.10/24
+    }
+}
+
+# keepalived.conf on LB2:
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 51
+    priority 90
+    advert_int 1
+    virtual_ipaddress {
+        10.0.0.10/24
+    }
+}
+# Failover: LB1 stops sending VRRP advertisements → LB2 claims VIP within 3s
+]]></code>
+        <note>VRRP failover is seconds, not minutes. The VIP floats to the standby. No DNS change required. Classic pattern for on-premises HA load balancers.</note>
+      </example>
+
+      <example type="good" title="AWS multi-AZ ALB (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "aws_lb" "main" {
+  name               = "my-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.alb.id]
+
+  # REQUIRED: subnets in at least 2 AZs for HA
+  subnets = [
+    aws_subnet.public_az1.id,
+    aws_subnet.public_az2.id,
+    aws_subnet.public_az3.id,
+  ]
+
+  enable_deletion_protection = true
+  enable_http2              = true
+}
+
+resource "aws_lb_target_group" "web" {
+  name     = "web-targets"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = var.vpc_id
+
+  health_check {
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+    path                = "/health/ready"
+  }
+
+  # Graceful backend removal
+  deregistration_delay = 30
+}
+]]></code>
+        <note>AWS ALB is managed-HA by default when configured with 2+ subnets in different AZs. The platform handles LB instance redundancy; you control AZ spread of the subnets.</note>
+      </example>
+
+      <antipattern>
+        <description>Single-AZ backend deployment behind a multi-AZ load balancer.</description>
+        <reason>If all backends are in one AZ and that AZ fails, the LB is healthy but all backends are unreachable — the service is down despite appearing to have HA infrastructure. Spread backends across at least 2 AZs.</reason>
+      </antipattern>
+    </section>
+
+    <section name="multi-region-gslb">
+      <p>Multi-region HA requires Global Server Load Balancing (GSLB) to route clients to the nearest or healthiest region:</p>
+
+      <rule testable="true">
+        <statement>For multi-region HA, prefer anycast-based global load balancers (AWS Global Accelerator, Cloudflare Load Balancing, GCP Global Load Balancer) over DNS-based GSLB (Route 53 latency/geo routing, NS1, Akamai GTM) when the availability SLA is 99.99% or higher. DNS-based failover relies on client TTL compliance; actual failover time is 30 seconds to 5 minutes, not sub-second. Anycast failover is under 30 seconds at the routing layer.</statement>
+        <rationale>DNS TTLs are honored unevenly: corporate resolvers, mobile carrier DNS, and CDN intermediaries cache aggressively and ignore low TTLs. A DNS record change with TTL=30 may take 5 minutes to propagate to all clients. Anycast routing happens at the BGP layer — traffic reroutes when a PoP withdraws routes, independent of DNS caching.</rationale>
+      </rule>
+
+      <example type="good" title="AWS Global Accelerator for multi-region failover">
+        <code lang="hcl"><![CDATA[
+resource "aws_globalaccelerator_accelerator" "main" {
+  name            = "my-accelerator"
+  ip_address_type = "IPV4"
+  enabled         = true
+
+  attributes {
+    flow_logs_enabled   = true
+    flow_logs_s3_bucket = aws_s3_bucket.ga_logs.bucket
+    flow_logs_s3_prefix = "ga-logs/"
+  }
+}
+
+resource "aws_globalaccelerator_listener" "http" {
+  accelerator_arn = aws_globalaccelerator_accelerator.main.id
+  protocol        = "TCP"
+  port_range {
+    from_port = 443
+    to_port   = 443
+  }
+}
+
+resource "aws_globalaccelerator_endpoint_group" "us_east" {
+  listener_arn          = aws_globalaccelerator_listener.http.id
+  endpoint_group_region = "us-east-1"
+  traffic_dial_percentage = 50
+
+  endpoint_configuration {
+    endpoint_id = aws_lb.us_east.arn
+    weight      = 100
+  }
+
+  health_check_path             = "/health/ready"
+  health_check_port             = 443
+  health_check_protocol         = "HTTPS"
+  health_check_interval_seconds = 30
+  threshold_count               = 3
+}
+]]></code>
+        <note>Global Accelerator provides a static anycast IP. Regional ALBs are endpoints. Failover between regions happens at the BGP level, not DNS.</note>
+      </example>
+
+      <antipattern>
+        <description>Setting Route 53 TTL to 30 seconds and claiming sub-minute GSLB failover.</description>
+        <reason>DNS caching by intermediary resolvers and client OS is unpredictable. Corporate DNS, carrier DNS, and CDN edge nodes ignore low TTLs or have minimum cache times. Real-world failover for DNS-based GSLB is 30 seconds to 5 minutes — design SLOs accordingly or switch to anycast.</reason>
+      </antipattern>
+    </section>
+
+    <section name="zero-downtime-deploy">
+      <p>Zero-downtime deployments require coordination between the load balancer and the application deployment:</p>
+
+      <rule testable="true">
+        <statement>For zero-downtime deployments: (1) mark the backend as draining in the LB before stopping the process; (2) wait for in-flight requests to complete (deregistration_delay or drain timeout, typically 30s); (3) only then stop the process. The application's /health/ready endpoint MUST return 503 immediately when a SIGTERM is received, before the process starts draining — this signals the LB to stop sending new requests within one health check interval.</statement>
+        <rationale>Without connection draining, stopping a backend immediately terminates in-flight requests, causing 502 errors at the client. Without the readiness probe returning 503 on SIGTERM, the LB continues routing new requests to the shutting-down instance after the process stops accepting them, creating a window of 502 errors equal to the health check interval (10-30s).</rationale>
+      </rule>
+
+      <example type="good" title="FastAPI graceful shutdown with SIGTERM readiness probe">
+        <code lang="python"><![CDATA[
+import signal
+import asyncio
+from fastapi import FastAPI, Response
+
+app = FastAPI()
+is_shutting_down = False
+
+@app.on_event("startup")
+async def setup_signal_handlers():
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(signal.SIGTERM, handle_sigterm)
+
+def handle_sigterm():
+    global is_shutting_down
+    is_shutting_down = True
+    # Return 503 immediately on next health check
+    # LB removes this backend within one health-check interval (10-30s)
+    # In-flight requests continue to be processed during drain period
+
+@app.get("/health/ready")
+async def readiness(response: Response):
+    if is_shutting_down:
+        response.status_code = 503
+        return {"status": "shutting_down"}
+    return {"status": "healthy"}
+]]></code>
+        <note>On SIGTERM, the readiness probe returns 503 immediately. The LB stops routing new requests within one check interval. Existing connections complete normally during the deregistration_delay window.</note>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>HA best practices checklist for load-balanced services:</p>
+
+      <list>
+        <item>Avoid single points of failure: use active-active or active-passive LB pairs.</item>
+        <item>Zone redundancy: deploy backends across at least 2 availability zones.</item>
+        <item>Minimum 2 healthy instances per backend pool — test with N-1 capacity (survive one server failure).</item>
+        <item>Use deeper health checks (API endpoints that check dependencies) rather than basic TCP pings.</item>
+        <item>Use HTTP/2 or HTTP/3 for better pipelining and connection handling.</item>
+        <item>Enable connection keepalive to reduce connection overhead.</item>
+        <item>SSL/TLS offloading at the LB reduces backend CPU.</item>
+        <item>Enable connection draining with appropriate timeout (30-300s depending on request duration).</item>
+        <item>For multi-region: prefer anycast over DNS-based GSLB for SLAs ≥99.99%.</item>
+        <item>Document the chosen HA pattern and expected failure modes in an ADR; revisit when traffic doubles or a new region is added.</item>
+        <item>TLS 1.2 minimum — disable TLS 1.0 and 1.1.</item>
+        <item>Rate limiting and connection limits for DDoS protection at the L7 LB.</item>
+        <item>Private backend networks — backend servers MUST NOT be publicly accessible.</item>
+      </list>
+    </section>
+
+    <section name="monitoring">
+      <p>Metrics required to maintain HA awareness:</p>
+
+      <list>
+        <item>Active connections per backend — sudden imbalance indicates a health check or algorithm issue.</item>
+        <item>Request rate (RPS) and error rate (4xx/5xx) per backend — identify failing instances.</item>
+        <item>Response time per backend (p50, p95, p99) — detect slow backends before they cascade.</item>
+        <item>Health check status — alert on any backend marked unhealthy.</item>
+        <item>Bandwidth utilization — identify saturation at the LB or backend level.</item>
+        <item>SSL certificate expiry — alert at 30 days remaining.</item>
+        <item>LB instance health (for self-managed pairs) — active/standby state, VIP ownership.</item>
+      </list>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>Deploy at least 2 load balancer instances (active-active or active-passive).</check>
+        <check>Spread backend instances across at least 2 availability zones.</check>
+        <check>Maintain minimum 2 healthy backend instances per pool.</check>
+        <check>Enable connection draining with appropriate timeout.</check>
+        <check>Test failover: remove one backend and verify traffic continues without errors.</check>
+        <check>Test LB failover: simulate LB instance failure and verify VIP failover (for self-managed pairs).</check>
+        <check>For multi-region: use anycast if SLA ≥99.99%, DNS-based GSLB only if failover latency ≥5 minutes is acceptable.</check>
+        <check>Implement SIGTERM handler that immediately fails readiness probe for zero-downtime deploys.</check>
+        <check>Monitor per-backend error rates and latency; alert on degradation before it becomes an outage.</check>
+        <check>Document the HA topology and failure domain analysis in an ADR.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://kemptechnologies.com/blog/load-balancing-best-practices"/>
+      <link href="https://cloud.google.com/load-balancing/docs/https/http-load-balancing-best-practices"/>
+      <link href="https://learn.microsoft.com/en-us/azure/load-balancer/load-balancer-best-practices"/>
+      <link href="https://aws.amazon.com/global-accelerator/faqs/"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-layer-selection"/>
+    </see-also>
+  </content>
+</methodology>
