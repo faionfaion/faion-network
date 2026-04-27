@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ddd-repositories">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>DDD Repository pattern: abstract interface in the domain layer returns Aggregates by identity; infrastructure implements persistence. No ORM types in the domain interface.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>repository</tag>
+      <tag>persistence</tag>
+      <tag>aggregate</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>ddd</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-domain-events"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>DDD Repository Pattern: Domain-Owned Persistence Interfaces</title>
+
+    <summary>A Repository provides a collection-like interface for accessing Aggregates. The domain layer defines the interface (abstract class with find_by_id, save, delete); the infrastructure layer provides the ORM implementation. The domain never imports ORM types. The Repository returns fully reconstituted Aggregates — never raw ORM models — and is responsible for translating between domain objects and persistence models.</summary>
+
+    <why>
+      <p>Without Repositories, domain logic imports SQLAlchemy sessions, Django ORM queries, or JPA EntityManagers directly. This couples the domain to the database: changing the database technology requires changing domain code. It also makes unit testing impossible without a real database.</p>
+      <p>The Repository pattern inverts the dependency: the domain defines what it needs (find_by_id, save), and the infrastructure delivers it. Domain unit tests use in-memory fake Repositories; infrastructure tests verify the SQLAlchemy implementation against a real DB.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any Aggregate that must be persisted and reloaded across requests or transactions.</item>
+        <item>When you want to unit-test domain logic without a running database.</item>
+        <item>When the domain layer must remain ORM-agnostic (to support multiple backends or future migrations).</item>
+        <item>Systems where the query side and write side diverge: Repository handles write-side Aggregate loading; a separate Read Model handles query-side projections.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple CRUD apps where the ORM model IS the domain model — a thin Active Record is faster and produces no value in return for the indirection.</item>
+        <item>Read-side projections and reporting queries — those go in a Query Service or Read Model, not a Repository.</item>
+        <item>Throwaway scripts or ETL pipelines where ORM is used directly and domain concepts do not apply.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>The Repository interface MUST live in the domain layer and MUST NOT import any ORM or infrastructure types (no SQLAlchemy, Django ORM, JPA, EF). It MUST declare methods using only domain types: find_by_id(UUID) -&gt; Optional[Aggregate], save(Aggregate) -&gt; None, delete(Aggregate) -&gt; None.</statement>
+        <rationale>ORM types in the domain interface couple the domain to the infrastructure. Swapping the ORM then requires changing domain code, which is the dependency inversion violation the Repository is designed to prevent.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>The Repository MUST return fully reconstituted Aggregate objects, never ORM model instances. The infrastructure implementation is responsible for translating between persistence models and domain objects via _to_entity() / _to_model() methods.</statement>
+        <rationale>Returning ORM models leaks persistence metadata (lazy-loading proxies, change-tracking) into the domain. Domain code then depends on ORM lifecycle semantics instead of domain semantics.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Repositories MUST load Aggregates by identity only (find_by_id). Collection queries by arbitrary criteria MUST go in a separate Read Model or Query Service, never in the Repository interface.</statement>
+        <rationale>Adding rich query methods to the Repository blurs the boundary between the write model (Aggregates) and the read model (projections). It also encourages bypassing Aggregate invariants by loading partial state.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Domain interface + SQLAlchemy implementation">
+      <code lang="python"><![CDATA[
+# order/domain/repositories.py  -- domain layer, no ORM imports
+from abc import ABC, abstractmethod
+from typing import List, Optional
+from uuid import UUID
+
+from .entities.order import Order
+
+
+class OrderRepository(ABC):
+    """Repository interface for Order aggregate."""
+
+    @abstractmethod
+    async def find_by_id(self, order_id: UUID) -> Optional[Order]:
+        """Find order by ID."""
+        pass
+
+    @abstractmethod
+    async def find_by_customer(self, customer_id: UUID) -> List[Order]:
+        """Find all orders for a customer."""
+        pass
+
+    @abstractmethod
+    async def save(self, order: Order) -> None:
+        """Save order (insert or update)."""
+        pass
+
+    @abstractmethod
+    async def delete(self, order: Order) -> None:
+        """Delete order."""
+        pass
+
+
+# order/infrastructure/repositories.py  -- infrastructure layer
+class SQLAlchemyOrderRepository(OrderRepository):
+    """SQLAlchemy implementation of OrderRepository."""
+
+    def __init__(self, session):
+        self._session = session
+
+    async def find_by_id(self, order_id: UUID) -> Optional[Order]:
+        model = await self._session.get(OrderModel, order_id)
+        return self._to_entity(model) if model else None
+
+    async def save(self, order: Order) -> None:
+        model = self._to_model(order)
+        self._session.add(model)
+        # Events will be dispatched after commit
+
+    def _to_entity(self, model: OrderModel) -> Order:
+        return Order(
+            id=model.id,
+            customer_id=model.customer_id,
+            status=OrderStatus(model.status),
+            lines=[
+                OrderLine(
+                    product_id=line.product_id,
+                    product_name=line.product_name,
+                    quantity=line.quantity,
+                    unit_price=Money(line.unit_price, line.currency),
+                )
+                for line in model.lines
+            ],
+            shipping_address=Address(
+                street=model.shipping_street,
+                city=model.shipping_city,
+                state=model.shipping_state,
+                postal_code=model.shipping_postal,
+                country=model.shipping_country,
+            ) if model.shipping_street else None,
+            placed_at=model.placed_at,
+        )
+]]></code>
+      <note>The domain interface uses only domain types. _to_entity() reconstructs the full Aggregate from the persistence model — the domain never sees ORM proxies.</note>
+    </example>
+
+    <example type="bad" title="ORM types leaking into the domain interface">
+      <code lang="python"><![CDATA[
+# BAD: domain imports SQLAlchemy Session directly
+from sqlalchemy.orm import Session
+
+class OrderRepository:
+    def __init__(self, session: Session):  # ORM type in domain!
+        self.session = session
+
+    def find_by_id(self, order_id):
+        # Returns ORM model, not domain Aggregate
+        return self.session.query(OrderModel).filter_by(id=order_id).first()
+]]></code>
+      <note>Importing Session in the domain couples it to SQLAlchemy. Returning an ORM model leaks lazy-loading behaviour into domain code.</note>
+    </example>
+
+    <section name="in-memory-fake">
+      <p>Provide an in-memory fake Repository for unit tests. This makes domain tests fast (no DB) and deterministic.</p>
+      <example type="good" title="In-memory fake repository for unit tests">
+        <code lang="python"><![CDATA[
+# tests/fakes.py
+from typing import Dict, List, Optional
+from uuid import UUID
+from order.domain.repositories import OrderRepository
+from order.domain.entities.order import Order
+
+
+class InMemoryOrderRepository(OrderRepository):
+    def __init__(self):
+        self._store: Dict[UUID, Order] = {}
+
+    async def find_by_id(self, order_id: UUID) -> Optional[Order]:
+        return self._store.get(order_id)
+
+    async def find_by_customer(self, customer_id: UUID) -> List[Order]:
+        return [o for o in self._store.values() if o.customer_id == customer_id]
+
+    async def save(self, order: Order) -> None:
+        self._store[order.id] = order
+
+    async def delete(self, order: Order) -> None:
+        self._store.pop(order.id, None)
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-gotchas">
+      <p>Agents often add rich query methods to the Repository (find_by_status, find_active, get_recent), turning it into an ORM wrapper. This pattern must be caught in review.</p>
+      <list>
+        <item>Verify the domain interface imports no ORM types — agents frequently import Session or EntityManager in the abstract class.</item>
+        <item>Reject find_by_* methods beyond find_by_id — those belong in a Read Model or Query Service.</item>
+        <item>Check _to_entity() reconstructs a full Aggregate, not just a shallow copy — missing nested entities create partially hydrated Aggregates.</item>
+        <item>Agents may skip _to_entity() entirely and return ORM model instances — this leaks SQLAlchemy proxy semantics into the domain.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Repository interface lives in domain layer with no ORM imports</check>
+      <check>Interface methods use only domain types (UUID, Order, Optional[Order])</check>
+      <check>Infrastructure implementation has _to_entity() that returns a fully reconstituted Aggregate</check>
+      <check>No collection query methods (find_by_status, etc.) on the Repository — those go in Read Models</check>
+      <check>In-memory fake Repository exists for unit testing</check>
+      <check>Events are dispatched after the DB transaction commits, not inside save()</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-domain-events"/>
+      <ref slug="arch-pattern-ddd"/>
+      <link href="https://www.domainlanguage.com/ddd/reference/"/>
+      <link href="https://martinfowler.com/eaaCatalog/repository.html"/>
+    </see-also>
+  </content>
+</methodology>
