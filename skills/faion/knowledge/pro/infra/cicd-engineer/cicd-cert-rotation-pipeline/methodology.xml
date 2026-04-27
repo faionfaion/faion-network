@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cicd-cert-rotation-pipeline">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement certificate rotation pipelines using cert-manager CRDs, Terraform ACM/GCP, and Docker Compose Traefik. Follow author→render→scan→apply IaC flow. Never commit private keys to Git.</summary>
+    <tags>
+      <tag>tls</tag>
+      <tag>cert-manager</tag>
+      <tag>kubernetes</tag>
+      <tag>terraform</tag>
+      <tag>iac</tag>
+    </tags>
+    <category>sec</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <frameworks>
+      <framework>kubernetes</framework>
+    </frameworks>
+    <related>
+      <ref slug="cicd-tls-renewal-automation"/>
+      <ref slug="cicd-tls-validation-gate"/>
+      <ref slug="cicd-mtls-deployment"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Certificate Rotation Pipeline (cert-manager, IaC, Traefik)</title>
+
+    <summary>Manage certificate rotation through declarative IaC: cert-manager CRDs for Kubernetes, Terraform for cloud-managed certificates (AWS ACM, GCP Certificate Manager), and Docker Compose Traefik for containerised stacks. The canonical flow is author IaC → render TLS config → scan endpoint → diff → apply. Never commit private keys to Git — use SOPS, Vault, or External Secrets for any private material.</summary>
+
+    <why>
+      <p>Certificate rotation handled outside IaC drifts: the cert-manager ClusterIssuer, the Ingress TLS annotation, and the Terraform ACM resource diverge, leading to stale certs, wrong secrets, or silent failures. Treating cert rotation as a pipeline step (same as infra provisioning) gives you audit trail, rollback capability, and no manual toil at rotation time.</p>
+      <p>cert-manager is the de-facto standard for Kubernetes cert automation. Terraform ACM + Route53 handles AWS workloads. Traefik with ACME resolver handles Docker Compose stacks. Each pattern follows the same agentic workflow: author → render → scan → apply via IaC.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up cert-manager in Kubernetes for Ingress or Gateway API TLS termination.</item>
+        <item>Issuing and rotating AWS ACM certificates via Terraform with Route53 DNS validation.</item>
+        <item>Configuring Docker Compose Traefik as an ACME-based reverse proxy with auto-renewal.</item>
+        <item>Implementing rotation policy: privateKey.rotationPolicy: Always so certs rotate on renewal, not just replacement.</item>
+        <item>Any pipeline that provisions or re-provisions infrastructure and needs certs issued automatically as part of the IaC apply step.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Bare-metal servers without Kubernetes — use certbot/acme.sh directly (see cicd-tls-renewal-automation).</item>
+        <item>Service-mesh mTLS — Linkerd/Istio/Cilium auto-rotate identities; do not layer cert-manager on top of a mesh's identity plane.</item>
+        <item>App-layer encryption (envelope encryption of payloads, JWE) — different methodology entirely.</item>
+        <item>Short-lived internal certs where Vault PKI or step-ca is the issuer — those have their own rotation APIs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cert-manager-kubernetes">
+      <p>cert-manager operator watches Certificate and ClusterIssuer resources and handles ACME challenges, renewal, and secret rotation automatically. The staging issuer MUST be set up and tested before pointing at production.</p>
+
+      <rule testable="true">
+        <statement>cert-manager Certificate resources MUST set privateKey.rotationPolicy: Always, duration: 2160h (90d for LE; 144h for 6-day), and renewBefore: 720h (for 90d) or 48h (for 6-day). The Ingress secretName MUST match the Certificate spec.secretName exactly — any mismatch is a silent failure.</statement>
+        <rationale>Without rotationPolicy: Always, the private key is reused across renewals, increasing the blast radius of key compromise. secretName mismatches are the most common cert-manager misconfiguration and produce no error log — the Ingress simply continues serving the old cert.</rationale>
+      </rule>
+
+      <example type="good" title="ClusterIssuer for Let's Encrypt (staging + prod)">
+        <code lang="yaml"><![CDATA[
+# clusterissuer-letsencrypt.yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+]]></code>
+        <note>Always keep staging issuer in the cluster. Test new domain/challenge setups against staging before pointing at prod to avoid rate-limit exhaustion.</note>
+      </example>
+
+      <example type="good" title="Certificate resource with rotation policy">
+        <code lang="yaml"><![CDATA[
+# certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-tls
+  namespace: production
+spec:
+  secretName: example-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  commonName: example.com
+  dnsNames:
+    - example.com
+    - www.example.com
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  duration: 2160h
+  renewBefore: 720h
+]]></code>
+      </example>
+
+      <example type="good" title="Ingress with automatic cert-manager TLS">
+        <code lang="yaml"><![CDATA[
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  namespace: production
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts: "true"
+    nginx.ingress.kubernetes.io/hsts-max-age: "63072000"
+    nginx.ingress.kubernetes.io/hsts-include-subdomains: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - example.com
+        - www.example.com
+      secretName: example-tls
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using Issuer (namespace-scoped) instead of ClusterIssuer for certificates that span multiple namespaces.</description>
+        <reason>Each namespace requires its own Issuer, multiplying configuration and drift surface. ClusterIssuer is the correct choice for platform-wide issuance; namespace-scoped Issuer is only for tenant isolation requirements.</reason>
+      </antipattern>
+    </section>
+
+    <section name="terraform-acm">
+      <p>AWS Certificate Manager provides free certs for AWS-attached resources (ALB, CloudFront, API Gateway). DNS validation via Route53 is fully automatable in Terraform with create_before_destroy to avoid downtime during rotation.</p>
+
+      <example type="good" title="Terraform ACM certificate with Route53 DNS validation">
+        <code lang="hcl"><![CDATA[
+# acm.tf
+resource "aws_acm_certificate" "main" {
+  domain_name               = var.domain_name
+  subject_alternative_names = ["*.${var.domain_name}"]
+  validation_method         = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "${var.domain_name}-cert"
+    Environment = var.environment
+  }
+}
+
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = var.route53_zone_id
+}
+
+resource "aws_acm_certificate_validation" "main" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+]]></code>
+        <note>create_before_destroy prevents the ALB from serving with no cert during rotation. ACM auto-renews attached certs; Terraform just provisions the initial resource.</note>
+      </example>
+    </section>
+
+    <section name="traefik-docker-compose">
+      <p>Traefik with the Let's Encrypt ACME resolver handles certificate issuance and renewal automatically for Docker Compose stacks. The acme.json file stores the cert store and MUST be persisted via a named volume.</p>
+
+      <example type="good" title="Docker Compose Traefik with ACME auto-TLS">
+        <code lang="yaml"><![CDATA[
+# docker-compose.yml
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@example.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+
+  app:
+    image: myapp:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`example.com`)"
+      - "traefik.http.routers.app.entrypoints=websecure"
+      - "traefik.http.routers.app.tls.certresolver=letsencrypt"
+      - "traefik.http.services.app.loadbalancer.server.port=3000"
+
+volumes:
+  letsencrypt:
+]]></code>
+        <note>The letsencrypt named volume persists acme.json across container restarts. Without it, Traefik re-issues on every start and will hit LE rate limits.</note>
+      </example>
+    </section>
+
+    <section name="pipeline-flow">
+      <p>The canonical agentic workflow for cert rotation IaC: author the Certificate/ClusterIssuer CRDs or Terraform resource, render the TLS config blocks from Mozilla SSL Config Generator output, scan the endpoint after apply, then diff and re-apply if the scan flags regressions.</p>
+
+      <rule testable="true">
+        <statement>The cert rotation pipeline MUST follow: (1) author cert-manager CRDs or IaC resource, (2) apply to staging cluster/environment first, (3) run testssl.sh or sslyze against staging, (4) promote to production only on clean scan, (5) run scan again against production. Never commit private keys to Git — use SOPS, Vault, or External Secrets for any private material.</statement>
+        <rationale>Agents iterating on cert config can accidentally embed private key material in commit history. The staged scan-before-promote step catches TLS misconfigurations (wrong cipher list, missing chain, expired stapling) before they affect production traffic.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Committing private keys or ACME account keys to Git repositories.</description>
+        <reason>Private keys in Git are permanently compromised even after deletion — the history is cloned by everyone with access. Use SOPS-encrypted secrets, Vault dynamic secrets, or External Secrets Operator to inject private material at runtime.</reason>
+      </antipattern>
+    </section>
+
+    <section name="key-algo">
+      <p>Key algorithm selection affects handshake performance and security level. ECDSA P-256 is the recommended default for all new certificates issued through these pipelines.</p>
+
+      <rule testable="true">
+        <statement>All new cert-manager Certificate resources and ACME client issuances MUST use ECDSA P-256 (algorithm: ECDSA, size: 256) unless the CA or client explicitly does not support it. RSA is acceptable only as a fallback for legacy CAs.</statement>
+        <rationale>ECDSA P-256 provides 128-bit security with smaller key and signature sizes than RSA-3072, reducing TLS handshake overhead. RSA-2048 only provides 112-bit security. Modern Let's Encrypt, ACM, and cert-manager all support ECDSA P-256.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Install cert-manager via Helm or manifest and confirm webhook is healthy before creating issuers.</check>
+      <check>Create staging ClusterIssuer first and issue a test Certificate against it.</check>
+      <check>Verify staging Certificate reaches Ready=True and correct secretName is populated.</check>
+      <check>Create production ClusterIssuer only after staging issuance succeeds.</check>
+      <check>Set privateKey.rotationPolicy: Always on all Certificate resources.</check>
+      <check>Set ECDSA P-256 as key algorithm unless CA does not support it.</check>
+      <check>Confirm Ingress secretName matches Certificate spec.secretName exactly.</check>
+      <check>For Terraform ACM: verify create_before_destroy is set in lifecycle block.</check>
+      <check>For Traefik: confirm letsencrypt volume is named (not bind-mounted) to survive container restarts.</check>
+      <check>Run testssl.sh or sslyze against the endpoint after apply and before declaring success.</check>
+      <check>Confirm private keys are not present in any Git history or CI/CD logs.</check>
+      <check>Document rollback procedure: what to do if cert rotation breaks production TLS.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://cert-manager.io/docs/"/>
+      <link href="https://cert-manager.io/docs/reference/cmctl/"/>
+      <link href="https://developer.hashicorp.com/vault/docs/secrets/pki"/>
+      <ref slug="cicd-tls-renewal-automation"/>
+      <ref slug="cicd-tls-validation-gate"/>
+      <ref slug="cicd-mtls-deployment"/>
+    </see-also>
+  </content>
+</methodology>
