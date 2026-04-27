@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="caching-write-patterns">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>backend-systems</domain>
+    <summary>Three write-side caching patterns: cache-aside (lazy load), write-through (sync DB+cache), and write-behind (async DB flush) — selection criteria and production code.</summary>
+    <tags>
+      <tag>caching</tag>
+      <tag>redis</tag>
+      <tag>cache-aside</tag>
+      <tag>write-through</tag>
+      <tag>write-behind</tag>
+    </tags>
+    <category>caching</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+      <language>go</language>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>redis</framework>
+    </frameworks>
+    <related>
+      <ref slug="caching-invalidation"/>
+      <ref slug="caching-stampede-prevention"/>
+      <ref slug="caching-in-memory"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cache Write Patterns: Cache-Aside, Write-Through, Write-Behind</title>
+
+    <summary>Three patterns govern how data enters and exits the cache relative to the database. Cache-aside (lazy load) is the default: check cache, miss, load DB, populate. Write-through keeps cache and DB in sync on every write at the cost of write latency. Write-behind accepts eventual DB consistency in exchange for high write throughput. Pick one per entity type based on consistency budget and write frequency.</summary>
+
+    <why>
+      <p>Selecting the wrong write pattern is the most common root cause of cache-related incidents. Cache-aside applied to write-heavy entities causes stampedes; write-through applied to high-throughput counters adds unacceptable latency; write-behind used without crash recovery causes data loss. The choice must be explicit and documented per entity — never inherited silently from a shared cache manager.</p>
+      <p>Multi-level caching follows the flow: User → CDN → Application Cache → Distributed Cache → Database. L1 is browser/CDN for static assets; L2 is in-memory process-local; L3 is Redis/Memcached distributed; L4 is database query cache; L5 is the database itself. Write patterns govern L2–L3 behavior.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Cache-aside: read-to-write ratio ≥ 10:1, cache misses are acceptable, data can tolerate bounded staleness.</item>
+        <item>Write-through: strong consistency required on reads after writes, write latency below 2× uncached is acceptable, entity update frequency is low-to-medium.</item>
+        <item>Write-behind: high write throughput (counters, activity streams, metrics), eventual consistency is acceptable, crash-recovery queue is in place.</item>
+        <item>Any entity where the access pattern is well understood and can be documented in a key-schema table before implementation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cache-aside on financial balances or inventory counts — stale reads after concurrent writes cause correctness bugs.</item>
+        <item>Write-through on high-cardinality entities updated at high frequency — every write adds a cache round-trip that compounds latency.</item>
+        <item>Write-behind without a persistent flush queue — a crash between the cache write and the DB flush causes silent data loss.</item>
+        <item>Any pattern without TTL + jitter — synchronized expiries cause synchronized stampedes on cold-start or after cache flush.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cache-aside">
+      <p>Cache-aside is the default pattern. The application owns the cache population: on a read miss it fetches from the database and populates the cache. Writes invalidate the relevant cache key. The cache can be down and the app degrades gracefully to DB-only reads.</p>
+
+      <rule testable="true">
+        <statement>Cache-aside implementations MUST supply a typed key_builder function; MUST NOT fall back to hashing the repr() of args/kwargs — dict repr is non-deterministic across Python versions and mutable defaults produce key drift.</statement>
+        <rationale>Args repr hashing silently produces different keys for logically identical calls (dict ordering, subclass repr). Typed key_builder enforces a stable, inspectable key contract and makes invalidation predictable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>All cache-aside set operations MUST use setex (or SET EX) — never SET without a TTL. Invalidation MUST call delete on the exact key, not a wildcard KEYS/SCAN pattern in a hot path.</statement>
+        <rationale>Keys without TTL become permanent stale data. KEYS * is O(N) and blocks Redis single-thread event loop; SCAN in a hot path still saturates I/O under traffic spikes.</rationale>
+      </rule>
+
+      <example type="good" title="Cache-aside decorator with typed key_builder (Python)">
+        <code lang="python"><![CDATA[
+import redis
+import json
+from functools import wraps
+import hashlib
+
+redis_client = redis.Redis(host='localhost', port=6379, decode_responses=True)
+
+def cache_aside(key_prefix: str, ttl: int = 3600, key_builder=None):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if key_builder:
+                cache_key = f"{key_prefix}:{key_builder(*args, **kwargs)}"
+            else:
+                key_data = f"{args}:{sorted(kwargs.items())}"
+                key_hash = hashlib.md5(key_data.encode()).hexdigest()[:12]
+                cache_key = f"{key_prefix}:{key_hash}"
+
+            # Try cache first
+            cached = redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+
+            # Cache miss - call function
+            result = func(*args, **kwargs)
+            redis_client.setex(cache_key, ttl, json.dumps(result))
+            return result
+
+        wrapper.invalidate = lambda *args, **kwargs: redis_client.delete(
+            f"{key_prefix}:{key_builder(*args, **kwargs)}" if key_builder else f"{key_prefix}:*"
+        )
+        return wrapper
+    return decorator
+
+# Usage — always supply key_builder for deterministic keys
+@cache_aside("user", ttl=1800, key_builder=lambda user_id: user_id)
+def get_user(user_id: str):
+    return db.users.find_one({"_id": user_id})
+
+def update_user(user_id: str, data: dict):
+    db.users.update_one({"_id": user_id}, {"$set": data})
+    get_user.invalidate(user_id)
+]]></code>
+        <note>key_builder is explicit; invalidate targets the exact key. Omitting key_builder falls back to hash — acceptable only for search/query caching where exact invalidation is impossible.</note>
+      </example>
+
+      <example type="good" title="Cache-aside in Go">
+        <code lang="go"><![CDATA[
+package cache
+
+import (
+    "context"
+    "encoding/json"
+    "time"
+    "github.com/go-redis/redis/v8"
+)
+
+type CacheManager struct {
+    client *redis.Client
+}
+
+func NewCacheManager(addr string) *CacheManager {
+    return &CacheManager{
+        client: redis.NewClient(&redis.Options{Addr: addr}),
+    }
+}
+
+func (c *CacheManager) CacheAside(
+    ctx context.Context,
+    key string,
+    ttl time.Duration,
+    loader func() (interface{}, error),
+) (interface{}, error) {
+    cached, err := c.client.Get(ctx, key).Result()
+    if err == nil {
+        var result interface{}
+        json.Unmarshal([]byte(cached), &result)
+        return result, nil
+    }
+
+    data, err := loader()
+    if err != nil {
+        return nil, err
+    }
+
+    encoded, _ := json.Marshal(data)
+    c.client.Set(ctx, key, encoded, ttl)
+    return data, nil
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Cache-aside with node-redis (TypeScript)">
+        <code lang="typescript"><![CDATA[
+import { createClient, RedisClientType } from 'redis';
+
+interface CacheOptions {
+  ttl?: number;
+  prefix?: string;
+}
+
+class CacheManager {
+  private client: RedisClientType;
+
+  constructor(redisUrl: string = 'redis://localhost:6379') {
+    this.client = createClient({ url: redisUrl });
+    this.client.connect();
+  }
+
+  async cacheAside<T>(
+    key: string,
+    loader: () => Promise<T>,
+    options: CacheOptions = {}
+  ): Promise<T> {
+    const { ttl = 3600, prefix = 'cache' } = options;
+    const fullKey = `${prefix}:${key}`;
+
+    const cached = await this.client.get(fullKey);
+    if (cached) {
+      return JSON.parse(cached) as T;
+    }
+
+    const data = await loader();
+    await this.client.setEx(fullKey, ttl, JSON.stringify(data));
+    return data;
+  }
+
+  async invalidate(pattern: string, prefix: string = 'cache'): Promise<void> {
+    const fullPattern = `${prefix}:${pattern}`;
+    const keys = [];
+    for await (const key of this.client.scanIterator({ MATCH: fullPattern, COUNT: 100 })) {
+      keys.push(key);
+    }
+    if (keys.length > 0) {
+      await this.client.del(keys);
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="write-through">
+      <p>Write-through keeps cache and database in sync by writing to both on every update. The cache always reflects the latest committed DB state for entities that go through this path. Write latency is approximately 2× the uncached DB write because the DB write precedes a cache update.</p>
+
+      <rule testable="true">
+        <statement>Write-through implementations MUST write to the database first, then update the cache. If the cache update fails after a successful DB write, the implementation MUST delete (not skip) the stale cache key so subsequent reads trigger a fresh load from DB.</statement>
+        <rationale>Writing cache before DB risks serving cached data that was never persisted. A failed cache update after a successful DB write leaves a stale cached value; deletion forces the next read to repopulate from the authoritative DB source.</rationale>
+      </rule>
+
+      <example type="good" title="Write-through cache class (Python)">
+        <code lang="python"><![CDATA[
+import json
+import redis
+
+class WriteThroughCache:
+    def __init__(self, redis_client, db, collection_name: str, ttl: int = 3600):
+        self.redis = redis_client
+        self.collection = db[collection_name]
+        self.ttl = ttl
+        self.key_prefix = collection_name
+
+    def _cache_key(self, doc_id: str) -> str:
+        return f"{self.key_prefix}:{doc_id}"
+
+    def get(self, doc_id: str):
+        cached = self.redis.get(self._cache_key(doc_id))
+        if cached:
+            return json.loads(cached)
+
+        doc = self.collection.find_one({"_id": doc_id})
+        if doc:
+            self.redis.setex(self._cache_key(doc_id), self.ttl, json.dumps(doc))
+        return doc
+
+    def set(self, doc_id: str, data: dict):
+        # Write to DB first
+        self.collection.update_one({"_id": doc_id}, {"$set": data}, upsert=True)
+
+        # Then update cache with the freshly persisted document
+        doc = self.collection.find_one({"_id": doc_id})
+        self.redis.setex(self._cache_key(doc_id), self.ttl, json.dumps(doc))
+        return doc
+
+    def delete(self, doc_id: str):
+        self.collection.delete_one({"_id": doc_id})
+        self.redis.delete(self._cache_key(doc_id))
+]]></code>
+        <note>set() re-reads from DB after write to include server-generated fields (timestamps, auto-increments). Under concurrent writers the cache can hold a slightly stale view for the time between write and re-read — acceptable for most entity types but not for financial records.</note>
+      </example>
+    </section>
+
+    <section name="write-behind">
+      <p>Write-behind (write-back) writes to cache immediately and defers the DB write to a background flush loop. This pattern maximizes write throughput but introduces a data-loss window if the process crashes before flushing. It is appropriate for activity counters, metrics, analytics, and any data with a business-acceptable loss window.</p>
+
+      <rule testable="true">
+        <statement>Write-behind implementations MUST use a persistent flush queue (e.g., Redis list or a durable message queue) — NOT an in-process dict — so pending writes survive process restarts. The flush loop MUST implement bulk_write with batching and log failures without silently dropping the batch.</statement>
+        <rationale>An in-process defaultdict(dict) for pending_writes loses all unflushed data on crash or OOM kill. A persistent queue survives restarts and makes the data-loss window explicit and bounded to the flush interval.</rationale>
+      </rule>
+
+      <example type="good" title="Write-behind cache with async flush loop (Python)">
+        <code lang="python"><![CDATA[
+import asyncio
+import json
+from collections import defaultdict
+from datetime import datetime
+from pymongo import UpdateOne
+
+class WriteBehindCache:
+    def __init__(self, redis_client, db, flush_interval: int = 5):
+        self.redis = redis_client
+        self.db = db
+        self.flush_interval = flush_interval
+        self.pending_writes = defaultdict(dict)
+
+    async def set(self, collection: str, doc_id: str, data: dict):
+        # Write to cache immediately
+        cache_key = f"{collection}:{doc_id}"
+        self.redis.setex(cache_key, 3600, json.dumps(data))
+
+        # Queue for async DB write
+        self.pending_writes[collection][doc_id] = {
+            "data": data,
+            "timestamp": datetime.utcnow()
+        }
+
+    async def _flush_loop(self):
+        while True:
+            await asyncio.sleep(self.flush_interval)
+            await self._flush_all()
+
+    async def _flush_all(self):
+        for collection, docs in list(self.pending_writes.items()):
+            if not docs:
+                continue
+
+            operations = [
+                UpdateOne({"_id": doc_id}, {"$set": doc_info["data"]}, upsert=True)
+                for doc_id, doc_info in docs.items()
+            ]
+
+            if operations:
+                self.db[collection].bulk_write(operations)
+                self.pending_writes[collection].clear()
+]]></code>
+        <note>This example uses an in-process dict for illustrative clarity. Production use MUST replace pending_writes with a Redis list or durable queue to survive crashes. Monitor queue depth and flush lag.</note>
+      </example>
+
+      <antipattern>
+        <description>Using write-behind for user-facing entities (profiles, orders) because "Redis is fast".</description>
+        <reason>A crash between cache write and DB flush means a user's update disappears silently. Write-behind is only safe when the data-loss window is explicitly budgeted (analytics, counters) and a crash-recovery path exists.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pattern-selection">
+      <p>Pick a strategy per dataset, not per service. Document it: users → cache-aside, sessions → write-through, feed counters → write-behind. A single cache manager serving all entities with one pattern causes subtle correctness bugs.</p>
+
+      <rule testable="true">
+        <statement>Every cached entity type MUST have a documented caching pattern selection in the codebase (comment, ADR, or schema table) stating: pattern name, TTL, invalidation trigger, and acceptable stale window.</statement>
+        <rationale>Undocumented caching decisions become invisible assumptions that change silently during refactors. The selection must be a first-class artifact so reviewers can catch mismatches at PR time.</rationale>
+      </rule>
+
+      <checklist>
+        <check>Measure read:write ratio — target ≥10:1 for cache-aside to yield meaningful hit rates.</check>
+        <check>Identify top 10 most frequently accessed entity types and their update frequency.</check>
+        <check>Classify each entity: strong-consistency required (no cache or write-through only), eventual-ok (cache-aside), high-write (write-behind with durability plan).</check>
+        <check>Set TTL + jitter (±10–20%) on every key — synchronized expiries cause synchronized stampedes.</check>
+        <check>Wire cache invalidation into every write path — LLMs forget invalidation on write paths when implementing cache-aside reads.</check>
+        <check>Add hit_total, miss_total, error_total Prometheus counters on every cache path.</check>
+        <check>Verify app works (degraded) with cache down — circuit breaker → origin fallback required.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://redis.io/docs/manual/patterns/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside"/>
+      <ref slug="caching-invalidation"/>
+      <ref slug="caching-stampede-prevention"/>
+      <ref slug="caching-in-memory"/>
+      <ref slug="caching-http-headers"/>
+    </see-also>
+  </content>
+</methodology>
