@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents-react-pattern">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Implement the ReAct (Reason + Act) agent loop: thought-action-observation cycle with iteration caps, tool dispatch, and completion detection for exploratory multi-step tasks.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>react</tag>
+      <tag>tool-use</tag>
+      <tag>llm</tag>
+      <tag>autonomous-agents</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ai-agent-patterns"/>
+      <ref slug="agents-safety-guardrails"/>
+      <ref slug="agents-framework-selection"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>langchain</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>ReAct Agent Pattern — Reason + Act Loop Implementation</title>
+
+    <summary>ReAct (Reason + Act) is the canonical single-agent loop: the LLM thinks, calls a tool, observes the result, and repeats until the task is done or an iteration cap is hit. It is adaptive and cheap compared to Plan-and-Execute — typically 50% fewer LLM calls for exploratory tasks — but requires hard iteration limits and explicit completion detection to avoid runaway loops.</summary>
+
+    <why>
+      <p>Free-form "call LLM in a loop" code without the ReAct structure lacks explicit exit conditions, error recovery, and observability hooks. The ReAct pattern, introduced in the 2022 Yao et al. paper (arxiv 2210.03629), interleaves reasoning (THOUGHT) and action (ACTION) steps so the agent can adjust its approach after each tool result rather than committing to a fixed plan. This interleaving is what makes ReAct adaptive and is why it outperforms pure chain-of-thought on multi-step tasks. The mandatory iteration cap and cost guard prevent the loop from expanding token usage 5-20x over a single call.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Task requires dynamic tool selection across multiple steps with branching based on intermediate results.</item>
+        <item>Workflow involves research + synthesis + action that cannot be scripted in advance.</item>
+        <item>Code generation and execution loops where the agent must test and fix iteratively.</item>
+        <item>Multi-source data gathering where the number of sources is unknown upfront.</item>
+        <item>Automation of knowledge work: writing, classification, extraction across variable-length inputs.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Task is deterministic and mappable to a fixed pipeline — use a DAG, not an agent.</item>
+        <item>Real-time response under 500ms is required — autonomous loop latency is incompatible.</item>
+        <item>Actions are irreversible (send email, delete records, charge cards) without human approval — use Plan-and-Execute with approval gate instead.</item>
+        <item>Cost budget is fixed and tight — ReAct loops can expand token usage 5-20x vs a single call.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="react-loop-structure">
+      <p>The ReAct loop has three phases that repeat until the completion condition is met or the iteration cap is hit:</p>
+      <list>
+        <item>THOUGHT: LLM analyzes current state and decides the next action. Explicit reasoning reduces tool hallucination.</item>
+        <item>ACTION: LLM calls a tool or returns a final answer. Tool call arguments are extracted and dispatched.</item>
+        <item>OBSERVATION: Tool result is appended to the message history. LLM receives the full context on the next step.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every ReAct agent MUST set a hard iteration limit (20-50 steps) and a per-run cost cap before entering the loop. The agent MUST raise an exception when either limit is hit rather than returning a partial result silently.</statement>
+        <rationale>Without iteration limits, agents get stuck retrying failing tool calls indefinitely. Without cost caps, a single unbounded loop can burn the entire API budget in minutes on expensive tool calls (image gen, video gen, external APIs).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Tool descriptions MUST be written as if for a person unfamiliar with the codebase: include the exact parameter names, types, and what the function returns. Tool MUST return explicit error text (not raise exceptions) — agents handle text errors far better than stack traces.</statement>
+        <rationale>Tool argument hallucination is the most common ReAct failure mode. Clear descriptions reduce hallucination. Text error returns allow the agent to understand what went wrong and try alternative arguments rather than crash.</rationale>
+      </rule>
+
+      <example type="good" title="Minimal LangGraph ReAct agent with iteration guard">
+        <code lang="python"><![CDATA[
+from langgraph.prebuilt import create_react_agent
+from langchain_anthropic import ChatAnthropic
+from langchain_core.tools import tool
+
+@tool
+def search_web(query: str) -> str:
+    """Search the web for current information. Returns top 3 results as text.
+    Args:
+        query: plain-text search query, max 200 chars
+    Returns:
+        string with results or 'Error: <reason>'
+    """
+    # implement with SearXNG or Brave Search
+    ...
+
+llm = ChatAnthropic(model="claude-opus-4-5")
+agent = create_react_agent(llm, tools=[search_web])
+
+result = agent.invoke({"messages": [("user", "Research X and summarize in 3 bullets")]})
+]]></code>
+        <note>LangGraph's create_react_agent handles the think-act-observe loop. Always configure recursion_limit on the graph to cap iterations.</note>
+      </example>
+
+      <example type="good" title="Iteration and cost guard">
+        <code lang="python"><![CDATA[
+class IterationGuard:
+    def __init__(self, max_iter: int = 20, max_cost_usd: float = 1.0):
+        self.count = 0
+        self.max_iter = max_iter
+        self.cost = 0.0
+        self.max_cost = max_cost_usd
+
+    def check(self, tokens_used: int, cost_per_1k: float = 0.003) -> None:
+        self.count += 1
+        self.cost += (tokens_used / 1000) * cost_per_1k
+        if self.count >= self.max_iter:
+            raise RuntimeError(f"Iteration limit {self.max_iter} reached")
+        if self.cost >= self.max_cost:
+            raise RuntimeError(
+                f"Cost limit ${self.max_cost:.2f} reached "
+                f"(spent ${self.cost:.2f})"
+            )
+]]></code>
+        <note>Call guard.check() after each LLM response. Raises before the next tool call so the agent loop exits cleanly.</note>
+      </example>
+
+      <example type="bad" title="ReAct loop without exit conditions">
+        <code lang="python"><![CDATA[
+# DO NOT do this — no iteration limit, no cost cap
+while True:
+    response = llm.invoke(messages)
+    if not response.tool_calls:
+        return response.content
+    # process tools and loop
+]]></code>
+        <note>Infinite loop with no guard. One failing tool call traps the agent forever and burns the API budget.</note>
+      </example>
+    </section>
+
+    <section name="react-system-prompt">
+      <p>The system prompt for a ReAct agent must tell the model the loop structure, the tool list, the maximum iterations, and the same-argument call guard. Explicitly stating the structure reduces the chance the model skips the THOUGHT phase and jumps straight to tool calls.</p>
+
+      <prompt purpose="ReAct agent system prompt template">
+        <![CDATA[
+You are an autonomous agent. You have access to these tools: {tool_list}.
+Think step by step. After each action, observe the result and decide the next step.
+Stop when you have a complete answer. Maximum {max_iterations} iterations.
+Never call a tool more than 3 times with the same arguments.
+
+For each step use this format:
+THOUGHT: <your reasoning>
+ACTION: <tool name and arguments, or FINAL ANSWER>
+OBSERVATION: <tool result — provided by the system>
+]]>
+      </prompt>
+
+      <antipattern>
+        <description>Providing a tool list in the system prompt without explicit iteration and same-argument limits.</description>
+        <reason>Without the same-argument guard, models hallucinate "it will work next time" and call the same broken tool indefinitely. The explicit limit in the prompt reinforces the hard limit in code.</reason>
+      </antipattern>
+    </section>
+
+    <section name="react-vs-plan-execute">
+      <p>ReAct and Plan-and-Execute are complementary, not competing. Use ReAct for exploratory tasks; use Plan-and-Execute for high-stakes operations that require governance. Hybrid models that "plan globally and act locally" provide the best balance for production systems.</p>
+
+      <list>
+        <item>ReAct: interleaved reasoning/action; high adaptability; often 50% cheaper; best for exploratory tasks.</item>
+        <item>Plan-and-Execute: separate plan/execute phases; lower adaptability; more LLM calls; best for high-stakes operations requiring human approval of the plan before execution.</item>
+        <item>Reflexion: wraps ReAct with a self-critique step after failure; higher latency; best for tasks where first-pass accuracy matters (code generation, analysis).</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Iteration limit set (20-50 steps) before entering the ReAct loop.</check>
+      <check>Per-run cost cap set and enforced via IterationGuard or equivalent.</check>
+      <check>All tool descriptions include parameter names, types, and return format.</check>
+      <check>Tools return text errors, not exceptions, on failure.</check>
+      <check>Same-argument call guard in place (max 3 calls with identical args).</check>
+      <check>Completion detection: agent exits when no tool calls returned and content is non-empty.</check>
+      <check>All tool calls logged with arguments and results for debugging.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2210.03629"/>
+      <link href="https://langchain-ai.github.io/langgraph/"/>
+      <ref slug="ai-agent-patterns"/>
+      <ref slug="agents-safety-guardrails"/>
+    </see-also>
+  </content>
+</methodology>
