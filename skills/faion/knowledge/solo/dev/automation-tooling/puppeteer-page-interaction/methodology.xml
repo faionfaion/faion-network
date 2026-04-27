@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-page-interaction">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Select DOM elements, simulate user input (click, type, keyboard, mouse), handle forms, manage multi-tab flows, iFrames, dialogs, downloads, and mobile emulation in Puppeteer.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>dom-interaction</tag>
+      <tag>form-automation</tag>
+      <tag>browser-automation</tag>
+      <tag>nodejs</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-session-management"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Page Interaction, Forms &amp; Advanced Patterns</title>
+
+    <summary>Covers all user-facing interaction in Puppeteer: CSS/XPath element selection, click/type/keyboard/mouse simulation, all form input types, multi-tab handling, iFrame access, dialog handling, file downloads, and mobile device emulation.</summary>
+
+    <why>
+      <p>Browser automation scripts fail most often at the interaction layer — wrong selectors, missing waits before clicks, or mishandled dynamic elements. A disciplined approach to selectors (prefer attribute-based, not screenshot-derived) and targeted waits makes scripts stable across deploy differences.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Automating form fills, multi-step wizards, or login flows that require simulated human input.</item>
+        <item>Extracting data from pages that require interaction before content loads.</item>
+        <item>Testing UI components that open new tabs, show browser dialogs, or render inside iFrames.</item>
+        <item>Emulating mobile devices for responsive-site scraping or testing.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure HTML scraping with no JS rendering — use a simple HTTP client + cheerio, avoid the browser overhead.</item>
+        <item>Cross-browser interaction tests — Playwright covers Firefox and WebKit natively.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="element-selection">
+      <example type="good" title="CSS selector and evaluation">
+        <code lang="javascript"><![CDATA[// CSS selectors
+const element = await page.$('#id');           // Single element
+const elements = await page.$$('.class');      // All matching
+
+// Evaluate in page context
+const text = await page.$eval('#title', el => el.textContent);
+const texts = await page.$$eval('.items', els => els.map(el => el.textContent));
+
+// Check existence
+const exists = await page.$('#element') !== null;]]></code>
+      </example>
+      <rule>
+        <statement>Require the agent to fetch DOM via page.content() first and pick attribute-based selectors (data-testid, id, name). Never use selectors derived from screenshots — they are positional and unstable across viewport or content changes.</statement>
+        <rationale>Screenshot-derived selectors encode pixel coordinates or visual class names that break on any CSS or layout change; attribute-based selectors survive redesigns.</rationale>
+      </rule>
+    </section>
+
+    <section name="user-interactions">
+      <example type="good" title="Click, type, keyboard, mouse">
+        <code lang="javascript"><![CDATA[// Click
+await page.click('#button');
+await page.click('#button', { button: 'right', clickCount: 2 });
+
+// Type
+await page.type('#input', 'Hello World', { delay: 100 });
+
+// Clear and type
+await page.click('#input', { clickCount: 3 });
+await page.type('#input', 'New text');
+
+// Keyboard
+await page.keyboard.press('Enter');
+await page.keyboard.down('Shift');
+await page.keyboard.press('ArrowDown');
+await page.keyboard.up('Shift');
+
+// Mouse
+await page.mouse.move(100, 200);
+await page.mouse.click(100, 200);
+await page.mouse.wheel({ deltaY: 500 });
+
+// Hover
+await page.hover('#menu-item');]]></code>
+      </example>
+    </section>
+
+    <section name="form-handling">
+      <example type="good" title="All form input types">
+        <code lang="javascript"><![CDATA[// Text input
+await page.type('#name', 'John Doe');
+
+// Select dropdown
+await page.select('#country', 'US');
+await page.select('#multi', 'opt1', 'opt2'); // Multiple
+
+// Checkbox/Radio
+await page.click('#agree-checkbox');
+await page.click('input[name="gender"][value="male"]');
+
+// File upload
+const input = await page.$('input[type="file"]');
+await input.uploadFile('/path/to/file.pdf');
+
+// Date input
+await page.$eval('#date', (el, value) => el.value = value, '2026-01-18');]]></code>
+      </example>
+      <example type="good" title="Form submission with navigation">
+        <code lang="javascript"><![CDATA[// Submit form
+await page.click('button[type="submit"]');
+
+// Or trigger form submit directly
+await page.$eval('form', form => form.submit());
+
+// Wait for response after submit
+const [response] = await Promise.all([
+  page.waitForNavigation(),
+  page.click('button[type="submit"]')
+]);]]></code>
+      </example>
+    </section>
+
+    <section name="error-handling">
+      <p>Robust wrappers for navigation and element interaction:</p>
+      <example type="good" title="Safe navigation with error classification">
+        <code lang="javascript"><![CDATA[async function safeNavigate(page, url, options = {}) {
+  try {
+    const response = await page.goto(url, {
+      waitUntil: 'networkidle0',
+      timeout: 30000,
+      ...options
+    });
+
+    if (!response.ok()) {
+      throw new Error(`HTTP ${response.status()}: ${response.statusText()}`);
+    }
+
+    return response;
+  } catch (error) {
+    if (error.message.includes('net::ERR_')) {
+      throw new Error(`Network error: ${error.message}`);
+    }
+    if (error.message.includes('Timeout')) {
+      throw new Error(`Page load timeout: ${url}`);
+    }
+    throw error;
+  }
+}]]></code>
+      </example>
+      <example type="good" title="Safe click with retry">
+        <code lang="javascript"><![CDATA[async function safeClick(page, selector, options = {}) {
+  const { timeout = 5000, retries = 3 } = options;
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      await page.waitForSelector(selector, { visible: true, timeout });
+      await page.click(selector);
+      return true;
+    } catch (error) {
+      if (i === retries - 1) {
+        throw new Error(`Failed to click ${selector}: ${error.message}`);
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+}
+
+async function safeExtract(page, selector, defaultValue = null) {
+  try {
+    await page.waitForSelector(selector, { timeout: 5000 });
+    return await page.$eval(selector, el => el.textContent?.trim());
+  } catch {
+    return defaultValue;
+  }
+}]]></code>
+      </example>
+    </section>
+
+    <section name="advanced-patterns">
+      <example type="good" title="Multi-tab handling">
+        <code lang="javascript"><![CDATA[// Detect new page from target="_blank"
+const [newPage] = await Promise.all([
+  new Promise(resolve => browser.once('targetcreated', target => resolve(target.page()))),
+  page.click('a[target="_blank"]')
+]);
+await newPage.waitForLoadState();
+
+// Switch between tabs
+const pages = await browser.pages();
+await pages[0].bringToFront();
+
+// Close specific tab
+await newPage.close();]]></code>
+      </example>
+      <example type="good" title="iFrame handling">
+        <code lang="javascript"><![CDATA[const frameHandle = await page.waitForSelector('iframe#myframe');
+const frame = await frameHandle.contentFrame();
+await frame.click('#button-in-iframe');]]></code>
+      </example>
+      <example type="good" title="Dialog handling">
+        <code lang="javascript"><![CDATA[page.on('dialog', async dialog => {
+  console.log(dialog.message());
+  await dialog.accept('Input value'); // or dialog.dismiss()
+});]]></code>
+      </example>
+      <example type="good" title="Download handling via CDP">
+        <code lang="javascript"><![CDATA[const downloadPath = '/tmp/downloads';
+const client = await page.target().createCDPSession();
+await client.send('Page.setDownloadBehavior', {
+  behavior: 'allow',
+  downloadPath
+});
+
+await page.click('#download-button');
+// Wait for file to appear in downloadPath]]></code>
+        <note>Page.setDownloadBehavior is per-session; agents that recycle pages without re-issuing it lose the download path silently.</note>
+      </example>
+      <example type="good" title="Mobile device emulation">
+        <code lang="javascript"><![CDATA[const puppeteer = require('puppeteer');
+const iPhone = puppeteer.devices['iPhone 12'];
+
+const page = await browser.newPage();
+await page.emulate(iPhone);
+await page.goto('https://example.com');]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://pptr.dev"/>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-session-management"/>
+    </see-also>
+  </content>
+</methodology>
