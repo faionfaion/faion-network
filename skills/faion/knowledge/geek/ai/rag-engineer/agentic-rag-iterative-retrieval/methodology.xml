@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agentic-rag-iterative-retrieval">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Multi-hop retrieval with LLM-guided sufficiency checking and query refinement in a bounded loop; replaces single-pass RAG for complex questions.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>agentic</tag>
+      <tag>retrieval</tag>
+      <tag>multi-hop</tag>
+      <tag>llm</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>langgraph</framework>
+      <framework>llama-index</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-self-correction"/>
+      <ref slug="agentic-rag-tool-using"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Agentic RAG — Iterative Retrieval</title>
+
+    <summary>Traditional RAG performs a single retrieval pass with a fixed pipeline. Iterative retrieval lets an LLM decide whether the retrieved context is sufficient, and if not, generates a refined query and retrieves again — up to a configurable maximum iteration count.</summary>
+
+    <why>
+      <p>A single retrieval pass returns whatever chunks are closest to the original query. For multi-hop questions (e.g. "What did the CEO say about the strategy after the Q3 earnings miss?") the relevant information is split across documents that share no direct lexical or semantic overlap. Iterative retrieval closes this gap by letting the LLM identify what is missing and generate a gap-filling query, achieving 80–90% accuracy vs 65–75% for single-pass RAG, at the cost of 3–8s latency and 3–5x the API spend.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Questions require combining information from multiple disjoint documents (multi-hop QA).</item>
+        <item>A single retrieval pass consistently returns insufficient or partially relevant context.</item>
+        <item>Research synthesis tasks: explore → evaluate → refine → conclude.</item>
+        <item>Latency SLA allows 3–10s per query and cost budget accepts 3–5x single-pass RAG.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-turn factual lookup where standard RAG suffices — agentic loop adds 3–5x latency and cost.</item>
+        <item>Latency-critical user-facing queries (under 2s SLA) — iterative retrieval typically takes 3–10s.</item>
+        <item>Well-structured corpora with high coverage where iterative gains are marginal.</item>
+        <item>Untrusted or adversarial input corpora — iterative loops can be exploited via prompt injection in documents.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-pattern">
+      <p>The iterative retriever executes a bounded loop: retrieve chunks, ask the LLM whether the context is sufficient, and if not, ask it to generate a refined gap-filling query. The loop exits when the LLM says sufficient or when max_iterations is reached.</p>
+
+      <rule testable="true">
+        <statement>Iterative retrieval MUST cap the loop at max_iterations (recommended 3, hard cap 5). When the cap is reached without a sufficient verdict, log the failure and route to human review rather than continuing to burn budget.</statement>
+        <rationale>Unbounded loops diverge: the sufficiency check LLM may never return "sufficient", burning unlimited API budget. A hard cap keeps latency and cost predictable.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use a cheaper model (Haiku or Sonnet) for the sufficiency check and query refinement steps. Reserve Opus for final answer synthesis.</statement>
+        <rationale>Sufficiency checks are yes/no judgements that do not require reasoning depth; routing them to Haiku reduces per-iteration cost by ~10x vs Opus.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Deduplicate context chunks between iterations using chunk IDs before passing context to the sufficiency judge or generator.</statement>
+        <rationale>The same chunk can surface in multiple retrieval passes; duplicating it inflates token usage and can bias the sufficiency judge.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Detect query drift: compute cosine similarity between the original query embedding and the refined query embedding. If similarity drops below 0.7, reset the refined query to the original.</statement>
+        <rationale>After 2+ iterations the refinement can drift from the original intent — the refined query answers a different question than the one the user asked.</rationale>
+      </rule>
+
+      <example type="good" title="Iterative retriever with sufficiency check (Anthropic SDK)">
+        <code lang="python"><![CDATA[
+import json
+import anthropic
+
+client = anthropic.Anthropic()
+
+def iterative_retrieve(query: str, vector_store, max_iter: int = 3) -> list:
+    context = []
+    current_query = query
+    for i in range(max_iter):
+        chunks = vector_store.search(current_query, k=5)
+        context.extend(chunks)
+        check = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=256,
+            messages=[{"role": "user", "content":
+                f"Query: {query}\nContext: {[c['text'][:200] for c in context]}\n"
+                "Is context sufficient? JSON: {\"sufficient\": bool, \"missing\": str}"}]
+        )
+        result = json.loads(check.content[0].text)
+        if result["sufficient"]:
+            break
+        refine = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=128,
+            messages=[{"role": "user", "content":
+                f"Missing: {result['missing']}\nGenerate search query. Return query only."}]
+        )
+        current_query = refine.content[0].text.strip()
+    return context
+]]></code>
+        <note>Cap is 3 iterations. Sonnet for both checks. Chunks deduplicated by caller before passing to generator.</note>
+      </example>
+
+      <example type="good" title="Full IterativeRetriever class with query refinement">
+        <code lang="python"><![CDATA[
+from typing import List, Dict
+import openai
+
+class IterativeRetriever:
+    """Multi-hop retrieval with LLM-guided query refinement."""
+
+    def __init__(self, vector_store, max_iterations: int = 3):
+        self.vector_store = vector_store
+        self.max_iterations = max_iterations
+
+    def retrieve(self, query: str) -> List[Dict]:
+        """Iteratively retrieve until sufficient context."""
+        context = []
+        current_query = query
+
+        for i in range(self.max_iterations):
+            chunks = self.vector_store.search(current_query, k=5)
+            context.extend(chunks)
+
+            if self._is_sufficient(query, context):
+                break
+
+            current_query = self._refine_query(query, context)
+
+        return context
+
+    def _is_sufficient(self, original_query: str, context: List[Dict]) -> bool:
+        """LLM evaluates if context is sufficient."""
+        prompt = f"""
+Query: {original_query}
+
+Retrieved context:
+{self._format_context(context)}
+
+Is this context sufficient to answer the query?
+Answer YES or NO with brief reason.
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        answer = response.choices[0].message.content
+        return answer.strip().upper().startswith("YES")
+
+    def _refine_query(self, original_query: str, context: List[Dict]) -> str:
+        """Generate refined query to fill gaps."""
+        prompt = f"""
+Original query: {original_query}
+
+Context retrieved so far:
+{self._format_context(context)}
+
+What information is still missing? Generate a refined search query
+to retrieve the missing information. Return ONLY the query.
+"""
+        response = openai.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0
+        )
+
+        return response.choices[0].message.content.strip()
+
+    def _format_context(self, context: List[Dict]) -> str:
+        return "\n\n".join([c["text"][:200] for c in context])
+]]></code>
+        <note>Use gpt-4o-mini (or Haiku) for sufficiency check and refinement; reserve the heavier model for generation.</note>
+      </example>
+    </section>
+
+    <section name="sufficiency-prompts">
+      <p>The sufficiency check and gap-filling query generation are the two prompt hotspots. Keep them structured to get reliable JSON output.</p>
+
+      <prompt purpose="sufficiency-check"><![CDATA[
+Original query: {original_query}
+
+Retrieved context so far:
+{context_summary}
+
+Can this context fully answer the original query?
+Respond with JSON: {"sufficient": true/false, "missing": "description of what is missing"}
+]]></prompt>
+
+      <prompt purpose="gap-filling-query"><![CDATA[
+Original query: {original_query}
+What is missing: {missing_description}
+
+Generate a precise search query to retrieve the missing information.
+Return only the query string.
+]]></prompt>
+    </section>
+
+    <section name="gotchas">
+      <p>Agentic loops introduce failure modes not present in single-pass RAG. The following gotchas are drawn from production deployments.</p>
+
+      <antipattern>
+        <description>Running the sufficiency check and the generator with the same model instance at the same temperature.</description>
+        <reason>Same model tends to confirm its own outputs — the verifier will call its own generated answer sufficient regardless of actual quality. Use a different model or at minimum a different temperature.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Prompt injection via document content: an adversarial document overrides the sufficiency prompt and claims context is sufficient when it is not.</description>
+        <reason>Sanitize retrieved chunks before passing to judge models — strip instruction-like patterns such as "Ignore previous instructions" from chunk text.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Counting iterations as equivalent to round-trip LLM calls.</description>
+        <reason>One iteration may spawn multiple parallel retrieval calls plus two LLM calls (sufficiency + refinement); bill accordingly when setting budgets.</reason>
+      </antipattern>
+    </section>
+
+    <section name="performance-comparison">
+      <p>Benchmark comparison between traditional single-pass RAG and iterative agentic RAG on multi-hop QA benchmarks.</p>
+
+      <section name="metrics-table">
+        <p>Accuracy: Traditional RAG 65–75%, Agentic RAG 80–90%. Latency: Traditional 1–2s, Agentic 3–8s. Cost per query: Traditional $0.001, Agentic $0.005–0.01. Hallucination rate: Traditional 15–20%, Agentic 5–10%.</p>
+      </section>
+    </section>
+
+    <section name="langgraph-wiring">
+      <p>When using LangGraph, wire the conditional edge so the loop terminates both on sufficient verdict AND on iteration cap.</p>
+
+      <example type="good" title="LangGraph conditional edge with iteration cap">
+        <code lang="python"><![CDATA[
+workflow.add_conditional_edges(
+    "verify",
+    lambda s: "finish" if s["verified"] or s["iterations"] >= 3 else "plan",
+    {"finish": END, "plan": "plan"}
+)
+]]></code>
+        <note>Without the iterations cap, a stuck sufficiency judge burns unbounded budget.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="agentic-rag-query-decomposition"/>
+      <ref slug="agentic-rag-self-correction"/>
+      <ref slug="agentic-rag-tool-using"/>
+      <link href="https://langchain-ai.github.io/langgraph/tutorials/rag/langgraph_agentic_rag/"/>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/agent/agentic_rag/"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use"/>
+    </see-also>
+  </content>
+</methodology>
