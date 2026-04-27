@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="k8s-resource-quota">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Enforce aggregate namespace-level resource caps with ResourceQuota: CPU/memory totals, object counts (pods, services, PVCs), and scoped quotas per QoS class or PriorityClass.</summary>
+    <tags>
+      <tag>kubernetes</tag>
+      <tag>resource-quota</tag>
+      <tag>namespace-governance</tag>
+      <tag>multi-tenancy</tag>
+      <tag>cluster-policy</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="k8s-resource-requests-limits"/>
+      <ref slug="k8s-limitrange"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kubernetes ResourceQuota — Namespace-Level Aggregate Caps</title>
+
+    <summary>ResourceQuota enforces hard aggregate limits on the total resources a namespace can consume: CPU requests/limits, memory requests/limits, storage, and object counts (pods, services, secrets, configmaps, PersistentVolumeClaims). Where LimitRange governs individual containers, ResourceQuota governs the namespace as a whole. Every shared or production namespace MUST have a ResourceQuota to prevent a single team or runaway workload from consuming all cluster resources (the noisy-neighbor problem).</summary>
+
+    <why>
+      <p>Without ResourceQuota, a namespace can create unlimited pods, services, and PersistentVolumeClaims. In a multi-tenant cluster this causes the noisy-neighbor problem: one team's runaway deployment exhausts node resources and evicts other teams' pods. ResourceQuota gives cluster administrators predictable per-namespace governance that survives developer mistakes, CI/CD bugs, and autoscaler misconfiguration. The combination of LimitRange (per-container) + ResourceQuota (per-namespace) creates defense-in-depth: no single container can be too large, and no namespace can cumulatively overwhelm the cluster.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Every shared, production, staging, or team namespace in a multi-tenant cluster.</item>
+        <item>When a deployment scaling incident exhausted all node resources in a namespace — add ResourceQuota immediately after recovery.</item>
+        <item>When implementing chargeback or cost attribution by team — use ResourceQuota as the governance contract.</item>
+        <item>When a namespace needs object count limits (e.g., prevent service proliferation or secret sprawl).</item>
+        <item>When scoping quotas to QoS class or PriorityClass — use scopeSelector.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-team clusters with a single namespace — ResourceQuota overhead is administrative cost with no isolation benefit.</item>
+        <item>Ephemeral test namespaces with a short TTL — spend time on automation to clean them up instead of quota governance.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="quotable-resources">
+      <p>ResourceQuota can govern four categories of resources. All fields under spec.hard use the same resource name format as container resource specs.</p>
+      <list>
+        <item>Compute: requests.cpu, limits.cpu, requests.memory, limits.memory, requests.ephemeral-storage, limits.ephemeral-storage</item>
+        <item>Storage: requests.storage (total PVC storage requests), persistentvolumeclaims (count)</item>
+        <item>Objects: pods, services, services.loadbalancers, services.nodeports, secrets, configmaps, replicationcontrollers</item>
+        <item>Extended: count/&lt;resource&gt;.&lt;group&gt; for custom resources</item>
+      </list>
+      <rules>
+        <rule>
+          <statement>Always set both requests.* and limits.* quotas. Setting only limits.cpu without requests.cpu means pods without explicit requests (relying on LimitRange defaults) count against limits quota but not requests quota, creating inconsistent accounting.</statement>
+          <rationale>The scheduler uses requests for placement; kubelet uses limits for enforcement. Quota must track both planes to prevent pods from bypassing either constraint.</rationale>
+        </rule>
+        <rule>
+          <statement>Include object count quotas for pods, services, and persistentvolumeclaims in every production namespace. Start with: pods = (expected replicas * services) * 1.5, services = expected service count * 1.2, persistentvolumeclaims = expected PVC count * 1.2.</statement>
+          <rationale>A deployment scaling bug or infinite retry loop can create hundreds of pods in seconds. Object count quotas are a hard stop; compute quotas alone do not prevent pod explosion if individual pods are small.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="multi-tenancy-sizing">
+      <p>For multi-tenant clusters, ResourceQuota is the per-team allocation contract. Size quotas proportional to team needs, not cluster capacity. Reserve 15-20% cluster headroom across all teams for burst.</p>
+      <rules>
+        <rule>
+          <statement>Start quota values generous and tune down based on 30-day observed usage. Setting quotas too tight blocks legitimate work and creates operational toil (quota increase requests). Use kube_resourcequota Prometheus metric to monitor utilization and alert at &gt;90%.</statement>
+          <rationale>A quota that is too tight is worse than no quota from an engineering productivity standpoint. Tune based on data, not assumptions. The goal is namespace isolation, not resource starvation.</rationale>
+        </rule>
+        <rule>
+          <statement>Assign quotas proportional to team size and workload priority, not equal shares. Teams with critical production workloads need more headroom than teams with batch or development workloads.</statement>
+          <rationale>Equal-share quotas systematically under-resource high-priority teams and over-resource low-priority ones. Priority-weighted allocation is both fairer and better for cluster stability.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <section name="scoped-quotas">
+      <p>Scoped ResourceQuota uses scopeSelector to apply a quota only to pods matching specific criteria (QoS class, PriorityClass, terminating vs non-terminating). This enables fine-grained governance within a namespace.</p>
+      <rules>
+        <rule>
+          <statement>Use scoped quotas to apply separate caps to BestEffort batch pods and Guaranteed/Burstable production pods within the same namespace. Scoped quotas for PriorityClass enable resource reservations for critical workloads that survive eviction.</statement>
+          <rationale>Without scoped quotas, batch jobs compete directly with production pods for namespace quota. Scoped quotas let the namespace hold both workload types with independent governance — batch jobs have their own pod count limit, production pods have their own compute budget.</rationale>
+        </rule>
+      </rules>
+    </section>
+
+    <example type="good" title="Basic compute and object quota">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: production
+spec:
+  hard:
+    # Compute resources
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    # Object counts
+    pods: "50"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+]]></code>
+    </example>
+
+    <example type="good" title="Comprehensive team quota with storage">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: full-quota
+  namespace: team-alpha
+spec:
+  hard:
+    # Compute requests
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    # Compute limits
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    # Storage
+    requests.storage: 100Gi
+    persistentvolumeclaims: "10"
+    # Object counts
+    pods: "30"
+    services: "5"
+    services.loadbalancers: "1"
+    services.nodeports: "2"
+    secrets: "15"
+    configmaps: "15"
+    # Ephemeral storage
+    requests.ephemeral-storage: 20Gi
+    limits.ephemeral-storage: 50Gi
+]]></code>
+    </example>
+
+    <example type="good" title="Scoped quota for BestEffort batch jobs">
+      <code lang="yaml"><![CDATA[
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: besteffort-quota
+  namespace: batch-jobs
+spec:
+  hard:
+    pods: "100"
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values:
+      - low
+    - operator: In
+      scopeName: BestEffort
+      values:
+      - "true"
+]]></code>
+    </example>
+
+    <example type="good" title="Priority-based quota for critical workloads">
+      <code lang="yaml"><![CDATA[
+# PriorityClass for critical workloads
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: critical
+value: 1000000
+globalDefault: false
+description: "Critical workloads that should not be evicted"
+---
+# Separate quota for critical-priority pods
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: critical-quota
+  namespace: production
+spec:
+  hard:
+    pods: "10"
+    requests.cpu: "20"
+    requests.memory: 40Gi
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values:
+      - critical
+]]></code>
+    </example>
+
+    <example type="good" title="Complete namespace setup: LimitRange + ResourceQuota">
+      <code lang="yaml"><![CDATA[
+# 1. LimitRange: per-container governance
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-limits
+  namespace: team-backend
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "2"
+      memory: 4Gi
+---
+# 2. ResourceQuota: namespace-wide aggregate caps
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: namespace-quota
+  namespace: team-backend
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "25"
+    services: "8"
+    persistentvolumeclaims: "5"
+    requests.storage: 50Gi
+]]></code>
+      <note>This is the recommended baseline: LimitRange handles per-container defaults and bounds; ResourceQuota handles namespace-wide aggregate caps. Apply both together for complete resource governance.</note>
+    </example>
+
+    <example type="bad" title="Quota without object count limits">
+      <code lang="yaml"><![CDATA[
+spec:
+  hard:
+    requests.cpu: "10"
+    limits.cpu: "20"
+    # No pod count, no service count — a scaling bug can create 1000 pods
+    # each consuming 10m CPU without hitting the compute quota
+]]></code>
+    </example>
+
+    <antipattern>
+      <description>Setting identical ResourceQuota for all namespaces regardless of team size or workload type.</description>
+      <reason>One-size-fits-all quotas either over-constrain small teams or under-constrain large ones. Quota should be proportional to team need with 15-20% headroom reserved for burst.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Setting quota limits.memory without matching requests.memory.</description>
+      <reason>Pods using LimitRange defaults contribute to limits quota but not requests quota. The scheduler uses requests, not limits. Tracking only one plane creates an accounting mismatch that allows more pods than intended to be scheduled.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Never tuning quotas after initial setup.</description>
+      <reason>Team size and workload patterns change. An untouched quota becomes either a permanent bottleneck (too tight) or a meaningless rubber stamp (too generous). Review quota utilization monthly and tune based on kube_resourcequota metrics.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Create ResourceQuota for every shared, production, and team namespace.</check>
+      <check>Set both requests.* and limits.* compute quotas.</check>
+      <check>Include object count quotas: pods, services, persistentvolumeclaims, secrets, configmaps.</check>
+      <check>Start generous, tune down based on 30-day observed utilization.</check>
+      <check>Reserve 15-20% headroom across all teams for burst capacity.</check>
+      <check>Monitor kube_resourcequota metric and alert when utilization exceeds 90%.</check>
+      <check>Review and adjust quotas monthly based on actual usage data.</check>
+      <check>Use scopeSelector for BestEffort batch workloads in production namespaces.</check>
+    </checklist>
+
+    <templates>
+      <template path="templates/resourcequota-tiers.yaml" purpose="ResourceQuota templates for small/medium/large team namespaces plus full namespace setup."/>
+    </templates>
+
+    <prompt purpose="Generate ResourceQuota for team namespace"><![CDATA[
+Generate a ResourceQuota for namespace: [NAMESPACE_NAME]
+
+Team characteristics:
+- Team size: [X developers]
+- Number of services: [Y]
+- Expected pod count: [Z]
+- Storage needs: [minimal/moderate/high]
+
+Constraints:
+- Total cluster capacity: [CPU cores, Memory]
+- Number of teams sharing cluster: [N]
+- Fair share percentage: [X%]
+
+Output: Complete ResourceQuota YAML with justification for each limit.
+]]></prompt>
+
+    <prompt purpose="Multi-tenant cluster optimization"><![CDATA[
+Optimize resource allocation across a multi-tenant cluster:
+
+Cluster capacity:
+- Total CPU: [X] cores
+- Total Memory: [Y] Gi
+- Node count: [Z]
+
+Tenants:
+1. Team A: [workload description, current usage, priority]
+2. Team B: [workload description, current usage, priority]
+3. Team C: [workload description, current usage, priority]
+
+Goals:
+- Fair resource distribution
+- Prevent noisy neighbor issues
+- Allow burst when cluster has capacity
+- Enable chargeback reporting
+
+Output:
+1. ResourceQuota per namespace
+2. LimitRange per namespace
+3. PriorityClass recommendations
+4. Monitoring/alerting suggestions
+]]></prompt>
+
+    <see-also>
+      <ref slug="k8s-resource-requests-limits"/>
+      <ref slug="k8s-limitrange"/>
+      <link href="https://kubernetes.io/docs/concepts/policy/resource-quotas/"/>
+      <link href="https://www.perfectscale.io/blog/kubernetes-resource-quotas-limit-ranges"/>
+    </see-also>
+  </content>
+</methodology>

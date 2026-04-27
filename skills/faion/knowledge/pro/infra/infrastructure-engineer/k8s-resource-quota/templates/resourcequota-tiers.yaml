@@ -1,0 +1,109 @@
+# ResourceQuota templates — tiered by team size
+# Apply: kubectl apply -f resourcequota-tiers.yaml -n ${NAMESPACE}
+# Tune values based on 30-day observed kube_resourcequota metrics.
+
+# --- TIER 1: Small team (2-4 developers, 5-10 services) ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tier1-quota
+  namespace: ${NAMESPACE}
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    pods: "20"
+    services: "10"
+    secrets: "20"
+    configmaps: "20"
+    persistentvolumeclaims: "5"
+    requests.storage: 25Gi
+---
+# --- TIER 2: Medium team (5-10 developers, 10-20 services) ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tier2-quota
+  namespace: ${NAMESPACE}
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    pods: "50"
+    services: "20"
+    secrets: "40"
+    configmaps: "40"
+    persistentvolumeclaims: "10"
+    requests.storage: 100Gi
+---
+# --- TIER 3: Large team (10+ developers, 20+ services) ---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: tier3-quota
+  namespace: ${NAMESPACE}
+spec:
+  hard:
+    requests.cpu: "64"
+    requests.memory: 128Gi
+    limits.cpu: "128"
+    limits.memory: 256Gi
+    pods: "100"
+    services: "50"
+    services.loadbalancers: "5"
+    services.nodeports: "10"
+    secrets: "100"
+    configmaps: "100"
+    persistentvolumeclaims: "20"
+    requests.storage: 500Gi
+---
+# --- FULL NAMESPACE SETUP: LimitRange + ResourceQuota ---
+# Replace ${NAMESPACE}, ${TEAM}, ${ENV} and tune quota values.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ${NAMESPACE}
+  labels:
+    team: ${TEAM}
+    environment: ${ENV}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limits
+  namespace: ${NAMESPACE}
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 500m
+      memory: 512Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "4"
+      memory: 8Gi
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota
+  namespace: ${NAMESPACE}
+spec:
+  hard:
+    requests.cpu: ${TOTAL_CPU_REQUESTS}
+    requests.memory: ${TOTAL_MEMORY_REQUESTS}
+    limits.cpu: ${TOTAL_CPU_LIMITS}
+    limits.memory: ${TOTAL_MEMORY_LIMITS}
+    pods: ${MAX_PODS}
+    services: ${MAX_SERVICES}
+    persistentvolumeclaims: ${MAX_PVCS}
+    requests.storage: ${TOTAL_STORAGE}
