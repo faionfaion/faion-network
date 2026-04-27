@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gce-managed-instance-groups">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Deploy and operate GCE Managed Instance Groups (MIGs) for production: regional vs zonal placement, health checks, autohealing, rolling updates, and canary deployments.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>compute-engine</tag>
+      <tag>managed-instance-groups</tag>
+      <tag>high-availability</tag>
+    </tags>
+    <category>compute</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gce-instance-templates"/>
+      <ref slug="gce-autoscaling"/>
+      <ref slug="gce-spot-vms"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCE Managed Instance Groups (MIGs)</title>
+
+    <summary>A Managed Instance Group (MIG) maintains a set of identical VMs created from a single instance template, provides autohealing by replacing failed instances, supports rolling updates and canary deployments, and integrates with Google Cloud Load Balancing. Use regional MIGs (multi-zone) for all production workloads; zonal MIGs are acceptable only for dev/test or cost-sensitive batch jobs.</summary>
+
+    <why>
+      <p>MIGs solve three core production problems: self-healing (unhealthy VMs are automatically recreated), zero-downtime updates (rolling replacements preserve capacity while deploying new template versions), and horizontal scaling (autoscaler grows or shrinks the group based on demand). Regional MIGs distribute instances across up to three zones; a single-zone outage reduces but does not eliminate capacity, whereas a zonal MIG goes entirely offline.</p>
+      <p>Without MIGs, operators must manually recreate failed VMs, coordinate updates across a fleet, and manually manage zone distribution — all error-prone at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any stateless production service that needs more than one VM — regional MIG with minimum 3 instances (one per zone).</item>
+        <item>Autoscaling web applications or APIs — MIG is required for the autoscaler to add/remove instances.</item>
+        <item>Batch processing fleets where failed workers must be automatically replaced without operator intervention.</item>
+        <item>GKE node pools (GKE manages MIGs internally, but understanding the pattern is useful when using custom node pools).</item>
+        <item>Blue-green or canary deploys — MIGs support two template versions at configurable percentages via rolling-action start-update with --canary-version.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Stateful workloads that require per-instance persistent identity (databases, Kafka brokers) — use Stateful MIGs or GKE StatefulSets instead; a standard MIG replaces instances without preserving disk data or network identity.</item>
+        <item>Single-VM development machines — MIG overhead is not justified; create the VM directly.</item>
+        <item>Workloads with long initialization that cannot tolerate instance replacement — use suspend/resume or ensure the health check initial_delay_sec accounts for full startup time.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Production MIGs MUST be regional (not zonal), MUST set minimum instances to at least 3 (one per zone), and MUST configure distribution_policy_target_shape to EVEN. Zonal MIGs are permitted only for dev/test environments.</statement>
+        <rationale>A zonal MIG becomes fully unavailable during a zone outage. Regional MIGs with EVEN distribution ensure capacity across all three zones; a zone outage reduces capacity to 66% rather than 0%.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every production MIG MUST configure autohealing with an HTTP(S) health check and set initial_delay_sec to at least the full VM startup plus application warmup time. The health check path MUST return HTTP 200 only when the application is fully ready to serve traffic.</statement>
+        <rationale>If initial_delay_sec is too short, the autoheal loop replaces healthy VMs that are still starting, causing a thrashing loop that takes the entire MIG offline. The health check path must reflect true readiness, not just that the process is running.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Rolling updates on production MIGs MUST set max_unavailable_fixed = 0 (or maxUnavailable=0) and max_surge_fixed >= 1 to ensure capacity is never reduced during the update. Update type MUST be PROACTIVE so instances are replaced immediately rather than waiting for natural turnover.</statement>
+        <rationale>maxUnavailable=0 guarantees that the load balancer always has the full target pool available. maxSurge>=1 provides the surge capacity needed to start new-template instances before draining old ones. PROACTIVE mode ensures the update actually completes; OPPORTUNISTIC only replaces on recreation events and can leave the MIG in a mixed state indefinitely.</rationale>
+      </rule>
+    </rules>
+
+    <section name="regional-vs-zonal">
+      <p>Regional MIGs distribute instances across up to 3 zones within a region. Zonal MIGs run entirely in one zone. The operational difference is significant:</p>
+
+      <example type="good" title="Regional MIG with EVEN distribution — production pattern">
+        <code lang="hcl"><![CDATA[
+resource "google_compute_region_instance_group_manager" "app" {
+  name   = "app-mig"
+  region = "us-central1"
+
+  base_instance_name = "app"
+
+  version {
+    instance_template = google_compute_instance_template.default.id
+  }
+
+  target_size = 3
+
+  distribution_policy_zones = [
+    "us-central1-a",
+    "us-central1-b",
+    "us-central1-c"
+  ]
+
+  distribution_policy_target_shape = "EVEN"
+
+  named_port {
+    name = "http"
+    port = 8080
+  }
+
+  auto_healing_policies {
+    health_check      = google_compute_health_check.http.id
+    initial_delay_sec = 300
+  }
+
+  update_policy {
+    type                           = "PROACTIVE"
+    minimal_action                 = "REPLACE"
+    most_disruptive_allowed_action = "REPLACE"
+    max_surge_fixed                = 3
+    max_unavailable_fixed          = 0
+    instance_redistribution_type   = "PROACTIVE"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Zonal MIG in production — single zone, no autohealing">
+        <code lang="hcl"><![CDATA[
+# BAD: zonal MIG, no autohealing, no update policy
+resource "google_compute_instance_group_manager" "bad" {
+  name = "app-mig"
+  zone = "us-central1-a"   # single zone → zone outage = total outage
+
+  base_instance_name = "app"
+
+  version {
+    instance_template = google_compute_instance_template.default.id
+  }
+
+  target_size = 3
+  # no auto_healing_policies → failed VMs stay failed
+  # no update_policy → updates are disruptive
+}
+]]></code>
+        <note>A us-central1-a zone outage takes this MIG fully offline. Failed VMs are not recreated. Rolling updates require manual intervention.</note>
+      </example>
+    </section>
+
+    <section name="health-checks">
+      <p>Health checks drive autohealing. The check must verify application readiness, not just TCP connectivity or process presence. Use HTTP checks against a dedicated /health endpoint that returns 200 only when the application is fully initialized and ready to handle requests.</p>
+
+      <example type="good" title="HTTP health check for autohealing">
+        <code lang="hcl"><![CDATA[
+resource "google_compute_health_check" "http" {
+  name = "app-health-check"
+
+  timeout_sec         = 5
+  check_interval_sec  = 10
+  healthy_threshold   = 2
+  unhealthy_threshold = 3
+
+  http_health_check {
+    port         = 8080
+    request_path = "/health"
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="rolling-updates">
+      <p>Rolling updates replace instances with a new template version while maintaining service availability. Canary deployments run two template versions simultaneously.</p>
+
+      <commands>
+        <command name="rolling-update"><![CDATA[gcloud compute instance-groups managed rolling-action start-update my-mig \
+    --region=us-central1 \
+    --version=template=my-template-v2 \
+    --max-unavailable=0 \
+    --max-surge=3]]></command>
+        <command name="canary-deploy"><![CDATA[gcloud compute instance-groups managed rolling-action start-update my-mig \
+    --region=us-central1 \
+    --version=template=my-template-v1 \
+    --canary-version=template=my-template-v2,target-size=20%]]></command>
+        <command name="create-regional-mig"><![CDATA[gcloud compute instance-groups managed create my-regional-mig \
+    --region=us-central1 \
+    --template=my-template \
+    --size=3 \
+    --zones=us-central1-a,us-central1-b,us-central1-c]]></command>
+        <command name="set-autohealing"><![CDATA[gcloud compute instance-groups managed update my-mig \
+    --region=us-central1 \
+    --health-check=my-health-check \
+    --initial-delay=300]]></command>
+        <command name="create-health-check"><![CDATA[gcloud compute health-checks create http my-health-check \
+    --port=8080 \
+    --request-path=/health \
+    --check-interval=10s \
+    --timeout=5s \
+    --healthy-threshold=2 \
+    --unhealthy-threshold=3]]></command>
+        <command name="list-instances"><![CDATA[gcloud compute instance-groups managed list-instances my-mig \
+    --region=us-central1]]></command>
+        <command name="describe-mig"><![CDATA[gcloud compute instance-groups managed describe my-mig \
+    --region=us-central1]]></command>
+      </commands>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>Regional MIG for production (not zonal).</check>
+        <check>Minimum 3 instances (1 per zone) for regional MIGs.</check>
+        <check>Distribution shape EVEN or BALANCED configured.</check>
+        <check>HTTP(S) health check configured with correct readiness path.</check>
+        <check>initial_delay_sec exceeds full VM startup + application warmup time.</check>
+        <check>Autohealing enabled on MIG referencing the health check.</check>
+        <check>Update policy type PROACTIVE with max_unavailable_fixed = 0.</check>
+        <check>max_surge_fixed >= 1 to maintain capacity during updates.</check>
+        <check>named_port configured if MIG is used with a load balancer.</check>
+        <check>Instance redistribution type PROACTIVE for regional MIGs.</check>
+        <check>Terraform lifecycle create_before_destroy = true on MIG and template.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-production-mig"><![CDATA[
+Create a Managed Instance Group (MIG) for production:
+
+Requirements:
+- Name: {mig_name}
+- Region: {region}
+- Instance template: {template_name}
+- Target size: {size}
+- Health check: {health_check_type} on port {port}, path {health_path}
+- Named ports: {port_name}:{port_number}
+
+Provide:
+1. gcloud CLI commands for:
+   - Instance template creation
+   - Regional MIG creation
+   - Health check configuration
+   - Autohealing setup
+2. Terraform resources (instance template, MIG, health check)
+3. Rolling update configuration with max_unavailable=0
+4. Best practices for the deployment type
+]]></prompt>
+
+      <prompt purpose="migrate-zonal-to-regional"><![CDATA[
+Migrate from zonal MIG to regional MIG:
+
+Current setup:
+- MIG name: {mig_name}
+- Zone: {zone}
+- Instance template: {template}
+- Current size: {size}
+
+Target:
+- Region: {region}
+- Zones: {zone1}, {zone2}, {zone3}
+- Minimum instances per zone: {min_per_zone}
+
+Provide:
+1. Step-by-step migration plan
+2. gcloud CLI commands
+3. Terraform configuration changes
+4. Zero-downtime migration strategy
+5. Rollback plan
+]]></prompt>
+    </section>
+
+    <antipattern>
+      <description>Setting initial_delay_sec shorter than the actual VM startup and application warmup time.</description>
+      <reason>The autoheal loop will mark a healthy but still-starting VM as unhealthy, delete it, and recreate it. If all VMs are simultaneously starting (e.g., after a rolling restart), this creates a thrashing loop that can take the entire MIG offline until the initial delay is corrected.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using OPPORTUNISTIC update policy for rolling updates in production.</description>
+      <reason>OPPORTUNISTIC only replaces instances when they are recreated for other reasons (e.g., preemption, autohealing). The MIG can remain in a mixed-template state indefinitely. PROACTIVE replaces all instances on a schedule within the maxUnavailable/maxSurge constraints.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="gce-instance-templates"/>
+      <ref slug="gce-autoscaling"/>
+      <link href="https://cloud.google.com/compute/docs/instance-groups"/>
+      <link href="https://cloud.google.com/compute/docs/instance-groups/autohealing-instances-in-migs"/>
+    </see-also>
+  </content>
+</methodology>
