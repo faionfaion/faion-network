@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-pytest-factories">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Build Factory Boy DjangoModelFactory classes for Django test data: SubFactory, Faker, post_generation, and pytest-factoryboy registration patterns.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>pytest</tag>
+      <tag>factory-boy</tag>
+      <tag>testing</tag>
+      <tag>fixtures</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django pytest Factories</title>
+
+    <summary>pytest-factoryboy bridges Factory Boy DjangoModelFactory classes with pytest fixtures, eliminating manual test data creation. Define factories in tests/factories/, use SubFactory for FK relationships, Faker for realistic data, and register in conftest.py to auto-create singular and batch fixtures.</summary>
+
+    <why>
+      <p>Factories decouple test data creation from test logic. Instead of hand-crafting model instances in every test (which duplicates schema knowledge and breaks when fields are added), factories encode the construction rules once. pytest-factoryboy auto-creates two fixtures per registered factory — a singular instance and a _factory callable for batch creation — reducing boilerplate to near zero. SubFactory and Faker make factories self-maintaining as schemas evolve.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating test data for Django models in any pytest test.</item>
+        <item>Tests that need consistent, realistic data without hard-coding values.</item>
+        <item>Setting up related-object graphs (User → Profile → Order → OrderItem).</item>
+        <item>Batch-creating multiple instances for list/filter tests.</item>
+        <item>Replacing manual User.objects.create() calls in test setUp or fixtures.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple, one-off tests where a factory adds more complexity than value.</item>
+        <item>Tests that specifically assert on hard-coded values — pass the values explicitly to the factory instead of using Faker defaults.</item>
+        <item>Performance benchmarks where factory overhead matters — use bulk_create directly.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-factory-definition">
+      <p>Every Django model used in tests should have a corresponding factory in tests/factories/. The factory encodes the minimum required fields, with realistic defaults from Faker and correct FK wiring via SubFactory.</p>
+
+      <rule testable="true">
+        <statement>Define Django model factories in tests/factories/ using factory.django.DjangoModelFactory. Use factory.SubFactory for foreign keys. Use factory.Faker for realistic data. Use @factory.post_generation for M2M relationships and password hashing. Include skip_postgeneration_save=True in Meta for Django 4.2+ to avoid double save on post_generation. Register every factory in root conftest.py via pytest_factoryboy.register().</statement>
+        <rationale>DjangoModelFactory handles database save and cleanup. SubFactory creates dependent objects automatically and resolves circular dependencies. Faker ensures test data looks realistic (valid emails, real names) without hard-coded values. post_generation covers cases factory fields cannot express, such as M2M adds and password hashing. pytest-factoryboy.register auto-creates user and user_factory fixtures from UserFactory with no extra code.</rationale>
+      </rule>
+
+      <example type="good" title="User factory with post_generation">
+        <code lang="python"><![CDATA[
+# tests/factories/users.py
+import factory
+from factory import fuzzy
+from apps.users.models import User, Profile
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+        skip_postgeneration_save = True  # Django 4.2+ optimization
+
+    email = factory.Faker("email")
+    name = factory.Faker("name")
+    user_type = "regular"
+    is_active = True
+
+    @factory.post_generation
+    def password(self, create, extracted, **kwargs):
+        # Use simple password for tests
+        self.set_password(extracted or "testpass123")
+        if create:
+            self.save(update_fields=["password"])
+
+
+class AdminUserFactory(UserFactory):
+    user_type = "admin"
+    is_staff = True
+    is_superuser = True
+
+
+class ProfileFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Profile
+
+    user = factory.SubFactory(UserFactory)
+    bio = factory.Faker("text", max_nb_chars=200)
+    avatar = factory.django.ImageField(width=100, height=100)
+]]></code>
+      </example>
+
+      <example type="good" title="Order factory with SubFactory and post_generation items">
+        <code lang="python"><![CDATA[
+# tests/factories/orders.py
+import factory
+from decimal import Decimal
+from apps.orders.models import Order, OrderItem
+from apps.products.models import Product
+
+
+class ProductFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Product
+
+    name = factory.Faker("word")
+    price = factory.fuzzy.FuzzyDecimal(10.00, 100.00, precision=2)
+    stock = factory.fuzzy.FuzzyInteger(1, 100)
+    is_active = True
+
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    user = factory.SubFactory(UserFactory)
+    status = "pending"
+    shipping_address = factory.Faker("address")
+
+    @factory.post_generation
+    def items(self, create, extracted, **kwargs):
+        if not create:
+            return
+        if extracted:
+            for item in extracted:
+                OrderItemFactory(order=self, **item)
+
+
+class OrderItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OrderItem
+
+    order = factory.SubFactory(OrderFactory)
+    product = factory.SubFactory(ProductFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 5)
+    unit_price = factory.LazyAttribute(lambda o: o.product.price)
+]]></code>
+      </example>
+    </section>
+
+    <section name="pytest-factoryboy-registration">
+      <p>pytest-factoryboy.register() converts factory classes into pytest fixtures automatically, making factories available across the entire test suite with no extra plumbing.</p>
+
+      <rule testable="true">
+        <statement>Register all factories in root conftest.py using pytest_factoryboy.register(). register(UserFactory) creates two fixtures: 'user' (singular model instance) and 'user_factory' (callable for batch or custom creation). Use _name parameter to register multiple factories of the same model under different names (e.g., register(AdminUserFactory, _name="admin_user")). Do NOT manually define @pytest.fixture def user if you have registered UserFactory — silent override will occur.</statement>
+        <rationale>pytest-factoryboy eliminates fixture boilerplate: no @pytest.fixture def user(db): return UserFactory() in every conftest. The auto-created fixtures request the db fixture automatically, so tests just declare 'user' as a parameter and get a saved User instance. The _name parameter avoids collisions when registering multiple factories for the same model.</rationale>
+      </rule>
+
+      <example type="good" title="Factory registration in conftest.py">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+from pytest_factoryboy import register
+from tests.factories.users import UserFactory, AdminUserFactory, ProfileFactory
+from tests.factories.orders import ProductFactory, OrderFactory, OrderItemFactory
+
+# Register creates 'user' and 'user_factory' fixtures automatically
+register(UserFactory)
+register(AdminUserFactory, _name="admin_user")  # creates 'admin_user' and 'admin_user_factory'
+register(ProfileFactory)
+register(ProductFactory)
+register(OrderFactory)
+register(OrderItemFactory)
+
+
+# Usage in tests - no extra fixture code needed:
+@pytest.mark.django_db
+def test_user_creation(user):
+    assert user.email is not None
+    assert user.pk is not None
+
+@pytest.mark.django_db
+def test_create_batch(user_factory):
+    users = user_factory.create_batch(3, user_type="admin")
+    assert len(users) == 3
+    assert all(u.user_type == "admin" for u in users)
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Manually writing @pytest.fixture def user(db): return UserFactory() after registering UserFactory with pytest-factoryboy.</description>
+        <reason>pytest-factoryboy already created a 'user' fixture. The manual fixture silently overrides it without warning. All tests using 'user' now get the manual fixture, which may have different behavior (wrong scope, no cleanup). Use only one source per fixture name.</reason>
+      </antipattern>
+    </section>
+
+    <section name="factory-patterns">
+      <p>Practical factory patterns for common Django testing scenarios.</p>
+
+      <section name="string-reference-models">
+        <p>Use string references in Meta.model when there is a risk of circular imports between factory modules.</p>
+      </section>
+
+      <example type="good" title="Factories using string model references to avoid circular imports">
+        <code lang="python"><![CDATA[
+# tests/factories/orders.py — string references avoid circular imports
+import factory
+from decimal import Decimal
+
+
+class ProductFactory(factory.django.DjangoModelFactory):
+    """Factory for products."""
+
+    class Meta:
+        model = "products.Product"  # String reference
+
+    name = factory.Faker("word")
+    description = factory.Faker("sentence")
+    price = factory.fuzzy.FuzzyDecimal(10.00, 500.00, precision=2)
+    stock = factory.fuzzy.FuzzyInteger(1, 100)
+    is_active = True
+
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    """Factory for orders."""
+
+    class Meta:
+        model = "orders.Order"
+
+    user = factory.SubFactory("tests.factories.users.UserFactory")
+    status = "pending"
+    shipping_address = factory.Faker("address")
+
+    @factory.post_generation
+    def items(self, create, extracted, **kwargs):
+        """Create order items if specified."""
+        if not create or not extracted:
+            return
+        for item_data in extracted:
+            OrderItemFactory(order=self, **item_data)
+
+
+class OrderItemFactory(factory.django.DjangoModelFactory):
+    """Factory for order items."""
+
+    class Meta:
+        model = "orders.OrderItem"
+
+    order = factory.SubFactory(OrderFactory)
+    product = factory.SubFactory(ProductFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 5)
+    unit_price = factory.LazyAttribute(lambda o: o.product.price)
+]]></code>
+      </example>
+
+      <example type="good" title="Factory module __init__.py for clean imports">
+        <code lang="python"><![CDATA[
+# tests/factories/__init__.py
+"""
+Test factories module.
+Import all factories here for easy access.
+"""
+from .users import UserFactory, AdminUserFactory, ProfileFactory
+from .orders import ProductFactory, OrderFactory, OrderItemFactory
+
+__all__ = [
+    "UserFactory",
+    "AdminUserFactory",
+    "ProfileFactory",
+    "ProductFactory",
+    "OrderFactory",
+    "OrderItemFactory",
+]
+]]></code>
+      </example>
+
+      <section name="lazy-attribute-pattern">
+        <p>Use factory.LazyAttribute when a field value depends on other fields of the same object. The lambda receives the object being built.</p>
+      </section>
+
+      <example type="good" title="LazyAttribute for derived fields">
+        <code lang="python"><![CDATA[
+class OrderItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = OrderItem
+
+    product = factory.SubFactory(ProductFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 5)
+    # unit_price mirrors product.price at factory time
+    unit_price = factory.LazyAttribute(lambda o: o.product.price)
+    # subtotal derives from quantity * unit_price
+    subtotal = factory.LazyAttribute(lambda o: o.quantity * o.unit_price)
+]]></code>
+      </example>
+    </section>
+
+    <section name="mute-signals">
+      <p>Factory Boy model creation can trigger post_save signals (sending emails, starting Celery tasks). These side effects interfere with unit tests that do not test the signal. Mute them selectively.</p>
+
+      <rule testable="true">
+        <statement>Use factory.django.mute_signals(post_save) as a decorator on factory classes or test functions when the factory creates a model that triggers email sending, Celery task enqueuing, or other side effects via post_save signals. Verify the side effect in separate, dedicated tests that specifically test the signal handler.</statement>
+        <rationale>Unmuted signals make unrelated tests fail when the email backend or Celery queue is not configured for them. Muting signals in the factory keeps test scope focused. Separate signal tests verify the handler independently of factory-creation tests.</rationale>
+      </rule>
+
+      <example type="good" title="Muting signals in factory">
+        <code lang="python"><![CDATA[
+import factory
+from django.db.models.signals import post_save
+from apps.users.models import User
+
+
+@factory.django.mute_signals(post_save)
+class UserFactory(factory.django.DjangoModelFactory):
+    """UserFactory with muted post_save signals.
+
+    Use when post_save sends welcome emails or triggers Celery tasks
+    that are not relevant to the test being run.
+    """
+    class Meta:
+        model = User
+        skip_postgeneration_save = True
+
+    email = factory.Faker("email")
+    name = factory.Faker("name")
+
+# For one-off muting in a specific test:
+@pytest.mark.django_db
+def test_model_fields_only(user_factory):
+    with factory.django.mute_signals(post_save):
+        user = user_factory()
+    assert user.email is not None
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Known factory-related failure modes in Django test suites.</p>
+
+      <antipattern>
+        <description>Factory Boy + Faker unique values drift: tests asserting that response.data["email"] equals "user@example.com" fail when Faker generates a different email.</description>
+        <reason>Faker generates random data on every run. Never assert on the literal value Faker will produce. Instead, assert on the factory instance's own attribute: assert response.data["email"] == user.email. Always derive expected values from the object, not from the Faker call.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>bulk_create skipping signals: factories using bulk_create don't trigger post_save, so tests depending on signals see no side effect.</description>
+        <reason>Django's bulk_create bypasses the model save method and all signals. Tests that expect a Celery task to be enqueued or an audit record to be created via post_save will silently not see it when bulk_create is used. Use individual save() or the factory's create() method when signals matter.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>skip_postgeneration_save missing for Django 4.2+ factories with @factory.post_generation methods.</description>
+        <reason>Without skip_postgeneration_save=True in Meta, Factory Boy calls save() after every post_generation hook, causing redundant DB writes. Add skip_postgeneration_save=True and manually save inside the post_generation function only when needed.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Factory created for every Django model used in tests</check>
+      <check>SubFactory used for all FK relationships (not direct model creation inside factory)</check>
+      <check>factory.Faker used for realistic data (email, name, address)</check>
+      <check>factory.LazyAttribute used for fields derived from other fields</check>
+      <check>skip_postgeneration_save=True in Meta for factories with post_generation hooks (Django 4.2+)</check>
+      <check>All factories registered in root conftest.py via pytest_factoryboy.register()</check>
+      <check>AdminUserFactory registered with _name="admin_user" to avoid name collision</check>
+      <check>No manual @pytest.fixture def user defined when UserFactory is registered</check>
+      <check>mute_signals used for factories that trigger email/Celery side effects</check>
+      <check>Tests assert on factory instance attributes, not on literal Faker-generated values</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://pytest-factoryboy.readthedocs.io/"/>
+      <link href="https://faker.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>
