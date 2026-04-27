@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="trade-off-quality-attributes">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Quality attribute conflicts (ISO 25010), architecture style trade-offs, CAP theorem, and communication pattern trade-offs for informed architecture decisions.</summary>
+    <tags>
+      <tag>quality-attributes</tag>
+      <tag>iso-25010</tag>
+      <tag>cap-theorem</tag>
+      <tag>architecture-styles</tag>
+      <tag>trade-off</tag>
+    </tags>
+    <category>architecture</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="trade-off-decision-methods"/>
+      <ref slug="trade-off-decision-matrix"/>
+      <ref slug="quality-attributes"/>
+      <ref slug="quality-attributes-analysis"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Quality Attribute Trade-offs in Architecture</title>
+
+    <summary>Quality attributes often conflict: improving one typically degrades another. This methodology covers the ISO 25010 model, common attribute conflict pairs, architecture style trade-offs (monolith vs microservices), CAP theorem data trade-offs, and communication pattern trade-offs as the factual basis for any trade-off decision.</summary>
+
+    <why>
+      <p>Every architecture choice involves sacrificing one quality to gain another. Without a shared model of which attributes conflict and why, teams make decisions based on gut feel or fashion (cargo-culting). The ISO 25010 quality model provides a systematic vocabulary for quality requirements. CAP theorem and architecture style trade-off tables provide empirically grounded reference points that prevent reinventing these trade-offs from scratch on each project.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>When building quality attribute scenarios for ATAM or decision matrices — to identify which pairs are in tension.</item>
+        <item>When evaluating architecture style options (monolith, microservices, serverless, event-driven).</item>
+        <item>When selecting a data storage strategy and consistency requirements must be weighed against availability.</item>
+        <item>When designing communication patterns between services (sync vs async vs event-driven).</item>
+        <item>When writing the "Consequences" section of an ADR — to enumerate explicit gain/loss pairs.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>As a substitute for context-specific analysis — these tables are starting points, not verdicts. Your system's actual trade-offs may differ.</item>
+        <item>When a single quality attribute clearly dominates all others for your use case — simplify instead of balancing a full ISO 25010 analysis.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="iso-25010">
+      <p>ISO 25010 Product Quality Model defines eight top-level quality characteristics, each with sub-characteristics:</p>
+      <list>
+        <item>Functional Suitability — completeness, correctness, appropriateness.</item>
+        <item>Performance Efficiency — time behavior, resource utilization, capacity.</item>
+        <item>Compatibility — co-existence, interoperability.</item>
+        <item>Usability — learnability, operability, user error protection, accessibility.</item>
+        <item>Reliability — availability, fault tolerance, recoverability, maturity.</item>
+        <item>Security — confidentiality, integrity, non-repudiation, authenticity, accountability.</item>
+        <item>Maintainability — modularity, reusability, analyzability, modifiability, testability.</item>
+        <item>Portability — adaptability, installability, replaceability.</item>
+      </list>
+    </section>
+
+    <section name="common-conflicts">
+      <p>Improving one quality attribute typically degrades another. Common conflict pairs:</p>
+      <list>
+        <item>Performance vs Maintainability — optimized code is harder to change; abstractions add call overhead.</item>
+        <item>Performance vs Portability — hardware-specific optimizations reduce portability.</item>
+        <item>Security vs Usability — authentication steps and access controls create friction.</item>
+        <item>Security vs Performance — encryption, validation, and audit logging add latency.</item>
+        <item>Availability vs Consistency — in distributed systems, maintaining both under partition is impossible (CAP).</item>
+        <item>Availability vs Cost — redundancy and failover infrastructure multiplies costs.</item>
+        <item>Flexibility vs Performance — dynamic dispatch, plugin architectures, and late binding add overhead.</item>
+        <item>Flexibility vs Simplicity — configurability increases cognitive load and bug surface.</item>
+        <item>Scalability vs Consistency — horizontal scaling requires relaxing strong consistency guarantees.</item>
+        <item>Scalability vs Cost — infrastructure to handle 10x load costs substantially more.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every architectural decision that improves a quality attribute MUST explicitly name which other attribute(s) it degrades and whether that trade-off is acceptable for the current system context. The "Consequences" section of every ADR MUST include a gain/loss pair for each affected attribute.</statement>
+        <rationale>Hidden trade-offs (not documenting sacrifices) is the most common cause of production failures that "nobody predicted". Making them explicit converts implicit organizational knowledge into reviewable artifacts.</rationale>
+      </rule>
+    </section>
+
+    <section name="architecture-style-tradeoffs">
+      <p>Architecture style trade-offs — what each style gains and loses:</p>
+      <list>
+        <item>Monolith — gets: simplicity, debugging ease, fast local development, single deployment, easy transactions. Loses: independent scaling of components, team autonomy at large scale.</item>
+        <item>Modular Monolith — gets: boundary clarity, simpler operations than microservices, testable modules in isolation. Loses: deployment independence (still one artifact), full team autonomy.</item>
+        <item>Microservices — gets: independent scaling, team autonomy, technology heterogeneity, isolated failures. Loses: operational complexity, distributed system latency, debugging difficulty, data consistency.</item>
+        <item>Serverless — gets: no ops burden, automatic scaling, pay-per-use cost model. Loses: cold start latency, vendor lock-in, difficult local development, limited execution duration.</item>
+        <item>Event-driven — gets: loose coupling, extensibility, resilience to downstream failures. Loses: eventual consistency, complex debugging, harder to trace causality.</item>
+      </list>
+
+      <example type="good" title="Architecture style decision for fintech startup">
+        <code lang="text"><![CDATA[Context: Series A fintech, 8 engineers, MVP in 6 months, PCI-DSS required, 10K tx/day.
+
+ATAM-style scenario analysis:
+Scenario 1: PCI-DSS Audit (H, H)
+  Monolith: single scope, larger blast radius → Medium risk
+  Microservices: isolated PCI scope to payment service → Low risk
+
+Scenario 2: Developer Onboarding (M, L)
+  Monolith: single codebase, easy to understand → Low risk
+  Microservices: multiple repos, complex local setup → High risk
+
+Scenario 3: 50x Traffic Spike (H, H)
+  Monolith: vertical scaling only → High risk
+  Microservices: independent scaling of hot services → Low risk
+
+Decision: Modular Monolith + extracted Payment Service (hybrid)
+Trade-offs accepted:
+  Get: fast development velocity, minimal PCI scope, clear module boundaries, easier onboarding
+  Lose: some future extraction effort, two deployment pipelines, not full service independence]]></code>
+      </example>
+    </section>
+
+    <section name="cap-theorem">
+      <p>CAP Theorem: a distributed system can guarantee at most two of Consistency, Availability, and Partition tolerance simultaneously. Since network partitions always occur in distributed systems, the practical choice is between CP and AP.</p>
+      <list>
+        <item>CP (Consistency + Partition tolerance) — gets: correctness, no stale reads. Loses: availability during network partitions. Examples: PostgreSQL clusters, CockroachDB, etcd.</item>
+        <item>AP (Availability + Partition tolerance) — gets: always available even during partitions. Loses: immediate consistency (eventual consistency model). Examples: Cassandra, DynamoDB (default), Couchbase.</item>
+        <item>CA (Consistency + Availability) — possible only on a single node with no partitions. Not a realistic distributed option.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Every data storage decision MUST state which CAP trade-off is acceptable for the domain. Payment systems and financial ledgers MUST use CP databases. User preference, activity feeds, and session data CAN use AP databases. Mixed requirements MUST use a hybrid: CP for transactional data, AP for read-optimized projections.</statement>
+        <rationale>Choosing AP for a payment ledger causes data loss on partition recovery. Choosing CP for a social feed adds unnecessary latency. Mismatched CAP choice is the most common source of data consistency incidents.</rationale>
+      </rule>
+    </section>
+
+    <section name="communication-pattern-tradeoffs">
+      <p>Service communication pattern trade-offs:</p>
+      <list>
+        <item>Synchronous (REST, gRPC) — gets: simplicity, immediate response, easy debugging, strong consistency. Loses: coupling (caller blocked on callee), cascade failures, scaling bottlenecks at slow callees.</item>
+        <item>Asynchronous (message queues) — gets: decoupling, resilience (caller continues when callee is slow/down), independent scaling. Loses: complexity, eventual consistency, harder to debug, need idempotency.</item>
+        <item>Event-driven — gets: very loose coupling, extensibility (add consumers without modifying producers), high throughput. Loses: eventual consistency, complex causality tracing, operational overhead of broker.</item>
+      </list>
+
+      <example type="good" title="Hybrid sync/async order processing">
+        <code lang="text"><![CDATA[Context: E-commerce platform, 10K orders/day, payment gateway timeouts causing failures.
+
+Quality attribute impact of options:
+| Attribute      | Sync  | Full Async | Hybrid | Saga      |
+|----------------|-------|------------|--------|-----------|
+| Consistency    | Strong| Eventual   | Mixed  | Eventual+compensation |
+| User latency   | High  | Low        | Medium | Low       |
+| Complexity     | Low   | High       | Medium | Very High |
+| Reliability    | Coupled| Decoupled | Mixed  | Decoupled |
+
+Chosen: Hybrid
+- Sync: validate + reserve inventory (2s timeout)
+- Async (Kafka): payment, shipping prep, notification
+
+Trade-offs accepted:
+  Get: fast checkout response (<500ms), resilience to downstream failures, independent scaling
+  Lose: immediate payment confirmation, strong consistency, simple debugging
+
+Implementation requirements from trade-off:
+  - All async handlers MUST be idempotent
+  - Dead letter queue for failed processing retry
+  - WebSocket for real-time order status]]></code>
+      </example>
+    </section>
+
+    <section name="llm-prompt">
+      <prompt purpose="quality attribute trade-off analysis">
+<![CDATA[Analyze quality attribute trade-offs for [architectural decision].
+
+Current system: [Brief description of current state]
+Proposed change: [Description of proposed change]
+
+For each quality attribute pair that may conflict:
+1. Identify the trade-off (what improves, what degrades)
+2. Quantify impact if possible (percentages, response times, etc.)
+3. Assess if trade-off is acceptable for [context]
+4. Suggest mitigations for negative impacts
+
+Focus especially on:
+- Performance vs Maintainability
+- Security vs Usability
+- Consistency vs Availability
+- Flexibility vs Simplicity
+
+Conclude with: Is this trade-off profile acceptable for a [type of system]?]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="trade-off-decision-methods"/>
+      <ref slug="trade-off-decision-matrix"/>
+      <ref slug="quality-attributes"/>
+      <ref slug="quality-attributes-analysis"/>
+      <link href="https://iso25000.com/index.php/en/iso-25000-standards/iso-25010"/>
+    </see-also>
+  </content>
+</methodology>
