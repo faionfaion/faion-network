@@ -4,6 +4,7 @@
 
 ### Changed
 - decompose: finops → 5 slugs (finops-framework, finops-cost-visibility, finops-governance, finops-ai-ml-costs, finops-agentic-workflow)
+- decompose: model-context-protocol → 5 slugs (mcp-architecture, mcp-server-implementation, mcp-client-integration, mcp-security, mcp-dev-prompts)
 - decompose: github-actions-workflows → 5 slugs (gha-matrix-builds, gha-caching-artifacts, gha-deployment-patterns, gha-security-hardening, gha-workflow-structure)
 - decompose: azure-networking → 6 slugs (azure-vnet-hub-spoke, azure-nsg-rules, azure-nat-gateway, azure-app-gateway-waf, azure-front-door, azure-private-link)
 - decompose: load-balancing → 6 slugs (devops-lb-algorithms, devops-lb-health-checks, devops-lb-ssl-tls, devops-lb-high-availability, devops-lb-haproxy, devops-lb-kubernetes)
