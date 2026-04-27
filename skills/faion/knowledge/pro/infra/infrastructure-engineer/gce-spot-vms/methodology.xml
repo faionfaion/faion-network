@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gce-spot-vms">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Use GCE Spot VMs (up to 91% discount) for fault-tolerant batch and burst workloads: instance templates, shutdown scripts, MIG autohealing, GKE spot node pools, and cost-optimization patterns.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>compute-engine</tag>
+      <tag>spot-vms</tag>
+      <tag>cost-optimization</tag>
+    </tags>
+    <category>compute</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gce-instance-templates"/>
+      <ref slug="gce-managed-instance-groups"/>
+      <ref slug="gce-autoscaling"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCE Spot VMs</title>
+
+    <summary>Spot VMs offer up to 91% discount over standard on-demand pricing but can be preempted by GCP with a 30-second warning at any time. Spot VMs have no 24-hour limit (unlike the legacy Preemptible VMs they replace) and support the same machine types, regions, and features. They are suitable for batch processing, dev/test environments, fault-tolerant stateless services, and GKE burst capacity. Always use MIGs with autohealing to automatically recreate preempted instances.</summary>
+
+    <why>
+      <p>Spot VM pricing is GCP's mechanism for selling excess capacity at a large discount. The trade-off is preemption: GCP can reclaim the VM with a 30-second ACPI shutdown signal when the capacity is needed elsewhere. For workloads that can checkpoint state, handle interruptions gracefully, or are inherently stateless, this discount pays for architectural resiliency investments many times over. The 30-second shutdown window is sufficient to flush in-memory state to GCS, drain active connections, and mark the instance as unavailable in a health check.</p>
+      <p>Always prefer Spot over Preemptible for new deployments. Preemptible VMs are legacy, carry a hard 24-hour runtime limit, and will eventually be deprecated. Spot VMs have no runtime limit and the same or better availability.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Batch processing pipelines (data transforms, ML training, rendering) that checkpoint progress — preemption loses at most one checkpoint interval of work.</item>
+        <item>Dev and test environments — workloads are not user-facing; interruptions are acceptable and savings are significant.</item>
+        <item>GKE burst capacity via spot node pools — non-critical Pods run on spot nodes with tolerations; critical Pods remain on standard nodes.</item>
+        <item>Stateless microservices with MIG autohealing and enough instances that losing one zone's Spot capacity does not breach SLO.</item>
+        <item>CI/CD build agents — builds are retried on preemption; savings are 60-91%.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-instance production databases or stateful services without external state storage — preemption causes data loss and downtime.</item>
+        <item>Workloads with strict SLOs that cannot tolerate the 30-second preemption window or the instance replacement time — use standard VMs as the baseline, Spot only for burst.</item>
+        <item>Long-running jobs that cannot checkpoint and would lose more than the cost savings if preempted — calculate (preemption_probability * work_lost_cost) vs Spot savings before committing.</item>
+        <item>Applications requiring a guaranteed minimum runtime longer than the observed Spot availability in the target zone — monitor preemption rates per zone and switch zones if availability is low.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Spot VMs MUST be provisioned with provisioning_model = "SPOT" (not preemptible = true, which creates the legacy Preemptible type). The instance_termination_action MUST be set to either STOP (to preserve the disk for resumption) or DELETE (for ephemeral batch workers). automatic_restart MUST be set to false.</statement>
+        <rationale>preemptible = true creates a legacy Preemptible VM with a 24-hour runtime limit. SPOT provisioning_model creates a Spot VM with no runtime limit. automatic_restart = true is incompatible with Spot VMs and causes instance creation to fail.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Every Spot VM template MUST include a shutdown script that completes within 30 seconds. The script MUST save checkpointed state to Cloud Storage (or another external store) before the 30-second window closes. The script MUST NOT rely on the VM disk being available after preemption when termination_action = DELETE.</statement>
+        <rationale>GCP sends an ACPI shutdown signal 30 seconds before termination. Any in-memory state not externalized within this window is lost. The shutdown-script metadata key is executed automatically on receiving the preemption signal; it is the only reliable hook for state preservation.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Spot VMs in production MUST run inside a regional MIG with autohealing enabled. The MIG MUST span at least 2 zones so that a zone-level Spot capacity shortage does not eliminate all workers. Critical workloads MUST mix Spot and standard VMs (e.g., 70% Spot, 30% standard) to maintain a guaranteed minimum capacity floor.</statement>
+        <rationale>Spot availability varies by zone and machine type. Zone-level preemption events (capacity reclamation) can affect all Spot VMs in a zone simultaneously. Multi-zone MIGs absorb zone-level events. A standard VM floor ensures the service never reaches zero capacity.</rationale>
+      </rule>
+    </rules>
+
+    <section name="instance-templates-for-spot">
+      <p>Spot VM configuration lives in the instance template's scheduling block. Create a separate Spot template from the standard template so the MIG can be switched between provisioning models by changing the template reference.</p>
+
+      <example type="good" title="Terraform Spot VM instance template">
+        <code lang="hcl"><![CDATA[
+resource "google_compute_instance_template" "spot" {
+  name_prefix  = "spot-template-"
+  machine_type = "n2-standard-4"
+
+  scheduling {
+    preemptible                 = false
+    provisioning_model          = "SPOT"
+    instance_termination_action = "STOP"
+    automatic_restart           = false
+  }
+
+  disk {
+    source_image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+    auto_delete  = true
+    boot         = true
+    disk_size_gb = 50
+    disk_type    = "pd-balanced"
+  }
+
+  network_interface {
+    network    = google_compute_network.vpc.id
+    subnetwork = google_compute_subnetwork.private.id
+  }
+
+  service_account {
+    email  = google_service_account.spot_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  metadata = {
+    startup-script  = file("${path.module}/scripts/startup.sh")
+    shutdown-script = file("${path.module}/scripts/shutdown.sh")
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Legacy preemptible with 24-hour limit">
+        <code lang="hcl"><![CDATA[
+# BAD: legacy preemptible, 24-hour runtime limit
+resource "google_compute_instance_template" "preemptible_bad" {
+  name_prefix  = "preemptible-"
+  machine_type = "n2-standard-4"
+
+  scheduling {
+    preemptible    = true   # legacy Preemptible, not Spot
+    automatic_restart = false
+    # no provisioning_model = "SPOT"
+    # no shutdown-script → state lost on preemption
+  }
+
+  disk {
+    source_image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+    auto_delete  = true
+    boot         = true
+  }
+
+  network_interface {
+    network = "default"
+  }
+}
+]]></code>
+        <note>preemptible = true creates a Preemptible VM with 24-hour limit. No shutdown script means state is lost on preemption. Migrate to provisioning_model = "SPOT" for no time limit.</note>
+      </example>
+    </section>
+
+    <section name="shutdown-scripts">
+      <p>The shutdown script is the single most important Spot VM artifact. It must complete within 30 seconds. Structure: stop accepting new work → save in-flight state → upload to GCS → signal completion.</p>
+
+      <example type="good" title="Spot VM shutdown script — 30-second budget">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# shutdown.sh — MUST complete within 30 seconds on Spot preemption
+
+set -e
+
+# Log start
+echo "Shutdown script started at $(date)" >> /var/log/shutdown.log
+
+# 1. Gracefully stop application (allow up to 10s)
+docker stop -t 10 app 2>/dev/null || true
+
+# 2. Save in-flight state to GCS
+HOSTNAME=$(hostname)
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+BUCKET="gs://my-bucket/checkpoints"
+
+if [ -f /var/lib/app/state.json ]; then
+    gsutil -q cp /var/lib/app/state.json \
+        "${BUCKET}/${HOSTNAME}/${TIMESTAMP}/state.json"
+fi
+
+# 3. Mark shutdown complete in instance metadata
+curl -s -X PUT \
+    "http://metadata.google.internal/computeMetadata/v1/instance/guest-attributes/shutdown-complete" \
+    -H "Metadata-Flavor: Google" \
+    -H "Content-Type: text/plain" \
+    -d "true" || true
+
+echo "Shutdown script completed at $(date)" >> /var/log/shutdown.log
+]]></code>
+      </example>
+
+      <commands>
+        <command name="create-spot-vm"><![CDATA[gcloud compute instances create my-spot-vm \
+    --zone=us-central1-a \
+    --machine-type=e2-medium \
+    --provisioning-model=SPOT \
+    --instance-termination-action=STOP \
+    --image-family=ubuntu-2404-lts \
+    --image-project=ubuntu-os-cloud]]></command>
+        <command name="create-spot-template"><![CDATA[gcloud compute instance-templates create spot-template \
+    --machine-type=n2-standard-4 \
+    --provisioning-model=SPOT \
+    --instance-termination-action=STOP \
+    --image-family=ubuntu-2404-lts \
+    --image-project=ubuntu-os-cloud \
+    --metadata-from-file=shutdown-script=shutdown-script.sh \
+    --service-account=spot-sa@project.iam.gserviceaccount.com \
+    --scopes=cloud-platform]]></command>
+        <command name="create-spot-batch-ephemeral"><![CDATA[gcloud compute instances create batch-worker \
+    --zone=us-central1-a \
+    --machine-type=n2-standard-4 \
+    --provisioning-model=SPOT \
+    --instance-termination-action=DELETE \
+    --metadata-from-file=startup-script=batch-startup.sh]]></command>
+      </commands>
+    </section>
+
+    <section name="gke-spot-node-pools">
+      <p>GKE supports Spot VMs as node pool instances via the --spot flag. Spot nodes receive a cloud.google.com/gke-spot=true label and optionally a taint. Pods that can tolerate interruption use tolerations to schedule on Spot nodes; critical Pods remain on standard nodes.</p>
+
+      <example type="good" title="GKE cluster with mixed standard and Spot node pools">
+        <code lang="bash"><![CDATA[
+# Create cluster with standard node pool
+gcloud container clusters create my-cluster \
+    --zone=us-central1-a \
+    --num-nodes=3 \
+    --machine-type=e2-standard-4
+
+# Add Spot node pool with autoscaling and taint
+gcloud container node-pools create spot-pool \
+    --cluster=my-cluster \
+    --zone=us-central1-a \
+    --spot \
+    --num-nodes=5 \
+    --machine-type=n2-standard-4 \
+    --enable-autoscaling \
+    --min-nodes=0 \
+    --max-nodes=20 \
+    --node-taints=cloud.google.com/gke-spot=true:NoSchedule
+]]></code>
+      </example>
+
+      <example type="good" title="Kubernetes Pod with Spot node toleration and affinity">
+        <code lang="yaml"><![CDATA[
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: batch-worker
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: batch-worker
+  template:
+    metadata:
+      labels:
+        app: batch-worker
+    spec:
+      # Prefer Spot nodes but can run on standard if Spot is unavailable
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: cloud.google.com/gke-spot
+                    operator: In
+                    values:
+                      - "true"
+      tolerations:
+        - key: cloud.google.com/gke-spot
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      containers:
+        - name: worker
+          image: gcr.io/my-project/worker:latest
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: batch-worker-pdb
+spec:
+  minAvailable: 50%
+  selector:
+    matchLabels:
+      app: batch-worker
+]]></code>
+      </example>
+    </section>
+
+    <section name="cost-optimization">
+      <p>Spot VM cost strategy: use Spot for the burst tier, committed use discounts (CUDs) for the stable baseline, and sustained use discounts (automatic) for on-demand VMs that run continuously. The recommended mix for a production service: CUD for the minimum replica count, Spot for scale-out above that baseline.</p>
+
+      <list>
+        <item>Batch processing: 100% Spot with checkpointing; restart from checkpoint on preemption. Savings: 60-91%.</item>
+        <item>Dev/test environments: 100% Spot with auto-stop scheduler on nights/weekends. Savings: 80-95%.</item>
+        <item>Stateless production service: 30% standard (CUD) + 70% Spot; MIG autohealing recreates preempted Spot instances.</item>
+        <item>GKE: standard node pool (committed) for system and critical workloads + Spot pool (autoscaled 0→N) for batch and burst.</item>
+      </list>
+    </section>
+
+    <section name="checklist">
+      <checklist>
+        <check>provisioning_model = "SPOT" (not preemptible = true) in instance template scheduling block.</check>
+        <check>instance_termination_action set (STOP to preserve disk, DELETE for ephemeral batch).</check>
+        <check>automatic_restart = false in scheduling block.</check>
+        <check>Shutdown script included in template metadata (shutdown-script key).</check>
+        <check>Shutdown script completes within 30 seconds (tested explicitly).</check>
+        <check>In-flight state saved to Cloud Storage or external store in shutdown script.</check>
+        <check>Spot VMs run inside a regional MIG with autohealing enabled.</check>
+        <check>MIG spans at least 2 zones for zone-level preemption tolerance.</check>
+        <check>Critical workloads mix Spot + standard VMs (not 100% Spot).</check>
+        <check>GKE Spot node pools use --spot flag with appropriate taints.</check>
+        <check>GKE Pods on Spot nodes have tolerations and PodDisruptionBudget configured.</check>
+        <check>Committed use discounts evaluated for the stable baseline VM count.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="spot-vm-strategy"><![CDATA[
+Design Spot VM strategy for cost optimization:
+
+Workload details:
+- Type: {batch, web app, data processing, ML training}
+- Fault tolerance: {high, medium, low}
+- Data persistence: {stateless, checkpointing, external storage}
+- SLA requirement: {uptime percentage}
+
+Current infrastructure:
+- Standard VMs: {count} x {machine_type}
+- Monthly cost: ${cost}
+
+Provide:
+1. Recommended Spot vs Standard VM mix
+2. MIG configuration for automatic recreation
+3. Shutdown script template for state saving
+4. Fallback strategy for preemption
+5. Estimated cost savings
+6. Monitoring and alerting setup
+]]></prompt>
+
+      <prompt purpose="gke-spot-node-pools"><![CDATA[
+Configure GKE cluster with Spot node pools:
+
+Cluster details:
+- Cluster name: {cluster_name}
+- Region: {region}
+- Current node pools: {node_pool_details}
+
+Requirements:
+- Standard nodes for: {critical workloads}
+- Spot nodes for: {batch, dev, non-critical workloads}
+- Cost reduction target: {percentage}%
+
+Provide:
+1. gcloud commands to:
+   - Create Spot node pool
+   - Add taints to Spot nodes
+2. Kubernetes manifests for:
+   - Toleration for Spot nodes
+   - Node affinity rules
+   - PodDisruptionBudget
+3. Workload placement strategy
+4. Cost monitoring setup
+]]></prompt>
+
+      <prompt purpose="shutdown-script"><![CDATA[
+Create a shutdown script for Spot VM preemption handling:
+
+Application details:
+- Application type: {type}
+- State location: {file paths}
+- State size: {approximate size}
+- GCS bucket for checkpoints: {bucket_name}
+- Maximum acceptable data loss: {seconds} seconds
+
+Requirements:
+- Must complete within 30 seconds
+- Save application state
+- Gracefully stop services
+- Log shutdown events
+
+Provide:
+1. Complete shutdown script
+2. GCS checkpoint naming strategy
+3. Restart/resume script
+4. Testing procedure for shutdown script
+5. Monitoring for preemption events
+]]></prompt>
+    </section>
+
+    <antipattern>
+      <description>Using preemptible = true instead of provisioning_model = "SPOT" for new deployments.</description>
+      <reason>Preemptible VMs are a legacy product with a hard 24-hour runtime limit. Spot VMs are the current product, have no runtime limit, and support more features. All new Spot VM deployments must use provisioning_model = "SPOT" in the scheduling block.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Running Spot VMs without a shutdown script.</description>
+      <reason>Without a shutdown script, all in-memory application state is lost when GCP preempts the instance. For batch workloads, this means replaying all work since the last checkpoint. For stateful services, it means data loss. The 30-second window is reliable enough to flush state to GCS for most workloads.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Using 100% Spot VMs for a production service with an SLO.</description>
+      <reason>Zone-level capacity reclamation events can preempt all Spot VMs in a zone simultaneously. With 100% Spot and no standard VM floor, the service can go to zero capacity. Always maintain a standard VM baseline (at least 30% of min replicas on standard VMs) for SLO-bearing services.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="gce-instance-templates"/>
+      <ref slug="gce-managed-instance-groups"/>
+      <link href="https://cloud.google.com/compute/docs/instances/spot"/>
+      <link href="https://cloud.google.com/kubernetes-engine/docs/concepts/spot-vms"/>
+      <link href="https://cloud.google.com/compute/docs/instances/create-use-spot"/>
+    </see-also>
+  </content>
+</methodology>
