@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- decompose: terraform-modules → 5 slugs (terraform-modules-structure, terraform-modules-versioning, terraform-modules-composition, terraform-modules-security, terraform-modules-prompts)
 - decompose: local-llm-ollama → 6 slugs (ollama-setup-models, ollama-python-client, ollama-tool-calling, ollama-deployment, ollama-prompt-engineering, ollama-agent-integration)
 - decompose: elk-stack-logging → 5 slugs (devops-elk-architecture, devops-elk-index-management, devops-elk-logstash-pipeline, devops-elk-beats-collection, devops-elk-queries-alerting)
 - decompose: finops → 5 slugs (finops-framework, finops-cost-visibility, finops-governance, finops-ai-ml-costs, finops-agentic-workflow)
