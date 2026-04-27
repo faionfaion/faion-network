@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="docker-security-hardening">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Harden Docker containers with non-root execution, capability dropping, read-only filesystem, secrets management, and vulnerability scanning via Trivy or Docker Scout.</summary>
+    <tags>
+      <tag>docker</tag>
+      <tag>security</tag>
+      <tag>hardening</tag>
+      <tag>vulnerability-scanning</tag>
+      <tag>non-root</tag>
+    </tags>
+    <category>docker</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="docker-image-optimization"/>
+      <ref slug="security-as-code"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Docker Security Hardening</title>
+
+    <summary>Apply layered security to Docker containers: run as non-root users, drop Linux capabilities, enforce read-only filesystems, manage secrets via Docker Secrets or Vault, sign images, and scan for vulnerabilities with Trivy or Docker Scout in every CI pipeline.</summary>
+
+    <why>
+      <p>Containers share the host kernel. A container running as root with default capabilities and a writable filesystem can escape to the host, read secrets from adjacent containers, or pivot through the network. The Docker default — root user, all capabilities, writable filesystem, no seccomp profile — is the worst possible baseline for production. Each hardening layer independently raises the cost of exploitation; combined they reduce container breakout to a chain of multiple unlikely steps.</p>
+      <p>Vulnerability scanning addresses a different threat: supply-chain CVEs in base images and dependencies. Base images accumulate CVEs between their own release and when your pipeline uses them. Scanning at build time with Trivy or Docker Scout detects HIGH/CRITICAL CVEs before they reach production and blocks the build when they exceed the threshold.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any production container — apply non-root user and capability dropping by default.</item>
+        <item>Multi-tenant environments — combine read-only filesystem, dropped capabilities, and seccomp profiles.</item>
+        <item>CI/CD pipelines — add Trivy or Docker Scout scan step that fails on HIGH/CRITICAL CVEs.</item>
+        <item>Containers handling secrets — use Docker Secrets, Vault agent, or cloud secret managers; never ENV vars in Dockerfile.</item>
+        <item>Containers that do not need to write to the filesystem at runtime — use --read-only with tmpfs for /tmp.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Development-only containers where iteration speed matters more than hardening — apply in staging/prod but not dev.</item>
+        <item>Containers that legitimately require elevated privileges (e.g., syslog daemons, network monitors) — document the exception and limit the scope.</item>
+        <item>Legacy apps that cannot run as non-root without significant refactoring — triage and fix the app, do not permanently exempt it.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="non-root-execution">
+      <p>Docker containers run as root (UID 0) by default. A process running as root inside the container is root on the host if it escapes the namespace boundary. Creating and switching to a dedicated low-UID user costs two Dockerfile lines.</p>
+
+      <rule testable="true">
+        <statement>Every production Dockerfile MUST create a dedicated non-root user and switch to it with the USER directive before the CMD or ENTRYPOINT. The user MUST be created with useradd -r (system account, no home, no password) or the Alpine equivalent adduser -S. Files copied into the image MUST be owned by that user via --chown.</statement>
+        <rationale>Running as root means a container escape gives the attacker root on the host. A non-root user limits blast radius: the escaped process has the privileges of the app user only, and the host will reject most syscalls that require CAP_SYS_ADMIN or higher.</rationale>
+      </rule>
+
+      <example type="good" title="Non-root user in Python Dockerfile">
+        <code lang="dockerfile"><![CDATA[
+FROM python:3.12-slim
+
+# Create system user with no home dir, no password
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Transfer ownership before switching user
+COPY --chown=appuser:appgroup . .
+
+USER appuser
+
+CMD ["python", "-m", "app"]
+]]></code>
+      </example>
+
+      <example type="bad" title="Running as root (default)">
+        <code lang="dockerfile"><![CDATA[
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY . .
+RUN pip install -r requirements.txt
+
+# No USER directive — runs as root
+CMD ["python", "-m", "app"]
+]]></code>
+        <note>Runs as UID 0. Any vulnerability in the app or its dependencies grants root inside the container and potentially root on the host.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Docker runtime MUST start containers with --security-opt no-new-privileges to prevent SUID/SGID binaries inside the container from elevating to a higher UID at runtime even if a privilege escalation vulnerability exists.</statement>
+        <rationale>Without this flag, a setuid binary in the image or a volume mount can promote a non-root process back to root post-startup, defeating the USER directive.</rationale>
+      </rule>
+    </section>
+
+    <section name="capability-dropping">
+      <p>Linux capabilities subdivide root privileges into ~40 independently controllable tokens. Docker grants containers 14 capabilities by default, many of which typical web apps do not need. Dropping all and re-adding only what is required follows least privilege.</p>
+
+      <rule testable="true">
+        <statement>Production containers MUST be started with --cap-drop ALL. Capabilities MUST be re-added one at a time (--cap-add) only when required and documented. Web application containers serving HTTP typically require no additional capabilities after dropping all.</statement>
+        <rationale>Default capabilities include NET_RAW (raw sockets, used for ICMP floods), SYS_CHROOT, AUDIT_WRITE, and others that web apps never use. Dropping them removes whole classes of privilege escalation and network attack surface.</rationale>
+      </rule>
+
+      <example type="good" title="Docker run with capability restrictions">
+        <code lang="bash"><![CDATA[
+docker run \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid \
+  --memory 512m \
+  --cpus 0.5 \
+  myapp:latest
+]]></code>
+        <note>No capabilities, read-only root, tmpfs for /tmp, resource limits. This is the minimum viable hardened runtime for a stateless web app.</note>
+      </example>
+    </section>
+
+    <section name="read-only-filesystem">
+      <p>The --read-only flag mounts the container root filesystem as read-only. Any write attempt returns EROFS. Applications that only write to tmpfs (for /tmp) and external volumes can run fully read-only, eliminating a class of persistence attacks where an attacker writes a backdoor to the filesystem.</p>
+
+      <rule testable="true">
+        <statement>Stateless containers (web servers, API services, worker processes) MUST be run with --read-only and --tmpfs /tmp:rw,noexec,nosuid. Stateful containers that write to volumes MUST mount the volume explicitly; the root filesystem MUST still be read-only.</statement>
+        <rationale>A writable root filesystem allows an attacker who achieves code execution to install tools (curl, nc, python) that persist across restarts. Read-only eliminates this persistence vector and prevents modification of the application binary.</rationale>
+      </rule>
+    </section>
+
+    <section name="secrets-management">
+      <p>Secrets embedded in Dockerfile ENV or ARG instructions appear in every image layer and are visible to anyone with docker history access. Secrets must be injected at runtime.</p>
+
+      <rule testable="true">
+        <statement>Secrets (API keys, database passwords, certificates) MUST NOT appear in Dockerfile ENV, ARG, or COPY instructions. They MUST be injected at runtime via Docker Secrets (Swarm), Kubernetes Secrets (with encryption at rest enabled), HashiCorp Vault agent, or cloud-native secret managers (AWS Secrets Manager, GCP Secret Manager). Environment variable injection from a secrets manager at container startup is acceptable; hardcoding in the image is not.</statement>
+        <rationale>Secrets in Dockerfile instructions appear in every layer of the image, in docker history output, and in any registry the image is pushed to. Even if the Dockerfile layer is squashed, the secret exists in every cache hit. There is no safe way to remove a secret from a published image.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Using ARG to pass secrets at build time: ARG API_KEY and then ENV API_KEY=$API_KEY.</description>
+        <reason>Build args appear in docker history and in any exported image, even after the build completes. Anyone with pull access to the image can recover the secret.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Copying .env files into the image with COPY .env . without removing them in a later layer.</description>
+        <reason>The .env file is embedded in the image layer regardless of later RUN rm commands — Docker layers are immutable and the file exists in the prior layer.</reason>
+      </antipattern>
+    </section>
+
+    <section name="vulnerability-scanning">
+      <p>Vulnerability scanning checks the OS packages and language dependencies in an image against CVE databases. Trivy is the most comprehensive open-source scanner; Docker Scout is integrated into Docker Hub. Both support SBOM generation.</p>
+
+      <rule testable="true">
+        <statement>CI pipelines MUST include a vulnerability scan step (Trivy or Docker Scout) that runs after docker build and MUST fail the build on HIGH or CRITICAL CVEs. The scan MUST run against the full final image tag, not the build stage. SBOM generation MUST be enabled and the SBOM artifact MUST be stored alongside the image.</statement>
+        <rationale>Base images accumulate CVEs between their release date and when your pipeline pulls them. Scanning at build time catches these before deployment. Failing on HIGH/CRITICAL forces timely base image updates and prevents known-exploitable images reaching production.</rationale>
+      </rule>
+
+      <example type="good" title="Trivy scan in GitHub Actions">
+        <code lang="yaml"><![CDATA[
+- name: Scan image for vulnerabilities
+  uses: aquasecurity/trivy-action@master
+  with:
+    image-ref: myapp:${{ github.sha }}
+    format: sarif
+    output: trivy-results.sarif
+    severity: HIGH,CRITICAL
+    exit-code: 1
+
+- name: Upload scan results
+  uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: trivy-results.sarif
+]]></code>
+        <note>exit-code: 1 fails the build on HIGH/CRITICAL findings. SARIF output integrates with GitHub Code Scanning.</note>
+      </example>
+
+      <commands>
+        <command name="trivy-local">docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL IMAGE</command>
+        <command name="check-non-root">docker inspect --format='{{.Config.User}}' IMAGE</command>
+        <command name="check-healthcheck">docker inspect --format='{{json .Config.Healthcheck}}' IMAGE</command>
+      </commands>
+    </section>
+
+    <section name="image-signing">
+      <p>Image signing ensures the image you pull is the image you built. Docker Content Trust (DCT) uses Notary to sign and verify images. In Kubernetes, admission controllers like Cosign + Policy Controller enforce signing policy.</p>
+
+      <rule testable="true">
+        <statement>Production registries MUST have image signing enabled. CI pipelines MUST sign images after push using Docker Content Trust (DOCKER_CONTENT_TRUST=1) or Cosign. Kubernetes clusters MUST enforce image signature verification via an admission controller before allowing unsigned images to run.</statement>
+        <rationale>Without signing, a registry compromise or DNS hijack can substitute a malicious image for the legitimate one. Signing creates a cryptographic chain from CI to runtime that cannot be forged without the signing key.</rationale>
+      </rule>
+    </section>
+
+    <checklist>
+      <check>Dockerfile creates non-root user (useradd -r / adduser -S) and ends with USER directive.</check>
+      <check>COPY --chown sets file ownership before USER switch.</check>
+      <check>Runtime uses --cap-drop ALL; required capabilities explicitly re-added and documented.</check>
+      <check>Runtime uses --security-opt no-new-privileges.</check>
+      <check>Stateless containers run with --read-only and --tmpfs /tmp.</check>
+      <check>No secrets in Dockerfile ENV, ARG, or COPY instructions.</check>
+      <check>Secrets injected at runtime via Docker Secrets, Vault, or cloud secret manager.</check>
+      <check>CI pipeline includes Trivy or Docker Scout scan failing on HIGH/CRITICAL CVEs.</check>
+      <check>SBOM generated and stored alongside each image build.</check>
+      <check>Image signing enabled in registry and enforced in Kubernetes admission.</check>
+      <check>Base images pinned to patch versions and rebuilt at least weekly.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="docker-image-optimization"/>
+      <link href="https://docs.docker.com/engine/security/"/>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"/>
+      <link href="https://aquasecurity.github.io/trivy/"/>
+      <link href="https://www.docker.com/blog/docker-hardened-images-for-every-developer/"/>
+    </see-also>
+  </content>
+</methodology>
