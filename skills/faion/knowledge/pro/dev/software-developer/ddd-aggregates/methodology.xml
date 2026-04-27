@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ddd-aggregates">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>DDD Aggregate root pattern: cluster entities under one root, enforce invariants via intention-revealing methods, raise domain events, never use public setters.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>aggregate</tag>
+      <tag>domain-model</tag>
+      <tag>invariants</tag>
+      <tag>rich-domain</tag>
+    </tags>
+    <category>ddd</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ddd-value-objects"/>
+      <ref slug="ddd-domain-events"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>DDD Aggregates: Invariant-Enforcing Cluster Roots</title>
+
+    <summary>An Aggregate is a cluster of domain objects (Entities + Value Objects) treated as a single unit for data changes. One Entity is designated the Aggregate Root: all external access goes through the root, and all business invariants are enforced inside the root's methods. No public setters; use intention-revealing command methods (order.place(), order.cancel()) that validate state before mutating it.</summary>
+
+    <why>
+      <p>Anemic domain models push business rules into Service classes that manipulate entity fields directly. The result: invariants are enforced only when callers remember to call the right service. The DDD Aggregate pattern moves invariants inside the entity, making them impossible to bypass: if order.place() is the only way to set status=PLACED, the "order must have lines before it can be placed" rule is always enforced, by construction.</p>
+      <p>The Aggregate boundary also defines the transaction scope: one Aggregate per DB transaction. Cross-Aggregate consistency is eventual, coordinated via Domain Events. This prevents both under-locking (missing invariant checks) and over-locking (long transactions spanning unrelated state).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any domain object with lifecycle state and business invariants (Order, Subscription, Account, Booking).</item>
+        <item>When multiple entities must change together atomically (Order + its OrderLines).</item>
+        <item>When you need to record that something happened (Domain Events) as part of a state transition.</item>
+        <item>Complex domains with multiple teams: the Aggregate root is the API contract for the cluster.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure CRUD entities with no invariants — a plain ORM model with getters/setters is simpler and faster.</item>
+        <item>Read-only projections or query models — Aggregates are for the write side; read models use flat DTOs.</item>
+        <item>ETL / batch transforms where there is no transactional domain logic.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>The Aggregate Root MUST be the only entry point for mutations: external code MUST NOT reach into child Entities or Value Objects and mutate them directly. All state changes happen through named command methods on the root.</statement>
+        <rationale>Direct mutation bypasses invariant checks. Intention-revealing methods (place, cancel, ship) document the domain vocabulary and enforce pre-conditions before mutating state.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Each Aggregate Root method that changes state MUST raise a Domain Event (appended to an internal _events list) describing what happened. The application layer collects and dispatches events after the DB transaction commits.</statement>
+        <rationale>Events decouple downstream reactions (email, inventory reserve, billing) from the Aggregate. Collecting before dispatch ensures events are only raised when the transaction succeeds.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Aggregates MUST NOT hold direct object references to other Aggregate Roots. Reference by identity (UUID) only. Cross-Aggregate state access goes through Repositories or Domain Services.</statement>
+        <rationale>Object references create implicit coupling and allow bypass of the other Aggregate's invariants. Identity references keep transaction boundaries clean and enable eventual consistency across Aggregates.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Aggregate invariants MUST be expressed as failing unit tests before implementation. Each invariant becomes a test: test_cannot_place_empty_order, test_cannot_ship_unpaid_order, test_cannot_modify_placed_order.</statement>
+        <rationale>Tests pin the invariants as living documentation and catch regressions. Writing tests first forces explicit invariant identification before coding begins.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Order Aggregate root with invariants and events">
+      <code lang="python"><![CDATA[
+# order/domain/entities/order.py
+from dataclasses import dataclass, field
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+from typing import List
+from uuid import UUID, uuid4
+
+from .value_objects import Money, Address
+from .events import OrderPlaced, OrderShipped
+
+
+class OrderStatus(Enum):
+    DRAFT = "draft"
+    PLACED = "placed"
+    PAID = "paid"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class OrderLine:
+    """Value object representing an order line item."""
+    product_id: UUID
+    product_name: str
+    quantity: int
+    unit_price: Money
+
+    @property
+    def total(self) -> Money:
+        return Money(self.unit_price.amount * self.quantity, self.unit_price.currency)
+
+
+@dataclass
+class Order:
+    """Order aggregate root."""
+
+    id: UUID = field(default_factory=uuid4)
+    customer_id: UUID = field(default=None)
+    status: OrderStatus = OrderStatus.DRAFT
+    lines: List[OrderLine] = field(default_factory=list)
+    shipping_address: Address = None
+    placed_at: datetime = None
+    _events: List = field(default_factory=list, repr=False)
+
+    def add_line(self, product_id: UUID, name: str, quantity: int, price: Money) -> None:
+        """Add a line item to the order."""
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify a placed order")
+        if quantity <= 0:
+            raise DomainError("Quantity must be positive")
+        for line in self.lines:
+            if line.product_id == product_id:
+                raise DomainError("Product already in order")
+        self.lines.append(OrderLine(product_id, name, quantity, price))
+
+    def remove_line(self, product_id: UUID) -> None:
+        """Remove a line item from the order."""
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Cannot modify a placed order")
+        self.lines = [l for l in self.lines if l.product_id != product_id]
+
+    def place(self, shipping_address: Address) -> None:
+        """Place the order."""
+        if self.status != OrderStatus.DRAFT:
+            raise DomainError("Order already placed")
+        if not self.lines:
+            raise DomainError("Cannot place empty order")
+        self.shipping_address = shipping_address
+        self.status = OrderStatus.PLACED
+        self.placed_at = datetime.utcnow()
+        self._events.append(OrderPlaced(
+            order_id=self.id,
+            customer_id=self.customer_id,
+            total=self.total,
+        ))
+
+    def mark_paid(self) -> None:
+        """Mark order as paid."""
+        if self.status != OrderStatus.PLACED:
+            raise DomainError("Order must be placed before payment")
+        self.status = OrderStatus.PAID
+
+    def ship(self, tracking_number: str) -> None:
+        """Ship the order."""
+        if self.status != OrderStatus.PAID:
+            raise DomainError("Order must be paid before shipping")
+        self.status = OrderStatus.SHIPPED
+        self._events.append(OrderShipped(
+            order_id=self.id,
+            tracking_number=tracking_number,
+        ))
+
+    def cancel(self) -> None:
+        """Cancel the order."""
+        if self.status in (OrderStatus.SHIPPED, OrderStatus.DELIVERED):
+            raise DomainError("Cannot cancel shipped order")
+        self.status = OrderStatus.CANCELLED
+
+    @property
+    def total(self) -> Money:
+        """Calculate order total."""
+        if not self.lines:
+            return Money(Decimal("0"), "USD")
+        total = sum(line.total.amount for line in self.lines)
+        return Money(total, self.lines[0].unit_price.currency)
+
+    def collect_events(self) -> List:
+        events = self._events.copy()
+        self._events.clear()
+        return events
+]]></code>
+      <note>No public setters. Every state change goes through a named method that validates pre-conditions and raises an event. collect_events() clears the buffer after dispatch.</note>
+    </example>
+
+    <example type="bad" title="Anemic model — invariants in service, not entity">
+      <code lang="python"><![CDATA[
+# BAD: just data, no behavior
+class Order:
+    def __init__(self):
+        self.id = None
+        self.status = None
+        self.lines = []
+
+class OrderService:
+    def place_order(self, order):
+        # Invariants scattered across service methods; easy to forget
+        order.status = "placed"
+]]></code>
+      <note>Any caller can set order.status directly. Invariants are enforced only when OrderService.place_order is called — bypass is trivial.</note>
+    </example>
+
+    <example type="bad" title="Crossing aggregate boundaries">
+      <code lang="python"><![CDATA[
+# BAD: reaching into another aggregate's internals
+class Order:
+    def place(self):
+        # Never access another aggregate's internal state
+        if self.customer.wallet.balance < self.total:
+            raise Error("Insufficient funds")
+
+# GOOD: use application service to coordinate
+class PlaceOrderUseCase:
+    async def execute(self, order_id, customer_id):
+        order = await self.order_repo.find(order_id)
+        customer = await self.customer_repo.find(customer_id)
+        if not customer.can_afford(order.total):
+            raise InsufficientFundsError()
+        order.place()
+]]></code>
+      <note>The application service loads both Aggregates and coordinates. Each Aggregate is responsible only for its own invariants.</note>
+    </example>
+
+    <section name="invariant-tests">
+      <p>Write invariant tests before writing Aggregate methods. Each invariant becomes one test. These tests are the living specification of the Aggregate's rules.</p>
+      <example type="good" title="Aggregate invariant tests (pytest)">
+        <code lang="python"><![CDATA[
+# tests/domain/test_order.py
+import pytest
+from decimal import Decimal
+from order.domain.entities.order import Order, OrderStatus
+from order.domain.value_objects import Money, Address
+
+def test_cannot_place_empty_order():
+    order = Order(customer_id="c-1")
+    with pytest.raises(DomainError, match="empty"):
+        order.place(shipping_address=_addr())
+
+def test_place_emits_event():
+    order = Order(customer_id="c-1")
+    order.add_line("p-1", "X", 1, Money(Decimal("10"), "USD"))
+    order.place(shipping_address=_addr())
+    events = order.collect_events()
+    assert len(events) == 1
+    assert events[0].order_id == order.id
+
+def test_cannot_modify_after_place():
+    order = Order(customer_id="c-1")
+    order.add_line("p-1", "X", 1, Money(Decimal("10"), "USD"))
+    order.place(_addr())
+    with pytest.raises(DomainError, match="placed"):
+        order.add_line("p-2", "Y", 1, Money(Decimal("5"), "USD"))
+
+def _addr():
+    return Address("1 Main", "City", "ST", "12345", "US")
+]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-gotchas">
+      <p>AI agents produce anemic models by default — entities become dataclasses with services manipulating fields. Pin these instructions in the agent prompt and review for violations.</p>
+      <list>
+        <item>Pin "no public setters; behavior on the entity" — agents default to getter/setter patterns from training data.</item>
+        <item>Flag any cross-Aggregate field access (order.customer.wallet.balance) — agents traverse object graphs freely.</item>
+        <item>Require explicit naming: Domain Services hold pure logic; Application Services orchestrate (transaction + repo + dispatch). Agents conflate the two.</item>
+        <item>Watch for "DDD washing": adding domain/, application/, infrastructure/ folder names while keeping anemic models is theater, not DDD.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>DDD Aggregate work splits into modeling (high-judgment) and implementation (mechanical). Use a planner subagent (Opus) to produce a Bounded Context map and Aggregate diagrams as a checkpoint for human review. Once the model is signed off, an implementation subagent (Sonnet/Haiku) generates Aggregate roots from the spec.</p>
+      <prompt purpose="aggregate-implementation"><![CDATA[
+Implement Subscription aggregate per locked spec at .product/ddd/subscription.md:
+- Aggregate root Subscription with invariants enforced in methods
+- Value Objects: BillingPeriod, Money (frozen)
+- Domain events: SubscriptionActivated, SubscriptionRenewed, SubscriptionCancelled
+- Repository interface SubscriptionRepository (no ORM types)
+- Tests covering each invariant + state transition
+Use frozen dataclasses (Python) or records (Java/C#). No setters on root.
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Aggregate Root is the only entry point for mutations</check>
+      <check>No public setters on Aggregate Root or child Entities</check>
+      <check>All state transitions are named command methods with pre-condition checks</check>
+      <check>Domain Events are appended to _events list inside command methods</check>
+      <check>Events are only collected/dispatched after successful DB transaction</check>
+      <check>Cross-Aggregate references use identity (UUID), not object references</check>
+      <check>Each invariant has a corresponding failing unit test written before implementation</check>
+      <check>Domain layer has no framework imports (no Django, JPA, EF)</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="ddd-value-objects"/>
+      <ref slug="ddd-domain-events"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+      <link href="https://www.domainlanguage.com/ddd/reference/"/>
+      <link href="https://martinfowler.com/tags/domain%20driven%20design.html"/>
+    </see-also>
+  </content>
+</methodology>

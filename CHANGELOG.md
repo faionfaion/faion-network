@@ -8,6 +8,7 @@
 - decompose: nosql-patterns → 4 slugs (nosql-mongodb-patterns, nosql-redis-patterns, nosql-cassandra-patterns, nosql-neo4j-patterns)
 - decompose: go-standard-layout → 4 slugs (go-layout-directory-structure, go-layout-layer-rules, go-layout-agentic-workflow, go-layout-toolchain)
 - decompose: langchain-patterns → 3 slugs (langchain-rag-pipeline, langchain-production-patterns, langchain-observability)
+- decompose: domain-driven-design → 5 slugs (ddd-aggregates, ddd-value-objects, ddd-repositories, ddd-domain-events, ddd-anti-corruption-layer)
 - decompose: microservices-design → 5 slugs (microservices-service-boundaries, microservices-inter-service-comm, microservices-circuit-breaker, microservices-saga-pattern, microservices-observability)
 - decompose: rust-testing → 5 slugs (rust-testing-unit, rust-testing-integration, rust-testing-property, rust-testing-antipatterns, rust-testing-ci-toolchain)
 - decompose: rag-eval-methods → 4 slugs (rag-eval-test-set-generation, rag-eval-pipeline, rag-eval-ab-testing, rag-eval-production-monitoring)
