@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-modules-versioning">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Semantic versioning, version constraint syntax, CHANGELOG maintenance, and registry publication checklist for Terraform modules used by multiple consumers.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>modules</tag>
+      <tag>versioning</tag>
+      <tag>semver</tag>
+      <tag>registry</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="terraform-modules-structure"/>
+      <ref slug="terraform-modules-composition"/>
+      <ref slug="terraform-basics"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Terraform Module Versioning</title>
+
+    <summary>Published Terraform modules MUST use Semantic Versioning (SemVer) with Git tags, version constraints on every module source reference, and a maintained CHANGELOG.md. Without pinned version constraints, a module update can silently break all consumers on the next terraform init.</summary>
+
+    <why>
+      <p>Terraform resolves module versions at init time. An unpinned module source (no version argument) fetches the latest commit on the default branch. If a breaking change is merged overnight, every pipeline that runs terraform init the next day picks it up — often during a production apply. Pinned version constraints make upgrades explicit and reviewable. SemVer communicates the impact of a release to consumers without requiring them to read every diff.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Authoring a module consumed by more than one caller (team-shared or registry module).</item>
+        <item>Upgrading a module dependency — need to understand what constraint syntax is safe.</item>
+        <item>Releasing a new module version — need the correct tag and CHANGELOG format.</item>
+        <item>Setting up a new consumer module call — choosing the right version constraint operator.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Private local modules referenced by relative path (./modules/vpc) in a mono-repo — they have no separate release lifecycle.</item>
+        <item>Single-team repos where the module author and all callers commit in the same branch — version pinning adds overhead without benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="semver">
+      <p>SemVer defines three version segments: MAJOR.MINOR.PATCH. For Terraform modules, the key distinction is whether a change requires consumers to update their module call.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>Major version bumps (X.0.0) MUST be used for any change that requires consumers to update variable names, remove previously supported variables, or change output names. A migration guide MUST accompany every major release.</statement>
+          <rationale>Without a clear signal, consumers cannot distinguish a bug fix from a breaking change at a glance. Major bumps give teams a predictable gate for planning upgrades.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Minor version bumps (0.X.0) MUST be used for new optional variables, new outputs, or new resources that are backward-compatible. Existing callers MUST continue to work without modification.</statement>
+          <rationale>Consumers who rely on ~&gt; constraints (see below) will pick up minor versions automatically. Breaking backward compatibility in a minor bump violates consumer expectations.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Patch version bumps (0.0.X) MUST be used for bug fixes that do not add new features or change behavior. No consumer code changes required.</statement>
+          <rationale>Patch bumps signal safe auto-adoption for consumers using pessimistic constraints.</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="SemVer version decision table">
+        <code lang="text"><![CDATA[
+Change                                         → Version bump
+----------------------------------------------------------
+Rename variable `enable_nat` → `nat_enabled`  → MAJOR (2.0.0)
+Remove deprecated output `subnet_id`           → MAJOR (2.0.0)
+Add new optional variable `enable_ipv6`        → MINOR (1.1.0)
+Add new output `ipv6_cidr_block`               → MINOR (1.1.0)
+Fix NAT gateway depends_on race condition      → PATCH (1.0.1)
+Update default instance type for cost          → PATCH (1.0.1)
+]]></code>
+      </example>
+    </section>
+
+    <section name="version-constraints">
+      <p>The version argument on a module source controls which releases Terraform will accept. Using the wrong operator is the most common cause of accidental breaking-change adoption.</p>
+
+      <rules>
+        <rule testable="true">
+          <statement>All module source references that include a version argument MUST use the pessimistic constraint operator (~&gt;) to allow patch and minor updates within a major version, or an explicit range. The exact-pin operator (=) MUST only be used when a specific patch is known to fix a critical bug.</statement>
+          <rationale>~&gt; 5.0 allows 5.0.1, 5.1.0, 5.9.9 but blocks 6.0.0 — safe for routine updates while blocking breaking changes. Exact pins require manual bumps for every patch release, increasing maintenance burden.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Registry and GitHub module sources MUST always include the version argument. Local path sources (./modules/X) MUST NOT include a version argument.</statement>
+          <rationale>Local modules have no separate release lifecycle — the version argument is ignored and its presence misleads maintainers.</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="Version constraint examples">
+        <code lang="hcl"><![CDATA[
+# Registry module — pessimistic constraint (recommended)
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.0"      # >= 5.0.0, < 6.0.0
+}
+
+# Registry module — explicit range
+module "s3" {
+  source  = "terraform-aws-modules/s3-bucket/aws"
+  version = ">= 4.0, < 5.0"
+}
+
+# GitHub module — pinned to exact tag (acceptable for external repos)
+module "network" {
+  source = "github.com/org/terraform-modules//network?ref=v1.2.3"
+}
+
+# Local module — no version argument
+module "ecs" {
+  source = "./modules/ecs"
+}
+]]></code>
+      </example>
+
+      <example type="bad" title="Unpinned module source">
+        <code lang="hcl"><![CDATA[
+# No version argument — fetches latest on every terraform init
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+}
+]]></code>
+        <note>Any breaking change merged to the upstream module HEAD will be adopted silently on the next terraform init, breaking the next plan or apply.</note>
+      </example>
+    </section>
+
+    <section name="changelog">
+      <p>The CHANGELOG.md is the consumer-facing release log. It must be maintained as part of every release, not retroactively.</p>
+
+      <rule testable="true">
+        <statement>Every published module MUST maintain a CHANGELOG.md in the module root. Each release MUST document: the version number, release date, and categorized changes (Added, Changed, Breaking Changes, Fixed, Deprecated, Removed). Breaking changes MUST be in their own section and include migration instructions.</statement>
+        <rationale>Consumers deciding whether to upgrade need to evaluate impact without reading the full diff. A categorized CHANGELOG reduces the upgrade decision from O(diff) to O(CHANGELOG section).</rationale>
+      </rule>
+
+      <example type="good" title="CHANGELOG.md format">
+        <code lang="markdown"><![CDATA[
+# Changelog
+
+## [2.1.0] - 2025-01-15
+### Added
+- Support for IPv6 CIDR blocks
+- New output `ipv6_cidr_block`
+
+### Changed
+- Default instance type updated to t3.medium
+
+## [2.0.0] - 2024-11-01
+### Breaking Changes
+- Renamed variable `enable_nat` to `nat_gateway_enabled`
+- Removed deprecated `single_nat_gateway` variable
+
+### Migration
+Replace in all module calls:
+  enable_nat = true  →  nat_gateway_enabled = true
+Remove any `single_nat_gateway` references.
+]]></code>
+      </example>
+    </section>
+
+    <section name="release-checklist">
+      <p>A release checklist prevents common omissions that break the registry sync or leave consumers without upgrade guidance.</p>
+
+      <checklist>
+        <check>Version follows SemVer — verify MAJOR.MINOR.PATCH classification against the change table.</check>
+        <check>CHANGELOG.md updated with new version section before tagging.</check>
+        <check>Breaking changes documented with migration guide (required for MAJOR bumps).</check>
+        <check>README includes updated usage example matching new variable names.</check>
+        <check>Git tag created with vX.Y.Z format (e.g., v2.1.0).</check>
+        <check>Registry sync verified after tag push (Terraform Registry auto-syncs from GitHub tags).</check>
+        <check>Team notified of breaking changes (major releases require consumer team awareness).</check>
+        <check>Internal consumer modules updated if managed in the same repo.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="terraform-modules-structure"/>
+      <ref slug="terraform-modules-composition"/>
+      <link href="https://developer.hashicorp.com/terraform/tutorials/modules/pattern-module-creation"/>
+      <link href="https://semver.org/"/>
+    </see-also>
+  </content>
+</methodology>
