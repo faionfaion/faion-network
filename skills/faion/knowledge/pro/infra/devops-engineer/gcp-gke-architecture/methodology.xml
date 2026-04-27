@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-gke-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>GKE architecture: Autopilot vs Standard mode selection, node pool strategies, cluster topology, and production Terraform templates with spot and HA configurations.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>gke</tag>
+      <tag>kubernetes</tag>
+      <tag>terraform</tag>
+      <tag>autopilot</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="gcp-landing-zone"/>
+      <ref slug="gcp-network-architecture"/>
+      <ref slug="kubernetes"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GKE Architecture Patterns</title>
+
+    <summary>GKE provides two cluster modes (Autopilot and Standard), multiple topology options (zonal/regional/multi-cluster), and several node pool strategies (general, spot, GPU, high-memory). Choose Autopilot for most workloads; use Standard only for GPU, privileged containers, or deep custom node configs.</summary>
+
+    <why>
+      <p>GKE Autopilot eliminates node management — Google provisions, sizes, and patches nodes per-pod. Standard mode offers full node control at the cost of per-cluster billing and manual node lifecycle management. Picking the wrong mode adds weeks of operational overhead (Standard) or blocks specialized workloads (Autopilot).</p>
+      <p>Regional clusters distribute control plane and nodes across three zones, providing automatic failover during zone outages. Zonal clusters are cheaper but have a single control-plane zone — acceptable for dev/test, not for production SLAs above 99.9%.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Deploying containerized workloads on GCP requiring Kubernetes orchestration.</item>
+        <item>Production services requiring 99.9%+ availability — use regional topology.</item>
+        <item>Batch or fault-tolerant workloads — use spot node pools for 70-90% cost reduction.</item>
+        <item>ML inference or video processing — use GPU-attached node pools in Standard mode.</item>
+        <item>Multi-region failover or global routing — use multi-cluster topology.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Fully serverless stateless workloads — Cloud Run is simpler and cheaper than GKE for event-driven HTTP.</item>
+        <item>Small single-binary services with predictable load — over-engineering adds cluster management cost.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="mode-and-topology">
+      <p>GKE mode and topology are the two highest-impact architecture decisions. They are set at cluster creation and cannot be changed without re-provisioning.</p>
+
+      <rule>
+        <statement>Use Autopilot mode for all new clusters unless the workload requires GPU nodes, privileged containers, or custom OS-level node configuration. Prefer regional topology (3 zones) for production clusters and zonal for development.</statement>
+        <rationale>Autopilot bills per-pod (CPU/memory/ephemeral storage) and auto-scales to zero, removing idle-node cost. Regional clusters survive a zone outage without manual intervention; zonal clusters go down when the single zone fails.</rationale>
+      </rule>
+
+      <example type="good" title="Mode and topology decision matrix">
+        <code lang="text"><![CDATA[
+Mode        | When to use                                | Cost model
+------------|--------------------------------------------|-----------------
+Autopilot   | Most workloads, simplified ops (recommend) | Pay-per-pod
+Standard    | GPU, custom configs, privileged containers | Per-cluster+nodes
+Hybrid 2025 | Standard with Autopilot workloads          | Mixed
+
+Topology    | Zones | HA Level | Use case
+------------|-------|----------|-------------------------
+Zonal       | 1     | Low      | Development, testing
+Regional    | 3     | High     | Production
+Multi-cluster | Multiple regions | Highest | Global, DR
+]]></code>
+      </example>
+    </section>
+
+    <section name="node-pool-strategies">
+      <p>Node pools define the compute shape for workloads. In Standard mode, multiple pools allow scheduling different workload types on the right hardware. Taints on spot and GPU pools prevent accidental scheduling of latency-sensitive services.</p>
+
+      <rules>
+        <rule>
+          <statement>Create a general-purpose pool (e2-standard-4, on-demand) for stateless always-on services, a spot pool (min=0, max=20) for batch/fault-tolerant jobs, and — when needed — a GPU pool. Taint spot and GPU pools so only tolerating workloads land on them.</statement>
+          <rationale>Mixed pools ensure latency-sensitive services are never evicted by spot reclamation. Spot pool min=0 means zero cost when no batch jobs are running. Taints act as an explicit admission gate — without them, any pod can land on any pool.</rationale>
+        </rule>
+      </rules>
+
+      <example type="good" title="Node pool strategy reference">
+        <code lang="text"><![CDATA[
+Pattern       | Use case                        | Node type
+--------------|---------------------------------|-------------------
+General pool  | Stateless apps, always-on       | e2-standard-4
+Spot pool     | Batch jobs, fault-tolerant      | Spot (70-90% savings)
+GPU pool      | ML inference, video processing  | GPU-attached
+High-memory   | Caching, in-memory databases    | Memory-optimized
+]]></code>
+      </example>
+    </section>
+
+    <section name="gke-terraform">
+      <p>Complete Terraform configuration for a production regional private GKE cluster with general and spot node pools, Workload Identity, Binary Authorization, Managed Prometheus, and Dataplane V2.</p>
+
+      <example type="good" title="GKE regional private cluster — Terraform">
+        <code lang="hcl"><![CDATA[
+# gke-regional-private.tf
+resource "google_container_cluster" "main" {
+  name     = "${var.project_id}-gke"
+  location = var.region
+  project  = var.project_id
+
+  # Regional cluster for high availability
+  node_locations = [
+    "${var.region}-a",
+    "${var.region}-b",
+    "${var.region}-c"
+  ]
+
+  network    = google_compute_network.main.name
+  subnetwork = google_compute_subnetwork.private.name
+
+  # VPC-native cluster
+  ip_allocation_policy {
+    cluster_secondary_range_name  = "pods"
+    services_secondary_range_name = "services"
+  }
+
+  # Private cluster
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+
+    master_global_access_config {
+      enabled = true
+    }
+  }
+
+  # Master authorized networks
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block   = var.admin_cidr
+      display_name = "Admin access"
+    }
+  }
+
+  # Workload Identity
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+
+  # Binary Authorization
+  binary_authorization {
+    evaluation_mode = "PROJECT_SINGLETON_POLICY_ENFORCE"
+  }
+
+  # Release channel
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  # Maintenance window
+  maintenance_policy {
+    recurring_window {
+      start_time = "2025-01-01T02:00:00Z"
+      end_time   = "2025-01-01T06:00:00Z"
+      recurrence = "FREQ=WEEKLY;BYDAY=SU"
+    }
+  }
+
+  # Cluster addons
+  addons_config {
+    http_load_balancing {
+      disabled = false
+    }
+    horizontal_pod_autoscaling {
+      disabled = false
+    }
+    gce_persistent_disk_csi_driver_config {
+      enabled = true
+    }
+    gcs_fuse_csi_driver_config {
+      enabled = true
+    }
+  }
+
+  # Enable Dataplane V2 (eBPF)
+  datapath_provider = "ADVANCED_DATAPATH"
+
+  # Network policy
+  network_policy {
+    enabled  = true
+    provider = "CALICO"
+  }
+
+  # Logging and monitoring
+  logging_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  }
+
+  monitoring_config {
+    enable_components = ["SYSTEM_COMPONENTS"]
+    managed_prometheus {
+      enabled = true
+    }
+  }
+
+  # Remove default node pool
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  # Security
+  enable_shielded_nodes = true
+
+  # Deletion protection for production
+  deletion_protection = var.environment == "production"
+
+  resource_labels = {
+    environment = var.environment
+    team        = var.team
+  }
+}
+
+# General node pool
+resource "google_container_node_pool" "general" {
+  name     = "general"
+  location = var.region
+  cluster  = google_container_cluster.main.name
+  project  = var.project_id
+
+  node_count = 1
+
+  autoscaling {
+    min_node_count  = 1
+    max_node_count  = 10
+    location_policy = "BALANCED"
+  }
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  upgrade_settings {
+    strategy        = "SURGE"
+    max_surge       = 1
+    max_unavailable = 0
+  }
+
+  node_config {
+    preemptible  = false
+    machine_type = "e2-standard-4"
+    disk_size_gb = 100
+    disk_type    = "pd-ssd"
+
+    image_type = "COS_CONTAINERD"
+
+    shielded_instance_config {
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
+    }
+
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+
+    service_account = google_service_account.gke_nodes.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    labels = {
+      environment = var.environment
+      workload    = "general"
+    }
+
+    tags = ["gke-node", var.environment]
+
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+  }
+}
+
+# Spot node pool
+resource "google_container_node_pool" "spot" {
+  name     = "spot"
+  location = var.region
+  cluster  = google_container_cluster.main.name
+  project  = var.project_id
+
+  autoscaling {
+    min_node_count  = 0
+    max_node_count  = 20
+    location_policy = "ANY"
+  }
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  node_config {
+    spot         = true
+    machine_type = "e2-standard-4"
+    disk_size_gb = 50
+    disk_type    = "pd-standard"
+
+    image_type = "COS_CONTAINERD"
+
+    shielded_instance_config {
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
+    }
+
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+
+    service_account = google_service_account.gke_nodes.email
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform"
+    ]
+
+    labels = {
+      environment = var.environment
+      workload    = "spot"
+    }
+
+    taint {
+      key    = "spot"
+      value  = "true"
+      effect = "NO_SCHEDULE"
+    }
+  }
+}
+]]></code>
+      </example>
+
+      <example type="good" title="GKE cluster — gcloud equivalent">
+        <code lang="bash"><![CDATA[
+# Create private regional cluster
+gcloud container clusters create my-cluster \
+    --region=us-central1 \
+    --node-locations=us-central1-a,us-central1-b,us-central1-c \
+    --num-nodes=1 \
+    --enable-private-nodes \
+    --master-ipv4-cidr=172.16.0.0/28 \
+    --enable-ip-alias \
+    --network=my-vpc \
+    --subnetwork=my-subnet \
+    --cluster-secondary-range-name=pods \
+    --services-secondary-range-name=services \
+    --workload-pool=PROJECT_ID.svc.id.goog \
+    --enable-master-authorized-networks \
+    --master-authorized-networks=10.0.0.0/8 \
+    --enable-autoscaling \
+    --min-nodes=1 \
+    --max-nodes=10 \
+    --release-channel=regular \
+    --enable-shielded-nodes \
+    --enable-network-policy \
+    --enable-dataplane-v2
+
+# Create spot node pool
+gcloud container node-pools create spot-pool \
+    --cluster=my-cluster \
+    --region=us-central1 \
+    --spot \
+    --num-nodes=0 \
+    --enable-autoscaling \
+    --min-nodes=0 \
+    --max-nodes=20 \
+    --machine-type=e2-standard-4
+]]></code>
+      </example>
+
+      <example type="good" title="Autopilot cluster — Terraform module">
+        <code lang="hcl"><![CDATA[
+# modules/gke-cluster/main.tf — Autopilot variant
+resource "google_container_cluster" "autopilot" {
+  name     = var.cluster_name
+  location = var.region
+  project  = var.project_id
+
+  enable_autopilot = true
+
+  network    = var.vpc_name
+  subnetwork = var.subnet_name
+
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+
+  ip_allocation_policy {
+    cluster_secondary_range_name  = "pods"
+    services_secondary_range_name = "services"
+  }
+
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block   = var.master_authorized_cidr
+      display_name = "Internal"
+    }
+  }
+
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  maintenance_policy {
+    recurring_window {
+      start_time = "2025-01-01T09:00:00Z"
+      end_time   = "2025-01-01T17:00:00Z"
+      recurrence = "FREQ=WEEKLY;BYDAY=SA,SU"
+    }
+  }
+
+  resource_labels = {
+    environment = var.environment
+  }
+
+  deletion_protection = var.environment == "production"
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="gke-checklist">
+      <checklist>
+        <check>Cluster design: choose Autopilot (default) vs Standard, select regional vs zonal, plan node pool strategy, define resource quotas.</check>
+        <check>Security: enable private cluster, configure Workload Identity, enable Binary Authorization, set up Pod Security Standards, configure network policies, enable GKE Security Posture.</check>
+        <check>Networking: plan pod and service CIDR ranges, configure authorized networks for control plane, set up ingress controller, configure Cloud Armor (if public), enable container-native load balancing.</check>
+        <check>Operations: configure maintenance windows, set release channel to REGULAR, enable cluster autoscaler, configure HPA/VPA, set up monitoring and logging, configure cost allocation labels.</check>
+        <check>Node pools (Standard): create general-purpose pool, configure spot pool for batch, set appropriate min/max nodes, enable auto-repair and auto-upgrade, configure taints for workload isolation.</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="design-gke-architecture"><![CDATA[
+Design GKE architecture for:
+
+Application: {DESCRIPTION}
+Traffic: {REQUESTS/second, USERS}
+Environment: {production|staging|development}
+
+Requirements:
+- Availability: {99.9%|99.95%|99.99%}
+- Latency: {p50, p95, p99}
+- Region(s): {LIST}
+- Compliance: {LIST}
+
+Workload characteristics:
+- Stateless services: {NUMBER}
+- Stateful services: {NUMBER}
+- Batch jobs: {yes|no}
+- ML/GPU workloads: {yes|no}
+
+Provide:
+1. Cluster mode recommendation (Autopilot vs Standard)
+2. Cluster topology (zonal vs regional vs multi-cluster)
+3. Node pool strategy
+4. Networking design (ingress, service mesh)
+5. Security configuration
+6. Scaling strategy (HPA, VPA, cluster autoscaler)
+7. Terraform configuration
+]]></prompt>
+
+      <prompt purpose="gke-migration-assessment"><![CDATA[
+Assess migration to GKE:
+
+Current platform: {Kubernetes|VMs|Containers|Other}
+Current configuration:
+{Describe current infrastructure}
+
+Workloads:
+{List services with resource requirements}
+
+Questions to answer:
+1. GKE mode recommendation (Autopilot vs Standard)
+2. Migration strategy (lift-and-shift vs refactor)
+3. Workload compatibility issues
+4. Resource mapping (current to GKE)
+5. Network changes required
+6. Security adjustments
+7. Cost comparison
+8. Migration steps
+9. Rollback plan
+]]></prompt>
+
+      <prompt purpose="multi-cluster-strategy"><![CDATA[
+Design GKE multi-cluster strategy:
+
+Use case: {DR|Multi-region|Multi-tenant|Traffic distribution}
+Regions: {LIST}
+Traffic split: {PERCENTAGE per region}
+
+Requirements:
+- Failover time: {RTO}
+- Data consistency: {requirements}
+- Cost constraints: {BUDGET}
+
+Provide:
+1. Cluster topology
+2. Service mesh configuration (if applicable)
+3. Multi-cluster ingress setup
+4. Data replication strategy
+5. Failover procedure
+6. Traffic management
+7. Cost estimate
+8. Terraform configuration
+]]></prompt>
+    </section>
+
+    <templates>
+      <template path="templates/gke-cluster.tf" purpose="Complete GKE regional private cluster with general and spot node pools, Workload Identity, Binary Authorization."/>
+    </templates>
+
+    <see-also>
+      <ref slug="gcp-landing-zone"/>
+      <ref slug="gcp-network-architecture"/>
+      <ref slug="kubernetes"/>
+      <link href="https://docs.cloud.google.com/kubernetes-engine/docs/best-practices"/>
+    </see-also>
+  </content>
+</methodology>
