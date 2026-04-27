@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="puppeteer-stealth-proxy">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Evade bot detection in Puppeteer using puppeteer-extra-plugin-stealth and manual navigator overrides; route traffic through single proxies or rotating proxy pools with per-browser authentication.</summary>
+    <tags>
+      <tag>puppeteer</tag>
+      <tag>stealth</tag>
+      <tag>proxy</tag>
+      <tag>bot-detection</tag>
+      <tag>browser-automation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>javascript</language>
+    </languages>
+    <frameworks>
+      <framework>puppeteer</framework>
+    </frameworks>
+    <related>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-session-management"/>
+      <ref slug="puppeteer-agent-workflow"/>
+    </related>
+  </metadata>
+  <content>
+    <title>Puppeteer: Stealth Mode &amp; Proxy Support</title>
+
+    <summary>Covers puppeteer-extra-plugin-stealth for automated bot-detection evasion, manual navigator property overrides, single-proxy configuration, and rotating proxy pool patterns. Includes limitations and arms-race caveats for production scraping.</summary>
+
+    <why>
+      <p>Modern anti-bot systems (Cloudflare, Datadome, PerimeterX) fingerprint the browser through headless-mode tells: navigator.webdriver flag, missing plugin list, predictable languages array, Chrome DevTools socket exposure. The stealth plugin patches the most common tells automatically; manual overrides cover gaps. Proxy rotation prevents IP-based bans in high-volume scraping.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scraping targets with basic bot-detection that checks navigator properties.</item>
+        <item>Pipelines that must distribute requests across multiple IP addresses to avoid rate-limiting.</item>
+        <item>Any flow that requires appearing as a regular browser to bypass simple fingerprinting.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Long-running scraping farms against Cloudflare Enterprise or Datadome-defended targets — stealth plugin lags behind detection; switch to Playwright + playwright-extra/stealth or a managed service like Bright Data.</item>
+        <item>Anything involving credentials, CAPTCHAs, or 2FA in a fully automated loop — human-in-the-loop checkpoints are required (see puppeteer-agent-workflow).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="stealth-plugin">
+      <example type="good" title="puppeteer-extra-plugin-stealth setup">
+        <code lang="javascript"><![CDATA[const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+puppeteer.use(StealthPlugin());
+
+const browser = await puppeteer.launch({ headless: true });]]></code>
+        <note>puppeteer-extra wraps the standard puppeteer API; all existing code works unchanged after the use() call.</note>
+      </example>
+      <rule>
+        <statement>Pick one evasion stance — either puppeteer-extra-plugin-stealth alone or manual overrides alone — and document it. Mixing both can create contradictory navigator props that the agent then asserts on incorrectly.</statement>
+        <rationale>Stealth plugin can change navigator props the agent later asserts on; a single documented stance prevents brittle assertions in subsequent page.evaluate() calls.</rationale>
+      </rule>
+    </section>
+
+    <section name="manual-evasion">
+      <p>Manual navigator overrides for environments where puppeteer-extra is unavailable:</p>
+      <example type="good" title="Override webdriver, plugins, and languages">
+        <code lang="javascript"><![CDATA[// Override webdriver property
+await page.evaluateOnNewDocument(() => {
+  Object.defineProperty(navigator, 'webdriver', {
+    get: () => undefined
+  });
+});
+
+// Override plugins (empty list is a headless tell)
+await page.evaluateOnNewDocument(() => {
+  Object.defineProperty(navigator, 'plugins', {
+    get: () => [1, 2, 3, 4, 5]
+  });
+});
+
+// Override languages
+await page.evaluateOnNewDocument(() => {
+  Object.defineProperty(navigator, 'languages', {
+    get: () => ['en-US', 'en']
+  });
+});]]></code>
+        <note>evaluateOnNewDocument runs before any page script — overrides are in place from the first JS execution cycle.</note>
+      </example>
+    </section>
+
+    <section name="proxy-support">
+      <example type="good" title="Single proxy with authentication">
+        <code lang="javascript"><![CDATA[const browser = await puppeteer.launch({
+  args: ['--proxy-server=http://proxy.example.com:8080']
+});
+
+// With per-page proxy authentication
+const page = await browser.newPage();
+await page.authenticate({
+  username: 'proxyuser',
+  password: 'proxypass'
+});]]></code>
+      </example>
+      <example type="good" title="Rotating proxy pool">
+        <code lang="javascript"><![CDATA[const proxies = [
+  'http://proxy1.example.com:8080',
+  'http://proxy2.example.com:8080',
+  'http://proxy3.example.com:8080'
+];
+
+let proxyIndex = 0;
+
+async function getNextProxy() {
+  const proxy = proxies[proxyIndex];
+  proxyIndex = (proxyIndex + 1) % proxies.length;
+  return proxy;
+}
+
+async function createBrowserWithProxy() {
+  const proxy = await getNextProxy();
+  return puppeteer.launch({
+    args: [`--proxy-server=${proxy}`]
+  });
+}]]></code>
+        <note>Each browser instance is bound to one proxy at launch time; to switch proxy, close the browser and launch a new one.</note>
+      </example>
+    </section>
+
+    <antipattern>
+      <description>Running unbounded retries on 429 responses from managed browser services (Browserless, ScrapingBee) without a circuit breaker.</description>
+      <reason>Unbounded retries on rate-limit responses burn budget fast. Set --max-retries=2 and circuit-break on 4xx; surface the error to the caller instead of looping silently.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://github.com/berstend/puppeteer-extra"/>
+      <link href="https://github.com/Sparticuz/chromium"/>
+      <ref slug="puppeteer-launch-setup"/>
+      <ref slug="puppeteer-agent-workflow"/>
+    </see-also>
+  </content>
+</methodology>
