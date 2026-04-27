@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-aws-monitoring-dr">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>AWS CloudWatch monitoring and DR: dashboards, alarms, SNS, X-Ray tracing, DR strategy selection (backup/pilot light/warm standby/active-active), and DR checklist.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cloudwatch</tag>
+      <tag>monitoring</tag>
+      <tag>disaster-recovery</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <ref slug="devops-aws-service-selection"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Monitoring, Alerting, and Disaster Recovery</title>
+
+    <summary>Production AWS workloads require CloudWatch dashboards per tier, metric alarms with SNS notifications, X-Ray distributed tracing across Lambda and API Gateway, and a tested DR strategy matched to business RTO/RPO. Alerting must be tiered: critical (immediate page), warning (business hours), informational (digest). DR must be tested on a schedule — untested DR is no DR.</summary>
+
+    <why>
+      <p>Unobserved systems accumulate silent failures that surface as outages. CloudWatch is the native telemetry plane for all AWS services — Container Insights feeds EKS/ECS metrics automatically once enabled, X-Ray links traces across Lambda and API Gateway invocations, and CloudTrail provides the audit trail for compliance. The cost of a CloudWatch alarm is negligible; the cost of a production outage detected by a customer is not. DR strategy selection determines the RTO/RPO achievable at a given cost: backup/restore is cheap but slow; active-active is fast but expensive.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up monitoring for a new production AWS workload.</item>
+        <item>Adding observability to an existing architecture that lacks dashboards or alarms.</item>
+        <item>Designing or testing a disaster recovery runbook for a business-critical service.</item>
+        <item>Preparing for an architecture review that includes the Reliability and Operational Excellence pillars.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Dev and staging environments with no production traffic — basic alarms only, no DR needed.</item>
+        <item>Third-party monitoring stacks (Datadog, New Relic) already deployed — integrate CloudWatch metrics as a source there instead of duplicating dashboards.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cloudwatch-dashboards">
+      <p>Each tier gets its own dashboard widget cluster. API tier: request count, latency (p50/p99), 5XX error rate. Lambda tier: duration, errors, throttles, concurrent executions. DynamoDB tier: consumed RCU/WCU, throttled requests. Container tier: Container Insights CPU/memory per pod.</p>
+
+      <rule testable="true">
+        <statement>Every production service MUST have a CloudWatch dashboard covering: (1) request rate and error rate for each public endpoint, (2) compute metrics (Lambda duration/errors/throttles or ECS/EKS CPU/memory via Container Insights), (3) database consumed capacity or connection count, (4) queue depth for SQS queues. Dashboard widgets MUST use a 5-minute aggregation period and display the last 3 hours by default.</statement>
+        <rationale>Dashboards with consistent time windows across widgets let engineers correlate spikes across tiers in a single view. The 5-minute period smooths noise while being granular enough to identify the onset of an incident within one alarm evaluation cycle.</rationale>
+      </rule>
+
+      <example type="good" title="CloudWatch dashboard with API Gateway and Lambda metrics">
+        <code lang="hcl"><![CDATA[
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "${var.project}-${var.environment}"
+
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "API Gateway Requests"
+          region = var.region
+          metrics = [
+            ["AWS/ApiGateway", "Count", "ApiId", module.api_gateway.api_id]
+          ]
+          period = 300
+          stat   = "Sum"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "Lambda Duration"
+          region = var.region
+          metrics = [
+            ["AWS/Lambda", "Duration", "FunctionName", module.lambda.lambda_function_name]
+          ]
+          period = 300
+          stat   = "Average"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 0
+        y      = 6
+        width  = 12
+        height = 6
+        properties = {
+          title  = "DynamoDB Consumed Capacity"
+          region = var.region
+          metrics = [
+            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", "TableName", module.dynamodb.dynamodb_table_id],
+            ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", "TableName", module.dynamodb.dynamodb_table_id]
+          ]
+          period = 300
+          stat   = "Sum"
+        }
+      }
+    ]
+  })
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="alarms-alerting">
+      <p>Alarms are tiered: critical alarms page immediately (Lambda errors, API 5XX, database connection exhaustion); warning alarms notify during business hours (high latency p99, elevated error rate); informational alarms feed a daily digest (cost anomalies, queue depth trends). All alarms send to SNS; SNS routes to PagerDuty/Opsgenie for critical, email for warning, and an aggregation Lambda for digest.</p>
+
+      <rule testable="true">
+        <statement>Every production Lambda function and API Gateway MUST have CloudWatch alarms: Lambda Errors threshold 5 over 2 evaluation periods of 5 minutes each; API 5XXError threshold 10 over 2 evaluation periods. Alarms MUST have alarm_actions AND ok_actions both pointing to an SNS topic. SNS topics MUST be KMS-encrypted. Alarm descriptions MUST include a runbook link placeholder.</statement>
+        <rationale>ok_actions on the SNS topic ensures the on-call engineer is notified when an alarm resolves, not just when it fires, preventing unnecessary investigation. KMS on SNS prevents plaintext secrets from leaking in alarm payloads. Runbook links in descriptions reduce MTTD by giving the responder an immediate starting point.</rationale>
+      </rule>
+
+      <example type="good" title="CloudWatch alarms for Lambda and API Gateway with SNS">
+        <code lang="hcl"><![CDATA[
+resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
+  alarm_name          = "${var.project}-${var.environment}-lambda-errors"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Lambda function errors exceeded threshold. Runbook: https://wiki/lambda-errors"
+
+  dimensions = {
+    FunctionName = module.lambda.lambda_function_name
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+  ok_actions    = [aws_sns_topic.alerts.arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "api_5xx" {
+  alarm_name          = "${var.project}-${var.environment}-api-5xx"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "5XXError"
+  namespace           = "AWS/ApiGateway"
+  period              = 300
+  statistic           = "Sum"
+  threshold           = 10
+  alarm_description   = "API Gateway 5XX errors exceeded threshold. Runbook: https://wiki/api-5xx"
+
+  dimensions = {
+    ApiId = module.api_gateway.api_id
+  }
+
+  alarm_actions = [aws_sns_topic.alerts.arn]
+}
+
+resource "aws_sns_topic" "alerts" {
+  name              = "${var.project}-${var.environment}-alerts"
+  kms_master_key_id = aws_kms_key.sns.id
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="tracing">
+      <p>X-Ray provides distributed traces that span API Gateway, Lambda, and downstream AWS services. X-Ray traces must be enabled on both API Gateway stages and Lambda functions. Service maps in the X-Ray console show call graphs and latency by segment.</p>
+
+      <rule testable="true">
+        <statement>X-Ray active tracing MUST be enabled on all production Lambda functions (tracing_mode="Active") and all API Gateway stages (xray_tracing_enabled=true). Lambda functions MUST install the aws-xray-sdk and wrap handler entry points with @xray.capture or equivalent for the runtime.</statement>
+        <rationale>Without X-Ray, a slow DynamoDB GetItem appears as a generic high-latency Lambda invocation. With X-Ray, the DynamoDB segment is visible with its own duration, request count, and error breakdown, pointing directly to the root cause.</rationale>
+      </rule>
+    </section>
+
+    <section name="disaster-recovery">
+      <p>DR strategy is selected by RTO and RPO targets, not by preference. The four strategies in increasing cost and decreasing recovery time: backup/restore, pilot light, warm standby, active-active. Multi-region DR adds significant operational complexity and cost and is only justified for business-critical workloads with RTO under 1 hour.</p>
+
+      <rule testable="true">
+        <statement>DR strategy MUST be selected based on documented RTO/RPO targets: RTO &gt; 24h / RPO &gt; 1h → backup/restore; RTO 1-24h / RPO 1h → pilot light; RTO 15min-1h / RPO &lt; 15min → warm standby; RTO &lt; 15min / RPO near-zero → active-active. The selected DR strategy MUST be tested on a documented schedule (at minimum quarterly for warm standby and active-active).</statement>
+        <rationale>Untested DR is no DR. Recovery procedures that have never been executed will fail at the worst possible moment due to undocumented dependencies, stale credentials, or manual steps that were forgotten. Quarterly DR drills catch drift before it matters.</rationale>
+      </rule>
+
+      <section name="dr-strategies">
+        <list>
+          <item>Backup/restore: S3 cross-region replication for backups, RDS automated backups, DynamoDB point-in-time recovery. RTO: hours. RPO: last backup window. Cost: lowest.</item>
+          <item>Pilot light: Minimal infrastructure in DR region (Route 53 health checks ready, database replication active, AMIs copied). Application tier scaled to zero. RTO: 1-4 hours. Cost: low.</item>
+          <item>Warm standby: Reduced-capacity stack running in DR region. Scale-out on failover. Route 53 failover routing policy. RTO: 15-60 minutes. Cost: medium.</item>
+          <item>Active-active: Full-capacity stack in both regions. Route 53 latency-based routing. Global DynamoDB tables or Aurora Global Database for replication. RTO: near-zero. Cost: 2x.</item>
+        </list>
+      </section>
+    </section>
+
+    <checklist>
+      <check>CloudWatch dashboard covers API request rate, error rate, and p99 latency.</check>
+      <check>CloudWatch dashboard covers Lambda duration, errors, and throttles.</check>
+      <check>CloudWatch dashboard covers DynamoDB consumed capacity.</check>
+      <check>CloudWatch Container Insights enabled for ECS/EKS workloads.</check>
+      <check>Lambda Errors alarm: threshold 5, 2 evaluation periods of 5 minutes.</check>
+      <check>API Gateway 5XX alarm: threshold 10, 2 evaluation periods of 5 minutes.</check>
+      <check>All alarms have alarm_actions AND ok_actions set to SNS topic.</check>
+      <check>SNS topic KMS-encrypted.</check>
+      <check>X-Ray active tracing enabled on all Lambda functions.</check>
+      <check>X-Ray tracing enabled on API Gateway stages.</check>
+      <check>RTO/RPO targets documented and signed off by business stakeholders.</check>
+      <check>DR strategy selected based on documented RTO/RPO.</check>
+      <check>Backups cross-region replicated (S3, RDS, DynamoDB PITR).</check>
+      <check>Route 53 health checks configured for failover routing.</check>
+      <check>DR recovery tested and drill results documented.</check>
+      <check>CloudTrail enabled in all regions for audit logging.</check>
+      <check>GuardDuty and Security Hub enabled for threat detection.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-aws-service-selection"/>
+      <ref slug="devops-aws-three-tier"/>
+      <ref slug="devops-aws-serverless-api"/>
+      <link href="https://aws.amazon.com/well-architected-tool/"/>
+    </see-also>
+  </content>
+</methodology>
