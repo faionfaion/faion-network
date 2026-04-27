@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Reference example: a complete `methodology.xml` migrated from the
+  AGENTS.md + content/*.xml shape.
+
+  Source: skills/faion/knowledge/geek/sdlc-ai/lint-megalinter-polyglot/
+    - AGENTS.md
+    - content/01-ci-only-rule.xml
+    - content/02-flavor-selection.xml
+    - templates/megalinter-action.yml
+    - templates/.mega-linter.yml
+
+  Note how:
+    - Routing data (AGENTS.md Summary/Why/When-to-use) becomes top-level
+      <content> children: <summary>, <why>, <when-to-use>, <when-not-to-use>.
+    - Content files become <section name="..."> blocks under <content>.
+    - Templates table from AGENTS.md becomes <templates> with <template>.
+    - <reference href="..."> URLs migrated to <see-also><link href="..."/>.
+    - Catalog data (tier, group, domain, summary, tags) lives in <metadata>
+      and is stripped before /faion injects this into a prompt.
+-->
+<methodology slug="lint-megalinter-polyglot">
+  <metadata>
+    <tier>geek</tier>
+    <group>sdlc-ai</group>
+    <domain>sdlc-ai</domain>
+    <summary>Run MegaLinter as a CI-only umbrella for polyglot repos so the agent gets a unified SARIF feed; keep pre-commit on lean per-language native tools.</summary>
+    <category>lint</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>lint</tag>
+      <tag>megalinter</tag>
+      <tag>polyglot</tag>
+      <tag>ci</tag>
+      <tag>sarif</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+      <tool>cursor</tool>
+    </tools>
+    <related>
+      <ref slug="lint-precommit-floor"/>
+      <ref slug="lint-ruff-and-biome-as-default"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>MegaLinter as the Polyglot Quality Umbrella in CI</title>
+
+    <summary>Polyglot repositories (three or more languages, e.g., Python + TypeScript + Terraform + Markdown) MUST run MegaLinter in CI as a single GitHub Action or GitLab job. MegaLinter auto-detects the languages present, dispatches 100+ underlying linters in parallel via Python multiprocessing, and emits a unified SARIF report. Pick a flavor (security, python, javascript, terraform, dotnet, cupcake) to keep the runner image lean. MegaLinter MUST NOT run as a pre-commit hook — the image is too heavy for the local commit lifecycle; reserve it for CI.</summary>
+
+    <why>
+      <p>MegaLinter (oxsecurity, fork of GitHub Super-Linter) is the only one-call surface that covers 69 languages, 23 formats and 21 tooling formats — ESLint, ruff, hadolint, terraform fmt, ansible-lint, yamllint, markdownlint, shellcheck, golangci-lint, rubocop, php-cs-fixer, sql-lint, dotenv-linter — in one shot. The parallel Python multiprocessing engine is meaningfully faster than Super-Linter's sequential bash and produces SARIF that drops directly into GitHub Code Scanning's UI.</p>
+      <p>The "one umbrella in CI, one native tool per language at the hook" split prevents the well-known anti-pattern of running MegaLinter locally (multi-gigabyte Docker pull on every commit) while still giving the agent a unified CI feed to fix from.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Polyglot repositories with three or more languages or stack zones (Python + TS + Terraform + Markdown is the canonical example).</item>
+        <item>Monorepos where each package may use different linters and a single CI job is simpler than per-language workflow shards.</item>
+        <item>Repositories that need uniform SARIF output for GitHub Advanced Security or GitLab UltimateSecurity.</item>
+        <item>Quarterly hygiene scans that want every linter in one report without per-tool maintenance.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-language repositories — ruff (Python), biome (JS/TS), or golangci-lint (Go) cover the same ground with sub-second startup; MegaLinter's image overhead dwarfs the value.</item>
+        <item>Local pre-commit hooks — MegaLinter's image is multi-gigabyte and adds tens of seconds of pull/start time, breaking the sub-second hook contract.</item>
+        <item>Throwaway prototype repos with one or two files of code — install ruff or biome and stop.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ci-only-umbrella">
+      <p>Each linter inside MegaLinter is the same binary you would run locally — there is no benefit to running MegaLinter at the hook because it adds container start-up time without changing the rules. The umbrella's value is the SARIF aggregation step, which only matters once code reaches CI.</p>
+
+      <rule testable="true">
+        <statement>Polyglot repositories MUST configure MegaLinter as a CI job (oxsecurity/megalinter@v8 or pinned SHA) that runs on pull_request and push and uploads SARIF via github/codeql-action/upload-sarif. The same repository MUST NOT register MegaLinter inside .pre-commit-config.yaml, lefthook.yml, or .husky/pre-commit; pre-commit hooks MUST stay on the per-language native binaries (ruff, biome, hadolint, terraform fmt) so the local commit completes in under one second.</statement>
+        <rationale>MegaLinter ships as a multi-gigabyte container and takes tens of seconds to start; running it on every commit makes humans use --no-verify and trains agents to do the same. Native tools at the hook give the same coverage on the staged diff in milliseconds, while the CI MegaLinter run ratchets up the gate with rules that need cross-file context (markdownlint, link-check, vale, gitleaks history scan).</rationale>
+      </rule>
+
+      <example type="good" title="MegaLinter as CI job with SARIF upload">
+        <code lang="yaml"><![CDATA[
+# .github/workflows/megalinter.yml
+name: MegaLinter
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: oxsecurity/megalinter/flavors/cupcake@v8
+        env:
+          VALIDATE_ALL_CODEBASE: false
+          SARIF_REPORTER: true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: megalinter-reports/megalinter-report.sarifv1.sarif }
+]]></code>
+        <note>One CI job, SARIF feed lands in Code Scanning, agent reads it through `gh api`.</note>
+      </example>
+
+      <example type="bad" title="Wiring MegaLinter into pre-commit">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml — DO NOT do this
+repos:
+  - repo: https://github.com/oxsecurity/megalinter
+    rev: v8.0.0
+    hooks:
+      - id: megalinter
+]]></code>
+        <note>Adds 30+ seconds to every commit; humans bypass with --no-verify and the local gate dies.</note>
+      </example>
+
+      <antipattern>
+        <description>Running both MegaLinter and the underlying native tool (e.g., ruff) twice in the same CI workflow because "the agent fixes faster from the SARIF".</description>
+        <reason>MegaLinter already runs ruff inside; the duplicate run wastes CI minutes and produces two reports the agent has to reconcile. Use the SARIF feed only.</reason>
+      </antipattern>
+    </section>
+
+    <section name="flavor-selection">
+      <p>The default oxsecurity/megalinter image bundles every linter and is multi-gigabyte. Flavors (security, python, javascript, terraform, dotnet, cupcake, ci_light) ship only the relevant subset — cupcake is the right pick for the common JS+Py+Markdown+YAML mix.</p>
+
+      <rule testable="true">
+        <statement>Repositories MUST select a MegaLinter flavor that matches the languages actually present in `git ls-files`. The selection MUST follow: pure Python → python; pure JS/TS → javascript; IaC-heavy (Terraform, K8s, Dockerfile) → terraform; mixed JS+Py+docs → cupcake; security-only quarterly scan → security. Repositories MUST NOT use the unflavored default image unless three or more flavor families apply.</statement>
+        <rationale>The flavor changes pull time from minutes to seconds and runtime memory from gigabytes to megabytes. CI quotas, especially on GitHub free runners and on Hetzner self-hosted runners, are dominated by image pull; the flavor is the single biggest knob for keeping MegaLinter sustainable as a default gate.</rationale>
+      </rule>
+
+      <example type="good" title="Picking the cupcake flavor">
+        <code lang="yaml"><![CDATA[
+# repo with TS + Python + Markdown — pick `cupcake`
+- uses: oxsecurity/megalinter/flavors/cupcake@v8
+]]></code>
+        <note>Cupcake covers JS/TS, Python, Markdown, YAML, JSON, Bash and Dockerfile — exact match for the canonical small polyglot.</note>
+      </example>
+
+      <example type="bad" title="Default unflavored image">
+        <code lang="yaml"><![CDATA[
+# same repo, default image — pulls every linter on every CI run
+- uses: oxsecurity/megalinter@v8
+]]></code>
+        <note>Pulls Java, .NET, PHP, Ruby, Swift, Rust, Go and Salesforce linters that this repo will never touch; CI bill triples.</note>
+      </example>
+
+      <antipattern>
+        <description>Disabling individual linters inside the default image to "save time" instead of switching to a flavor.</description>
+        <reason>Disabled linters still ship in the image; pull time is unchanged. Only a flavor changes the image.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/megalinter-action.yml" purpose="GitHub Actions workflow with SARIF upload."/>
+      <template path="templates/.mega-linter.yml" purpose="Repo-root config selecting cupcake flavor and SARIF output."/>
+    </templates>
+
+    <see-also>
+      <link href="https://megalinter.io/"/>
+      <link href="https://github.com/oxsecurity/megalinter"/>
+      <link href="https://megalinter.io/latest/flavors/"/>
+      <ref slug="lint-precommit-floor"/>
+      <ref slug="lint-ruff-and-biome-as-default"/>
+    </see-also>
+  </content>
+</methodology>

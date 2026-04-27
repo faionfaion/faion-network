@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+- docs: methodology XML schema spec, closed tag glossary (~60 tags), reference example
+- feat: validate-methodology-xml.py (closed-vocab + length-parity + path-consistency checks)
+- feat: feature-045 migration pool config (BRIEF + TICK) targeting single-file methodology.xml shape
+
 ### Changed
 - refactor: 8/8 methodologies migrated to new shape (batch: ai-interview-analysis, ai-assisted-persona-building, ai-persona-building, ai-assisted-accessibility, ai-accessibility-automation-2026, ai-spatial-computing, multimodal-vui-design, ai-enhanced-design-systems)
 - refactor: 7/7 ui-designer methodologies migrated to new shape (batch: llm-powered-conversational-ai, adobe-firefly-integration, ai-plugin-ecosystem, generative-ui-design, ai-design-assistant-patterns, figma-vs-adobe-strategy-2026, figma-ai-ecosystem)
