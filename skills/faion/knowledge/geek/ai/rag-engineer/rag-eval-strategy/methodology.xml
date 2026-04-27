@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-eval-strategy">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>RAG evaluation strategy: metric selection by use case and stage, cost-tiered execution, sampling, quality gates, and common evaluation pitfalls.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>evaluation</tag>
+      <tag>quality-gates</tag>
+      <tag>cost-optimization</tag>
+      <tag>strategy</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="rag-eval-retrieval-metrics"/>
+      <ref slug="rag-eval-generation-metrics"/>
+      <ref slug="rag-eval-pipeline"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>RAG Evaluation Strategy</title>
+
+    <summary>RAG evaluation strategy defines which metrics to run, when to run them, how to sample to control LLM-judge costs, and how to set explicit numeric quality gates. The core principle: retrieval metrics (free, run always) + generation metrics (expensive, run on 10-20% sample) + explicit numeric thresholds before deployment.</summary>
+
+    <why>
+      <p>Without a deliberate evaluation strategy, teams default to one familiar metric and use "looks good" as a quality gate. This leads to blind-spot regressions: a model that improves faithfulness while degrading retrieval recall, or a retriever that maintains Precision@5 while Hit Rate slowly decays on a new document category. Cost is also a practical constraint — running GPT-4o faithfulness evaluation on every query is orders of magnitude more expensive than sampling. A strategy specifies what to measure, at what cost tier, and what numeric threshold constitutes a pass.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Before adding any RAG evaluation — use this methodology to decide which metrics to implement first.</item>
+        <item>Before deploying a new retriever or generator — derive deployment quality gate thresholds from this strategy.</item>
+        <item>When LLM-judge evaluation costs are becoming a concern — apply cost-tier sampling rules here.</item>
+        <item>When a metric is trending downward in production — use evaluation stage guidance to escalate from Hit Rate (cheap) to full RAGAS suite.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>After the pipeline is already built with hardcoded metrics — at that point read rag-eval-retrieval-metrics and rag-eval-generation-metrics for the specific implementations.</item>
+        <item>When evaluating a single query interactively — strategy is for systematic batch evaluation, not one-off debugging.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="metric-selection-by-stage">
+      <p>Different evaluation stages justify different metric breadth. Expand coverage as the pipeline approaches production:</p>
+
+      <list>
+        <item>Development: Precision@5, Recall@5, Faithfulness — quick feedback on retrieval and hallucination, minimal cost</item>
+        <item>Pre-production: Full RAGAS suite (faithfulness, answer_relevancy, context_precision, context_recall) + NDCG@K — comprehensive before deployment</item>
+        <item>Production monitoring: Hit Rate, Faithfulness (sampled 10-20%), Latency — cheap continuous signal; escalate on regression</item>
+        <item>A/B testing: End-to-end accuracy, User satisfaction (human eval or implicit signals) — measures what users actually care about</item>
+      </list>
+    </section>
+
+    <section name="metric-selection-by-use-case">
+      <p>Select the primary metric bundle based on the RAG use case:</p>
+
+      <list>
+        <item>Question Answering: Faithfulness + Answer Relevance + Precision@3 — small K because Q&amp;A benefits from precision over breadth</item>
+        <item>Document Search: NDCG@10 + Recall@20 + MRR — large K, breadth matters, graded relevance</item>
+        <item>Chatbot: Context Relevance + Coherence + User satisfaction — conversational quality beyond factual accuracy</item>
+        <item>Summarization: Faithfulness + Completeness + Conciseness — faithfulness is critical; completeness and conciseness are opposing tensions</item>
+      </list>
+    </section>
+
+    <section name="cost-tiers">
+      <p>Metric cost tiers — select by budget and evaluation stage:</p>
+
+      <list>
+        <item>Free tier: Precision, Recall, MRR, NDCG, Hit Rate — no API cost; run on every test batch; use numpy only</item>
+        <item>Low cost: RAGAS with small model (e.g., gpt-4o-mini) — regular testing; approximately $0.01-0.10 per 100 queries</item>
+        <item>Medium cost: LLM-based metrics with gpt-4o-mini for faithfulness — important evaluations; ~3x cheaper than gpt-4o with ~5% accuracy loss</item>
+        <item>High cost: Full suite with gpt-4o — critical pre-deployment decisions; reserve for final quality gate</item>
+      </list>
+
+      <rule testable="true">
+        <statement>LLM-judge metrics (faithfulness, answer relevance, context relevance) MUST run on a sampled subset (10-20%) of production queries, not on every query. Retrieval metrics (precision, recall, MRR, hit rate, NDCG) MUST run on the full labeled test set.</statement>
+        <rationale>LLM-judge calls cost money and add latency. Running faithfulness on 15% of queries captures statistically meaningful trends while keeping eval costs 5-7x lower. Retrieval metrics have zero API cost and should cover the full test set to avoid sampling noise in rank-quality measurements.</rationale>
+      </rule>
+    </section>
+
+    <section name="sampling-strategy">
+      <p>Sampling strategies for LLM-judge evaluation batches:</p>
+
+      <example type="good" title="Smart sampling for cost-controlled evaluation">
+        <code lang="python"><![CDATA[
+import random
+from typing import List, Dict
+
+
+def smart_sampling(
+    test_set: List[dict],
+    budget: int,
+    strategy: str = "diverse"
+) -> List[dict]:
+    """
+    Sample test cases based on budget and strategy.
+
+    Strategies:
+    - diverse: Cover different question types evenly
+    - difficult: Focus on cases where model previously failed
+    - random: Random sampling (baseline)
+
+    Args:
+        test_set: List of test case dicts with 'type', 'score_history' fields
+        budget: Maximum number of cases to evaluate
+        strategy: Sampling strategy
+    """
+    if strategy == "diverse":
+        # Group by question type, sample evenly across groups
+        groups: Dict[str, List[dict]] = {}
+        for case in test_set:
+            q_type = case.get("type", "unknown")
+            groups.setdefault(q_type, []).append(case)
+        sampled = []
+        per_group = max(1, budget // len(groups))
+        for group_cases in groups.values():
+            sampled.extend(random.sample(group_cases, min(per_group, len(group_cases))))
+        return sampled[:budget]
+    elif strategy == "difficult":
+        # Prioritize cases where model previously scored below threshold
+        difficult = [c for c in test_set if c.get("last_faithfulness", 1.0) < 0.80]
+        easy = [c for c in test_set if c.get("last_faithfulness", 1.0) >= 0.80]
+        sampled = difficult[:budget]
+        remaining = budget - len(sampled)
+        if remaining > 0:
+            sampled.extend(random.sample(easy, min(remaining, len(easy))))
+        return sampled
+    else:
+        # Random sampling
+        return random.sample(test_set, min(budget, len(test_set)))
+]]></code>
+      </example>
+    </section>
+
+    <section name="quality-gates">
+      <rule testable="true">
+        <statement>Quality gates MUST be numeric and explicit before any production deployment: for example "faithfulness &gt;= 0.80 AND precision@5 &gt;= 0.70 AND hit_rate &gt;= 0.90". "Looks good" or "metrics are acceptable" are not quality gates.</statement>
+        <rationale>Vague quality gates cannot be enforced in CI and create reviewer subjectivity. Numeric gates are runnable as assertions, blockable in deployment pipelines, and comparable across time. Track metric trends over 2+ weeks — a metric trending downward is actionable even if the current value is above threshold.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Quality gates MUST include at least one retrieval metric AND at least one generation metric. Never gate on a single metric.</statement>
+        <rationale>A model can improve faithfulness while degrading retrieval recall. A single-metric gate misses this cross-dimension regression. Minimum viable gate: faithfulness (generation) + precision@5 (retrieval).</rationale>
+      </rule>
+
+      <example type="good" title="CI quality gate assertion">
+        <code lang="python"><![CDATA[
+def check_quality_gates(metrics: dict) -> list:
+    """
+    Returns list of failed gates. Empty list = all pass.
+    Raise or block deployment if any gate fails.
+    """
+    gates = [
+        ("faithfulness", 0.80),
+        ("precision@5", 0.70),
+        ("hit_rate", 0.90),
+    ]
+    failures = []
+    for metric_name, threshold in gates:
+        value = metrics.get(metric_name)
+        if value is None:
+            failures.append(f"{metric_name}: not computed")
+        elif value < threshold:
+            failures.append(f"{metric_name}={value:.3f} < {threshold}")
+    return failures
+]]></code>
+      </example>
+    </section>
+
+    <section name="pitfalls">
+      <p>Common evaluation pitfalls to avoid:</p>
+
+      <antipattern>
+        <description>Single Metric Trap — relying on one metric (e.g., only faithfulness or only Hit Rate) as the sole quality signal.</description>
+        <reason>No single metric fully characterizes RAG quality. Faithfulness can be high while the retriever returns irrelevant context. Hit Rate can be 1.0 while Precision@5 is 0.20. Always use a combination covering both retrieval and generation dimensions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No Baseline — measuring metric values without a stored baseline to compare against.</description>
+        <reason>An absolute score of 0.75 is meaningless without knowing whether that is better or worse than the previous version. Store baseline metric values at every release and compare explicitly. A 5-point regression is actionable even if 0.75 seems "acceptable".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Non-representative Test Set — using a convenience sample that doesn't reflect production query distribution.</description>
+        <reason>Metrics computed on easy or in-distribution queries overestimate real-world quality. Include difficult queries (ambiguous, multi-hop, out-of-domain) and edge cases in the test set. Update the test set as production queries evolve.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Static Ground Truth — never updating the ground-truth relevant doc IDs and expected answers as the document corpus evolves.</description>
+        <reason>Ground truth becomes stale as new documents are added, old ones removed, or expected answer wording changes. A retrieval metric computed against outdated ground truth is measuring the wrong thing. Schedule ground-truth reviews with corpus changes.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Evaluator Bias — treating LLM-judge scores as ground truth without acknowledging the evaluator's own biases and inconsistencies.</description>
+        <reason>LLM evaluators have systematic biases: preference for verbosity, self-preference (evaluating own outputs higher), and position bias (scoring first item in a list higher). Calibrate LLM-judge scores against human labels on a sample before relying on them as quality gates.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Recommended agentic evaluation workflow:</p>
+      <list>
+        <item>Evaluation agent selects metric set based on use case: Q&amp;A → faithfulness + precision@5 + MRR; document search → NDCG@10 + recall@20; chatbot → context relevance + hit rate.</item>
+        <item>Runs retrieval metrics (free tier) on full labeled test set.</item>
+        <item>Samples 10-20% of queries for LLM-based generation metrics to control cost.</item>
+        <item>Aggregates results and compares against stored baseline values.</item>
+        <item>Regression detection: flags any metric that dropped more than 5 percentage points vs. baseline.</item>
+        <item>Returns structured JSON: metrics dict, flags list, recommendation string.</item>
+      </list>
+
+      <example type="good" title="Agent prompt pattern for RAG metrics evaluation">
+        <code lang="text"><![CDATA[
+You are a RAG metrics agent. Given: evaluation_results.json.
+Compute aggregate metrics:
+- retrieval: avg precision@5, recall@5, MRR, hit_rate
+- generation: avg faithfulness, answer_relevance, context_relevance
+- flag any metric below threshold: {faithfulness: 0.80, precision@5: 0.70, hit_rate: 0.90}
+Return: {"metrics": {...}, "flags": [...], "recommendation": "..."}
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Metric bundle selected for the specific use case (Q&amp;A / search / chatbot / summarization).</check>
+      <check>Evaluation stage matched to metric depth (dev / pre-prod / prod-monitoring / A/B).</check>
+      <check>Retrieval metrics (free tier) scheduled to run on every test batch.</check>
+      <check>LLM-judge metrics running on 10-20% sample, not every query.</check>
+      <check>Quality gates are numeric: at minimum faithfulness threshold + one retrieval metric threshold.</check>
+      <check>Baseline metric values stored at current release for regression comparison.</check>
+      <check>Test set reviewed for representativeness; includes edge cases and difficult queries.</check>
+      <check>Ground truth scheduled for review when document corpus changes.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="rag-eval-retrieval-metrics"/>
+      <ref slug="rag-eval-generation-metrics"/>
+      <ref slug="rag-eval-pipeline"/>
+      <link href="https://arxiv.org/abs/2309.15217"/>
+      <link href="https://docs.ragas.io/"/>
+    </see-also>
+  </content>
+</methodology>
