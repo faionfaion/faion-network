@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="ddd-domain-events">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>DDD Domain Events: raise frozen event objects inside Aggregate methods, collect before dispatch, pair with Outbox pattern to prevent dual-write bugs across bounded contexts.</summary>
+    <tags>
+      <tag>ddd</tag>
+      <tag>domain-events</tag>
+      <tag>outbox-pattern</tag>
+      <tag>eventual-consistency</tag>
+      <tag>aggregate</tag>
+    </tags>
+    <category>ddd</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>DDD Domain Events: Raising, Collecting, and Dispatching</title>
+
+    <summary>A Domain Event records that something significant happened in the domain: OrderPlaced, SubscriptionRenewed, InvoiceIssued. Events are raised inside Aggregate command methods and appended to an internal _events list. The application layer collects events after the DB transaction commits and dispatches them to handlers. Pair with the Outbox pattern to ensure events are never lost when the process crashes between DB commit and event publish.</summary>
+
+    <why>
+      <p>Without Domain Events, cross-Aggregate reactions are implemented as direct calls inside the Aggregate (violating boundaries) or in the application service (hardcoding all downstream effects). Either approach creates tight coupling: adding a new downstream reaction requires modifying the Aggregate or the service.</p>
+      <p>Domain Events decouple the reaction: OrderPlaced is raised once; any number of handlers (send confirmation email, reserve inventory, update analytics) react independently. New reactions are added without touching the Aggregate or the use case. The Outbox pattern eliminates dual-write: the event row is inserted in the same DB transaction as the state change, so "event published but DB failed" and "DB committed but event lost" are both impossible.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any state transition that triggers downstream reactions in other Bounded Contexts (order placed → billing, shipping, notifications).</item>
+        <item>Any cross-Aggregate side effect that must be decoupled from the primary transaction.</item>
+        <item>Audit trails: Domain Events are the natural record of what happened and when.</item>
+        <item>Event Sourcing: the event log IS the state; Aggregates are reconstituted by replaying events.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple intra-Aggregate reactions that can be handled in the same method — no need to raise an event if only the Aggregate itself reacts.</item>
+        <item>Synchronous request/response flows where the caller needs the result of the downstream reaction immediately — use a direct call or query, not an event.</item>
+        <item>Low-stakes CRUD operations with no downstream effects — event overhead is not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule testable="true">
+        <statement>Domain Events MUST be frozen (immutable) value objects. In Python use @dataclass(frozen=True). Each event MUST carry an occurred_at timestamp (set at construction) and an event_id (UUID, for idempotency).</statement>
+        <rationale>Mutable events can be tampered with after dispatch. event_id enables idempotent handlers: if the same event is delivered twice, the handler detects the duplicate and skips processing.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Domain Events MUST be raised inside Aggregate command methods (appended to self._events), NOT in Application Services or Domain Services. The application layer collects events via aggregate.collect_events() only after the DB transaction commits successfully.</statement>
+        <rationale>Raising events before the DB commit creates a dual-write risk: if the commit fails after the event is dispatched, the downstream system reacts to a state change that did not happen. Collect-after-commit ensures events are only dispatched for committed state changes.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Production systems with message brokers (Kafka, RabbitMQ, SNS) MUST use the Outbox pattern: insert an event row into an outbox table in the same DB transaction as the Aggregate state change. A relay process reads unprocessed outbox rows and publishes them to the broker.</statement>
+        <rationale>Without the Outbox, the window between DB commit and broker publish is a failure mode: the process can crash, the network can drop the publish call, or the broker can be temporarily unavailable. The Outbox closes this window by making the event durable in the same DB transaction as the state change.</rationale>
+      </rule>
+    </rules>
+
+    <example type="good" title="Domain Events raised inside Aggregate, collected by application layer">
+      <code lang="python"><![CDATA[
+# order/domain/events.py
+from dataclasses import dataclass, field
+from datetime import datetime
+from uuid import UUID, uuid4
+
+
+@dataclass(frozen=True)
+class DomainEvent:
+    """Base class for domain events."""
+    event_id: UUID = field(default_factory=uuid4)
+    occurred_at: datetime = field(default_factory=datetime.utcnow)
+
+
+@dataclass(frozen=True)
+class OrderPlaced(DomainEvent):
+    """Event raised when an order is placed."""
+    order_id: UUID = None
+    customer_id: UUID = None
+    total: object = None  # Money VO
+
+
+@dataclass(frozen=True)
+class OrderShipped(DomainEvent):
+    """Event raised when an order is shipped."""
+    order_id: UUID = None
+    tracking_number: str = None
+
+
+@dataclass(frozen=True)
+class OrderCancelled(DomainEvent):
+    """Event raised when an order is cancelled."""
+    order_id: UUID = None
+    reason: str = None
+]]></code>
+    </example>
+
+    <example type="good" title="Application layer collects and dispatches after commit">
+      <code lang="python"><![CDATA[
+# order/application/use_cases/place_order.py
+class PlaceOrderUseCase:
+    def __init__(self, order_repo, event_bus):
+        self._order_repo = order_repo
+        self._event_bus = event_bus
+
+    async def execute(self, order_id, shipping_address):
+        order = await self._order_repo.find_by_id(order_id)
+        if not order:
+            raise OrderNotFoundError(order_id)
+
+        order.place(shipping_address)
+
+        # Save FIRST — DB transaction commits here
+        await self._order_repo.save(order)
+
+        # Collect and dispatch AFTER commit
+        events = order.collect_events()
+        for event in events:
+            await self._event_bus.publish(event)
+]]></code>
+      <note>Events are dispatched only after save() succeeds. If save() raises, events are never collected. collect_events() clears the buffer so events are dispatched exactly once per use-case call.</note>
+    </example>
+
+    <example type="good" title="Outbox pattern — event row inserted in same DB transaction">
+      <code lang="python"><![CDATA[
+# order/infrastructure/outbox_repository.py
+import json
+from datetime import datetime
+from uuid import UUID
+
+class OutboxOrderRepository(OrderRepository):
+    """Repository that writes domain events to outbox in the same transaction."""
+
+    async def save(self, order: Order) -> None:
+        async with self._session.begin():
+            # 1. Save aggregate state
+            model = self._to_model(order)
+            self._session.add(model)
+
+            # 2. Insert event rows in SAME transaction
+            events = order.collect_events()
+            for event in events:
+                outbox_row = OutboxMessage(
+                    id=event.event_id,
+                    event_type=type(event).__name__,
+                    payload=json.dumps(self._serialize_event(event)),
+                    created_at=datetime.utcnow(),
+                    processed=False,
+                )
+                self._session.add(outbox_row)
+        # Transaction commits here — both state and events are durable
+
+
+# A separate relay process (cron / worker) reads unprocessed rows:
+class OutboxRelay:
+    async def run_once(self):
+        rows = await self._session.query(OutboxMessage).filter_by(processed=False).all()
+        for row in rows:
+            await self._broker.publish(row.event_type, row.payload)
+            row.processed = True
+        await self._session.commit()
+]]></code>
+      <note>The relay is idempotent: if it crashes after publishing but before marking processed=True, it will republish. Handlers must be idempotent (check event_id before acting).</note>
+    </example>
+
+    <example type="good" title="Event handler — idempotent via event_id">
+      <code lang="python"><![CDATA[
+# order/application/handlers/order_placed_handler.py
+class OrderPlacedHandler:
+    """Handle order placed event."""
+
+    def __init__(self, email_service, inventory_service):
+        self._email_service = email_service
+        self._inventory_service = inventory_service
+
+    async def handle(self, event: OrderPlaced) -> None:
+        # Idempotency: check if already processed
+        if await self._processed_events.contains(event.event_id):
+            return
+
+        # Send confirmation email
+        await self._email_service.send_order_confirmation(
+            order_id=event.order_id,
+            customer_id=event.customer_id,
+        )
+
+        # Reserve inventory
+        await self._inventory_service.reserve(event.order_id)
+
+        # Mark as processed
+        await self._processed_events.record(event.event_id)
+]]></code>
+    </example>
+
+    <section name="agentic-gotchas">
+      <p>Domain Events are the area where agents most frequently introduce subtle correctness bugs. These patterns must be reviewed explicitly.</p>
+      <list>
+        <item>Generated Domain Events often lack event_id — handlers will double-process on redelivery. Require UUID event_id on the base class.</item>
+        <item>Agents dispatch events before the DB transaction commits — check that collect_events() is called after save() in every use case.</item>
+        <item>Agents skip the Outbox entirely and publish directly to the broker inside save() — this is a dual-write bug waiting for a process crash. Flag any direct broker.publish() call inside a repository.</item>
+        <item>Handlers lack idempotency — at-least-once delivery means handlers must handle duplicate events gracefully. Require event_id deduplication in every handler.</item>
+        <item>Agents raise events from Application Services instead of Aggregates — the event misses the invariant context and may fire even when the state change fails validation.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Domain Events are frozen dataclasses with event_id (UUID) and occurred_at</check>
+      <check>Events are raised inside Aggregate command methods, appended to _events list</check>
+      <check>collect_events() is called only after DB transaction commits in the application layer</check>
+      <check>Production deployments use Outbox pattern (event rows in same DB transaction)</check>
+      <check>Outbox relay is idempotent; handlers check event_id before processing</check>
+      <check>Event handlers are registered for each Domain Event type</check>
+      <check>Events carry enough context for handlers to act without loading the Aggregate again</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="ddd-aggregates"/>
+      <ref slug="ddd-repositories"/>
+      <ref slug="arch-pattern-ddd"/>
+      <link href="https://microservices.io/patterns/data/transactional-outbox.html"/>
+      <link href="https://martinfowler.com/eaaDev/DomainEvent.html"/>
+    </see-also>
+  </content>
+</methodology>
