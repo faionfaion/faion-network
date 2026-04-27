@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-elk-queries-alerting">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Query and alert on ELK data using KQL, Elasticsearch DSL aggregations, Kibana alerting rules, and Watcher watches for error rates, missing logs, and performance thresholds.</summary>
+    <tags>
+      <tag>kibana</tag>
+      <tag>elasticsearch</tag>
+      <tag>alerting</tag>
+      <tag>logging</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>logging</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-index-management"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Kibana Queries, Dashboards, and Alerting</title>
+
+    <summary>Kibana Query Language (KQL) enables fast structured filtering in Kibana dashboards. Elasticsearch DSL supports complex aggregations (terms, percentiles, date-histograms) for analytics queries via the REST API or Dev Tools. Kibana alerting rules and Elasticsearch Watcher send notifications when error rates exceed thresholds or when expected logs are absent.</summary>
+
+    <why>
+      <p>Logs are only useful if operators can find relevant events quickly and get notified before a problem escalates. KQL's field:value syntax searches the inverted index directly and is orders of magnitude faster than wildcard regexp searches across the raw message field. Aggregation queries expose patterns (error rate by service, P99 response time by endpoint) that are invisible in individual log lines. Automated alerting reduces MTTR by detecting anomalies before users report them.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building operational dashboards showing error rates, response time percentiles, and request volumes by service.</item>
+        <item>Debugging production incidents by filtering logs to a specific service, time window, and error type.</item>
+        <item>Setting up automated alerts for error rate spikes, missing heartbeat logs, or slow request rates.</item>
+        <item>Ad-hoc aggregation analysis to identify top error types or slowest API endpoints.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time metrics with sub-second resolution — Prometheus+Grafana is more efficient for time-series metrics; Elasticsearch is optimized for search, not for high-cardinality metrics.</item>
+        <item>Long-running reports against frozen/cold indices where query latency is minutes — pre-aggregate into a rollup index instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="kql-queries">
+      <p>KQL (Kibana Query Language) searches structured fields directly. Always filter on keyword fields (level, service, environment) rather than full-text message when field values are known.</p>
+      <example type="good" title="Common KQL patterns for log analysis">
+        <code lang="text"><![CDATA[
+# Errors in a specific service
+level: ERROR AND service: "user-service"
+
+# Time range with multiple log levels
+@timestamp >= "2025-01-01" AND level: (ERROR OR WARN)
+
+# Full-text search in message
+message: "connection timeout"
+
+# Field existence check
+trace_id: *
+
+# Range query on numeric field
+duration_ms > 1000
+
+# Wildcard on field value
+service: "api-*"
+
+# Negation
+level: ERROR AND NOT host: "test-*"
+
+# Complex combination
+(level: ERROR OR level: WARN) AND service: "api-*" AND NOT host: "test-*" AND environment: "production"
+
+# HTTP error responses
+http.status >= 400 AND http.status < 600
+
+# Slow POST requests
+duration_ms > 5000 AND http.method: "POST"
+]]></code>
+      </example>
+      <antipattern>
+        <description>Using message: "*error*" instead of level: ERROR for finding errors in structured logs.</description>
+        <reason>Wildcard queries on the message text field bypass the inverted index and scan all documents, causing query times 10-100x slower than keyword field lookups on the level field.</reason>
+      </antipattern>
+    </section>
+
+    <section name="elasticsearch-dsl">
+      <p>Elasticsearch Query DSL supports complex bool queries, aggregations, and sorting via the REST API or Kibana Dev Tools.</p>
+      <example type="good" title="DSL: filter errors in last hour with sort">
+        <code lang="json"><![CDATA[
+GET logs-*/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+        { "range": { "@timestamp": { "gte": "now-1h" } } },
+        { "term":  { "level": "ERROR" } }
+      ]
+    }
+  },
+  "sort": [{ "@timestamp": { "order": "desc" } }],
+  "size": 100
+}
+]]></code>
+      </example>
+      <example type="good" title="DSL: aggregation — error count by service (last 24h)">
+        <code lang="json"><![CDATA[
+GET logs-*/_search
+{
+  "size": 0,
+  "query": {
+    "bool": {
+      "filter": [
+        { "range": { "@timestamp": { "gte": "now-24h" } } },
+        { "term":  { "level": "ERROR" } }
+      ]
+    }
+  },
+  "aggs": {
+    "by_service": {
+      "terms": {
+        "field": "service",
+        "size":  20
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+      <example type="good" title="DSL: percentile response times (last 1h)">
+        <code lang="json"><![CDATA[
+GET logs-*/_search
+{
+  "size": 0,
+  "query": {
+    "range": { "@timestamp": { "gte": "now-1h" } }
+  },
+  "aggs": {
+    "response_percentiles": {
+      "percentiles": {
+        "field":    "duration_ms",
+        "percents": [50, 90, 95, 99]
+      }
+    }
+  }
+}
+]]></code>
+        <note>Use filter context (filter clause inside bool) instead of query context for time ranges and exact-match filters — filter results are cached and do not affect relevance scoring.</note>
+      </example>
+    </section>
+
+    <section name="watcher-alerts">
+      <p>Elasticsearch Watcher runs scheduled searches and triggers actions when conditions are met. Watcher is included in basic and above licenses.</p>
+      <example type="good" title="Watcher: alert on high error rate (>100 errors in 5 min)">
+        <code lang="json"><![CDATA[
+PUT _watcher/watch/high_error_rate
+{
+  "trigger": {
+    "schedule": { "interval": "5m" }
+  },
+  "input": {
+    "search": {
+      "request": {
+        "indices": ["logs-*"],
+        "body": {
+          "size": 0,
+          "query": {
+            "bool": {
+              "filter": [
+                { "range": { "@timestamp": { "gte": "now-5m" } } },
+                { "term":  { "level": "ERROR" } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "condition": {
+    "compare": {
+      "ctx.payload.hits.total.value": { "gt": 100 }
+    }
+  },
+  "actions": {
+    "notify_slack": {
+      "webhook": {
+        "scheme": "https",
+        "host":   "hooks.slack.com",
+        "port":   443,
+        "method": "post",
+        "path":   "/services/XXX/YYY/ZZZ",
+        "body":   "{\"text\": \"High error rate: {{ctx.payload.hits.total.value}} errors in 5 minutes\"}"
+      }
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="kibana-alerting">
+      <p>Kibana Alerting Rules (Stack Rules) provide a UI-driven alternative to Watcher with built-in connectors for Slack, email, PagerDuty, and Opsgenie.</p>
+      <example type="good" title="Kibana alert: no logs from critical service (missing heartbeat)">
+        <code lang="yaml"><![CDATA[
+# Alert: No logs from service (configured in Kibana UI → Stack Management → Rules)
+name: "Missing Logs Alert"
+rule_type_id: ".es-query"
+schedule:
+  interval: "5m"
+params:
+  index:
+    - "logs-*"
+  timeField: "@timestamp"
+  esQuery: |
+    {
+      "bool": {
+        "filter": [
+          { "range": { "@timestamp": { "gte": "now-10m" } } },
+          { "term": { "service": "critical-service" } }
+        ]
+      }
+    }
+  threshold:
+    - 1
+  thresholdComparator: "<"
+  timeWindowSize: 10
+  timeWindowUnit: "m"
+actions:
+  - group: "default"
+    id: "slack-action"
+    params:
+      message: "No logs from critical-service in last 10 minutes!"
+]]></code>
+        <note>Missing-logs alerts (count less than 1) are more reliable than rate-of-change alerts for detecting complete service failures where the absence of logs is the signal.</note>
+      </example>
+    </section>
+
+    <section name="kibana-setup">
+      <p>Essential Kibana post-installation steps for an operational logging dashboard.</p>
+      <list>
+        <item>Create data views (index patterns) for logs-* with @timestamp as the time field.</item>
+        <item>Set default time filter to "Last 15 minutes" for operational use; widen to "Last 7 days" for trend analysis.</item>
+        <item>Create saved searches for common queries (all errors, slow requests, specific services) to avoid re-entering KQL on every session.</item>
+        <item>Build operational dashboard with: error rate time series, top 10 error types terms chart, P90/P99 response time histogram, log volume by service, and recent errors data table.</item>
+        <item>Configure role-based access: read-only roles for developers (their service indices only), full access for SREs, audit-only access for compliance reviewers.</item>
+        <item>Set xpack.encryptedSavedObjects.encryptionKey to a random 32-character string; without this, alerting actions that store credentials (Slack webhook URLs) cannot be persisted.</item>
+      </list>
+    </section>
+
+    <section name="kibana-yml">
+      <p>kibana.yml production configuration covering Elasticsearch connection, SSL, session management, and encryption keys.</p>
+      <example type="good" title="kibana.yml production settings">
+        <code lang="yaml"><![CDATA[
+server.host:          "0.0.0.0"
+server.port:          5601
+server.name:          "kibana"
+server.publicBaseUrl: "https://kibana.example.com"
+
+elasticsearch.hosts:    ["https://es-node-1:9200", "https://es-node-2:9200", "https://es-node-3:9200"]
+elasticsearch.username: "kibana_system"
+elasticsearch.password: "${KIBANA_PASSWORD}"
+elasticsearch.ssl.certificateAuthorities: ["/etc/kibana/certs/ca.crt"]
+elasticsearch.ssl.verificationMode: full
+
+server.ssl.enabled:     true
+server.ssl.certificate: /etc/kibana/certs/kibana.crt
+server.ssl.key:         /etc/kibana/certs/kibana.key
+
+xpack.security.enabled: true
+xpack.encryptedSavedObjects.encryptionKey: "your-32-character-encryption-key!"
+xpack.reporting.encryptionKey:             "your-32-character-reporting-key!"
+xpack.security.encryptionKey:              "your-32-character-security-key!!"
+
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan:    "24h"
+
+logging.json:    true
+logging.verbose: false
+telemetry.enabled: false
+]]></code>
+      </example>
+    </section>
+
+    <checklist>
+      <check>Create data views in Kibana for all log index patterns before building dashboards.</check>
+      <check>Use keyword field filters (level, service) in KQL, not wildcard message searches.</check>
+      <check>Set xpack.encryptedSavedObjects.encryptionKey before configuring alerting actions.</check>
+      <check>Build missing-logs (count less than threshold) alert for each critical service.</check>
+      <check>Configure error-rate (count greater than threshold) alert with 5-minute check interval.</check>
+      <check>Create roles restricting index access: developers see only their service indices.</check>
+      <check>Use filter context (not query context) for time-range and term filters in DSL for cache efficiency.</check>
+      <check>Set up Watcher or Kibana alerting rules for at least: high error rate, missing logs, slow response times.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-elk-architecture"/>
+      <ref slug="devops-elk-index-management"/>
+      <link href="https://www.elastic.co/guide/en/kibana/current/index.html"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl.html"/>
+    </see-also>
+  </content>
+</methodology>
