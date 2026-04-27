@@ -4,7 +4,7 @@
     <tier>free</tier>
     <group>dev</group>
     <domain>software-developer</domain>
-    <summary>Thin views plus service layer plus drf-spectacular OpenAPI plus ViewSet pattern for Django REST Framework. Views validate input and call services; services own business logic and accept domain types, not request.user.</summary>
+    <summary>Thin views, service layer, drf-spectacular OpenAPI, ViewSet pattern. Services accept domain types, not request.user.</summary>
     <tags>
       <tag>django</tag>
       <tag>drf</tag>
@@ -227,6 +227,40 @@ class OrderLimitExceeded(APIException):
         <statement>Run manage.py spectacular --validate before merging. This catches broken OpenAPI schemas that would silently produce incomplete documentation.</statement>
         <rationale>drf-spectacular infers schemas from serializers. Certain field combinations (nullable plus optional) produce incorrect OpenAPI without runtime errors. Validation catches them early.</rationale>
       </rule>
+    </section>
+
+    <section name="best-practices">
+      <p>Proven practices for building maintainable Django REST APIs:</p>
+      <list>
+        <item>Separate request and response serializers. CreateOrderRequest != OrderResponse. Mixing via one ModelSerializer leaks write-only fields into responses.</item>
+        <item>Make services framework-agnostic. Pass user_id (int) or domain User model, not request.user. Services callable from Celery tasks, mgmt commands, tests.</item>
+        <item>Always set tags= in @extend_schema. Without tags, Swagger UI groups everything under "default". Useless for more than 10 endpoints.</item>
+        <item>Cap queryset in ViewSet at the user's scope in get_queryset. Never expose Model.objects.all() directly. Guarantees an IDOR sooner or later.</item>
+        <item>select_for_update requires transaction.atomic and a real DB (not SQLite). Wrap explicitly; readers will copy-paste.</item>
+        <item>Use @action(detail=True) for non-CRUD verbs (/orders/{id}/cancel/). Keeps URL conf flat.</item>
+        <item>Pagination: set DEFAULT_PAGINATION_CLASS = rest_framework.pagination.LimitOffsetPagination in settings. Never paginate ad-hoc per view.</item>
+        <item>Permissions per action: override get_permissions(self) in ViewSet, returning different classes for create vs list. Static permission_classes is too coarse for real apps.</item>
+        <item>Tests must hit URL, not view. Use reverse(app:url-name). Refactoring URL conf doesn't break tests.</item>
+        <item>@pytest.mark.django_db(transaction=True) only when you actually need committed transactions (e.g., post_commit signals). Otherwise default rollback is faster.</item>
+      </list>
+    </section>
+
+    <section name="gotchas">
+      <p>Common pitfalls when building DRF endpoints:</p>
+      <list>
+        <item>request.user in services breaks tests plus Celery callers. Lint rule worth adding: ban request.* inside services/*.py.</item>
+        <item>is_valid(raise_exception=True) maps to HTTP 400 with DRF's default exception handler, but if you also have custom exception middleware, double-handling can produce confusing 500s.</item>
+        <item>@extend_schema(request=Serializer) and a request.data shape that doesn't match (flat field vs nested) will silently generate wrong OpenAPI without runtime errors. manage.py spectacular --validate catches some, not all.</item>
+        <item>ViewSet get_queryset runs per request; calling .all() then .filter() re-issues the query. Use self.queryset.filter(...) only after assigning a queryset class attr.</item>
+        <item>Auth class order matters. SessionAuth before TokenAuth makes browser tools convenient but breaks header-only clients with CSRF. Spell it out per project.</item>
+        <item>PUT vs PATCH: ModelViewSet's update defaults to PUT (full replace). Agents who think PUT equals PATCH will write tests sending partials and hit 400.</item>
+        <item>drf-spectacular infers nullable wrong for serializers.CharField(allow_null=True, required=False) vs missing field. Explicit OpenApiTypes.STR plus OpenApiParameter(...) overrides may be needed.</item>
+        <item>CORS: methodology never mentions corsheaders. Endpoint works in tests, fails from frontend with CORS error. Common spec-vs-runtime mismatch.</item>
+        <item>ModelViewSet exposes DELETE by default. Agents copy-paste and accidentally ship destructive endpoints. Whitelist actions: http_method_names = [get, post, patch].</item>
+        <item>Schema breakage when adding a required field to a request serializer is a backward-incompatible API change. Always run oasdiff breaking before merging.</item>
+        <item>force_authenticate(user=user) in tests bypasses permission classes. Green tests, broken prod when permissions misconfigured. Pair with at least one un-authenticated test asserting 401/403.</item>
+        <item>Bulk endpoints are out of scope here. ModelViewSet doesn't bulk-create; agents reach for serializer(many=True, data=list) and skip per-row validation. Use drf-bulk or write explicit endpoint.</item>
+      </list>
     </section>
 
     <templates>
