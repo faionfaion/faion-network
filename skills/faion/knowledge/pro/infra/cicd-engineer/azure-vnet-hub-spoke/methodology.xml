@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-vnet-hub-spoke">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Design and provision Azure Virtual Networks with hub-spoke topology: address space planning, subnet sizing, VNet peering, and Bastion for secure access.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>vnet</tag>
+      <tag>hub-spoke</tag>
+      <tag>networking</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-nsg-rules"/>
+      <ref slug="azure-nat-gateway"/>
+      <ref slug="azure-private-link"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure VNet and Hub-Spoke Topology</title>
+
+    <summary>Foundation of Azure networking: Virtual Network (VNet) provides network isolation with subnets, peering, and delegations. Hub-spoke topology centralises shared services (Firewall, Bastion, DNS) in a hub VNet while workloads live in spoke VNets connected via peering.</summary>
+
+    <why>
+      <p>Azure VNet is the mandatory isolation boundary for all compute and PaaS resources. Without a deliberate CIDR plan, overlapping address spaces block VNet peering or on-premises VPN connectivity — issues that require full re-IP and re-deploy to fix. Hub-spoke separates shared networking infrastructure from workload VNets, enabling independent lifecycle management and consistent policy enforcement without duplicating Firewalls or Bastion hosts per spoke.</p>
+      <p>VNet peering does NOT transit: if spoke A and spoke B both peer with the hub, A and B cannot reach each other through the hub unless a UDR (User Defined Route) forces traffic through Azure Firewall in the hub. Agents routinely draw the topology diagram and forget this.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Designing landing-zone networks for new Azure subscriptions with multiple workloads or environments.</item>
+        <item>Multi-team environments where workloads share Firewall, Bastion, DNS, or VPN Gateway.</item>
+        <item>Compliance scenarios (HIPAA, PCI-DSS) requiring strict east-west traffic inspection between VNets.</item>
+        <item>Any setup with on-premises connectivity via VPN Gateway or ExpressRoute — the Gateway lives in the hub.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-region, single-VNet, single-team workload that does not cross subscriptions — full hub-spoke is overkill, use a flat VNet.</item>
+        <item>Cost-sensitive POCs — hub-spoke with Firewall + Bastion combined runs hundreds USD/month idle.</item>
+        <item>Throwaway dev environments — a flat VNet with NSG is sufficient.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="address-space-planning">
+      <p>Plan address space before any resource is created. Overlapping CIDRs permanently block peering and VPN connectivity.</p>
+      <rules>
+        <rule testable="true">
+          <statement>Use /16 for each VNet (hub and per-spoke). Use /24 for each subnet. Reserve /22 per spoke for AKS pod CIDR (AKS needs a large contiguous block for pods — typically /16 within the cluster but the node subnet must be sized accordingly). Leave at least 50% headroom in each VNet for growth.</statement>
+          <rationale>Azure reserves 5 IPs per subnet. AKS with kubenet or Azure CNI requires large pod CIDRs that overflow small subnets. Planning /24 subnets avoids the common /28 or /27 that runs out immediately when adding NAT Gateway, App Gateway, and Bastion reserved IPs.</rationale>
+        </rule>
+        <rule testable="true">
+          <statement>Hub VNet MUST NOT overlap with any spoke VNet or on-premises range. Spoke VNets MUST NOT overlap with each other. Use a CIDR allocation table (Markdown or spreadsheet) as the source of truth before writing any Terraform.</statement>
+          <rationale>Peering fails immediately if CIDRs overlap. On-premises VPN/ER routes are also rejected. There is no in-place re-IP; you must delete and recreate.</rationale>
+        </rule>
+      </rules>
+      <example type="good" title="Non-overlapping hub-spoke CIDR plan">
+        <code lang="text"><![CDATA[
+Hub VNet:    10.0.0.0/16
+  GatewaySubnet:      10.0.0.0/24
+  AzureFirewallSubnet: 10.0.1.0/24
+  AzureBastionSubnet:  10.0.2.0/24
+  shared-services:     10.0.3.0/24
+
+Spoke prod: 10.1.0.0/16
+  appgw:            10.1.0.0/24
+  web:              10.1.1.0/24
+  app:              10.1.2.0/24
+  data:             10.1.3.0/24
+  private-endpoints: 10.1.4.0/24
+
+Spoke dev:  10.2.0.0/16
+  (same subnet layout, different range)
+]]></code>
+      </example>
+    </section>
+
+    <section name="subnet-delegations">
+      <p>Certain Azure services require subnet delegation — they claim exclusive use of the subnet.</p>
+      <rules>
+        <rule testable="true">
+          <statement>Application Gateway subnets MUST include a delegation to `Microsoft.Network/applicationGateways` (required since 2025). AKS node subnets MAY include delegation to `Microsoft.ContainerService/managedClusters`. PostgreSQL Flexible Server subnets MUST include delegation to `Microsoft.DBforPostgreSQL/flexibleServers`. Delegated subnets MUST be dedicated — no other resource types allowed in the same subnet.</statement>
+          <rationale>App Gateway v2 deploy fails without delegation as of 2025. Mixing non-delegated resources in a delegated subnet causes intermittent plan failures or silent drift on re-apply.</rationale>
+        </rule>
+      </rules>
+      <example type="good" title="App Gateway subnet with delegation (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_subnet" "appgw" {
+  name                 = "appgw"
+  resource_group_name  = azurerm_resource_group.spoke.name
+  virtual_network_name = azurerm_virtual_network.spoke.name
+  address_prefixes     = ["10.1.0.0/24"]
+
+  delegation {
+    name = "appgw-delegation"
+    service_delegation {
+      name = "Microsoft.Network/applicationGateways"
+    }
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="hub-spoke-peering">
+      <p>Hub-spoke connectivity uses VNet peering. Peering is NOT transitive — spoke-to-spoke traffic requires a route through Azure Firewall in the hub with UDRs.</p>
+      <rules>
+        <rule testable="true">
+          <statement>VNet peering MUST be created in BOTH directions (hub→spoke AND spoke→hub). A one-directional peering completes in the portal but traffic fails silently. Set `allow_forwarded_traffic = true` on both sides and `allow_gateway_transit = true` on the hub side when a VPN Gateway or ExpressRoute Gateway is present.</statement>
+          <rationale>Agents routinely create only one peering direction, the plan shows no errors, and connectivity fails. Both directions are required for the peering to be in Connected state.</rationale>
+        </rule>
+      </rules>
+      <example type="good" title="Bidirectional peering (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_virtual_network_peering" "hub_to_spoke" {
+  name                         = "hub-to-${var.environment}"
+  resource_group_name          = azurerm_resource_group.hub.name
+  virtual_network_name         = azurerm_virtual_network.hub.name
+  remote_virtual_network_id    = azurerm_virtual_network.spoke.id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  allow_gateway_transit        = true
+}
+
+resource "azurerm_virtual_network_peering" "spoke_to_hub" {
+  name                         = "${var.environment}-to-hub"
+  resource_group_name          = azurerm_resource_group.spoke.name
+  virtual_network_name         = azurerm_virtual_network.spoke.name
+  remote_virtual_network_id    = azurerm_virtual_network.hub.id
+  allow_virtual_network_access = true
+  allow_forwarded_traffic      = true
+  use_remote_gateways          = false
+}
+]]></code>
+      </example>
+      <example type="bad" title="One-directional peering">
+        <code lang="hcl"><![CDATA[
+# Creates only hub → spoke. Traffic fails from spoke back to hub.
+resource "azurerm_virtual_network_peering" "hub_to_spoke" {
+  name                      = "hub-to-prod"
+  virtual_network_name      = azurerm_virtual_network.hub.name
+  remote_virtual_network_id = azurerm_virtual_network.spoke.id
+}
+]]></code>
+        <note>Missing spoke_to_hub peering. Connectivity appears fine in the Azure portal until first TCP attempt from spoke to hub fails.</note>
+      </example>
+    </section>
+
+    <section name="hub-network-terraform">
+      <p>Complete hub network Terraform including optional Firewall and Bastion subnets.</p>
+      <example type="good" title="Hub network with Bastion and optional Firewall (Terraform)">
+        <code lang="hcl"><![CDATA[
+# hub-network.tf
+
+resource "azurerm_resource_group" "hub" {
+  name     = "${var.project}-hub-rg"
+  location = var.location
+  tags     = local.common_tags
+}
+
+resource "azurerm_virtual_network" "hub" {
+  name                = "${var.project}-hub-vnet"
+  location            = azurerm_resource_group.hub.location
+  resource_group_name = azurerm_resource_group.hub.name
+  address_space       = var.hub_address_space
+  tags                = local.common_tags
+}
+
+resource "azurerm_subnet" "gateway" {
+  name                 = "GatewaySubnet"
+  resource_group_name  = azurerm_resource_group.hub.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.0.0/24"]
+}
+
+resource "azurerm_subnet" "firewall" {
+  count                = var.enable_firewall ? 1 : 0
+  name                 = "AzureFirewallSubnet"
+  resource_group_name  = azurerm_resource_group.hub.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.1.0/24"]
+}
+
+resource "azurerm_subnet" "bastion" {
+  count                = var.enable_bastion ? 1 : 0
+  name                 = "AzureBastionSubnet"
+  resource_group_name  = azurerm_resource_group.hub.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.2.0/24"]
+}
+
+resource "azurerm_subnet" "shared" {
+  name                 = "shared-services"
+  resource_group_name  = azurerm_resource_group.hub.name
+  virtual_network_name = azurerm_virtual_network.hub.name
+  address_prefixes     = ["10.0.3.0/24"]
+}
+
+# Bastion host
+resource "azurerm_public_ip" "bastion" {
+  count               = var.enable_bastion ? 1 : 0
+  name                = "${var.project}-bastion-ip"
+  location            = azurerm_resource_group.hub.location
+  resource_group_name = azurerm_resource_group.hub.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.common_tags
+}
+
+resource "azurerm_bastion_host" "main" {
+  count               = var.enable_bastion ? 1 : 0
+  name                = "${var.project}-bastion"
+  location            = azurerm_resource_group.hub.location
+  resource_group_name = azurerm_resource_group.hub.name
+  sku                 = "Standard"
+
+  ip_configuration {
+    name                 = "bastion-ip-config"
+    subnet_id            = azurerm_subnet.bastion[0].id
+    public_ip_address_id = azurerm_public_ip.bastion[0].id
+  }
+
+  copy_paste_enabled = true
+  file_copy_enabled  = true
+  tunneling_enabled  = true
+  ip_connect_enabled = true
+  tags               = local.common_tags
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="vnet-checklist">
+      <checklist>
+        <check>Address space planned — non-overlapping with on-premises or other VNets.</check>
+        <check>Subnet sizing calculated — reserved IPs for Azure services accounted for.</check>
+        <check>Hub-spoke topology confirmed for multi-app environments.</check>
+        <check>VNet peering created in BOTH directions.</check>
+        <check>DNS strategy defined (Azure DNS, custom DNS, hybrid).</check>
+        <check>Subnet delegations configured for managed services (App Gateway, AKS, PostgreSQL).</check>
+        <check>Bastion configured for management access (no public IPs on backend VMs).</check>
+        <check>UDR configured if spoke-to-spoke traffic must transit hub Firewall.</check>
+      </checklist>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Network changes are blast-radius high. Have a planner agent produce a topology diff (current state to target state) including subnet CIDRs, peerings, route tables, and DNS zones. An implementation agent emits Terraform. A reviewer agent runs `terraform plan` and checks: no public IPs added without justification, peerings exist in both directions, no NSG rule is Any/Any/Allow.</p>
+      <rule testable="true">
+        <statement>Never run `az network vnet create` or `az network vnet peering create` ad-hoc. All VNet changes MUST go through `terraform plan` review before apply.</statement>
+        <rationale>Ad-hoc changes create drift that breaks subsequent Terraform runs and produces stale state files.</rationale>
+      </rule>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="design-hub-spoke"><![CDATA[
+Design an Azure hub-spoke network architecture for the following requirements:
+
+Project: {project_name}
+Environments: {dev, staging, prod}
+Workloads: {AKS, App Service, PostgreSQL, Redis, Storage}
+Connectivity: {VPN to on-premises / ExpressRoute / Internet only}
+Compliance: {HIPAA, SOC2, PCI-DSS, none}
+
+Requirements:
+- Address space planning with no overlaps
+- Subnet sizing for each tier
+- NSG rules following least privilege
+- Private endpoints for all PaaS services
+- NAT Gateway for outbound connectivity
+- Azure Bastion for secure access
+
+Output:
+1. IP address allocation table
+2. Terraform code for VNet and subnets
+3. Hub-spoke peering configuration
+4. NSG rules matrix
+]]></prompt>
+      <prompt purpose="subnet-sizing"><![CDATA[
+Calculate subnet sizes for Azure VNet with these requirements:
+
+Services:
+- AKS cluster: {node_count} nodes, {pods_per_node} pods per node
+- Application Gateway: {instance_count} instances
+- Azure Bastion: 1 instance
+- Private Endpoints: {pe_count} endpoints
+- VMs: {vm_count} virtual machines
+
+Constraints:
+- Reserve 5 IPs per subnet (Azure reserved)
+- Allow 50% growth headroom
+- Keep subnet boundaries on /24, /25, /26, /27
+
+Output:
+1. Recommended CIDR blocks for each subnet
+2. IP count breakdown
+3. VNet total address space
+]]></prompt>
+    </section>
+
+    <section name="ai-gotchas">
+      <p>Common LLM mistakes when generating VNet Terraform:</p>
+      <antipattern>
+        <description>Subscription scope confusion: `az network vnet peering` requires both directions; LLMs create one side, plan looks clean, traffic still fails.</description>
+        <reason>One-directional peering silently completes but traffic is asymmetric. Always create both hub_to_spoke and spoke_to_hub resources.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents propose a /28 or /27 subnet for AKS nodes, forgetting AKS reserves IPs for pods at the subnet level with Azure CNI.</description>
+        <reason>AKS Azure CNI pre-allocates IPs for pods per node at node pool creation. A /27 (32 IPs minus 5 Azure reserved = 27) exhausts immediately with 2 nodes at 16 pods each.</reason>
+      </antipattern>
+      <antipattern>
+        <description>VNet peering does not transit through a third VNet by default; agents draw the hub-spoke diagram and forget UDR / Azure Firewall is needed for spoke-to-spoke traffic.</description>
+        <reason>Azure does not route spoke-to-spoke via the hub without an explicit UDR pointing to the Firewall's private IP. Traffic is silently dropped.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/virtual-network/"/>
+      <link href="https://learn.microsoft.com/azure/architecture/reference-architectures/hybrid-networking/hub-spoke"/>
+      <link href="https://learn.microsoft.com/azure/well-architected/service-guides/azure-networking"/>
+      <ref slug="azure-nsg-rules"/>
+      <ref slug="azure-nat-gateway"/>
+      <ref slug="azure-private-link"/>
+      <ref slug="azure-app-gateway-waf"/>
+    </see-also>
+  </content>
+</methodology>
