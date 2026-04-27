@@ -5,6 +5,7 @@
 ### Changed
 - decompose: security-as-code → 5 slugs (security-sast, security-dast, security-container-scanning, security-policy-as-code, security-supply-chain)
 - decompose: fine-tuning-openai → 5 slugs (fine-tuning-openai-sft, fine-tuning-openai-dpo, fine-tuning-openai-data-prep, fine-tuning-openai-eval, fine-tuning-openai-deployment)
+- decompose: load-balancing-implementation → 7 slugs (lb-technology-selection, lb-health-checks, lb-haproxy-production, lb-nginx-production, lb-kubernetes-ingress, lb-monitoring, lb-cloud-terraform)
 - decompose: decision-trees → 5 slugs (decision-tree-architecture-style, decision-tree-tech-stack, decision-tree-cloud-provider, decision-tree-build-vs-buy, decision-tree-process)
 - decompose: gcp-architecture → 4 slugs (gcp-landing-zone, gcp-gke-architecture, gcp-storage-cdn, gcp-network-architecture)
 - decompose: kubernetes-deployment → 5 slugs (k8s-deployment-workloads, k8s-rolling-update, k8s-canary-progressive, k8s-scaling-availability, k8s-security-hardening)
