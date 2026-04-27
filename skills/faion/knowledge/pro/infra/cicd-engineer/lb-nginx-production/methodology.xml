@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-nginx-production">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Configure Nginx as a production load balancer with upstream keepalive, TLS 1.2+/1.3, rate limiting zones, security headers, WebSocket support, and path-based routing.</summary>
+    <tags>
+      <tag>nginx</tag>
+      <tag>load-balancing</tag>
+      <tag>tls</tag>
+      <tag>reverse-proxy</tag>
+      <tag>infrastructure</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-technology-selection"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-haproxy-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Nginx Production Load Balancer Configuration</title>
+
+    <summary>Production Nginx LB: worker_processes auto with worker_rlimit_nofile 65535, upstream zones for shared state, keepalive connections for HTTP/1.1 reuse, TLS 1.2+/1.3 with ssl_stapling, rate limiting zones (limit_req_zone + limit_conn_zone), security headers (HSTS, X-Frame-Options, X-Content-Type-Options), WebSocket upgrade support, and proxy_next_upstream for automatic retry on failure.</summary>
+
+    <why>
+      <p>Nginx's strength is combining the web server and load balancer roles: it serves static content from disk, caches upstream responses, and proxies dynamic requests — all in one process with minimal configuration overhead. Its location block model and upstream zone support make path-based routing and shared state across workers trivial. The passive health check model (max_fails + fail_timeout) covers 95% of use cases without requiring Nginx Plus.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Web server plus LB combo — serve static assets from Nginx while proxying dynamic traffic to backends.</item>
+        <item>Static content caching — use proxy_cache to cache upstream responses at the LB layer.</item>
+        <item>Path-based routing — separate /api, /ws, /admin traffic to different upstream pools.</item>
+        <item>WebSocket proxying — native upgrade header support.</item>
+        <item>Simpler configuration than HAProxy for HTTP-only workloads.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>TCP-heavy environments where 10-15% HAProxy performance advantage matters at scale.</item>
+        <item>Advanced circuit breaking or fine-grained retry control — use HAProxy or Envoy.</item>
+        <item>Active health checks without Nginx Plus — open source Nginx only supports passive (max_fails) health checking.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-http-config">
+      <example type="good" title="Nginx basic HTTP load balancing with backup">
+        <code lang="nginx"><![CDATA[
+upstream web_backend {
+    server 10.0.0.1:8080;
+    server 10.0.0.2:8080;
+    server 10.0.0.3:8080 backup;
+}
+
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://web_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="production-full-config">
+      <example type="good" title="Full production Nginx: TLS, rate limiting, keepalive, WebSocket, security headers">
+        <code lang="nginx"><![CDATA[
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 65535;
+error_log /var/log/nginx/error.log warn;
+pid /run/nginx.pid;
+
+events {
+    worker_connections 4096;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging with upstream timing
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for" '
+                    'rt=$request_time uct="$upstream_connect_time" '
+                    'uht="$upstream_header_time" urt="$upstream_response_time"';
+
+    access_log /var/log/nginx/access.log main;
+
+    # Performance
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    keepalive_requests 100;
+    types_hash_max_size 2048;
+
+    # Compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css text/xml application/json application/javascript
+               application/xml application/xml+rss text/javascript image/svg+xml;
+
+    # Rate limiting zones
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_conn_zone $binary_remote_addr zone=addr:10m;
+
+    # SSL (Mozilla intermediate profile)
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+
+    # Upstreams with keepalive
+    upstream web_backend {
+        least_conn;
+        zone web_backend 64k;
+
+        server 10.0.0.1:8080 weight=5 max_fails=3 fail_timeout=30s;
+        server 10.0.0.2:8080 weight=5 max_fails=3 fail_timeout=30s;
+        server 10.0.0.3:8080 weight=2 backup;
+
+        keepalive 32;
+        keepalive_requests 100;
+        keepalive_timeout 60s;
+    }
+
+    upstream api_backend {
+        zone api_backend 64k;
+        ip_hash;  # session persistence
+
+        server 10.0.1.1:8080;
+        server 10.0.1.2:8080;
+
+        keepalive 16;
+    }
+
+    # HTTP to HTTPS redirect
+    server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+        return 301 https://$host$request_uri;
+    }
+
+    # HTTPS
+    server {
+        listen 443 ssl http2;
+        listen [::]:443 ssl http2;
+        server_name example.com;
+
+        ssl_certificate /etc/nginx/ssl/example.com.crt;
+        ssl_certificate_key /etc/nginx/ssl/example.com.key;
+
+        # Security headers
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+        # Root — web backend
+        location / {
+            proxy_pass http://web_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+
+            # Retry on failure
+            proxy_next_upstream error timeout http_500 http_502 http_503;
+            proxy_next_upstream_tries 3;
+            proxy_next_upstream_timeout 10s;
+
+            # Buffering
+            proxy_buffering on;
+            proxy_buffer_size 4k;
+            proxy_buffers 8 4k;
+        }
+
+        # API with rate limiting
+        location /api {
+            limit_req zone=api burst=20 nodelay;
+            limit_conn addr 10;
+
+            proxy_pass http://api_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Connection "";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+
+        # WebSocket
+        location /ws {
+            proxy_pass http://web_backend;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        # Health check endpoint (bypasses backend)
+        location /nginx-health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+}
+]]></code>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Upstream keepalive MUST use proxy_http_version 1.1 and proxy_set_header Connection "" to enable connection reuse. Without these, Nginx uses HTTP/1.0 and closes every upstream connection after use.</statement>
+        <rationale>HTTP/1.0 does not support keepalive; every request opens a new TCP connection to the backend. At 1000 req/s this creates 1000 new connections per second, exhausting ephemeral ports and overwhelming the backend's accept queue. The keepalive directive in upstream only activates with HTTP/1.1 and empty Connection header.</rationale>
+      </rule>
+      <rule>
+        <statement>ssl_prefer_server_ciphers MUST be set to off for TLS 1.3 (where the client chooses the cipher). TLS 1.2 cipher order is still controlled by ssl_ciphers; use Mozilla Configurator intermediate profile, not a custom list.</statement>
+        <rationale>Outdated cipher lists (pre-2020) still circulate in copy-paste configs. Mozilla SSL Configurator generates a current, tested intermediate profile. Enabling ssl_prefer_server_ciphers on for TLS 1.3 causes silent negotiation failures with some clients.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Worker processes match CPU cores (worker_processes auto).</check>
+      <check>worker_rlimit_nofile set (65535 for high concurrency).</check>
+      <check>Upstream zone configured for shared state across workers.</check>
+      <check>Keepalive connections enabled (keepalive 32 in upstream block).</check>
+      <check>proxy_http_version 1.1 and proxy_set_header Connection "" set for keepalive.</check>
+      <check>max_fails and fail_timeout set for passive health checking.</check>
+      <check>Backup servers configured.</check>
+      <check>TLS 1.2+ protocols only; ssl_session_tickets off.</check>
+      <check>ssl_prefer_server_ciphers off.</check>
+      <check>Security headers added (HSTS, X-Frame-Options, X-Content-Type-Options).</check>
+      <check>Rate limiting zones configured (limit_req_zone, limit_conn_zone).</check>
+      <check>proxy_next_upstream configured for failure retry.</check>
+      <check>Timeouts appropriate for backend (connect 5s, read/send 60s).</check>
+      <check>Gzip compression enabled for text types.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Setting worker_connections 100000 without verifying ulimit -n and kernel nofile limits.</description>
+      <reason>Nginx opens file descriptors for each connection (2 per proxied connection — client and upstream). If the OS nofile limit is lower than worker_processes * worker_connections, Nginx silently drops connections at the limit. Always verify: ulimit -n returns at least 2 * worker_processes * worker_connections.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Overlapping NGINX location prefixes without explicit precedence control.</description>
+      <reason>NGINX evaluates location blocks: exact match (=) then longest prefix match then regex. Agents frequently emit overlapping prefixes like /api and /api/v1 without understanding that /api/v1 wins only because it is longer, not because of declaration order. Use = for exact matches, ^~ to prevent regex matching, or ensure prefixes are disjoint.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://nginx.org/en/docs/"/>
+      <link href="https://www.nginx.com/blog/tuning-nginx/"/>
+      <link href="https://ssl-config.mozilla.org/"/>
+      <ref slug="lb-health-checks"/>
+      <ref slug="lb-monitoring"/>
+    </see-also>
+  </content>
+</methodology>
