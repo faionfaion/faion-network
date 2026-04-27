@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="rag-eval-production-monitoring">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Monitor a live RAG system by logging per-query latency, source count, and user feedback signals, then detecting anomalies (latency spikes, feedback drops) against calibrated production baselines.</summary>
+    <tags>
+      <tag>rag</tag>
+      <tag>monitoring</tag>
+      <tag>production</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>eval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-ab-testing"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>RAG Production Monitoring</title>
+
+    <summary>Production RAG monitoring logs latency, source count, and user feedback for every query, aggregates rolling summaries (24h default window), and detects anomalies against calibrated thresholds. Lightweight metrics (latency, hit rate, user signals) run on every query; expensive LLM-based evaluation (faithfulness, relevance) runs only on sampled batches. Anomaly thresholds must be calibrated against actual production baselines — hardcoded defaults are placeholders only.</summary>
+
+    <why>
+      <p>A RAG system that scored well on the evaluation test set before deployment will drift in production. The corpus updates, query distribution shifts, the LLM provider updates model weights, and embedding model versions change. Without continuous monitoring, quality degradation is discovered only when users complain. Lightweight per-query logging costs microseconds; it provides the signal needed to trigger targeted batch evaluations when something goes wrong.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any RAG system deployed to production with real user traffic.</item>
+        <item>When user feedback signals (thumbs up/down, explicit ratings) are available in the product UI.</item>
+        <item>When you need to detect sudden latency spikes (embedding model timeout, vector DB overload).</item>
+        <item>When the corpus is updated regularly and quality drift is expected.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>High-frequency real-time LLM evaluation of every query — reserve LLM eval for sampled batches only; use lightweight metrics (latency, hit rate) for every query.</item>
+        <item>When user feedback is too sparse (fewer than 10 signals per day) for anomaly detection to be reliable — rely on scheduled batch eval instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <rules>
+      <rule>
+        <statement>RAGMonitor.detect_anomalies() uses hardcoded thresholds (latency &gt; 5.0s, negative_feedback &gt; 10). Calibrate these thresholds against actual production baselines before deploying the monitor to avoid false alerts.</statement>
+        <rationale>A latency threshold of 5.0s may be fine for a slow document corpus but a regression for a fast knowledge base that normally responds in 0.8s. Uncalibrated thresholds either flood on-call with noise or miss real degradation.</rationale>
+      </rule>
+      <rule>
+        <statement>Separate lightweight per-query metrics (latency, hit rate, num_sources, user_feedback) from expensive LLM-based metrics (faithfulness, relevance). Log lightweight metrics on every query; schedule LLM eval on samples.</statement>
+        <rationale>LLM eval at $0.01/call on 10K daily queries = $100/day. Budget-based sampling (e.g., 1% of queries, or triggered on anomaly detection) keeps costs manageable while still providing quality signal.</rationale>
+      </rule>
+    </rules>
+
+    <section name="monitor-class">
+      <p>The RAGMonitor class logs individual query metrics in memory, aggregates them over a rolling time window, and detects anomalies against configurable thresholds. In production, replace the in-memory list with a database or time-series store (Postgres, InfluxDB, Prometheus) for persistence across restarts.</p>
+
+      <example type="good" title="RAGMonitor: logging and anomaly detection">
+        <code lang="python"><![CDATA[
+from datetime import datetime, timedelta
+from typing import Optional, List
+
+class RAGMonitor:
+    """Monitor RAG system in production."""
+
+    def __init__(self):
+        self.metrics = []
+
+    def log_query(
+        self,
+        question: str,
+        answer: str,
+        latency: float,
+        num_sources: int,
+        user_feedback: Optional[str] = None
+    ):
+        """Log individual query metrics."""
+        self.metrics.append({
+            "timestamp": datetime.now().isoformat(),
+            "question": question,
+            "answer": answer,
+            "latency": latency,
+            "num_sources": num_sources,
+            "user_feedback": user_feedback
+        })
+
+    def get_summary(self, hours: int = 24) -> dict:
+        """Get summary metrics for last N hours."""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        recent = [
+            m for m in self.metrics
+            if datetime.fromisoformat(m["timestamp"]) > cutoff
+        ]
+
+        if not recent:
+            return {}
+
+        return {
+            "total_queries": len(recent),
+            "avg_latency": sum(m["latency"] for m in recent) / len(recent),
+            "avg_sources": sum(m["num_sources"] for m in recent) / len(recent),
+            "positive_feedback": sum(1 for m in recent if m["user_feedback"] == "positive"),
+            "negative_feedback": sum(1 for m in recent if m["user_feedback"] == "negative")
+        }
+
+    def detect_anomalies(self) -> List[str]:
+        """Detect anomalies in metrics.
+
+        IMPORTANT: Calibrate thresholds against your actual production baseline
+        before using in production. Values below are placeholders only.
+        """
+        anomalies = []
+        recent = self.get_summary(hours=24)
+
+        if recent.get("avg_latency", 0) > 5.0:
+            anomalies.append("High latency detected")
+
+        if recent.get("negative_feedback", 0) > 10:
+            anomalies.append("Increased negative feedback")
+
+        return anomalies
+]]></code>
+      </example>
+
+      <example type="bad" title="Hardcoded thresholds deployed without calibration">
+        <code lang="python"><![CDATA[
+# Deployed as-is from the template — thresholds not calibrated
+monitor = RAGMonitor()
+# Production baseline: avg_latency = 0.8s, negative_feedback = 2/day
+# Threshold latency > 5.0 will never fire even during 3s degradation
+# Threshold negative_feedback > 10 misses a 5-signal spike that is 150% above baseline
+]]></code>
+        <note>Always compute p95 latency and baseline negative-feedback rate from 7 days of production logs before setting thresholds.</note>
+      </example>
+    </section>
+
+    <section name="observability-tools">
+      <p>For production deployments, use purpose-built observability platforms rather than in-memory logging. Each tool has different strengths for agent-assisted monitoring workflows.</p>
+      <note>RAGAS (OSS, Python library): gold standard for batch eval. TruLens (OSS + dashboard): RAG triad (context relevance, groundedness, answer relevance). DeepEval (OSS + SaaS): unit-test-style CI integration. LangSmith (SaaS): LangChain-native tracing + eval. Arize Phoenix (OSS + SaaS): LLM observability + eval, good for production monitoring. DeepEval and TruLens require a running eval server or cloud account for some features; agents in air-gapped environments should fall back to the custom LLM-prompt evaluation pattern.</note>
+    </section>
+
+    <section name="best-practices">
+      <p>Production monitoring best practices for RAG systems:</p>
+      <list>
+        <item>Maintain a versioned test set in source control — test set drift is as dangerous as model drift.</item>
+        <item>Use cost_efficient_evaluation (budget-based sampling) for routine CI checks; run the full test suite only for release decisions.</item>
+        <item>Establish numeric quality gates before deployment: e.g., faithfulness &gt; 0.8, precision@5 &gt; 0.7 — otherwise eval is informational only.</item>
+        <item>Log user feedback signals (thumbs up/down) in the product UI — they are the most direct signal of quality degradation in production.</item>
+        <item>When anomalies are detected, trigger a targeted batch evaluation on the affected query type rather than running the full test suite — preserves LLM budget.</item>
+      </list>
+    </section>
+
+    <antipattern>
+      <description>Using in-memory metrics storage in production across service restarts.</description>
+      <reason>In-memory storage is lost on every restart, deploy, or crash. Production monitoring requires persistent storage (Postgres, InfluxDB, or a dedicated observability platform) to build the historical baselines that anomaly detection needs.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Not logging negative user feedback because "users rarely give feedback".</description>
+      <reason>Even sparse feedback is the highest-quality signal. Three negative ratings on the same query type is a stronger signal of systematic failure than a drop in automated faithfulness scores, because it reflects actual user impact rather than LLM evaluator bias.</reason>
+    </antipattern>
+
+    <see-also>
+      <ref slug="rag-eval-pipeline"/>
+      <ref slug="rag-eval-ab-testing"/>
+      <link href="https://www.trulens.org/trulens_eval/tracking/instrumentation/rag_triad/"/>
+      <link href="https://docs.confident-ai.com/"/>
+      <link href="https://www.pinecone.io/learn/rag-evaluation/"/>
+    </see-also>
+  </content>
+</methodology>
