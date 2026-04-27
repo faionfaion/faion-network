@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-app-gateway-waf">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Deploy Azure Application Gateway v2 (WAF_v2) as a regional Layer 7 load balancer: subnet delegation, WAF policy with OWASP 3.2, SSL termination, health probes, and Key Vault certificate integration.</summary>
+    <tags>
+      <tag>azure</tag>
+      <tag>application-gateway</tag>
+      <tag>waf</tag>
+      <tag>load-balancer</tag>
+      <tag>terraform</tag>
+    </tags>
+    <category>azure</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-nsg-rules"/>
+      <ref slug="azure-front-door"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Azure Application Gateway v2 with WAF</title>
+
+    <summary>Application Gateway v2 is a regional Layer 7 load balancer with integrated WAF (Web Application Firewall). It handles SSL termination, URL path-based routing, and health probes. WAF_v2 SKU with OWASP 3.2 managed ruleset protects backends from OWASP Top 10 attacks. As of 2025, its subnet requires delegation to `Microsoft.Network/applicationGateways`.</summary>
+
+    <why>
+      <p>Application Gateway sits between the internet (or Front Door) and backend workloads (AKS, App Service, VMs) and handles Layer 7 concerns that backends should not implement themselves: SSL offloading, WAF inspection, URL-based routing, and connection draining. Without it, every backend must manage TLS certificates independently, and WAF must be implemented per-application.</p>
+      <p>WAF should start in Detection mode for one week to identify false positives before switching to Prevention mode. A WAF that blocks legitimate traffic in Prevention mode with no log review period causes application outages that are difficult to triage under pressure.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Regional Layer 7 load balancing for AKS, App Service, or VM backends within a single Azure region.</item>
+        <item>SSL/TLS termination at the edge with certificate management via Key Vault.</item>
+        <item>OWASP protection for web applications and APIs exposed to the internet or corporate networks.</item>
+        <item>URL path-based routing (e.g., /api/* to one backend, /static/* to another).</item>
+        <item>When chained with Azure Front Door Premium via Private Link for global + regional WAF layering.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure TCP/UDP load balancing — use Azure Load Balancer (Standard) instead; App Gateway only speaks HTTP/HTTPS.</item>
+        <item>Global load balancing across regions — use Front Door for that; App Gateway is regional only.</item>
+        <item>Cost-sensitive POCs — WAF_v2 costs hundreds USD/month idle (two minimum instances).</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="subnet-requirements">
+      <rule testable="true">
+        <statement>Application Gateway MUST use a dedicated subnet with minimum /26 CIDR (recommended /24). The subnet MUST have a delegation to `Microsoft.Network/applicationGateways` (required since 2025 — Terraform will fail at apply without it). No other resource types (VMs, AKS nodes, Private Endpoints) may share the App Gateway subnet.</statement>
+        <rationale>App Gateway v2 autoscaling claims multiple IPs as instances scale out. A /26 (64 IPs minus 5 Azure reserved = 59) leaves room for up to 10 instances. A /28 (11 usable IPs) runs out at scale. Subnet delegation is enforced at the Azure API level; missing it produces a clear error: "Subnet is not delegated to applicationGateways."</rationale>
+      </rule>
+    </section>
+
+    <section name="waf-policy">
+      <rule testable="true">
+        <statement>WAF policy MUST start in Detection mode. After one week of production traffic review (check ApplicationGatewayFirewallLog for false positives), switch to Prevention mode. WAF policy MUST use OWASP 3.2 as the base managed ruleset. Bot protection ruleset (Microsoft_BotManagerRuleSet 1.0) SHOULD be added for internet-facing gateways.</statement>
+        <rationale>WAF Prevention mode blocks requests that match rules. Without a Detection phase, legitimate API payloads containing SQL-like strings or large JSON bodies are silently blocked, causing cryptic 403 errors in production. One week of Detection gives enough signal to tune exclusions before prevention starts.</rationale>
+      </rule>
+    </section>
+
+    <section name="ssl-key-vault">
+      <rule testable="true">
+        <statement>SSL certificates MUST be managed via Azure Key Vault and referenced by `key_vault_secret_id` in the `ssl_certificate` block. Do NOT upload PFX files directly to App Gateway. The App Gateway's managed identity MUST have `get` and `list` permissions on Key Vault certificates. SSL policy MUST specify minimum TLS 1.2 (AppGwSslPolicy20220101S or custom policy).</statement>
+        <rationale>Direct PFX uploads create certificate drift — the App Gateway config diverges from Key Vault on renewal. Key Vault integration auto-syncs on renewal. Agents frequently update the Key Vault certificate but forget to grant the new certificate version's permissions to the Managed Identity, causing the gateway to fall back silently to the old cert.</rationale>
+      </rule>
+    </section>
+
+    <section name="app-gateway-terraform">
+      <example type="good" title="Application Gateway WAF_v2 with Key Vault cert (Terraform)">
+        <code lang="hcl"><![CDATA[
+resource "azurerm_public_ip" "appgw" {
+  name                = "${var.project}-${var.environment}-appgw-ip"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  zones               = ["1", "2", "3"]
+  tags                = local.common_tags
+}
+
+resource "azurerm_web_application_firewall_policy" "main" {
+  name                = "${var.project}-${var.environment}-waf-policy"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  policy_settings {
+    enabled                     = true
+    mode                        = "Prevention"
+    request_body_check          = true
+    file_upload_limit_in_mb     = 100
+    max_request_body_size_in_kb = 128
+  }
+
+  managed_rules {
+    managed_rule_set {
+      type    = "OWASP"
+      version = "3.2"
+    }
+    managed_rule_set {
+      type    = "Microsoft_BotManagerRuleSet"
+      version = "1.0"
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "azurerm_application_gateway" "main" {
+  name                = "${var.project}-${var.environment}-appgw"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  firewall_policy_id  = azurerm_web_application_firewall_policy.main.id
+  zones               = ["1", "2", "3"]
+
+  sku {
+    name = "WAF_v2"
+    tier = "WAF_v2"
+  }
+
+  autoscale_configuration {
+    min_capacity = 2
+    max_capacity = 10
+  }
+
+  gateway_ip_configuration {
+    name      = "gateway-ip-config"
+    subnet_id = azurerm_subnet.appgw.id
+  }
+
+  frontend_ip_configuration {
+    name                 = "public-frontend"
+    public_ip_address_id = azurerm_public_ip.appgw.id
+  }
+
+  frontend_port {
+    name = "https-port"
+    port = 443
+  }
+
+  backend_address_pool {
+    name = "backend-pool"
+  }
+
+  backend_http_settings {
+    name                  = "https-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 443
+    protocol              = "Https"
+    request_timeout       = 30
+    probe_name            = "health-probe"
+
+    connection_draining {
+      enabled           = true
+      drain_timeout_sec = 30
+    }
+  }
+
+  probe {
+    name                = "health-probe"
+    protocol            = "Https"
+    path                = "/health"
+    host                = "backend.example.com"
+    interval            = 30
+    timeout             = 30
+    unhealthy_threshold = 3
+  }
+
+  ssl_certificate {
+    name                = "ssl-cert"
+    key_vault_secret_id = var.ssl_certificate_secret_id
+  }
+
+  ssl_policy {
+    policy_type = "Predefined"
+    policy_name = "AppGwSslPolicy20220101S"
+  }
+
+  http_listener {
+    name                           = "https-listener"
+    frontend_ip_configuration_name = "public-frontend"
+    frontend_port_name             = "https-port"
+    protocol                       = "Https"
+    ssl_certificate_name           = "ssl-cert"
+  }
+
+  request_routing_rule {
+    name                       = "main-rule"
+    rule_type                  = "Basic"
+    priority                   = 100
+    http_listener_name         = "https-listener"
+    backend_address_pool_name  = "backend-pool"
+    backend_http_settings_name = "https-settings"
+  }
+
+  tags = local.common_tags
+}
+
+# Diagnostics
+resource "azurerm_monitor_diagnostic_setting" "appgw" {
+  name                       = "appgw-diagnostics"
+  target_resource_id         = azurerm_application_gateway.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  enabled_log { category = "ApplicationGatewayAccessLog" }
+  enabled_log { category = "ApplicationGatewayPerformanceLog" }
+  enabled_log { category = "ApplicationGatewayFirewallLog" }
+
+  metric {
+    category = "AllMetrics"
+  }
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="appgw-checklist">
+      <checklist>
+        <check>Dedicated subnet with minimum /26 CIDR (recommended /24).</check>
+        <check>Subnet delegation to `Microsoft.Network/applicationGateways`.</check>
+        <check>WAF_v2 SKU selected.</check>
+        <check>Autoscaling configured (min: 2, max: based on load).</check>
+        <check>Zone redundancy enabled (zones: 1, 2, 3).</check>
+        <check>WAF started in Detection mode; switched to Prevention after log review.</check>
+        <check>OWASP 3.2 managed ruleset applied.</check>
+        <check>SSL policy set to minimum TLS 1.2.</check>
+        <check>SSL certificates referenced via Key Vault (not direct PFX upload).</check>
+        <check>Managed Identity has Key Vault get/list permissions.</check>
+        <check>Health probes configured for all backends.</check>
+        <check>Connection draining enabled.</check>
+        <check>Diagnostic logs sent to Log Analytics (Access, Performance, Firewall).</check>
+      </checklist>
+    </section>
+
+    <section name="ai-gotchas">
+      <antipattern>
+        <description>App Gateway v2 (since 2025) requires subnet delegation to `Microsoft.Network/applicationGateways`; agents copying older Terraform templates fail at deploy.</description>
+        <reason>The 2025 requirement is not in older documentation or examples. The deploy error is clear but confusing if you don't know to look for it: "Subnet '/subnets/appgw' is not delegated."</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agents update the Key Vault certificate on renewal but forget the App Gateway Managed Identity needs `get`/`list` permissions on the new certificate version, causing the gateway to fall back to the old cert silently.</description>
+        <reason>Key Vault access policies are version-scoped for some policy models. After renewal, the new cert version requires explicit permission grants if the policy is not set to cover all versions.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Front Door rules engine syntax differs from App Gateway URL Path Map. Agents copy routing rules between them and break routing silently.</description>
+        <reason>Front Door uses a different DSL for path matching (wildcards, conditions) than App Gateway's `url_path_map` + `path_rule` Terraform blocks. They are not interchangeable.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="configure-app-gateway"><![CDATA[
+Configure Azure Application Gateway v2 for:
+
+Application: {app_name}
+Backend: {AKS / App Service / VMs}
+SSL: {managed certificate / Key Vault certificate}
+WAF: {enabled / disabled}
+Scaling: {min_instances} to {max_instances}
+
+Requirements:
+- HTTPS listener with TLS 1.2+
+- Health probes for backend
+- URL path-based routing: {yes / no}
+- Connection draining enabled
+- Subnet delegation to Microsoft.Network/applicationGateways
+
+Output:
+1. Terraform code for Application Gateway
+2. WAF policy configuration
+3. Backend pool configuration
+4. Listener and routing rules
+]]></prompt>
+      <prompt purpose="waf-rule-tuning"><![CDATA[
+Tune WAF rules for Application Gateway protecting a {app_type} application.
+
+Current issues:
+- False positives on: {describe blocked requests}
+- Specific paths need exclusion: {paths}
+- Custom rules needed for: {requirements}
+
+Application characteristics:
+- API endpoints: {yes / no}
+- File uploads: {yes / no}
+- Rich text input: {yes / no}
+
+Output:
+1. Rule exclusions configuration
+2. Custom WAF rules
+3. Updated WAF policy Terraform code
+4. Monitoring queries for WAF logs
+]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/azure/application-gateway/"/>
+      <link href="https://learn.microsoft.com/azure/web-application-firewall/ag/ag-overview"/>
+      <ref slug="azure-front-door"/>
+      <ref slug="azure-vnet-hub-spoke"/>
+      <ref slug="azure-nsg-rules"/>
+    </see-also>
+  </content>
+</methodology>
