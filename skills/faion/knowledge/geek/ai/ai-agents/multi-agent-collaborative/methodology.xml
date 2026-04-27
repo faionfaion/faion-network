@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-collaborative">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Agents collaborate via a shared workspace through iterative brainstorm and refinement cycles; a separate coordinator synthesizes the best elements from all contributions.</summary>
+    <tags>
+      <tag>multi-agent</tag>
+      <tag>collaborative</tag>
+      <tag>shared-workspace</tag>
+      <tag>iterative-refinement</tag>
+      <tag>brainstorm</tag>
+    </tags>
+    <category>orchestration</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="multi-agent-hierarchical"/>
+      <ref slug="multi-agent-conversational"/>
+      <ref slug="multi-agent-production-bus"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Collaborative Agents with Shared Workspace</title>
+
+    <summary>Each agent in the group produces an initial contribution to the task, then iteratively reads and builds on other agents' contributions recorded in a shared workspace. After a fixed number of iterations, a coordinator (separate LLM call) synthesizes the best elements from all agent contributions into a final result.</summary>
+
+    <why>
+      <p>Creative tasks, strategy problems, and design questions benefit from diverse perspectives. A single agent cannot simulate genuine viewpoint diversity — it converges on its own prior. Collaborative iteration forces each agent to explicitly engage with alternatives: each iteration prompt shows the agent its own previous idea and all others', then asks it to incorporate the good points. The shared workspace (dict with notes list) serves as audit trail and context source. The final synthesis step receives all contributions simultaneously to prevent anchoring bias from iterative merging.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creative or strategy work where diverse perspectives from collaborating agents add genuine value — design, narrative, technical architecture decisions.</item>
+        <item>Problems with no single correct answer where multiple angles improve quality — brainstorming, risk identification, content ideation.</item>
+        <item>Quality-critical outputs that benefit from agents critiquing and building on each other's work over multiple rounds.</item>
+        <item>Tasks where the solution space is wide and convergence speed is less important than coverage.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tight latency budgets: N agents × M iterations = N×M LLM calls; without token budgets, costs spike unexpectedly.</item>
+        <item>Tasks with a single correct answer — agents with similar training data converge on the same (possibly wrong) answer even after multiple iterations (echo chamber risk).</item>
+        <item>Fully deterministic pipelines where sequential execution is simpler and cheaper.</item>
+        <item>Tasks requiring fine-grained shared mutable state — the shared workspace is append-only; write conflicts in async settings cause race conditions.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="implementation">
+      <p>CollaborativeGroup holds a dict of agents, a coordinator model string, and a shared_workspace dict with a notes list and an artifacts list. The collaborate() method runs in three phases: initial brainstorm (each agent responds independently), iterative refinement (each agent reads all others' latest ideas and contributes), and final synthesis (a separate coordinator call receives all contributions simultaneously).</p>
+
+      <rule testable="true">
+        <statement>The synthesis step MUST receive all worker outputs simultaneously in a single call, not iteratively. Never pass one agent's contribution first and then layer others on top.</statement>
+        <rationale>Iterative merging causes anchoring bias: the first contribution shapes all subsequent synthesis regardless of its quality. Simultaneous injection gives each contribution equal weight.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set a hard cap on max_iterations (default 5). Add a per-run token budget check after each iteration; abort the collaboration if the budget is exceeded and proceed to synthesis with what has been collected.</statement>
+        <rationale>Without a budget ceiling, N agents × M iterations can exhaust tokens silently. Collaborative patterns are the most expensive multi-agent shape — budget enforcement is non-optional.</rationale>
+      </rule>
+
+      <example type="good" title="CollaborativeGroup with shared workspace and capped iterations">
+        <code lang="python"><![CDATA[
+class CollaborativeGroup:
+    """Agents collaborate on a shared task."""
+
+    def __init__(
+        self,
+        agents: List[Agent],
+        coordinator_model: str = "gpt-4o"
+    ):
+        self.agents = {a.config.name: a for a in agents}
+        self.coordinator_model = coordinator_model
+        self.shared_workspace: Dict = {"notes": [], "artifacts": []}
+
+    def collaborate(self, task: str, max_iterations: int = 5) -> Dict:
+        """Run collaborative session."""
+        # Initial brainstorm
+        ideas = {}
+        for name, agent in self.agents.items():
+            idea = agent.respond(
+                f"Task: {task}\n\nProvide your initial thoughts and approach."
+            )
+            ideas[name] = idea
+            self.shared_workspace["notes"].append({
+                "agent": name,
+                "type": "initial_idea",
+                "content": idea
+            })
+
+        # Collaborative refinement
+        for iteration in range(max_iterations):
+            # Each agent reviews and builds on others' work
+            for name, agent in self.agents.items():
+                other_ideas = {k: v for k, v in ideas.items() if k != name}
+
+                prompt = f"""Task: {task}
+
+Your previous idea: {ideas[name]}
+
+Other team members' ideas:
+{json.dumps(other_ideas, indent=2)}
+
+Build on these ideas. What can you add or improve?
+Collaborate by incorporating good points from others."""
+
+                contribution = agent.respond(prompt)
+                ideas[name] = contribution
+
+                self.shared_workspace["notes"].append({
+                    "agent": name,
+                    "type": f"iteration_{iteration + 1}",
+                    "content": contribution
+                })
+
+        # Final synthesis — all contributions simultaneously
+        synthesis_prompt = f"""Task: {task}
+
+Team contributions:
+{json.dumps(ideas, indent=2)}
+
+Create a final synthesized solution incorporating the best elements from all team members."""
+
+        final_result = client.chat.completions.create(
+            model=self.coordinator_model,
+            messages=[{"role": "user", "content": synthesis_prompt}]
+        ).choices[0].message.content
+
+        return {
+            "task": task,
+            "individual_contributions": ideas,
+            "workspace": self.shared_workspace,
+            "final_result": final_result
+        }
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using the same agent instance as both a contributor and the synthesis coordinator.</description>
+        <reason>The synthesis coordinator must be independent of all contributors to avoid anchoring bias. If one contributor is also the synthesizer, its own contribution disproportionately shapes the final output.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Communication overhead: agents spend more tokens on coordination messages than on actual work when iteration prompts are too long.</description>
+        <reason>Each iteration prompt grows linearly as other_ideas accumulates contributions. Cap the context passed per iteration to the most recent contribution per agent, not the full history, to prevent prompt inflation.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>Best practices for collaborative agent groups:</p>
+      <list>
+        <item>Write system prompts that make each agent's role exclusive: "you ONLY do X, never Y". Role confusion causes agents to duplicate work or contradict each other.</item>
+        <item>Log every inter-agent message with sender, receiver, timestamp, and token count for cost attribution and debugging.</item>
+        <item>Use structured output (JSON schema) for all inter-agent messages — free-form text increases parsing failures.</item>
+        <item>Test each agent individually before testing coordination; most failures are in individual agents, not the coordination logic.</item>
+        <item>Insert an explicit human-in-loop approval gate before any agent executes irreversible actions (send email, write to DB). The coordinator must pause and surface the proposed action before proceeding.</item>
+      </list>
+    </section>
+
+    <section name="tools">
+      <p>Observability and framework tools for collaborative multi-agent systems:</p>
+      <list>
+        <item>crewai (pip install crewai): role-based agent teams with task delegation; low setup complexity.</item>
+        <item>agentops (pip install agentops): observability SDK for multi-agent cost and trace; essential for N×M call attribution.</item>
+        <item>LangSmith (SaaS): traces inter-agent messages; essential for debugging collaborative orchestration.</item>
+        <item>Helicone (SaaS): cost accounting per agent role across a run.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="multi-agent-hierarchical"/>
+      <ref slug="multi-agent-conversational"/>
+      <link href="https://github.com/joaomdmoura/crewAI"/>
+      <link href="https://arxiv.org/abs/2308.08155"/>
+    </see-also>
+  </content>
+</methodology>
