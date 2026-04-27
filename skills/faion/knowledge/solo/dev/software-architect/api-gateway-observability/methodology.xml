@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-gateway-observability">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Instrument API gateways with the three observability pillars (metrics, logs, traces), define SLO-based alerts, integrate OpenTelemetry, and establish key gateway metrics for operational visibility.</summary>
+    <tags>
+      <tag>api-gateway</tag>
+      <tag>observability</tag>
+      <tag>metrics</tag>
+      <tag>tracing</tag>
+      <tag>opentelemetry</tag>
+    </tags>
+    <category>api</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-resilience"/>
+      <ref slug="api-gateway-security"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>API Gateway Observability: Metrics, Logging, Tracing, and Alerting</title>
+
+    <summary>API gateway observability covers three pillars: metrics (request rate, latency percentiles, error rate, circuit breaker state, rate limit hits) exported via Prometheus; structured access logging with correlation ID, consumer identity, and upstream latency; and distributed tracing via OpenTelemetry with W3C trace context propagation. Alert on SLO breaches, not raw thresholds, to reduce false positives.</summary>
+
+    <why>
+      <p>The gateway is the single point through which all external traffic flows, making it the canonical observability surface for the entire system. Without gateway metrics, SLO compliance cannot be measured. Without distributed tracing, latency bottlenecks across service chains cannot be located. Without structured logs with correlation IDs, incidents cannot be reconstructed from a client complaint.</p>
+      <p>Observability is inseparable from gateway design — auth failures, rate limit hits, circuit breaker opens, and upstream latency spikes are all signals that require real-time visibility to operate the platform.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up initial gateway metrics and Prometheus scrape configuration.</item>
+        <item>Configuring structured access logging with correlation IDs and consumer identity.</item>
+        <item>Integrating distributed tracing (OpenTelemetry, Jaeger, Zipkin, Tempo).</item>
+        <item>Defining SLO-based alerts for error rate, latency, and circuit breaker state.</item>
+        <item>Building dashboards for request rate, latency percentiles, and upstream health.</item>
+        <item>Correlating traces to logs for incident investigation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Logging every request body at high RPS — log request metadata only (method, path, status, latency, consumer). Body logging at scale saturates storage and violates GDPR/HIPAA.</item>
+        <item>Sampling traces at 100% in high-throughput production — use adaptive or rate-based sampling (10% default, 100% for errors and slow requests).</item>
+        <item>Alerting on raw request count thresholds — alert on error rate (%) and latency percentiles, which are meaningful regardless of traffic volume.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="three-pillars">
+      <p>The three observability pillars at the gateway:</p>
+      <list>
+        <item>Metrics — quantitative measurements exported to Prometheus or CloudWatch. Rate, latency histograms, error counts, circuit state, rate limit hits, upstream health.</item>
+        <item>Logs — event records in structured JSON. Access logs for every request; error logs with stack context; audit logs for auth events.</item>
+        <item>Traces — request flow across services via OpenTelemetry. Distributed trace spans from gateway to backends, with W3C trace context propagated to all upstreams.</item>
+      </list>
+    </section>
+
+    <section name="key-metrics">
+      <p>Key gateway metrics and alert thresholds:</p>
+      <list>
+        <item>Request Rate (RPS) — alert: baseline + 50% sustained</item>
+        <item>Latency p50 — alert: above 100ms sustained</item>
+        <item>Latency p95 — alert: above 500ms sustained (SLO threshold)</item>
+        <item>Latency p99 — alert: above 1s sustained</item>
+        <item>Error Rate (4xx/5xx) — alert: above 1% for 5 minutes</item>
+        <item>Circuit Breaker Opens — alert: any open state (immediate)</item>
+        <item>Rate Limit Hits — alert: above 5% of traffic being rate-limited</item>
+        <item>Upstream Health — alert: any upstream marked unhealthy</item>
+      </list>
+      <rule testable="true">
+        <statement>Configure per-route, per-consumer, and per-service metrics with consistent label sets: service, route, method, status_code, consumer. Aggregate at the dashboard; never store only aggregated metrics — label granularity enables root cause isolation.</statement>
+        <rationale>Without per-route metrics, a spike in errors on /api/payments is indistinguishable from a spike on /api/users in aggregated views. Label granularity is the difference between a 1-minute and 30-minute incident.</rationale>
+      </rule>
+      <example type="good" title="Prometheus alert rules for gateway">
+        <code lang="yaml"><![CDATA[
+groups:
+  - name: api-gateway-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on API Gateway"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}%"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on API Gateway"
+          description: "p95 latency is {{ $value | printf \"%.2f\" }}s"
+
+      - alert: RateLimitExceeded
+        expr: |
+          sum(rate(rate_limit_exceeded_total[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High rate of rate limit exceeded"
+
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.service }}"
+
+      - alert: UpstreamUnhealthy
+        expr: upstream_health{status="unhealthy"} == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Upstream {{ $labels.upstream }} is unhealthy"
+]]></code>
+      </example>
+    </section>
+
+    <section name="structured-logging">
+      <p>Structured access log format (JSON) for every request:</p>
+      <rule testable="true">
+        <statement>Log in JSON with these mandatory fields: timestamp (ISO8601), request_id/correlation_id, method, path, status, latency_ms, client_ip, user_agent, consumer (user ID or API key ID — never the raw key), upstream_latency_ms, response_size. Disable access logging for /health to avoid noise. Log at error level for 5xx with upstream error details.</statement>
+        <rationale>Without correlation_id, a client complaint about a failed request cannot be found in distributed logs. Without consumer identity, security incidents cannot be attributed. Without upstream_latency_ms, distinguishing gateway overhead from backend slowness is impossible.</rationale>
+      </rule>
+      <example type="good" title="Structured access log entry">
+        <code lang="json"><![CDATA[
+{
+  "@timestamp": "2026-04-27T14:23:11.432Z",
+  "request_id": "a8f3-d9b2-...",
+  "method": "GET",
+  "path": "/api/v1/users/42",
+  "status": 200,
+  "latency_ms": 87,
+  "upstream_latency_ms": 64,
+  "client_ip": "203.0.113.42",
+  "user_agent": "MyApp/2.5 iOS",
+  "consumer": "user:uuid-1234",
+  "response_size": 1248
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="distributed-tracing">
+      <p>OpenTelemetry integration for distributed tracing:</p>
+      <rule testable="true">
+        <statement>Propagate W3C trace context (traceparent, tracestate) to all backend upstreams. Configure the gateway as the root span producer. Export traces via OTLP to a collector (Jaeger, Tempo, Zipkin). Sample at 10% by default; 100% for 5xx responses and requests exceeding p99 latency SLO.</statement>
+        <rationale>Without trace context propagation, distributed traces break at the gateway boundary — backend spans are orphaned. Without error-biased sampling, slow requests and failures are underrepresented in trace samples.</rationale>
+      </rule>
+      <example type="good" title="OpenTelemetry pipeline">
+        <code lang="text"><![CDATA[
+Gateway (root span)
+    |  W3C traceparent header propagated
+    +-- User Service (child span)
+    +-- Order Service (child span)
+    +-- Auth Service (child span)
+
+Gateway OTEL exporter → OTEL Collector → backends:
+    ├── Jaeger/Tempo  (traces)
+    ├── Prometheus    (metrics)
+    └── Loki          (logs via log correlation)
+]]></code>
+      </example>
+      <checklist>
+        <check>Enable trace context propagation to all upstreams (W3C traceparent header)</check>
+        <check>Configure sampling: 10% default, 100% for errors and slow requests</check>
+        <check>Set up OTLP exporter to collector endpoint</check>
+        <check>Add custom spans for authentication and rate limiting steps</check>
+        <check>Forward trace ID as X-Trace-ID header in responses for client-side correlation</check>
+        <check>Configure trace-to-log correlation (inject trace_id into access log fields)</check>
+      </checklist>
+    </section>
+
+    <section name="observability-checklists">
+      <p>Metrics implementation checklist:</p>
+      <checklist>
+        <check>Configure request rate metrics with service, route, method, status_code labels</check>
+        <check>Set up latency histograms for p50, p95, p99</check>
+        <check>Enable per-consumer metrics (API key or user tier)</check>
+        <check>Track rate limit exceeded count and circuit breaker state</check>
+        <check>Export metrics to Prometheus scrape endpoint on /metrics (separate port from API)</check>
+        <check>Create dashboards: request rate, latency by route, error rate by service, circuit states</check>
+      </checklist>
+      <p>Logging implementation checklist:</p>
+      <checklist>
+        <check>Configure structured JSON access logging with all mandatory fields</check>
+        <check>Inject X-Correlation-ID (UUID) and include in access log</check>
+        <check>Disable access logging for /health and /metrics routes</check>
+        <check>Configure error logging with upstream error context and stack trace</check>
+        <check>Enable audit logging: auth events, configuration changes, admin API calls</check>
+        <check>Set up log aggregation (Loki, Elasticsearch) with retention policy</check>
+      </checklist>
+      <p>Alerting implementation checklist:</p>
+      <checklist>
+        <check>Define SLO-based alerts (error rate %, latency p95 ms) rather than raw counts</check>
+        <check>Alert on circuit breaker state change (any open state is immediate page)</check>
+        <check>Alert on upstream health transitions (healthy → unhealthy)</check>
+        <check>Alert on sustained rate limit excess (more than 5% of traffic throttled)</check>
+        <check>Define on-call escalation and runbooks for each alert</check>
+        <check>Test alert routing before deploying to production</check>
+      </checklist>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="metrics-config"><![CDATA[
+Generate metrics configuration for [Gateway name] with Prometheus.
+
+Required metrics:
+- Request rate (by route, method, status)
+- Latency histogram (p50, p95, p99)
+- Error rate
+- Active connections
+- Rate limit exceeded count
+- Circuit breaker state
+- Upstream health
+
+Labels:
+- service, route, method, status_code, consumer (optional)
+
+Export endpoint: /metrics on port 9090 (separate from API port)
+
+Generate complete configuration with Prometheus scrape config.
+]]></prompt>
+      <prompt purpose="tracing-config"><![CDATA[
+Generate distributed tracing configuration for [Gateway name].
+
+Backend: [Jaeger / Zipkin / Tempo / OTLP]
+Protocol: [HTTP / gRPC]
+Collector endpoint: [URL]
+
+Requirements:
+- Propagate W3C trace context (traceparent, tracestate)
+- Sample rate: 10% default, 100% for 5xx and slow requests
+- Add spans for authentication and rate limiting
+- Forward trace ID to backends and include in access logs
+
+Generate OpenTelemetry configuration.
+]]></prompt>
+      <prompt purpose="logging-config"><![CDATA[
+Generate structured logging configuration for [Gateway name].
+
+Log format: JSON
+Output: stdout (structured for log aggregation)
+
+Mandatory fields in every access log entry:
+- @timestamp (ISO8601)
+- request_id / correlation_id
+- method, path, status, latency_ms
+- upstream_latency_ms, response_size
+- client_ip, user_agent
+- consumer (user ID or API key ID — never the raw key value)
+
+Log level rules:
+- /health — disabled
+- /api/* — info
+- 5xx responses — error with upstream error details
+
+Generate complete logging configuration.
+]]></prompt>
+    </section>
+
+    <see-also>
+      <ref slug="api-gateway-patterns"/>
+      <ref slug="api-gateway-resilience"/>
+      <link href="https://opentelemetry.io/docs/collector/deployment/gateway/"/>
+      <link href="https://docs.konghq.com/gateway/"/>
+      <link href="https://megalinter.io/"/>
+    </see-also>
+  </content>
+</methodology>
