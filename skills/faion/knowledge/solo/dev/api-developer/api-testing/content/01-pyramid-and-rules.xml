@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pyramid-and-rules" title="Test Pyramid and Core Rules">
+  <summary>Defines the four-layer test pyramid and mandatory rules for negative coverage and spec conformance.</summary>
+
+  <section title="Test Pyramid">
+    <rule>
+      <statement>Structure API tests in four layers: many unit tests (pure logic), some integration tests (DB + service boundaries), fewer contract tests (consumer-provider interfaces), fewest E2E tests (full-stack flows).</statement>
+      <rationale>Each layer has a different cost/confidence tradeoff. Inverting the pyramid (many E2E, few unit) produces a slow, brittle suite that nobody runs locally.</rationale>
+    </rule>
+    <rule>
+      <statement>Tag tests by tier and run them on separate CI triggers: unit on every push, integration on every PR, E2E nightly and pre-deploy.</statement>
+      <rationale>Fast feedback for the common case; full coverage before deploy without blocking developer iteration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Negative Coverage">
+    <rule>
+      <statement>Every endpoint must have at minimum these negative cases: missing Authorization header (401), insufficient role/scope (403), malformed or missing required body field (422), and rate limit exceeded (429).</statement>
+      <rationale>Auth bypasses and validation gaps are the most common API bug class. A green happy-path suite provides false confidence if negative cases are absent.</rationale>
+    </rule>
+    <rule>
+      <statement>For POST endpoints that allow client retries, include an idempotency test: two identical calls with the same Idempotency-Key must produce the same result without duplicating side effects.</statement>
+      <rationale>Idempotency failures cause duplicate orders, charges, and records in production — they are invisible in a single-call test suite.</rationale>
+    </rule>
+  </section>
+
+  <section title="Spec Conformance">
+    <rule>
+      <statement>Validate every response against the OpenAPI or GraphQL schema using openapi-core or a schema-validation assertion — do not rely solely on status code checks.</statement>
+      <rationale>Schema drift introduced by refactors or agent edits passes status-code assertions while silently breaking downstream consumers.</rationale>
+    </rule>
+    <rule>
+      <statement>Drive test case generation from the spec (openapi.yaml), not from the implementation. For each operation: derive positive payload from the spec example, derive negative payloads by dropping required fields or using wrong types.</statement>
+      <rationale>Tests derived from implementation assert what the code does, not what the spec requires. Spec-derived tests catch regressions that code-derived tests miss.</rationale>
+    </rule>
+  </section>
+
+  <section title="Test Data">
+    <rule>
+      <statement>Create test data via factories (factory_boy, polyfactory, fishery) — never inline literals in multiple tests. Reset the database between tests using transactions, not TRUNCATE.</statement>
+      <rationale>Hardcoded literals diverge across test copies and mask order-dependent bugs. TRUNCATE is slow and hides isolation failures.</rationale>
+    </rule>
+    <rule>
+      <statement>For tests that call third-party APIs, record and replay HTTP cassettes (vcrpy, pytest-recording). Re-record on a schedule and diff for surprises.</statement>
+      <rationale>Live third-party calls introduce flakiness, cost, and test-environment pollution. Cassettes make tests deterministic and offline-capable.</rationale>
+    </rule>
+  </section>
+</text>

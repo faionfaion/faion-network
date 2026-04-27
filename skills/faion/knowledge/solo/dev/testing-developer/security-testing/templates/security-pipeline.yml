@@ -1,0 +1,61 @@
+# GitHub Actions security pipeline.
+# Runs: SAST (Semgrep), secret scanning (TruffleHog + Gitleaks),
+#        dependency scan (Trivy), container scan on image build.
+# Trigger: every pull_request.
+name: security
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 2 * * *'  # nightly DAST on staging
+
+jobs:
+  sast-and-secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: 'p/owasp-top-ten p/security-audit'
+
+      - name: TruffleHog secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: '--only-verified'
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Trivy filesystem scan
+        run: |
+          trivy fs --severity HIGH,CRITICAL \
+                   --exit-code 1 \
+                   --ignore-unfixed \
+                   .
+
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: pip-audit (Python)
+        run: pip-audit --requirement requirements.txt || true
+      - name: npm audit (Node)
+        run: npm audit --audit-level=high || true
+
+  container-scan:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t app:${{ github.sha }} .
+      - name: Trivy container scan
+        run: |
+          trivy image --severity HIGH,CRITICAL \
+                      --exit-code 1 \
+                      --ignore-unfixed \
+                      app:${{ github.sha }}

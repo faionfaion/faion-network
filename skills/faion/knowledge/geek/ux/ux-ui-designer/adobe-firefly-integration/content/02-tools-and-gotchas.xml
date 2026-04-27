@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tools-and-gotchas" title="Tools, Services, Agent Workflow, and Gotchas">
+  <summary>CLI tools for Firefly integration pipelines, agent-accessible services, and critical failure modes to avoid.</summary>
+
+  <section title="CLI Tools">
+    <list>
+      <item>Adobe Firefly Services CLI — batch generation via enterprise API; developer.adobe.com/firefly-services</item>
+      <item>adobe-io-cli — Adobe I/O API gateway management; npm install -g @adobe/aio-cli</item>
+      <item>imagemagick — post-processing: resize, format convert, color analysis; imagemagick.org</item>
+      <item>exiftool — read/write image metadata including AI generation provenance; exiftool.org</item>
+      <item>sharp (Node.js) — fast image processing for batch pipeline; npm install sharp</item>
+      <item>colormath (Python) — validate generated image color palette against brand colors; pip install colormath</item>
+    </list>
+  </section>
+
+  <section title="Key Services">
+    <list>
+      <item>Adobe Firefly Services (SaaS enterprise) — batch generation REST API; requires enterprise agreement + beta access; agent-friendly</item>
+      <item>Adobe Creative Cloud API (Photoshop API) — can trigger Generative Fill programmatically; partial agent support</item>
+      <item>Cloudinary (SaaS) — asset storage + transformation pipeline; integrates with Firefly output; REST API</item>
+      <item>Brandfolder (SaaS) — digital asset management; stores and distributes Firefly-generated assets; REST API</item>
+      <item>DALL-E 3 / OpenAI (SaaS) — alternative with strong API for teams without Firefly enterprise access; no commercial-safe training guarantee at Firefly level</item>
+    </list>
+  </section>
+
+  <section title="Agent Workflow">
+    <rule>
+      <statement>Agents operate in two layers of Firefly integration: (1) design-brief generation — produce structured prompts from brand guidelines and content briefs; (2) post-processing review — analyze generated images for brand consistency (color, composition, subject matter). Direct generation requires enterprise Firefly Services API access.</statement>
+      <rationale>These two layers are the highest-value agentic tasks in a Firefly workflow. Brief generation improves prompt quality at scale; post-processing review catches non-compliant assets before they reach production.</rationale>
+    </rule>
+    <reference path="templates/prompt-image-brief.txt">Agent prompt: generate structured Firefly prompts from content brief and brand guide</reference>
+    <reference path="templates/prompt-asset-audit.txt">Agent prompt: audit generated images against brand standards</reference>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent assumes a public Firefly API exists and attempts direct generation calls without enterprise access</description>
+      <reason>There is no public Firefly API for individuals. Attempts to call it will fail or use unofficial workarounds. Agents must check for enterprise access before attempting API automation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent runs a batch job requesting many variants per asset without checking available credit balance</description>
+      <reason>Credits are consumed per variation. A large batch job can exhaust monthly allowance. Always validate credit balance and estimate consumption before scheduling batch generation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent treats identical prompts as deterministic and stores only one variant</description>
+      <reason>Firefly output is non-deterministic. Store all generated variants with their prompts; human-select before publishing. Never assume the first generated output is production-ready.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent interprets silent rejection (Firefly content moderation error) as a network error and retries without modifying the prompt</description>
+      <reason>Firefly silently rejects certain subjects without explanation. Agents must detect rejection-type errors, rephrase the prompt (remove triggering elements), and retry with modified content.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent validates generated assets against brand color by visual description alone</description>
+      <reason>Color descriptions in prompts are interpreted loosely. Post-processing color validation requires programmatic comparison (colormath or ImageMagick) against brand palette values, not visual description matching.</reason>
+    </antipattern>
+  </section>
+</text>

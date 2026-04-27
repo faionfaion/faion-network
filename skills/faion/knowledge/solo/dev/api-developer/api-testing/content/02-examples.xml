@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-examples" title="Contract Test, Integration Test, and Spec Validation Examples">
+  <summary>Concrete code examples for Pact consumer-side contract test, FastAPI integration test with negative cases, and OpenAPI response validation.</summary>
+
+  <section title="Pact Consumer Contract Test">
+    <example type="good">
+      <note>Consumer defines the interaction: what request it will send and what response shape it expects. Pact generates a pact file for the provider to verify.</note>
+      <code lang="javascript"><![CDATA[
+const { Pact, Matchers } = require('@pact-foundation/pact');
+
+const provider = new Pact({ consumer: 'Frontend', provider: 'UserAPI', port: 8080 });
+
+describe('User API contract', () => {
+  beforeAll(() => provider.setup());
+  afterAll(() => provider.finalize());
+
+  it('gets a user by ID', async () => {
+    await provider.addInteraction({
+      state: 'user 123 exists',
+      uponReceiving: 'GET /users/123 with auth',
+      withRequest: { method: 'GET', path: '/users/123',
+        headers: { Authorization: 'Bearer token' } },
+      willRespondWith: {
+        status: 200,
+        body: { id: '123', name: Matchers.string('John'), email: Matchers.email() }
+      }
+    });
+    const response = await userClient.getUser('123');
+    expect(response.id).toBe('123');
+  });
+});
+]]></code>
+    </example>
+  </section>
+
+  <section title="FastAPI Integration Test with Negative Cases">
+    <example type="good">
+      <note>Tests cover 201 happy path, 404 not-found, and 400 validation error — all in one class, sharing auth fixture.</note>
+      <code lang="python"><![CDATA[
+import pytest
+from fastapi.testclient import TestClient
+from app import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+@pytest.fixture
+def auth_headers(client):
+    token = client.post("/auth/login",
+        json={"email": "test@example.com", "password": "password"}
+    ).json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+class TestUsers:
+    def test_create_user_201(self, client, auth_headers):
+        r = client.post("/users",
+            json={"name": "New User", "email": "new@example.com"},
+            headers=auth_headers)
+        assert r.status_code == 201
+        assert r.json()["name"] == "New User"
+
+    def test_get_user_404(self, client, auth_headers):
+        r = client.get("/users/nonexistent", headers=auth_headers)
+        assert r.status_code == 404
+        assert r.json()["type"].endswith("/not-found")
+
+    def test_create_user_422_invalid_email(self, client, auth_headers):
+        r = client.post("/users",
+            json={"name": "", "email": "invalid"},
+            headers=auth_headers)
+        assert r.status_code == 400
+        errors = r.json()["errors"]
+        assert any(e["field"] == "email" for e in errors)
+
+    def test_create_user_401_no_auth(self, client):
+        r = client.post("/users", json={"name": "X", "email": "x@x.com"})
+        assert r.status_code == 401
+]]></code>
+    </example>
+  </section>
+
+  <section title="OpenAPI Response Validation">
+    <example type="good">
+      <note>Validates that the actual response body matches the schema declared in openapi.yaml — catches drift that status-code assertions miss.</note>
+      <code lang="python"><![CDATA[
+from openapi_core import OpenAPI
+from openapi_core.testing.mock import MockRequest, MockResponse
+
+spec = OpenAPI.from_file_path("openapi.yaml")
+
+def test_list_users_matches_spec(client, auth_headers):
+    response = client.get("/users", headers=auth_headers)
+    mock_req = MockRequest("http://localhost", "GET", "/users")
+    mock_resp = MockResponse(data=response.content, status_code=response.status_code)
+    result = spec.validate_response(mock_req, mock_resp)
+    assert not result.errors, f"Schema violations: {result.errors}"
+]]></code>
+    </example>
+  </section>
+
+  <section title="Antipatterns">
+    <antipattern>
+      <description>Asserting only status code: assert response.status_code == 200</description>
+      <reason>Does not catch body schema drift, missing required fields, or wrong types. Add validate_response(spec, response) and at least one body field assertion.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Hardcoded primary keys like user_id="1" shared across test functions</description>
+      <reason>Collides across parallel test runs and masks order-dependent bugs. Use factories that generate unique values.</reason>
+    </antipattern>
+  </section>
+</text>

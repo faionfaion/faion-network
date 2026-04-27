@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-tools-and-gotchas" title="Tools, Services, Agent Workflow, and Gotchas">
+  <summary>CLI tools, platform services, recommended agent workflow, and AI failure modes for accessibility testing.</summary>
+
+  <section title="CLI Tools">
+    <list>
+      <item>axe-core (via Playwright/Puppeteer) — automated WCAG scanning with JSON output; npm install axe-core</item>
+      <item>lighthouse CLI — Chrome-based a11y + performance audit; npm install -g lighthouse</item>
+      <item>pa11y — command-line a11y testing with multiple runner support; npm install -g pa11y</item>
+      <item>colour-contrast-checker — CLI contrast ratio verification; npm package</item>
+      <item>htmlcs — HTML_CodeSniffer for WCAG rule checking; squizlabs.github.io/HTML_CodeSniffer</item>
+    </list>
+  </section>
+
+  <section title="Key Services">
+    <list>
+      <item>Deque axe DevTools (SaaS) — AI-powered false-positive reduction, enterprise scanning, REST API + CLI; industry standard</item>
+      <item>Level Access (SaaS) — "Ask Level AI" chatbot for issue Q&amp;A; enterprise VPAT generation; partial API</item>
+      <item>3Play Media (SaaS) — AI-enabled captions and audio descriptions; REST API; agent can submit video, poll for output</item>
+      <item>Siteimprove (SaaS) — continuous monitoring; good for regression detection in CI/CD; REST API</item>
+      <item>Accessibility Insights (OSS, Microsoft) — browser extension; excellent for manual testing; not agent-drivable</item>
+    </list>
+  </section>
+
+  <section title="Agent Workflow">
+    <rule>
+      <statement>An agent can run axe-core via Playwright, parse the violation JSON, prioritize by WCAG criterion and user impact, and generate a developer-facing remediation brief with before/after code snippets. The agent must never mark issues as resolved — only humans or automated regression tests close findings.</statement>
+      <rationale>Agents provide scale and consistency in the audit-and-brief phase; human verification is required for the close phase because AT testing and accessibility judgment require human context.</rationale>
+    </rule>
+    <reference path="templates/axe-playwright-runner.py">Playwright-based axe-core runner for agent use</reference>
+  </section>
+
+  <section title="AI-Agent Gotchas">
+    <antipattern>
+      <description>Agent runs axe-core without handling auth flows, cookie consent banners, or dynamic content loading</description>
+      <reason>All three interfere with scan results. Agents must handle authentication, dismiss consent banners, and wait for dynamic content before running axe.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent maps violations to incorrect WCAG criteria (e.g., citing 1.4.3 Contrast for a keyboard navigation issue)</description>
+      <reason>LLMs confidently produce incorrect criterion references. Always validate criterion mappings against the WCAG 2.2 spec or a verified tool output before including in a report.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent generates generic, keyword-stuffed alt text for complex charts and infographics</description>
+      <reason>AI alt text defaults to describing the visual appearance, not the data or meaning. Prompt explicitly for functional, descriptive alt text that conveys the chart's insight.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent scans only the landing page of an SPA, missing component-level violations on navigated routes</description>
+      <reason>SPA frameworks rebuild the DOM on navigation. Agents must trigger navigation events and re-run axe on each route.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Agent marks an ARIA-dependent issue resolved without AT verification</description>
+      <reason>Assistive technology behavior (NVDA, JAWS, VoiceOver) diverges significantly from automated tool predictions. AT-dependent issues require AT verification before closing.</reason>
+    </antipattern>
+  </section>
+</text>

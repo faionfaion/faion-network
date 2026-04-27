@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-pipeline-and-rules" title="CI/CD Security Pipeline and Gate Rules">
+  <summary>Defines where each security testing category integrates in the CI/CD pipeline and the gate criteria that block or warn.</summary>
+
+  <section title="Pipeline Integration Points">
+    <rule>
+      <statement>Run SAST (Semgrep, Bandit) and secret scanning (TruffleHog, Gitleaks) on every commit and every PR — these are fast (&lt;2 min) and catch the majority of static vulnerabilities.</statement>
+      <rationale>Every commit is an attack surface change. Fast gates keep feedback immediate; deferred scanning gives vulnerabilities days to propagate.</rationale>
+    </rule>
+    <rule>
+      <statement>Run SCA (Snyk, pip-audit, npm audit) on every build. Block on Critical CVEs or CVEs known to be exploited in the wild; warn on High CVEs with no fix available.</statement>
+      <rationale>Dependencies change on their own schedule. Every build is a new dependency risk surface. Critical exploitable CVEs are production emergencies.</rationale>
+    </rule>
+    <rule>
+      <statement>Run DAST (OWASP ZAP, Nuclei) nightly on staging only — never against production or any environment with real user data or billing.</statement>
+      <rationale>DAST simulates attacks; running against production data causes real side effects. Staging must be isolated.</rationale>
+    </rule>
+    <rule>
+      <statement>Run container scanning (Trivy) on every image build. Block on CRITICAL/HIGH severity unfixed vulnerabilities in the image.</statement>
+      <rationale>Container base images accumulate CVEs silently. Scanning at build time catches regressions before they reach the registry.</rationale>
+    </rule>
+  </section>
+
+  <section title="Gate Criteria">
+    <rule>
+      <statement>Define a baseline for pre-existing findings. Only new findings (relative to the baseline) block PRs. Pre-existing findings receive a triage decision once and move to an allowlist or backlog.</statement>
+      <rationale>Inheriting thousands of existing findings creates alert fatigue. New findings deserve immediate attention; legacy findings get tracked separately.</rationale>
+    </rule>
+    <rule>
+      <statement>Any secret detected by TruffleHog or Gitleaks must block the PR with no exceptions. The secret must be revoked and rotated immediately — removal from git does not expire a leaked secret.</statement>
+      <rationale>Secrets pushed to git history are compromised forever. Rotation is the only mitigation; history scrubbing is secondary cleanup.</rationale>
+    </rule>
+  </section>
+
+  <section title="Shift-Left Rules">
+    <rule>
+      <statement>Add pre-commit hooks for Gitleaks and detect-secrets in every project. Developers should not be able to commit secrets accidentally.</statement>
+      <rationale>Pre-commit hooks catch the mistake before the git object exists, before the secret is ever visible in the remote.</rationale>
+    </rule>
+    <rule>
+      <statement>Run threat modeling on new features before any tool touches them. Tools find known patterns; design flaws hide from scanners.</statement>
+      <rationale>BOLA, IDOR, and business logic abuse are the top API risk categories and are invisible to automated scanning.</rationale>
+    </rule>
+    <reference path="templates/security-pipeline.yml">GitHub Actions security workflow implementing this pipeline</reference>
+  </section>
+</text>
