@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="event-sourcing-agentic">
+  <metadata>
+    <tier>pro</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Agentic workflow for event-sourcing scaffolding: 5-stage pipeline, AI agent gotchas, subagent recommendations, prompt patterns, CLI tools, and hosted event store services.</summary>
+    <tags>
+      <tag>event-sourcing</tag>
+      <tag>agentic-workflow</tag>
+      <tag>ai-agents</tag>
+      <tag>code-generation</tag>
+      <tag>event-store</tag>
+    </tags>
+    <category>agentic</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-aggregate"/>
+      <ref slug="event-sourcing-versioning"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Event Sourcing — Agentic Workflow and Tooling</title>
+
+    <summary>Drive event-sourcing scaffolding as a five-stage agentic pipeline: aggregate design → code-gen → projection → tests → anti-pattern review. Key gotchas: agents emit CRUD-style events, mutate state outside apply, and forget expected_version. Prompt patterns and CLI tools listed.</summary>
+
+    <why>
+      <p>Event sourcing has a large surface area of interconnected decisions — event design, aggregate boundaries, projection shapes, versioning, PII strategy. An unguided agent produces CRUD-style snapshot events, aggregate methods that mutate state directly, repositories without optimistic concurrency, and projections that execute business logic. A structured five-stage pipeline with explicit anti-pattern gates produces correct scaffolding on the first pass.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scaffolding a new event-sourced aggregate from a bounded context spec.</item>
+        <item>Reviewing a PR adding event-sourcing code against the anti-pattern checklist.</item>
+        <item>Generating projection, repository, and test scaffolding for an existing aggregate design.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Designing event boundaries for an unfamiliar domain — DDD aggregate design requires human domain expertise; the agent assists but cannot own the decisions.</item>
+        <item>Deleting or renaming published event classes — always human-reviewed, never auto-merged.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="five-stage-pipeline">
+      <p>Drive event-sourcing scaffolding as a five-stage pipeline: (1) an aggregate-design agent identifies bounded context and events from the spec; (2) a code-gen agent emits Event classes (immutable, with event_id, occurred_at, aggregate_id, version), aggregate root with apply() and replay(events), repository with load(id) and save(events, expected_version); (3) a projection agent emits a projector per query with position tracking and idempotent UPSERT; (4) a test agent emits given/when/then tests where given = list[Event], when = command, then = list[Event]; (5) a review agent runs anti-pattern checks (mutable events, setattr on aggregates outside apply, missing expected_version on save). Persist event catalog in .aidocs/product_docs/event-catalog.md. Use faion-sdd-executor-agent to bind one event/projection/replay-test triple per SDD task.</p>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>These are the most frequent errors AI agents make when generating event-sourcing code. Each requires a specific lint rule or prompt constraint to prevent.</p>
+
+      <antipattern>
+        <description>CRUD-shaped events: agent emits UserUpdated, OrderUpdated, OrderUpdated_v2 — flat state snapshots.</description>
+        <reason>Force naming "what business action happened" and reject Updated/Changed patterns in lint. Snapshot events destroy the audit trail — they carry no business intent.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mutating state outside apply: agent calls self.status = "placed" in command handlers because it feels natural.</description>
+        <reason>The aggregate must mutate state ONLY in apply handlers. Command handlers emit events; replay invokes apply. State mutation in command methods breaks replay determinism.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Forgotten expected_version: code-gen agent saves events without optimistic-concurrency check. Replays clobber concurrent writes.</description>
+        <reason>Always include expected_version parameter in repository save signatures. The lint check for missing expected_version in event-catalog-lint.py catches this pattern.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hallucinated event-store APIs: agents invent event_store.append_one(...), repo.put_events(...), bus.fire(...) that do not exist in the target library.</description>
+        <reason>Pin the exact API in the prompt and provide the imports. Include a concrete example of the target library's append() call signature.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Snapshot misuse: agent persists current state as a snapshot AND treats it as truth, skipping event replay "if snapshot exists". This breaks event-versioning.</description>
+        <reason>Always rebuild snapshot when event schema bumps. Snapshots are a performance cache, never the source of truth. Replay from events after the snapshot version must always be performed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Projection writes business logic: agent writes if order.total &gt; 1000: send_email(...) in projection handler.</description>
+        <reason>Projections are passive UPSERTs. Emit a domain event for "high-value order" and drive the action from a separate handler. Business logic in projections fires on every rebuild.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PII leaks into events: agent copies command payload directly into events including shipping_address, email, card_token.</description>
+        <reason>Force a redact step and a per-event PII-classification field. Lint blocks PII without a shred plan. See event-sourcing-versioning for crypto-shredding and PII externalization strategies.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Cross-aggregate handlers: agent writes place_order(...) that loads Customer, Inventory, Payment, and mutates all four.</description>
+        <reason>That is a saga, not a command handler. Refactor into a process manager. Cross-aggregate mutations are not atomic and produce ghost states.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tests on aggregate getters: agent tests aggregate.status == "placed" after replay instead of testing event emission.</description>
+        <reason>Better: test that apply(events) produces the same state as the original aggregate (round-trip) and that command produces the expected events list. This tests the actual event-sourcing contract.</reason>
+      </antipattern>
+    </section>
+
+    <section name="prompt-patterns">
+      <prompt purpose="aggregate-design">
+        <![CDATA[
+You are an event-sourcing architect. Given the bounded context spec
+in <spec>, output:
+1. The aggregate root name and invariants.
+2. A list of events as `<EventName>(field: type, ...)`. Events MUST
+   include event_id (UUID), occurred_at (UTC datetime), aggregate_id,
+   and aggregate_version. Events MUST be past tense and minimal -- no
+   CRUD-style snapshots.
+3. A list of commands; each command produces 1+ events on success or
+   raises a domain exception.
+4. The reconstruct rule: for each event, the aggregate field updates
+   in `apply(<EventName>)`.
+Output as markdown tables. Reject events that look like state
+snapshots ("OrderUpdated with full Order").
+]]>
+      </prompt>
+
+      <prompt purpose="anti-pattern-review">
+        <![CDATA[
+You are reviewing a PR adding event-sourcing code. Flag any of:
+(1) Event class with non-frozen dataclass / mutable field,
+(2) aggregate method that mutates state outside its apply handler,
+(3) repository.save without expected_version (optimistic concurrency),
+(4) projection without last_processed_position tracking or
+   non-idempotent write,
+(5) command handler that loads aggregate without replaying events
+   from store,
+(6) edit to a published event class (in event catalog) without an
+   upcaster + version bump,
+(7) PII in event payload without crypto-shredding plan.
+Cite file:line. Do not propose fixes.
+]]>
+      </prompt>
+    </section>
+
+    <section name="subagent-recommendations">
+      <p>Recommended subagents for event-sourcing scaffolding tasks:</p>
+      <list>
+        <item>faion-sdd-executor-agent — opus model fits because event-design choices (granularity, payload, versioning) are decision-heavy and irreversible. Use sequential mode: event → aggregate apply → command handler → projection → test, in that order.</item>
+        <item>password-scrubber-agent — run before committing event fixtures; events love to carry PII (shipping_address, card_token) into test snapshots and JSON dumps. Also useful before publishing event schemas to schema registry.</item>
+        <item>event-versioning-gate agent (worth adding under agents/): blocks PRs that modify a published event class without an upcaster and bump in event_version. Reads a .event-catalog.json to know which classes are published.</item>
+        <item>faion-feature-executor skill — sequential mode for ES feature slices: event → aggregate apply → command handler → projection → test, in that order.</item>
+        <item>For CQRS pairing, use sibling pro/dev/software-developer/cqrs-pattern/ and share the inventory file.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Events are past tense, intent-rich, minimal. OrderPlaced(order_id, customer_id, items, placed_at) not OrderUpdated(...full snapshot...). Reject "Updated/Changed" event names.</item>
+        <item>Frozen dataclasses (Python) / records (Java) / immutable C#. Compile-time guarantee that an event is never mutated after creation.</item>
+        <item>Stable event IDs from the producer. UUIDv7 (time-ordered) so projections can dedup and order across consumers.</item>
+        <item>Optimistic concurrency on append. repository.save(stream_id, events, expected_version) — fail fast on conflict, retry the command from the new state. Without this you get ghost writes.</item>
+        <item>Projections track position and are idempotent. (stream_id, position) PK on the projection's checkpoint table; UPSERT on apply.</item>
+        <item>Snapshot every N events (50–100), but treat as cache. Always able to reconstruct from event 0; snapshots are a perf optimization, never source of truth.</item>
+        <item>PII out of events or crypto-shred. Either reference customer_id (and store PII in a mutable side table that respects GDPR) or encrypt PII fields per-subject and discard the key on erasure request.</item>
+        <item>Event catalog is committed source. A .event-catalog.json lives in the repo; CI fails on incompatible changes.</item>
+        <item>One event per command success. Multi-event commands are a smell — usually the command should be split into two commands.</item>
+        <item>Replay tests as default. given_events → when_command → then_events is the canonical test shape; agents naturally produce them when the prompt enforces it.</item>
+        <item>Schedule projection rebuilds. Nightly job rebuilds projections from offset 0 in a shadow DB and diffs against live; alerts on drift before users notice.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools">
+      <p>Key CLI tools for event-sourced systems:</p>
+      <list>
+        <item>eventstore CLI / es — Append, read, manage projections on EventStoreDB. https://www.eventstore.com/eventstoredb</item>
+        <item>eventsourcing (Python) — Aggregate / repository / event-store framework. pip install eventsourcing. https://eventsourcing.readthedocs.io</item>
+        <item>axon-cli — Inspect / replay events on Axon Server. https://docs.axoniq.io</item>
+        <item>kafka-console-consumer / kcat — Inspect Kafka-backed event streams, replay from offset. https://github.com/edenhill/kcat</item>
+        <item>nats CLI + JetStream — Lightweight event store for small footprints. https://nats.io</item>
+        <item>Marten CLI tasks — Postgres-backed CQRS+ES; dotnet marten projection rebuild. https://martendb.io</item>
+        <item>Debezium — CDC from RDBMS to event log when refit is not an option. https://debezium.io</item>
+        <item>dbt — Build read-model projections as SQL models from append-only event tables. https://docs.getdbt.com</item>
+        <item>faktory / Temporal CLI — Saga / process manager orchestration around event store. https://temporal.io</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <p>Hosted and self-hosted event store services:</p>
+      <list>
+        <item>EventStoreDB (OSS + cloud) — Purpose-built event store; HTTP+gRPC APIs; built-in projections. Agent-friendly.</item>
+        <item>Axon Server (commercial + free dev tier) — Bus + event store for JVM stacks. Agent-friendly.</item>
+        <item>Marten (Postgres, OSS) — ES on Postgres; single-DB simplicity, ideal for small teams. Agent-friendly.</item>
+        <item>Apache Kafka + Schema Registry (OSS / Confluent SaaS) — Event log + projection sinks; high-throughput. Agent-friendly.</item>
+        <item>NATS JetStream (OSS / Synadia SaaS) — Subjects = aggregate streams; cheap to self-host. Agent-friendly.</item>
+        <item>AWS DynamoDB Streams + Kinesis (SaaS) — DDB as event store with Streams as bus; popular serverless ES pattern. Agent-friendly.</item>
+        <item>MessageDB / Eventide (Postgres, OSS) — Postgres-backed event store with PG NOTIFY-based subscriptions. Agent-friendly.</item>
+        <item>Apache Pulsar (OSS / StreamNative) — Multi-tenant event log; tiered storage solves long retention. Agent-friendly.</item>
+        <item>Temporal (OSS / Cloud) — Owns saga / process-manager layer that ES handlers must NOT own. Agent-friendly.</item>
+        <item>Apicurio / Confluent Schema Registry (SaaS / OSS) — Event schema versioning + compatibility checks; non-optional once more than 1 consumer exists. Agent-friendly.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="event-sourcing-fundamentals"/>
+      <ref slug="event-sourcing-versioning"/>
+      <link href="https://martinfowler.com/eaaDev/EventSourcing.html"/>
+      <link href="https://cqrs.files.wordpress.com/2010/11/cqrs_documents.pdf"/>
+      <link href="https://developers.eventstore.com/server/latest/streams.html"/>
+      <link href="https://martendb.io/events"/>
+      <link href="https://eventsourcing.readthedocs.io"/>
+    </see-also>
+  </content>
+</methodology>
