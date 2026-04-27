@@ -1,0 +1,392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-lb-haproxy">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>HAProxy configuration for HTTP and TCP load balancing: frontend/backend blocks, ACL-based path routing, sticky sessions, rate limiting, L4 database proxying, and production-ready Docker Compose setup.</summary>
+    <tags>
+      <tag>haproxy</tag>
+      <tag>load-balancing</tag>
+      <tag>nginx</tag>
+      <tag>proxy</tag>
+      <tag>rate-limiting</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-lb-algorithms"/>
+      <ref slug="devops-lb-ssl-tls"/>
+      <ref slug="devops-lb-high-availability"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>HAProxy and Nginx Load Balancer Configuration</title>
+
+    <summary>HAProxy provides battle-tested L4/L7 load balancing with precise control over timeouts, health checks, ACL routing, and sticky sessions. The production web pattern uses frontend/backend separation: HTTP frontend → HTTPS frontend → ACL routing → multiple backends with independent algorithms. Rate limiting uses stick tables. L4 mode handles databases with protocol-aware health checks.</summary>
+
+    <why>
+      <p>HAProxy and Nginx are the two dominant open-source load balancers for self-hosted infrastructure. HAProxy excels at fine-grained connection control, precise health checking, and ACL-based routing. Nginx combines load balancing with reverse proxying, caching, and static file serving. Production deployments require explicit timeout tuning, health check configuration, and SSL/TLS hardening — defaults are insufficient for high-traffic services.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Self-hosted infrastructure where managed cloud LBs are not available or too expensive.</item>
+        <item>Environments requiring advanced ACL-based routing, custom stick tables, or protocol-specific health checks (MySQL, PostgreSQL, Redis).</item>
+        <item>Docker Compose or bare-metal setups needing a lightweight LB without Kubernetes.</item>
+        <item>Migrating from a cloud LB to on-premise, or needing consistent config across cloud and on-prem.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>New cloud-native workloads — prefer managed cloud LBs (AWS ALB, GCP HTTPS LB) unless specific features are needed.</item>
+        <item>Do not run HAProxy as the only LB instance in production — it becomes a SPOF; always deploy active-passive or active-active pairs.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="haproxy-http">
+      <example type="good" title="HAProxy HTTP load balancer with path routing and sticky sessions">
+        <code lang="text"><![CDATA[
+# /etc/haproxy/haproxy.cfg
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  forwardfor
+    option  http-server-close
+    timeout connect 5000ms
+    timeout client  50000ms
+    timeout server  50000ms
+
+# Stats dashboard
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+
+# HTTP to HTTPS redirect
+frontend http_front
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+# HTTPS frontend
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/example.com.pem
+    http-request add-header X-Forwarded-Proto https
+
+    # Path-based routing
+    acl is_api path_beg /api
+    acl is_static path_beg /static
+
+    use_backend api_servers if is_api
+    use_backend static_servers if is_static
+    default_backend web_servers
+
+# Web backend with round robin
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+
+    server web1 10.0.0.1:8080 check weight 5
+    server web2 10.0.0.2:8080 check weight 5
+    server web3 10.0.0.3:8080 check weight 3 backup
+
+# API backend with least connections and sticky sessions
+backend api_servers
+    balance leastconn
+    option httpchk GET /api/health
+    http-check expect status 200
+
+    cookie SERVERID insert indirect nocache
+
+    server api1 10.0.1.1:8000 check cookie api1
+    server api2 10.0.1.2:8000 check cookie api2
+    server api3 10.0.1.3:8000 check cookie api3
+
+# Static content backend
+backend static_servers
+    balance roundrobin
+    option httpchk GET /health
+
+    server static1 10.0.2.1:80 check
+    server static2 10.0.2.2:80 check
+]]></code>
+        <note>Each backend uses a different algorithm appropriate to its workload. Backup server only receives traffic when primaries are down. Cookie-based sticky sessions on the API backend preserve session affinity.</note>
+      </example>
+    </section>
+
+    <section name="haproxy-tcp">
+      <example type="good" title="HAProxy TCP load balancer for databases (L4 mode)">
+        <code lang="text"><![CDATA[
+# L4 load balancing for database or other TCP services
+
+global
+    log /dev/log local0
+    maxconn 50000
+
+defaults
+    mode tcp
+    log global
+    option tcplog
+    timeout connect 10s
+    timeout client 30s
+    timeout server 30s
+
+frontend mysql_front
+    bind *:3306
+    default_backend mysql_servers
+
+backend mysql_servers
+    balance leastconn
+    option mysql-check user haproxy
+
+    server mysql1 10.0.3.1:3306 check
+    server mysql2 10.0.3.2:3306 check
+    server mysql3 10.0.3.3:3306 backup
+]]></code>
+        <note>mode tcp switches to L4. option mysql-check uses MySQL protocol health checks instead of TCP connect, ensuring the MySQL daemon is actually accepting queries.</note>
+      </example>
+    </section>
+
+    <section name="haproxy-rate-limiting">
+      <example type="good" title="HAProxy rate limiting with stick tables">
+        <code lang="text"><![CDATA[
+frontend https_front
+    bind *:443 ssl crt /etc/haproxy/certs/example.com.pem
+
+    # Rate limiting: 100 requests per 10 seconds per IP
+    stick-table type ip size 100k expire 30s store http_req_rate(10s)
+    http-request track-sc0 src
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+
+    default_backend web_servers
+]]></code>
+        <note>Stick tables track per-IP request rates in memory. deny_status 429 returns HTTP 429 (Too Many Requests) instead of the default 403. Increase size and adjust the rate limit based on traffic patterns.</note>
+      </example>
+    </section>
+
+    <section name="haproxy-production-template">
+      <example type="good" title="HAProxy production template with security headers and rate limiting">
+        <code lang="text"><![CDATA[
+# /etc/haproxy/haproxy.cfg — Production Web Application
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 50000
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+    tune.ssl.default-dh-param 2048
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    option  forwardfor
+    option  http-server-close
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+    timeout http-request 10s
+    timeout http-keep-alive 10s
+    timeout queue 30s
+
+listen stats
+    bind 127.0.0.1:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats admin if LOCALHOST
+    stats hide-version
+
+frontend http_redirect
+    bind *:80
+    http-request redirect scheme https code 301 unless { ssl_fc }
+
+frontend https_in
+    bind *:443 ssl crt /etc/haproxy/certs/ alpn h2,http/1.1
+    http-response set-header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    http-response set-header X-Content-Type-Options nosniff
+    http-response set-header X-Frame-Options DENY
+    http-request set-header X-Forwarded-Proto https
+    http-request set-header X-Forwarded-Port %[dst_port]
+    stick-table type ip size 100k expire 30s store http_req_rate(10s)
+    http-request track-sc0 src
+    http-request deny deny_status 429 if { sc_http_req_rate(0) gt 100 }
+    acl is_api path_beg /api
+    use_backend api_backend if is_api
+    default_backend web_backend
+
+backend web_backend
+    balance roundrobin
+    option httpchk GET /health HTTP/1.1\r\nHost:\ localhost
+    http-check expect status 200
+    option redispatch
+    retries 3
+    server web1 {{WEB_SERVER_1}}:{{WEB_PORT}} check inter 10s fall 3 rise 2 weight 100
+    server web2 {{WEB_SERVER_2}}:{{WEB_PORT}} check inter 10s fall 3 rise 2 weight 100
+    server web3 {{WEB_SERVER_3}}:{{WEB_PORT}} check inter 10s fall 3 rise 2 weight 50 backup
+
+backend api_backend
+    balance leastconn
+    option httpchk GET /api/health HTTP/1.1\r\nHost:\ localhost
+    http-check expect status 200
+    cookie SERVERID insert indirect nocache httponly secure
+    server api1 {{API_SERVER_1}}:{{API_PORT}} check cookie s1
+    server api2 {{API_SERVER_2}}:{{API_PORT}} check cookie s2
+    server api3 {{API_SERVER_3}}:{{API_PORT}} check cookie s3
+]]></code>
+        <note>Replace {{WEB_SERVER_1}} etc. with actual IPs. inter 10s sets health check interval; fall 3 requires 3 consecutive failures; rise 2 requires 2 successes to restore. alpn h2,http/1.1 enables HTTP/2.</note>
+      </example>
+    </section>
+
+    <section name="docker-compose">
+      <example type="good" title="HAProxy with Docker Compose">
+        <code lang="yaml"><![CDATA[
+version: '3.8'
+
+services:
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./certs:/etc/haproxy/certs:ro
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web1:
+    image: {{WEB_IMAGE}}
+    container_name: web1
+    networks:
+      - backend
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  web2:
+    image: {{WEB_IMAGE}}
+    container_name: web2
+    networks:
+      - backend
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api1:
+    image: {{API_IMAGE}}
+    container_name: api1
+    networks:
+      - backend
+    environment:
+      - PORT=8000
+
+  api2:
+    image: {{API_IMAGE}}
+    container_name: api2
+    networks:
+      - backend
+    environment:
+      - PORT=8000
+
+networks:
+  backend:
+    driver: bridge
+]]></code>
+        <note>HAProxy health check validates config syntax on startup — prevents deployment of broken configs. Certs mounted read-only. All services on the same bridge network.</note>
+      </example>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Always validate HAProxy configuration before reload with `haproxy -c -f /path/to/haproxy.cfg`. Never reload an unvalidated config.</statement>
+        <rationale>An invalid config causes HAProxy to fail to start or reload, taking down all traffic. The -c flag performs a syntax and semantic check without starting the daemon, catching errors at deploy time.</rationale>
+      </rule>
+      <rule>
+        <statement>Restrict the stats dashboard to localhost or an internal management IP (bind 127.0.0.1:8404). Never expose the admin socket or stats dashboard to the internet.</statement>
+        <rationale>The admin socket allows runtime modification of backend weights and server states. Public access enables attackers to drain servers from rotation or change routing. stats hide-version prevents version disclosure.</rationale>
+      </rule>
+      <rule>
+        <statement>Set connection timeouts (connect, client, server) explicitly to values appropriate for the application. Never rely on defaults, which are often too long or too short.</statement>
+        <rationale>Long timeouts cause connection slots to be held open by slow or stalled backends, exhausting the connection pool. Short timeouts cause false failures for legitimate slow requests (large uploads, slow queries). Tune based on P99 request duration.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Validate configuration: `haproxy -c -f /etc/haproxy/haproxy.cfg`.</check>
+      <check>Configure global SSL settings (min TLS version, cipher suites, DH params).</check>
+      <check>Set explicit timeouts for connect, client, server, and http-request.</check>
+      <check>Configure health checks for each backend (path + expected status code).</check>
+      <check>Restrict stats dashboard to localhost or management IP.</check>
+      <check>Enable HTTP to HTTPS redirect on port 80.</check>
+      <check>Configure security response headers (HSTS, X-Content-Type-Options, X-Frame-Options).</check>
+      <check>Set rate limiting with stick tables for public-facing frontends.</check>
+      <check>Test failover: stop one backend and verify traffic routes to remaining servers.</check>
+      <check>Load test at 2x expected peak before production.</check>
+    </checklist>
+
+    <antipattern>
+      <description>Using the same backend for web and API traffic with the same balancing algorithm.</description>
+      <reason>Web and API traffic have different characteristics — web pages are typically fast, APIs can be slow. Round robin on mixed traffic sends slow API requests to the same servers as fast web requests, causing head-of-line blocking. Separate backends with separate algorithms allow independent tuning.</reason>
+    </antipattern>
+
+    <antipattern>
+      <description>Setting timeout client and timeout server to very long values (e.g. 300s) to "avoid timeouts".</description>
+      <reason>Long timeouts mask slow backends and fill the connection table with stalled connections. A stalled backend should be health-checked out of rotation, not waited on indefinitely. Configure retry behaviour instead.</reason>
+    </antipattern>
+
+    <see-also>
+      <link href="https://www.haproxy.org/documentation.html"/>
+      <link href="https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/"/>
+    </see-also>
+  </content>
+</methodology>
