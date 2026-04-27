@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="shadcn-ui">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>shadcn/ui copies primitives into components/ui, styled with Tailwind, managed with CVA, built on Radix. Never edit components/ui directly; extend via composition; cn() is the only class merger.</summary>
+    <tags>
+      <tag>shadcn</tag>
+      <tag>react</tag>
+      <tag>tailwind</tag>
+      <tag>radix</tag>
+      <tag>cva</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+    </languages>
+    <frameworks>
+      <framework>react</framework>
+      <framework>nextjs</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>shadcn/ui</title>
+
+    <summary>shadcn/ui is a component system where primitives are copied into `components/ui/` (not installed as a package), styled with Tailwind CSS, managed with CVA variants, and built on Radix Primitives. Core rule: never modify `components/ui/` files directly — extend via composition in `components/&lt;feature&gt;/`; use `cn()` as the only class merger; add `'use client'` only on leaf components that actually need state.</summary>
+
+    <why>
+      <p>Owning component source eliminates vendor lock-in and lets agents edit component files directly. CSS variables in `globals.css` provide full dark-mode and brand control without hardcoded colors. Radix Primitives handle accessibility (focus management, ARIA, keyboard nav) so custom logic doesn't regress it. The copy-not-install model means upstream bug fixes require explicit import via `npx shadcn diff`, preventing silent regressions.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New React/Next.js apps that need design-system primitives without locking into a third-party library version. Code is copied into the codebase, owned by the team.</item>
+        <item>Internal tools / dashboards where Tailwind + Radix Primitives + CVA is already the stack.</item>
+        <item>LLM-driven UI work — components are local TypeScript files agents can edit, not opaque npm packages they cannot reshape.</item>
+        <item>Branding-heavy products where design tokens (`globals.css` CSS vars) need full control.</item>
+        <item>Migration off Material UI / Chakra UI / Mantine where vendor lock-in or bundle size hurts.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Apps that need a fully maintained, versioned component package — shadcn intentionally is not a package. You own bug fixes.</item>
+        <item>Non-React stacks (Vue, Svelte, Angular). Use respective ports (`shadcn-vue`, `shadcn-svelte`) — same philosophy, different repo.</item>
+        <item>Mobile-first React Native — shadcn assumes web DOM + Tailwind.</item>
+        <item>Fast prototyping where you want zero design — fully designed kits (Mantine, Material) ship faster.</item>
+        <item>Teams without Tailwind discipline — shadcn requires Tailwind config + `cn()` utility + understanding of CVA. Onboarding cost.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="architecture">
+      <p>Directory structure, primitive vs composition pattern, CVA variant management, and the copy-not-install model.</p>
+
+      <rule>
+        <statement>shadcn/ui components are copied into `components/ui/` via `npx shadcn@latest add`, not installed as an npm package. You own the source.</statement>
+        <rationale>Owning the source means agents can edit components directly, you control bug fixes, and there is no vendor lock-in. The trade-off is that upstream fixes must be pulled explicitly via `npx shadcn diff`.</rationale>
+      </rule>
+      <rule>
+        <statement>Never modify files in `components/ui/` directly. Extend by composing primitives in `components/features/` or `components/forms/`.</statement>
+        <rationale>Direct edits to `ui/` create a local fork. When you run `npx shadcn add button` again, your edits are overwritten. All customization goes into composition layers above the primitives.</rationale>
+      </rule>
+
+      <example type="good" title="Directory Structure">
+        <code lang="text"><![CDATA[src/
+├── components/
+│   ├── ui/              # shadcn primitives — treat as vendored
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   └── dialog.tsx
+│   ├── forms/           # Form-specific compositions
+│   │   └── CreateUserForm.tsx
+│   └── features/        # Feature-level compositions
+│       └── Dashboard/
+│           ├── Dashboard.tsx
+│           └── MetricsCard.tsx
+├── lib/
+│   └── utils.ts         # cn() helper
+└── styles/
+    └── globals.css      # CSS variables, @tailwind directives]]></code>
+      </example>
+
+      <rule>
+        <statement>Use CVA (class-variance-authority) for all variant-bearing components. Declare `compoundVariants` for cross-cutting state combinations instead of repeating base classes.</statement>
+        <rationale>Without CVA, variants accumulate as ad-hoc className conditions that conflict and produce unexpected results. CVA makes variants explicit, typed, and composable.</rationale>
+      </rule>
+      <example type="good" title="CVA buttonVariants">
+        <code lang="typescript"><![CDATA[import { cva, type VariantProps } from "class-variance-authority";
+
+const buttonVariants = cva(
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        destructive: "bg-destructive text-destructive-foreground",
+        outline: "border border-input bg-background hover:bg-accent",
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+      },
+      size: {
+        default: "h-10 px-4 py-2",
+        sm: "h-9 px-3",
+        lg: "h-11 px-8",
+        icon: "h-10 w-10",
+      },
+    },
+    defaultVariants: { variant: "default", size: "default" },
+  }
+);]]></code>
+      </example>
+      <reference path="templates/cn-util.ts">cn() utility combining clsx + tailwind-merge</reference>
+    </section>
+
+    <section name="theming">
+      <p>CSS variable setup for light/dark mode and design token discipline — no hardcoded colors in component files.</p>
+
+      <rule>
+        <statement>All colors in component files must reference CSS variables (e.g., `text-foreground`, `bg-card`, `border-input`), never hardcoded hex or HSL values.</statement>
+        <rationale>Hardcoded colors bypass the theme system, breaking dark mode and brand customization. CSS variables propagate theme changes to all consumers automatically.</rationale>
+      </rule>
+      <reference path="templates/globals.css">CSS variable theme skeleton (light + dark)</reference>
+
+      <rule>
+        <statement>For Next.js apps, wrap the root layout with `next-themes` ThemeProvider and add `suppressHydrationWarning` to `&lt;html&gt;`.</statement>
+        <rationale>Without ThemeProvider + suppressHydrationWarning, SSR renders the light theme and the client switches to dark, causing a flash of unstyled content (FOUC) on every page load.</rationale>
+      </rule>
+      <example type="good" title="Next.js ThemeProvider wiring">
+        <code lang="typescript"><![CDATA[// app/layout.tsx
+import { ThemeProvider } from 'next-themes';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}]]></code>
+      </example>
+
+      <rule>
+        <statement>Use `cn()` (clsx + tailwind-merge) as the only className combiner. Forbid template literals for merging classes.</statement>
+        <rationale>Template literals allow conflicting utilities to coexist (`p-4 p-2` → both applied, last wins by CSS cascade). `tailwind-merge` resolves conflicts in the same utility group intelligently.</rationale>
+      </rule>
+    </section>
+
+    <section name="forms">
+      <p>shadcn Form component wired with react-hook-form and zod for typed validation.</p>
+
+      <rule>
+        <statement>shadcn `Form` requires both `react-hook-form` and `zod`. Never bypass one — missing either breaks the TypeScript types and runtime validation.</statement>
+        <rationale>shadcn's Form wraps react-hook-form's context with Radix accessibility primitives. Zod provides the schema for type inference and validation errors. All three are coupled.</rationale>
+      </rule>
+      <example type="good" title="CreateUserForm with react-hook-form + zod">
+        <code lang="typescript"><![CDATA[import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+
+const schema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+});
+
+type FormData = z.infer<typeof schema>;
+
+export function CreateUserForm({ onSubmit }: { onSubmit: (data: FormData) => void }) {
+  const form = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl><Input type="email" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={form.formState.isSubmitting}>
+          Create
+        </Button>
+      </form>
+    </Form>
+  );
+}]]></code>
+        <note>FormMessage renders zod validation errors automatically. `disabled={form.formState.isSubmitting}` prevents double-submit.</note>
+      </example>
+
+      <rule>
+        <statement>Add `'use client'` only to leaf components that need state or event handlers. Parent pages and layouts must remain Server Components.</statement>
+        <rationale>Marking a page `'use client'` prevents any RSC data-fetching benefits for the entire subtree. Most shadcn primitives need `'use client'` only at their own level.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <p>Hallucinated imports, use-client over-application, inline colors, forwardRef loss, and Storybook setup gaps.</p>
+
+      <antipattern>
+        <description>Importing shadcn components from `@shadcn/ui/button` (npm-style) instead of the local `@/components/ui/button`.</description>
+        <reason>There is no `@shadcn/ui` npm package. shadcn is copied into the codebase. The correct import is always the local alias configured in `tsconfig.json` paths (`@/` → `src/`).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Writing `&lt;Button className="bg-red-500"&gt;` instead of `variant="destructive"`.</description>
+        <reason>Inline Tailwind colors bypass the theme system, breaking dark mode and brand customization. Use the CVA variant system; add a new variant if the existing ones don't cover the case.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Adding `'use client'` to a page or layout to use a Button component.</description>
+        <reason>This marks the entire subtree as client-rendered, eliminating RSC benefits for all server data fetching. Move the `'use client'` to the smallest leaf component that actually needs state.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Removing `React.forwardRef` from a primitive component during refactoring.</description>
+        <reason>Radix's `asChild` pattern requires refs to be forwarded. Removing `forwardRef` breaks portal-based components (Dialog, Popover, Tooltip) in subtle ways that only surface with specific composition patterns.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Running `npx shadcn add button --yes` without checking for local customizations first.</description>
+        <reason>Re-running `add` overwrites local edits. Always run `npx shadcn diff` first to review upstream changes; then manually merge the relevant parts.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Forgetting `import '@/styles/globals.css'` in `.storybook/preview.ts`.</description>
+        <reason>Without the globals import, Storybook renders all shadcn components unstyled — CSS variables and Tailwind base styles are missing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Dynamic Tailwind class strings like `bg-${color}-500` without a safelist entry.</description>
+        <reason>Tailwind's JIT compiler purges classes not found as complete strings in source files. Dynamic class construction produces classes that are purged at build time, rendering unstyled in production.</reason>
+      </antipattern>
+    </section>
+
+    <section name="limitations">
+      <list>
+        <item>Component drift across copies. Agents add a Button to project A, project B; project B never gets bugfixes from upstream. Pin a "shadcn version" in `components.json`; run `npx shadcn diff` weekly.</item>
+        <item>CVA variant explosion. New variants accumulate; `buttonVariants` becomes 200 lines with conflicting compound variants. Refactor to nested CVAs or split into `&lt;IconButton&gt;` etc.</item>
+        <item>`cn()` precedence surprises. `cn("p-4", className)` with `className="p-2"` — `tailwind-merge` resolves to `p-2`, but only for known utility groups. Custom utilities or arbitrary values bypass merge.</item>
+        <item>Radix Primitives API churn. Major Radix bumps require manual port across all your `ui/*` files. Agents miss subtle prop renames.</item>
+        <item>Dark mode flash. Without `next-themes` + `suppressHydrationWarning` + script-in-head, SSR renders light, client switches dark → FOUC. Agents skip the `&lt;ThemeProvider&gt;` wrap.</item>
+        <item>Form integration. shadcn `Form` ties to `react-hook-form` + `zod`. Agents drop one and the typing breaks.</item>
+        <item>Server Components. Many shadcn primitives use `useState` / `useRef` → `'use client'` everywhere. Agents add `'use client'` to entire pages instead of leaf components, defeating RSC.</item>
+        <item>Accessibility regressions. Forking a Radix-based primitive and adding custom logic often drops focus management. ARIA tests catch this; agents need an a11y gate.</item>
+      </list>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Drive shadcn work in 4 stages: (1) a token-curator subagent reviews `globals.css` CSS variables and `tailwind.config.ts` to ensure brand tokens (HSL ranges, radii, spacing) are defined before any component is added; (2) an add-component subagent runs `npx shadcn@latest add &lt;name&gt;` and audits the generated file against project lint rules; (3) a composer subagent builds feature components in `components/&lt;feature&gt;/` using shadcn primitives + CVA, never inline arbitrary Tailwind; (4) an a11y-checker subagent runs `axe-core` against Storybook stories or Playwright E2E to catch focus/ARIA regressions. Always commit `components.json` + `lib/utils.ts` (with `cn()`) early; agents adding components without those error out cryptically.</p>
+
+      <p>Recommended subagents: faion-sdd-executor-agent (`agents/faion-sdd-executor-agent.md`) — quality gate runs `tsc --noEmit &amp;&amp; eslint . &amp;&amp; next build` after UI changes. A purpose-built shadcn-add-agent (worth creating): given a Figma frame or component description, picks the closest shadcn primitive(s), runs `npx shadcn add`, and emits the composed feature component. A cva-refactor-agent (worth creating): when a `*Variants` block exceeds 100 lines, proposes split into compound variants or sub-components. A shadcn-diff-agent (worth creating): runs `npx shadcn diff` and surfaces upstream patches the team hasn't applied. An a11y-axe-agent (worth creating): runs `axe-playwright` or `@storybook/addon-a11y` and reports violations + fix proposals (often `aria-label`, `role`, `tabIndex`). password-scrubber-agent (`agents/password-scrubber-agent.md`) — scrub any `.env`, MSW handlers, or Storybook fixtures before commit.</p>
+
+      <prompt purpose="add-and-compose"><![CDATA[You are a Next.js 14 + shadcn/ui engineer.
+1. Run: npx shadcn@latest add dialog form input button label
+2. Generate components/users/CreateUserDialog.tsx using:
+   - Dialog (shadcn/ui)
+   - Form + zodResolver(createUserSchema)
+   - Inputs: email (type=email, required), name (required)
+   - Submit Button with loading state (disabled + Spinner)
+3. Use cn() from @/lib/utils for classNames.
+4. Add 'use client' only to this file (parent stays RSC).
+5. Run: pnpm typecheck && pnpm lint]]></prompt>
+
+      <prompt purpose="cva-refactor"><![CDATA[Audit components/ui/button.tsx::buttonVariants. If >100 lines or
+>3 compound variants, split into:
+- buttonVariants (base)
+- iconButtonVariants (icon-only sizes)
+Update consumer call sites in /app and /components.
+Verify Storybook stories still render.]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>`npx shadcn@latest` — Add/diff components, init project. Docs: https://ui.shadcn.com</item>
+        <item>`class-variance-authority` (cva) — Variant API. Docs: https://cva.style</item>
+        <item>`tailwind-merge` — Resolve Tailwind class conflicts. Docs: https://github.com/dcastil/tailwind-merge</item>
+        <item>`clsx` — Conditional class joiner. Docs: https://github.com/lukeed/clsx</item>
+        <item>`tailwindcss` — Atomic CSS engine. Docs: https://tailwindcss.com</item>
+        <item>`prettier-plugin-tailwindcss` — Auto-sort classes. Docs: https://github.com/tailwindlabs/prettier-plugin-tailwindcss</item>
+        <item>`eslint-plugin-tailwindcss` — Lint class order, unused. Docs: https://github.com/francoismassart/eslint-plugin-tailwindcss</item>
+        <item>`@axe-core/playwright` — A11y in E2E. Docs: https://github.com/dequelabs/axe-core-npm</item>
+        <item>`@storybook/react` — Component sandbox. Docs: https://storybook.js.org</item>
+        <item>`storybook-addon-a11y` — A11y in Storybook. Docs: https://storybook.js.org/addons</item>
+      </list>
+    </section>
+
+    <section name="services">
+      <list>
+        <item>shadcn registry (OSS, agent-friendly via CLI): `npx shadcn add` reads JSON registry; supports private registries via `components.json`.</item>
+        <item>v0.dev (SaaS, agent-friendly via web + API): Vercel's Generative UI; emits shadcn-compatible components.</item>
+        <item>Storybook (OSS, agent-friendly): Catalog UI; agent-readable stories.</item>
+        <item>Chromatic (SaaS, agent-friendly): Visual regression on Storybook stories.</item>
+        <item>Percy (SaaS, agent-friendly): Visual diffs for shadcn components in app context.</item>
+        <item>Figma → shadcn (community plugins, SaaS, partial agent support): Some plugins emit JSX; mileage varies.</item>
+        <item>Vercel (SaaS, agent-friendly): Hosts Next.js + shadcn natively.</item>
+        <item>Tailwind Play (SaaS, agent-friendly via URL share): Quick prototyping; agent can paste class strings to validate.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Treat `components/ui/*` as vendored code. Review via PR; don't edit on autopilot. Each edit is a deliberate fork point.</item>
+        <item>One CSS-variable theme in `globals.css`. Light + dark + brand. Never hardcode colors in component files.</item>
+        <item>Composition over `@apply`. Build feature components from primitives; never `@apply` to extract patterns (defeats Tailwind's JIT advantages).</item>
+        <item>`cn()` as the only class merger. Forbid `className={`${a} ${b}`}` via lint rule.</item>
+        <item>CVA with `compoundVariants` for cross-cutting states. Hover + disabled + variant=destructive → one compound rule, not 12 base classes.</item>
+        <item>Server Components by default. Add `'use client'` only on leaf components that need state. Most data fetching stays server-side.</item>
+        <item>Forms via `react-hook-form` + `zod`. shadcn `Form` wraps both; don't bypass.</item>
+        <item>Storybook every primitive + every variant. Drives Chromatic + a11y addon coverage.</item>
+        <item>Pin shadcn CLI version in `package.json` `devDependencies` to avoid surprise output formatting changes mid-team.</item>
+        <item>`tailwind-merge` config matches Tailwind config. Custom utility groups (e.g., a `text-display-2xl`) need explicit config in `extendTailwindMerge`; otherwise `cn()` lets duplicates through.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <list>
+        <item>Hallucinated imports. LLMs import `@shadcn/ui/button` (npm-style) instead of `@/components/ui/button`. There is no npm package. Force prompt to use the local alias.</item>
+        <item>Inline styles instead of variants. Agent writes `&lt;Button className="bg-red-500"&gt;` instead of `variant="destructive"`. Reduces theme cohesion.</item>
+        <item>`'use client'` over-application. Agent slaps `'use client'` on a server-only page just to use `&lt;Button&gt;`. Move client logic to a leaf component.</item>
+        <item>Forgetting `forwardRef`. Removing `React.forwardRef` from a primitive breaks Radix's `asChild` composition. Subtle bug; only surfaces with portals.</item>
+        <item>`asChild` misuse. Agent uses `&lt;Button asChild&gt;&lt;a /&gt;&lt;/Button&gt;` and adds `onClick` to the Button — handler dropped because asChild merges children. Put handler on the child.</item>
+        <item>Theme tokens as strings. Hardcoding `#1e3a8a` in JSX bypasses dark-mode tokens. Surface as `text-foreground` / `bg-card` etc.</item>
+        <item>Variant prop type drift. Adding a new variant in CVA but not in component props type. TypeScript happy, runtime crash on consumer pass-through.</item>
+        <item>Mixed `clsx` + `cn`. Agent imports both; redundant. Pick `cn` everywhere.</item>
+        <item>`ButtonProps extends React.ButtonHTMLAttributes&lt;HTMLButtonElement&gt;` lost when refactoring; spread `{...props}` no longer accepts `disabled`. TS error obscure.</item>
+        <item>Dialog accessibility. Forgetting `&lt;DialogTitle&gt;` (visually hidden if needed via `&lt;VisuallyHidden&gt;` from Radix). Agent skip. Screen reader silent.</item>
+        <item>Tailwind safelist gaps. Dynamic class strings (`bg-${color}-500`) get purged. Either add to `safelist` in tailwind.config or precompute the full class string in code.</item>
+        <item>Radix `Popover`/`Tooltip` portal mounted outside theme provider — dark mode tokens unset. Wrap portal target with theme class.</item>
+        <item>Storybook doesn't load globals. Agent forgets `import '@/styles/globals.css'` in `.storybook/preview.ts`; primitives render unstyled.</item>
+        <item>`shadcn add` overwriting local edits. Agent re-runs `add button` and clobbers the team's customizations. Use `--yes` only with version control + diff review; `npx shadcn diff` first.</item>
+      </list>
+    </section>
+
+    <section name="drift-detector-script">
+      <p>"Drift detector" (≤50 lines) — run weekly in CI to surface upstream fixes that the team has not applied.</p>
+      <example type="good" title="shadcn-drift-check.sh">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+# shadcn-drift-check.sh — warn on local diffs vs upstream registry.
+# Usage: shadcn-drift-check.sh [components/ui/*.tsx ...]
+set -euo pipefail
+ROOT="${ROOT:-components/ui}"
+DRIFT=0
+mkdir -p .shadcn-drift && cd .shadcn-drift
+for f in "$@"; do
+  name="$(basename "$f" .tsx)"
+  pristine=".pristine-$name.tsx"
+  npx --yes shadcn@latest add "$name" --yes --overwrite \
+       --cwd ../.shadcn-drift-tmp >/dev/null 2>&1 || continue
+  cp "../.shadcn-drift-tmp/$ROOT/$name.tsx" "$pristine"
+  if ! diff -q "../$f" "$pristine" >/dev/null; then
+    echo "drift: $f"
+    diff -u "$pristine" "../$f" | head -40
+    DRIFT=$((DRIFT + 1))
+  fi
+done
+rm -rf ../.shadcn-drift-tmp
+[ "$DRIFT" -eq 0 ] && echo "OK — no drift" || { echo "drift in $DRIFT files"; exit 1; }]]></code>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/globals.css" purpose="CSS variable theme skeleton (light + dark)."/>
+      <template path="templates/cn-util.ts" purpose="cn() utility combining clsx + tailwind-merge."/>
+      <template path="templates/shadcn-drift-check.sh" purpose="Weekly CI script detecting local divergence from upstream registry."/>
+    </templates>
+
+    <see-also>
+      <link href="https://ui.shadcn.com/docs"/>
+      <link href="https://ui.shadcn.com/docs/components"/>
+      <link href="https://cva.style/docs"/>
+      <link href="https://www.radix-ui.com/primitives"/>
+      <link href="https://tailwindcss.com/docs"/>
+      <link href="https://github.com/dcastil/tailwind-merge"/>
+      <link href="https://v0.dev"/>
+    </see-also>
+  </content>
+</methodology>
