@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="multi-agent-conversational">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ai-agents</domain>
+    <summary>Agents take turns in a free-form conversation to solve problems dynamically; termination triggers on a phrase or max-turn cap; modeled on the AutoGen conversation pattern.</summary>
+    <tags>
+      <tag>multi-agent</tag>
+      <tag>conversational</tag>
+      <tag>autogen</tag>
+      <tag>turn-taking</tag>
+      <tag>termination</tag>
+    </tags>
+    <category>orchestration</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="multi-agent-hierarchical"/>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-production-bus"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AutoGen-Style Conversational Multi-Agent Pattern</title>
+
+    <summary>Agents take sequential turns in a free-form conversation. Each agent receives a sliding window of recent conversation context and the last message, produces a response, and the conversation continues until either a termination phrase appears in the output or the max-turn cap is reached. The pattern follows the AutoGen conversation model where agents dynamically negotiate the approach rather than following a pre-defined plan.</summary>
+
+    <why>
+      <p>Some tasks cannot be decomposed upfront — the solution path emerges from the dialogue itself. Dynamic tasks like debugging sessions, design reviews, or adversarial question-answering benefit from agents that respond to each other's outputs rather than executing pre-planned subtasks. The conversational pattern requires no orchestrator: agents are driven by the conversation state alone. The termination phrase and max-turn cap are the only control knobs needed to prevent infinite loops.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Dynamic tasks where the approach cannot be decomposed upfront: interactive debugging, negotiation, Socratic questioning.</item>
+        <item>Adversarial verification: one agent proposes, another critiques, the conversation converges on a validated answer.</item>
+        <item>Open-ended exploration where the conversation path itself is the output: design whiteboarding, brainstorming under constraints.</item>
+        <item>Scenarios where agents need to negotiate a shared understanding before acting — the conversation is the planning step.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tasks with a known sequential pipeline — hierarchical or sequential execution is simpler and cheaper.</item>
+        <item>Production systems requiring auditability of every decision: conversational turn logs are harder to parse than structured assignment logs.</item>
+        <item>Tight latency budgets: free-form conversations have no natural early exit except the termination phrase; worst case = max_turns LLM calls.</item>
+        <item>Tasks where agents need a shared mutable state beyond the conversation history — the only inter-agent channel here is message content.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="implementation">
+      <p>ConversationalAgents holds a list of agents (order determines turn order), a max_turns cap, and a termination_phrase string. The chat() method rotates through agents using modular indexing. Each turn builds a context string from the last 3 conversation entries (sliding window) to stay within context limits, then calls the current speaker. If the termination phrase appears, the conversation exits cleanly with status "completed"; otherwise it continues until max_turns.</p>
+
+      <rule testable="true">
+        <statement>Every ConversationalAgents instance MUST set both a termination_phrase and a max_turns cap. Neither alone is sufficient: the phrase may never appear (causing infinite loops without max_turns), and max_turns alone produces no semantic exit signal.</statement>
+        <rationale>Without a termination phrase, the agent has no way to signal completion — the conversation always runs to max_turns. Without max_turns, a bug or confused agent that never says the phrase causes an infinite loop.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>The sliding context window MUST be capped (default: last 3 turns). Never pass the full conversation history to each turn prompt.</statement>
+        <rationale>Conversational patterns accumulate context linearly. Passing full history to every turn causes quadratic token growth: turn N sees N-1 prior messages. A fixed sliding window (3-5 entries) keeps per-turn cost constant.</rationale>
+      </rule>
+
+      <example type="good" title="ConversationalAgents with termination phrase and max-turn cap">
+        <code lang="python"><![CDATA[
+class ConversationalAgents:
+    """Agents that can freely converse to solve problems."""
+
+    def __init__(
+        self,
+        agents: List[Agent],
+        max_turns: int = 10,
+        termination_phrase: str = "TASK_COMPLETE"
+    ):
+        self.agents = agents
+        self.max_turns = max_turns
+        self.termination_phrase = termination_phrase
+
+    def chat(self, initial_message: str) -> Dict:
+        """Run a free-form conversation."""
+        conversation = []
+        current_speaker_idx = 0
+        last_message = initial_message
+
+        for turn in range(self.max_turns):
+            speaker = self.agents[current_speaker_idx]
+            next_speaker_idx = (current_speaker_idx + 1) % len(self.agents)
+            listener = self.agents[next_speaker_idx]
+
+            # Build context — sliding window of last 3 turns only
+            recent_context = conversation[-3:] if conversation else []
+            context_str = "\n".join([
+                f"[{c['speaker']}]: {c['message']}"
+                for c in recent_context
+            ])
+
+            prompt = f"""Conversation so far:
+{context_str}
+
+[{self.agents[next_speaker_idx].config.name}]: {last_message}
+
+Respond to continue the conversation. If the task is complete, include '{self.termination_phrase}' in your response."""
+
+            response = speaker.respond(prompt)
+
+            conversation.append({
+                "turn": turn,
+                "speaker": speaker.config.name,
+                "message": response
+            })
+
+            # Check termination
+            if self.termination_phrase in response:
+                return {
+                    "status": "completed",
+                    "conversation": conversation,
+                    "turns": turn + 1
+                }
+
+            last_message = response
+            current_speaker_idx = next_speaker_idx
+
+        return {
+            "status": "max_turns_reached",
+            "conversation": conversation,
+            "turns": self.max_turns
+        }
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Echo chambers: agents trained on similar data converge on the same (possibly wrong) answer even after many turns of apparent disagreement.</description>
+        <reason>Conversational diversity is only real if agents have genuinely different system prompts that frame the problem differently. Identical or near-identical system prompts produce cosmetic disagreement that resolves to the same prior. Assign clearly opposing roles (proponent vs opponent, critic vs advocate) to force genuine divergence.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Passing full conversation history to every turn prompt.</description>
+        <reason>Turn N sees N-1 prior messages, causing quadratic token growth. A 10-turn conversation with 200-token turns averages 1000 tokens of context per call instead of 600 with a 3-turn window — cost nearly doubles for no quality gain.</reason>
+      </antipattern>
+    </section>
+
+    <section name="debate-variant">
+      <p>A common specialization of the conversational pattern is the Debate pattern: one agent argues for a position, another argues against. An independent judge agent (not exposed to either debater's system prompt) evaluates the arguments and decides. The judge uses a structured rubric rather than free-form evaluation to prevent its own prior from dominating.</p>
+
+      <prompt purpose="debate-agent-system-prompt"><![CDATA[
+<role>{{proponent|opponent}}</role>
+<topic>{{debate_topic}}</topic>
+<opponent_argument>{{last_message}}</opponent_argument>
+<instruction>Counter the opponent's argument with evidence and logic. Be specific.</instruction>
+]]></prompt>
+    </section>
+
+    <section name="tools">
+      <p>Framework tools suited to the conversational pattern:</p>
+      <list>
+        <item>autogen (pip install pyautogen): Microsoft multi-agent conversation framework; native support for termination phrases and max_turns.</item>
+        <item>langgraph (pip install langgraph): state-machine graph for multi-agent flows; use for conversational loops with explicit state transitions.</item>
+        <item>LangGraph Cloud (SaaS): hosted, persistent multi-agent state with checkpointing — essential for long-running conversations that may be interrupted.</item>
+        <item>AutoGen Studio (OSS): visual no-code builder for AutoGen multi-agent conversation configs.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <ref slug="multi-agent-collaborative"/>
+      <ref slug="multi-agent-hierarchical"/>
+      <link href="https://microsoft.github.io/autogen/"/>
+      <link href="https://arxiv.org/abs/2308.08155"/>
+    </see-also>
+  </content>
+</methodology>
