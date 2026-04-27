@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="prompt-engineering-fundamentals">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Core prompt structure: system prompt, context, task, examples, output format, constraints. Zero-shot and few-shot fundamentals, model-specific conventions, terminology, and iterative design workflow.</summary>
+    <tags>
+      <tag>prompt-engineering</tag>
+      <tag>few-shot</tag>
+      <tag>zero-shot</tag>
+      <tag>llm</tag>
+      <tag>system-prompt</tag>
+    </tags>
+    <category>prompt</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="prompt-engineering-reasoning"/>
+      <ref slug="prompt-engineering-security"/>
+      <ref slug="prompt-engineering-evaluation"/>
+      <ref slug="prompt-engineering-production"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Prompt Engineering Fundamentals</title>
+
+    <summary>Prompt engineering is the practice of crafting inputs to LLMs that reliably produce desired outputs. It encompasses instruction design, context management, output control, and iterative evaluation. This methodology covers the foundational building blocks every practitioner needs before moving to advanced techniques.</summary>
+
+    <why>
+      <p>Inconsistent outputs, wrong formats, missing context, and brittle pipelines all trace back to poorly structured prompts. Structured prompts — with an explicit role, delimited context, a clear task, output specification, and few-shot examples — improve reliability without changing the underlying model. The 80/20 of prompt quality comes from getting the fundamentals right before reaching for chain-of-thought or agentic patterns.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Inconsistent outputs from an LLM — structured prompts reduce variance.</item>
+        <item>Wrong or unpredictable output format — output specifications guide the model.</item>
+        <item>Missing context causing poor accuracy — background info section fixes this.</item>
+        <item>Complex reasoning tasks that need step-by-step guidance.</item>
+        <item>Any production system where tested, versioned prompts reduce failures.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Model lacks the capability — prompt engineering cannot compensate; fine-tune or switch models.</item>
+        <item>Task requires real-time data — use RAG with retrieval instead.</item>
+        <item>Domain-specific knowledge is the gap — fine-tune with domain data.</item>
+        <item>Consistent structured output is the sole goal — use the API's structured output / JSON schema mode.</item>
+        <item>Complex multi-step workflows — use an agent framework (LangChain, etc.).</item>
+        <item>Cost is the primary constraint — smaller model plus fine-tuning beats prompt overhead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="prompt-components">
+      <p>Every effective prompt is composed of the same six building blocks. Not all are required for every task, but understanding each one is prerequisite to reliable prompt design.</p>
+
+      <rule testable="true">
+        <statement>Every prompt MUST include at minimum: a task description (what to do) and an output format specification (what structure is required). Context, system role, examples, and constraints are added only when they measurably improve reliability.</statement>
+        <rationale>Minimal prompts are easier to debug. Adding components one at a time lets you isolate which change caused a quality improvement or regression.</rationale>
+      </rule>
+
+      <section name="component-table">
+        <p>Component reference:</p>
+        <list>
+          <item>System prompt — Role, constraints, behavior (e.g. "You are a helpful coding assistant...").</item>
+          <item>Context — Background information: document content, conversation history.</item>
+          <item>Task — What to do (e.g. "Summarize the following text").</item>
+          <item>Examples — Few-shot learning: input-output pairs.</item>
+          <item>Output format — Structure specification: JSON schema, markdown template.</item>
+          <item>Constraints — Limitations and rules: "Under 100 words", "No speculation".</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="prompting-techniques">
+      <p>Technique selection by use case and complexity:</p>
+      <list>
+        <item>Zero-shot — Simple, well-defined tasks. Low complexity.</item>
+        <item>Few-shot — Pattern learning, formatting. Low-medium complexity.</item>
+        <item>Chain-of-Thought (CoT) — Complex reasoning, math. Medium complexity.</item>
+        <item>Self-Consistency — Reliability improvement via multiple samples. Medium complexity.</item>
+        <item>ReAct — Tool use, information gathering. High complexity.</item>
+        <item>Tree-of-Thought (ToT) — Exploration, planning. High complexity.</item>
+        <item>Meta-prompting — Abstract problem solving. High complexity.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Start with zero-shot. Add few-shot examples only when zero-shot produces wrong patterns or formatting. Add chain-of-thought only when reasoning is demonstrably failing. Escalate complexity only after the simpler approach fails.</statement>
+        <rationale>Each technique adds tokens and latency. The cheapest technique that achieves the target quality is the right one for production.</rationale>
+      </rule>
+    </section>
+
+    <section name="few-shot-examples">
+      <p>Few-shot examples teach the model a pattern by showing input-output pairs before the actual task. Quality beats quantity: 2–5 well-chosen examples outperform 20 mediocre ones.</p>
+
+      <rule testable="true">
+        <statement>Few-shot examples MUST: cover representative diversity, include at least one edge case, follow a consistent format, and number no more than 2–5. Conflicting examples MUST NOT appear in the same prompt.</statement>
+        <rationale>Too many examples waste tokens and can confuse the model by emphasizing the pattern over the instruction. Consistent format prevents the model from averaging conflicting signals.</rationale>
+      </rule>
+
+      <example type="good" title="Well-structured few-shot classification">
+        <code lang="text"><![CDATA[Classify sentiment as positive, negative, or neutral.
+
+Examples:
+Text: "This product changed my life! Best purchase ever!"
+Sentiment: positive
+
+Text: "The package arrived damaged and customer service was unhelpful."
+Sentiment: negative
+
+Text: "The item is 15cm tall and weighs 200g."
+Sentiment: neutral
+
+Text: "It's okay I guess, nothing special but works fine."
+Sentiment: neutral
+
+Now classify this text:
+Text: {text}
+Sentiment:]]></code>
+        <note>Four examples, consistent Input/Output format, edge case included (ambiguous neutral).</note>
+      </example>
+
+      <example type="bad" title="Too many examples, inconsistent format">
+        <code lang="text"><![CDATA[Classify sentiment. Here are 20 examples:
+[...20 detailed examples with varying formats...]
+
+Now classify: {text}]]></code>
+        <note>Wastes tokens, may confuse model. 3-5 high-quality examples are sufficient.</note>
+      </example>
+    </section>
+
+    <section name="model-specific-conventions">
+      <p>Different models respond best to different structural conventions. Using the wrong convention degrades reliability.</p>
+
+      <list>
+        <item>Claude — XML tags (such as context and task tags), think step-by-step, explicit instructions. Use XML delimiters to separate sections.</item>
+        <item>GPT-4 — Hashtags, numbered lists, delimiter-separated sections.</item>
+        <item>Gemini — Hierarchical structure, outline format, multimodal context.</item>
+        <item>Local models (Ollama) — Shorter prompts, explicit formatting, temperature tuning.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>For Claude, MUST use XML tags to delimit sections (context, task, output) and user input. For GPT-4, MUST use markdown headers and numbered lists. NEVER use Claude-style XML tags in a GPT-4 prompt without testing — the model may treat them as literal text.</statement>
+        <rationale>Instruction-following behavior is trained differently per model family. Structural conventions that boost Claude reliability may be neutral or negative for GPT-4.</rationale>
+      </rule>
+
+      <example type="good" title="Claude-style prompt structure with XML delimiters">
+        <code lang="text"><![CDATA[<system>
+You are an expert {domain} specialist. Output ONLY valid JSON matching this schema: {schema}.
+Never include prose outside the JSON object.
+</system>
+<user>
+<context>{context}</context>
+<task>{task}</task>
+</user>]]></code>
+        <note>XML delimiters give Claude clear section boundaries and reduce instruction bleed from user-supplied content.</note>
+      </example>
+    </section>
+
+    <section name="terminology">
+      <p>Core vocabulary every practitioner must know:</p>
+      <list>
+        <item>Prompt — Input text sent to an LLM.</item>
+        <item>System prompt — Instructions that define model behavior.</item>
+        <item>User prompt — The actual query or task.</item>
+        <item>Assistant message — Model response.</item>
+        <item>Few-shot — Including examples in the prompt.</item>
+        <item>Zero-shot — No examples, just instructions.</item>
+        <item>Chain-of-Thought (CoT) — Encouraging step-by-step reasoning.</item>
+        <item>Prompt injection — Malicious input that alters behavior.</item>
+        <item>Jailbreak — Bypassing model safety constraints.</item>
+        <item>Hallucination — Model generating false information.</item>
+        <item>Grounding — Anchoring responses to provided facts.</item>
+        <item>Temperature — Randomness in output (0 = deterministic).</item>
+        <item>Token — Unit of text (roughly 4 characters in English).</item>
+        <item>Context window — Maximum tokens the model can process.</item>
+      </list>
+    </section>
+
+    <section name="design-workflow">
+      <p>The standard iterative workflow for building reliable prompts:</p>
+      <how-to>
+        <step>Define task clearly — success criteria, input format, output format, edge cases, constraints.</step>
+        <step>Write initial prompt (zero-shot) — minimal, just task and output format.</step>
+        <step>Test with diverse inputs — at least 10 representative cases including edge cases.</step>
+        <step>Identify failure modes — wrong format, hallucination, missed edge cases, inconsistency.</step>
+        <step>Add examples, CoT, or constraints — one addition at a time; measure impact.</step>
+        <step>Test again — re-run the full test set after each change.</step>
+        <step>Document final prompt — version in code, record test results, note limitations.</step>
+      </how-to>
+    </section>
+
+    <section name="system-prompt-templates">
+      <p>Reusable system prompt patterns for common roles:</p>
+
+      <example type="good" title="General assistant system prompt">
+        <code lang="text"><![CDATA[You are a helpful, accurate, and thoughtful assistant.
+
+Guidelines:
+- Be concise and direct
+- Acknowledge uncertainty when present
+- Ask clarifying questions for ambiguous requests
+- Never fabricate information
+- Cite sources when making factual claims
+
+When you don't know something, say "I don't know" rather than guessing.]]></code>
+      </example>
+
+      <example type="good" title="Domain expert system prompt">
+        <code lang="text"><![CDATA[You are an expert {DOMAIN} specialist with deep knowledge of:
+- {EXPERTISE_AREA_1}
+- {EXPERTISE_AREA_2}
+- {EXPERTISE_AREA_3}
+
+Your expertise includes:
+- Theoretical foundations
+- Practical applications
+- Current best practices
+- Common pitfalls and how to avoid them
+
+When answering questions:
+1. Draw on your expertise to provide accurate information
+2. Explain complex concepts clearly
+3. Provide practical examples when helpful
+4. Acknowledge limitations of your knowledge
+5. Recommend consulting additional resources for critical decisions]]></code>
+      </example>
+
+      <example type="good" title="Customer support agent system prompt">
+        <code lang="text"><![CDATA[You are a customer support agent for {COMPANY_NAME}.
+
+Your role:
+- Help customers with {PRODUCT/SERVICE} questions
+- Resolve issues efficiently and professionally
+- Maintain a friendly, empathetic tone
+
+Guidelines:
+- Greet customers warmly
+- Listen carefully to their concerns
+- Provide accurate information from the knowledge base
+- Escalate issues you cannot resolve
+- Never promise what you cannot deliver
+- Always confirm the customer's issue is resolved before closing
+
+Knowledge base:
+<knowledge>
+{KNOWLEDGE_BASE_CONTENT}
+</knowledge>
+
+If the customer's question is outside your scope, respond:
+"I'd be happy to connect you with a specialist who can help with that."]]></code>
+      </example>
+
+      <example type="good" title="Code assistant system prompt">
+        <code lang="text"><![CDATA[You are an expert software developer assistant.
+
+Expertise:
+- Languages: {LANGUAGES}
+- Frameworks: {FRAMEWORKS}
+- Best practices: Clean code, testing, documentation
+
+When writing code:
+- Include type hints/annotations
+- Add docstrings for public functions
+- Handle errors appropriately
+- Follow language idioms and conventions
+- Keep code readable and maintainable
+
+When reviewing code:
+- Identify bugs and security issues
+- Suggest performance improvements
+- Recommend better patterns when applicable
+
+Format code properly using markdown code blocks with language tags.]]></code>
+      </example>
+    </section>
+
+    <section name="task-templates">
+      <p>Standard task-specific prompt templates:</p>
+
+      <example type="good" title="Classification template">
+        <code lang="text"><![CDATA[Classify the following {INPUT_TYPE} into one of these categories:
+
+Categories:
+- {CATEGORY_1}: {DESCRIPTION_1}
+- {CATEGORY_2}: {DESCRIPTION_2}
+- {CATEGORY_3}: {DESCRIPTION_3}
+
+{INPUT_TYPE}:
+<input>
+{INPUT_CONTENT}
+</input>
+
+Respond with:
+- category: The selected category
+- confidence: high/medium/low
+- reasoning: One sentence explanation
+
+Format as JSON.]]></code>
+      </example>
+
+      <example type="good" title="Summarization template">
+        <code lang="text"><![CDATA[Summarize the following {CONTENT_TYPE}.
+
+Content:
+<content>
+{CONTENT}
+</content>
+
+Requirements:
+- Length: {LENGTH_REQUIREMENT} (e.g., 2-3 sentences, 1 paragraph)
+- Focus: {FOCUS_AREAS} (e.g., main points, key findings)
+- Audience: {TARGET_AUDIENCE}
+- Tone: {TONE} (e.g., professional, casual)
+
+Summary:]]></code>
+      </example>
+
+      <example type="good" title="Question answering from context">
+        <code lang="text"><![CDATA[Answer the following question based on the provided context.
+
+Context:
+<context>
+{CONTEXT}
+</context>
+
+Question: {QUESTION}
+
+Instructions:
+- Answer only using information from the context
+- If the answer is not in the context, say "The context does not contain this information"
+- Be concise and direct
+- Quote relevant parts of the context when helpful
+
+Answer:]]></code>
+      </example>
+
+      <example type="good" title="Data extraction template">
+        <code lang="text"><![CDATA[Extract the following information from the provided {DOCUMENT_TYPE}.
+
+Document:
+<document>
+{DOCUMENT_CONTENT}
+</document>
+
+Fields to extract:
+1. {FIELD_1}: {DESCRIPTION_1}
+2. {FIELD_2}: {DESCRIPTION_2}
+3. {FIELD_3}: {DESCRIPTION_3}
+
+Rules:
+- Use null for fields that cannot be determined
+- Use exact values from the document (don't paraphrase)
+- If multiple values exist, use the most recent/prominent one
+- Format dates as YYYY-MM-DD
+- Format numbers without currency symbols
+
+Output as JSON:
+{
+  "{FIELD_1}": value or null,
+  "{FIELD_2}": value or null,
+  "{FIELD_3}": value or null
+}]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns-fundamentals">
+      <antipattern>
+        <description>Ambiguous instructions: "Make this text better." or "Summarize this article." without format or focus.</description>
+        <reason>"Better" is subjective; without a target, the model guesses what improvement means and produces high-variance output.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No output format specified for tasks where structure matters.</description>
+        <reason>Without a format spec, output varies wildly between calls. Specify JSON schema, length, markdown structure, or exact response pattern.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Instructions buried in context: mixing background prose with task instructions in a wall of text.</description>
+        <reason>The model prioritizes early and late tokens. Instructions hidden mid-paragraph are often ignored. Use XML delimiters to separate context from instructions.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Conflicting instructions: "Be concise but thorough. Brief overview but cover all details. Short but don't leave anything out."</description>
+        <reason>Contradictory requirements confuse the model. Prioritize explicitly: "accuracy over completeness over brevity".</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>No error handling for edge cases: "Extract the price from this text: {text}" with no instruction for missing or multiple prices.</description>
+        <reason>Without edge case instructions, the model invents answers. Specify what to return for each failure mode.</reason>
+      </antipattern>
+    </section>
+
+    <section name="quick-reference">
+      <p>Quick reference for common prompt fixes:</p>
+      <list>
+        <item>Wrong format — Add explicit format specification.</item>
+        <item>Missing information — Add Chain-of-Thought.</item>
+        <item>Inconsistent outputs — Add examples, lower temperature.</item>
+        <item>Too verbose — Add length constraints.</item>
+        <item>Hallucinations — Add "only use provided information".</item>
+        <item>Off-topic — Add explicit constraints.</item>
+      </list>
+
+      <p>Model selection by task:</p>
+      <list>
+        <item>Prompt optimization — sonnet (quality improvement)</item>
+        <item>Few-shot design — sonnet (example selection)</item>
+        <item>Prompt testing — sonnet (validation framework)</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering"/>
+      <link href="https://platform.openai.com/docs/guides/prompt-engineering"/>
+      <link href="https://ai.google.dev/docs/prompt_best_practices"/>
+      <link href="https://docs.anthropic.com/en/docs/use-xml-tags"/>
+      <link href="https://www.promptingguide.ai/"/>
+      <ref slug="prompt-engineering-reasoning"/>
+      <ref slug="prompt-engineering-security"/>
+      <ref slug="prompt-engineering-evaluation"/>
+      <ref slug="prompt-engineering-production"/>
+    </see-also>
+  </content>
+</methodology>
