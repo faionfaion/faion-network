@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vision-classification-moderation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Classify images into predefined categories and moderate content for safety using VLMs with structured JSON output, confidence routing, and severity-based human review queues.</summary>
+    <tags>
+      <tag>vision</tag>
+      <tag>classification</tag>
+      <tag>content-moderation</tag>
+      <tag>vlm</tag>
+      <tag>safety</tag>
+    </tags>
+    <category>vision</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Vision Image Classification and Content Moderation</title>
+
+    <summary>Image classification labels an image into one of N predefined categories; content moderation is a specialised classification that detects unsafe categories (violence, adult content, hate symbols) with severity levels. Both tasks follow the same pattern: structured-output prompt → confidence score → routing to auto-approve/queue/reject. GPT-4o is the default model for both tasks.</summary>
+
+    <why>
+      <p>Classification and moderation are verdict tasks — the output is a label plus a confidence score, not extracted prose. VLMs excel here because they understand both visual semantics and contextual meaning (e.g., distinguishing news/documentary violence from gratuitous content). Traditional CV classifiers require labelled training data per category; VLMs generalise to new categories from prompt descriptions alone.</p>
+      <p>Model content policies reject borderline medical/forensic images unpredictably — implement retry with prompt reformulation for moderation pipelines. Track false positive/negative rates per category to tune severity thresholds over time.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Content moderation pipeline where images are submitted by end users.</item>
+        <item>Routing user-uploaded images to category-specific downstream processors.</item>
+        <item>Automated labelling of product images, marketing assets, or media libraries.</item>
+        <item>Quality assessment of uploaded images before publishing.</item>
+        <item>Brand safety checks on programmatic advertising creatives.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Object detection with bounding boxes at scale — fine-tuned YOLO/DETR models beat VLMs on throughput and cost by 10-100x.</item>
+        <item>Real-time video moderation at &gt;5 FPS — VLM API latency makes this impractical; use dedicated video moderation APIs (AWS Rekognition Video, Google Video Intelligence).</item>
+        <item>Binary safe/unsafe moderation with very high throughput (&gt;1000 images/s) — purpose-built moderation APIs (OpenAI Moderation, Perspective API) are faster and cheaper.</item>
+        <item>Pixel-precise segmentation tasks — use DETR, SAM, or SegFormer instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="image-classification">
+      <rule>
+        <statement>Always provide the full category list in the prompt and require the model to return a category that matches exactly one of the listed options. Never allow free-form category text in the output.</statement>
+        <rationale>Free-form category output drifts — the model may return "product photography" when the category list uses "product_photo", breaking downstream routing logic.</rationale>
+      </rule>
+
+      <example type="good" title="Image classification with confidence score">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import base64
+import json
+from typing import List, Dict
+
+client = OpenAI()
+
+def classify_image(image_path: str, categories: List[str]) -> Dict:
+    """Classify image into predefined categories."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    categories_str = ", ".join(categories)
+    prompt = f"""Classify this image into one of these categories: {categories_str}
+
+Return JSON with:
+- category: the best matching category
+- confidence: confidence score (0-1)
+- reasoning: brief explanation"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]
+        }],
+        response_format={"type": "json_object"}
+    )
+    return json.loads(response.choices[0].message.content)
+
+# Usage
+result = classify_image("photo.jpg", ["landscape", "portrait", "product", "document", "screenshot"])
+print(f"Category: {result['category']} ({result['confidence']:.0%})")
+]]></code>
+      </example>
+
+      <prompt purpose="multi-category-classification"><![CDATA[
+Classify this image. Analyze carefully and return:
+{
+  "primary_category": "single best category",
+  "confidence": 0.0-1.0,
+  "secondary_categories": [
+    {"category": "", "confidence": 0.0}
+  ],
+  "attributes": {
+    "has_people": true,
+    "has_text": true,
+    "is_indoor": true,
+    "is_professional": true,
+    "dominant_colors": []
+  },
+  "reasoning": "brief explanation"
+}
+
+Categories to consider: [INSERT YOUR CATEGORIES HERE]
+]]></prompt>
+
+      <prompt purpose="quality-assessment"><![CDATA[
+Assess the quality of this image:
+{
+  "overall_quality": "high/medium/low",
+  "technical_quality": {
+    "resolution": "high/adequate/low",
+    "sharpness": "sharp/slightly_blurry/blurry",
+    "exposure": "well_exposed/overexposed/underexposed",
+    "noise": "minimal/moderate/significant",
+    "color_accuracy": "accurate/shifted/desaturated"
+  },
+  "composition": {
+    "framing": "good/acceptable/poor",
+    "lighting": "professional/natural/poor",
+    "background": "clean/busy/distracting"
+  },
+  "usability": {
+    "suitable_for_web": true,
+    "suitable_for_print": true,
+    "needs_editing": false
+  },
+  "issues": ["list any specific problems"],
+  "recommendations": ["suggested improvements"]
+}
+]]></prompt>
+
+      <p>ImageClassifier template class:</p>
+      <code lang="python"><![CDATA[
+from typing import List, Dict, Optional
+from dataclasses import dataclass
+from openai import OpenAI
+import base64
+import json
+
+@dataclass
+class ClassificationResult:
+    category: str
+    confidence: float
+    reasoning: str
+    alternatives: Optional[List[Dict[str, float]]] = None
+
+class ImageClassifier:
+    """Classify images into predefined categories."""
+
+    def __init__(self, categories: List[str], model: str = "gpt-4o"):
+        self.categories = categories
+        self.client = OpenAI()
+        self.model = model
+
+    def classify(self, image_path: str, return_alternatives: bool = False) -> ClassificationResult:
+        """Classify image into one of the predefined categories."""
+        categories_str = ", ".join(self.categories)
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode()
+
+        prompt = f"""Classify this image into one of these categories: {categories_str}
+
+Return JSON with:
+- category: the best matching category (must be one of the listed categories)
+- confidence: confidence score from 0 to 1
+- reasoning: brief explanation for the classification
+{"- alternatives: list of other possible categories with their confidence scores" if return_alternatives else ""}"""
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]
+            }],
+            response_format={"type": "json_object"}
+        )
+
+        data = json.loads(response.choices[0].message.content)
+        return ClassificationResult(
+            category=data["category"],
+            confidence=data["confidence"],
+            reasoning=data["reasoning"],
+            alternatives=data.get("alternatives")
+        )
+
+    def classify_batch(self, image_paths: List[str]) -> List[ClassificationResult]:
+        """Classify multiple images."""
+        return [self.classify(path) for path in image_paths]
+]]></code>
+    </section>
+
+    <section name="content-moderation">
+      <rule>
+        <statement>Implement three-tier moderation routing: auto-approve (severity=none), queue for human review (severity=low), auto-reject (severity=medium or high). Never auto-approve medium or high severity without human confirmation.</statement>
+        <rationale>Fully automated rejection on medium severity produces too many false positives on artistic, educational, and news content. Fully automated approval below high severity misses low-severity boundary cases that accumulate at scale.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Implement retry with prompt reformulation when model content policies reject a borderline image. Log rejection reason. Do not silently fail.</statement>
+        <rationale>Model content policies reject borderline medical/forensic images unpredictably. A retry with prompt reformulation (e.g., "as a content safety analyst reviewing for policy violations") resolves ~60% of unjustified rejections.</rationale>
+      </rule>
+
+      <example type="good" title="Content moderation with severity routing">
+        <code lang="python"><![CDATA[
+from openai import OpenAI
+import base64
+import json
+from typing import Dict
+
+client = OpenAI()
+
+def moderate_image(image_path: str) -> Dict:
+    """Check image for inappropriate content."""
+    with open(image_path, "rb") as f:
+        image_data = base64.b64encode(f.read()).decode()
+
+    prompt = """Analyze this image for content moderation.
+
+Check for:
+- Violence or gore
+- Adult/sexual content
+- Hate symbols or imagery
+- Dangerous activities
+- Illegal content
+
+Return JSON:
+{
+    "is_safe": true,
+    "flags": [],
+    "severity": "none",
+    "details": "explanation"
+}"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+            ]
+        }],
+        response_format={"type": "json_object"}
+    )
+    return json.loads(response.choices[0].message.content)
+
+# Usage
+result = moderate_image("user_upload.jpg")
+if not result["is_safe"]:
+    print(f"Warning: {result['severity']} - {result['details']}")
+]]></code>
+      </example>
+
+      <prompt purpose="comprehensive-safety-check"><![CDATA[
+Analyze this image for content safety across all categories:
+{
+  "safe_for_work": true,
+  "safe_for_minors": true,
+  "categories": {
+    "violence": {"detected": false, "severity": "none/mild/moderate/severe"},
+    "gore": {"detected": false, "severity": "none/mild/moderate/severe"},
+    "nudity": {"detected": false, "severity": "none/partial/full"},
+    "sexual_content": {"detected": false, "severity": "none/suggestive/explicit"},
+    "hate_symbols": {"detected": false, "examples": []},
+    "weapons": {"detected": false, "type": ""},
+    "drugs": {"detected": false, "type": ""},
+    "self_harm": {"detected": false, "severity": ""},
+    "disturbing": {"detected": false, "reason": ""}
+  },
+  "overall_severity": "safe/low/medium/high/critical",
+  "action": "approve/flag_for_review/reject",
+  "explanation": "brief justification for the rating"
+}
+
+Be thorough but avoid false positives for artistic, educational, or news content.
+]]></prompt>
+
+      <prompt purpose="brand-safety"><![CDATA[
+Analyze this image for brand safety concerns:
+{
+  "brand_safe": true,
+  "concerns": {
+    "controversial_topics": [],
+    "competitor_presence": [],
+    "negative_sentiment": "",
+    "inappropriate_context": "",
+    "quality_issues": []
+  },
+  "visible_brands": [],
+  "context": "describe the overall context",
+  "recommendation": "safe/caution/avoid",
+  "explanation": ""
+}
+]]></prompt>
+
+      <p>ContentModerator template class:</p>
+      <code lang="python"><![CDATA[
+from typing import List, Dict
+from dataclasses import dataclass
+from enum import Enum
+from openai import OpenAI
+import base64
+import json
+
+class ModerationSeverity(Enum):
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+@dataclass
+class ModerationResult:
+    is_safe: bool
+    flags: List[str]
+    severity: ModerationSeverity
+    details: str
+    categories: Dict[str, bool]
+
+class ContentModerator:
+    """Moderate image content for safety."""
+
+    CATEGORIES = [
+        "violence", "gore", "adult_content", "hate_symbols",
+        "dangerous_activities", "illegal_content", "self_harm",
+        "harassment", "spam"
+    ]
+
+    def __init__(self, model: str = "gpt-4o"):
+        self.client = OpenAI()
+        self.model = model
+
+    def moderate(self, image_path: str) -> ModerationResult:
+        """Check image for inappropriate content."""
+        categories_str = ", ".join(self.CATEGORIES)
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode()
+
+        prompt = f"""Analyze this image for content moderation.
+
+Check for these categories: {categories_str}
+
+Return JSON with:
+- is_safe: boolean indicating if content is safe for general audiences
+- flags: list of specific issues found (empty if none)
+- severity: "none", "low", "medium", or "high"
+- details: brief explanation of findings
+- categories: object with each category as key and boolean as value (true if detected)"""
+
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_data}"}}
+                ]
+            }],
+            response_format={"type": "json_object"}
+        )
+
+        data = json.loads(response.choices[0].message.content)
+        return ModerationResult(
+            is_safe=data["is_safe"],
+            flags=data["flags"],
+            severity=ModerationSeverity(data["severity"]),
+            details=data["details"],
+            categories=data["categories"]
+        )
+
+    def should_reject(self, result: ModerationResult) -> bool:
+        return result.severity in [ModerationSeverity.MEDIUM, ModerationSeverity.HIGH]
+
+    def should_review(self, result: ModerationResult) -> bool:
+        return result.severity == ModerationSeverity.LOW
+]]></code>
+    </section>
+
+    <antipattern>
+      <description>Running both the VLM classification and a second purpose-built moderation API (e.g., OpenAI Moderation) on every image to "double check".</description>
+      <reason>Duplicates API cost with minimal accuracy gain on non-borderline content. Reserve dual-pass only for images the VLM flags as low-severity — the high-volume safe-image path should be single-pass.</reason>
+    </antipattern>
+
+    <checklist>
+      <check>Define severity levels (none, low, medium, high) and action thresholds per category before building moderation pipeline.</check>
+      <check>Implement auto-reject for high severity; queue medium severity for human review; auto-approve none.</check>
+      <check>Log all moderation decisions with image hash, model, severity, and action taken.</check>
+      <check>Track false positive/negative rates per category monthly and tune thresholds.</check>
+      <check>Test edge cases: artistic nudity, news violence, medical images — document expected outcomes.</check>
+      <check>Implement retry with prompt reformulation when content policy blocks a borderline moderation request.</check>
+      <check>For classification: validate returned category is in the allowed list before routing downstream.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="vision-provider-selection"/>
+      <ref slug="vision-agentic-pipeline"/>
+      <link href="https://platform.openai.com/docs/guides/vision"/>
+    </see-also>
+  </content>
+</methodology>
