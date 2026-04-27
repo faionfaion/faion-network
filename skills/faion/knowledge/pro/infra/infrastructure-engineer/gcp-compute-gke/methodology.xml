@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-compute-gke">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>GCP Compute Engine and GKE: Shielded VMs, OS Login, regional MIG autoscaling, GKE Autopilot vs Standard hardened clusters, Workload Identity, Dataplane V2, and compute/GKE security checklists.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>compute-engine</tag>
+      <tag>gke</tag>
+      <tag>kubernetes</tag>
+      <tag>autoscaling</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Compute Engine and GKE</title>
+
+    <summary>Compute Engine and GKE best practices: Shielded VMs with OS Login (no SSH keys), regional managed instance groups with autoscaling and health checks, GKE Autopilot (default) vs hardened Standard clusters with Workload Identity, private endpoints, Dataplane V2 (Cilium), and security hardening checklists.</summary>
+
+    <why>
+      <p>Compute Engine defaults (public IP, SSH keys, unshielded VM) violate the principle of least privilege. Shielded VMs with OS Login eliminate manual SSH key management and provide measured boot integrity. GKE Autopilot removes node management overhead and automatically applies Google's hardening baseline; Standard mode offers more control but requires explicit hardening steps (private endpoint, Workload Identity, Dataplane V2, Binary Authorization).</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Provisioning Compute Engine VMs for stateful workloads or legacy applications.</item>
+        <item>Setting up regional managed instance groups with autoscaling for web tiers.</item>
+        <item>Creating a new GKE cluster (Autopilot recommended for most use cases).</item>
+        <item>Hardening an existing GKE Standard cluster (Workload Identity, private nodes, network policy).</item>
+        <item>Reviewing compute or GKE security posture against checklists.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Containerized stateless applications — prefer Cloud Run (use gcp-cloud-run-serverless).</item>
+        <item>VPC and firewall configuration — use gcp-networking-vpc for that layer.</item>
+        <item>IAM service accounts and Workload Identity pool setup — covered in gcp-security-iam.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="compute-engine">
+      <rule>
+        <statement>All Compute Engine instances in production MUST use Shielded VM (--shielded-secure-boot, --shielded-vtpm, --shielded-integrity-monitoring), enable OS Login (--metadata=enable-oslogin=TRUE), and have no public IP (--no-address). Assign a dedicated service account with minimal scopes (--scopes=cloud-platform).</statement>
+        <rationale>Shielded VM prevents rootkit attacks by verifying boot integrity. OS Login ties SSH access to Google Identity and audit logs, eliminating manual SSH key distribution. No public IP eliminates direct internet attack surface — use IAP for SSH access.</rationale>
+      </rule>
+
+      <example type="good" title="Create instance with Shielded VM and OS Login">
+        <code lang="bash"><![CDATA[
+gcloud compute instances create web-server \
+    --zone=us-central1-a \
+    --machine-type=e2-medium \
+    --image-family=ubuntu-2204-lts \
+    --image-project=ubuntu-os-cloud \
+    --boot-disk-size=50GB \
+    --boot-disk-type=pd-balanced \
+    --boot-disk-device-name=web-server \
+    --shielded-secure-boot \
+    --shielded-vtpm \
+    --shielded-integrity-monitoring \
+    --no-address \
+    --subnet=private-subnet \
+    --service-account=web-server@my-project.iam.gserviceaccount.com \
+    --scopes=cloud-platform \
+    --tags=web-server,allow-health-check \
+    --metadata=enable-oslogin=TRUE \
+    --labels=environment=production,team=platform
+]]></code>
+      </example>
+
+      <example type="good" title="Instance template (autoscaling ready)">
+        <code lang="bash"><![CDATA[
+gcloud compute instance-templates create web-template \
+    --machine-type=e2-medium \
+    --image-family=ubuntu-2204-lts \
+    --image-project=ubuntu-os-cloud \
+    --boot-disk-size=50GB \
+    --boot-disk-type=pd-balanced \
+    --shielded-secure-boot \
+    --shielded-vtpm \
+    --shielded-integrity-monitoring \
+    --no-address \
+    --network=my-vpc \
+    --subnet=private-subnet \
+    --region=us-central1 \
+    --service-account=web-server@my-project.iam.gserviceaccount.com \
+    --scopes=cloud-platform \
+    --tags=web-server,allow-health-check \
+    --metadata=enable-oslogin=TRUE,startup-script-url=gs://my-bucket/startup.sh \
+    --labels=environment=production
+]]></code>
+      </example>
+
+      <example type="good" title="Regional MIG with autoscaling">
+        <code lang="bash"><![CDATA[
+# Create health check
+gcloud compute health-checks create http web-health-check \
+    --port=8080 \
+    --request-path=/health \
+    --check-interval=10s \
+    --timeout=5s \
+    --healthy-threshold=2 \
+    --unhealthy-threshold=3
+
+# Create regional MIG
+gcloud compute instance-groups managed create web-mig \
+    --region=us-central1 \
+    --template=web-template \
+    --size=3 \
+    --health-check=web-health-check \
+    --initial-delay=300
+
+# Configure autoscaling
+gcloud compute instance-groups managed set-autoscaling web-mig \
+    --region=us-central1 \
+    --min-num-replicas=2 \
+    --max-num-replicas=10 \
+    --target-cpu-utilization=0.6 \
+    --cool-down-period=90
+
+# Set named ports
+gcloud compute instance-groups managed set-named-ports web-mig \
+    --region=us-central1 \
+    --named-ports=http:8080
+]]></code>
+      </example>
+    </section>
+
+    <section name="gke-autopilot">
+      <rule>
+        <statement>Use GKE Autopilot mode for all new clusters unless specific node configuration, DaemonSets, or host-network access is required. Autopilot enforces Google's security baseline by default, manages nodes, and eliminates per-node operational overhead.</statement>
+        <rationale>GKE Autopilot applies pod security standards, blocks privilege escalation, and auto-upgrades nodes without cluster operator involvement. For most workloads, the control plane cost savings and security defaults outweigh the lack of DaemonSet support.</rationale>
+      </rule>
+
+      <example type="good" title="GKE Autopilot cluster (recommended default)">
+        <code lang="bash"><![CDATA[
+gcloud container clusters create-auto my-cluster \
+    --region=us-central1 \
+    --network=my-vpc \
+    --subnetwork=gke-subnet \
+    --cluster-secondary-range-name=pods \
+    --services-secondary-range-name=services \
+    --enable-private-nodes \
+    --master-ipv4-cidr=172.16.0.0/28 \
+    --enable-master-authorized-networks \
+    --master-authorized-networks=10.0.0.0/8 \
+    --workload-pool=my-project.svc.id.goog
+]]></code>
+      </example>
+    </section>
+
+    <section name="gke-standard-hardened">
+      <example type="good" title="GKE Standard cluster — hardened configuration">
+        <code lang="bash"><![CDATA[
+gcloud container clusters create my-cluster \
+    --region=us-central1 \
+    --num-nodes=1 \
+    --machine-type=e2-standard-4 \
+    --network=my-vpc \
+    --subnetwork=gke-subnet \
+    --cluster-secondary-range-name=pods \
+    --services-secondary-range-name=services \
+    --enable-ip-alias \
+    --enable-private-nodes \
+    --enable-private-endpoint \
+    --master-ipv4-cidr=172.16.0.0/28 \
+    --enable-master-authorized-networks \
+    --master-authorized-networks=10.0.0.0/8 \
+    --workload-pool=my-project.svc.id.goog \
+    --enable-shielded-nodes \
+    --enable-network-policy \
+    --enable-dataplane-v2 \
+    --release-channel=regular \
+    --enable-autorepair \
+    --enable-autoupgrade \
+    --enable-vertical-pod-autoscaling \
+    --enable-image-streaming \
+    --logging=SYSTEM,WORKLOAD \
+    --monitoring=SYSTEM
+]]></code>
+      </example>
+
+      <rule>
+        <statement>GKE Standard clusters MUST enable: Workload Identity (--workload-pool), private nodes (--enable-private-nodes), network policy (--enable-network-policy), Dataplane V2 (--enable-dataplane-v2), shielded nodes (--enable-shielded-nodes), and release channel regular or stable. Set master-authorized-networks to private CIDR only.</statement>
+        <rationale>Each flag closes a distinct attack surface: Workload Identity eliminates pod service account key files; private nodes remove node internet exposure; network policy allows microsegmentation; Dataplane V2 (Cilium) adds eBPF-based observability; shielded nodes verify node integrity.</rationale>
+      </rule>
+    </section>
+
+    <section name="compute-security-checklist">
+      <checklist>
+        <check>Use Shielded VMs for sensitive workloads.</check>
+        <check>Enable OS Login (no SSH keys).</check>
+        <check>Configure organization policies for public IP restrictions.</check>
+        <check>Use Confidential VMs for highly sensitive data.</check>
+        <check>Enable VM Manager for patch management.</check>
+        <check>Use encrypted boot disks (CMEK for sensitive).</check>
+        <check>Configure organization policy constraints.</check>
+        <check>Disable serial port access.</check>
+        <check>Use sole-tenant nodes for compliance workloads.</check>
+        <check>Enable integrity monitoring.</check>
+      </checklist>
+    </section>
+
+    <section name="gke-security-checklist">
+      <checklist>
+        <check>Use Autopilot mode (or hardened Standard).</check>
+        <check>Enable Workload Identity for pod authentication.</check>
+        <check>Configure private cluster (no public endpoint for prod).</check>
+        <check>Enable network policies.</check>
+        <check>Use Binary Authorization for trusted images.</check>
+        <check>Enable GKE Sandbox for untrusted workloads.</check>
+        <check>Configure pod security standards.</check>
+        <check>Enable Container Threat Detection.</check>
+        <check>Use node auto-upgrade.</check>
+        <check>Configure authorized networks for master.</check>
+        <check>Enable Dataplane V2 (Cilium).</check>
+        <check>Use Artifact Registry with vulnerability scanning.</check>
+      </checklist>
+    </section>
+
+    <section name="compute-setup-checklist">
+      <checklist>
+        <check>Create instance templates with best practices.</check>
+        <check>Configure managed instance groups.</check>
+        <check>Set up health checks.</check>
+        <check>Configure autoscaling policies.</check>
+        <check>Enable OS patch management.</check>
+        <check>Use startup scripts or Ops Agent.</check>
+        <check>Configure metadata and labels.</check>
+        <check>Set up scheduled snapshots.</check>
+        <check>Enable Shielded VM features.</check>
+        <check>Configure organization constraints.</check>
+      </checklist>
+    </section>
+
+    <section name="gke-setup-checklist">
+      <checklist>
+        <check>Choose Autopilot or Standard mode.</check>
+        <check>Configure private cluster.</check>
+        <check>Enable Workload Identity.</check>
+        <check>Set up node pools per workload type (Standard mode).</check>
+        <check>Configure cluster autoscaler.</check>
+        <check>Enable network policies.</check>
+        <check>Set up Artifact Registry.</check>
+        <check>Configure pod security standards.</check>
+        <check>Enable GKE audit logging.</check>
+        <check>Set up maintenance windows.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://cloud.google.com/compute/docs/best-practices"/>
+      <link href="https://cloud.google.com/kubernetes-engine/docs/best-practices"/>
+      <link href="https://cloud.google.com/kubernetes-engine/docs/concepts/security-best-practices"/>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-terraform-templates"/>
+    </see-also>
+  </content>
+</methodology>
