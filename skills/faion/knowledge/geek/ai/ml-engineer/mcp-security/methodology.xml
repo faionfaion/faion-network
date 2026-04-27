@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-security">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>MCP security model: user consent gates, prompt injection defenses, tool permission escalation prevention, and auth patterns for stdio vs HTTP transport.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>security</tag>
+      <tag>prompt-injection</tag>
+      <tag>authorization</tag>
+      <tag>consent</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-server-implementation"/>
+    </related>
+    <requires>
+      <ref slug="mcp-architecture"/>
+    </requires>
+  </metadata>
+
+  <content>
+    <title>MCP Security — Consent, Injection Defenses, and Access Controls</title>
+
+    <summary>MCP tools represent arbitrary code execution. The four security principles are: explicit user consent for all data access and tool invocations, data privacy via appropriate access controls, tool safety via input sanitization and validation, and controlled LLM sampling that requires host approval. Known attack vectors as of April 2025: prompt injection via tool responses, tool permission escalation, and lookalike tool replacement.</summary>
+
+    <why>
+      <p>MCP tools execute real-world side effects (write files, mutate databases, call external APIs). Without explicit consent gates and input validation, a malicious resource — a database record or web page returned as a tool result — can contain instructions the model will follow as if they came from the user. Tool permission escalation lets the model chain tool calls in unexpected sequences to achieve goals the user did not authorize. Lookalike server names allow a malicious MCP server to substitute for a trusted one at install time.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Before deploying any MCP server that has write access (file writes, DB mutations, API POSTs).</item>
+        <item>When building a host application that must enforce security policies across multiple MCP servers.</item>
+        <item>When a server must be accessible over HTTP (requires auth, unlike stdio).</item>
+        <item>Security review of an existing MCP server before production promotion.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Read-only MCP servers with no external state — standard input validation still applies but full consent flows may be excessive.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <list>
+        <item>User Consent — Explicit consent required for all data access and tool invocations. The host application is responsible for presenting the consent UI.</item>
+        <item>Data Privacy — User data protected with appropriate access controls. Never expose credentials in tool descriptions.</item>
+        <item>Tool Safety — Tools represent arbitrary code execution; validate all inputs; sanitize all outputs before returning to the model.</item>
+        <item>LLM Sampling — Users must approve sampling requests. Do not design servers that depend on sampling without testing the approval flow.</item>
+      </list>
+    </section>
+
+    <section name="known-attack-vectors">
+      <p>Known security concerns as of April 2025:</p>
+
+      <antipattern>
+        <description>Prompt injection via tool responses: malicious content in tool results (database records, web pages) can hijack the model's subsequent actions.</description>
+        <reason>Sanitize all tool outputs before returning them to the model. Treat tool results as untrusted input, not as user instructions. The model reads tool results verbatim and acts on instructions it finds there.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Tool permission escalation: the model chains tool calls in unexpected sequences to achieve goals the user did not intend.</description>
+        <reason>Require explicit consent for sensitive operations. Separate read-only tools from write tools. Implement tool-level access control — not all MCP clients should have access to all tools; check calling client identity.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Lookalike tool replacement: a malicious MCP server named similarly to a trusted one can be installed and substitute for it.</description>
+        <reason>Hosts must verify server provenance before installation. Pin server package versions. Use signed packages or checksums in production deployments.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Exposing credentials in tool descriptions or tool error messages.</description>
+        <reason>The model context (including tool descriptions and results) is logged and may be visible to other parts of the pipeline. Never include API keys, passwords, or tokens anywhere in the tool definition or responses.</reason>
+      </antipattern>
+    </section>
+
+    <section name="input-validation">
+      <p>Every tool input must be validated before use. The three highest-risk input types are SQL queries, file paths, and API parameters.</p>
+
+      <rule testable="true">
+        <statement>MCP tools that accept SQL inputs MUST validate that only SELECT queries are allowed (regex match on statement start). MCP tools that accept file paths MUST reject paths containing ".." (path traversal). MCP tools that accept URI inputs MUST validate the URI scheme against an allowlist.</statement>
+        <rationale>SQL injection, path traversal, and SSRF are the top three MCP input attack vectors. Validation must happen inside the tool handler, not just at the JSON schema layer — JSON Schema validates type and format, not semantic safety.</rationale>
+      </rule>
+
+      <example type="good" title="SQL injection prevention in MCP tool">
+        <code lang="python"><![CDATA[@mcp.tool()
+def query_database(sql: str) -> str:
+    """Execute a read-only SQL query. Returns JSON rows."""
+    import re
+    if not re.match(r"^\s*SELECT\b", sql, re.IGNORECASE):
+        raise ValueError("Only SELECT queries allowed")
+    rows = db.execute(sql).fetchall()
+    return json.dumps([dict(r) for r in rows])]]></code>
+      </example>
+
+      <example type="bad" title="File path traversal vulnerability">
+        <code lang="python"><![CDATA[@mcp.tool()
+def read_file(path: str) -> str:
+    """Read a file."""
+    # DANGEROUS: no path validation
+    return open(path).read()]]></code>
+        <note>Replace with: resolved = Path("/project") / path; resolved.resolve().relative_to(Path("/project")) — raises ValueError on traversal.</note>
+      </example>
+
+      <example type="good" title="File path traversal prevention">
+        <code lang="python"><![CDATA[@mcp.tool()
+def read_file(path: str) -> str:
+    """Read a file from the project directory."""
+    base = Path("/project").resolve()
+    target = (base / path).resolve()
+    # Raises ValueError if path escapes the base
+    target.relative_to(base)
+    return target.read_text()]]></code>
+      </example>
+    </section>
+
+    <section name="access-control">
+      <p>Implement tool-level access control. Not all MCP clients should have access to all tools.</p>
+
+      <rule testable="true">
+        <statement>MCP servers MUST implement tool-level access control: check calling client identity before executing sensitive tools. Read-only tools and write tools MUST NOT share the same permission level. Sensitive operations (file writes, DB mutations, API POSTs) MUST require explicit user consent before execution.</statement>
+        <rationale>The MCP protocol itself does not enforce access control — that is the server's responsibility. Without it, any client that connects to the server (including a compromised one) can invoke all tools.</rationale>
+      </rule>
+    </section>
+
+    <section name="transport-auth">
+      <p>Auth requirements differ by transport:</p>
+      <list>
+        <item>stdio — trusts the local process by default. No built-in authentication. The OS process boundary is the security perimeter.</item>
+        <item>HTTP transport — requires implementing bearer token auth. Without auth, any process on the network can connect and invoke all tools.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>HTTP-transport MCP servers MUST implement bearer token authentication on every endpoint. stdio-transport servers MUST NOT be exposed to the network. Rate limiting MUST be applied to tool invocations in both transports to prevent runaway agent loops.</statement>
+        <rationale>stdio is single-client and local; the OS provides the security boundary. HTTP is multi-client and network-accessible; the server is entirely responsible for auth.</rationale>
+      </rule>
+    </section>
+
+    <section name="human-in-loop">
+      <rule testable="true">
+        <statement>Any MCP tool that writes state (file writes, DB mutations, API POSTs) MUST have a human-in-the-loop checkpoint before execution. The tool description MUST declare side-effect scope (e.g., "writes to the database"). Audit logs MUST record caller identity, inputs, and outputs for every tool invocation.</statement>
+        <rationale>The model cannot undo tool actions. Once a file is deleted or a record is mutated, rollback requires external intervention. Audit logs are the only post-hoc accountability mechanism.</rationale>
+      </rule>
+    </section>
+
+    <section name="security-checklist">
+      <checklist>
+        <check>Validate all input URIs and parameters against allowlists or regex patterns before use.</check>
+        <check>Implement access controls for sensitive resources; check calling client identity.</check>
+        <check>Rate limit tool invocations to prevent runaway agent loops.</check>
+        <check>Sanitize all tool outputs before returning to the model (strip injected instructions).</check>
+        <check>Log every tool invocation with caller identity, inputs, and outputs for audit purposes.</check>
+        <check>Never expose credentials in tool descriptions, tool names, or tool error messages.</check>
+        <check>For HTTP transport: implement bearer token auth on every endpoint.</check>
+        <check>Reject SQL inputs that are not SELECT-only; reject file paths with ".." components.</check>
+        <check>Require human approval for write-state tools (file writes, DB mutations, API POSTs).</check>
+        <check>Test input validation: SQL injection, path traversal, and SSRF attack patterns.</check>
+        <check>Test access control enforcement across client identity scenarios.</check>
+        <check>Test error message safety: confirm no credential leaks in error responses.</check>
+        <check>Verify server provenance before deployment; pin package versions; use checksums.</check>
+      </checklist>
+    </section>
+
+    <section name="security-review-prompt">
+      <prompt purpose="Security review of an MCP server implementation"><![CDATA[Review this MCP server for security issues:
+
+```[language]
+[paste server code]
+```
+
+Check for:
+1. Input validation vulnerabilities
+2. Path traversal risks
+3. Injection attacks (SQL, command, etc.)
+4. Information disclosure
+5. Access control issues
+6. Rate limiting needs
+7. Credential handling
+
+Provide:
+1. Security findings (severity, description, location)
+2. Remediation recommendations
+3. Fixed code snippets
+4. Security best practices to add]]></prompt>
+    </section>
+
+    <see-also>
+      <link href="https://modelcontextprotocol.io/specification/2025-11-25"/>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-server-implementation"/>
+    </see-also>
+  </content>
+</methodology>
