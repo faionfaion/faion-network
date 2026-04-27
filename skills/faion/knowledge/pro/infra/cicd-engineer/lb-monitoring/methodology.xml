@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="lb-monitoring">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Monitor load balancers with Prometheus exporters, Grafana dashboards, alert rules for backend down/high error rate/high latency/pool exhaustion, and centralized log aggregation.</summary>
+    <tags>
+      <tag>monitoring</tag>
+      <tag>prometheus</tag>
+      <tag>grafana</tag>
+      <tag>load-balancing</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-nginx-production"/>
+      <ref slug="lb-kubernetes-ingress"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Load Balancer Monitoring and Observability</title>
+
+    <summary>LB monitoring requires Prometheus exporters (haproxy-exporter:9101, nginx-exporter:9113), four core alert rules (BackendDown, HighErrorRate &gt;5%, HighLatency p99 &gt;2s, ConnectionPoolExhausted &gt;90%), Grafana dashboards with per-backend breakdown, and centralized log aggregation (ELK/Loki) of LB access logs for audit trail and debugging.</summary>
+
+    <why>
+      <p>Load balancers are the single point through which all traffic flows. Monitoring at the LB layer gives the clearest view of user-facing availability: the LB sees every request, every backend failure, and every latency spike before they reach application-layer metrics. Without LB metrics, backend failures are detected only after users complain. Prometheus alert rules with appropriate for: durations (1m for BackendDown, 5m for latency) prevent alert storms from transient blips.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up observability for a new HAProxy or Nginx production deployment.</item>
+        <item>Adding Prometheus scraping and alerting to an existing LB that lacks monitoring.</item>
+        <item>Defining SLIs (error rate, latency p99) and SLOs for a load-balanced service.</item>
+        <item>Diagnosing intermittent backend health flapping via log correlation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Cloud managed LBs (AWS ALB/NLB) — use CloudWatch metrics and AWS-native alerting instead; Prometheus exporters are not applicable.</item>
+        <item>Kubernetes Ingress controller metrics — use the controller's built-in /metrics endpoint with a ServiceMonitor; no separate exporter needed.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="prometheus-scrape-config">
+      <example type="good" title="Prometheus scrape configuration for HAProxy and Nginx">
+        <code lang="yaml"><![CDATA[
+scrape_configs:
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: ['haproxy-exporter:9101']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'haproxy-prod'
+
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+]]></code>
+        <note>haproxy_exporter scrapes the HAProxy stats socket (/run/haproxy/admin.sock) or stats page. nginx-prometheus-exporter scrapes the stub_status endpoint. Both are lightweight sidecar processes.</note>
+      </example>
+    </section>
+
+    <section name="alert-rules">
+      <example type="good" title="Prometheus alert rules: BackendDown, HighErrorRate, HighLatency, PoolExhausted">
+        <code lang="yaml"><![CDATA[
+groups:
+  - name: load_balancer_alerts
+    rules:
+      - alert: BackendDown
+        expr: haproxy_backend_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend {{ $labels.backend }} is down"
+          description: "Backend has been down for more than 1 minute"
+
+      - alert: HighErrorRate
+        expr: |
+          rate(haproxy_backend_http_responses_total{code="5xx"}[5m])
+          / rate(haproxy_backend_http_responses_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.backend }}"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            rate(haproxy_backend_http_response_time_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.backend }}"
+
+      - alert: ConnectionPoolExhausted
+        expr: haproxy_backend_current_sessions / haproxy_backend_limit_sessions > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Connection pool near exhaustion on {{ $labels.backend }}"
+]]></code>
+        <note>Use for: 1m for BackendDown (fast page), for: 5m for rate-based alerts to avoid false positives on transient spikes.</note>
+      </example>
+    </section>
+
+    <section name="key-metrics">
+      <p>Key metrics to collect and surface per LB type:</p>
+      <list>
+        <item>Request rate — haproxy_backend_http_responses_total, nginx_http_requests_total.</item>
+        <item>Error rate (4xx/5xx) — haproxy_backend_http_responses_total{code="5xx"}, nginx_upstream_responses_total{status_class="5xx"}.</item>
+        <item>Latency (p50/p95/p99) — haproxy_backend_http_response_time_seconds_bucket (histogram_quantile).</item>
+        <item>Active connections — haproxy_backend_current_sessions, nginx_connections_active.</item>
+        <item>Backend health — haproxy_backend_up, haproxy_server_up per backend server.</item>
+        <item>Connection pool saturation — haproxy_backend_current_sessions / haproxy_backend_limit_sessions.</item>
+        <item>Certificate expiry — haproxy_frontend_ssl_certificate_expires_seconds (alert at 30 days).</item>
+      </list>
+    </section>
+
+    <section name="llm-prompts-monitoring">
+      <prompt purpose="generate-monitoring-stack">
+        <![CDATA[
+Generate monitoring configuration for load balancer:
+
+LB type: [HAProxy/Nginx/ALB]
+Stack: [Prometheus + Grafana / Datadog / CloudWatch]
+
+Requirements:
+- Key metrics to collect
+- Alert thresholds
+- Dashboard panels
+- Log aggregation
+
+Include:
+1. Exporter configuration (if applicable)
+2. Prometheus scrape config
+3. Alert rules (YAML)
+4. Grafana dashboard JSON
+5. Log parsing patterns
+]]>
+      </prompt>
+      <prompt purpose="define-slis-slos">
+        <![CDATA[
+Define SLIs and SLOs for this load balancer setup:
+
+Service type: [Web app/API/Real-time]
+Current traffic: [RPS]
+Business requirements: [DESCRIBE]
+
+Define:
+1. Availability SLI/SLO (e.g., 99.9%)
+2. Latency SLI/SLO (e.g., p99 < 200ms)
+3. Error rate SLI/SLO (e.g., < 0.1%)
+4. Throughput SLI/SLO
+
+Provide:
+- Prometheus queries for each SLI
+- Error budget calculations
+- Alert rules for SLO breaches
+- Runbook templates for common issues
+]]>
+      </prompt>
+    </section>
+
+    <rules>
+      <rule>
+        <statement>Every production LB deployment MUST have at minimum four alert rules: BackendDown (severity: critical, for: 1m), HighErrorRate greater than 5% (severity: warning, for: 5m), HighLatency p99 greater than 2s (severity: warning, for: 5m), and ConnectionPoolExhausted at greater than 90% (severity: warning, for: 5m).</statement>
+        <rationale>Without BackendDown, a failed backend stays in the oncall team's blind spot until users report errors. Without HighErrorRate, a partial outage (one backend returning 500s) goes undetected. Without ConnectionPoolExhausted, the LB silently queues and then drops connections as pool fills.</rationale>
+      </rule>
+      <rule>
+        <statement>LB access logs MUST be centralized to ELK or Loki with request tracing headers (X-Request-ID, X-Forwarded-For) forwarded. Log rotation MUST be configured. Raw access logs on local disk are not acceptable as the sole log store in production.</statement>
+        <rationale>Local disk logs are lost on instance replacement, unavailable for cross-service correlation, and fill disks under high traffic. Centralized logs provide the audit trail for compliance and the raw data for root cause analysis during incidents.</rationale>
+      </rule>
+    </rules>
+
+    <checklist>
+      <check>Prometheus exporter deployed (haproxy-exporter or nginx-prometheus-exporter).</check>
+      <check>Scrape config added to Prometheus.</check>
+      <check>BackendDown alert configured (critical, for: 1m).</check>
+      <check>HighErrorRate alert configured (greater than 1% for warning, 5% for critical).</check>
+      <check>HighLatency alert configured (p99 greater than threshold, for: 5m).</check>
+      <check>ConnectionPoolExhausted alert configured (greater than 90%, for: 5m).</check>
+      <check>Certificate expiry alert configured (alert at 30 days before expiry).</check>
+      <check>Grafana dashboard created with request rate, error rate, latency, connections, backend health.</check>
+      <check>Access logs enabled and forwarded to central log system (ELK/Loki).</check>
+      <check>Error logs captured and included in central log system.</check>
+      <check>Log rotation configured.</check>
+      <check>Request tracing headers (X-Request-ID, X-Forwarded-For) forwarded to backends.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://github.com/prometheus/haproxy_exporter"/>
+      <link href="https://github.com/nginxinc/nginx-prometheus-exporter"/>
+      <link href="https://prometheus.io/docs/alerting/latest/alertmanager/"/>
+      <ref slug="lb-haproxy-production"/>
+      <ref slug="lb-nginx-production"/>
+    </see-also>
+  </content>
+</methodology>
