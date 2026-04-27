@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-pytest-parametrize">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Use pytest.mark.parametrize in Django tests to cover validation matrices, permission role grids, and edge cases without duplicating test code.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>pytest</tag>
+      <tag>parametrize</tag>
+      <tag>testing</tag>
+      <tag>validation</tag>
+    </tags>
+    <category>test</category>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+      <framework>pytest</framework>
+    </frameworks>
+    <related>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django pytest Parametrize</title>
+
+    <summary>pytest.mark.parametrize eliminates repetitive tests by running the same test body with different input-output pairs. Use it for validator tests (input/valid), API validation matrices (field/value/error), permission role grids, and any set of tests that differ only in data. Each parameter set is one independently runnable test.</summary>
+
+    <why>
+      <p>Without parametrize, testing a validator for 7 input cases requires 7 near-identical test functions. These are copy-pasted, drift when the validator changes, and obscure the pattern being tested. parametrize collapses them to one test body with a data table, making additions trivial (one new row) and the test intent immediately obvious. Each combination runs as an independent test case, so failures are pinpointed to the exact row.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Validator tests: one function testing many input/expected-output pairs.</item>
+        <item>API validation matrices: same endpoint, different invalid fields and expected error messages.</item>
+        <item>Permission role grids: same endpoint, different user roles, expected status codes.</item>
+        <item>Error-code tests: same function, different inputs, different sets of error codes expected.</item>
+        <item>Any group of tests that differ only in the data they operate on.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Test cases that need substantially different setup or teardown — use separate fixtures or separate test functions.</item>
+        <item>Parameter lists longer than ~20 rows — consider splitting into focused test functions with descriptive names instead.</item>
+        <item>Cases where the test body logic changes significantly per parameter — parametrize is for data variation, not control-flow variation.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="basic-parametrize">
+      <p>The basic form of parametrize: a comma-separated argname string and a list of values or tuples.</p>
+
+      <rule testable="true">
+        <statement>Use @pytest.mark.parametrize("argnames", [...values]) to run the same test body with different inputs. For multiple arguments, pass a comma-separated string for argnames and tuples for values. Use ids= parameter for descriptive test IDs when tuple values are not self-explanatory. Each combination must be independent and must not share mutable state.</statement>
+        <rationale>Descriptive IDs make test failure messages pinpoint the exact failing case: FAILED test_validation[email-invalid] is clearer than FAILED test_validation[0]. Each combination runs as an independent test, so failures don't cascade. Shared mutable state between combinations creates order-dependent failures.</rationale>
+      </rule>
+
+      <example type="good" title="Basic parametrize for validator tests">
+        <code lang="python"><![CDATA[
+# tests/unit/test_validators.py
+import pytest
+from apps.users.validators import validate_password, PasswordValidationResult
+
+
+class TestPasswordValidator:
+    """Tests for password validation."""
+
+    @pytest.mark.parametrize("password,is_valid", [
+        ("ValidPass123!", True),
+        ("Another$ecure1", True),
+        ("short1!", False),           # Too short
+        ("nouppercase123!", False),   # No uppercase
+        ("NOLOWERCASE123!", False),   # No lowercase
+        ("NoDigitsHere!!", False),    # No digits
+        ("NoSpecial123abc", False),   # No special char
+    ])
+    def test_password_validation(self, password, is_valid):
+        """Password validation with various inputs."""
+        result = validate_password(password)
+        assert result.is_valid == is_valid
+
+    @pytest.mark.parametrize("password,expected_errors", [
+        ("short", ["too_short", "no_uppercase", "no_digit", "no_special"]),
+        ("NoDigits!!", ["no_digit"]),
+        ("nouppercaseorspecial1", ["no_uppercase", "no_special"]),
+    ])
+    def test_error_codes(self, password, expected_errors):
+        """Validation returns correct error codes."""
+        result = validate_password(password)
+        assert set(result.error_codes) == set(expected_errors)
+]]></code>
+      </example>
+    </section>
+
+    <section name="api-validation-parametrize">
+      <p>API validation matrices test that each required field returns the correct error message when invalid. Parametrize avoids duplicating the full endpoint call for each field variation.</p>
+
+      <rule testable="true">
+        <statement>For API validation tests, parametrize over (field, value, expected_error) tuples. Start from a valid payload dict and override the field under test. Assert on both status code (400) and the presence of the expected error message in response.data[field]. Use descriptive comments or inline variable names in the parameter tuples.</statement>
+        <rationale>The three-tuple pattern (field, value, error) is self-documenting: it reads as "when field has value, expect error". Starting from a valid payload ensures the only variable is the field under test, isolating the validation rule. Asserting on the error message (not just 400) catches cases where validation fails for the wrong reason.</rationale>
+      </rule>
+
+      <example type="good" title="API validation parametrize">
+        <code lang="python"><![CDATA[
+import pytest
+from rest_framework import status
+
+
+@pytest.mark.django_db
+class TestUserCreateAPI:
+    """Tests for POST /api/v1/users/."""
+
+    endpoint = "/api/v1/users/"
+
+    @pytest.mark.parametrize("field,value,error", [
+        ("email", "invalid", "Enter a valid email address"),
+        ("email", "", "This field may not be blank"),
+        ("name", "", "This field may not be blank"),
+    ])
+    def test_validation_errors(self, admin_client, field, value, error):
+        """Returns validation errors for invalid data."""
+        payload = {"email": "test@example.com", "name": "Test"}
+        payload[field] = value
+
+        response = admin_client.post(self.endpoint, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert error in str(response.data[field])
+
+
+@pytest.mark.django_db
+class TestUserCreateAPIRefactor:
+    """Refactored from repetitive tests using parametrize."""
+
+    endpoint = "/api/v1/users/"
+
+    # Before parametrize — repeated structure:
+    # def test_validate_email_invalid(self, admin_client): ...
+    # def test_validate_email_empty(self, admin_client): ...
+    # def test_validate_name_empty(self, admin_client): ...
+
+    # After parametrize — one function, data table:
+    @pytest.mark.parametrize("field,value,error", [
+        ("email", "not-an-email", "Enter a valid email address"),
+        ("email", "", "This field may not be blank"),
+        ("name", "", "This field may not be blank"),
+        ("user_type", "unknown", "is not a valid choice"),
+    ])
+    def test_invalid_field_returns_400(self, admin_client, field, value, error):
+        payload = {"email": "ok@example.com", "name": "OK", "user_type": "regular"}
+        payload[field] = value
+
+        response = admin_client.post(self.endpoint, payload, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert error in str(response.data)
+]]></code>
+      </example>
+    </section>
+
+    <section name="refactoring-to-parametrize">
+      <p>When to refactor repetitive tests into parametrize and how to do it.</p>
+
+      <rule testable="true">
+        <statement>Refactor a group of tests to parametrize when: (1) the tests have the same body structure and differ only in data, (2) there are 3 or more similar tests, (3) adding a new case requires copying an existing test. Keep each parameter combination's intent clear through comments in the tuple or the ids= parameter. Do NOT parametrize tests that have different setup, teardown, or assertion logic.</statement>
+        <rationale>Three identical tests are a maintenance burden: changes must be applied three times. parametrize collapses them to one body, so changes apply to all cases at once. The ids= parameter gives each combination a readable name in pytest output, making failures easy to understand without reading the source.</rationale>
+      </rule>
+
+      <example type="good" title="Refactoring repetitive email validation tests">
+        <code lang="python"><![CDATA[
+# Before: 5 repetitive functions
+def test_validate_email_valid(self):
+    assert validate_email("user@example.com") == True
+
+def test_validate_email_valid_subdomain(self):
+    assert validate_email("user@mail.example.com") == True
+
+def test_validate_email_invalid_no_at(self):
+    assert validate_email("userexample.com") == False
+
+def test_validate_email_invalid_no_domain(self):
+    assert validate_email("user@") == False
+
+def test_validate_email_invalid_empty(self):
+    assert validate_email("") == False
+
+
+# After: one function, 5 cases
+@pytest.mark.parametrize("email,expected", [
+    ("user@example.com", True),
+    ("user@mail.example.com", True),
+    ("userexample.com", False),    # No @ symbol
+    ("user@", False),              # No domain
+    ("", False),                   # Empty string
+], ids=[
+    "valid-simple",
+    "valid-subdomain",
+    "invalid-no-at",
+    "invalid-no-domain",
+    "invalid-empty",
+])
+def test_email_validation(self, email, expected):
+    """Email validation covers all edge cases."""
+    assert validate_email(email) == expected
+]]></code>
+      </example>
+    </section>
+
+    <section name="permission-matrix-parametrize">
+      <p>Permission matrices test multiple user roles against the same endpoint in one parametrized block.</p>
+
+      <example type="good" title="Permission role matrix with parametrize">
+        <code lang="python"><![CDATA[
+import pytest
+from rest_framework import status
+
+
+@pytest.mark.django_db
+class TestOrderAPIPermissions:
+    """Permission matrix for Order API endpoints."""
+
+    @pytest.mark.parametrize("fixture_name,expected_status", [
+        ("api_client", status.HTTP_401_UNAUTHORIZED),
+        ("authenticated_client", status.HTTP_200_OK),
+        ("admin_client", status.HTTP_200_OK),
+    ])
+    def test_list_orders_permissions(self, request, fixture_name, expected_status):
+        """Each role sees the correct status on GET /orders/."""
+        client = request.getfixturevalue(fixture_name)
+        response = client.get("/api/v1/orders/")
+        assert response.status_code == expected_status
+
+    @pytest.mark.parametrize("fixture_name,expected_status", [
+        ("api_client", status.HTTP_401_UNAUTHORIZED),
+        ("authenticated_client", status.HTTP_403_FORBIDDEN),
+        ("admin_client", status.HTTP_201_CREATED),
+    ])
+    def test_create_order_permissions(self, request, fixture_name, expected_status):
+        """Only admins can create orders directly."""
+        client = request.getfixturevalue(fixture_name)
+        payload = {"description": "Test Order"}
+        response = client.post("/api/v1/orders/", payload, format="json")
+        assert response.status_code == expected_status
+]]></code>
+      </example>
+    </section>
+
+    <section name="parametrize-with-fixtures">
+      <p>pytest.mark.parametrize works alongside fixtures: the parametrized values can reference fixture names via request.getfixturevalue, or fixture values can be passed as indirect= parameters.</p>
+
+      <rule testable="true">
+        <statement>Use request.getfixturevalue(fixture_name) inside a parametrized test to select between fixtures by name. Use @pytest.mark.parametrize("fixture", [...], indirect=True) when you need to pass parameters through a fixture to prepare test objects. Avoid using indirect= for simple cases; prefer explicit fixture composition.</statement>
+        <rationale>getfixturevalue lets you parametrize over client fixtures (api_client, authenticated_client, admin_client) without duplicating the test body for each role. indirect= is a power-user feature for when fixture preparation depends on the parameter value; it's harder to read and should be used sparingly.</rationale>
+      </rule>
+
+      <example type="good" title="Using getfixturevalue for client parametrize">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+class TestOrderReadPermissions:
+    """Read permission matrix using getfixturevalue."""
+
+    @pytest.mark.parametrize("client_fixture,expected", [
+        ("api_client", 401),
+        ("authenticated_client", 200),
+        ("admin_client", 200),
+    ])
+    def test_read_endpoint(self, request, order, client_fixture, expected):
+        """GET /orders/{uid}/ returns correct status per role."""
+        client = request.getfixturevalue(client_fixture)
+        response = client.get(f"/api/v1/orders/{order.uid}/")
+        assert response.status_code == expected
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-pitfalls">
+      <p>Known failure modes and anti-patterns with parametrize in Django tests.</p>
+
+      <antipattern>
+        <description>Parameter lists so long they become unmaintainable (30+ entries). The test body is lost in the data.</description>
+        <reason>Split large parameter lists into logical groups with separate parametrized functions (test_valid_emails, test_invalid_emails). Each function tests one category of behavior. This keeps the test intent clear and failures easy to understand.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Parametrizing over database objects (model instances) directly in the parameter list.</description>
+        <reason>Model instances cannot exist outside a database transaction. Parametrize over IDs, strings, or dicts and resolve the objects inside the test function using fixtures. Direct model references in parameter lists cause database errors at collection time.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using generic ids like test_validation[0], test_validation[1] without meaningful names.</description>
+        <reason>When test_validation[3] fails at 2am in CI, there is no context. Use descriptive tuple comments, the ids= parameter, or pytest.param(value, id="name") to give each case a meaningful name.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Groups of 3+ identical-structure tests collapsed into parametrize blocks</check>
+      <check>Each parameter combination has a descriptive comment or uses the ids= parameter</check>
+      <check>Parameter values do not include mutable objects (use primitives, dicts, or IDs)</check>
+      <check>Validation tests parametrize over (field, value, expected_error) triples</check>
+      <check>Permission matrices cover anonymous, regular user, and admin roles</check>
+      <check>Each parameter combination runs independently (no shared state between runs)</check>
+      <check>API validation tests assert on response.data[field] message, not only status code</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="django-pytest-fixtures"/>
+      <ref slug="django-pytest-integration"/>
+      <link href="https://docs.pytest.org/en/stable/how-to/parametrize.html"/>
+      <link href="https://pytest-with-eric.com/pytest-advanced/pytest-django-restapi-testing/"/>
+    </see-also>
+  </content>
+</methodology>
