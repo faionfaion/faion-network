@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="reranking-pipeline-integration">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>rag-engineer</domain>
+    <summary>Integrate reranking into RAG pipelines: RerankingRAG class, batch processing, fallback handling, agent workflow, and production tool/service selection.</summary>
+    <tags>
+      <tag>reranking</tag>
+      <tag>rag</tag>
+      <tag>pipeline</tag>
+      <tag>cohere</tag>
+      <tag>production</tag>
+    </tags>
+    <category>retrieval</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="reranking-two-stage"/>
+      <ref slug="reranking-diversity-mmr"/>
+      <ref slug="reranking-models"/>
+      <ref slug="rag-implementation"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Reranking Pipeline Integration for RAG</title>
+
+    <summary>Integrate reranking into a production RAG pipeline by wrapping the two-stage retrieve + rerank flow in a RerankingRAG class, supporting cross-encoder, Cohere API, and LLM-based rerankers. Includes batch reranking with ThreadPoolExecutor, production fallback pattern, and agentic workflow guidance.</summary>
+
+    <why>
+      <p>A bare cross-encoder call is sufficient for experiments but production RAG needs: configurable reranker backends (local vs managed API), graceful fallback when the reranker is unavailable, batch processing for high-throughput scenarios, and caching to avoid repeated scoring of identical query/document pairs. Without a structured integration layer, reranking becomes a fragile ad-hoc step that breaks pipelines when the reranker times out or rate-limits.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a production RAG pipeline that needs to switch between local cross-encoder and Cohere/Voyage API rerankers.</item>
+        <item>High-throughput systems processing multiple queries simultaneously that need parallel batch reranking.</item>
+        <item>Any pipeline where the reranker is on the critical path and must degrade gracefully to initial retrieval order on failure.</item>
+        <item>Agentic systems where a retrieval subagent passes candidates to a downstream generation agent.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-query scripts or notebooks — the full integration class adds overhead without value.</item>
+        <item>When the reranker is always local and always available — skip the fallback machinery.</item>
+        <item>Cost is the primary constraint and Cohere/API reranking fees are prohibitive at scale — use a local cross-encoder only.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="reranking-rag-class">
+      <p>The RerankingRAG class wraps vector store retrieval and reranking into a single .retrieve() interface. The caller sets initial_top_k (candidate pool size), rerank_top_k (final returned results), and reranker backend (cross-encoder, cohere, or llm). This makes the reranker swappable without changing downstream generation logic.</p>
+
+      <example type="good" title="RerankingRAG: configurable two-stage retrieval class">
+        <code lang="python"><![CDATA[
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+
+@dataclass
+class RetrievalConfig:
+    initial_top_k: int = 50
+    rerank_top_k: int = 5
+    reranker: str = "cross-encoder"  # cross-encoder, cohere, llm
+
+class RerankingRAG:
+    """RAG pipeline with reranking stage."""
+
+    def __init__(
+        self,
+        vector_store,
+        embedding_service,
+        config: RetrievalConfig = None
+    ):
+        self.vector_store = vector_store
+        self.embedding_service = embedding_service
+        self.config = config or RetrievalConfig()
+
+        # Initialize reranker
+        if self.config.reranker == "cross-encoder":
+            from sentence_transformers import CrossEncoder
+            self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
+        elif self.config.reranker == "cohere":
+            import cohere
+            self.reranker = cohere.Client()
+
+    def retrieve(
+        self,
+        query: str,
+        filter: Optional[Dict] = None
+    ) -> List[Dict[str, Any]]:
+        """Two-stage retrieval with reranking."""
+        # Stage 1: Initial retrieval
+        query_embedding = self.embedding_service.embed(query)
+        initial_results = self.vector_store.search(
+            query_embedding,
+            top_k=self.config.initial_top_k,
+            filter=filter
+        )
+
+        documents = [r["content"] for r in initial_results]
+
+        # Stage 2: Reranking
+        if self.config.reranker == "cross-encoder":
+            reranked = self._cross_encoder_rerank(query, documents, initial_results)
+        elif self.config.reranker == "cohere":
+            reranked = self._cohere_rerank(query, documents, initial_results)
+        else:
+            reranked = self._llm_rerank(query, documents, initial_results)
+
+        return reranked[:self.config.rerank_top_k]
+
+    def _cross_encoder_rerank(
+        self,
+        query: str,
+        documents: List[str],
+        results: List[Dict]
+    ) -> List[Dict]:
+        """Cross-encoder reranking."""
+        pairs = [[query, doc] for doc in documents]
+        scores = self.reranker.predict(pairs)
+
+        for i, result in enumerate(results):
+            result["rerank_score"] = float(scores[i])
+
+        return sorted(results, key=lambda x: x["rerank_score"], reverse=True)
+
+    def _cohere_rerank(
+        self,
+        query: str,
+        documents: List[str],
+        results: List[Dict]
+    ) -> List[Dict]:
+        """Cohere reranking."""
+        response = self.reranker.rerank(
+            query=query,
+            documents=documents,
+            top_n=self.config.rerank_top_k,
+            model="rerank-english-v3.0"
+        )
+
+        reranked = []
+        for r in response.results:
+            result = results[r.index].copy()
+            result["rerank_score"] = r.relevance_score
+            reranked.append(result)
+
+        return reranked
+
+    def _llm_rerank(
+        self,
+        query: str,
+        documents: List[str],
+        results: List[Dict]
+    ) -> List[Dict]:
+        """LLM-based reranking."""
+        from llm_rerank import llm_rerank_with_scores
+        rerank_results = llm_rerank_with_scores(
+            query=query,
+            documents=documents,
+            top_k=self.config.rerank_top_k
+        )
+
+        reranked = []
+        for r in rerank_results:
+            result = results[r["index"]].copy()
+            result["rerank_score"] = r["score"]
+            reranked.append(result)
+
+        return reranked
+]]></code>
+        <note>Switch reranker backend by changing config.reranker — cross-encoder for local, cohere for managed API, llm for highest quality at highest cost.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>When using the Cohere Rerank API, always map results back to original documents using r.index, never by list position. Cohere returns results in score order, not input order.</statement>
+        <rationale>Cohere's response.results is sorted by relevance score descending. Using list position instead of r.index maps rerank scores to the wrong documents, silently corrupting the ranking.</rationale>
+      </rule>
+    </section>
+
+    <section name="batch-reranking">
+      <p>For high-throughput pipelines processing multiple queries simultaneously, batch reranking with ThreadPoolExecutor parallelizes the reranking step across queries. Each worker processes one (query, documents) pair independently.</p>
+
+      <example type="good" title="Batch reranking with parallel workers">
+        <code lang="python"><![CDATA[
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Tuple
+import numpy as np
+
+def batch_rerank(
+    queries: List[str],
+    document_lists: List[List[str]],
+    reranker,
+    top_k: int = 5,
+    max_workers: int = 4
+) -> List[List[dict]]:
+    """
+    Rerank multiple query-documents pairs in parallel.
+    """
+    def rerank_single(args: Tuple[str, List[str]]) -> List[dict]:
+        query, documents = args
+        pairs = [[query, doc] for doc in documents]
+        scores = reranker.predict(pairs)
+
+        sorted_indices = np.argsort(scores)[::-1][:top_k]
+        return [
+            {"document": documents[i], "score": float(scores[i])}
+            for i in sorted_indices
+        ]
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(
+            rerank_single,
+            zip(queries, document_lists)
+        ))
+
+    return results
+]]></code>
+        <note>max_workers=4 is a safe starting point. Test with realistic candidate pool sizes; large pools times many workers can hit ulimit on open file descriptors.</note>
+      </example>
+
+      <antipattern>
+        <description>Using batch reranking with ThreadPoolExecutor without testing realistic candidate pool sizes and worker counts on the target infrastructure.</description>
+        <reason>Large candidate_pool_size x max_workers can exhaust ulimit on open file descriptors. Test under load before deploying.</reason>
+      </antipattern>
+    </section>
+
+    <section name="fallback-pattern">
+      <p>In production, the reranker is on the critical path. If it times out, throws an exception, or becomes unavailable, the query must still return results. The fallback is to return the initial retrieval order, which is better than failing the query entirely.</p>
+
+      <example type="good" title="Production reranking with graceful fallback to initial order">
+        <code lang="python"><![CDATA[
+def rerank_with_fallback(
+    query: str,
+    results: list[dict],
+    top_k: int = 5,
+    timeout: float = 2.0
+) -> list[dict]:
+    """Rerank with graceful fallback to initial order."""
+    import signal
+
+    def _handler(signum, frame):
+        raise TimeoutError
+
+    try:
+        signal.signal(signal.SIGALRM, _handler)
+        signal.alarm(int(timeout))
+        from sentence_transformers import CrossEncoder
+        model = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-12-v2")
+        pairs = [[query, r["content"]] for r in results]
+        scores = model.predict(pairs)
+        for r, s in zip(results, scores):
+            r["rerank_score"] = float(s)
+        signal.alarm(0)
+        return sorted(results, key=lambda x: x["rerank_score"], reverse=True)[:top_k]
+    except Exception:
+        return results[:top_k]  # fallback: initial retrieval order
+]]></code>
+        <note>signal.SIGALRM is Unix-only. On Windows, use threading.Timer or asyncio.wait_for for the timeout mechanism.</note>
+      </example>
+
+      <rule testable="true">
+        <statement>Every production reranking call MUST have a fallback path that returns initial retrieval results when the reranker fails, times out, or is unavailable. Never let a reranker failure propagate as a query failure.</statement>
+        <rationale>The reranker is an accuracy improvement, not a correctness requirement. Initial retrieval results are useful; zero results or an exception is not. Failing silently to initial order preserves user experience.</rationale>
+      </rule>
+    </section>
+
+    <section name="caching">
+      <rule testable="true">
+        <statement>Cache reranked results by hash(query + sorted(doc_ids)). Identical queries with the same candidate pool recur frequently in chat interfaces where the same context window is reused across turns.</statement>
+        <rationale>Reranking is computationally expensive (100-500ms). Caching avoids redundant scoring when the same query is issued repeatedly within a session or across concurrent users asking similar questions.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>In an agentic RAG system, a retrieval subagent fetches an initial candidate pool (top 50-100 via vector search), then passes (query, documents[]) to a reranking step. The reranker (cross-encoder or Cohere API) returns scored pairs, and the agent selects the top-k for context assembly. The reranking step is synchronous and blocking — the generation agent must not proceed until reranking is complete.</p>
+
+      <rule testable="true">
+        <statement>LLM-based reranking prompts MUST constrain output to JSON with a defined schema. Without schema enforcement the agent may produce freeform ranking prose that breaks the downstream parser.</statement>
+        <rationale>LLMs produce variable-format output when unconstrained. A ranking expressed as natural language prose ("the first document seems most relevant...") cannot be parsed into a sorted index. JSON with explicit index and score fields is parseable deterministically.</rationale>
+      </rule>
+
+      <prompt purpose="llm-reranking">
+<![CDATA[
+You have a query and a list of candidate documents from initial retrieval.
+Score each document's relevance to the query on a scale of 0-1.
+Return a JSON array sorted by score descending:
+[{"index": <original_index>, "score": <float>, "reason": "<one sentence>"}]
+
+Query: {{query}}
+Candidates:
+{{#each candidates}}
+[{{@index}}] {{this}}
+{{/each}}
+]]>
+      </prompt>
+    </section>
+
+    <section name="tools-and-services">
+      <p>CLI tools for reranking:</p>
+      <list>
+        <item>sentence-transformers — local cross-encoder reranking. pip install sentence-transformers. https://www.sbert.net</item>
+        <item>cohere — Cohere Rerank API (rerank-english-v3.0, rerank-multilingual-v3.0). pip install cohere. https://docs.cohere.com/docs/reranking</item>
+        <item>flashrank — lightweight local reranker (ms-marco, MiniLM variants), designed for CPU. pip install flashrank. https://github.com/PrithivirajDamodaran/FlashRank</item>
+        <item>ragatouille — ColBERT late-interaction reranking. pip install ragatouille. https://github.com/bclavie/RAGatouille</item>
+        <item>llama-index-postprocessor-cohere-rerank — LlamaIndex Cohere rerank postprocessor. pip install llama-index-postprocessor-cohere-rerank</item>
+      </list>
+
+      <p>Managed reranking services:</p>
+      <list>
+        <item>Cohere Rerank (SaaS) — REST/Python SDK. Best managed option; rerank-multilingual-v3.0 covers 100+ languages.</item>
+        <item>Jina AI Reranker (SaaS) — REST. jina-reranker-v2-base-multilingual; free tier available.</item>
+        <item>Mixedbread AI (SaaS) — REST/Python. mxbai-rerank-large-v1; strong BEIR benchmark scores.</item>
+        <item>Voyage AI (SaaS) — REST. voyage-rerank-2; especially strong for code and technical content.</item>
+        <item>vLLM (OSS) — OpenAI-compatible API. Run cross-encoders locally as a service; GPU recommended.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>For multilingual content, use Cohere rerank-multilingual-v3.0 or Jina jina-reranker-v2-base-multilingual. Never use an English-only model (ms-marco family) on non-English content.</statement>
+        <rationale>English-only models silently produce degraded scores on non-English text. The multilingual variants cover 100+ languages and maintain precision across language boundaries.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>On CPU-only infrastructure, use FlashRank instead of sentence-transformers CrossEncoder. FlashRank is designed for CPU inference and delivers 3-5x faster scoring without requiring GPU.</statement>
+        <rationale>sentence-transformers CrossEncoder defaults to CPU but is not optimized for it. FlashRank uses quantized models and CPU-optimized inference paths, making local reranking viable on commodity servers.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <ref slug="reranking-two-stage"/>
+      <ref slug="reranking-diversity-mmr"/>
+      <ref slug="reranking-models"/>
+      <link href="https://docs.cohere.com/docs/reranking"/>
+      <link href="https://github.com/PrithivirajDamodaran/FlashRank"/>
+    </see-also>
+  </content>
+</methodology>
