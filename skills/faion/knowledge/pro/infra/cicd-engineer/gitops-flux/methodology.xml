@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gitops-flux">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Flux CD setup and operation: GitRepository, Kustomization, HelmRelease, ImagePolicy CRDs, multi-source reconciliation, and notification configuration for Kubernetes GitOps.</summary>
+    <tags>
+      <tag>flux</tag>
+      <tag>gitops</tag>
+      <tag>kubernetes</tag>
+      <tag>helm</tag>
+      <tag>kustomize</tag>
+    </tags>
+    <category>gitops</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="gitops-repository-structure"/>
+      <ref slug="argocd-gitops"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Flux CD Setup and Operation</title>
+
+    <summary>Flux is a lightweight, modular GitOps operator for Kubernetes. It uses CRDs (GitRepository, Kustomization, HelmRelease, ImagePolicy) to reconcile cluster state from one or more Git/Helm sources. Flux excels at multi-tenancy, automation, and environments without a built-in UI requirement.</summary>
+
+    <why>
+      <p>Flux's modular architecture means each controller (source, kustomize, helm, image, notification) can be deployed independently and sized appropriately. The CRD-driven model makes Flux workflows programmable and auditable via standard Kubernetes RBAC. After Weaveworks shut down in 2024, Flux moved to full CNCF community governance, removing single-vendor risk.</p>
+      <p>Flux is the better choice when: the team is comfortable with CLI-first workflows, you need fine-grained multi-tenancy (namespace-scoped CRDs, per-tenant source controllers), or you want to avoid the heavier resource footprint of ArgoCD.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Platform engineering teams building automation-first GitOps pipelines where a web UI is not required.</item>
+        <item>Multi-tenant platforms where each tenant needs isolated source and reconciliation controllers.</item>
+        <item>Existing Flux deployments being maintained or extended post-Weaveworks shutdown.</item>
+        <item>Environments with resource constraints where ArgoCD's footprint is prohibitive.</item>
+        <item>Helm-heavy clusters needing automated image tag updates via ImagePolicy + ImageUpdateAutomation.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Teams requiring a built-in visual UI for day-to-day operations — use ArgoCD or pair Flux with Weave GitOps OSS UI.</item>
+        <item>Organizations needing strong commercial support with SLA — ArgoCD's Akuity offering is more mature.</item>
+        <item>Teams new to GitOps who need a gentler learning curve — ArgoCD's UI accelerates onboarding.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="bootstrap">
+      <p>Flux is bootstrapped via the flux CLI, which installs controllers and commits their manifests to Git in a flux-system folder. After bootstrap, Flux reconciles itself from Git.</p>
+      <example type="good" title="Flux bootstrap for GitHub">
+        <code lang="bash"><![CDATA[
+# Bootstrap Flux on a cluster, pointing at a GitHub repo
+flux bootstrap github \
+  --owner=my-org \
+  --repository=gitops-repo \
+  --branch=main \
+  --path=clusters/production \
+  --personal  # use --token-auth for org repos with PAT
+]]></code>
+        <note>Bootstrap creates flux-system/ in the repo and installs CRDs + controllers into the flux-system namespace.</note>
+      </example>
+    </section>
+
+    <section name="git-repository-crd">
+      <p>GitRepository defines a source: which repo + branch + interval Flux polls. Set up webhooks from the Git provider to the notification-receiver to get sub-second reconciliation instead of waiting for the poll interval.</p>
+      <example type="good" title="GitRepository source definition">
+        <code lang="yaml"><![CDATA[
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: gitops-repo
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/org/gitops-repo.git
+  ref:
+    branch: main
+  secretRef:
+    name: github-credentials
+]]></code>
+        <note>interval: 1m is the fallback polling rate; add a webhook to trigger immediately on push.</note>
+      </example>
+    </section>
+
+    <section name="kustomization-crd">
+      <p>Kustomization (flux CRD, not to be confused with kustomize's own Kustomization) defines what path in the source to reconcile and how.</p>
+      <example type="good" title="Flux Kustomization with health checks and dependency ordering">
+        <code lang="yaml"><![CDATA[
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: my-app
+  namespace: flux-system
+spec:
+  interval: 10m
+  targetNamespace: my-app
+  sourceRef:
+    kind: GitRepository
+    name: gitops-repo
+  path: ./overlays/production
+  prune: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: my-app
+      namespace: my-app
+  timeout: 2m
+  dependsOn:
+    - name: infrastructure
+]]></code>
+        <note>dependsOn prevents my-app reconciliation until the infrastructure Kustomization is healthy. prune: true removes resources deleted from Git.</note>
+      </example>
+      <rule>
+        <statement>Configure ignoreDifferences for HPA-managed spec.replicas, KEDA-managed scale targets, and cert-manager-rotated secrets to prevent Flux from fighting with cluster-autoscaler and operator-managed fields.</statement>
+        <rationale>Without ignoreDifferences, Flux continuously resets replica counts that HPA has scaled up, causing a reconciliation fight loop that prevents autoscaling from working.</rationale>
+      </rule>
+    </section>
+
+    <section name="helm-release-crd">
+      <p>HelmRelease manages a Helm chart installation. It can source charts from a HelmRepository (index), an OCI registry, or a GitRepository path.</p>
+      <example type="good" title="HelmRelease for nginx ingress controller">
+        <code lang="yaml"><![CDATA[
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: nginx-ingress
+  namespace: ingress-nginx
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ingress-nginx
+      version: '4.x'
+      sourceRef:
+        kind: HelmRepository
+        name: ingress-nginx
+        namespace: flux-system
+  values:
+    controller:
+      replicaCount: 2
+      service:
+        type: LoadBalancer
+]]></code>
+        <note>version: '4.x' pins the major; use exact semver in production (e.g. '4.9.1') to prevent unexpected upgrades.</note>
+      </example>
+    </section>
+
+    <section name="image-automation">
+      <p>Flux ImagePolicy + ImageUpdateAutomation automatically bumps image tags in Git when new images are pushed to a registry. Useful for dev environments; require PR review for staging/prod.</p>
+      <example type="good" title="ImagePolicy for semver range">
+        <code lang="yaml"><![CDATA[
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: my-app
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: my-app
+  policy:
+    semver:
+      range: '>=1.0.0'
+]]></code>
+      </example>
+      <antipattern>
+        <description>Enabling ImageUpdateAutomation with auto-commit and auto-merge for production environments.</description>
+        <reason>Automated image bumps in production bypass human review; a bad image can be deployed before anyone notices. Auto-update is safe for dev; prod should go through a PR with human approval.</reason>
+      </antipattern>
+    </section>
+
+    <section name="notifications">
+      <p>Flux notification controller sends alerts to Slack, Teams, PagerDuty, etc. on sync events and failures.</p>
+      <example type="good" title="Flux Slack notification provider and alert">
+        <code lang="yaml"><![CDATA[
+# notification-provider.yaml
+apiVersion: notification.toolkit.fluxcd.io/v1beta1
+kind: Provider
+metadata:
+  name: slack
+  namespace: flux-system
+spec:
+  type: slack
+  channel: deployments
+  secretRef:
+    name: slack-webhook
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta1
+kind: Alert
+metadata:
+  name: my-app-alerts
+  namespace: flux-system
+spec:
+  providerRef:
+    name: slack
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: my-app
+]]></code>
+      </example>
+    </section>
+
+    <section name="limitations">
+      <p>Known Flux operational limitations and mitigations:</p>
+      <list>
+        <item>No built-in UI — pair with Weave GitOps OSS (wego) or use flux CLI + kubectl for day-to-day operations.</item>
+        <item>CRD upgrades: if a CRD removes fields, GitOps reconciliation can fail mid-rollout — use staged CRD upgrades + ServerSideApply.</item>
+        <item>Webhooks vs polling: pull is great for security but slow without webhook push from Git provider — configure receiver webhooks for sub-second apply.</item>
+        <item>Multi-cluster at scale (hundreds of clusters) hits API rate limits and reconciliation lag — shard by creating multiple GitRepository sources or use Flux's multi-tenancy model.</item>
+        <item>Helm hooks (pre-install, post-install) don't always cooperate with Flux reconciliation — use Kustomize post-build substitutions or init containers as alternatives.</item>
+      </list>
+    </section>
+
+    <section name="setup-prompt">
+      <prompt purpose="flux-setup"><![CDATA[
+Generate Flux CD configuration for my cluster.
+
+Requirements:
+- Cluster: [name]
+- Git repository: [URL]
+- Branch: [main / master]
+- Applications: [list]
+- Helm charts needed: [yes / no, which charts]
+- Image automation: [yes / no]
+
+Generate:
+1. Flux bootstrap command
+2. GitRepository source definition
+3. Kustomization definitions
+4. HelmRelease definitions (if needed)
+5. Image automation config (if needed)
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Flux controllers installed (source, kustomize, helm, notification).</check>
+      <check>GitRepository source configured with secretRef for private repos.</check>
+      <check>Webhook configured in Git provider pointing to Flux notification-receiver.</check>
+      <check>Kustomization CRDs created per environment with prune: true and healthChecks.</check>
+      <check>ignoreDifferences configured for HPA-managed replicas and operator-managed fields.</check>
+      <check>HelmRelease chart versions pinned (exact semver in prod).</check>
+      <check>Notification provider and alerts configured for sync failures.</check>
+      <check>Image automation (if used) restricted to non-production environments only.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://fluxcd.io/docs/"/>
+      <link href="https://fluxcd.io/flux/cmd/"/>
+      <link href="https://fluxcd.io/flux/guides/repository-structure/"/>
+      <ref slug="gitops-core-principles"/>
+      <ref slug="gitops-repository-structure"/>
+      <ref slug="argocd-gitops"/>
+    </see-also>
+  </content>
+</methodology>
