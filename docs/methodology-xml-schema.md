@@ -293,6 +293,56 @@ Example output injected into the agent's context:
 
 The catalog generator does the inverse: reads `<metadata>`, ignores `<content>`.
 
+## Skill-level Router (AGENTS.md, XML body)
+
+Skill-level `AGENTS.md` files (e.g. `geek/sdlc-ai/AGENTS.md`) keep the `.md` filename but the body is **XML — no metadata block, just a list of methodology entries with minimal routing fields**. Identity (tier / group / skill) is derived from the path.
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<router>
+  <methodology slug="lang-go-tygo-frontend-contract">
+    <reference path="lang-go-tygo-frontend-contract/methodology.xml">Body</reference>
+    <title>Go ↔ TS Contract via Tygo</title>
+    <summary>Generate TypeScript types from Go structs to keep frontend typed against backend.</summary>
+    <when-to-use>
+      <item>Go backend with TS frontend</item>
+      <item>API contract drift caught in CI</item>
+    </when-to-use>
+    <when-not-to-use>
+      <item>OpenAPI is primary contract</item>
+      <item>No TypeScript on frontend</item>
+    </when-not-to-use>
+  </methodology>
+
+  <methodology slug="lint-megalinter-polyglot">
+    <reference path="lint-megalinter-polyglot/methodology.xml">Body</reference>
+    <title>MegaLinter for Polyglot Repos</title>
+    <summary>One linter container running 50+ linters; CI-only, never pre-commit.</summary>
+    <when-to-use>
+      <item>Polyglot repo (3+ languages)</item>
+    </when-to-use>
+    <when-not-to-use>
+      <item>Single-language repo</item>
+    </when-not-to-use>
+  </methodology>
+</router>
+```
+
+### Router rules
+
+1. Filename: `AGENTS.md` (extension preserved for Claude Code auto-load).
+2. First line: `<?xml version="1.0" encoding="UTF-8"?>`.
+3. Root element: `<router>`. Exactly one per file.
+4. Children of `<router>`: only `<methodology>` entries — no metadata, no scope, no how-to.
+5. Each `<methodology>` MUST have:
+   - `slug` attribute equal to a real subfolder name.
+   - First child `<reference path="<slug>/methodology.xml">Body</reference>`.
+   - Then exactly: `<title>`, `<summary>` (≤200 chars), `<when-to-use>` (2-5 `<item>`), `<when-not-to-use>` (2-5 `<item>`).
+6. Closed vocabulary — only tags from `methodology-tag-glossary.xml` (see "Router" section).
+7. The `<methodology>` tag is reused with two different shapes — root in `methodology.xml` (with `<metadata>` + `<content>`) vs child of `<router>` (entry shape). Validator distinguishes by parent.
+
+A separate validator `scripts/validate-router-xml.py` (added in feature-047) enforces these rules.
+
 ## Anti-patterns
 
 - **Putting catalog data in `<content>`.** Tier/group/domain belong in metadata; they are NOT prompt content.

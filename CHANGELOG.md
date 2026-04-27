@@ -22,6 +22,8 @@
 - refactor: 3/3 code-quality methodologies migrated to new shape (batch: code-review-process, documentation, mob-programming)
 
 ### Added
+- feat: feature-046 decomposition pool config (BRIEF, TICK, queue of 114 oversized methodologies)
+- docs: router XML body spec for skill-level AGENTS.md (no metadata, slug+title+summary+when-to-use+when-not-to-use+reference)
 - docs: methodology XML schema spec, closed tag glossary (~60 tags), reference example
 - feat: validate-methodology-xml.py (closed-vocab + length-parity + path-consistency checks)
 - feat: feature-045 migration pool config (BRIEF + TICK) targeting single-file methodology.xml shape
