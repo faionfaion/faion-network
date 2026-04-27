@@ -5,6 +5,7 @@
 ### Changed
 - decompose: autonomous-agents → 5 slugs (agents-react-pattern, agents-memory-system, agents-safety-guardrails, agents-framework-selection, agents-production-deployment)
 - decompose: prompt-engineering → 5 slugs (prompt-engineering-fundamentals, prompt-engineering-reasoning, prompt-engineering-security, prompt-engineering-evaluation, prompt-engineering-production)
+- decompose: aws → 5 slugs (aws-cli-compute, aws-cli-containers-iac, aws-cfn-terraform-templates, aws-well-architected-checklists, aws-infra-llm-prompts)
 - decompose: serverless-architecture → 5 slugs (serverless-foundations, serverless-architecture-patterns, serverless-cold-start-optimization, serverless-cost-optimization, serverless-iac-and-templates)
 - decompose: embeddings → 5 slugs (embeddings-model-selection, embeddings-provider-apis, embeddings-batch-and-cache, embeddings-evaluation, embeddings-production-ops)
 - decompose: api-gateway-design → 5 slugs (api-gateway-patterns, api-gateway-resilience, api-gateway-security, api-gateway-observability, api-gateway-graphql)

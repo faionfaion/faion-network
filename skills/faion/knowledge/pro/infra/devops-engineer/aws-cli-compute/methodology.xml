@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-cli-compute">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>AWS CLI operations for EC2 instances, S3 buckets, key pairs, AMIs, Elastic IPs, and Lambda functions including invocation and event mappings.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cli</tag>
+      <tag>ec2</tag>
+      <tag>s3</tag>
+      <tag>lambda</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="aws-cli-containers-iac"/>
+      <ref slug="aws-cfn-terraform-templates"/>
+      <ref slug="aws-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS CLI — Compute and Storage Operations (EC2, S3, Lambda)</title>
+
+    <summary>Reference for AWS CLI commands covering EC2 instance lifecycle, S3 object and bucket management, Lambda function management and invocation, and shared credential configuration patterns.</summary>
+
+    <why>
+      <p>AWS CLI v2 is the primary automation surface for compute and storage operations. Having correct, production-tested commands removes lookup friction and prevents common mistakes such as missing --query filters, wrong credential scoping, or incomplete cleanup sequences.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Scripting EC2 instance launch, stop, terminate, or AMI creation workflows.</item>
+        <item>Managing S3 bucket lifecycle, versioning, policies, and object sync operations.</item>
+        <item>Deploying, updating, or invoking Lambda functions and managing layers and aliases.</item>
+        <item>Setting up local AWS CLI profiles and environment variable authentication.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Standing up multi-resource infrastructure — use CloudFormation or Terraform instead; see aws-cfn-terraform-templates.</item>
+        <item>Container workloads (ECS, EKS, ECR) — see aws-cli-containers-iac for those commands.</item>
+        <item>CI/CD automation at scale — wire CLI calls through GitHub Actions or GitLab CI rather than bare shell scripts.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cli-configuration">
+      <p>Configure AWS CLI before any service call. Use named profiles for multi-account setups. Prefer IAM roles and temporary credentials over long-lived access keys.</p>
+
+      <example type="good" title="Install AWS CLI v2 and configure">
+        <code lang="bash"><![CDATA[
+# Install AWS CLI v2 (Linux)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Verify installation
+aws --version
+
+# Configure default profile
+aws configure
+# AWS Access Key ID: YOUR_ACCESS_KEY
+# AWS Secret Access Key: YOUR_SECRET_KEY
+# Default region name: us-east-1
+# Default output format: json
+
+# Configure named profile
+aws configure --profile production
+
+# List profiles
+aws configure list-profiles
+
+# Use specific profile
+aws s3 ls --profile production
+
+# Set default profile for session
+export AWS_PROFILE=production
+]]></code>
+      </example>
+
+      <example type="good" title="Environment variable authentication">
+        <code lang="bash"><![CDATA[
+# Authentication
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_SESSION_TOKEN="your-session-token"  # For temporary credentials
+
+# Region
+export AWS_DEFAULT_REGION="us-east-1"
+export AWS_REGION="us-east-1"
+
+# Output format
+export AWS_DEFAULT_OUTPUT="json"  # json | text | table | yaml
+]]></code>
+      </example>
+
+      <example type="good" title="Credentials and config files">
+        <code lang="ini"><![CDATA[
+# ~/.aws/credentials
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY
+aws_secret_access_key = YOUR_SECRET_KEY
+
+[production]
+aws_access_key_id = PROD_ACCESS_KEY
+aws_secret_access_key = PROD_SECRET_KEY
+
+[development]
+role_arn = arn:aws:iam::123456789012:role/DevRole
+source_profile = default
+
+# ~/.aws/config
+[default]
+region = us-east-1
+output = json
+cli_pager = less
+
+[profile production]
+region = eu-west-1
+output = table
+
+[profile development]
+region = us-west-2
+role_arn = arn:aws:iam::123456789012:role/DevRole
+source_profile = default
+]]></code>
+      </example>
+    </section>
+
+    <section name="ec2-operations">
+      <p>EC2 instance management covers the full lifecycle: list, launch, start/stop/terminate, reboot, status, and waiting. Security groups, key pairs, AMIs, and Elastic IPs are grouped here as they are tightly coupled to EC2.</p>
+
+      <example type="good" title="EC2 instance lifecycle">
+        <code lang="bash"><![CDATA[
+# List all instances
+aws ec2 describe-instances
+
+# List running instances with key fields
+aws ec2 describe-instances \
+    --filters "Name=instance-state-name,Values=running" \
+    --query "Reservations[*].Instances[*].[InstanceId,InstanceType,State.Name,PublicIpAddress]" \
+    --output table
+
+# Launch instance
+aws ec2 run-instances \
+    --image-id ami-0123456789abcdef0 \
+    --instance-type t3.micro \
+    --key-name my-key-pair \
+    --security-group-ids sg-0123456789abcdef0 \
+    --subnet-id subnet-0123456789abcdef0 \
+    --count 1 \
+    --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=my-instance}]'
+
+# Start/stop/terminate instances
+aws ec2 start-instances --instance-ids i-0123456789abcdef0
+aws ec2 stop-instances --instance-ids i-0123456789abcdef0
+aws ec2 terminate-instances --instance-ids i-0123456789abcdef0
+
+# Reboot instance
+aws ec2 reboot-instances --instance-ids i-0123456789abcdef0
+
+# Get instance status
+aws ec2 describe-instance-status --instance-ids i-0123456789abcdef0
+
+# Wait for instance to be running
+aws ec2 wait instance-running --instance-ids i-0123456789abcdef0
+]]></code>
+      </example>
+
+      <example type="good" title="Security groups">
+        <code lang="bash"><![CDATA[
+# List security groups
+aws ec2 describe-security-groups
+
+# Create security group
+aws ec2 create-security-group \
+    --group-name my-sg \
+    --description "My security group" \
+    --vpc-id vpc-0123456789abcdef0
+
+# Add inbound rule (SSH from private CIDR only)
+aws ec2 authorize-security-group-ingress \
+    --group-id sg-0123456789abcdef0 \
+    --protocol tcp \
+    --port 22 \
+    --cidr 10.0.0.0/8
+
+# Add inbound rule (HTTPS)
+aws ec2 authorize-security-group-ingress \
+    --group-id sg-0123456789abcdef0 \
+    --protocol tcp \
+    --port 443 \
+    --cidr 0.0.0.0/0
+
+# Remove inbound rule
+aws ec2 revoke-security-group-ingress \
+    --group-id sg-0123456789abcdef0 \
+    --protocol tcp \
+    --port 22 \
+    --cidr 10.0.0.0/8
+
+# Delete security group
+aws ec2 delete-security-group --group-id sg-0123456789abcdef0
+]]></code>
+      </example>
+
+      <example type="good" title="Key pairs">
+        <code lang="bash"><![CDATA[
+# List key pairs
+aws ec2 describe-key-pairs
+
+# Create key pair (save private key)
+aws ec2 create-key-pair \
+    --key-name my-key-pair \
+    --query 'KeyMaterial' \
+    --output text > my-key-pair.pem
+chmod 400 my-key-pair.pem
+
+# Import existing public key
+aws ec2 import-key-pair \
+    --key-name my-key-pair \
+    --public-key-material fileb://~/.ssh/id_rsa.pub
+
+# Delete key pair
+aws ec2 delete-key-pair --key-name my-key-pair
+]]></code>
+      </example>
+
+      <example type="good" title="AMI management">
+        <code lang="bash"><![CDATA[
+# List AMIs (owned by you)
+aws ec2 describe-images --owners self
+
+# Create AMI from instance
+aws ec2 create-image \
+    --instance-id i-0123456789abcdef0 \
+    --name "my-ami-$(date +%Y%m%d)" \
+    --description "My AMI" \
+    --no-reboot
+
+# Copy AMI to another region
+aws ec2 copy-image \
+    --source-image-id ami-0123456789abcdef0 \
+    --source-region us-east-1 \
+    --region eu-west-1 \
+    --name "my-ami-copy"
+
+# Deregister AMI
+aws ec2 deregister-image --image-id ami-0123456789abcdef0
+
+# Delete associated snapshot
+aws ec2 delete-snapshot --snapshot-id snap-0123456789abcdef0
+]]></code>
+      </example>
+
+      <example type="good" title="Elastic IPs">
+        <code lang="bash"><![CDATA[
+# Allocate Elastic IP
+aws ec2 allocate-address --domain vpc
+
+# Associate with instance
+aws ec2 associate-address \
+    --instance-id i-0123456789abcdef0 \
+    --allocation-id eipalloc-0123456789abcdef0
+
+# Disassociate
+aws ec2 disassociate-address --association-id eipassoc-0123456789abcdef0
+
+# Release Elastic IP
+aws ec2 release-address --allocation-id eipalloc-0123456789abcdef0
+]]></code>
+      </example>
+    </section>
+
+    <section name="s3-operations">
+      <p>S3 operations span bucket management, object copy/sync/delete, presigned URLs, versioning, lifecycle policies, and bucket policies.</p>
+
+      <example type="good" title="S3 bucket and object operations">
+        <code lang="bash"><![CDATA[
+# List buckets
+aws s3 ls
+
+# Create bucket
+aws s3 mb s3://my-bucket-name
+
+# Create bucket in specific region
+aws s3 mb s3://my-bucket-name --region eu-west-1
+
+# Delete empty bucket
+aws s3 rb s3://my-bucket-name
+
+# Delete bucket with contents
+aws s3 rb s3://my-bucket-name --force
+
+# List bucket contents
+aws s3 ls s3://my-bucket-name
+aws s3 ls s3://my-bucket-name --recursive
+aws s3 ls s3://my-bucket-name --recursive --human-readable --summarize
+
+# Upload file
+aws s3 cp file.txt s3://my-bucket/file.txt
+
+# Upload with metadata
+aws s3 cp file.txt s3://my-bucket/file.txt \
+    --metadata '{"key":"value"}' \
+    --content-type "text/plain"
+
+# Download file
+aws s3 cp s3://my-bucket/file.txt ./file.txt
+
+# Copy between buckets
+aws s3 cp s3://source-bucket/file.txt s3://dest-bucket/file.txt
+
+# Move object
+aws s3 mv s3://my-bucket/old-name.txt s3://my-bucket/new-name.txt
+
+# Delete object
+aws s3 rm s3://my-bucket/file.txt
+
+# Delete all objects with prefix
+aws s3 rm s3://my-bucket/folder/ --recursive
+
+# Sync directories
+aws s3 sync ./local-folder s3://my-bucket/folder
+aws s3 sync s3://my-bucket/folder ./local-folder
+aws s3 sync ./local-folder s3://my-bucket/folder --delete  # Mirror sync
+]]></code>
+      </example>
+
+      <example type="good" title="Presigned URLs, versioning, lifecycle, policies">
+        <code lang="bash"><![CDATA[
+# Generate presigned URL for download (default 1 hour)
+aws s3 presign s3://my-bucket/file.txt
+
+# Generate presigned URL with custom expiry (seconds)
+aws s3 presign s3://my-bucket/file.txt --expires-in 3600
+
+# Enable versioning
+aws s3api put-bucket-versioning \
+    --bucket my-bucket \
+    --versioning-configuration Status=Enabled
+
+# Get versioning status
+aws s3api get-bucket-versioning --bucket my-bucket
+
+# List object versions
+aws s3api list-object-versions --bucket my-bucket
+
+# Delete specific version
+aws s3api delete-object \
+    --bucket my-bucket \
+    --key file.txt \
+    --version-id "version-id"
+
+# Set lifecycle policy
+aws s3api put-bucket-lifecycle-configuration \
+    --bucket my-bucket \
+    --lifecycle-configuration file://lifecycle.json
+
+# Get lifecycle configuration
+aws s3api get-bucket-lifecycle-configuration --bucket my-bucket
+
+# Set bucket policy
+aws s3api put-bucket-policy \
+    --bucket my-bucket \
+    --policy file://policy.json
+
+# Get bucket policy
+aws s3api get-bucket-policy --bucket my-bucket
+
+# Delete bucket policy
+aws s3api delete-bucket-policy --bucket my-bucket
+]]></code>
+      </example>
+    </section>
+
+    <section name="lambda-operations">
+      <p>Lambda CLI covers function CRUD, synchronous and asynchronous invocation, layers, event source mappings, and aliases for blue-green deployments.</p>
+
+      <example type="good" title="Lambda function management">
+        <code lang="bash"><![CDATA[
+# List functions
+aws lambda list-functions
+
+# Get function configuration
+aws lambda get-function --function-name my-function
+
+# Create function from zip
+aws lambda create-function \
+    --function-name my-function \
+    --runtime python3.11 \
+    --role arn:aws:iam::123456789012:role/lambda-role \
+    --handler lambda_function.lambda_handler \
+    --zip-file fileb://function.zip \
+    --timeout 30 \
+    --memory-size 256
+
+# Update function code
+aws lambda update-function-code \
+    --function-name my-function \
+    --zip-file fileb://function.zip
+
+# Update function configuration
+aws lambda update-function-configuration \
+    --function-name my-function \
+    --timeout 60 \
+    --memory-size 512 \
+    --environment "Variables={KEY1=value1,KEY2=value2}"
+
+# Delete function
+aws lambda delete-function --function-name my-function
+]]></code>
+      </example>
+
+      <example type="good" title="Lambda invocation">
+        <code lang="bash"><![CDATA[
+# Invoke function synchronously
+aws lambda invoke \
+    --function-name my-function \
+    --payload '{"key": "value"}' \
+    --cli-binary-format raw-in-base64-out \
+    response.json
+
+# Invoke function asynchronously
+aws lambda invoke \
+    --function-name my-function \
+    --invocation-type Event \
+    --payload '{"key": "value"}' \
+    --cli-binary-format raw-in-base64-out \
+    response.json
+
+# View logs (requires log-type)
+aws lambda invoke \
+    --function-name my-function \
+    --log-type Tail \
+    --payload '{}' \
+    --cli-binary-format raw-in-base64-out \
+    response.json \
+    --query 'LogResult' --output text | base64 -d
+]]></code>
+      </example>
+
+      <example type="good" title="Lambda layers, event sources, aliases">
+        <code lang="bash"><![CDATA[
+# List layers
+aws lambda list-layers
+
+# Publish layer version
+aws lambda publish-layer-version \
+    --layer-name my-layer \
+    --description "My layer" \
+    --zip-file fileb://layer.zip \
+    --compatible-runtimes python3.11 python3.10
+
+# Add layer to function
+aws lambda update-function-configuration \
+    --function-name my-function \
+    --layers arn:aws:lambda:us-east-1:123456789012:layer:my-layer:1
+
+# Delete layer version
+aws lambda delete-layer-version \
+    --layer-name my-layer \
+    --version-number 1
+
+# List event source mappings
+aws lambda list-event-source-mappings --function-name my-function
+
+# Create SQS trigger
+aws lambda create-event-source-mapping \
+    --function-name my-function \
+    --event-source-arn arn:aws:sqs:us-east-1:123456789012:my-queue \
+    --batch-size 10
+
+# Create DynamoDB Streams trigger
+aws lambda create-event-source-mapping \
+    --function-name my-function \
+    --event-source-arn arn:aws:dynamodb:us-east-1:123456789012:table/my-table/stream/... \
+    --starting-position LATEST \
+    --batch-size 100
+
+# Delete event source mapping
+aws lambda delete-event-source-mapping --uuid "uuid-here"
+
+# Publish version
+aws lambda publish-version \
+    --function-name my-function \
+    --description "v1.0.0"
+
+# Create alias
+aws lambda create-alias \
+    --function-name my-function \
+    --name prod \
+    --function-version 1
+
+# Update alias (for blue-green deployment)
+aws lambda update-alias \
+    --function-name my-function \
+    --name prod \
+    --function-version 2 \
+    --routing-config AdditionalVersionWeights={"1"=0.1}  # 10% traffic to v1
+]]></code>
+      </example>
+    </section>
+
+    <section name="output-and-troubleshooting">
+      <p>AWS CLI output formatting with JMESPath queries and pagination patterns. Debug mode and common error remediation.</p>
+
+      <example type="good" title="Output formatting and pagination">
+        <code lang="bash"><![CDATA[
+# JMESPath queries
+--query "Reservations[*].Instances[*].[InstanceId,State.Name]"
+--query "Reservations[].Instances[].{ID:InstanceId,State:State.Name,Type:InstanceType}"
+--query "Reservations[?Instances[?State.Name=='running']]"
+
+# Output formats
+--output json   # Default, machine-readable
+--output table  # Human-readable tables
+--output text   # Tab-separated, for scripting
+--output yaml   # YAML format
+
+# Handle pagination automatically
+aws s3api list-objects-v2 --bucket my-bucket --max-items 1000
+
+# Manual pagination
+aws s3api list-objects-v2 --bucket my-bucket --max-items 100
+# Use NextToken from output for next page
+aws s3api list-objects-v2 --bucket my-bucket --starting-token <NextToken>
+]]></code>
+      </example>
+
+      <example type="good" title="Troubleshooting and debug">
+        <code lang="bash"><![CDATA[
+# Enable debug output
+aws s3 ls --debug
+
+# Check configuration
+aws configure list
+
+# Check identity
+aws sts get-caller-identity
+
+# Check permissions (simulate)
+aws iam simulate-principal-policy \
+    --policy-source-arn arn:aws:iam::123456789012:user/my-user \
+    --action-names s3:GetObject \
+    --resource-arns arn:aws:s3:::my-bucket/*
+
+# ExpiredToken - refresh credentials or re-authenticate
+aws sts get-session-token
+
+# ThrottlingException - implement exponential backoff
+# Use --cli-connect-timeout and --cli-read-timeout
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using root account credentials in ~/.aws/credentials for day-to-day operations.</description>
+        <reason>Root credentials cannot be scoped with IAM policies; a compromised key has full account access. Use IAM roles or least-privilege users.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Hardcoding AWS credentials in shell scripts or code files.</description>
+        <reason>Credentials leak into version control or logs. Use environment variables, IAM roles, or AWS Secrets Manager.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="aws-cli-containers-iac"/>
+      <ref slug="aws-cfn-terraform-templates"/>
+      <ref slug="aws-well-architected-checklists"/>
+      <link href="https://docs.aws.amazon.com/cli/latest/userguide/"/>
+    </see-also>
+  </content>
+</methodology>

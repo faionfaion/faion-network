@@ -1,0 +1,676 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-cli-containers-iac">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>AWS CLI operations for RDS, ECS clusters and services, EKS node groups, ECR, CloudFormation stacks, IAM users/roles/policies, and CloudWatch logs, metrics, and alarms.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cli</tag>
+      <tag>ecs</tag>
+      <tag>eks</tag>
+      <tag>cloudformation</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="aws-cli-compute"/>
+      <ref slug="aws-cfn-terraform-templates"/>
+      <ref slug="aws-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS CLI — Containers, Databases, IaC, Identity and Monitoring</title>
+
+    <summary>Reference for AWS CLI commands covering RDS and Aurora databases, ECS/EKS/ECR container services, CloudFormation stack management, IAM user/role/policy operations, CloudWatch logs and alarms, and common deployment patterns including blue-green and disaster recovery.</summary>
+
+    <why>
+      <p>Container and database operations involve multi-step CLI sequences with precise ordering (e.g., task definitions before services, security groups before DB instances). Accurate command references reduce deployment errors and speed up debugging of failed deployments.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Managing RDS instances, snapshots, parameter groups, and Aurora clusters via CLI.</item>
+        <item>ECS cluster, task definition, service, and ECR image lifecycle operations.</item>
+        <item>EKS cluster creation, node group scaling, and add-on management.</item>
+        <item>CloudFormation stack create/update/delete with change sets and output extraction.</item>
+        <item>IAM user, role, policy, and permission boundary management.</item>
+        <item>CloudWatch log querying, metric retrieval, alarm management, and dashboards.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>EC2, S3, and Lambda operations — see aws-cli-compute for those commands.</item>
+        <item>Repeatable multi-resource deployments — use templates from aws-cfn-terraform-templates instead.</item>
+        <item>Production IAM changes without peer review — IAM modifications are high-risk; use IaC with version control.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="rds-operations">
+      <p>RDS covers instance lifecycle, snapshots and restore, parameter groups, and Aurora cluster management.</p>
+
+      <example type="good" title="RDS instance lifecycle">
+        <code lang="bash"><![CDATA[
+# List DB instances
+aws rds describe-db-instances
+
+# Get specific instance
+aws rds describe-db-instances \
+    --db-instance-identifier my-database \
+    --query "DBInstances[0].[DBInstanceIdentifier,DBInstanceStatus,Endpoint.Address]"
+
+# Create DB instance
+aws rds create-db-instance \
+    --db-instance-identifier my-database \
+    --db-instance-class db.t3.micro \
+    --engine postgres \
+    --engine-version 15.4 \
+    --master-username admin \
+    --master-user-password "SecurePassword123!" \
+    --allocated-storage 20 \
+    --vpc-security-group-ids sg-0123456789abcdef0 \
+    --db-subnet-group-name my-subnet-group \
+    --backup-retention-period 7 \
+    --storage-encrypted \
+    --multi-az
+
+# Modify instance
+aws rds modify-db-instance \
+    --db-instance-identifier my-database \
+    --db-instance-class db.t3.small \
+    --apply-immediately
+
+# Start/stop instance
+aws rds start-db-instance --db-instance-identifier my-database
+aws rds stop-db-instance --db-instance-identifier my-database
+
+# Reboot instance
+aws rds reboot-db-instance --db-instance-identifier my-database
+
+# Delete instance
+aws rds delete-db-instance \
+    --db-instance-identifier my-database \
+    --skip-final-snapshot
+]]></code>
+      </example>
+
+      <example type="good" title="RDS snapshots and Aurora clusters">
+        <code lang="bash"><![CDATA[
+# List snapshots
+aws rds describe-db-snapshots --db-instance-identifier my-database
+
+# Create snapshot
+aws rds create-db-snapshot \
+    --db-instance-identifier my-database \
+    --db-snapshot-identifier my-snapshot-$(date +%Y%m%d)
+
+# Restore from snapshot
+aws rds restore-db-instance-from-db-snapshot \
+    --db-instance-identifier my-restored-database \
+    --db-snapshot-identifier my-snapshot
+
+# Copy snapshot to another region
+aws rds copy-db-snapshot \
+    --source-db-snapshot-identifier arn:aws:rds:us-east-1:123456789012:snapshot:my-snapshot \
+    --target-db-snapshot-identifier my-snapshot-copy \
+    --source-region us-east-1 \
+    --region eu-west-1
+
+# Delete snapshot
+aws rds delete-db-snapshot --db-snapshot-identifier my-snapshot
+
+# Create parameter group
+aws rds create-db-parameter-group \
+    --db-parameter-group-name my-params \
+    --db-parameter-group-family postgres15 \
+    --description "My parameter group"
+
+# Modify parameters
+aws rds modify-db-parameter-group \
+    --db-parameter-group-name my-params \
+    --parameters "ParameterName=max_connections,ParameterValue=200,ApplyMethod=pending-reboot"
+
+# Create Aurora cluster
+aws rds create-db-cluster \
+    --db-cluster-identifier my-aurora-cluster \
+    --engine aurora-postgresql \
+    --engine-version 15.4 \
+    --master-username admin \
+    --master-user-password "SecurePassword123!" \
+    --vpc-security-group-ids sg-0123456789abcdef0 \
+    --db-subnet-group-name my-subnet-group
+
+# Add instance to cluster
+aws rds create-db-instance \
+    --db-instance-identifier my-aurora-instance \
+    --db-instance-class db.r6g.large \
+    --engine aurora-postgresql \
+    --db-cluster-identifier my-aurora-cluster
+
+# Failover cluster
+aws rds failover-db-cluster --db-cluster-identifier my-aurora-cluster
+]]></code>
+      </example>
+    </section>
+
+    <section name="ecs-ecr-operations">
+      <p>ECS operations cover cluster management, task definitions, services, running standalone tasks, and exec access. ECR commands cover login, repository management, and image operations.</p>
+
+      <example type="good" title="ECS cluster and task definitions">
+        <code lang="bash"><![CDATA[
+# List clusters
+aws ecs list-clusters
+
+# Describe cluster
+aws ecs describe-clusters --clusters my-cluster
+
+# Create cluster
+aws ecs create-cluster \
+    --cluster-name my-cluster \
+    --capacity-providers FARGATE FARGATE_SPOT \
+    --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
+
+# Delete cluster
+aws ecs delete-cluster --cluster my-cluster
+
+# List task definitions
+aws ecs list-task-definitions
+
+# Register task definition
+aws ecs register-task-definition --cli-input-json file://task-definition.json
+
+# Describe task definition
+aws ecs describe-task-definition --task-definition my-app
+
+# Deregister task definition
+aws ecs deregister-task-definition --task-definition my-app:1
+]]></code>
+      </example>
+
+      <example type="good" title="ECS services and tasks">
+        <code lang="bash"><![CDATA[
+# List services
+aws ecs list-services --cluster my-cluster
+
+# Create service
+aws ecs create-service \
+    --cluster my-cluster \
+    --service-name my-service \
+    --task-definition my-app:1 \
+    --desired-count 2 \
+    --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[subnet-123,subnet-456],securityGroups=[sg-789],assignPublicIp=ENABLED}" \
+    --load-balancers targetGroupArn=arn:aws:elasticloadbalancing:...,containerName=app,containerPort=8080
+
+# Update service
+aws ecs update-service \
+    --cluster my-cluster \
+    --service my-service \
+    --task-definition my-app:2 \
+    --desired-count 3 \
+    --force-new-deployment
+
+# Delete service
+aws ecs delete-service \
+    --cluster my-cluster \
+    --service my-service \
+    --force
+
+# List running tasks
+aws ecs list-tasks --cluster my-cluster
+
+# Run standalone task
+aws ecs run-task \
+    --cluster my-cluster \
+    --task-definition my-app:1 \
+    --launch-type FARGATE \
+    --network-configuration "awsvpcConfiguration={subnets=[subnet-123],securityGroups=[sg-789],assignPublicIp=ENABLED}"
+
+# Stop task
+aws ecs stop-task --cluster my-cluster --task arn:aws:ecs:...:task/my-cluster/task-id
+
+# Execute command in container (requires ECS Exec enabled)
+aws ecs execute-command \
+    --cluster my-cluster \
+    --task task-id \
+    --container app \
+    --interactive \
+    --command "/bin/bash"
+]]></code>
+      </example>
+
+      <example type="good" title="ECR login, repositories, and images">
+        <code lang="bash"><![CDATA[
+# Login to ECR
+aws ecr get-login-password --region us-east-1 | \
+    docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com
+
+# Create repository
+aws ecr create-repository --repository-name my-app
+
+# List repositories
+aws ecr describe-repositories
+
+# List images
+aws ecr list-images --repository-name my-app
+
+# Delete image
+aws ecr batch-delete-image \
+    --repository-name my-app \
+    --image-ids imageTag=latest
+
+# Delete repository
+aws ecr delete-repository --repository-name my-app --force
+]]></code>
+      </example>
+    </section>
+
+    <section name="eks-operations">
+      <p>EKS cluster management, node group scaling, kubeconfig update, and add-on management.</p>
+
+      <example type="good" title="EKS cluster and node groups">
+        <code lang="bash"><![CDATA[
+# List clusters
+aws eks list-clusters
+
+# Describe cluster
+aws eks describe-cluster --name my-cluster
+
+# Create cluster
+aws eks create-cluster \
+    --name my-cluster \
+    --role-arn arn:aws:iam::123456789012:role/eks-cluster-role \
+    --resources-vpc-config subnetIds=subnet-123,subnet-456,securityGroupIds=sg-789
+
+# Update kubeconfig
+aws eks update-kubeconfig --name my-cluster --region us-east-1
+
+# Delete cluster
+aws eks delete-cluster --name my-cluster
+
+# List node groups
+aws eks list-nodegroups --cluster-name my-cluster
+
+# Create node group
+aws eks create-nodegroup \
+    --cluster-name my-cluster \
+    --nodegroup-name my-nodes \
+    --node-role arn:aws:iam::123456789012:role/eks-node-role \
+    --subnets subnet-123 subnet-456 \
+    --instance-types t3.medium \
+    --scaling-config minSize=2,maxSize=10,desiredSize=3
+
+# Update node group
+aws eks update-nodegroup-config \
+    --cluster-name my-cluster \
+    --nodegroup-name my-nodes \
+    --scaling-config minSize=2,maxSize=20,desiredSize=5
+
+# Delete node group
+aws eks delete-nodegroup \
+    --cluster-name my-cluster \
+    --nodegroup-name my-nodes
+
+# List add-ons
+aws eks list-addons --cluster-name my-cluster
+
+# Create add-on
+aws eks create-addon \
+    --cluster-name my-cluster \
+    --addon-name vpc-cni \
+    --addon-version v1.15.0-eksbuild.2
+
+# Update add-on
+aws eks update-addon \
+    --cluster-name my-cluster \
+    --addon-name vpc-cni \
+    --addon-version v1.16.0-eksbuild.1
+
+# Delete add-on
+aws eks delete-addon \
+    --cluster-name my-cluster \
+    --addon-name vpc-cni
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloudformation-operations">
+      <p>CloudFormation stack lifecycle, change set management, output and event extraction, and template validation.</p>
+
+      <example type="good" title="CloudFormation stack management">
+        <code lang="bash"><![CDATA[
+# List stacks
+aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE
+
+# Describe stack
+aws cloudformation describe-stacks --stack-name my-stack
+
+# Create stack
+aws cloudformation create-stack \
+    --stack-name my-stack \
+    --template-body file://template.yaml \
+    --parameters ParameterKey=Environment,ParameterValue=production \
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+    --tags Key=Project,Value=MyProject
+
+# Create stack from S3
+aws cloudformation create-stack \
+    --stack-name my-stack \
+    --template-url https://s3.amazonaws.com/my-bucket/template.yaml
+
+# Update stack
+aws cloudformation update-stack \
+    --stack-name my-stack \
+    --template-body file://template.yaml \
+    --parameters ParameterKey=Environment,ParameterValue=production
+
+# Delete stack
+aws cloudformation delete-stack --stack-name my-stack
+
+# Wait for stack creation
+aws cloudformation wait stack-create-complete --stack-name my-stack
+
+# Create change set
+aws cloudformation create-change-set \
+    --stack-name my-stack \
+    --change-set-name my-changes \
+    --template-body file://template.yaml \
+    --parameters ParameterKey=Environment,ParameterValue=staging
+
+# Describe change set
+aws cloudformation describe-change-set \
+    --stack-name my-stack \
+    --change-set-name my-changes
+
+# Execute change set
+aws cloudformation execute-change-set \
+    --stack-name my-stack \
+    --change-set-name my-changes
+
+# Get stack outputs
+aws cloudformation describe-stacks \
+    --stack-name my-stack \
+    --query "Stacks[0].Outputs"
+
+# Get stack events (for debugging)
+aws cloudformation describe-stack-events \
+    --stack-name my-stack \
+    --query "StackEvents[?ResourceStatus=='CREATE_FAILED']"
+
+# Get stack resources
+aws cloudformation list-stack-resources --stack-name my-stack
+
+# Validate template
+aws cloudformation validate-template --template-body file://template.yaml
+]]></code>
+      </example>
+    </section>
+
+    <section name="iam-operations">
+      <p>IAM user, role, and policy management including permission boundaries and service-linked roles.</p>
+
+      <example type="good" title="IAM users and roles">
+        <code lang="bash"><![CDATA[
+# List users
+aws iam list-users
+
+# Create user
+aws iam create-user --user-name my-user
+
+# Delete user
+aws iam delete-user --user-name my-user
+
+# Create access key
+aws iam create-access-key --user-name my-user
+
+# List access keys
+aws iam list-access-keys --user-name my-user
+
+# Delete access key
+aws iam delete-access-key --user-name my-user --access-key-id AKIAIOSFODNN7EXAMPLE
+
+# Add user to group
+aws iam add-user-to-group --user-name my-user --group-name developers
+
+# List roles
+aws iam list-roles
+
+# Create role
+aws iam create-role \
+    --role-name my-role \
+    --assume-role-policy-document file://trust-policy.json
+
+# Attach managed policy to role
+aws iam attach-role-policy \
+    --role-name my-role \
+    --policy-arn arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+
+# Attach inline policy to role
+aws iam put-role-policy \
+    --role-name my-role \
+    --policy-name my-inline-policy \
+    --policy-document file://policy.json
+
+# Assume role (get temporary credentials)
+aws sts assume-role \
+    --role-arn arn:aws:iam::123456789012:role/my-role \
+    --role-session-name my-session
+
+# Delete role
+aws iam delete-role --role-name my-role
+
+# List policies (custom only)
+aws iam list-policies --scope Local
+
+# Create policy
+aws iam create-policy \
+    --policy-name my-policy \
+    --policy-document file://policy.json
+
+# Create new policy version
+aws iam create-policy-version \
+    --policy-arn arn:aws:iam::123456789012:policy/my-policy \
+    --policy-document file://new-policy.json \
+    --set-as-default
+
+# Delete policy
+aws iam delete-policy --policy-arn arn:aws:iam::123456789012:policy/my-policy
+
+# Set permission boundary on role
+aws iam put-role-permissions-boundary \
+    --role-name my-role \
+    --permissions-boundary arn:aws:iam::123456789012:policy/my-boundary
+
+# Use AWS Access Analyzer to find unused permissions
+aws accessanalyzer list-analyzers
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloudwatch-operations">
+      <p>CloudWatch log groups, log streams, event filtering, live tail, metrics, alarms, dashboards, and Log Insights queries.</p>
+
+      <example type="good" title="CloudWatch logs and metrics">
+        <code lang="bash"><![CDATA[
+# List log groups
+aws logs describe-log-groups
+
+# Create log group
+aws logs create-log-group --log-group-name /my-app/logs
+
+# List log streams
+aws logs describe-log-streams \
+    --log-group-name /my-app/logs \
+    --order-by LastEventTime \
+    --descending
+
+# Get log events
+aws logs get-log-events \
+    --log-group-name /my-app/logs \
+    --log-stream-name my-stream \
+    --limit 100
+
+# Filter log events
+aws logs filter-log-events \
+    --log-group-name /my-app/logs \
+    --filter-pattern "ERROR" \
+    --start-time $(date -d '1 hour ago' +%s)000
+
+# Tail logs (live)
+aws logs tail /my-app/logs --follow
+
+# Set retention
+aws logs put-retention-policy \
+    --log-group-name /my-app/logs \
+    --retention-in-days 30
+
+# List metrics
+aws cloudwatch list-metrics --namespace AWS/EC2
+
+# Get metric statistics
+aws cloudwatch get-metric-statistics \
+    --namespace AWS/EC2 \
+    --metric-name CPUUtilization \
+    --dimensions Name=InstanceId,Value=i-0123456789abcdef0 \
+    --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ) \
+    --end-time $(date -u +%Y-%m-%dT%H:%M:%SZ) \
+    --period 300 \
+    --statistics Average Maximum
+
+# Put custom metric
+aws cloudwatch put-metric-data \
+    --namespace MyApp \
+    --metric-name RequestCount \
+    --value 100 \
+    --unit Count \
+    --dimensions Environment=production
+
+# Create alarm
+aws cloudwatch put-metric-alarm \
+    --alarm-name "High CPU" \
+    --metric-name CPUUtilization \
+    --namespace AWS/EC2 \
+    --statistic Average \
+    --period 300 \
+    --threshold 80 \
+    --comparison-operator GreaterThanThreshold \
+    --evaluation-periods 2 \
+    --dimensions Name=InstanceId,Value=i-0123456789abcdef0 \
+    --alarm-actions arn:aws:sns:us-east-1:123456789012:my-topic
+
+# Delete alarm
+aws cloudwatch delete-alarms --alarm-names "High CPU"
+
+# Start Log Insights query
+aws logs start-query \
+    --log-group-name /my-app/logs \
+    --start-time $(date -d '1 hour ago' +%s) \
+    --end-time $(date +%s) \
+    --query-string "fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 100"
+
+# Get query results
+aws logs get-query-results --query-id "query-id-here"
+]]></code>
+      </example>
+    </section>
+
+    <section name="common-patterns">
+      <p>Deployment pipeline, blue-green deployment, and disaster recovery patterns using multiple AWS CLI commands in sequence.</p>
+
+      <example type="good" title="ECS deployment pipeline">
+        <code lang="bash"><![CDATA[
+# Build and push Docker image
+docker build -t my-app:latest .
+aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_URI
+docker tag my-app:latest $ECR_URI/my-app:latest
+docker push $ECR_URI/my-app:latest
+
+# Update ECS service
+aws ecs update-service \
+    --cluster my-cluster \
+    --service my-service \
+    --force-new-deployment
+
+# Wait for deployment
+aws ecs wait services-stable --cluster my-cluster --services my-service
+]]></code>
+      </example>
+
+      <example type="good" title="Lambda blue-green deployment">
+        <code lang="bash"><![CDATA[
+# Deploy new version to green environment
+aws lambda update-function-code --function-name my-function --zip-file fileb://new.zip
+aws lambda publish-version --function-name my-function
+
+# Shift traffic gradually
+aws lambda update-alias \
+    --function-name my-function \
+    --name prod \
+    --routing-config AdditionalVersionWeights={"1"=0.1}  # 10% to new version
+
+# Complete switch
+aws lambda update-alias \
+    --function-name my-function \
+    --name prod \
+    --function-version 2
+]]></code>
+      </example>
+
+      <example type="good" title="Disaster recovery cross-region copies">
+        <code lang="bash"><![CDATA[
+# Copy RDS snapshot to another region
+aws rds copy-db-snapshot \
+    --source-db-snapshot-identifier arn:aws:rds:us-east-1:123456789012:snapshot:my-snapshot \
+    --target-db-snapshot-identifier my-snapshot-dr \
+    --source-region us-east-1 \
+    --region eu-west-1
+
+# Copy AMI to another region
+aws ec2 copy-image \
+    --source-image-id ami-0123456789abcdef0 \
+    --source-region us-east-1 \
+    --region eu-west-1 \
+    --name "my-ami-dr"
+]]></code>
+      </example>
+
+      <example type="good" title="Cost optimization: find unused resources">
+        <code lang="bash"><![CDATA[
+# Find unused Elastic IPs
+aws ec2 describe-addresses \
+    --query "Addresses[?AssociationId==null]"
+
+# Find old snapshots
+aws ec2 describe-snapshots \
+    --owner-ids self \
+    --query "Snapshots[?StartTime<='$(date -d '90 days ago' +%Y-%m-%d)']"
+
+# Find stopped instances
+aws ec2 describe-instances \
+    --filters "Name=instance-state-name,Values=stopped" \
+    --query "Reservations[*].Instances[*].[InstanceId,Tags[?Key=='Name'].Value|[0]]"
+
+# Get Cost Explorer data
+aws ce get-cost-and-usage \
+    --time-period Start=2024-01-01,End=2024-01-31 \
+    --granularity MONTHLY \
+    --metrics BlendedCost
+]]></code>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="aws-cli-compute"/>
+      <ref slug="aws-cfn-terraform-templates"/>
+      <ref slug="aws-well-architected-checklists"/>
+      <link href="https://docs.aws.amazon.com/cli/latest/reference/"/>
+    </see-also>
+  </content>
+</methodology>

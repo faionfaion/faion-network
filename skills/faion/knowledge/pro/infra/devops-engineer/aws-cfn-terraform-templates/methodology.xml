@@ -1,14 +1,62 @@
-# AWS Templates
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-cfn-terraform-templates">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>CloudFormation and Terraform templates for AWS: VPC subnets, ECS Fargate with ALB, Lambda + API Gateway + DynamoDB, RDS PostgreSQL with Secrets Manager, and S3/IAM JSON configs.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cloudformation</tag>
+      <tag>terraform</tag>
+      <tag>iac</tag>
+      <tag>templates</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <related>
+      <ref slug="aws-cli-containers-iac"/>
+      <ref slug="aws-cli-compute"/>
+      <ref slug="aws-architecture"/>
+    </related>
+  </metadata>
 
-CloudFormation, Terraform, and configuration templates for AWS infrastructure.
+  <content>
+    <title>AWS Infrastructure-as-Code Templates (CloudFormation and Terraform)</title>
 
----
+    <summary>Production-ready CloudFormation YAML and Terraform HCL templates for common AWS infrastructure patterns: VPC networking, ECS Fargate services, serverless Lambda stacks, RDS PostgreSQL with Secrets Manager, and supporting IAM/S3/ECS configuration JSON.</summary>
 
-## CloudFormation Templates
+    <why>
+      <p>Starting from battle-tested templates prevents common mistakes: missing NAT Gateway dependencies, incorrect ECS execution role attachments, missing DeletionPolicy on RDS, and S3 public-access blocks absent from security-sensitive buckets. Templates encode the correct resource ordering and dependency graph.</p>
+    </why>
 
-### VPC with Public and Private Subnets
+    <when-to-use>
+      <list>
+        <item>Deploying a new VPC with multi-AZ public and private subnets.</item>
+        <item>Launching an ECS Fargate service behind an Application Load Balancer.</item>
+        <item>Setting up a serverless API with Lambda, API Gateway, and DynamoDB.</item>
+        <item>Provisioning RDS PostgreSQL with auto-rotating credentials via Secrets Manager.</item>
+        <item>Creating reusable Terraform modules for VPC or ECS service resources.</item>
+      </list>
+    </when-to-use>
 
-```yaml
+    <when-not-to-use>
+      <list>
+        <item>One-off CLI operations — use aws-cli-compute or aws-cli-containers-iac commands.</item>
+        <item>Highly customized environments where a module's defaults diverge significantly — fork and adapt rather than fight the template.</item>
+        <item>Simple single-resource changes — use aws cloudformation update-stack with a targeted parameter override.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cloudformation-vpc">
+      <p>VPC template creates a dual-AZ setup with public and private subnets, an Internet Gateway, a single NAT Gateway for private subnet egress, and correct route table associations.</p>
+
+      <example type="good" title="CloudFormation: VPC with public and private subnets">
+        <code lang="yaml"><![CDATA[
 AWSTemplateFormatVersion: '2010-09-09'
 Description: VPC with public and private subnets across 2 AZs
 
@@ -178,11 +226,15 @@ Outputs:
     Value: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
     Export:
       Name: !Sub ${Environment}-PrivateSubnets
-```
+]]></code>
+      </example>
+    </section>
 
-### ECS Fargate Service
+    <section name="cloudformation-ecs-fargate">
+      <p>ECS Fargate service template includes ALB, target group, execution and task IAM roles, CloudWatch log group, and security groups. The service depends on the ALB listener to ensure traffic can flow before tasks start.</p>
 
-```yaml
+      <example type="good" title="CloudFormation: ECS Fargate service with ALB">
+        <code lang="yaml"><![CDATA[
 AWSTemplateFormatVersion: '2010-09-09'
 Description: ECS Fargate service with ALB
 
@@ -366,11 +418,15 @@ Outputs:
   ClusterArn:
     Description: ECS Cluster ARN
     Value: !GetAtt ECSCluster.Arn
-```
+]]></code>
+      </example>
+    </section>
 
-### Lambda Function with API Gateway
+    <section name="cloudformation-lambda-apigw">
+      <p>SAM template for Lambda + API Gateway + DynamoDB. Uses SAM Transform for concise resource definitions. Enables X-Ray tracing on the API.</p>
 
-```yaml
+      <example type="good" title="CloudFormation SAM: Lambda with API Gateway and DynamoDB">
+        <code lang="yaml"><![CDATA[
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Lambda function with API Gateway
@@ -448,11 +504,15 @@ Outputs:
   FunctionArn:
     Description: Lambda function ARN
     Value: !GetAtt Function.Arn
-```
+]]></code>
+      </example>
+    </section>
 
-### RDS PostgreSQL with Secrets Manager
+    <section name="cloudformation-rds">
+      <p>RDS PostgreSQL template uses Secrets Manager with auto-generated password, gp3 storage, Multi-AZ, DeletionPolicy Snapshot, and Performance Insights. The SecretTargetAttachment links the secret to the RDS endpoint post-creation.</p>
 
-```yaml
+      <example type="good" title="CloudFormation: RDS PostgreSQL with Secrets Manager">
+        <code lang="yaml"><![CDATA[
 AWSTemplateFormatVersion: '2010-09-09'
 Description: RDS PostgreSQL with Secrets Manager
 
@@ -546,15 +606,15 @@ Outputs:
   DBSecretArn:
     Description: Secret ARN
     Value: !Ref DBSecret
-```
+]]></code>
+      </example>
+    </section>
 
----
+    <section name="terraform-modules">
+      <p>Terraform modules for VPC and ECS service. The VPC module creates public and private subnets with per-AZ NAT Gateways for HA egress. The ECS service module includes all IAM, security group, ALB, and service resources.</p>
 
-## Terraform Templates
-
-### VPC Module
-
-```hcl
+      <example type="good" title="Terraform: VPC module">
+        <code lang="hcl"><![CDATA[
 # modules/vpc/main.tf
 
 variable "environment" {
@@ -700,294 +760,15 @@ output "public_subnet_ids" {
 output "private_subnet_ids" {
   value = aws_subnet.private[*].id
 }
-```
+]]></code>
+      </example>
+    </section>
 
-### ECS Service Module
+    <section name="json-config-templates">
+      <p>Supporting JSON configuration files for S3 lifecycle policies, IAM trust policies, IAM access policies, ECS task definitions, and CloudWatch dashboards.</p>
 
-```hcl
-# modules/ecs-service/main.tf
-
-variable "environment" {
-  type = string
-}
-
-variable "service_name" {
-  type = string
-}
-
-variable "container_image" {
-  type = string
-}
-
-variable "container_port" {
-  type    = number
-  default = 8080
-}
-
-variable "cpu" {
-  type    = number
-  default = 256
-}
-
-variable "memory" {
-  type    = number
-  default = 512
-}
-
-variable "desired_count" {
-  type    = number
-  default = 2
-}
-
-variable "vpc_id" {
-  type = string
-}
-
-variable "subnet_ids" {
-  type = list(string)
-}
-
-resource "aws_ecs_cluster" "main" {
-  name = "${var.environment}-${var.service_name}"
-
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
-  }
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_cloudwatch_log_group" "main" {
-  name              = "/ecs/${var.environment}-${var.service_name}"
-  retention_in_days = 30
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_iam_role" "execution" {
-  name = "${var.environment}-${var.service_name}-execution"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "execution" {
-  role       = aws_iam_role.execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role" "task" {
-  name = "${var.environment}-${var.service_name}-task"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_ecs_task_definition" "main" {
-  family                   = "${var.environment}-${var.service_name}"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = var.cpu
-  memory                   = var.memory
-  execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task.arn
-
-  container_definitions = jsonencode([{
-    name  = var.service_name
-    image = var.container_image
-    portMappings = [{
-      containerPort = var.container_port
-      protocol      = "tcp"
-    }]
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        "awslogs-group"         = aws_cloudwatch_log_group.main.name
-        "awslogs-region"        = data.aws_region.current.name
-        "awslogs-stream-prefix" = "ecs"
-      }
-    }
-    environment = [
-      { name = "ENVIRONMENT", value = var.environment }
-    ]
-  }])
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_security_group" "service" {
-  name        = "${var.environment}-${var.service_name}-sg"
-  description = "Security group for ${var.service_name}"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_security_group" "alb" {
-  name        = "${var.environment}-${var.service_name}-alb-sg"
-  description = "ALB security group"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_lb" "main" {
-  name               = "${var.environment}-${var.service_name}"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
-  subnets            = var.subnet_ids
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_lb_target_group" "main" {
-  name        = "${var.environment}-${var.service_name}"
-  port        = var.container_port
-  protocol    = "HTTP"
-  vpc_id      = var.vpc_id
-  target_type = "ip"
-
-  health_check {
-    path                = "/health"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-  }
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.main.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
-  }
-}
-
-resource "aws_ecs_service" "main" {
-  name            = "${var.environment}-${var.service_name}"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.main.arn
-  desired_count   = var.desired_count
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets          = var.subnet_ids
-    security_groups  = [aws_security_group.service.id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.main.arn
-    container_name   = var.service_name
-    container_port   = var.container_port
-  }
-
-  depends_on = [aws_lb_listener.http]
-
-  tags = {
-    Environment = var.environment
-  }
-}
-
-data "aws_region" "current" {}
-
-output "alb_dns_name" {
-  value = aws_lb.main.dns_name
-}
-
-output "cluster_arn" {
-  value = aws_ecs_cluster.main.arn
-}
-```
-
----
-
-## Configuration Templates
-
-### S3 Lifecycle Policy
-
-```json
+      <example type="good" title="S3 lifecycle policy JSON">
+        <code lang="json"><![CDATA[
 {
   "Rules": [
     {
@@ -1030,11 +811,12 @@ output "cluster_arn" {
     }
   ]
 }
-```
+]]></code>
+      </example>
 
-### IAM Trust Policy (Lambda)
-
-```json
+      <example type="good" title="IAM trust policies (Lambda and ECS Tasks)">
+        <code lang="json"><![CDATA[
+// Lambda trust policy
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -1047,11 +829,8 @@ output "cluster_arn" {
     }
   ]
 }
-```
 
-### IAM Trust Policy (ECS Tasks)
-
-```json
+// ECS Tasks trust policy
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -1064,11 +843,12 @@ output "cluster_arn" {
     }
   ]
 }
-```
+]]></code>
+      </example>
 
-### IAM Policy (S3 Read/Write)
-
-```json
+      <example type="good" title="IAM access policies (S3 and DynamoDB)">
+        <code lang="json"><![CDATA[
+// S3 Read/Write policy
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -1087,11 +867,8 @@ output "cluster_arn" {
     }
   ]
 }
-```
 
-### IAM Policy (DynamoDB Access)
-
-```json
+// DynamoDB access policy
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -1112,11 +889,11 @@ output "cluster_arn" {
     }
   ]
 }
-```
+]]></code>
+      </example>
 
-### ECS Task Definition
-
-```json
+      <example type="good" title="ECS task definition JSON">
+        <code lang="json"><![CDATA[
 {
   "family": "my-app",
   "networkMode": "awsvpc",
@@ -1166,73 +943,26 @@ output "cluster_arn" {
     }
   ]
 }
-```
+]]></code>
+      </example>
 
-### CloudWatch Dashboard
+      <antipattern>
+        <description>Setting DeletionPolicy to Delete on RDS instances in production stacks.</description>
+        <reason>A stack deletion or CloudFormation mistake permanently destroys the database and all data. Always use DeletionPolicy: Snapshot for RDS in non-ephemeral environments.</reason>
+      </antipattern>
 
-```json
-{
-  "widgets": [
-    {
-      "type": "metric",
-      "x": 0,
-      "y": 0,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["AWS/EC2", "CPUUtilization", "InstanceId", "i-0123456789abcdef0"]
-        ],
-        "period": 300,
-        "stat": "Average",
-        "region": "us-east-1",
-        "title": "EC2 CPU Utilization"
-      }
-    },
-    {
-      "type": "metric",
-      "x": 12,
-      "y": 0,
-      "width": 12,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["AWS/ECS", "CPUUtilization", "ClusterName", "my-cluster", "ServiceName", "my-service"],
-          [".", "MemoryUtilization", ".", ".", ".", "."]
-        ],
-        "period": 300,
-        "stat": "Average",
-        "region": "us-east-1",
-        "title": "ECS Service Metrics"
-      }
-    },
-    {
-      "type": "metric",
-      "x": 0,
-      "y": 6,
-      "width": 24,
-      "height": 6,
-      "properties": {
-        "metrics": [
-          ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "app/my-alb/1234567890"],
-          [".", "HTTPCode_Target_2XX_Count", ".", "."],
-          [".", "HTTPCode_Target_4XX_Count", ".", "."],
-          [".", "HTTPCode_Target_5XX_Count", ".", "."]
-        ],
-        "period": 60,
-        "stat": "Sum",
-        "region": "us-east-1",
-        "title": "ALB Request Metrics"
-      }
-    }
-  ]
-}
-```
+      <antipattern>
+        <description>Hardcoding database passwords as CloudFormation parameters.</description>
+        <reason>Parameters appear in CloudFormation events and stack history in plaintext. Use AWS::SecretsManager::Secret with GenerateSecretString and resolve via dynamic references.</reason>
+      </antipattern>
+    </section>
 
----
-
-## Sources
-
-- [AWS CloudFormation Documentation](https://docs.aws.amazon.com/cloudformation/)
-- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
+    <see-also>
+      <ref slug="aws-cli-containers-iac"/>
+      <ref slug="aws-cli-compute"/>
+      <ref slug="aws-well-architected-checklists"/>
+      <link href="https://docs.aws.amazon.com/cloudformation/"/>
+      <link href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs"/>
+    </see-also>
+  </content>
+</methodology>
