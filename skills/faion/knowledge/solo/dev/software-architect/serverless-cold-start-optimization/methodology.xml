@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="serverless-cold-start-optimization">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Lambda cold start causes, runtime-specific impact, code-level patterns, and mitigation techniques: provisioned concurrency, SnapStart, package size, ARM/Graviton.</summary>
+    <tags>
+      <tag>serverless</tag>
+      <tag>cold-start</tag>
+      <tag>performance</tag>
+      <tag>lambda</tag>
+      <tag>optimization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-cost-optimization"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Serverless Cold Start Optimization</title>
+
+    <summary>Cold starts occur when a new Lambda function instance is created (no warm container exists). Mitigation ranges from code-level patterns (init outside handler, smaller packages) to infrastructure choices (provisioned concurrency, SnapStart, ARM/Graviton). The correct fix depends on the runtime, traffic pattern, and latency SLO.</summary>
+
+    <why>
+      <p>Cold starts add unpredictable latency to user-facing requests and can violate p95/p99 SLOs. Java and .NET runtimes suffer 1-5 second cold starts that make them unsuitable for synchronous APIs without mitigation. Even Python and Node.js 100-500ms cold starts are significant for interactive UIs. Understanding the cause enables the cheapest fix rather than defaulting to expensive provisioned concurrency.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Cold start rate exceeds 10% for user-facing Lambda functions.</item>
+        <item>p95 latency spikes are traced to cold start events in X-Ray or Lumigo.</item>
+        <item>Adopting Java, .NET, or large Python/Node packages in a Lambda that must respond in &lt;2s.</item>
+        <item>Evaluating whether provisioned concurrency ROI justifies the cost for a given function.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Background processing functions (Kinesis consumers, SQS workers) where latency variance is irrelevant — cold starts do not affect user experience.</item>
+        <item>Batch or scheduled jobs — cold start is a one-time cost amortized over the batch duration.</item>
+        <item>Functions already using provisioned concurrency that are meeting their SLOs — further optimization has diminishing returns.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="cold-start-by-runtime">
+      <p>Typical cold start durations by runtime and optimization priority (2025 benchmarks, 512MB memory):</p>
+      <list>
+        <item>Python: 200-500ms — Medium priority; eliminate heavy imports at handler scope.</item>
+        <item>Node.js: 100-300ms — Low priority; already fast for most use cases.</item>
+        <item>Go: 50-150ms — Low priority; compiled binary with minimal runtime overhead.</item>
+        <item>Rust: 50-150ms — Low priority; compiled binary, fastest cold starts available.</item>
+        <item>.NET: 500ms-2s — High priority; enable SnapStart (Native AOT or .NET 8+).</item>
+        <item>Java: 1-5s — Critical; enable SnapStart (Java 11+) or migrate to GraalVM native compilation.</item>
+      </list>
+    </section>
+
+    <section name="optimization-techniques">
+      <p>Optimization techniques ranked by effectiveness and cost (best to worst ROI):</p>
+      <list>
+        <item>Init code outside handler — 20-40% reduction, free. Moves AWS client initialization and heavy imports to module scope so warm invocations skip them entirely.</item>
+        <item>Smaller packages — 10-30% reduction, free. Remove unused dependencies, use tree-shaking, strip test/dev deps from deployment package.</item>
+        <item>Native compilation (GraalVM, Native AOT) — 50-80% reduction, free. Eliminates JVM/CLR startup entirely. Requires build pipeline change.</item>
+        <item>ARM/Graviton — 10-20% faster startup and 20% cheaper per GB-second. Change Architectures: [arm64] — no code change for Python/Node/Go.</item>
+        <item>Right-size memory — more memory = more CPU = faster startup. Use AWS Lambda Power Tuning to find the optimal memory/cost/latency balance.</item>
+        <item>Keep-Warm Pings — moderate effectiveness, $ cost. EventBridge rule fires every 5 minutes; not reliable under concurrent load.</item>
+        <item>SnapStart (Java 11+/.NET 8+) — ~90% reduction, free. AWS Lambda takes a snapshot of the initialized execution environment and restores from it.</item>
+        <item>Provisioned Concurrency — eliminates cold starts entirely, $$$$ cost. Pay for always-on instances regardless of traffic. Only justified for latency-critical paths with measurable SLO violations.</item>
+      </list>
+    </section>
+
+    <rules>
+      <rule testable="true">
+        <statement>AWS SDK clients, database connections, HTTP clients, and model files MUST be initialized at module scope (outside the handler function). Imports that take &gt;10ms MUST also be at module scope.</statement>
+        <rationale>Module scope runs once per container. Handler scope runs on every invocation, adding initialization latency to every request instead of only the first cold start.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Lambda deployment packages MUST exclude test dependencies, documentation, and unused code. Python packages MUST use --no-deps for transitive imports that are already in the runtime. Node packages MUST use tree-shaking (esbuild or webpack) with target=esm.</statement>
+        <rationale>Package size directly correlates with cold start time. The Lambda loader must unzip and initialize the deployment package on cold start. Every MB saved reduces cold start proportionally.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Java and .NET Lambda functions serving synchronous user-facing requests MUST enable SnapStart (Java 11+ or .NET 8+ with Native AOT). SnapStart MUST be combined with a post-deploy warm-up invocation to pre-populate the snapshot cache.</statement>
+        <rationale>JVM and CLR startup dominates Java and .NET cold starts (1-5s). SnapStart restores from a pre-initialized snapshot in &lt;200ms without provisioned concurrency cost.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>All new Lambda functions MUST default to ARM/Graviton (Architectures: [arm64]) unless the runtime or dependency explicitly requires x86. Existing functions MUST be migrated to ARM on the next deployment that changes the function code.</statement>
+        <rationale>ARM/Graviton delivers 10-20% faster cold starts and 20% lower GB-second cost with no code changes for Python, Node.js, and Go. The only exception is native extensions compiled for x86.</rationale>
+      </rule>
+    </rules>
+
+    <section name="code-patterns">
+      <example type="good" title="Module-scope client initialization">
+        <code lang="python"><![CDATA[
+# GOOD: Initialize outside handler (runs once per container)
+import boto3
+
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('orders')
+
+def handler(event, context):
+    # Reuses existing connection — no TLS handshake, no auth on warm invocations
+    return table.get_item(Key={'id': event['id']})
+]]></code>
+        <note>Boto3 client creation involves TLS negotiation with IAM endpoint. At 100 requests/second this saves ~50ms per warm invocation.</note>
+      </example>
+
+      <example type="bad" title="Handler-scope client initialization">
+        <code lang="python"><![CDATA[
+# BAD: Initialize inside handler (runs every invocation)
+def handler(event, context):
+    import boto3  # Import overhead on every call!
+    dynamodb = boto3.resource('dynamodb')  # TLS + auth on every call!
+    table = dynamodb.Table('orders')
+    return table.get_item(Key={'id': event['id']})
+]]></code>
+        <note>Moves import + client creation inside the handler. At 200ms per cold-start equivalent added to every warm invocation, this breaks any p95 latency SLO.</note>
+      </example>
+    </section>
+
+    <section name="ml-model-cold-start">
+      <example type="good" title="ML model cached outside handler">
+        <code lang="python"><![CDATA[
+# Load model outside handler (cached across warm invocations)
+import onnxruntime as ort
+import boto3
+import os
+
+# Download and cache model on cold start
+model_path = '/tmp/model.onnx'
+if not os.path.exists(model_path):
+    s3 = boto3.client('s3')
+    s3.download_file('ml-models-bucket', 'model-v1.onnx', model_path)
+
+session = ort.InferenceSession(model_path)
+
+def handler(event, context):
+    input_data = preprocess(event['body'])
+    result = session.run(['output'], {'input': input_data})
+    return {'statusCode': 200, 'body': str(result[0].tolist())}
+]]></code>
+        <note>Model download happens once per container (cold start). Warm invocations reuse the in-memory ONNX session. /tmp is preserved across warm invocations within the same container.</note>
+      </example>
+    </section>
+
+    <section name="sam-provisioned-concurrency">
+      <example type="good" title="SAM template with SnapStart and ARM">
+        <code lang="yaml"><![CDATA[
+Resources:
+  InferenceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: inference.handler
+      Runtime: python3.11
+      MemorySize: 3008  # More memory = more CPU for faster init
+      Timeout: 30
+      Architectures:
+        - arm64  # 20% cheaper, often faster startup
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 5  # Keep 5 instances always warm
+      Environment:
+        Variables:
+          MODEL_VERSION: v1
+]]></code>
+        <note>Use provisioned concurrency only for latency-critical paths where cost is justified. Use AWS Lambda Power Tuning to validate the memory setting before committing.</note>
+      </example>
+    </section>
+
+    <section name="agent-prompts">
+      <prompt purpose="cold-start-analysis"><![CDATA[
+Analyze and optimize cold starts for this Lambda function:
+
+Runtime: [Python/Node.js/Java/etc.]
+Current cold start: [X ms]
+Target cold start: [X ms]
+Package size: [X MB]
+Memory: [X MB]
+VPC: [yes/no]
+
+Dependencies:
+[List main dependencies]
+
+Please analyze:
+1. Main contributors to cold start time
+2. Quick wins (no code changes)
+3. Code-level optimizations
+4. Dependency optimization
+5. Provisioned concurrency recommendation
+6. SnapStart eligibility (if Java/.NET)
+]]></prompt>
+
+      <prompt purpose="package-size-optimization"><![CDATA[
+Optimize Lambda deployment package:
+
+Current size: [X MB]
+Runtime: [Python/Node.js/etc.]
+
+Dependencies (from requirements.txt/package.json):
+[list dependencies]
+
+Please recommend:
+1. Dependencies to remove or replace
+2. Tree-shaking configuration
+3. Layer strategy
+4. Native dependency handling
+5. Expected size reduction
+]]></prompt>
+    </section>
+
+    <checklist>
+      <check>Move all AWS client initialization and heavy imports to module scope outside handler.</check>
+      <check>Check cold start rate in CloudWatch Metrics or Lambda Insights (target &lt;10%).</check>
+      <check>Enable ARM/Graviton (arm64) for all new functions; migrate existing on next code change.</check>
+      <check>Optimize package size: remove unused deps, enable tree-shaking, use Lambda layers for shared code.</check>
+      <check>Enable SnapStart for Java 11+ and .NET 8+ functions on synchronous user-facing paths.</check>
+      <check>Evaluate provisioned concurrency only after all free optimizations are exhausted and SLO is still violated.</check>
+      <check>Run AWS Lambda Power Tuning to find optimal memory/latency/cost balance.</check>
+      <check>Verify external HTTP calls have explicit timeouts shorter than the function timeout — never inherit function timeout as HTTP timeout.</check>
+    </checklist>
+
+    <section name="agent-gotchas">
+      <p>Common agent mistakes for cold start optimization:</p>
+      <list>
+        <item>Cold-start timing in LLM answers is anecdotal; route any latency claim to aws-lambda-power-tuning rather than trusting LLM numbers.</item>
+        <item>Generated Layers: ARNs are often wrong (region/version drift). Always parameterize via SSM Public Parameters or fetch the latest ADOT layer in CI.</item>
+        <item>LLMs default to recommending provisioned concurrency first — it is the most expensive option. Always attempt code-level and package-size optimizations first.</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/alexcasalboni/aws-lambda-power-tuning"/>
+      <link href="https://docs.powertools.aws.dev/lambda/"/>
+      <link href="https://theburningmonk.com/"/>
+      <ref slug="serverless-foundations"/>
+      <ref slug="serverless-cost-optimization"/>
+    </see-also>
+  </content>
+</methodology>
