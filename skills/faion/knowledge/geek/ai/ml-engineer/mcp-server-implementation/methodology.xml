@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="mcp-server-implementation">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Implement MCP servers in TypeScript (McpServer + Zod) or Python (FastMCP or low-level mcp.server) with tools, resources, and prompts. Includes templates and implementation checklist.</summary>
+    <tags>
+      <tag>mcp</tag>
+      <tag>server</tag>
+      <tag>fastmcp</tag>
+      <tag>typescript</tag>
+      <tag>python</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>typescript</language>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-client-integration"/>
+      <ref slug="mcp-security"/>
+    </related>
+    <requires>
+      <ref slug="mcp-architecture"/>
+    </requires>
+  </metadata>
+
+  <content>
+    <title>MCP Server Implementation — TypeScript and Python</title>
+
+    <summary>Build MCP servers using the official TypeScript SDK (McpServer + Zod) or Python SDK (FastMCP for rapid development, mcp.server for low-level control). Servers expose tools, resources, and prompts. stdio transport is the default; HTTP+SSE is used for multi-client scenarios.</summary>
+
+    <why>
+      <p>A correctly structured MCP server works across all MCP-compatible hosts (Claude Desktop, VS Code Copilot, custom Claude SDK agents) without modification. Proper tool descriptions are the model's selection signal — vague descriptions cause wrong tool selection. FastMCP removes JSON-RPC boilerplate and exposes the protocol surface as decorated Python functions, making server development equivalent in complexity to writing a FastAPI endpoint.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building a reusable tool server that multiple AI clients will share.</item>
+        <item>Exposing database, filesystem, or external API access to agents without hardcoded tool code in the agent.</item>
+        <item>Custom Claude Code agents (~/.claude/agents/) that need domain-specific tools.</item>
+        <item>Any agent needing database, filesystem, or external API access without hardcoded tool code.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-agent prototype with one or two tools — inline Claude SDK tool definitions are simpler.</item>
+        <item>HTTP transport in environments without an auth layer — stdio trusts the local process by default; HTTP requires bearer token auth.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="typescript-server">
+      <p>Use McpServer from @modelcontextprotocol/sdk with Zod schemas for type-safe tool definitions. StdioServerTransport is the default for local servers.</p>
+
+      <example type="good" title="TypeScript: server with tool, resource, and prompt">
+        <code lang="typescript"><![CDATA[import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "weather-server",
+  version: "1.0.0",
+});
+
+// Tool
+server.tool(
+  "get_weather",
+  "Get current weather for a location",
+  {
+    location: z.string().describe("City name or zip code"),
+    units: z.enum(["celsius", "fahrenheit"]).default("celsius"),
+  },
+  async ({ location, units }) => {
+    const weather = await fetchWeather(location, units);
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Temperature: ${weather.temp}${units === "celsius" ? "C" : "F"}\nConditions: ${weather.conditions}`,
+        },
+      ],
+    };
+  }
+);
+
+// Resource (static)
+server.resource(
+  "config",
+  "file:///app/config.json",
+  { mimeType: "application/json" },
+  async (uri) => {
+    const content = await fs.readFile("/app/config.json", "utf-8");
+    return {
+      contents: [{ uri: uri.href, mimeType: "application/json", text: content }],
+    };
+  }
+);
+
+// Resource (dynamic template)
+server.resourceTemplate(
+  "project-file",
+  "file:///{path}",
+  { mimeType: "text/plain" },
+  async (uri, { path }) => {
+    const content = await fs.readFile(path, "utf-8");
+    return {
+      contents: [{ uri: uri.href, mimeType: "text/plain", text: content }],
+    };
+  }
+);
+
+// Prompt
+server.prompt(
+  "code_review",
+  "Analyze code quality and suggest improvements",
+  {
+    code: z.string().describe("The code to review"),
+    language: z.string().optional().describe("Programming language"),
+  },
+  async ({ code, language }) => {
+    return {
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please review this ${language || "code"}:\n\n\`\`\`${language || ""}\n${code}\n\`\`\``,
+          },
+        },
+      ],
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);]]></code>
+        <note>Zod schema fields map directly to the JSON Schema inputSchema. Use .describe() on every field — the LLM reads field descriptions to populate arguments correctly.</note>
+      </example>
+
+      <example type="good" title="TypeScript: complete server with capabilities declared">
+        <code lang="typescript"><![CDATA[import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "database-server",
+  version: "1.0.0",
+  capabilities: {
+    tools: { listChanged: true },
+    resources: { subscribe: true, listChanged: true },
+    prompts: { listChanged: true },
+  },
+});
+
+server.tool(
+  "execute_query",
+  "Execute a read-only SQL query",
+  {
+    query: z.string().describe("SQL SELECT query"),
+    database: z.string().default("main"),
+  },
+  async ({ query, database }) => {
+    if (!/^\s*SELECT/i.test(query)) {
+      return {
+        content: [{ type: "text", text: "Only SELECT queries are allowed" }],
+        isError: true,
+      };
+    }
+    const results = await executeQuery(database, query);
+    return {
+      content: [{ type: "text", text: JSON.stringify(results, null, 2) }],
+      structuredContent: results,
+    };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);]]></code>
+        <note>Return isError: true for execution errors — the model reads this flag to understand the tool failed and tries to self-correct.</note>
+      </example>
+    </section>
+
+    <section name="python-fastmcp-server">
+      <p>FastMCP is the recommended Python approach: decorator-based, no JSON-RPC boilerplate. Run with mcp.run() for stdio transport by default.</p>
+
+      <example type="good" title="Python: FastMCP server with tool and resource">
+        <code lang="python"><![CDATA[from mcp.server.fastmcp import FastMCP
+import json
+
+mcp = FastMCP("project-tools")
+
+@mcp.tool()
+def query_database(sql: str) -> str:
+    """Execute a read-only SQL query. Returns JSON rows."""
+    import re
+    if not re.match(r"^\s*SELECT\b", sql, re.IGNORECASE):
+        raise ValueError("Only SELECT queries allowed")
+    rows = db.execute(sql).fetchall()
+    return json.dumps([dict(r) for r in rows])
+
+@mcp.resource("file:///{path}")
+def read_file(path: str) -> str:
+    """Read a file from the project directory."""
+    return Path(f"/project/{path}").read_text()
+
+@mcp.prompt()
+def code_review(code: str, language: str = "python") -> str:
+    """Generate a code review prompt."""
+    return f"Please review this {language} code:\n\n```{language}\n{code}\n```"
+
+if __name__ == "__main__":
+    mcp.run()  # stdio transport by default]]></code>
+      </example>
+
+      <example type="good" title="Python: FastMCP with structured Pydantic output">
+        <code lang="python"><![CDATA[from fastmcp import FastMCP
+from pydantic import BaseModel
+
+mcp = FastMCP(name="mcp-server-myproject", version="1.0.0")
+
+class ProcessResult(BaseModel):
+    """Structured result from process_data tool."""
+    status: str
+    items_processed: int
+    summary: str
+
+@mcp.tool()
+async def process_data(data: str, format: str = "json") -> ProcessResult:
+    """Process data and return structured result.
+
+    Args:
+        data: The data to process
+        format: Output format (json, xml, csv)
+
+    Returns:
+        Processing result with status and summary
+    """
+    return ProcessResult(
+        status="success",
+        items_processed=len(data.split()),
+        summary=f"Processed data in {format} format"
+    )
+
+if __name__ == "__main__":
+    mcp.run()]]></code>
+        <note>FastMCP supports both sync and async tool functions. Pydantic models as return types are serialized automatically.</note>
+      </example>
+    </section>
+
+    <section name="python-lowlevel-server">
+      <p>Use the low-level mcp.server.Server API when you need fine-grained control over the protocol layer.</p>
+
+      <example type="good" title="Python: low-level Server with list_tools + call_tool">
+        <code lang="python"><![CDATA[from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool, TextContent
+
+server = Server("weather-server")
+
+@server.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="get_weather",
+            description="Get current weather for a location",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name or zip code"},
+                    "units": {"type": "string", "enum": ["celsius", "fahrenheit"], "default": "celsius"}
+                },
+                "required": ["location"]
+            }
+        )
+    ]
+
+@server.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    if name == "get_weather":
+        location = arguments["location"]
+        units = arguments.get("units", "celsius")
+        weather = await fetch_weather(location, units)
+        return [TextContent(
+            type="text",
+            text=f"Temperature: {weather['temp']}{units[0].upper()}\nConditions: {weather['conditions']}"
+        )]
+    raise ValueError(f"Unknown tool: {name}")
+
+async def main():
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream)
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())]]></code>
+      </example>
+    </section>
+
+    <section name="http-transport">
+      <p>HTTP+SSE transport allows one server to handle multiple simultaneous clients. stdio is single-client per process.</p>
+
+      <example type="good" title="TypeScript: HTTP+SSE server with Express">
+        <code lang="typescript"><![CDATA[import express from "express";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+
+const app = express();
+const server = new McpServer({
+  name: "http-mcp-server",
+  version: "1.0.0",
+});
+
+// Add tools, resources, prompts...
+
+// SSE endpoint for MCP
+app.get("/mcp/sse", async (req, res) => {
+  const transport = new SSEServerTransport("/mcp/messages", res);
+  await server.connect(transport);
+});
+
+// Message endpoint for client requests
+app.post("/mcp/messages", express.json(), async (req, res) => {
+  // Handle incoming messages
+});
+
+app.listen(3000, () => {
+  console.log("MCP HTTP server running on port 3000");
+});]]></code>
+        <note>For HTTP transport, implement bearer token auth — stdio trusts the local process by default.</note>
+      </example>
+    </section>
+
+    <section name="implementation-checklist">
+      <p>Server setup checklist:</p>
+      <checklist>
+        <check>Choose SDK (TypeScript @modelcontextprotocol/sdk, Python mcp or fastmcp, Go mcp-go).</check>
+        <check>Choose transport: stdio for local single-client, HTTP+SSE for multi-client or remote.</check>
+        <check>Declare capabilities matching what the server actually implements (tools, resources, prompts with listChanged/subscribe flags).</check>
+        <check>Tool schemas: unique name (1-128 chars), clear description, valid inputSchema (type: object), optional outputSchema.</check>
+        <check>Implement tools/list and tools/call handlers; implement resources/list and resources/read; implement prompts/list and prompts/get.</check>
+        <check>Return isError: true for tool execution errors; include actionable error messages for LLM self-correction.</check>
+        <check>Return JSON-RPC error codes for protocol issues: -32600 Invalid Request, -32601 Method not found, -32602 Invalid params, -32603 Internal error, -32002 Resource not found.</check>
+        <check>Validate all inputs; implement access controls; rate limit tool invocations; sanitize all outputs; log operations for audit; never expose credentials in tool descriptions.</check>
+        <check>Version the server (FastMCP: version="1.2.0") for client compatibility tracking.</check>
+        <check>Document all tools with examples; document all resources with URI schemes; document all prompts with argument descriptions.</check>
+      </checklist>
+    </section>
+
+    <section name="typescript-project-template">
+      <p>Minimal TypeScript project setup for an MCP server:</p>
+      <example type="good" title="package.json for TypeScript MCP server">
+        <code lang="json"><![CDATA[{
+  "name": "mcp-server-myproject",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}]]></code>
+      </example>
+
+      <example type="good" title="tsconfig.json for MCP server">
+        <code lang="json"><![CDATA[{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true
+  },
+  "include": ["src/**/*"]
+}]]></code>
+      </example>
+    </section>
+
+    <section name="python-project-template">
+      <p>Minimal Python project setup for an MCP server:</p>
+      <example type="good" title="pyproject.toml for Python MCP server">
+        <code lang="toml"><![CDATA[[project]
+name = "mcp-server-myproject"
+version = "1.0.0"
+description = "MCP server for myproject"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Server implementation best practices extracted from production deployments:</p>
+      <list>
+        <item>Use descriptive tool names and docstrings — the model selects tools based on the description; vague names cause wrong tool selection.</item>
+        <item>Keep tool responses under 10KB; large responses eat context and slow the agent loop.</item>
+        <item>Log every tool invocation with caller identity, inputs, and outputs for audit trails.</item>
+        <item>list_changed notifications are not supported by all clients; do not rely on dynamic tool registration in production — restart the server to update tools.</item>
+        <item>Human-in-loop checkpoint required for any MCP tool that writes state (file writes, DB mutations, API POSTs) — the model cannot undo tool actions.</item>
+        <item>Tools that return errors must return structured error messages — unhandled exceptions cause the model to hallucinate what happened next.</item>
+        <item>MCP sampling (server requests LLM completion from client) requires explicit host approval; do not design servers that depend on sampling without testing the approval flow.</item>
+      </list>
+    </section>
+
+    <section name="docker-deployment">
+      <example type="good" title="Dockerfile for MCP server (Node.js)">
+        <code lang="dockerfile"><![CDATA[FROM node:20-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy source
+COPY dist/ ./dist/
+
+# Run as non-root
+USER node
+
+# MCP servers typically use stdio
+CMD ["node", "dist/index.js"]]]></code>
+      </example>
+
+      <example type="good" title="docker-compose.yml for MCP server">
+        <code lang="yaml"><![CDATA[version: "3.8"
+
+services:
+  mcp-server:
+    build: .
+    stdin_open: true
+    tty: true
+    environment:
+      - NODE_ENV=production
+      - API_KEY=${API_KEY}
+    volumes:
+      - ./data:/app/data:ro]]></code>
+        <note>stdin_open: true and tty: true are required when using stdio transport inside Docker.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <link href="https://github.com/modelcontextprotocol/typescript-sdk"/>
+      <link href="https://github.com/modelcontextprotocol/python-sdk"/>
+      <link href="https://github.com/jlowin/fastmcp"/>
+      <link href="https://github.com/modelcontextprotocol/servers"/>
+      <ref slug="mcp-architecture"/>
+      <ref slug="mcp-client-integration"/>
+      <ref slug="mcp-security"/>
+    </see-also>
+  </content>
+</methodology>
