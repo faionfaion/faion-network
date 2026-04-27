@@ -1,0 +1,463 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="agents-production-deployment">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Production floor for autonomous agents: typed tool base class, YAML config, JSON structured logging, exponential backoff retry, circuit breaker, evaluation harness, and Docker deployment.</summary>
+    <tags>
+      <tag>agents</tag>
+      <tag>production</tag>
+      <tag>deployment</tag>
+      <tag>logging</tag>
+      <tag>evaluation</tag>
+    </tags>
+    <category>agents</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="agents-safety-guardrails"/>
+      <ref slug="agents-framework-selection"/>
+      <ref slug="llm-observability"/>
+    </related>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Agent Production Deployment — Tool Design, Logging, Evaluation, Docker</title>
+
+    <summary>Production autonomous agents require five production-grade components beyond the core loop: (1) a typed tool base class with a shared registry, (2) YAML configuration with env-var substitution, (3) structured JSON logging for every LLM and tool call, (4) exponential backoff retry with circuit breaker for external services, (5) a repeatable evaluation harness that measures success rate, latency, iterations, and token cost. Skip any one of these and debugging production failures becomes prohibitively expensive.</summary>
+
+    <why>
+      <p>Agent failures in production are non-deterministic. Without structured logs you cannot reproduce them. Without an evaluation harness you cannot measure regressions. Without a typed tool registry, tool hallucination silently passes invalid arguments. Without retry logic, transient API errors cascade into agent failures. The five components are the minimal production floor — each one addresses a distinct class of failure that is trivial to prevent but expensive to debug post-hoc.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Moving an autonomous agent from prototype to production deployment.</item>
+        <item>Agents that will run on a schedule or receive external requests.</item>
+        <item>Any agent deployment where failures are visible to users or have business impact.</item>
+        <item>Teams that need to measure agent quality over time and detect regressions.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>One-off research experiments or local prototypes — production overhead exceeds value.</item>
+        <item>Agents run only in interactive notebooks with a human watching every step.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-structure">
+      <p>The canonical agent project structure separates agent implementations, tool implementations, memory, LLM integrations, and utilities into distinct packages. Configuration lives in YAML files with env-var substitution. Docker deployment uses a lean Python 3.11-slim base with a health check endpoint.</p>
+
+      <example type="good" title="Recommended project layout">
+        <code lang="text"><![CDATA[
+agent_project/
+├── src/
+│   ├── agent/
+│   │   ├── base.py           # Base agent class
+│   │   ├── react.py          # ReAct implementation
+│   │   ├── planner.py        # Plan-and-Execute
+│   │   ├── reflexion.py      # Reflexion agent
+│   │   └── multi_agent.py    # Multi-agent system
+│   ├── tools/
+│   │   ├── base.py           # Tool base class + ToolRegistry
+│   │   ├── search.py         # Search tools
+│   │   ├── code.py           # Code execution
+│   │   └── file.py           # File operations
+│   ├── memory/
+│   │   ├── short_term.py
+│   │   ├── long_term.py
+│   │   └── vector_store.py
+│   └── utils/
+│       ├── logging.py
+│       ├── metrics.py
+│       └── retry.py
+├── config/
+│   ├── agent.yaml
+│   └── multi_agent.yaml
+├── tests/
+│   ├── test_agent.py
+│   └── test_tools.py
+├── scripts/
+│   ├── run_agent.py
+│   └── evaluate.py
+└── docker/
+    ├── Dockerfile
+    └── docker-compose.yaml
+]]></code>
+      </example>
+    </section>
+
+    <section name="tool-base-class">
+      <p>The tool base class enforces a consistent interface: standardized ToolResult, execute() wrapper with logging and error capture, to_openai_format() and to_anthropic_format() adapters. The ToolRegistry provides named lookup and batch export for tool manifests.</p>
+
+      <example type="good" title="Tool base class and registry">
+        <code lang="python"><![CDATA[
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ToolResult:
+    """Standardized tool result."""
+    success: bool
+    data: Any
+    error: Optional[str] = None
+    metadata: Dict = field(default_factory=dict)
+
+    def to_string(self) -> str:
+        if self.success:
+            if isinstance(self.data, (dict, list)):
+                return json.dumps(self.data, indent=2)
+            return str(self.data)
+        return f"Error: {self.error}"
+
+class BaseTool(ABC):
+    """Base class for all tools."""
+    name: str
+    description: str
+    parameters: Dict
+
+    @abstractmethod
+    def _execute(self, **kwargs) -> ToolResult:
+        pass
+
+    def execute(self, **kwargs) -> str:
+        """Execute tool with logging and error handling."""
+        logger.info(f"Tool {self.name} called with: {kwargs}")
+        try:
+            result = self._execute(**kwargs)
+            return result.to_string()
+        except Exception as e:
+            logger.error(f"Tool {self.name} error: {e}")
+            return ToolResult(success=False, data=None, error=str(e)).to_string()
+
+    def to_openai_format(self) -> Dict:
+        return {"type": "function", "function": {"name": self.name, "description": self.description, "parameters": self.parameters}}
+
+    def to_anthropic_format(self) -> Dict:
+        return {"name": self.name, "description": self.description, "input_schema": self.parameters}
+
+class ToolRegistry:
+    def __init__(self):
+        self._tools: Dict[str, BaseTool] = {}
+
+    def register(self, tool: BaseTool):
+        self._tools[tool.name] = tool
+
+    def get(self, name: str) -> Optional[BaseTool]:
+        return self._tools.get(name)
+
+    def to_openai_format(self) -> list:
+        return [t.to_openai_format() for t in self._tools.values()]
+
+tool_registry = ToolRegistry()
+]]></code>
+      </example>
+    </section>
+
+    <section name="agent-yaml-config">
+      <p>YAML configuration with environment variable substitution separates deployment concerns from code. The config covers: agent type and iteration limits, LLM provider and model, memory backend, tool list, safety settings, reflection, logging, and metrics.</p>
+
+      <example type="good" title="config/agent.yaml">
+        <code lang="yaml"><![CDATA[
+agent:
+  type: "react"  # react, plan_execute, reflexion, multi_agent
+  model: "gpt-4o"
+  max_iterations: 20
+  timeout_seconds: 300
+
+llm:
+  provider: "openai"  # openai, anthropic, azure
+  model: "gpt-4o"
+  temperature: 0.7
+  max_tokens: 4096
+  openai:
+    api_key: "${OPENAI_API_KEY}"
+    organization: "${OPENAI_ORG_ID}"
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+
+memory:
+  enabled: true
+  type: "hybrid"
+  short_term:
+    max_entries: 20
+  long_term:
+    provider: "qdrant"
+    collection: "agent_memory"
+    qdrant:
+      url: "http://localhost:6333"
+      api_key: "${QDRANT_API_KEY}"
+  embedding:
+    model: "text-embedding-3-small"
+
+tools:
+  enabled:
+    - web_search
+    - code_execute
+    - file_read
+  code_execute:
+    sandbox: true
+    timeout: 30
+    allowed_languages:
+      - python
+      - javascript
+
+safety:
+  max_tool_calls_per_iteration: 5
+  require_approval_for:
+    - file_write
+    - code_execute
+  blocked_patterns:
+    - "rm -rf"
+    - "DROP TABLE"
+
+logging:
+  level: "INFO"
+  format: "json"
+  include_llm_calls: true
+  include_tool_calls: true
+]]></code>
+      </example>
+    </section>
+
+    <section name="structured-logging">
+      <p>JSON structured logging emits every LLM call (model, tokens) and tool call (name, arguments, result preview) as machine-parseable log lines. The AgentLogger class adds agent_id, iteration, tool_name, and token_usage fields to every log record for filtering in LangSmith or Langfuse.</p>
+
+      <example type="good" title="JSON agent logger">
+        <code lang="python"><![CDATA[
+import logging
+import json
+from datetime import datetime
+from typing import Dict
+import sys
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        if hasattr(record, "agent_id"):
+            log_data["agent_id"] = record.agent_id
+        if hasattr(record, "iteration"):
+            log_data["iteration"] = record.iteration
+        if hasattr(record, "tool_name"):
+            log_data["tool_name"] = record.tool_name
+        if hasattr(record, "token_usage"):
+            log_data["token_usage"] = record.token_usage
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_data)
+
+class AgentLogger:
+    def __init__(self, agent_id: str, level: str = "INFO"):
+        self.agent_id = agent_id
+        self.logger = logging.getLogger(f"agent.{agent_id}")
+        self.logger.setLevel(getattr(logging, level.upper()))
+        if not self.logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(JSONFormatter())
+            self.logger.addHandler(handler)
+
+    def tool_call(self, tool_name: str, arguments: Dict, result: str):
+        self.logger.info(
+            f"Tool call: {tool_name}",
+            extra={"agent_id": self.agent_id, "tool_name": tool_name,
+                   "arguments": arguments, "result_preview": result[:200]}
+        )
+
+    def llm_call(self, model: str, prompt_tokens: int, completion_tokens: int):
+        self.logger.info(
+            f"LLM call to {model}",
+            extra={"agent_id": self.agent_id, "model": model,
+                   "token_usage": {"prompt": prompt_tokens, "completion": completion_tokens,
+                                   "total": prompt_tokens + completion_tokens}}
+        )
+]]></code>
+      </example>
+    </section>
+
+    <section name="retry-and-circuit-breaker">
+      <p>Exponential backoff with jitter handles transient API errors. The circuit breaker prevents cascading failures when an external service is down: it opens after failure_threshold failures and enters half-open state after recovery_timeout seconds to test if the service recovered.</p>
+
+      <example type="good" title="Retry decorator and circuit breaker">
+        <code lang="python"><![CDATA[
+import asyncio
+from functools import wraps
+from typing import Type, Tuple, Callable, Any
+import logging
+import random
+import time
+
+logger = logging.getLogger(__name__)
+
+class RetryConfig:
+    def __init__(self, max_attempts: int = 3, base_delay: float = 1.0,
+                 max_delay: float = 60.0, exponential_base: float = 2.0,
+                 jitter: bool = True, retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)):
+        self.max_attempts = max_attempts
+        self.base_delay = base_delay
+        self.max_delay = max_delay
+        self.exponential_base = exponential_base
+        self.jitter = jitter
+        self.retryable_exceptions = retryable_exceptions
+
+    def get_delay(self, attempt: int) -> float:
+        delay = self.base_delay * (self.exponential_base ** attempt)
+        delay = min(delay, self.max_delay)
+        if self.jitter:
+            delay = delay * (0.5 + random.random())
+        return delay
+
+# LLM-specific retry: 3 attempts, exponential backoff, 30s max
+llm_retry_config = RetryConfig(
+    max_attempts=3, base_delay=1.0, max_delay=30.0,
+    retryable_exceptions=(ConnectionError, TimeoutError)
+)
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold: int = 5, recovery_timeout: float = 30.0):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failures = 0
+        self.last_failure_time = None
+        self.state = "closed"  # closed, open, half-open
+
+    def can_execute(self) -> bool:
+        if self.state == "closed":
+            return True
+        if self.state == "open":
+            if time.time() - self.last_failure_time >= self.recovery_timeout:
+                self.state = "half-open"
+                return True
+            return False
+        return True  # half-open
+
+    def record_success(self):
+        self.failures = 0
+        self.state = "closed"
+
+    def record_failure(self):
+        self.failures += 1
+        self.last_failure_time = time.time()
+        if self.failures >= self.failure_threshold:
+            self.state = "open"
+            logger.warning("Circuit breaker opened")
+]]></code>
+      </example>
+    </section>
+
+    <section name="evaluation-harness">
+      <p>The evaluation harness runs a test suite of TaskCase objects against an agent factory, measuring success rate, latency, iteration count, and token usage. Run it before every production deployment to detect regressions.</p>
+
+      <example type="good" title="Evaluation harness">
+        <code lang="python"><![CDATA[
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Callable
+import json
+import time
+from statistics import mean
+
+@dataclass
+class TestCase:
+    id: str
+    task: str
+    expected_output: str = None
+    success_criteria: Callable[[str], bool] = None
+    max_iterations: int = 20
+
+@dataclass
+class EvaluationReport:
+    total_tests: int
+    passed: int
+    failed: int
+    success_rate: float
+    avg_latency: float
+    avg_iterations: float
+    avg_tokens: float
+
+    def to_dict(self) -> Dict:
+        return {
+            "summary": {
+                "total": self.total_tests,
+                "passed": self.passed,
+                "failed": self.failed,
+                "success_rate": f"{self.success_rate:.2%}",
+                "avg_latency": f"{self.avg_latency:.2f}s",
+                "avg_iterations": f"{self.avg_iterations:.1f}",
+                "avg_tokens": f"{self.avg_tokens:.0f}"
+            }
+        }
+
+class AgentEvaluator:
+    def __init__(self, agent_factory: Callable):
+        self.agent_factory = agent_factory
+
+    def evaluate(self, tests: List[TestCase]) -> EvaluationReport:
+        results = []
+        for test in tests:
+            agent = self.agent_factory()
+            start = time.time()
+            try:
+                result = agent.run(test.task)
+                latency = time.time() - start
+                if test.success_criteria:
+                    success = test.success_criteria(result)
+                elif test.expected_output:
+                    success = test.expected_output.lower() in result.lower()
+                else:
+                    success = True
+            except Exception as e:
+                latency = time.time() - start
+                success = False
+                result = ""
+            results.append({"success": success, "latency": latency,
+                            "iterations": getattr(agent, "iteration_count", 0),
+                            "tokens": getattr(agent, "total_tokens", 0)})
+        passed = sum(1 for r in results if r["success"])
+        return EvaluationReport(
+            total_tests=len(tests), passed=passed, failed=len(tests) - passed,
+            success_rate=passed / len(tests) if tests else 0,
+            avg_latency=mean(r["latency"] for r in results),
+            avg_iterations=mean(r["iterations"] for r in results),
+            avg_tokens=mean(r["tokens"] for r in results)
+        )
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Deploying an agent to production without running an evaluation suite against a fixed test set.</description>
+        <reason>Agents are non-deterministic. Without a repeatable evaluation suite, prompt or model changes that regress quality are invisible until users report failures. The evaluation suite is the regression gate.</reason>
+      </antipattern>
+    </section>
+
+    <checklist>
+      <check>Tool base class used — all tools inherit BaseTool, registered in ToolRegistry.</check>
+      <check>YAML config with env-var substitution in place — no hardcoded API keys in code.</check>
+      <check>JSON structured logging configured for all LLM calls and tool calls.</check>
+      <check>Retry with exponential backoff configured for all external API calls.</check>
+      <check>Circuit breaker configured for external services with known instability.</check>
+      <check>Evaluation harness with at least 5 representative test cases runs before deployment.</check>
+      <check>Docker deployment uses python:3.11-slim, copies only src/ and config/.</check>
+      <check>Qdrant or other vector store container included in docker-compose for memory.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="agents-safety-guardrails"/>
+      <ref slug="agents-framework-selection"/>
+      <ref slug="llm-observability"/>
+    </see-also>
+  </content>
+</methodology>
