@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-quality-linting">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Set up Ruff, mypy, django-stubs, and pre-commit hooks as a unified linting and type-checking gate for Django projects.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>ruff</tag>
+      <tag>mypy</tag>
+      <tag>pre-commit</tag>
+      <tag>type-checking</tag>
+    </tags>
+    <category>lint</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <related>
+      <ref slug="python-code-quality"/>
+      <ref slug="django-quality-queries"/>
+      <ref slug="django-quality-security"/>
+      <ref slug="django-quality-logging"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Django Linting and Static Analysis Stack</title>
+
+    <summary>Every Django project MUST have Ruff (linting + formatting), mypy + django-stubs (static type checking), and pre-commit hooks committed to the repo. This replaces the legacy Flake8/Black/isort trinity and gates every commit automatically.</summary>
+
+    <why>
+      <p>Manual code review catches logical errors; tools catch mechanical mistakes faster and at commit time. Ruff is 50x faster than the chained Flake8/isort/Black pipeline and covers pyflakes, pycodestyle, isort, bugbear, and pyupgrade in one binary. Type hints via mypy + django-stubs catch attribute errors (e.g., accessing a None FK) before they reach production. Pre-commit hooks prevent bad code from entering the repo. CI coverage thresholds enforce test discipline over time.</p>
+      <p>The 2025-2026 Django quality stack has consolidated: Ruff replaces Flake8/isort/Black entirely. mypy with django-stubs provides type safety for ORM queries, views, and serializers. One config source (pyproject.toml) covers ruff, mypy, pytest, and coverage — no legacy setup.cfg.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Django project — wire pre-commit + ruff + mypy + django-stubs + Sentry on day one.</item>
+        <item>CI gate setup — block PRs on ruff, mypy, security scan, coverage threshold.</item>
+        <item>Adding type hints incrementally to an existing Django project.</item>
+        <item>Onboarding new developers who need mechanical enforcement of conventions.</item>
+        <item>Any project that cannot afford the cost of production attribute errors.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototypes — full quality stack costs more than the prototype is worth; use ruff alone.</item>
+        <item>Codebases on Django older than 4.2 — django-stubs examples assume recent versions.</item>
+        <item>Legacy projects under feature freeze — ROI on adding quality tooling is low; reserve for rewrites.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="ruff-config">
+      <p>Ruff replaces Flake8, Black, isort, and pyupgrade in one binary. Configure once in pyproject.toml. Key rule groups: E/W (pycodestyle), F (pyflakes), I (isort), B (bugbear), C4 (comprehensions), UP (pyupgrade), SIM (simplify), DJ (Django-specific), T20 (no print statements).</p>
+
+      <rule testable="true">
+        <statement>Every Django project MUST configure Ruff in pyproject.toml with at minimum: target-version matching the Python version, line-length=88 or 100, rule groups E/W/F/I/B/C4/UP/SIM/DJ, and migrations excluded from checks. Run ruff check . --fix and ruff format . before every commit via pre-commit hooks.</statement>
+        <rationale>Ruff enforces consistent code style mechanically so code review focuses on logic. The DJ rule group catches Django antipatterns (null=True on string fields, deprecated URL patterns, missing __str__). T20 prevents print() leaking into production. Excluding migrations avoids false positives on generated code.</rationale>
+      </rule>
+
+      <example type="good" title="Ruff configuration in pyproject.toml">
+        <code lang="toml"><![CDATA[
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "migrations",
+    "node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "DJ",     # flake8-django
+    "T20",    # no print()
+    "S",      # bandit security checks
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "B008",   # Function calls in defaults (needed for DI)
+    "B904",   # Allow raise without from (common in Django)
+    "PLR0913", # Too many arguments
+    "PLR2004", # Magic value comparison
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "ARG",     # Unused arguments in tests (fixtures)
+    "S101",    # asserts in tests are fine
+]
+"**/migrations/*.py" = [
+    "E501",    # Long lines in migrations are acceptable
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["myproject", "apps"]
+known-third-party = ["django", "rest_framework"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+]]></code>
+      </example>
+    </section>
+
+    <section name="mypy-config">
+      <p>mypy with django-stubs provides type safety for Django ORM operations, views, and management commands. The plugin resolves Django's metaclass magic so mypy can understand QuerySet[Model], HttpRequest, and other framework types. django-stubs requires django_settings_module to resolve settings-dependent types.</p>
+
+      <rule testable="true">
+        <statement>Django projects with mypy MUST install django-stubs and configure [tool.django-stubs] with django_settings_module in pyproject.toml. Run mypy with check_untyped_defs=true and warn_unused_ignores=true. Apply mypy --strict incrementally per module (add to [tool.mypy.files] list), not repo-wide from day one. Every # type: ignore MUST include a comment explaining why it is acceptable.</statement>
+        <rationale>mypy + django-stubs catches ORM attribute errors (missing FKs, wrong field types) before runtime. check_untyped_defs=true catches errors in untyped functions. warn_unused_ignores keeps the codebase clean as stubs improve. Incremental strict mode prevents the "everything is broken" problem when enabling mypy on a large codebase.</rationale>
+      </rule>
+
+      <example type="good" title="mypy + django-stubs configuration">
+        <code lang="toml"><![CDATA[
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+check_untyped_defs = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_return_any = true
+warn_redundant_casts = true
+show_error_codes = true
+show_column_numbers = true
+
+# Per-module overrides
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "celery.*",
+    "kombu.*",
+    "redis.*",
+]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+]]></code>
+      </example>
+
+      <example type="good" title="Type-hinted Django code using django-stubs">
+        <code lang="python"><![CDATA[
+from django.db.models import QuerySet
+from typing import Optional
+
+# Good: Full type hints with django-stubs types
+def get_active_orders(user: User) -> QuerySet[Order]:
+    """Fetch all active orders for a user."""
+    return Order.objects.filter(
+        user=user,
+        status__in=["pending", "processing"]
+    )
+
+# Good: Optional return type
+def get_user_or_none(user_id: int) -> Optional[User]:
+    """Get user or return None if not found."""
+    return User.objects.filter(pk=user_id).first()
+
+# Good: Service function with keyword-only args
+def create_order(
+    *,
+    user: User,
+    items: list[dict],
+    shipping_address_id: int,
+) -> Order:
+    """Service functions take keyword-only args."""
+    ...
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using # type: ignore without a reason comment, or scattering ignore comments everywhere because the stubs are incomplete.</description>
+        <reason>Unexplained ignores accumulate and hide real errors. For DRF serializers (where stubs are incomplete), install djangorestframework-stubs and document the specific limitation in the comment.</reason>
+      </antipattern>
+    </section>
+
+    <section name="pre-commit-config">
+      <p>Pre-commit hooks run ruff and mypy automatically on changed files at commit time. Developers cannot bypass them (without --no-verify, which is forbidden). The CI pipeline runs the full suite on every push to catch regressions.</p>
+
+      <rule testable="true">
+        <statement>Every Django project MUST have a .pre-commit-config.yaml committed to the repo running at minimum: ruff (lint + fix), ruff-format, and mypy on changed Python files. Django system checks (python manage.py check) MUST run as a local hook. pytest runs on push (pre-push stage), not on commit — commit should complete in under 10 seconds. Use pre-commit install --install-hooks to ensure all developers have hooks installed.</statement>
+        <rationale>Pre-commit gates prevent broken code entering the repo without requiring discipline. Ruff + format on commit takes under 1 second. Django system checks catch misconfigured settings. Running pytest on push (not commit) prevents the 60-second-per-commit cost that causes developers to add --no-verify. CI is the second line of defense — it catches what pre-commit missed on the full diff.</rationale>
+      </rule>
+
+      <example type="good" title="pre-commit configuration">
+        <code lang="yaml"><![CDATA[
+# .pre-commit-config.yaml
+default_language_version:
+  python: python3.12
+
+repos:
+  # Ruff - linting and formatting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.2
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # mypy - type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.1
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - django-stubs[compatible-mypy]
+          - djangorestframework-stubs[compatible-mypy]
+          - types-requests
+        args: [--config-file=pyproject.toml]
+
+  # Security checks via bandit
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.2
+    hooks:
+      - id: bandit
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+
+  # Django system checks
+  - repo: local
+    hooks:
+      - id: django-check
+        name: Django system checks
+        entry: python manage.py check
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # pytest — on push only (not on every commit)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest --tb=short -q
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+]]></code>
+      </example>
+    </section>
+
+    <section name="ci-quality-gate">
+      <p>The pre-commit hooks protect the local commit. CI enforces the full quality gate on every pull request and push, including coverage thresholds and migration checks. All tools configured in pyproject.toml — one file, no legacy setup.cfg.</p>
+
+      <rule testable="true">
+        <statement>CI pipelines for Django MUST run: (1) ruff check . --no-fix; (2) ruff format --check .; (3) mypy --strict apps/; (4) python manage.py check --deploy --fail-level WARNING; (5) python manage.py makemigrations --check --dry-run; (6) pip-audit --strict; (7) pytest -n auto --cov=apps --cov-fail-under=80. These MUST run on every pull_request and push to main. Coverage threshold of 80% MUST be enforced as a blocking gate.</statement>
+        <rationale>CI is the authoritative gate. Pre-commit runs on changed files only; CI runs on the full diff. --deploy flag catches production-only misconfigurations. makemigrations --check catches engineers who changed models without generating migrations. pip-audit blocks deployment of vulnerable dependencies. Coverage threshold prevents test debt accumulation.</rationale>
+      </rule>
+
+      <example type="good" title="CI quality gate script">
+        <code lang="bash"><![CDATA[
+#!/usr/bin/env bash
+# scripts/quality-gate.sh — Django pre-deploy quality gate.
+set -euo pipefail
+export DJANGO_SETTINGS_MODULE="${DJANGO_SETTINGS_MODULE:-config.settings.production}"
+
+echo "==> ruff (lint + format check)"
+ruff check . --no-fix
+ruff format --check .
+
+echo "==> mypy --strict on apps/"
+mypy --strict apps/
+
+echo "==> Django deploy checks"
+python manage.py check --deploy --fail-level WARNING
+
+echo "==> Missing migrations?"
+python manage.py makemigrations --check --dry-run
+
+echo "==> Dependency CVE scan"
+pip-audit --strict || { echo "FAIL: pip-audit found vulnerable deps"; exit 1; }
+
+echo "==> Tests + coverage"
+pytest -n auto --cov=apps --cov=core --cov-fail-under=80 --cov-branch
+
+echo "==> Quality gate passed."
+]]></code>
+      </example>
+
+      <example type="good" title="pytest + coverage configuration">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--tb=short",
+    "--cov=apps",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+    "ignore::django.utils.deprecation.RemovedInDjango60Warning",
+]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["apps"]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__init__.py",
+    "*/admin.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if settings.DEBUG:",
+    "@abstractmethod",
+]
+fail_under = 80
+show_missing = true
+skip_covered = true
+]]></code>
+      </example>
+    </section>
+
+    <section name="gotchas">
+      <p>Common agent pitfalls when setting up the Django linting stack.</p>
+
+      <antipattern>
+        <description>Running mypy repo-wide with --strict from day one on an existing codebase.</description>
+        <reason>Hundreds of errors appear immediately and developers disable mypy entirely. Enable strict per-module in [tool.mypy.overrides] incrementally, allowing the team to fix one module at a time.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Configuring mypy_django_plugin without [tool.django-stubs] django_settings_module.</description>
+        <reason>The plugin cannot resolve settings-dependent types (INSTALLED_APPS, AUTH_USER_MODEL) without the settings module path. Results in spurious errors across the entire ORM layer.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding T20 (no-print) rule to ruff but leaving print() calls in management commands and scripts.</description>
+        <reason>Management commands legitimately use self.stdout.write(), not print(). Add T20 per-file-ignore for management/commands/ or convert to self.stdout.write().</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running MegaLinter or full linting suite as a pre-commit hook instead of CI-only.</description>
+        <reason>Heavy containers add 30+ seconds per commit; developers bypass with --no-verify and the local gate dies. Native tools (ruff, mypy) complete in under 1 second per commit.</reason>
+      </antipattern>
+    </section>
+
+    <section name="checklist">
+      <p>Pre-commit setup checklist for a new Django project.</p>
+      <checklist>
+        <check>Ruff configured in pyproject.toml with E/W/F/I/B/C4/UP/SIM/DJ/T20/S rule groups</check>
+        <check>migrations/ excluded from ruff checks</check>
+        <check>mypy configured with django-stubs plugin and django_settings_module</check>
+        <check>pre-commit-config.yaml committed with ruff, ruff-format, mypy, django-check hooks</check>
+        <check>pre-commit install --install-hooks run in project setup docs</check>
+        <check>CI workflow runs ruff check --no-fix, ruff format --check, mypy, check --deploy</check>
+        <check>CI runs makemigrations --check --dry-run to catch missing migrations</check>
+        <check>pytest coverage threshold set to 80% and enforced as blocking gate</check>
+        <check>pyproject.toml is the single config source (no setup.cfg, no .flake8, no .isort.cfg)</check>
+      </checklist>
+    </section>
+
+    <commands>
+      <command name="ruff-lint">ruff check .</command>
+      <command name="ruff-fix">ruff check . --fix</command>
+      <command name="ruff-format">ruff format .</command>
+      <command name="mypy-strict">mypy --strict apps/</command>
+      <command name="pre-commit-run">pre-commit run --all-files</command>
+      <command name="deploy-check">python manage.py check --deploy --fail-level WARNING</command>
+      <command name="migrations-check">python manage.py makemigrations --check --dry-run</command>
+      <command name="pip-audit">pip-audit --strict</command>
+    </commands>
+
+    <see-also>
+      <link href="https://docs.astral.sh/ruff/"/>
+      <link href="https://github.com/typeddjango/django-stubs"/>
+      <link href="https://pre-commit.com/"/>
+      <link href="https://docs.djangoproject.com/en/stable/ref/checks/"/>
+      <link href="https://pypi.org/project/pip-audit/"/>
+      <ref slug="python-code-quality"/>
+      <ref slug="django-quality-queries"/>
+      <ref slug="django-quality-security"/>
+    </see-also>
+  </content>
+</methodology>
