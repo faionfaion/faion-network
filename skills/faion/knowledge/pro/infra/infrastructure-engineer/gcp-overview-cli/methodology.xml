@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="gcp-overview-cli">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>GCP service overview, gcloud CLI setup, authentication, configuration management, CI/CD deployment patterns, disaster recovery, and cost optimization commands.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>gcloud</tag>
+      <tag>cli</tag>
+      <tag>deployment</tag>
+      <tag>cost-optimization</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-compute-gke"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="gcp-terraform-templates"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>GCP Infrastructure Overview and CLI</title>
+
+    <summary>Google Cloud Platform infrastructure best practices (2025-2026): service catalogue, gcloud CLI setup, authentication, named configurations, CI/CD deployment patterns, disaster recovery, and cost optimization using Recommender and BigQuery billing exports.</summary>
+
+    <why>
+      <p>GCP spans compute, serverless, networking, IAM, storage, and operations services. A consistent CLI setup and named configuration profiles eliminate environment drift. Deployment patterns (Cloud Build → Artifact Registry → Cloud Run / GKE) give repeatable, auditable rollouts. Recommender API surfaces idle resources and over-granted permissions automatically.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up a new GCP project or onboarding a developer to an existing project.</item>
+        <item>Establishing CI/CD pipelines that build, push, and deploy container images.</item>
+        <item>Selecting the right GCP service for a given workload type (VM vs serverless vs GKE).</item>
+        <item>Running cost audits or finding idle resources via Recommender.</item>
+        <item>Configuring disaster recovery across regions for Compute Engine or Cloud SQL.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Deep IAM / network hardening — use gcp-security-iam and gcp-networking-vpc instead.</item>
+        <item>Terraform IaC templates — use gcp-terraform-templates instead.</item>
+        <item>LLM prompt generation for GCP tasks — use gcp-llm-prompts instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="service-catalogue">
+      <p>GCP service categories and canonical service selection:</p>
+      <list>
+        <item>Compute: Compute Engine (VMs), GKE (Kubernetes), Managed Instance Groups (autoscaling).</item>
+        <item>Serverless: Cloud Run (containers), Cloud Functions Gen2 (event-driven).</item>
+        <item>Networking: VPC, Cloud NAT, Cloud Load Balancing, Cloud Armor.</item>
+        <item>IAM: Roles, Service Accounts, Workload Identity.</item>
+        <item>Storage: Cloud Storage (object), Cloud SQL (relational), BigQuery (analytics).</item>
+        <item>Operations: Cloud Logging, Cloud Monitoring, Secret Manager.</item>
+      </list>
+
+      <rule>
+        <statement>Select the compute tier before any infrastructure work: persistent VMs → Compute Engine; managed Kubernetes → GKE Autopilot; containerized stateless apps → Cloud Run; event-driven functions → Cloud Functions Gen2.</statement>
+        <rationale>Wrong service selection causes migration debt. Autopilot is the correct default for new Kubernetes workloads; Cloud Run for stateless containers avoids cluster overhead entirely.</rationale>
+      </rule>
+    </section>
+
+    <section name="shared-responsibility">
+      <p>Google manages physical infrastructure, host OS/hypervisor, default encryption, network infrastructure, and global data centers. The customer manages IAM configuration, data classification, application security, workload configuration, and service account keys (or their elimination via Workload Identity).</p>
+    </section>
+
+    <section name="gcloud-cli-setup">
+      <p>Install gcloud CLI on Linux:</p>
+      <example type="good" title="Install via apt (Debian/Ubuntu)">
+        <code lang="bash"><![CDATA[
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | \
+    sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | \
+    sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+sudo apt update && sudo apt install google-cloud-cli
+
+# Verify
+gcloud version
+]]></code>
+      </example>
+
+      <example type="good" title="Authentication modes">
+        <code lang="bash"><![CDATA[
+# Interactive login (human)
+gcloud auth login
+
+# Service account (CI/CD)
+gcloud auth activate-service-account --key-file=service-account.json
+
+# Application default credentials (local dev)
+gcloud auth application-default login
+
+# List accounts
+gcloud auth list
+]]></code>
+      </example>
+
+      <example type="good" title="Named configurations">
+        <code lang="bash"><![CDATA[
+# Set defaults
+gcloud config set project my-project-id
+gcloud config set compute/region us-central1
+gcloud config set compute/zone us-central1-a
+
+# Named configurations (one per environment)
+gcloud config configurations create production
+gcloud config configurations activate production
+gcloud config configurations list
+
+# View current
+gcloud config list
+]]></code>
+      </example>
+
+      <example type="good" title="Environment variables for CI/CD">
+        <code lang="bash"><![CDATA[
+export CLOUDSDK_CORE_PROJECT="my-project-id"
+export CLOUDSDK_COMPUTE_REGION="us-central1"
+export CLOUDSDK_COMPUTE_ZONE="us-central1-a"
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+export CLOUDSDK_CORE_DISABLE_PROMPTS=1   # non-interactive CI
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Use named gcloud configurations (one per environment: dev, staging, prod) rather than repeatedly running gcloud config set. Store CLOUDSDK_CORE_PROJECT and region in environment variables for CI/CD pipelines.</statement>
+        <rationale>Named configurations prevent accidental cross-environment commands. Environment variables allow the same pipeline script to target different projects without code changes.</rationale>
+      </rule>
+    </section>
+
+    <section name="deployment-patterns">
+      <example type="good" title="CI/CD pipeline: build → push → deploy">
+        <code lang="bash"><![CDATA[
+# Build and push to Artifact Registry
+gcloud builds submit \
+    --tag us-central1-docker.pkg.dev/my-project/my-repo/my-app:$TAG
+
+# Deploy to Cloud Run
+gcloud run deploy my-app \
+    --image=us-central1-docker.pkg.dev/my-project/my-repo/my-app:$TAG \
+    --region=us-central1 \
+    --service-account=my-app@my-project.iam.gserviceaccount.com
+
+# Deploy to GKE
+kubectl set image deployment/my-app \
+    my-app=us-central1-docker.pkg.dev/my-project/my-repo/my-app:$TAG
+]]></code>
+      </example>
+
+      <example type="good" title="Disaster recovery: cross-region replicas and snapshots">
+        <code lang="bash"><![CDATA[
+# Cross-region Cloud SQL replica
+gcloud sql instances create my-replica \
+    --master-instance-name=my-primary \
+    --region=europe-west1
+
+# Cross-region snapshot
+gcloud compute snapshots create my-snapshot-dr \
+    --source-disk=my-disk \
+    --source-disk-zone=us-central1-a \
+    --storage-location=europe-west1
+
+# Multi-region storage bucket
+gcloud storage buckets create gs://my-dr-bucket --location=eu
+]]></code>
+      </example>
+    </section>
+
+    <section name="cost-optimization">
+      <example type="good" title="Recommender: idle resources and IAM cleanup">
+        <code lang="bash"><![CDATA[
+# Find idle Compute Engine instances
+gcloud recommender recommendations list \
+    --project=my-project \
+    --location=us-central1-a \
+    --recommender=google.compute.instance.IdleResourceRecommender
+
+# IAM Recommender (remove unused permissions)
+gcloud recommender recommendations list \
+    --project=my-project \
+    --location=global \
+    --recommender=google.iam.policy.Recommender
+
+# List committed use discounts
+gcloud compute commitments list
+]]></code>
+      </example>
+
+      <example type="good" title="BigQuery billing analysis — top 10 services by cost (30 days)">
+        <code lang="bash"><![CDATA[
+bq query --use_legacy_sql=false '
+SELECT
+  service.description,
+  SUM(cost) as total_cost
+FROM `my-project.billing_export.gcp_billing_export_v1_*`
+WHERE DATE(_PARTITIONTIME) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+GROUP BY 1
+ORDER BY 2 DESC
+LIMIT 10'
+]]></code>
+      </example>
+
+      <rule>
+        <statement>Run Recommender weekly for idle resources and IAM over-grants. Export billing data to BigQuery and query monthly. Review committed use discounts quarterly.</statement>
+        <rationale>GCP Recommender automates the otherwise manual process of finding waste. BigQuery billing exports give cost attribution by service, label, and project that the Cloud Console cost view aggregates away.</rationale>
+      </rule>
+    </section>
+
+    <see-also>
+      <link href="https://cloud.google.com/docs"/>
+      <link href="https://cloud.google.com/sdk/gcloud/reference"/>
+      <link href="https://cloud.google.com/docs/enterprise/best-practices-for-enterprise-organizations"/>
+      <ref slug="gcp-security-iam"/>
+      <ref slug="gcp-networking-vpc"/>
+      <ref slug="gcp-compute-gke"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <ref slug="gcp-terraform-templates"/>
+      <ref slug="gcp-llm-prompts"/>
+    </see-also>
+  </content>
+</methodology>
