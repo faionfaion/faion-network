@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="video-generation-async-api">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Implement async polling, error handling, and agentic workflow patterns for AI video generation APIs (Runway, Luma, Replicate) where all providers are async with 60-300s latency.</summary>
+    <tags>
+      <tag>video-generation</tag>
+      <tag>async</tag>
+      <tag>polling</tag>
+      <tag>runway</tag>
+      <tag>api-integration</tag>
+    </tags>
+    <category>ai</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <related>
+      <ref slug="video-generation-provider-selection"/>
+      <ref slug="video-generation-production-service"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AI Video Generation Async API Patterns</title>
+
+    <summary>All AI video generation providers are async with 60-300s generation latency. Agents must never block synchronously — use polling with exponential backoff, timeout guards, and immediate video download after completion since provider URLs expire in 24-72h.</summary>
+
+    <why>
+      <p>Video generation APIs (Runway, Luma, Replicate) return a job ID on submission and require polling a separate status endpoint. Generation takes 60-300 seconds depending on provider, duration, and load. Blocking synchronously freezes the agent thread. URL expiry (24-72h) means the agent must download the video file immediately after completion — storing only the URL leads to broken links in production. Silent FAILED states (status: FAILED with empty failure message) require defensive logging of every raw response.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Integrating any video generation provider into an agent or service pipeline.</item>
+        <item>Building a polling loop for Runway Gen-3, Luma Dream Machine, or Replicate video models.</item>
+        <item>Implementing parallel multi-clip generation with ffmpeg assembly.</item>
+        <item>Setting up agentic workflow: provider selection, job submission, poll, download, downstream handoff.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Real-time generation needed (under 30s turnaround) — no current provider supports this; re-evaluate use case.</item>
+        <item>Synchronous architecture where the caller cannot tolerate async callbacks or polling — restructure to async first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="agentic-workflow">
+      <p>A subagent receives a script or text prompt, selects the appropriate provider based on task requirements (lip-sync: Runway; long-form: Sora; budget: Luma), submits the generation job, polls for completion with exponential backoff, downloads the video file, and passes it to a downstream agent for assembly or publishing. For multi-clip projects, the agent generates clips in parallel and assembles with ffmpeg. Human review is required before publishing any generated video.</p>
+    </section>
+
+    <section name="polling-rules">
+      <rule testable="true">
+        <statement>Video generation agents MUST poll with a sleep interval (minimum 5s, recommended 10s) and a hard timeout (recommended 10 minutes / 600s). Never block synchronously waiting for a video generation job.</statement>
+        <rationale>All providers are async with 60-300s latency. Blocking synchronously freezes agent threads and wastes compute. A hard timeout prevents infinite hangs when providers silently fail.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>After receiving a SUCCEEDED status, download the video file immediately to local or persistent storage. Do NOT store provider-issued URLs as the final artifact — Runway and Luma URLs expire in 24-72h.</statement>
+        <rationale>Provider-issued video URLs expire, typically within 24-72h. Storing only the URL leads to broken references in downstream pipelines and content delivery.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Always log the full raw API response on every poll cycle, including FAILED states. Generation failures can be silent (status: FAILED with empty failure_message field).</statement>
+        <rationale>Silent failures with empty error messages are common across providers. Without the full raw response logged, debugging production failures becomes impossible.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Implement per-provider rate limiting when generating multiple clips in parallel. Use provider-specific concurrency limits and add per-provider semaphores or queue guards.</statement>
+        <rationale>Parallel generation of many clips may hit provider rate limits (429 errors). Without per-provider rate limiting, all parallel jobs fail simultaneously and retry storms amplify the problem.</rationale>
+      </rule>
+    </section>
+
+    <section name="runway-polling-example">
+      <p>Runway Gen-3 API — async job submission with polling. The submission endpoint and status polling endpoint are separate.</p>
+
+      <example type="good" title="Runway Gen-3 async polling with timeout">
+        <code lang="python"><![CDATA[
+import httpx, time, os
+
+RUNWAY_KEY = os.environ["RUNWAY_API_KEY"]
+
+def generate_video(prompt: str, image_url: str | None = None) -> str:
+    """Submit generation job, poll until done, return video URL."""
+    payload = {"prompt": prompt, "model": "gen3a_turbo", "duration": 5}
+    if image_url:
+        payload["image_as_end_frame"] = False
+        payload["init_image"] = image_url
+
+    r = httpx.post(
+        "https://api.dev.runwayml.com/v1/image_to_video",
+        headers={"Authorization": f"Bearer {RUNWAY_KEY}"},
+        json=payload, timeout=30
+    )
+    job_id = r.json()["id"]
+
+    for _ in range(60):  # max 10 minutes
+        time.sleep(10)
+        status = httpx.get(
+            f"https://api.dev.runwayml.com/v1/tasks/{job_id}",
+            headers={"Authorization": f"Bearer {RUNWAY_KEY}"}
+        ).json()
+        if status["status"] == "SUCCEEDED":
+            return status["output"][0]
+        if status["status"] == "FAILED":
+            raise RuntimeError(f"Video generation failed: {status.get('failure')}")
+    raise TimeoutError("Video generation timed out after 10 minutes")
+]]></code>
+        <note>Runway returns task ID on submission; status polling is a separate GET endpoint. Loop limit of 60 x 10s = 10 minutes hard cap.</note>
+      </example>
+
+      <example type="bad" title="Blocking synchronous call — do not do this">
+        <code lang="python"><![CDATA[
+# DO NOT: blocking synchronous call that waits indefinitely
+import runwayml
+client = runwayml.RunwayML()
+task = client.image_to_video.create(model="gen3a_turbo", prompt_text=prompt)
+# waiting without timeout — agent thread hangs for 60-300s
+while task.status not in ("SUCCEEDED", "FAILED"):
+    task = client.tasks.retrieve(task.id)
+]]></code>
+        <note>No timeout guard; if provider hangs, agent thread freezes indefinitely.</note>
+      </example>
+    </section>
+
+    <section name="sdk-clients">
+      <p>CLI tools and SDK clients for video generation:</p>
+      <list>
+        <item>runwayml Python SDK: Runway Gen-3 API. Install: pip install runwayml. Docs: runwayml.com/api.</item>
+        <item>lumaai Python SDK: Luma Dream Machine API. Install: pip install lumaai. Docs: lumalabs.ai/api.</item>
+        <item>replicate Python SDK: Open-source video models (CogVideoX, AnimateDiff). Install: pip install replicate. Docs: replicate.com.</item>
+        <item>ffmpeg: Video assembly, format conversion, concatenation. Install: system package. Docs: ffmpeg.org.</item>
+        <item>moviepy: Python video editing (trim, overlay, concat). Install: pip install moviepy. Docs: zulko.github.io/moviepy.</item>
+        <item>httpx: Async HTTP for provider polling loops. Install: pip install httpx. Docs: python-httpx.org.</item>
+      </list>
+    </section>
+
+    <section name="provider-api-status">
+      <p>Provider agent-friendliness status (2026):</p>
+      <list>
+        <item>Runway ML (SaaS): Yes — Public REST API; Gen-3 Alpha; lip-sync; video-to-video.</item>
+        <item>Luma AI (SaaS): Yes — Public API; Dream Machine; image animation; video extension.</item>
+        <item>Replicate (SaaS): Yes — API for 50+ open video models; pay per generation.</item>
+        <item>Kling (SaaS): Yes — Credits-based API; 10s at 1080p; competitive quality.</item>
+        <item>Stability AI Stable Video (SaaS): Yes — Image-to-video; lower cost than Runway.</item>
+        <item>OpenAI Sora (SaaS): Partial — API limited to ChatGPT Pro subscribers as of 2026.</item>
+        <item>Google Veo 3 (SaaS): Partial — Via Vertex AI; enterprise access required for 4K.</item>
+      </list>
+    </section>
+
+    <section name="multi-clip-parallel-assembly">
+      <p>For multi-clip projects, generate clips in parallel and assemble with ffmpeg concat.</p>
+
+      <example type="good" title="Parallel multi-clip generation and ffmpeg concat">
+        <code lang="python"><![CDATA[
+import asyncio, httpx, subprocess
+from pathlib import Path
+
+async def fetch_clip(url: str, out_path: str) -> None:
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        Path(out_path).write_bytes(r.content)
+
+def concat_clips(paths: list[str], output: str) -> None:
+    list_file = "concat_list.txt"
+    with open(list_file, "w") as f:
+        for p in paths:
+            f.write(f"file '{p}'\n")
+    subprocess.run(
+        ["ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file,
+         "-c", "copy", output, "-y"],
+        check=True
+    )
+]]></code>
+        <note>Generate at provider-native duration (5-10s); assemble longer videos with ffmpeg concat. Cache video files by prompt hash — regeneration costs the same.</note>
+      </example>
+    </section>
+
+    <section name="gotchas">
+      <p>AI-agent gotchas for video generation APIs:</p>
+      <list>
+        <item>All providers are async with 60-300s latency; agent must never block synchronously — use polling with timeout.</item>
+        <item>Runway returns a task ID on submission; status polling endpoint is separate from submission endpoint.</item>
+        <item>Generation failures can be silent (status: FAILED with empty failure message) — always log raw response.</item>
+        <item>Parallel generation of many clips may hit provider rate limits; implement per-provider rate limiting.</item>
+        <item>Video URLs from Runway/Luma expire (typically 24-72h) — download immediately after completion, do not store URLs.</item>
+        <item>Human review checkpoint before any public video publication — AI video can contain unexpected content.</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <p>Best practices for video generation API integration:</p>
+      <list>
+        <item>Always specify "no text, no logos" explicitly in prompts to avoid content policy triggers and visual noise.</item>
+        <item>Seed with a reference image (image-to-video) for character consistency — text-only produces higher variance.</item>
+        <item>Generate at provider-native duration (5-10s); assemble longer videos with ffmpeg concat.</item>
+        <item>Cache video files by prompt hash — regeneration costs the same; avoid unnecessary regeneration.</item>
+        <item>Monitor per-generation cost: add a cost estimate log before every job submission.</item>
+        <item>Never publish AI-generated video without a review step for accuracy, brand fit, and policy compliance.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Implement async polling with minimum 5-10s interval and 10-minute hard timeout.</check>
+      <check>Download video immediately after SUCCEEDED status — do not rely on provider URLs long-term.</check>
+      <check>Log full raw API response including FAILED states with empty error messages.</check>
+      <check>Implement retry logic with exponential backoff for transient errors.</check>
+      <check>Add per-provider rate limiting for parallel generation workflows.</check>
+      <check>Handle 429 rate limiting, content moderation rejections, and silent FAILED states.</check>
+      <check>Add idempotency keys to prevent duplicate submissions on retry.</check>
+      <check>Implement human review checkpoint before any public video publication.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="video-generation-provider-selection"/>
+      <ref slug="video-generation-production-service"/>
+      <link href="https://runwayml.com/api"/>
+      <link href="https://lumalabs.ai/api"/>
+      <link href="https://replicate.com/collections/video-generation"/>
+    </see-also>
+  </content>
+</methodology>
