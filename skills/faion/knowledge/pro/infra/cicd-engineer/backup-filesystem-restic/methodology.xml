@@ -1,0 +1,369 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="backup-filesystem-restic">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>cicd-engineer</domain>
+    <summary>Implement filesystem backups with Restic (encrypted dedup, S3/B2 backends), BorgBackup (compression, SSH), and rsync incremental. Includes systemd timers and retention policies.</summary>
+    <tags>
+      <tag>backup</tag>
+      <tag>restic</tag>
+      <tag>borgbackup</tag>
+      <tag>filesystem</tag>
+      <tag>encryption</tag>
+    </tags>
+    <category>backup</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-verification-dr"/>
+      <ref slug="backup-database-postgres"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Filesystem Backup with Restic and BorgBackup</title>
+
+    <summary>Implement encrypted, deduplicated filesystem backups using Restic (modern, cloud-native S3/B2/REST backends) or BorgBackup (compression-focused, SSH-based). Both tools deduplicate at the chunk level to reduce storage costs. Automate with systemd timers and prune retention policies.</summary>
+
+    <why>
+      <p>Restic and BorgBackup both solve the three classic problems of filesystem backup: deduplication (only changed chunks are transferred), encryption (data is encrypted at the source before transmission, so the storage backend cannot read it), and verification (the repository has a built-in integrity check). Rsync alone provides none of these — it transfers full files on change, stores data unencrypted, and has no integrity check. For any production filesystem with sensitive data, Restic or Borg is the minimum acceptable tooling.</p>
+      <p>Encryption key management is the highest-risk failure mode: losing the Restic password or Borg passphrase makes the repository permanently unreadable. Never let an agent commit the password into the repository. Always load from a secrets manager and verify the key is accessible before every backup run.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Backing up application data directories, /etc, /home, or /var/www to cloud object storage (S3, Backblaze B2, Wasabi).</item>
+        <item>Environments where deduplication matters — large media files, log archives, database export directories with repeated content.</item>
+        <item>When encryption at the source is required (PII, compliance) — Restic and Borg encrypt before transmission.</item>
+        <item>Multi-server environments where a central Borg server or Restic REST server receives backups from many hosts.</item>
+        <item>Replacing legacy rsync-only backup setups that lack encryption and deduplication.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Kubernetes PersistentVolume backups — use Velero with CSI snapshots instead; Restic/Borg do not understand K8s resource state.</item>
+        <item>Database hot backups — run pg_dump/XtraBackup/mongodump first, then send the export file to Restic for offsite copy.</item>
+        <item>Environments where object storage is the primary store (S3 with versioning enabled) — backup the source, not the bucket replica.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="restic-setup">
+      <p>Restic uses a content-addressable repository. Initialize once with `restic init`, then run `restic backup` for each snapshot. The forget + prune workflow removes old snapshot metadata and then reclaims the underlying data. Run them together (forget --prune) or separately; if you forget without pruning, the data is still in the repository until a prune pass.</p>
+
+      <rule testable="true">
+        <statement>Restic backup scripts MUST load RESTIC_PASSWORD from a secrets manager or password file (RESTIC_PASSWORD_FILE) — never hard-code or pass on the command line. Scripts MUST run `restic check --read-data-subset=5%` at least weekly to detect silent repository corruption before a restore is needed.</statement>
+        <rationale>Restic encrypts the repository; a lost or wrong password renders all data unrecoverable. Passing passwords on the CLI exposes them in process listings and shell history. The check command detects pack file corruption that can accumulate silently over months.</rationale>
+      </rule>
+
+      <example type="good" title="Restic backup to S3 with exclusions, retention, and weekly check">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# restic_backup.sh - Restic backup to S3
+set -euo pipefail
+
+export RESTIC_REPOSITORY="s3:s3.amazonaws.com/backup-bucket/restic"
+export RESTIC_PASSWORD_FILE="/etc/restic/password"
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+
+# Backup with exclusions and tags
+restic backup /var/www /etc /home \
+  --exclude="*.log" \
+  --exclude="*.tmp" \
+  --exclude="node_modules" \
+  --exclude=".git" \
+  --exclude="__pycache__" \
+  --exclude=".cache" \
+  --tag production \
+  --tag "$(hostname)"
+
+# Prune old snapshots (keep 7 daily, 4 weekly, 12 monthly)
+restic forget \
+  --keep-daily 7 \
+  --keep-weekly 4 \
+  --keep-monthly 12 \
+  --prune
+
+# Weekly integrity check (Sunday)
+if [[ $(date +%u) -eq 7 ]]; then
+    restic check --read-data-subset=5%
+fi
+
+echo "Restic backup completed"
+]]></code>
+      </example>
+
+      <example type="good" title="Restic restore examples">
+        <code lang="bash"><![CDATA[
+# List available snapshots
+restic snapshots
+
+# Restore latest snapshot to /restore
+restic restore latest --target /restore
+
+# Restore specific snapshot
+restic restore abc123 --target /restore
+
+# Restore specific files only
+restic restore latest \
+  --target /restore \
+  --include "/var/www/config.php" \
+  --include "/etc/nginx"
+
+# Mount snapshots as filesystem (browse and recover)
+restic mount /mnt/restic
+]]></code>
+      </example>
+
+      <example type="bad" title="Restic with hardcoded password">
+        <code lang="bash"><![CDATA[
+export RESTIC_PASSWORD="mysecret123"
+restic backup /var/www
+]]></code>
+        <note>Password in environment variable from literal is exposed in process listings and shell history. Use RESTIC_PASSWORD_FILE pointing to a secrets-manager-populated file.</note>
+      </example>
+    </section>
+
+    <section name="restic-wrapper-script">
+      <p>A wrapper script centralizes configuration, handles retention, and adds weekly integrity checks. The key variables are sourced from a config file that is populated at runtime from the secrets manager — never committed to Git.</p>
+
+      <example type="good" title="Restic wrapper script with monitoring">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# restic_wrapper.sh - Restic backup with monitoring
+set -euo pipefail
+
+# Load configuration (RESTIC_REPOSITORY, RESTIC_PASSWORD_FILE populated by secrets manager)
+source /etc/restic/config
+
+BACKUP_PATHS="${BACKUP_PATHS:-/var/www /etc}"
+EXCLUDE_FILE="/etc/restic/excludes"
+RETENTION_DAILY="${RETENTION_DAILY:-7}"
+RETENTION_WEEKLY="${RETENTION_WEEKLY:-4}"
+RETENTION_MONTHLY="${RETENTION_MONTHLY:-12}"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+# Backup
+log "Starting Restic backup"
+restic backup $BACKUP_PATHS \
+    --exclude-file="$EXCLUDE_FILE" \
+    --tag "$(hostname)" \
+    --tag "scheduled"
+
+# Forget old snapshots
+log "Pruning old snapshots"
+restic forget \
+    --keep-daily "$RETENTION_DAILY" \
+    --keep-weekly "$RETENTION_WEEKLY" \
+    --keep-monthly "$RETENTION_MONTHLY" \
+    --prune
+
+# Weekly integrity check
+if [[ $(date +%u) -eq 7 ]]; then
+    log "Running weekly integrity check"
+    restic check --read-data-subset=5%
+fi
+
+log "Backup completed"
+]]></code>
+      </example>
+    </section>
+
+    <section name="borgbackup">
+      <p>BorgBackup (borg) uses a similar chunked deduplication model but stores repositories locally or over SSH. borgmatic is the recommended config-driven wrapper that handles initialization, backup, prune, and check in a single YAML config file.</p>
+
+      <example type="good" title="BorgBackup with compression">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# borg_backup.sh - BorgBackup with compression
+set -euo pipefail
+
+export BORG_REPO="/backup/borg-repo"
+export BORG_PASSPHRASE="${BORG_PASSPHRASE}"
+
+# Create backup with lz4 compression
+borg create \
+  --stats \
+  --progress \
+  --compression lz4 \
+  "$BORG_REPO::{hostname}-{now}" \
+  /var/www \
+  /etc \
+  --exclude '*.log' \
+  --exclude 'node_modules' \
+  --exclude '.cache'
+
+# Prune old archives
+borg prune \
+  --keep-daily=7 \
+  --keep-weekly=4 \
+  --keep-monthly=12 \
+  "$BORG_REPO"
+
+echo "Borg backup completed"
+]]></code>
+      </example>
+    </section>
+
+    <section name="rsync-incremental">
+      <p>rsync with --link-dest creates hard links from unchanged files in the previous backup, making each incremental backup appear to be a full copy while consuming only the space of changed files. This approach is simpler than Restic/Borg but lacks encryption and deduplication at the chunk level.</p>
+
+      <example type="good" title="Rsync incremental backup with hard links">
+        <code lang="bash"><![CDATA[
+#!/bin/bash
+# rsync_backup.sh - Incremental backup with hard links
+set -euo pipefail
+
+SOURCE="/var/www/"
+DEST_HOST="backup-server"
+DEST_BASE="/backups/www"
+DATE=$(date +%Y%m%d)
+
+# Incremental backup using hard links to previous
+rsync -avz --delete \
+  --link-dest="$DEST_BASE/latest" \
+  --exclude='*.log' \
+  --exclude='cache/*' \
+  --exclude='tmp/*' \
+  "$SOURCE" \
+  "user@$DEST_HOST:$DEST_BASE/$DATE/"
+
+# Update 'latest' symlink
+ssh "user@$DEST_HOST" "ln -snf $DEST_BASE/$DATE $DEST_BASE/latest"
+
+echo "Rsync backup completed: $DATE"
+]]></code>
+        <note>Rsync has no encryption or deduplication at the chunk level. Use for simple sync to a trusted backup server; prefer Restic for cloud or untrusted storage.</note>
+      </example>
+    </section>
+
+    <section name="automation">
+      <p>Systemd timers are preferred over cron for production services — they support persistent timers (run on next boot if missed), randomized delays (avoid thundering herd), and log to journald. Use OnCalendar with Persistent=true so a server restart does not silently skip a backup window.</p>
+
+      <example type="good" title="Systemd timer and service for nightly backup">
+        <code lang="ini"><![CDATA[
+# /etc/systemd/system/backup.timer
+[Unit]
+Description=Daily backup timer
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
+]]></code>
+      </example>
+
+      <example type="good" title="Backup systemd service">
+        <code lang="ini"><![CDATA[
+# /etc/systemd/system/backup.service
+[Unit]
+Description=Backup service
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/scripts/backup.sh
+User=backup
+Group=backup
+StandardOutput=journal
+StandardError=journal
+]]></code>
+      </example>
+
+      <example type="good" title="Cron configuration for multiple backup jobs">
+        <code lang="bash"><![CDATA[
+# /etc/cron.d/backups
+
+# File backups (hourly)
+0 * * * * root /opt/scripts/restic_backup.sh >> /var/log/backup/restic.log 2>&1
+
+# Verification (daily at 6am)
+0 6 * * * root /opt/scripts/verify_backups.sh >> /var/log/backup/verify.log 2>&1
+
+# Cleanup (weekly on Sunday)
+0 5 * * 0 root /opt/scripts/cleanup_old_backups.sh >> /var/log/backup/cleanup.log 2>&1
+]]></code>
+      </example>
+    </section>
+
+    <section name="setup-checklist">
+      <checklist>
+        <check>Initialize Restic repository with encryption: `restic init`.</check>
+        <check>Configure exclude patterns: logs, caches, node_modules, .git, __pycache__.</check>
+        <check>Set up RESTIC_PASSWORD_FILE pointing to secrets-manager-populated file, never hardcode.</check>
+        <check>Configure bandwidth limits if needed: restic backup --limit-upload/--limit-download.</check>
+        <check>Define retention policy: keep-daily/weekly/monthly — document the policy in ops runbook.</check>
+        <check>Test snapshot creation: restic snapshots to verify the first run.</check>
+        <check>Test restore (full and partial) to an isolated target directory.</check>
+        <check>Set up weekly prune + check schedule in systemd timer or cron.</check>
+        <check>For BorgBackup: initialize encrypted repo with `borg init --encryption=repokey`.</check>
+        <check>Configure SSH key authentication for remote Borg repositories.</check>
+        <check>Separate retention policies by tier: critical (1y), standard (90d), dev (14d).</check>
+        <check>Air-gap credentials: daily-runner account can write but not delete from the long-term archive.</check>
+      </checklist>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <antipattern>
+        <description>Agent commits RESTIC_PASSWORD or BORG_PASSPHRASE literal into a backup script or .env file tracked by Git.</description>
+        <reason>Encryption key loss = data loss; key exposure in Git = security incident. Always load from secrets manager. Add pre-commit check: `git diff --staged | grep -E 'RESTIC_PASSWORD|BORG_PASSPHRASE'`.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent generates `restic forget` without `--prune`, then reports the repository is cleaned up while data packs still consume full storage.</description>
+        <reason>forget removes snapshot references but does not reclaim storage. --prune must run to garbage-collect unreferenced packs. Use `forget --prune` to do both in one pass.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent adds `restic forget --prune` as a guardrail-free operation that an autonomous agent can trigger without human approval.</description>
+        <reason>Forget/prune is irreversible. Agent may emit `forget --dry-run` only; a human runs the real prune. Guard this operation explicitly.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-prompts">
+      <prompt purpose="create-restic-setup">
+<![CDATA[
+Create complete Restic backup setup:
+
+Environment:
+- Source paths: [list of directories]
+- Exclude patterns: [list]
+- Backend: [S3/B2/local/SFTP]
+- Encryption: [Yes with password/No]
+
+Schedule:
+- Frequency: [hourly/daily]
+- Retention: [daily/weekly/monthly counts]
+- Verification: [frequency]
+
+Generate:
+1. Repository initialization script
+2. Backup script with exclusions
+3. Prune/forget script
+4. Verification script
+5. Systemd timer and service files
+6. Environment file template
+7. Prometheus metrics export
+]]>
+      </prompt>
+    </section>
+
+    <see-also>
+      <ref slug="backup-basics"/>
+      <ref slug="backup-verification-dr"/>
+      <link href="https://restic.readthedocs.io/en/stable/"/>
+      <link href="https://borgbackup.readthedocs.io/"/>
+      <link href="https://torsion.org/borgmatic/"/>
+      <link href="https://github.com/cupcakearmy/autorestic"/>
+    </see-also>
+  </content>
+</methodology>
