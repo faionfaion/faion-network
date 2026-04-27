@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-monitoring">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>api-developer</domain>
+    <summary>Instrument production APIs with Prometheus RED-method metrics, structured JSON logs with request_id, and split liveness/readiness probes. Define SLOs first; metrics serve them.</summary>
+    <tags>
+      <tag>monitoring</tag>
+      <tag>prometheus</tag>
+      <tag>slo</tag>
+      <tag>structured-logging</tag>
+      <tag>health-probes</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+    </frameworks>
+    <related>
+      <ref slug="api-rate-limiting"/>
+      <ref slug="api-error-handling"/>
+    </related>
+  </metadata>
+  <content>
+    <title>API Monitoring</title>
+
+    <summary>Instrument every production API endpoint with Prometheus metrics (RED method: Rate, Errors, Duration), structured JSON logging with a `request_id` correlator, and separate liveness/readiness health probes. Define SLOs before adding metrics — the metrics exist to measure SLO compliance, not the other way around.</summary>
+
+    <why>
+      <p>Without bounded Histogram labels and a `request_id` thread, diagnosing a p95 spike requires guessing across unrelated log lines. Liveness probes that call the database cascade into restart storms when the DB is slow. Burn-rate alerts (multi-window) detect SLO burn faster with fewer false pages than static thresholds.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Any HTTP/gRPC/GraphQL service running in production with paying users or SLOs.</item>
+        <item>You need quantitative answers to "is the API healthy", "is it getting slower", "who broke it".</item>
+        <item>Adding a new endpoint or service — instrument before launch, not after the first incident.</item>
+        <item>Setting up readiness probes for k8s / systemd / load balancer drain.</item>
+        <item>Diagnosing a regression (p95 spiked, error rate climbing) — metrics + logs + traces correlated by request_id.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Throwaway prototype on localhost — Prometheus scrape config is not a learning goal.</item>
+        <item>Internal cron job with one user — exit code + email is enough.</item>
+        <item>When you do not yet know what "good" looks like (no SLO defined). Pick SLOs first, then instrument.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="limitations">
+      <p>Where it fails / limitations:</p>
+      <list>
+        <item>Cardinality explosion: labelling a Histogram with `user_id` or `request_id` will OOM Prometheus. Labels must be bounded.</item>
+        <item>Liveness probes that hit the database cause cascade restarts when the DB is slow — keep liveness shallow, depth in readiness.</item>
+        <item>p99 from a 5-minute window is noisy with low traffic; use longer windows or burn-rate alerts.</item>
+        <item>Logs without a `request_id` correlator are unreadable in aggregate. The middleware must run before any other.</item>
+        <item>Self-hosted Prometheus has no long-term storage by default — pair with Thanos, Mimir, or a vendor.</item>
+        <item>"Synthetic 200 OK" health endpoints lie when downstream is broken — implement dependency checks.</item>
+      </list>
+    </section>
+
+    <section name="red-method">
+      <p>RED method:</p>
+      <rule>
+        <statement>Instrument every HTTP service with the RED method: Rate (requests/sec), Errors (4xx/5xx rate), Duration (latency Histogram). Define Histogram buckets that straddle your SLO thresholds.</statement>
+        <rationale>RED gives a complete picture of service health from the user's perspective. Buckets that don't straddle SLO thresholds cannot produce accurate quantile estimates at the SLO boundary.</rationale>
+      </rule>
+    </section>
+
+    <section name="prometheus-middleware">
+      <p>Prometheus middleware:</p>
+      <rule>
+        <statement>Add metric labels only for bounded dimensions: method, endpoint (normalized path), status code. Never add request_id, user_id, or session as labels.</statement>
+        <rationale>High-cardinality labels cause Prometheus OOM. request_id belongs in logs, not metrics.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+from prometheus_client import Counter, Histogram, generate_latest
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
+
+REQUEST_COUNT = Counter(
+    "http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"]
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request latency",
+    ["method", "endpoint"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+)
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start = time.time()
+        response = await call_next(request)
+        REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
+        REQUEST_LATENCY.labels(request.method, request.url.path).observe(time.time() - start)
+        return response
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="health-probe-design">
+      <p>Health probe design:</p>
+      <rule>
+        <statement>Liveness probe returns 200 if the process is alive (no DB checks). Readiness probe returns 200 only if all critical dependencies (DB, cache, critical external APIs) are healthy.</statement>
+        <rationale>A liveness probe that calls the DB triggers cascading restarts when the DB is slow, removing all instances. Keep liveness shallow; put dependency checks in readiness.</rationale>
+      </rule>
+      <example type="bad">
+        <code lang="python"><![CDATA[
+# Wrong: liveness probe calls the database
+@app.get("/health")
+async def health():
+    await db.execute("SELECT 1")   # If DB is slow: all pods restart
+    return {"status": "ok"}
+        ]]></code>
+        <note>Use this path only for readiness; liveness should return immediately without any I/O.</note>
+      </example>
+    </section>
+
+    <section name="structured-logging">
+      <p>Structured logging rules:</p>
+      <rule>
+        <statement>Every log line must carry a request_id field derived from the middleware, bound at the start of the request and propagated through all nested calls.</statement>
+        <rationale>Without a request_id correlator, tracing a single failing request across dozens of log lines is guesswork. It is the minimum for diagnosing incidents.</rationale>
+      </rule>
+      <rule>
+        <statement>Use structured logging (structlog, python-json-logger) emitting JSON. Never use string formatting to build log messages that mix context and message.</statement>
+        <rationale>JSON logs are machine-parseable by Loki, Datadog, and CloudWatch. String-formatted logs require fragile regex parsing.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+import structlog
+import uuid
+
+logger = structlog.get_logger()
+
+@app.middleware("http")
+async def logging_middleware(request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+    log = logger.bind(request_id=request_id, method=request.method, path=request.url.path)
+    log.info("request_started")
+    import time; start = time.time()
+    try:
+        response = await call_next(request)
+        log.info("request_completed", status=response.status_code,
+                 duration_ms=round((time.time() - start) * 1000, 2))
+        response.headers["X-Request-ID"] = request_id
+        return response
+    except Exception as e:
+        log.error("request_failed", error=str(e))
+        raise
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="alert-rules">
+      <p>Alert rules:</p>
+      <rule>
+        <statement>Use burn-rate alerts (multi-window, Google SRE workbook) instead of static threshold alerts. Define burn-rate relative to your SLO error budget.</statement>
+        <rationale>Static threshold alerts fire too late (slow burn) or too often (noisy with short spikes). Burn-rate alerts detect fast burns immediately and slow burns within the SLO window.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="yaml"><![CDATA[
+groups:
+  - name: api_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected (>1%)"
+
+      - alert: SlowResponses
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P95 latency above 1s for 10 minutes"
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Adding request_id or user_id as a Prometheus label.</description>
+        <reason>Cardinality explosion: each unique ID is a new time series; Prometheus OOMs within hours on moderate traffic.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Double-logging: both middleware and handler log the same request.</description>
+        <reason>Inflates log volume 2x; costs and noise increase with no diagnostic benefit.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Treat instrumentation as part of the endpoint definition: an agent adding a route must also add metric labels, log fields, and a probe entry. Use a dashboard-as-code repo (Grafana JSON / Terraform) so an agent can land both the code change and the dashboard panel in one PR. For incident triage, give the agent read-only PromQL + Loki access via MCP and let it pull metrics, never let it edit alert rules without human review.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>`faion-sdd-execution` — quality gate that fails CI if a new route lacks metrics middleware or structured logging.</item>
+        <item>A `dashboards-as-code` task agent (Sonnet) — reads route list, emits Grafana JSON panels.</item>
+        <item>An `slo-writer` agent (Opus) — proposes SLI/SLO from histogram data, drafts burn-rate alerts.</item>
+        <item>`nero-tools` if NERO is the runtime — wires Telegram alerts via `tg-send`.</item>
+      </list>
+      <prompt purpose="incident-triage"><![CDATA[
+You have read access to Prometheus at http://prom:9090 and Loki at
+http://loki:3100. The /api/v1/orders endpoint p95 doubled at 14:20 UTC.
+Pull request_duration p50/p95/p99 for the last 2h, top 5 error log lines
+with request_id from the same window, and the diff of deploys touching
+orders/. Output a 6-line incident note. Do NOT silence any alerts.
+      ]]></prompt>
+      <prompt purpose="dashboard-as-code"><![CDATA[
+For each route in app/routes/*.py without a corresponding panel in
+grafana/dashboards/api.json, propose a panel JSON with rate + p95 + error.
+Output the patch only.
+      ]]></prompt>
+    </section>
+
+    <section name="cli-tools">
+      <p>CLI tools:</p>
+      <list>
+        <item>`promtool` — Validate rules, run unit tests on alerts. Bundled with Prometheus.</item>
+        <item>`amtool` — Inspect/silence Alertmanager from CLI. Bundled with Alertmanager.</item>
+        <item>`logcli` — Query Loki from terminal. grafana.com/docs/loki/latest/query/logcli/.</item>
+        <item>`vmctl` — VictoriaMetrics import/migration. docs.victoriametrics.com.</item>
+        <item>`k6` — Synthetic load + checks → metrics. k6.io.</item>
+        <item>`htmx-status` / `httpstat` — Latency breakdown for one URL. `pip install httpstat`.</item>
+        <item>`otelcol` — OpenTelemetry collector pipeline. opentelemetry.io.</item>
+        <item>`grafonnet` / `grizzly` — Dashboards as code. `grr` CLI.</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <p>Services &amp; apps:</p>
+      <list>
+        <item>Prometheus + Alertmanager + Grafana — OSS, agent-friendly via file-based config and PromQL HTTP API. Default for self-hosted.</item>
+        <item>Grafana Cloud — SaaS, agent-friendly via Terraform provider and HTTP API. Free tier covers small APIs.</item>
+        <item>VictoriaMetrics — OSS, agent-friendly. Drop-in Prometheus, far cheaper at scale.</item>
+        <item>Datadog — SaaS, agent-friendly via terraform-provider-datadog and existing MCP servers. Expensive but turnkey APM + logs + traces.</item>
+        <item>New Relic — SaaS, agent-friendly via NerdGraph API. Free tier exists.</item>
+        <item>Honeycomb — SaaS, agent-friendly via events + tracing API. Best for high-cardinality debugging.</item>
+        <item>Sentry — SaaS + OSS, agent-friendly via `sentry-cli` and REST API. Errors + perf, less for SLOs.</item>
+        <item>Better Stack (Logtail + Uptime) — SaaS, agent-friendly via REST API. Cheap status page + uptime.</item>
+        <item>Loki + Tempo — OSS, agent-friendly. Logs + traces, pairs with Grafana.</item>
+        <item>Statuspage / Instatus — SaaS, agent-friendly via REST API. Public status pages.</item>
+      </list>
+    </section>
+
+    <section name="ci-rule-validation">
+      <p>Validate alert rules in CI:</p>
+      <example type="good" title="Promtool + recording-rule sanity check">
+        <code lang="bash"><![CDATA[#!/usr/bin/env bash
+set -euo pipefail
+promtool check rules ops/prometheus/rules/*.yml
+promtool test rules ops/prometheus/tests/*.yml
+# Sanity: every recording rule used in dashboards must exist
+jq -r '.. | .expr? // empty' ops/grafana/dashboards/*.json \
+  | grep -oE '[a-z_]+:[a-z_:]+' | sort -u > /tmp/used.txt
+yq -r '.. | select(.record? != null) | .record' ops/prometheus/rules/*.yml \
+  | sort -u > /tmp/defined.txt
+comm -23 /tmp/used.txt /tmp/defined.txt | tee /tmp/missing.txt
+[ ! -s /tmp/missing.txt ] || { echo "Missing recording rules"; exit 1; }]]></code>
+      </example>
+    </section>
+
+    <section name="best-practices">
+      <p>Best practices:</p>
+      <list>
+        <item>Define SLOs before metrics — the metrics serve the SLO, not the other way around. Start with availability + latency.</item>
+        <item>Use the RED method (Rate, Errors, Duration) for request-driven services and USE (Utilization, Saturation, Errors) for resources.</item>
+        <item>Histogram buckets must straddle your SLO. If SLO is "p95 &lt; 500ms", you need buckets at 250ms, 500ms, 750ms.</item>
+        <item>One `request_id` per request, propagated in headers, logged in every line, included in error responses. Trace IDs from W3C `traceparent` if you have OTel.</item>
+        <item>Burn-rate alerts (multi-window, Google SRE workbook) instead of static thresholds — fewer pages, faster detection.</item>
+        <item>Liveness = "process alive". Readiness = "can serve traffic now" (DB + cache + critical deps). Don't confuse them.</item>
+        <item>Cardinality budget: &lt; 10 labels per metric, &lt; 100 values per label. Audit with `topk(10, count by (__name__)({}))`.</item>
+        <item>Synthetic monitoring (k6, Checkly) catches what real users see; complements RUM/server metrics.</item>
+      </list>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>AI-agent gotchas:</p>
+      <list>
+        <item>Agents will happily add `request_id` as a Prometheus label. Reject in code review — that's the cardinality bomb. Use it as a log field only.</item>
+        <item>LLMs hallucinate PromQL functions (`rate_over_time`, `histogram_p95`). Always run `promtool check` before applying.</item>
+        <item>An agent diagnosing an incident may "fix" symptoms by widening alert thresholds. Lock alert rules behind a separate review path; agents can propose, humans approve.</item>
+        <item>Generated structured-logging code often double-logs (middleware + handler) and inflates costs 10x. Audit log volume in staging before merging.</item>
+        <item>Self-healing tempts agents to auto-restart pods on alert. That hides the bug. Restrict agent autonomy to "page humans + collect diagnostics", not "mutate runtime".</item>
+        <item>Long-context agents lose track of label conventions across files. Keep a `metrics.md` glossary in the repo and feed it on every metrics task.</item>
+        <item>Health endpoints are the agent's first stop. Make them return JSON with structured component states, not just `{status:"ok"}`, so agents can reason about partial failure.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/metrics_middleware.py" purpose="FastAPI Prometheus middleware: REQUEST_COUNT + REQUEST_LATENCY Histogram"/>
+      <template path="templates/health_endpoints.py" purpose="FastAPI liveness + readiness probes with DB and Redis dependency checks"/>
+      <template path="templates/alert_rules.yml" purpose="Prometheus alert rules: HighErrorRate, SlowResponses, HighRateLimitHits"/>
+    </templates>
+
+    <see-also>
+      <link href="https://sre.google/sre-book/monitoring-distributed-systems/"/>
+      <link href="https://sre.google/workbook/alerting-on-slos/"/>
+      <link href="https://prometheus.io/docs/practices/naming/"/>
+      <link href="https://prometheus.io/docs/practices/histograms/"/>
+      <link href="https://www.structlog.org/"/>
+      <link href="https://opentelemetry.io/docs/specs/semconv/http/"/>
+      <link href="https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/manage-dashboards/#provisioning"/>
+    </see-also>
+  </content>
+</methodology>
