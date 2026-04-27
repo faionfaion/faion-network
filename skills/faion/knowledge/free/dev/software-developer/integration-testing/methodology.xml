@@ -1,0 +1,305 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="integration-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Integration testing verifies multiple components work correctly together using real dependencies or realistic test doubles with isolated data, transaction rollback, and seconds-long test cycles.</summary>
+    <tags>
+      <tag>testing</tag>
+      <tag>integration</tag>
+      <tag>pytest</tag>
+      <tag>testcontainers</tag>
+      <tag>database</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Integration Testing</title>
+    <summary>Integration testing verifies that multiple components work correctly together using real dependencies (databases, APIs, message queues) or realistic test doubles. Every test must control its own data, roll back after the test, and run in seconds — not milliseconds. Real integration tests prove actual ORM queries, transaction boundaries, and schema migrations; mocking the database defeats the purpose.</summary>
+    <why>
+      <p>Unit tests prove logic; integration tests prove that the seams between components behave correctly under real I/O. Mocking the database in an "integration test" defeats the purpose — the test proves nothing about the actual ORM query, transaction boundary, or migration schema. Integration tests catch the subtle failures between components that unit tests miss: schema drift, transaction isolation violations, race conditions in message consumers, and async context leaks.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Database interactions: ORM queries, transactions, migrations.</item>
+        <item>API endpoints tested with a real request/response cycle (TestClient / supertest).</item>
+        <item>Message queue producers and consumers (RabbitMQ, Kafka, SQS).</item>
+        <item>Auth flows: token issuance, role checks, expired/forged tokens.</item>
+        <item>Outbound HTTP integrations against WireMock / mockoon / Pact.</item>
+        <item>Migration safety: every migration runs in CI on a fresh database before merge.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure functions / stateless logic — unit tests are faster and more focused.</item>
+        <item>Cross-service end-to-end flows that need browsers / multiple processes — use E2E (Playwright/Cypress) instead.</item>
+        <item>Performance benchmarking — use dedicated load tools (k6, Locust).</item>
+        <item>Fast inner-loop development feedback — keep these in a separate `tests/integration/` and run on CI + on-demand.</item>
+      </list>
+    </when-not-to-use>
+    <section name="isolation-and-real-dependencies">
+      <rule>
+        <statement>Use real databases in integration tests — never mock the ORM, session, or connection. Testcontainers spins up real Postgres/MySQL/Redis in Docker for the test session.</statement>
+        <rationale>Mocking the database proves the mock, not the actual query, transaction, or migration. Integration tests exist specifically to verify real I/O behavior.</rationale>
+      </rule>
+      <rule>
+        <statement>Each test must roll back its changes via a transaction-scoped fixture. Never rely on teardown deletion — it leaks rows when tests fail mid-run.</statement>
+        <rationale>Transaction rollback is the fastest viable isolation for SQL: no truncation overhead, automatic even on test failure.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin container image tags (e.g., postgres:16.2, not postgres:latest). Unpinned tags break the suite when a new major version drops in CI.</statement>
+        <rationale>Image tags change without notice. Pinning to a minor version ensures reproducible test environments.</rationale>
+      </rule>
+    </section>
+    <section name="test-structure-and-speed">
+      <rule>
+        <statement>Keep unit tests and integration tests in separate directories (tests/unit/ and tests/integration/). Run unit tests on every save; integration tests on push/PR only.</statement>
+        <rationale>Integration tests with real containers are multi-second per suite. Merging them into the fast loop breaks developer feedback cadence.</rationale>
+      </rule>
+      <rule>
+        <statement>Integration test suites exceeding 5 minutes must be split or parallelized. Track CI runtime in PR descriptions.</statement>
+        <rationale>Slow integration suites are not run, which defeats their purpose. Budget runtime explicitly.</rationale>
+      </rule>
+    </section>
+    <section name="test-pyramid-ratios">
+      <rule>
+        <statement>Target 70% unit tests, 20% integration tests, 10% E2E tests. Test failure paths (timeouts, 5xx, retries) not just happy paths.</statement>
+        <rationale>Agent-written tests default to happy-path only. Explicitly requiring failure paths catches the edge cases that matter most in production.</rationale>
+      </rule>
+    </section>
+    <section name="database-fixtures">
+      <rule>
+        <statement>Use a session-scoped engine fixture for Testcontainers and a function-scoped transaction-rollback session fixture. Never create a new container per test.</statement>
+        <rationale>Container cold start is multi-second. Session-scope amortizes startup cost; function-scope transaction isolation keeps tests independent.</rationale>
+      </rule>
+      <example type="good" title="Postgres Testcontainers with Transaction Rollback">
+        <code lang="python"><![CDATA[
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
+from app.db import Base
+
+@pytest.fixture(scope="session")
+def _engine():
+    with PostgresContainer("postgres:16.2") as pg:
+        eng = create_engine(pg.get_connection_url())
+        Base.metadata.create_all(eng)
+        yield eng
+
+@pytest.fixture
+def db_session(_engine):
+    conn = _engine.connect()
+    tx = conn.begin()
+    Session = sessionmaker(bind=conn)
+    s = Session()
+    try:
+        yield s
+    finally:
+        s.close()
+        tx.rollback()
+        conn.close()
+        ]]></code>
+        <note>Session-scoped container + function-scoped rollback is the standard fixture pair. Reuse from conftest.py — do not redefine in test files.</note>
+      </example>
+      <reference path="templates/conftest-postgres.py">Full conftest.py with Postgres fixtures</reference>
+    </section>
+    <section name="fastapi-testclient">
+      <rule>
+        <statement>Override the get_db dependency to inject the test db_session. Clear dependency_overrides after the test via yield + app.dependency_overrides.clear().</statement>
+        <rationale>Without the override, the TestClient opens a separate session and the test cannot see rows written in the fixture session.</rationale>
+      </rule>
+      <example type="good" title="FastAPI TestClient with Dependency Override">
+        <code lang="python"><![CDATA[
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+from app.deps import get_db
+
+@pytest.fixture
+def client(db_session):
+    def override_get_db():
+        yield db_session
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+class TestUserAPI:
+    def test_create_user_success(self, client):
+        response = client.post("/api/users", json={
+            "email": "new@example.com",
+            "name": "New User",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["email"] == "new@example.com"
+        assert "password" not in data
+        ]]></code>
+      </example>
+    </section>
+    <section name="auth-headers">
+      <rule>
+        <statement>Generate auth tokens from fixtures, not hardcoded strings. Create a per-test token fixture so each test scenario controls its own claims.</statement>
+        <rationale>Hardcoded tokens expire, encode wrong roles, or share state across tests.</rationale>
+      </rule>
+      <example type="good" title="Token-Minting Fixture">
+        <code lang="python"><![CDATA[
+import pytest
+from datetime import timedelta
+from app.auth import create_access_token
+
+@pytest.fixture
+def auth_headers(test_user):
+    token = create_access_token(
+        data={"sub": test_user.id},
+        expires_delta=timedelta(hours=1)
+    )
+    return {"Authorization": f"Bearer {token}"}
+        ]]></code>
+      </example>
+    </section>
+    <section name="supertest-setup">
+      <rule>
+        <statement>Use beforeAll/afterAll for database setup and teardown. Use beforeEach to create fresh test data — never share rows between tests via module-level state.</statement>
+        <rationale>Module-level test data creates ordering dependencies; tests that pass in isolation fail in suite due to state leakage.</rationale>
+      </rule>
+      <example type="good" title="Node.js API Integration Testing with Supertest">
+        <code lang="typescript"><![CDATA[
+import request from 'supertest';
+import { createApp } from '../src/app';
+import { setupTestDatabase, teardownTestDatabase } from './helpers/db';
+import { createTestUser, generateAuthToken } from './helpers/auth';
+
+describe('User API Integration', () => {
+  let app: Express.Application;
+  let authToken: string;
+  let testUserId: string;
+
+  beforeAll(async () => {
+    await setupTestDatabase();
+    app = createApp();
+  });
+
+  afterAll(async () => {
+    await teardownTestDatabase();
+  });
+
+  beforeEach(async () => {
+    const user = await createTestUser({
+      email: 'test@example.com',
+      password: 'password123',
+    });
+    testUserId = user.id;
+    authToken = generateAuthToken(user);
+  });
+
+  describe('GET /api/users/:id', () => {
+    it('should return user when authenticated', async () => {
+      const response = await request(app)
+        .get(`/api/users/${testUserId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+
+      expect(response.body.id).toBe(testUserId);
+      expect(response.body).not.toHaveProperty('password');
+    });
+
+    it('should return 401 without auth token', async () => {
+      await request(app).get(`/api/users/${testUserId}`).expect(401);
+    });
+  });
+});
+        ]]></code>
+      </example>
+    </section>
+    <section name="response-assertions">
+      <rule>
+        <statement>Assert HTTP status AND body shape. Never assert only the status code — a 200 with an empty body or wrong schema is a bug.</statement>
+        <rationale>Status-only assertions let schema regressions through. Body shape assertions catch contract breaks at the seam.</rationale>
+      </rule>
+      <example type="bad" title="Incomplete Assertion">
+        <code lang="typescript"><![CDATA[
+// BAD - asserts status only
+await request(app).post('/api/users').send(data).expect(201);
+        ]]></code>
+        <note>No body assertion means a 201 with wrong schema passes the test.</note>
+      </example>
+    </section>
+    <section name="critical-antipatterns">
+      <antipattern>
+        <description>Using unittest.mock or jest.mock to replace the database in integration tests.</description>
+        <reason>A mocked DB integration test proves nothing about the actual ORM query, transaction, or schema. Lint with grep: no unittest.mock imports in tests/integration/.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Spawning a new Testcontainers container per test (function scope) instead of session scope.</description>
+        <reason>Container cold start is multi-second. 50 tests with function-scoped containers adds minutes to CI. Always session-scope the container, function-scope only the transaction.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Mixing TestClient (sync) with async def tests, or calling await client.get() on a sync client.</description>
+        <reason>The async/sync mismatch silently skips assertions or raises obscure errors. Standardize on one client type per test suite.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hardcoding auth tokens in test files.</description>
+        <reason>Tokens encode roles and claims that vary per scenario. Hardcoded tokens create invisible coupling and expire silently. Use a token-minting fixture instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Testing against production or a shared staging environment.</description>
+        <reason>Shared environments cause tests to affect each other and real data. Every integration test must run against an isolated, disposable environment.</reason>
+      </antipattern>
+      <antipattern>
+        <description>WireMock stubs that pass tests but drift from the real upstream API over time.</description>
+        <reason>Stubs prove the stub, not the real contract. Pair with periodic Pact contract verification or scheduled real-API smoke tests.</reason>
+      </antipattern>
+    </section>
+    <section name="best-practices">
+      <note>Two-tier strategy: unit tests on every save, integration tests on push/PR. Do not merge them.</note>
+      <note>Transaction-rollback fixture per test equals fastest viable isolation for SQL: no truncation overhead, automatic even on test failure.</note>
+      <note>For async stacks (FastAPI / Litestar / aiohttp), share the DB session via dependency override; otherwise the test client opens a different session and you will see "where is my row?" failures.</note>
+      <note>Use real factories with `factory_boy` / `model-bakery` instead of inline `User(...)` literals — keeps tests readable and cheap to update when models grow columns.</note>
+      <note>Pin container image tags (`postgres:16.2`) — `postgres:latest` will break the suite when a new major drops.</note>
+      <note>Test failure paths: timeouts, 5xx upstream, retries — most agent-written integration tests cover only the happy path.</note>
+      <note>Run the integration suite with `--randomly` (pytest-randomly) once per week to surface order dependencies.</note>
+    </section>
+    <section name="ai-agent-gotchas">
+      <note>LLMs forget to roll back transactions, leaving rows that break later tests. Standardize on a per-test transaction fixture and ban inline `Session()` creation.</note>
+      <note>Agents over-mock: they will mock the database in "integration" tests, producing tests that prove nothing. Lint with grep: no `unittest.mock` imports in `tests/integration/`.</note>
+      <note>Async vs sync confusion: agents mix `TestClient` (sync) with `async def` tests, or call `await client.get()` on a sync client. Fix by standardizing on one (httpx `AsyncClient`).</note>
+      <note>Auth headers: agents hardcode tokens into tests; use a fixture that mints a token per test scenario.</note>
+      <note>Container leakage: agents spawn a new container per test (function-scope) instead of session-scope. Audit fixture scope explicitly.</note>
+      <note>Human-in-loop: review CI runtime growth — integration suites greater than 5 minutes degrade developer feedback. Force agents to budget runtime in PR descriptions.</note>
+      <note>WireMock stubs that pass tests but drift from real upstream → couple with periodic contract verification (Pact) or scheduled real-API smoke tests.</note>
+      <note>`pytest -p no:cacheprovider` in CI to avoid stale cache flakes when code generation is in the loop.</note>
+    </section>
+    <commands>
+      <command name="testcontainers-python">Spin up Postgres/RabbitMQ/Redis/etc. in tests. Docs: https://testcontainers-python.readthedocs.io</command>
+      <command name="testcontainers (Node)">Same for JS/TS. Docs: https://node.testcontainers.org</command>
+      <command name="pytest-postgresql">Lightweight Postgres-only fixtures. Docs: https://pypi.org/project/pytest-postgresql/</command>
+      <command name="httpx + respx">Mock outbound HTTP for httpx clients. Docs: https://github.com/lundberg/respx</command>
+      <command name="vcrpy / polly.js">Record-replay HTTP cassettes. Docs: https://vcrpy.readthedocs.io</command>
+      <command name="WireMock">Standalone HTTP stub server (CLI/Docker). Docs: https://wiremock.org</command>
+      <command name="mockoon">GUI/CLI mock server. Docs: https://mockoon.com</command>
+      <command name="pact-broker">Consumer-driven contract testing (Pact CLI). Docs: https://docs.pact.io</command>
+      <command name="pytest-xdist">Parallel test runs (`-n auto`). Docs: https://pytest-xdist.readthedocs.io</command>
+      <command name="pytest-asyncio / pytest-anyio">Async test support. Docs: https://pytest-asyncio.readthedocs.io</command>
+      <command name="factoryboy / model-bakery">Factories for test data. Docs: https://factoryboy.readthedocs.io / https://model-bakery.readthedocs.io</command>
+      <command name="hypothesis">Property-based testing add-on. Docs: https://hypothesis.works</command>
+    </commands>
+    <templates>
+      <template path="templates/conftest-postgres.py" purpose="Session-scoped Testcontainers Postgres + per-test transaction-rollback fixture"/>
+      <template path="templates/github-actions-services.yml" purpose="GitHub Actions services block for CI-native Postgres (faster than Testcontainers)"/>
+    </templates>
+    <see-also>
+      <link href="https://martinfowler.com/bliki/IntegrationTest.html"/>
+      <link href="https://testcontainers-python.readthedocs.io"/>
+      <link href="https://node.testcontainers.org"/>
+      <link href="https://fastapi.tiangolo.com/tutorial/testing/"/>
+      <link href="https://docs.pytest.org/en/stable/how-to/fixtures.html"/>
+      <link href="https://wiremock.org/docs/"/>
+      <link href="https://docs.pact.io"/>
+      <link href="https://github.com/SeleniumHQ/seleniumhq.github.io/blob/trunk/website_and_docs/content/documentation/test_practices/encouraged/test_pyramid.md"/>
+    </see-also>
+  </content>
+</methodology>

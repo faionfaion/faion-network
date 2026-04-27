@@ -227,6 +227,24 @@ func Wrap(h Handler) http.HandlerFunc {
         <rationale>errorlint catches == comparison on errors (use errors.Is). wrapcheck flags unwrapped external errors. errcheck flags ignored return errors.</rationale>
       </rule>
     </section>
+    <section name="constructor-functions">
+      <rule>
+        <statement>Never return package-level mutable *AppError vars directly. Use constructor functions that return new instances. Mutable package vars are a footgun: ErrNotFound.Message = "X" corrupts the global for all subsequent requests.</statement>
+        <rationale>Each caller should receive its own error instance to modify without affecting others. Constructors guarantee this safety.</rationale>
+      </rule>
+    </section>
+    <section name="database-error-mapping">
+      <rule>
+        <statement>At the repository boundary, map database driver errors to AppError. pgx.ErrNoRows becomes apperror.NewNotFound("user"); sql.ErrNoRows becomes apperror.NewNotFound("record"). Never let driver errors propagate to handlers.</statement>
+        <rationale>Driver-specific errors are implementation details. Exposing them tightly couples the HTTP API to the database choice. If you migrate from PostgreSQL to MySQL, error types change but the service's error responses should not.</rationale>
+      </rule>
+    </section>
+    <section name="wrapping-with-context">
+      <rule>
+        <statement>When wrapping an error at a higher layer, preserve the original AppError's HTTPStatus and Code when present. If an inner error is already a 404, wrapping with additional context should keep it 404, not demote it to 500.</statement>
+        <rationale>HTTP status communicates the nature of the problem to clients. A not-found error is still not-found even when wrapped; changing it to 500 hides the actual issue and breaks client retry logic (e.g., 404 should not trigger exponential backoff).</rationale>
+      </rule>
+    </section>
     <templates>
       <template path="templates/apperror.go" purpose="pkg/apperror package: AppError type + constructors + Wrap"/>
       <template path="templates/error-middleware.go" purpose="pkg/httpx/error_middleware.go: recovery + errors.As handler"/>
