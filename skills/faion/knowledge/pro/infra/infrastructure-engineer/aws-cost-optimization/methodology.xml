@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="aws-cost-optimization">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Reduce AWS spend systematically: Reserved Instances vs Savings Plans analysis, Spot Instance adoption, S3 lifecycle tiers, NAT consolidation, right-sizing, and disaster recovery cost planning.</summary>
+    <tags>
+      <tag>aws</tag>
+      <tag>cost-optimization</tag>
+      <tag>reserved-instances</tag>
+      <tag>savings-plans</tag>
+      <tag>finops</tag>
+    </tags>
+    <category>aws</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="aws-well-architected-framework"/>
+      <ref slug="aws-vpc-design"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>AWS Cost Optimization</title>
+
+    <summary>AWS cost optimization covers four levers: compute (Reserved Instances, Savings Plans, Spot), storage (S3 tiering, lifecycle policies, EBS cleanup), networking (VPC endpoints, CloudFront, NAT consolidation), and right-sizing (matching instance type to actual utilization). Use Cost Explorer anchored to 30-day rolling windows, not same-day data which is delayed up to 24h.</summary>
+
+    <why>
+      <p>On-demand compute in AWS is priced at a 3–4x premium over the equivalent Reserved Instance or Savings Plan commitment. Most production workloads have a stable baseline that can be covered by 1-year or 3-year commitments, with on-demand or Spot for burst. Failing to analyze and commit this baseline is the single largest avoidable cost for teams running production workloads continuously.</p>
+      <p>Network costs are often invisible until the bill arrives. NAT Gateway charges $0.045/GB processed (not just egress) — a containerized workload pulling ECR images through NAT can generate hundreds of dollars per month that VPC endpoints would eliminate entirely. S3 Intelligent Tiering and lifecycle policies address the other common pattern: data uploaded during development or compliance periods that is never accessed again but still billed at Standard tier.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Monthly cost review — identify top spend services and apply the right optimization lever per service.</item>
+        <item>Pre-commitment analysis before purchasing Reserved Instances or Savings Plans.</item>
+        <item>New workload design — choose the right instance type and commitment model from the start.</item>
+        <item>Cost spike investigation — quickly narrow down which service or resource type drove the increase.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Prototype or short-lived environments (under 30 days) — on-demand is correct; no commitment makes sense.</item>
+        <item>Security-first reviews — optimization and security are separate concerns; do not trade security controls (GuardDuty, Security Hub) for cost savings.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="compute-savings">
+      <p>Compute savings options ranked by discount and use case:</p>
+
+      <rule testable="true">
+        <statement>Before purchasing any Reserved Instances or Savings Plans, run a 30-day utilization baseline from Cost Explorer for each instance family. Purchase Compute Savings Plans first (most flexible — covers EC2, Fargate, Lambda across all regions and instance families) at a 1-year no-upfront commitment for the proven baseline only. Cover the remaining stable compute with EC2 Instance Savings Plans or Regional RIs. Leave 20–30% on-demand for burst. Do NOT commit based on a single-day or same-day spend figure — Cost Explorer data is delayed up to 24h.</statement>
+        <rationale>Compute Savings Plans provide up to 66% discount with maximum flexibility — changing instance family, region, or OS does not void the plan. RIs are cheaper (up to 72%) but lock instance family, region, and OS. Buying too much commitment leaves unused reservation that cannot be refunded. Leaving 20–30% on-demand accommodates traffic spikes without over-committing.</rationale>
+      </rule>
+
+      <list>
+        <item>Reserved Instances: 72% savings vs on-demand. Best for predictable baseline (RDS, ElastiCache, stable EC2). 1-year or 3-year term, all-upfront or partial-upfront.</item>
+        <item>Savings Plans (Compute): 66% savings. Covers EC2, Fargate, Lambda. Most flexible — no instance family or region lock. Recommended default for mixed workloads.</item>
+        <item>Spot Instances: 90% savings vs on-demand. Only for fault-tolerant, interruption-tolerant workloads — batch jobs, stateless workers, CI runners, ML training. Never use Spot for stateful workloads or databases.</item>
+        <item>Right-sizing: 20–40% savings. Match instance type to actual CPU and memory utilization over a 2-week window. Use Compute Optimizer recommendations as the starting point.</item>
+      </list>
+    </section>
+
+    <section name="storage-optimization">
+      <p>S3 and EBS cost management. Storage costs grow silently — add lifecycle policies at bucket creation, not after the fact.</p>
+
+      <rule testable="true">
+        <statement>Every S3 bucket MUST have a lifecycle policy defined at creation time. Buckets holding variable-access data MUST use S3 Intelligent Tiering with a monitoring threshold of 128KB (objects smaller than this are never tiered and incur only Standard cost). Compliance archives MUST use S3 Glacier Instant Retrieval or Glacier Deep Archive after a defined retention boundary. EBS snapshots older than 30 days for non-prod and 90 days for prod MUST be reviewed and deleted if not required for recovery.</statement>
+        <rationale>S3 Standard tier is billed for all stored bytes regardless of access frequency. Intelligent Tiering automatically moves infrequently accessed objects to cheaper tiers without retrieval fees. EBS snapshots are charged per GB stored and accumulate without lifecycle policies — a common source of unexplained storage costs in accounts older than 6 months.</rationale>
+      </rule>
+    </section>
+
+    <section name="network-optimization">
+      <p>Network cost levers. NAT Gateway and data transfer costs are frequently the highest unexpected items on AWS bills.</p>
+
+      <rule testable="true">
+        <statement>All VPCs MUST have Gateway VPC endpoints for S3 and DynamoDB enabled — they are free and eliminate NAT processing charges for traffic to those services. EKS/ECS workloads pulling images from ECR or writing logs to CloudWatch MUST use Interface endpoints for ecr.api, ecr.dkr, and logs. Dev and staging VPCs SHOULD use a single NAT Gateway instead of one per AZ — the cost difference for non-production environments with lower traffic is significant relative to the HA benefit.</statement>
+        <rationale>NAT Gateway charges $0.045/GB for all processed data. A EKS node pulling a 1GB container image generates $0.045 in NAT costs. Interface endpoints for ECR cost $0.01/hour plus $0.01/GB — at moderate image pull volume, endpoints pay for themselves. CloudFront reduces data transfer costs from S3 by up to 50% and improves latency for geographically distributed users.</rationale>
+      </rule>
+    </section>
+
+    <section name="disaster-recovery-cost">
+      <p>DR strategy selection based on cost vs. RTO/RPO trade-off. Choose the tier that matches the workload criticality.</p>
+
+      <list>
+        <item>Backup and restore: lowest cost (S3 storage only). RTO hours to days. RPO limited by backup frequency. Suitable for non-critical data with relaxed recovery objectives.</item>
+        <item>Pilot light: infrastructure defined in IaC, minimal running resources (e.g., replicated RDS). RTO 1–4 hours. RPO minutes (continuous replication). Moderate cost. Suitable for important but not mission-critical workloads.</item>
+        <item>Warm standby: scaled-down but running copy of the production stack in a secondary region. RTO 15–30 minutes. Higher cost (paying for running resources in two regions).</item>
+        <item>Multi-site active-active: full production load in two or more regions simultaneously. RTO near zero. Highest cost. Required only for mission-critical workloads with zero-downtime SLAs.</item>
+      </list>
+    </section>
+
+    <section name="cost-checklist">
+      <checklist>
+        <check>Cost allocation tags defined and enforced via Tag Policy — cannot optimize what cannot be attributed.</check>
+        <check>Savings Plans evaluated against 30-day rolling baseline from Cost Explorer.</check>
+        <check>Reserved Instances covering RDS, ElastiCache, and stable EC2 fleet.</check>
+        <check>Spot Instances used for fault-tolerant workloads (batch, CI runners, ML training).</check>
+        <check>Compute Optimizer recommendations reviewed and applied for right-sizing.</check>
+        <check>S3 lifecycle policies defined on all buckets at creation time.</check>
+        <check>S3 Intelligent Tiering enabled for variable-access buckets.</check>
+        <check>Glacier Deep Archive for compliance data beyond retention threshold.</check>
+        <check>Unused EBS snapshots deleted on a schedule (Lambda + EventBridge).</check>
+        <check>CloudFront configured for static content to reduce S3 data transfer.</check>
+        <check>Gateway VPC endpoints for S3 and DynamoDB in every VPC.</check>
+        <check>Interface endpoints for ECR and CloudWatch Logs in EKS/ECS VPCs.</check>
+        <check>Single NAT Gateway in dev and staging VPCs.</check>
+        <check>Unattached EBS volumes, unused Elastic IPs, and idle load balancers reviewed monthly.</check>
+        <check>Cost budgets and alerts configured per account and per tagged workload.</check>
+        <check>DR strategy selected per workload tier with documented RTO/RPO and tested recovery runbook.</check>
+      </checklist>
+    </section>
+
+    <section name="cost-prompts">
+      <prompt purpose="Analyze and optimize AWS costs">
+        <![CDATA[Analyze AWS costs and recommend optimizations:
+
+Current spend:
+- Monthly: $[AMOUNT]
+- Top services: [LIST]
+- Growth trend: [PERCENTAGE]
+
+Environment:
+- Accounts: [NUMBER]
+- Compute: [EC2/EKS/ECS/LAMBDA]
+- Database: [RDS/AURORA/DYNAMODB]
+- Storage: [S3_TB] [EBS_GB]
+
+Analyze:
+1. Compute utilization (right-sizing candidates)
+2. Reserved Instance / Savings Plans coverage
+3. Spot Instance opportunities
+4. Storage tier optimization
+5. Unused resources (EBS, EIP, snapshots)
+6. Data transfer costs
+7. NAT Gateway costs
+
+Output: Prioritized recommendations with savings estimate]]>
+      </prompt>
+
+      <prompt purpose="Plan Reserved Capacity commitment">
+        <![CDATA[Plan Reserved Instance / Savings Plans strategy:
+
+Current on-demand usage:
+- EC2: [INSTANCE_TYPES_AND_HOURS]
+- RDS: [INSTANCE_TYPES_AND_HOURS]
+- ElastiCache: [NODE_TYPES_AND_HOURS]
+- Fargate: [VCPU_HOURS] [MEMORY_GB_HOURS]
+
+Considerations:
+- Commitment term: [1_YEAR/3_YEAR]
+- Payment: [ALL_UPFRONT/PARTIAL/NO_UPFRONT]
+- Flexibility needed: [HIGH/MEDIUM/LOW]
+- Growth projection: [PERCENTAGE]
+
+Recommend:
+1. RI vs Savings Plans mix
+2. Coverage targets by service
+3. Purchase timeline
+4. Break-even analysis
+5. Flexibility trade-offs]]>
+      </prompt>
+
+      <prompt purpose="Design DR strategy">
+        <![CDATA[Design disaster recovery strategy:
+
+Workload: [NAME]
+Criticality: [TIER_1/TIER_2/TIER_3]
+
+Current state:
+- Primary region: [REGION]
+- Data stores: [LIST]
+- RPO requirement: [TIME]
+- RTO requirement: [TIME]
+
+Design options:
+1. Backup and restore
+2. Pilot light
+3. Warm standby
+4. Multi-site active-active
+
+For selected strategy:
+- Infrastructure requirements
+- Data replication approach
+- Failover procedure
+- Failback procedure
+- Testing schedule
+- Cost estimate]]>
+      </prompt>
+    </section>
+
+    <section name="dr-checklist">
+      <checklist>
+        <check>AWS Backup configured for all stateful resources.</check>
+        <check>Cross-region replication configured for critical S3 buckets and RDS clusters.</check>
+        <check>RDS automated backups enabled with retention period matching RPO.</check>
+        <check>S3 versioning enabled on buckets holding critical application data.</check>
+        <check>Backup restoration tested on a schedule (quarterly minimum).</check>
+        <check>Recovery runbooks documented and accessible outside the primary region.</check>
+        <check>Pilot light or warm standby stack defined in IaC and periodically exercised.</check>
+        <check>DNS failover configured (Route 53 health checks).</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <link href="https://aws.amazon.com/aws-cost-management/aws-cost-explorer/"/>
+      <link href="https://aws.amazon.com/compute-optimizer/"/>
+      <link href="https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/billing-what-is.html"/>
+      <ref slug="aws-well-architected-framework"/>
+      <ref slug="aws-vpc-design"/>
+    </see-also>
+  </content>
+</methodology>
