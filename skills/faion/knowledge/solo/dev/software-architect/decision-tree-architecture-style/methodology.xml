@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="decision-tree-architecture-style">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>software-architect</domain>
+    <summary>Decision tree for choosing Monolith vs Modular Monolith vs Microservices based on team size, DevOps maturity, and deployment frequency.</summary>
+    <tags>
+      <tag>architecture</tag>
+      <tag>decision-tree</tag>
+      <tag>microservices</tag>
+      <tag>monolith</tag>
+      <tag>modular-monolith</tag>
+    </tags>
+    <category>decision</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="decision-tree-process"/>
+      <ref slug="modular-monolith"/>
+      <ref slug="microservices-architecture"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Architecture Style Decision Tree</title>
+
+    <summary>Use this decision tree to choose between Monolith, Modular Monolith, and Microservices based on team size, DevOps maturity, and deployment frequency. The tree encodes 2025 industry evidence: 42% of organizations that adopted microservices have consolidated back (CNCF 2025).</summary>
+
+    <why>
+      <p>Architecture style is among the most impactful and least reversible choices in software development. Poor decisions lead to 40% higher development costs (Gartner 2024) and 60% longer time-to-market. A structured decision tree makes the reasoning explicit, auditable, and repeatable across projects and teams.</p>
+      <p>The 2025 evidence is clear: teams underestimate the operational overhead of microservices. Amazon Prime Video cut costs 90% by migrating from microservices back to a monolith. Shopify maintains a 2.8M-line Ruby monolith serving millions of merchants. The tree gates on DevOps maturity precisely to prevent premature distribution.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Starting a new project and need to pick an architecture style before any code is written.</item>
+        <item>Evaluating whether to migrate a monolith to microservices — use the tree to confirm the preconditions are met.</item>
+        <item>Onboarding non-architect contributors that need a defensible answer without a full ATAM cycle.</item>
+        <item>Filtering architecture options before a heavier trade-off analysis or ADR.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Genuinely novel constraints (regulatory, contractual) that gate the choice — the tree obscures the hard constraint.</item>
+        <item>High-stakes irreversible decisions with unique context — use trees to shortlist, then full trade-off analysis to choose.</item>
+        <item>After the architecture is already deployed — revisit only at planned review intervals.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decision-tree">
+      <p>Walk the tree by answering each question from the available inputs (team size, DevOps maturity, deployment frequency). Arrive at a leaf and record the full path as evidence in your ADR.</p>
+
+      <rule testable="true">
+        <statement>Teams with fewer than 10 developers MUST start with a Monolith. Teams of 10-50 MUST use a Modular Monolith unless bounded contexts are already well-defined and DevOps maturity is high. Teams of 50+ with high DevOps maturity MAY adopt Microservices only when all three preconditions hold: bounded contexts are clear, teams can own services end-to-end, and a platform team exists.</statement>
+        <rationale>Microservices impose distributed-systems overhead (network latency, distributed tracing, deployment pipelines per service) that consumes engineering capacity. Small and medium teams cannot afford this overhead while also building product. The thresholds come from CNCF 2025 and Gartner 2024 data.</rationale>
+      </rule>
+
+      <example type="good" title="Architecture style tree walkthrough">
+        <code lang="text"><![CDATA[
+Q1: Team size and organization?
+    |
+    +-- "<10 developers" ----------------------------------------+
+    |   Recommendation: Monolith                                 |
+    |   Reason: Simplicity, speed, easy debugging                |
+    |   Future: Extract services when pain points emerge         |
+    |                                                            |
+    +-- "10-50 developers" --------------------------------------+
+    |   Recommendation: Modular Monolith                         |
+    |   Reason: Structure without distribution complexity        |
+    |   Pattern: Domain modules with clear interfaces            |
+    |   Tools: Packwerk (Ruby), ArchUnit (Java), custom linters  |
+    |                                                            |
+    +-- "50+ developers" ----------------------------------------+
+        Q2: DevOps maturity?
+            |
+            +-- "High (CI/CD, monitoring, distributed tracing)" -+
+            |   Recommendation: Microservices                    |
+            |   Preconditions:                                   |
+            |   - Bounded contexts are clear                     |
+            |   - Teams can own services end-to-end              |
+            |   - Platform team exists                           |
+            |                                                    |
+            +-- "Low to Medium" ---------------------------------+
+                Recommendation: Modular Monolith                 |
+                Action: Build platform capabilities first        |
+        ]]></code>
+        <note>When runner-up is Microservices, always surface the preconditions — agents skip them unless explicitly prompted.</note>
+      </example>
+
+      <example type="bad" title="Jumping to microservices at 12 developers">
+        <code lang="text"><![CDATA[
+Team: 12 developers, basic CI/CD, no distributed tracing
+Decision: Microservices "because we need to scale 10x"
+
+Problem: 10x traffic != 10x architecture complexity.
+Horizontal scaling works for monoliths too.
+42% of orgs that adopted microservices have consolidated back.
+]]></code>
+        <note>Scaling concern is valid but does not justify microservices at this team size. Modular Monolith handles 10x traffic via horizontal scaling with far less overhead.</note>
+      </example>
+    </section>
+
+    <section name="decision-thresholds">
+      <p>Industry data thresholds for the three architecture styles (2025):</p>
+      <rule testable="true">
+        <statement>Use the following threshold table to score each input before walking the tree. If multiple inputs disagree on the recommended style, prefer the more conservative (simpler) style and document the disagreement in the ADR.</statement>
+        <rationale>Single-axis trees miss interaction effects. Scoring inputs first and comparing them surfaces disagreements before the walk, forcing explicit acknowledgment in the ADR.</rationale>
+      </rule>
+      <example type="good" title="Threshold scoring table">
+        <code lang="text"><![CDATA[
+Metric              | Monolith   | Modular Monolith | Microservices
+--------------------|------------|------------------|---------------
+Team size           | 1-10       | 10-50            | 50+
+Revenue             | <$1M       | $1M-$10M         | $10M+
+Deployment freq     | Weekly     | Daily            | Multiple/day
+DevOps maturity     | Low        | Medium           | High
+]]></code>
+      </example>
+    </section>
+
+    <section name="e-commerce-example">
+      <p>Real-world example: FastCart (Series A, $5M, 12 developers, 2 DevOps engineers, rewriting a legacy PHP monolith).</p>
+      <example type="good" title="FastCart: Modular Monolith decision">
+        <code lang="text"><![CDATA[
+Q1: Team size? -> "12 developers" (10-50 range)
+    Recommendation: Modular Monolith
+
+Q2: But we need to scale 10x - shouldn't we use microservices?
+    Analysis:
+    - 10x traffic != 10x complexity
+    - Horizontal scaling works for monoliths too
+    - 42% of orgs consolidated microservices back (CNCF 2025)
+
+Q3: DevOps maturity?
+    Assessment: Medium
+    - CI/CD exists but basic
+    - No distributed tracing
+    - Limited Kubernetes experience
+    Confirmation: Modular Monolith is correct choice
+
+Decision matrix (weighted):
+Criteria               | Weight | Microservices | Modular Monolith | Monolith
+Development speed      | 25%    | 2             | 4                | 5
+Scalability            | 20%    | 5             | 4                | 3
+Operational complexity | 20%    | 2             | 4                | 5
+Team fit               | 15%    | 2             | 4                | 4
+Future flexibility     | 20%    | 5             | 4                | 2
+Weighted Score         | 100%   | 3.0           | 4.0              | 3.8
+
+Chosen: Modular Monolith
+]]></code>
+        <note>Module structure: catalog, cart, checkout, payments, users, notifications. After 12 months: 50k daily orders handled; payments and notifications extracted to services; no architectural regrets.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use the tree as a fast first-pass: a router agent answers each question from inputs (team size, NFRs, budget), arrives at a leaf, and outputs the recommendation with the tree-justification. A second critic agent steel-mans the runner-up leaf and surfaces any preconditions. If the runner-up survives, escalate to a full trade-off analysis ADR. Keep a per-project decisions log so the same tree never re-runs from scratch.</p>
+      <rule testable="true">
+        <statement>The agent MUST output the runner-up leaf and its key trade alongside the primary recommendation. Outputting only the winning leaf is a rubber-stamp failure mode.</statement>
+        <rationale>Forcing the runner-up eliminates the rubber-stamp behavior where agents present a single option as unconditional. The runner-up reveals which input is most fragile and what would change the decision.</rationale>
+      </rule>
+      <prompt purpose="architecture-style-tree-walk"><![CDATA[
+Use the architecture-style decision tree.
+INPUT: team_size=<n>, devops_maturity=<low|medium|high>, deployment_freq=<...>, revenue=<...>.
+TASK: Walk the tree. Output: leaf, full path, preconditions, three risks of following the recommendation, and the runner-up leaf with its key trade.
+]]></prompt>
+      <prompt purpose="tree-skeptic"><![CDATA[
+ROLE: tree-skeptic
+TASK: The tree recommends <X>. Argue for the runner-up using a different weighting of NFRs. If your argument requires changing one input by 20%, say so and identify which input is most fragile.
+]]></prompt>
+    </section>
+
+    <section name="ai-agent-gotchas">
+      <p>Common failure modes when agents walk this tree:</p>
+      <antipattern>
+        <description>Agent presents the Microservices leaf as unconditional, omitting the three preconditions (bounded contexts clear, teams can own services end-to-end, platform team exists).</description>
+        <reason>Preconditions must be baked into the leaf node and echoed explicitly; agents skip them unless the prompt demands it.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent invents additional questions to "improve" the tree mid-walk.</description>
+        <reason>Agents must be pinned to the version-controlled tree only; improvised questions make results non-reproducible.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Stale industry-data anchors (2023/2024 numbers) persist across runs without refresh.</description>
+        <reason>Require WebSearch refresh on citations older than 12 months before anchoring a recommendation.</reason>
+      </antipattern>
+    </section>
+
+    <see-also>
+      <ref slug="decision-tree-process"/>
+      <ref slug="modular-monolith"/>
+      <ref slug="architecture-decision-records"/>
+      <ref slug="trade-off-analysis"/>
+      <link href="https://martinfowler.com/articles/microservices.html"/>
+      <link href="https://shopify.engineering/shopify-monolith"/>
+      <link href="https://martinfowler.com/articles/break-monolith-into-microservices.html"/>
+    </see-also>
+  </content>
+</methodology>
