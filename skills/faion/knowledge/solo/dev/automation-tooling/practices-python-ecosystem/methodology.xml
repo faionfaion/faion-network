@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="practices-python-ecosystem">
+  <metadata>
+    <tier>solo</tier>
+    <group>dev</group>
+    <domain>automation-tooling</domain>
+    <summary>Python project standards: FastAPI patterns with Pydantic, src/ layout, strict type hints with Optional/List/Dict, and uv/poetry lockfile dependency management.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>fastapi</tag>
+      <tag>project-structure</tag>
+      <tag>type-hints</tag>
+      <tag>dependency-management</tag>
+    </tags>
+    <category>dev</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>python</language>
+    </languages>
+    <frameworks>
+      <framework>fastapi</framework>
+    </frameworks>
+    <related>
+      <ref slug="practices-django-coding"/>
+      <ref slug="practices-backend-languages"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Python Ecosystem Practices</title>
+
+    <summary>Four foundational Python project conventions: FastAPI with Pydantic models and dependency injection, the standard `src/` project layout, explicit type hints on all public functions, and lockfile-based dependency management via uv (preferred 2026) or poetry.</summary>
+
+    <why>
+      <p>Inconsistent Python patterns across projects create fragmentation: agents copy-paste FastAPI snippets from v1 that silently break under v2 Pydantic, project layouts vary per developer making automation scripts non-portable, missing type hints force agents to guess return shapes, and dependency conflicts occur when lockfiles are absent. These four conventions eliminate the most common Python-specific drift.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Greenfield FastAPI service setup — use as the layout and pattern template.</item>
+        <item>Refactor passes adding type hints to an existing Python project.</item>
+        <item>Onboarding a new developer or agent to a Python project — point to this as the house standard.</item>
+        <item>Dependency conflict troubleshooting — check that a lockfile exists and is committed.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Django-specific patterns — see practices-django-coding for DRF, models, services.</item>
+        <item>Performance tuning or async architecture decisions — out of scope here.</item>
+        <item>Projects with an existing house style that diverges (e.g., uses `hatch` instead of uv/poetry) — agent will overwrite it.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fastapi-patterns">
+      <rule testable="true">
+        <statement>FastAPI route handlers MUST use Pydantic BaseModel for request/response bodies, Depends() for injecting DB sessions and auth, and delegate business logic to a service function. Route handlers MUST NOT contain inline DB queries or business logic.</statement>
+        <rationale>FastAPI's Depends() system makes auth and DB injection testable via override. Pydantic models provide automatic validation and OpenAPI schema generation. Agents often place logic inline in route handlers when not explicitly constrained.</rationale>
+      </rule>
+      <example type="good" title="FastAPI route with Pydantic and Depends">
+        <code lang="python"><![CDATA[
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class ItemCreate(BaseModel):
+    name: str
+    price: float
+
+@app.post("/items/", response_model=ItemResponse)
+async def create_item(
+    item: ItemCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await services.create_item(db, item, current_user)
+]]></code>
+      </example>
+      <antipattern>
+        <description>Inline DB query inside the route handler body (e.g., `db.query(Item).filter(...).first()` directly in the function).</description>
+        <reason>Untestable without the HTTP layer; the same query appears duplicated in other routes or Celery tasks.</reason>
+      </antipattern>
+    </section>
+
+    <section name="project-structure">
+      <rule testable="true">
+        <statement>Python projects MUST use the `src/` layout: source code under `src/&lt;package&gt;/`, tests under `tests/` at the project root, `pyproject.toml` for metadata, and `.env.example` committed (never `.env`). `conftest.py` lives in `tests/`.</statement>
+        <rationale>The `src/` layout prevents the package from being importable from the project root without installation, catching missing `__init__.py` and install issues early. It is the layout recommended by pip, uv, and poetry for 2024+.</rationale>
+      </rule>
+      <example type="good" title="Standard Python project layout">
+        <code lang="text"><![CDATA[
+project/
+├── pyproject.toml
+├── src/
+│   └── package/
+│       ├── __init__.py
+│       ├── main.py
+│       └── models/
+├── tests/
+│   ├── conftest.py
+│   └── test_*.py
+├── .env.example
+└── README.md
+]]></code>
+      </example>
+    </section>
+
+    <section name="type-hints">
+      <rule testable="true">
+        <statement>Every public Python function MUST have complete type annotations: parameter types and return type. Use `from typing import Optional, List, Dict` (Python 3.8 compatible) or native `X | None`, `list[X]`, `dict[K, V]` syntax (Python 3.10+). Bare `def f(x)` with no annotations fails ruff's type-check rules.</statement>
+        <rationale>Type hints enable pyright/mypy static analysis, improve agent completions, and serve as inline documentation that cannot drift from the implementation. Missing hints force agents to guess return shapes and produce incorrect downstream code.</rationale>
+      </rule>
+      <example type="good" title="Fully annotated function">
+        <code lang="python"><![CDATA[
+from typing import Optional, List, Dict
+
+def process_users(
+    users: List[User],
+    options: Optional[Dict[str, str]] = None,
+) -> List[ProcessedUser]:
+    ...
+]]></code>
+      </example>
+      <antipattern>
+        <description>Unannotated public functions: `def process_users(users, options=None):`.</description>
+        <reason>Breaks static analysis, makes agent completions unreliable, and fails `pyright --strict` checks.</reason>
+      </antipattern>
+    </section>
+
+    <section name="dependency-management">
+      <rule testable="true">
+        <statement>Python projects MUST use `pyproject.toml` for project metadata and configuration. Dependency management MUST use uv (preferred 2026) or poetry — never raw `pip install` without a lockfile. The lockfile (`uv.lock` or `poetry.lock`) MUST be committed. Dev dependencies MUST be separated from runtime dependencies.</statement>
+        <rationale>Lockfiles guarantee reproducible installs across developer machines and CI. Without a lockfile, agents install the latest versions which may be incompatible, producing "works on my machine" failures. uv is 10-100x faster than pip and is the standard for 2026.</rationale>
+      </rule>
+      <example type="good" title="uv dependency workflow">
+        <code lang="bash"><![CDATA[
+# Install uv
+pip install uv
+
+# Create project
+uv init my-project
+cd my-project
+
+# Add runtime dependency
+uv add fastapi
+
+# Add dev dependency
+uv add --dev pytest ruff mypy
+
+# Install from lockfile (CI)
+uv sync
+
+# Commit lockfile
+git add uv.lock pyproject.toml
+]]></code>
+      </example>
+      <antipattern>
+        <description>Using `pip install -r requirements.txt` without a lockfile, or having both `requirements.txt` and `pyproject.toml` with conflicting versions.</description>
+        <reason>Non-locked requirements allow minor version drift that introduces breaking changes silently between installs.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agent-integration">
+      <p>Recommended agent workflow for Python projects:</p>
+      <list>
+        <item>Pin the dependency manager in the prompt: `uv` (preferred 2026) or `poetry`. Mixed managers in one repo break agent assumptions.</item>
+        <item>Use `import type { X }` pattern equivalent in Python: `from __future__ import annotations` for forward references before Python 3.10.</item>
+        <item>Each public function gets a one-line docstring explaining why, not what. Agents default to restating the signature; reject and re-prompt.</item>
+        <item>Forbid magic numbers/strings — promote to `constants.py`. Agents copy literals across files; lint with `PLR2004` ruff rule.</item>
+        <item>Agent confuses Pydantic v1 vs v2 syntax (`@validator` vs `@field_validator`) — always state the major version in the prompt.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Project uses src/ layout with pyproject.toml.</check>
+      <check>Lockfile (uv.lock or poetry.lock) is committed.</check>
+      <check>Dev dependencies separated from runtime in pyproject.toml.</check>
+      <check>All public functions have complete type annotations.</check>
+      <check>FastAPI routes use Depends() for DB/auth injection.</check>
+      <check>No raw pip install without lockfile in CI.</check>
+    </checklist>
+
+    <see-also>
+      <link href="https://docs.astral.sh/uv/"/>
+      <link href="https://fastapi.tiangolo.com/"/>
+      <link href="https://docs.pydantic.dev/latest/"/>
+      <link href="https://google.github.io/styleguide/pyguide.html"/>
+      <ref slug="practices-django-coding"/>
+    </see-also>
+  </content>
+</methodology>
