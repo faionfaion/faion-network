@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="terraform-modules-composition">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Flat, hierarchical, and factory composition patterns for assembling Terraform modules, including for_each factory, DRY locals, environment config maps, and workspace-based configuration.</summary>
+    <tags>
+      <tag>terraform</tag>
+      <tag>modules</tag>
+      <tag>composition</tag>
+      <tag>patterns</tag>
+      <tag>iac</tag>
+    </tags>
+    <category>iac</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <languages>
+      <language>hcl</language>
+    </languages>
+    <frameworks>
+      <framework>terraform</framework>
+    </frameworks>
+    <related>
+      <ref slug="terraform-modules-structure"/>
+      <ref slug="terraform-modules-versioning"/>
+      <ref slug="iac-patterns"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Terraform Module Composition Patterns</title>
+
+    <summary>Module composition is how root modules assemble child modules into a complete infrastructure system. Three patterns cover most use cases: flat composition for simple architectures, hierarchical composition for layered abstraction, and the factory pattern using for_each for dynamic multi-instance provisioning. DRY techniques (locals, environment config maps) reduce duplication across callers.</summary>
+
+    <why>
+      <p>Without a deliberate composition strategy, root modules grow into a flat list of unrelated resource blocks — effectively a mega-module in disguise. Composition patterns make the dependency graph explicit: a network module produces outputs that a compute module consumes as inputs. This lets teams evolve network and compute independently, test them separately, and replace one without touching the other. The factory pattern solves the common case of deploying N identical services with per-service differences — using for_each instead of count preserves resource identity when services are added or removed mid-list.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Assembling a root module from multiple child modules (VPC + ECS + RDS).</item>
+        <item>Deploying multiple nearly-identical instances of the same module (microservices, per-team environments).</item>
+        <item>Applying the same module call across dev/staging/prod with different variable values.</item>
+        <item>Reducing copy-paste of tag maps and environment configs across module calls.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single-resource modules — composition overhead exceeds value for modules with one or two resources.</item>
+        <item>When modules have circular dependencies — Terraform does not support cycles; restructure the module graph first.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="flat-composition">
+      <p>Flat composition calls all child modules directly from the root module. Suitable for simple architectures where modules have few interdependencies.</p>
+
+      <rule testable="true">
+        <statement>Flat composition MUST wire module outputs to module inputs explicitly. MUST NOT use data sources to look up resources created by sibling modules in the same root — pass outputs as inputs instead.</statement>
+        <rationale>Data source lookups of sibling resources create implicit ordering dependencies that Terraform's dependency graph cannot always resolve, leading to intermittent plan failures on fresh stacks.</rationale>
+      </rule>
+
+      <example type="good" title="Flat composition with explicit output wiring">
+        <code lang="hcl"><![CDATA[
+module "vpc" {
+  source = "./modules/vpc"
+
+  name               = "production"
+  vpc_cidr           = "10.0.0.0/16"
+  public_subnets     = ["10.0.1.0/24", "10.0.2.0/24"]
+  private_subnets    = ["10.0.10.0/24", "10.0.11.0/24"]
+  availability_zones = ["us-east-1a", "us-east-1b"]
+  enable_nat_gateway = true
+
+  tags = {
+    Environment = "production"
+    Project     = "myapp"
+    ManagedBy   = "terraform"
+  }
+}
+
+module "database" {
+  source = "./modules/rds"
+
+  name              = "production"
+  subnet_ids        = module.vpc.private_subnet_ids   # output wired to input
+  security_group_ids = [aws_security_group.database.id]
+}
+]]></code>
+      </example>
+    </section>
+
+    <section name="hierarchical-composition">
+      <p>Hierarchical composition groups related modules into an intermediate "stack" module that presents a simplified interface. Callers instantiate the stack, not individual components.</p>
+
+      <rule testable="true">
+        <statement>Hierarchical modules MUST expose only the inputs and outputs that callers actually need. Internal wiring between child modules MUST remain private — do not propagate every internal output to the parent interface.</statement>
+        <rationale>Leaking internal outputs forces callers to understand the implementation. A clean interface lets the stack refactor its internals without breaking callers.</rationale>
+      </rule>
+
+      <example type="good" title="Hierarchical composition — app-stack module">
+        <code lang="hcl"><![CDATA[
+# modules/app-stack/main.tf
+module "network" {
+  source = "../network"
+
+  name               = var.name
+  vpc_cidr           = var.vpc_cidr
+  availability_zones = var.availability_zones
+}
+
+module "database" {
+  source = "../rds"
+
+  name              = var.name
+  subnet_ids        = module.network.private_subnet_ids
+  security_group_id = module.network.database_sg_id
+  engine            = "postgres"
+  engine_version    = "15.4"
+}
+
+module "compute" {
+  source = "../ecs"
+
+  name         = var.name
+  subnet_ids   = module.network.private_subnet_ids
+  database_url = module.database.connection_string
+}
+]]></code>
+        <note>Root callers only need to provide name, vpc_cidr, and availability_zones. The internal network-to-database-to-compute wiring is hidden inside app-stack.</note>
+      </example>
+    </section>
+
+    <section name="factory-pattern">
+      <p>The factory pattern uses for_each on a module block to provision N instances from a map of configurations. This is the correct approach for deploying multiple microservices, per-team environments, or per-region replicas.</p>
+
+      <rule testable="true">
+        <statement>Use for_each over count when the collection is a named map of objects. MUST NOT use count on module blocks where elements may be inserted or removed from the middle of a list — this causes unnecessary resource destruction and recreation.</statement>
+        <rationale>With count, removing the second of five items renumbers items 3, 4, 5 to 2, 3, 4. Terraform plans destruction and recreation of three resources. With for_each and a map, only the removed key's resources are destroyed.</rationale>
+      </rule>
+
+      <example type="good" title="Factory pattern with for_each">
+        <code lang="hcl"><![CDATA[
+variable "services" {
+  type = map(object({
+    image    = string
+    cpu      = number
+    memory   = number
+    replicas = number
+    port     = number
+  }))
+}
+
+module "microservices" {
+  source   = "./modules/ecs-service"
+  for_each = var.services
+
+  name        = each.key
+  image       = each.value.image
+  cpu         = each.value.cpu
+  memory      = each.value.memory
+  replicas    = each.value.replicas
+  port        = each.value.port
+
+  subnet_ids         = module.vpc.private_subnet_ids
+  security_group_ids = [module.security_groups.ecs_tasks_sg_id]
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Factory caller configuration">
+        <code lang="hcl"><![CDATA[
+services = {
+  api = {
+    image    = "myapp/api:latest"
+    cpu      = 256
+    memory   = 512
+    replicas = 2
+    port     = 8080
+  }
+  worker = {
+    image    = "myapp/worker:latest"
+    cpu      = 512
+    memory   = 1024
+    replicas = 3
+    port     = 8081
+  }
+}
+]]></code>
+        <note>Adding an `emailer` service to this map does not affect the api or worker resources — for_each tracks by key, not position.</note>
+      </example>
+
+      <example type="bad" title="count-based multi-service provisioning">
+        <code lang="hcl"><![CDATA[
+# Fragile — removing element at index 1 renumbers and recreates elements 2..N
+variable "service_names" {
+  type    = list(string)
+  default = ["api", "worker", "emailer"]
+}
+
+module "services" {
+  source = "./modules/ecs-service"
+  count  = length(var.service_names)
+  name   = var.service_names[count.index]
+}
+]]></code>
+        <note>Removing "worker" from the list forces destruction and recreation of "emailer" (was index 2, now index 1). Use for_each with a map instead.</note>
+      </example>
+    </section>
+
+    <section name="dry-patterns">
+      <p>DRY (Don't Repeat Yourself) techniques reduce duplication of common tags and environment-specific configuration across module calls in a root module.</p>
+
+      <rule testable="true">
+        <statement>Common tags (Project, Environment, ManagedBy, Owner, CostCenter) MUST be defined once as a local value and merged into resource tags using merge(). MUST NOT copy the same tags map to every resource block.</statement>
+        <rationale>A tag key rename requires touching every resource block when tags are duplicated. A single local change propagates everywhere.</rationale>
+      </rule>
+
+      <example type="good" title="Locals for common tags">
+        <code lang="hcl"><![CDATA[
+locals {
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Owner       = var.owner
+    CostCenter  = var.cost_center
+  }
+}
+
+resource "aws_instance" "web" {
+  # ...
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-web"
+    Role = "webserver"
+  })
+}
+]]></code>
+      </example>
+
+      <example type="good" title="Environment configuration map">
+        <code lang="hcl"><![CDATA[
+variable "environment" {
+  type = string
+}
+
+locals {
+  env_config = {
+    dev = {
+      instance_count = 1
+      instance_type  = "t3.micro"
+      enable_backup  = false
+      multi_az       = false
+    }
+    staging = {
+      instance_count = 2
+      instance_type  = "t3.small"
+      enable_backup  = true
+      multi_az       = false
+    }
+    prod = {
+      instance_count = 4
+      instance_type  = "t3.large"
+      enable_backup  = true
+      multi_az       = true
+    }
+  }
+
+  config = local.env_config[var.environment]
+}
+
+resource "aws_instance" "web" {
+  count         = local.config.instance_count
+  instance_type = local.config.instance_type
+}
+]]></code>
+        <note>All environment differences live in one locals block. Adding a new environment or changing instance sizes requires one edit, not grep-and-replace across the file.</note>
+      </example>
+    </section>
+
+    <section name="workspace-configuration">
+      <p>Workspaces allow a single root module to manage multiple environments by switching state. They should be used for lightweight environment differences, not as the primary isolation mechanism for production.</p>
+
+      <warning>Do NOT use terraform workspace as the primary environment isolation for production infrastructure. Use separate directories with separate state backends instead. Workspaces share the same backend configuration — a misconfigured plan can target the wrong environment.</warning>
+
+      <example type="good" title="Workspace-based instance sizing">
+        <code lang="hcl"><![CDATA[
+locals {
+  environment = terraform.workspace
+
+  instance_count = {
+    default     = 1
+    development = 1
+    staging     = 2
+    production  = 4
+  }
+
+  instance_type = {
+    default     = "t3.micro"
+    development = "t3.micro"
+    staging     = "t3.small"
+    production  = "t3.large"
+  }
+}
+
+resource "aws_instance" "web" {
+  count         = local.instance_count[local.environment]
+  instance_type = local.instance_type[local.environment]
+
+  tags = {
+    Environment = local.environment
+  }
+}
+]]></code>
+        <note>The default key handles unrecognized workspace names gracefully. Suitable for development convenience; use separate directories for true production isolation.</note>
+      </example>
+    </section>
+
+    <see-also>
+      <ref slug="terraform-modules-structure"/>
+      <ref slug="terraform-modules-versioning"/>
+      <ref slug="iac-patterns"/>
+      <link href="https://spacelift.io/blog/terraform-modules-at-scale"/>
+      <link href="https://devopscube.com/terraform-module-best-practices/"/>
+    </see-also>
+  </content>
+</methodology>
