@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-api">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>Thin views plus service layer plus drf-spectacular OpenAPI plus ViewSet pattern for Django REST Framework. Views validate input and call services; services own business logic and accept domain types, not request.user.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>drf</tag>
+      <tag>rest-api</tag>
+      <tag>openapi</tag>
+      <tag>architecture</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django REST Framework API</title>
+
+    <summary>Thin views plus service layer plus `drf-spectacular` OpenAPI plus `ViewSet` pattern for Django REST Framework. Views validate input and call services; services own all business logic and accept domain types (not `request.user`). Every endpoint gets `@extend_schema` with `summary`, `request`, `responses`, and `tags`. Fat views (business logic in `def post`) are untestable from Celery or management commands and resist refactoring. Separating concerns into serializer → thin view → service → repository lets each layer be tested independently and reused across callers. `drf-spectacular` generates accurate OpenAPI from code; `manage.py spectacular --validate` catches schema regressions before deployment.</summary>
+
+    <why>
+      <p>Fat views (business logic in `def post`) are untestable from Celery or management commands and resist refactoring. Separating concerns into serializer → thin view → service → repository lets each layer be tested independently and reused across callers. `drf-spectacular` generates accurate OpenAPI from code; `manage.py spectacular --validate` catches schema regressions before deployment.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New DRF endpoint inside a Django 5 project following apps/(name)/{views,services,serializers,urls}.py</item>
+        <item>Refactoring a fat view (business logic in def post) into thin view plus services.py extraction</item>
+        <item>Adding OpenAPI docs to existing endpoints via `drf-spectacular`</item>
+        <item>Standardizing pagination, permissions, filtering across a `ViewSet`</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>FastAPI, Starlette, Flask — different idioms; see python-fastapi instead</item>
+        <item>Internal-only endpoints used by Django admin or management commands — plain Django views suffice</item>
+        <item>Pure GraphQL APIs — `graphene-django` or `strawberry-django` have orthogonal patterns</item>
+        <item>Async-first endpoints with heavy I/O concurrency — use Django Ninja or FastAPI</item>
+        <item>One-off webhooks needing raw JSON in and out — DRF serializer overhead not justified</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="thin-views-pattern">
+      <rule>
+        <statement>Views handle exactly three concerns: (1) validate request input via serializer, (2) call a service function, (3) return the response. All business logic lives in services.</statement>
+        <rationale>Fat views (business logic in def post) are untestable from Celery or management commands. Thin views are unit-testable; services are independently testable and reusable.</rationale>
+      </rule>
+      <rule>
+        <statement>Services must accept domain types (user_id: int or User model), never request.user directly. This allows calling the same service from Celery, management commands, and tests.</statement>
+        <rationale>request.user is an HTTP concern. Service functions called from Celery tasks have no request object. Passing request.user to services couples them to the HTTP layer.</rationale>
+      </rule>
+
+      <example type="good" title="APIView with Thin View Pattern">
+        <code lang="python"><![CDATA[
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from drf_spectacular.utils import extend_schema
+
+from apps.users import services as user_services
+from . import serializers
+
+
+class ItemActivationView(APIView):
+    @extend_schema(
+        summary="Activate item",
+        description="Activates item for authenticated user",
+        request=serializers.ItemActivationRequest,
+        responses={200: serializers.ItemActivationResponse},
+        tags=["Items"],
+    )
+    def post(self, request):
+        # 1. Validate input
+        serializer = serializers.ItemActivationRequest(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Call service (pass domain type, not request.user)
+        item = user_services.activate_user_item(
+            user_id=request.user.id,
+            item_code=serializer.validated_data["item_code"],
+        )
+
+        # 3. Return response
+        return Response(
+            serializers.ItemActivationResponse(item).data,
+            status=status.HTTP_200_OK,
+        )
+]]></code>
+      </example>
+
+      <example type="bad" title="Fat View Anti-Pattern">
+        <code lang="python"><![CDATA[
+# BAD: business logic in view, request.user passed to service
+def post(self, request):
+    item_code = request.data.get("item_code")
+    if not item_code:
+        return Response({"error": "required"}, status=400)
+    item = Item.objects.filter(code=item_code).first()
+    if not item:
+        raise Http404
+    item.activated_by = request.user
+    item.save()
+    return Response({"status": "ok"})
+]]></code>
+      </example>
+    </section>
+
+    <section name="viewset-patterns">
+      <rule>
+        <statement>Always scope get_queryset to the current user's data. Never expose Model.objects.all() directly in a ViewSet. This guarantees an IDOR sooner or later.</statement>
+        <rationale>An unscoped queryset allows any authenticated user to access any object by ID. Scoping in get_queryset applies to all ViewSet actions automatically.</rationale>
+      </rule>
+      <rule>
+        <statement>Whitelist allowed HTTP methods on ModelViewSet via http_method_names. ModelViewSet exposes DELETE by default. Unless deletion is explicitly required, restrict allowed methods to prevent accidental data loss endpoints.</statement>
+        <rationale>The default ModelViewSet routes include DELETE. Unless deletion is explicitly required, agents copy-paste and accidentally ship destructive endpoints.</rationale>
+      </rule>
+
+      <example type="good" title="ModelViewSet with Scoped Queryset">
+        <code lang="python"><![CDATA[
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "patch", "head", "options"]
+
+    def get_queryset(self):
+        # Always scope to the requesting user
+        return Order.objects.filter(user=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """Non-CRUD verb as @action — keeps URL conf flat."""
+        order = self.get_object()
+        order_services.cancel_order(order_id=order.id)
+        return Response({"status": "cancelled"})
+
+    def get_permissions(self):
+        """Per-action permissions — more granular than class-level."""
+        if self.action == "create":
+            return [IsAuthenticated(), HasOrderPermission()]
+        return [IsAuthenticated()]
+]]></code>
+      </example>
+    </section>
+
+    <section name="serializer-patterns">
+      <rule>
+        <statement>Define separate serializer classes for request input and response output. Never use one ModelSerializer for both. This leaks write-only fields (e.g., password) into responses.</statement>
+        <rationale>A combined serializer requires field exclusions or conditional read_only logic per action. Separate classes are simpler, independently testable, and OpenAPI-friendly.</rationale>
+      </rule>
+
+      <example type="good" title="Separate Request and Response Serializers">
+        <code lang="python"><![CDATA[
+from rest_framework import serializers
+from .models import Order
+
+
+# Request serializer — validates input only
+class CreateOrderSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    item_id = serializers.IntegerField()
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be positive")
+        return value
+
+
+# Response serializer — read only, from ORM model
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ["id", "uid", "amount", "status", "created_at"]
+        read_only_fields = ["id", "uid", "created_at"]
+]]></code>
+      </example>
+
+      <example type="good" title="Custom Exception Classes">
+        <code lang="python"><![CDATA[
+from rest_framework.views import exception_handler
+from rest_framework.exceptions import APIException
+
+
+class OrderLimitExceeded(APIException):
+    status_code = 400
+    default_detail = "Daily order limit exceeded"
+    default_code = "order_limit_exceeded"
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Passing request.user to service functions.</description>
+        <reason>Services called from Celery tasks or management commands have no request object. Pass user_id or the User model instance instead.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>N+1 queries in get_queryset without select_related or prefetch_related.</description>
+        <reason>ViewSet.list() iterates the queryset. Without prefetch, each serialized related object issues an additional query. Use django-debug-toolbar to catch this in development.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using force_authenticate(user=user) in all tests without any unauthenticated tests.</description>
+        <reason>force_authenticate bypasses permission classes. Tests stay green even when permissions are misconfigured. Always include at least one test asserting 401 or 403 for each endpoint.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Treating PUT as equivalent to PATCH and sending partial updates to PUT endpoints.</description>
+        <reason>ModelViewSet.update defaults to PUT (full replace). Sending partial data results in unset fields being nulled. Use PATCH for partial updates and patch() in tests.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Missing tags= in @extend_schema. All endpoints grouped under "default" in Swagger UI.</description>
+        <reason>Without tags, Swagger UI lists every endpoint in one undifferentiated group, making the docs unusable for APIs with more than 10 endpoints.</reason>
+      </antipattern>
+
+      <rule>
+        <statement>Run manage.py spectacular --validate before merging. This catches broken OpenAPI schemas that would silently produce incomplete documentation.</statement>
+        <rationale>drf-spectacular infers schemas from serializers. Certain field combinations (nullable plus optional) produce incorrect OpenAPI without runtime errors. Validation catches them early.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/check-api-schema.sh" purpose="CI script: export and diff OpenAPI schema, fail on breaking changes"/>
+      <template path="templates/prompt-endpoint-scaffold.txt" purpose="Prompt to scaffold serializer plus service plus view plus tests atomically"/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.django-rest-framework.org"/>
+      <link href="https://drf-spectacular.readthedocs.io"/>
+      <link href="https://spec.openapis.org/oas/v3.1.0"/>
+      <link href="https://github.com/Tufin/oasdiff"/>
+      <link href="https://schemathesis.readthedocs.io"/>
+      <link href="https://docs.djangoproject.com/en/5.0/topics/async/"/>
+    </see-also>
+  </content>
+</methodology>

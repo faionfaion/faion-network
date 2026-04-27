@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="api-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>API tests are organized in a pyramid: many unit tests, some integration tests against TestClient/httpx, targeted contract tests (Pact) only across team or service boundaries, and few E2E tests. Every integration test must validate the response body against the OpenAPI schema — status code alone is not enough.</summary>
+    <tags>
+      <tag>api</tag>
+      <tag>testing</tag>
+      <tag>integration-testing</tag>
+      <tag>openapi</tag>
+      <tag>pact</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>API Testing</title>
+    <summary>API tests are organized in a pyramid: many unit tests, some integration tests against TestClient/httpx, targeted contract tests (Pact) only across team or service boundaries, and few E2E tests. Every integration test must validate the response body against the OpenAPI schema — status code alone is not enough. Snapshot openapi.json per PR and use oasdiff to classify breaking vs non-breaking changes.</summary>
+    <why>
+      <p>Most regressions are schema drift — a field disappears, a type changes, a required field becomes optional. Asserting only on status codes misses these. Generating tests from the served openapi.json (not a hand-maintained spec) keeps tests and implementation in sync. Contract tests (Pact) are justified only when consumer and provider are in separate repos or teams; for single-repo monoliths, an integration test covers the same surface at lower cost.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New REST/GraphQL service: generate happy-path + 4xx + 5xx tests from OpenAPI schema before implementation</item>
+        <item>After every spec change to openapi.yaml — regenerate validation tests to catch drift</item>
+        <item>Building integration tests with TestClient / httpx.AsyncClient for FastAPI or Django</item>
+        <item>Adding negative tests (auth failures, validation, rate-limiting, idempotency)</item>
+        <item>Frontend/backend contract is unstable across teams — drive Pact consumer tests from FE side</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Pure unit-level logic with no transport or contract — plain pytest without schema validation</item>
+        <item>Greenfield prototypes where contract changes hourly — Pact pacts create churn faster than value</item>
+        <item>Single-team, single-repo monoliths where integration tests already cover the surface — contract tests are redundant</item>
+        <item>Pure browser flows (form clicks, redirects) — use Playwright/Cypress instead</item>
+        <item>Internal binary RPC with code-generated schemas — contract drift is impossible</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-rules">
+      <rule>
+        <statement>Assert on the response body schema, not only the status code. A 200 with a missing required field is a regression.</statement>
+        <rationale>Schema drift is the most common API regression. Status code passes; body fails silently without schema assertion.</rationale>
+      </rule>
+      <rule>
+        <statement>Generate tests from the served openapi.json (not a hand-maintained spec). Snapshot openapi.json per PR; use oasdiff to classify breaking vs non-breaking changes.</statement>
+        <rationale>A served spec is always in sync with the running app. A hand-maintained spec drifts within weeks.</rationale>
+      </rule>
+      <rule>
+        <statement>Provide one auth fixture per role: anon_client, user_client, admin_client. Never thread tokens through test arguments.</statement>
+        <rationale>Consistent fixture names prevent duplicate auth setup across test files and make role boundaries explicit.</rationale>
+      </rule>
+    </section>
+
+    <section name="fastapi-integration-test">
+      <example type="good" title="FastAPI Integration Test">
+        <code lang="python"><![CDATA[
+import pytest
+from fastapi.testclient import TestClient
+from app import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+@pytest.fixture
+def auth_headers(client):
+    r = client.post("/auth/login", json={"email": "test@x.com", "password": "pw"})
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+
+class TestUsers:
+    def test_create_user(self, client, auth_headers):
+        r = client.post("/users", json={"name": "A", "email": "a@b.com"}, headers=auth_headers)
+        assert r.status_code == 201
+        assert r.json()["name"] == "A"
+
+    def test_not_found_returns_404(self, client, auth_headers):
+        r = client.get("/users/nonexistent", headers=auth_headers)
+        assert r.status_code == 404
+]]></code>
+      </example>
+    </section>
+
+    <section name="openapi-validation">
+      <rule>
+        <statement>Validate every response against the OpenAPI spec in integration tests. Use openapi-core; reject any test that only checks status_code.</statement>
+        <rationale>Status code is a coarse signal. Schema validation catches missing fields, type changes, and unexpected nullability.</rationale>
+      </rule>
+      <example type="good" title="OpenAPI Validation Example">
+        <code lang="python"><![CDATA[
+from openapi_core import OpenAPI
+from openapi_core.testing.mock import MockRequest, MockResponse
+
+spec = OpenAPI.from_file_path("openapi.json")
+
+def test_response_matches_spec(client):
+    response = client.get("/users")
+    mock_req = MockRequest("http://localhost", "GET", "/users")
+    mock_res = MockResponse(data=response.content, status_code=response.status_code)
+    result = spec.validate_response(mock_req, mock_res)
+    assert not result.errors
+]]></code>
+      </example>
+    </section>
+
+    <section name="idempotency-and-negative-tests">
+      <rule>
+        <statement>For idempotent endpoints, call the operation twice in the same test to catch hidden side-effects.</statement>
+        <rationale>A second identical POST must return the same result (201 or 200) not a 500 due to constraint violation.</rationale>
+      </rule>
+      <rule>
+        <statement>Require at least one failure-injection test for each dependent service: DB down (mock), third-party 503 (respx/WireMock).</statement>
+        <rationale>Happy-path tests pass even when error handling is completely missing. Failure injection surfaces missing try/except and missing fallback responses.</rationale>
+      </rule>
+    </section>
+
+    <section name="when-contract-tests-are-justified">
+      <rule>
+        <statement>Use Pact contract tests only when consumer and provider are maintained by different teams or in separate repositories. For single-team single-repo monoliths, integration tests against TestClient cover the same surface at lower cost.</statement>
+        <rationale>Pact adds a broker, two-sided test setup, and a can-i-deploy gate. The overhead only pays off when independent deploy cycles exist.</rationale>
+      </rule>
+    </section>
+
+    <section name="consumer-side-javascript-typescript">
+      <example type="good" title="Pact Consumer Setup (JavaScript)">
+        <code lang="javascript"><![CDATA[
+const { Pact } = require('@pact-foundation/pact');
+
+const provider = new Pact({ consumer: 'Frontend', provider: 'UserAPI', port: 8080 });
+
+describe('User API contract', () => {
+  beforeAll(() => provider.setup());
+  afterAll(() => provider.finalize());
+
+  it('gets user by id', async () => {
+    await provider.addInteraction({
+      state: 'user exists',
+      uponReceiving: 'GET /users/123',
+      withRequest: { method: 'GET', path: '/users/123', headers: { Authorization: 'Bearer token' } },
+      willRespondWith: {
+        status: 200,
+        body: { id: Matchers.string('123'), name: Matchers.string('John'), email: Matchers.email() },
+      },
+    });
+    const response = await userClient.getUser('123');
+    expect(response.id).toBe('123');
+  });
+});
+]]></code>
+      </example>
+    </section>
+
+    <section name="provider-side-python">
+      <rule>
+        <statement>Use pact-python v2 on the provider side. pactman is unmaintained — pin pact-python>=2.</statement>
+        <rationale>pactman has not had releases in years; pact-python v2 aligns with the Pact Specification v3/v4.</rationale>
+      </rule>
+    </section>
+
+    <section name="pact-broker-workflow">
+      <rule>
+        <statement>Consumer CI publishes pacts to the Pact Broker. Provider CI verifies against the latest consumer tag. Both sides run can-i-deploy before deploying to production.</statement>
+        <rationale>can-i-deploy prevents a provider from deploying a breaking change before all consumers have been updated.</rationale>
+      </rule>
+      <rule>
+        <statement>Any change to openapi.json snapshot or a removed Pact pact must be reviewed by a human before merging.</statement>
+        <rationale>Agents will silently delete drifting tests to make CI green. Removing a pact means a consumer dependency was dropped — that is a product decision, not a test fix.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Asserting only on status_code without validating the response body.</description>
+        <reason>A 200 with a missing required field is a schema regression. Always validate body against the OpenAPI spec.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Weakening assertions to fix a failing test (assert r.status_code in (200, 201, 204)).</description>
+        <reason>Loosened assertions hide real regressions. Failures must be fixed in production code or the spec, not in the test assertion.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Sharing test fixtures across parallel test runs with pytest-xdist without isolation.</description>
+        <reason>Shared DB state causes non-deterministic failures. Use pytest.mark.serial or --dist=loadgroup for stateful tests.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Hardcoding auth tokens or credentials in test fixtures and committing to git.</description>
+        <reason>Leaked tokens are a security incident. Run a scrubber pass before every commit.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling the live external service (Stripe, SendGrid) in tests because it works locally.</description>
+        <reason>CI environments lack external credentials; tests become flaky. Mock at the HTTP boundary with respx/WireMock.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing pactman on the provider side.</description>
+        <reason>pactman is unmaintained. Use pact-python>=2 for all provider verification.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/api-contract-check.sh" purpose="CI script: validate live responses against OpenAPI snapshot, fail on drift"/>
+    </templates>
+
+    <see-also>
+      <ref slug="python-web-frameworks"/>
+      <ref slug="python-typing"/>
+      <link href="https://martinfowler.com/articles/practical-test-pyramid.html"/>
+      <link href="https://docs.pact.io/"/>
+      <link href="https://schemathesis.readthedocs.io/"/>
+      <link href="https://openapi-core.readthedocs.io/"/>
+      <link href="https://github.com/Tufin/oasdiff"/>
+    </see-also>
+  </content>
+</methodology>

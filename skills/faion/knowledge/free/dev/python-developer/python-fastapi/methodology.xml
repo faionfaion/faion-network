@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-fastapi">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>FastAPI production patterns with Pydantic v2, SQLAlchemy 2 async, and thin routes. Keep routes as validation → service → response; one AsyncSession per asyncio task; snapshot openapi.json per PR.</summary>
+    <tags>
+      <tag>fastapi</tag>
+      <tag>pydantic</tag>
+      <tag>sqlalchemy</tag>
+      <tag>async</tag>
+      <tag>rest-api</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Python FastAPI</title>
+    <summary>FastAPI production patterns with Pydantic v2 and SQLAlchemy 2 async. Routes are thin: validate input via Pydantic schema → call service → return response model. One AsyncSession per asyncio task — never share across asyncio.gather siblings. Background tasks via FastAPI BackgroundTasks are for short work only (&lt;100ms); route longer jobs to Celery/Arq/Taskiq. Snapshot openapi.json per PR to catch schema drift.</summary>
+    <why>
+      <p>FastAPI's value comes from the type-hint-to-OpenAPI pipeline, automatic validation, and native async I/O. That value evaporates if routes contain business logic, if Pydantic v1 idioms leak in, or if sync DB calls run inside async def handlers. A vertical-slice discipline (schema → router → service → repo → test per endpoint) keeps each change reviewable and rollback-safe.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>New async REST API project where I/O concurrency dominates</item>
+        <item>Adding endpoints to an existing FastAPI project (one vertical slice at a time)</item>
+        <item>Migrating Flask/DRF endpoints to FastAPI route-by-route while sharing the database</item>
+        <item>Adding Pydantic v2 schemas to a project that hand-validated before</item>
+        <item>Wrapping ML model inference in an HTTP endpoint with auto-generated OpenAPI</item>
+        <item>Microservice fronting SQLAlchemy 2 async + Postgres + Redis</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Sync-heavy CPU-bound services — FastAPI shines on I/O concurrency, not CPU</item>
+        <item>Apps needing Django batteries (auth, admin, ORM, contenttypes) — porting cost exceeds benefit</item>
+        <item>Lambda/FaaS where Pydantic v2 import time hurts cold start</item>
+        <item>Pure WebSocket services — Starlette directly is leaner</item>
+        <item>Codebases not committed to type hints — most of FastAPI's value disappears</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="project-structure">
+      <rule>
+        <statement>Routes are thin: validate input via Pydantic schema → call service function → return response_model. Business logic belongs in services/. Never put business logic in router functions.</statement>
+        <rationale>Business logic in routes makes code untestable (requires HTTP client), unmovable, and hard to review. Services can be tested with plain function calls.</rationale>
+      </rule>
+      <rule>
+        <statement>Every route must declare an explicit response_model. Omitting it leaks server-only fields and breaks OpenAPI generation.</statement>
+        <rationale>FastAPI strips fields not in response_model (correct security behavior) only if response_model is declared. Without it, all model fields are serialized.</rationale>
+      </rule>
+      <rule>
+        <statement>Use Pydantic v2 only. Pin pydantic>=2,&lt;3 and pydantic-settings&gt;=2. Never mix v1 idioms (class Config, @validator, .dict()) with v2 (model_config, @field_validator, .model_dump()).</statement>
+        <rationale>v1 idioms silently pass validation with wrong semantics in v2. Pinning the version and banning v1 patterns prevents this.</rationale>
+      </rule>
+      <p>Canonical layout: app/main.py (FastAPI app instance, lifespan, middleware); app/config.py (Settings/BaseSettings); app/dependencies.py (shared DI: db session, auth); app/routers/&lt;domain&gt;.py (routes); app/schemas/&lt;domain&gt;.py (Pydantic request/response models); app/models/&lt;domain&gt;.py (SQLAlchemy ORM models); app/services/&lt;domain&gt;.py (business logic); app/db/engine.py (async engine + session factory).</p>
+      <rule>
+        <statement>Use Annotated type aliases to keep route signatures clean. Define DBSession = Annotated[AsyncSession, Depends(get_db)] and CurrentUser = Annotated[User, Depends(get_current_active_user)].</statement>
+        <rationale>Long Depends() chains in function signatures reduce readability. Annotated aliases make the intent clear and the signature short.</rationale>
+      </rule>
+      <example type="good" title="Annotated dependencies">
+        <code lang="python"><![CDATA[
+from typing import Annotated
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+
+@router.get("/me")
+async def get_me(user: CurrentUser) -> UserResponse:
+    return user
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use yield in dependency functions that require teardown (DB sessions, tracing spans). Commit on success, rollback on exception, always close.</statement>
+        <rationale>yield runs cleanup after the response is sent. Without rollback on exception, failed transactions leave the DB in an inconsistent state.</rationale>
+      </rule>
+      <example type="good" title="Yield dependencies with rollback">
+        <code lang="python"><![CDATA[
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use the lifespan context manager for startup/shutdown logic. Never use the deprecated @app.on_event("startup") / @app.on_event("shutdown") decorators.</statement>
+        <rationale>@app.on_event was deprecated in FastAPI 0.93. lifespan provides structured async context management for singletons (DB pools, Redis, Kafka).</rationale>
+      </rule>
+    </section>
+
+    <section name="async-patterns">
+      <rule>
+        <statement>Use async def for all route handlers and all functions that perform I/O (DB queries, HTTP requests, file reads). Use regular def for CPU-light operations with no I/O (JWT parsing, simple math).</statement>
+        <rationale>Async def routes release the event loop during I/O, enabling concurrency. CPU-light sync functions are fine — the cost of an async wrapper exceeds the benefit.</rationale>
+      </rule>
+      <rule>
+        <statement>Never call sync I/O functions (requests.get, open(), time.sleep) inside async def route handlers. Use httpx.AsyncClient, aiofiles, and asyncio.sleep instead.</statement>
+        <rationale>A sync call inside async def blocks the event loop thread, preventing all other concurrent requests from making progress.</rationale>
+      </rule>
+      <example type="bad" title="Blocking the event loop with sync requests">
+        <code lang="python"><![CDATA[
+@app.get("/data")
+async def get_data():
+    import requests
+    r = requests.get("https://api.example.com/data")  # blocks event loop
+    return r.json()
+        ]]></code>
+      </example>
+      <example type="good" title="Non-blocking async HTTP">
+        <code lang="python"><![CDATA[
+@app.get("/data")
+async def get_data():
+    async with httpx.AsyncClient() as client:
+        r = await client.get("https://api.example.com/data")
+    return r.json()
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use asyncio.gather with return_exceptions=True when running parallel tasks where one failure should not cancel siblings. Without it, the first exception cancels all other tasks.</statement>
+        <rationale>Default gather cancels all tasks on first exception — incorrect for independent parallel operations that should all complete (or fail independently).</rationale>
+      </rule>
+      <example type="good" title="asyncio.gather with exception handling">
+        <code lang="python"><![CDATA[
+results = await asyncio.gather(
+    fetch_user(user_id),
+    fetch_orders(user_id),
+    fetch_notifications(user_id),
+    return_exceptions=True,
+)
+# Check each result for Exception instance
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use FastAPI BackgroundTasks only for short work (&lt;100ms) — sending a webhook, logging, cache invalidation. For longer jobs (email sending, report generation), use Celery, Arq, or Taskiq.</statement>
+        <rationale>BackgroundTasks runs in the same event loop after the response. Long-running tasks exhaust worker capacity and cause timeouts for new requests.</rationale>
+      </rule>
+    </section>
+
+    <section name="sqlalchemy-pydantic">
+      <rule>
+        <statement>Create async engine with correct session factory. Use expire_on_commit=False to avoid lazy loading after commit in request-scoped sessions.</statement>
+        <rationale>expire_on_commit=False prevents lazy-load exceptions in serialization. Without it, accessing a relationship after commit may fail in async context.</rationale>
+      </rule>
+      <example type="good" title="Async engine and session factory">
+        <code lang="python"><![CDATA[
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.config import settings
+
+async_engine = create_async_engine(
+    settings.database_url,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
+    echo=settings.debug,
+)
+
+async_session = async_sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,  # avoid lazy loading after commit
+)
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Never share an AsyncSession across concurrent asyncio tasks. Create a new session per task when using asyncio.gather.</statement>
+        <rationale>SQLAlchemy AsyncSession is not thread-safe or task-safe for concurrent access. Sharing causes state corruption and cryptic errors.</rationale>
+      </rule>
+      <example type="bad" title="Shared session across concurrent tasks">
+        <code lang="python"><![CDATA[
+# WRONG — shared session across concurrent tasks
+async with async_session() as session:
+    await asyncio.gather(query_users(session), query_orders(session))
+        ]]></code>
+      </example>
+      <example type="good" title="Separate session per task">
+        <code lang="python"><![CDATA[
+# CORRECT — separate session per task
+async def run_query(query_func):
+    async with async_session() as session:
+        return await query_func(session)
+
+await asyncio.gather(run_query(query_users), run_query(query_orders))
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Explicitly eager-load relationships using selectinload (one-to-many) or joinedload (one-to-one). Never rely on lazy loading in async routes — lazy loading is synchronous and raises in async context.</statement>
+        <rationale>Lazy loading triggers a sync DB call which raises MissingGreenlet in async SQLAlchemy. Must be explicit.</rationale>
+      </rule>
+      <example type="good" title="Eager loading with selectinload">
+        <code lang="python"><![CDATA[
+from sqlalchemy.orm import selectinload, joinedload
+
+result = await db.execute(
+    select(User)
+    .options(selectinload(User.orders))
+    .options(joinedload(User.profile))
+    .where(User.id == user_id)
+)
+user = result.scalar_one_or_none()
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Set extra="forbid" on BaseSchema to reject unknown fields. Set from_attributes=True for ORM mode. Use field_validator (not @validator) and model_config (not class Config).</statement>
+        <rationale>extra="forbid" catches client typos in request bodies early. from_attributes=True enables ORM instance serialization. v1 idioms silently pass in v2 with wrong semantics.</rationale>
+      </rule>
+      <example type="good" title="Pydantic v2 schema patterns">
+        <code lang="python"><![CDATA[
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+        extra="forbid",
+        str_strip_whitespace=True,
+    )
+
+class UserCreate(BaseSchema):
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Defining def route(...) instead of async def in a FastAPI router.</description>
+        <reason>Sync route handlers block the event loop for the entire duration of the handler, preventing concurrent request processing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Calling sync ORM code (session.query(...)) inside async def routes.</description>
+        <reason>Sync ORM calls block the event loop thread. Use SQLAlchemy 2 async API (await db.execute(select(...))).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Pydantic v1 idioms: class Config, @validator, .dict(), orm_mode=True.</description>
+        <reason>v1 idioms compile and run in v2 with wrong semantics — validators may not fire, orm_mode is renamed. Pin pydantic>=2 and ban v1 patterns explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using FastAPI BackgroundTasks for jobs longer than ~100ms (email delivery, report generation, video processing).</description>
+        <reason>BackgroundTasks runs after the response in the same event loop. Long tasks delay the loop and exhaust worker capacity for new requests. Use Celery/Arq/Taskiq.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Omitting response_model on route decorators.</description>
+        <reason>Without response_model, FastAPI serializes all model fields including server-only fields (hashed_password, internal IDs). Also breaks OpenAPI documentation.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Setting expire_on_commit=False globally then using the same session in a long-lived background worker.</description>
+        <reason>expire_on_commit=False is correct for request-scoped sessions (prevents lazy-loading after commit). In long-lived workers it serves stale data without warning.</reason>
+      </antipattern>
+      <rule>
+        <statement>Snapshot openapi.json per PR. Review the diff before merging — unintentional schema changes break API consumers.</statement>
+        <rationale>Agents regenerate and commit openapi.json without reviewing the diff, silently shipping breaking changes to consumers.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/openapi-snapshot.sh" purpose="CI script: diff served openapi.json against committed snapshot, fail on change"/>
+      <template path="templates/async-route-test.py" purpose="Async route test skeleton via httpx.AsyncClient + ASGITransport"/>
+    </templates>
+
+    <see-also>
+      <link href="https://fastapi.tiangolo.com/"/>
+      <link href="https://docs.pydantic.dev/latest/migration/"/>
+      <link href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html"/>
+      <link href="https://www.uvicorn.org/deployment/"/>
+      <link href="https://github.com/zhanymkanov/fastapi-best-practices"/>
+      <link href="https://schemathesis.readthedocs.io/en/stable/"/>
+      <link href="https://opentelemetry-python-contrib.readthedocs.io/en/latest/instrumentation/fastapi/fastapi.html"/>
+      <link href="https://taskiq-python.github.io/"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-testing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>pytest-django test patterns for Django/DRF projects: Factory Boy factories, @pytest.mark.django_db usage, APIClient.force_authenticate, parametrized permission matrices, coverage configuration.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>testing</tag>
+      <tag>pytest</tag>
+      <tag>factories</tag>
+      <tag>drf</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Django Testing with pytest</title>
+
+    <summary>pytest-django test patterns for Django and Django REST Framework projects. Core patterns: one Factory Boy factory per model, registered via pytest_factoryboy; @pytest.mark.django_db for database access with savepoint rollback; APIClient.force_authenticate for authenticated API tests; parametrized permission matrices for comprehensive coverage. Key principle: use real database fixtures (not over-mocked ORM) and save mocking for actual external service boundaries.</summary>
+
+    <why>
+      <p>Over-mocking (patch('Model.objects.filter')) tests the mock, not the code. Using real DB fixtures with transaction rollback gives real SQL behavior while keeping tests isolated. Factory Boy's SubFactory pattern makes relationship setup explicit and reusable across the test suite, reducing fixture duplication. Parametrized tests eliminate N repeated test functions and make permission matrices explicit and maintainable.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up pytest-django from scratch: conftest.py, pyproject.toml config, factory registration</item>
+        <item>Writing model, service, selector, view, and DRF API tests for a new feature</item>
+        <item>Migrating from django.test.TestCase (unittest-style) to pytest-style fixture tests</item>
+        <item>Adding parametrized tests for permission matrices, status transitions, validation rules</item>
+        <item>Configuring coverage gates and wiring CI</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure unit tests of standalone Python helpers (no DB, no Django imports) — plain pytest; pytest-django adds boot cost</item>
+        <item>Integration suites hitting external SaaS — separate tests/integration/ lane gated by env var</item>
+        <item>Performance / load testing — use locust, k6, or pytest-benchmark</item>
+        <item>Snapshot/visual testing of admin or templates — playwright, percy</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pytest-django-setup">
+      <p>Configure pytest-django in pyproject.toml, set up shared fixtures, and use --reuse-db for fast local iteration.</p>
+
+      <rule testable="true">
+        <statement>Configure pytest-django via pyproject.toml [tool.pytest.ini_options]. Set DJANGO_SETTINGS_MODULE, addopts with --strict-markers, and testpaths = ["tests"]. Use @pytest.mark.django_db (savepoint rollback) for all model and service tests by default. Use @pytest.mark.django_db(transaction=True) only for code that calls on_commit or uses raw transactions.</statement>
+        <rationale>Centralizing pytest config in pyproject.toml eliminates pytest.ini / setup.cfg duplication. The default django_db marker wraps each test in a savepoint and rolls back after — zero DB state leaks, fast execution. transaction=True commits real transactions but requires full truncation after each test, making it 5-10x slower. It is only needed for post_save signals or Celery tasks that check committed state.</rationale>
+      </rule>
+
+      <example type="good" title="pyproject.toml pytest configuration">
+        <code lang="toml"><![CDATA[
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.testing"
+python_files = ["test_*.py"]
+addopts = "-v --tb=short --strict-markers --reuse-db"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests that hit external services",
+    "integration: end-to-end integration tests",
+]
+]]></code>
+      </example>
+
+      <example type="good" title="When to use transaction=True">
+        <code lang="python"><![CDATA[
+import pytest
+
+# Default — fast, handles 95% of tests
+@pytest.mark.django_db
+def test_create_order(order_factory):
+    order = order_factory(status="pending")
+    assert order.status == "pending"
+
+# transaction=True — only for on_commit callbacks
+@pytest.mark.django_db(transaction=True)
+def test_order_confirmation_email(order_factory, mailoutbox):
+    order = order_factory(status="pending")
+    order.confirm()  # Triggers on_commit → sends email
+    assert len(mailoutbox) == 1
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Put shared fixtures in tests/conftest.py: api_client, authed_client, staff_client, and factory registrations. Use --reuse-db in local development to skip recreating the test database. Use --create-db to force recreation after schema changes.</statement>
+        <rationale>A thin conftest with only shared infrastructure loads fast and remains readable. --reuse-db skips the migrate step when the schema has not changed, reducing test suite startup from 10-30s to under 1s on large projects. It is safe for all tests using @pytest.mark.django_db (rollback isolation).</rationale>
+      </rule>
+    </section>
+
+    <section name="factory-boy-patterns">
+      <p>Factory Boy factories replace manual test data creation. pytest_factoryboy bridges factories to pytest fixtures, eliminating boilerplate.</p>
+
+      <rule testable="true">
+        <statement>Create exactly one Factory Boy factory per model. Register factories in tests/conftest.py using pytest_factoryboy.register(). This auto-creates model (single instance) and model_factory (the factory class) pytest fixtures. Use SubFactory for relationships, Faker for realistic data, LazyAttribute for derived fields.</statement>
+        <rationale>One factory per model with Trait variants prevents divergence (one factory creates a "valid" user, another creates a different user with different defaults). pytest_factoryboy.register auto-creates two fixtures per factory, eliminating manual fixture definitions. SubFactory and Faker make factories self-maintaining as schemas evolve.</rationale>
+      </rule>
+
+      <example type="good" title="Factory Boy factory with SubFactory and Traits">
+        <code lang="python"><![CDATA[
+# tests/factories.py
+import factory
+from factory.django import DjangoModelFactory
+from faker import Faker
+
+fake = Faker()
+
+class OrganizationFactory(DjangoModelFactory):
+    class Meta:
+        model = "organizations.Organization"
+
+    name = factory.LazyFunction(lambda: fake.company())
+    plan = "free"
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = "users.User"
+
+    email = factory.LazyFunction(lambda: fake.unique.email())
+    first_name = factory.LazyFunction(lambda: fake.first_name())
+    last_name = factory.LazyFunction(lambda: fake.last_name())
+    organization = factory.SubFactory(OrganizationFactory)
+    is_active = True
+
+    class Params:
+        staff = factory.Trait(is_staff=True, is_superuser=False)
+        admin = factory.Trait(is_staff=True, is_superuser=True)
+        inactive = factory.Trait(is_active=False)
+
+# tests/conftest.py
+from pytest_factoryboy import register
+from tests.factories import UserFactory, OrganizationFactory
+
+register(OrganizationFactory)  # Provides: organization, organization_factory
+register(UserFactory)           # Provides: user, user_factory
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use factory.LazyAttribute(lambda o: ...) to derive field values from other fields on the same factory (username from email). Use factory.LazyFunction(lambda: ...) for independent computed values (unique emails, timestamps).</statement>
+        <rationale>LazyAttribute receives the object being constructed, allowing derived values like username = LazyAttribute(lambda o: o.email.split('@')[0]). LazyFunction is for values that don't depend on other fields but must be computed at factory call time.</rationale>
+      </rule>
+
+      <example type="good" title="LazyAttribute for derived fields">
+        <code lang="python"><![CDATA[
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = "users.User"
+
+    email = factory.LazyFunction(lambda: fake.unique.email())
+    username = factory.LazyAttribute(lambda o: o.email.split("@")[0])
+    display_name = factory.LazyAttribute(
+        lambda o: f"{o.first_name} {o.last_name}".strip()
+    )
+]]></code>
+      </example>
+    </section>
+
+    <section name="drf-api-testing">
+      <p>Testing Django REST Framework endpoints requires APIClient fixtures, force_authenticate, and comprehensive response assertions.</p>
+
+      <rule testable="true">
+        <statement>Use DRF's APIClient for all REST endpoint tests. Create api_client, authed_client, and staff_client fixtures in conftest.py. Never instantiate APIClient() inside individual test functions. Use client.force_authenticate(user=user) in tests — not credentials(HTTP_AUTHORIZATION='Token...'). force_authenticate bypasses token validation and tests the view logic, not the token verification.</statement>
+        <rationale>Centralizing APIClient creation in fixtures ensures consistent configuration across the test suite. force_authenticate is faster and decouples view tests from the auth backend implementation — changing from JWT to OAuth2 does not break view tests. Token verification is tested once in dedicated auth tests.</rationale>
+      </rule>
+
+      <example type="good" title="APIClient and authentication fixtures">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+import pytest
+from rest_framework.test import APIClient
+
+@pytest.fixture
+def api_client() -> APIClient:
+    return APIClient()
+
+@pytest.fixture
+def authed_client(user) -> APIClient:
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+@pytest.fixture
+def staff_client(user_factory) -> APIClient:
+    staff_user = user_factory(is_staff=True)
+    client = APIClient()
+    client.force_authenticate(user=staff_user)
+    return client
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Assert status code first, then assert on response.data fields individually. Never assert only on response.status_code == 200 — verify the response shape is correct. Always use format='json' in requests, never rely on browsable API HTML.</statement>
+        <rationale>A 200 with an empty body or missing fields is a bug. Asserting on response.data['field'] catches serializer field omissions and field name renames. format='json' enforces API contract instead of HTML rendering.</rationale>
+      </rule>
+
+      <example type="good" title="Complete DRF response assertion">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_create_user(api_client):
+    payload = {
+        "email": "alice@example.com",
+        "password": "SecurePass123!",
+        "first_name": "Alice",
+    }
+    response = api_client.post("/api/v1/users/", payload, format="json")
+
+    assert response.status_code == 201
+    assert response.data["email"] == "alice@example.com"
+    assert response.data["first_name"] == "Alice"
+    assert "password" not in response.data     # Never leak passwords
+    assert "id" in response.data               # ID assigned
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use @pytest.mark.parametrize to test permission matrices: which roles/states produce which HTTP status codes. One parametrized test is better than N separate tests with identical structure.</statement>
+        <rationale>Permission logic is combinatorial — a ViewSet with 4 HTTP methods and 3 user roles requires 12 test cases. Parametrization makes the matrix explicit and readable. Adding a new role only requires a new tuple in the parametrize list, not a new test function.</rationale>
+      </rule>
+
+      <example type="good" title="Permission matrix with parametrize">
+        <code lang="python"><![CDATA[
+import pytest
+from unittest.mock import ANY
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("client_fixture,expected_status", [
+    ("api_client", 401),         # Unauthenticated
+    ("authed_client", 200),      # Authenticated member
+    ("staff_client", 200),       # Staff member
+])
+def test_order_list_permissions(request, client_fixture, expected_status):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get("/api/v1/orders/")
+    assert response.status_code == expected_status
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("client_fixture,expected_status", [
+    ("api_client", 401),
+    ("authed_client", 403),      # Authed but not owner — forbidden
+    ("staff_client", 200),       # Staff can access any order
+])
+def test_order_detail_permissions(
+    request, client_fixture, expected_status, order
+):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get(f"/api/v1/orders/{order.id}/")
+    assert response.status_code == expected_status
+]]></code>
+      </example>
+    </section>
+
+    <section name="anti-patterns">
+      <p>Common testing mistakes that mask bugs or slow down the test suite.</p>
+
+      <antipattern>
+        <description>Writing a test function that accesses the database without the @pytest.mark.django_db marker.</description>
+        <reason>Without the marker, pytest-django blocks all DB access. The test fails with "Failed: Database access not allowed". Always add @pytest.mark.django_db to any test that creates or reads model instances. Module-level pytestmark = pytest.mark.django_db applies to all tests in the module.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Patching Model.objects.filter or Model.objects.get with MagicMock to avoid DB access in service tests.</description>
+        <reason>Mocking the ORM tests the mock, not the code. The mock always returns what you tell it, so the test passes even if the service has a broken queryset. Real DB tests with @pytest.mark.django_db and savepoint rollback are fast enough — use them. Over-mocked tests break when QuerySet chaining order changes.</reason>
+      </antipattern>
+
+      <example type="bad" title="Mocking ORM — tests the mock, not the service">
+        <code lang="python"><![CDATA[
+@patch('apps.users.services.User.objects.filter')
+def test_get_active_users(mock_filter):
+    mock_filter.return_value.values_list.return_value = [1, 2, 3]
+    result = get_active_user_ids()
+    assert result == [1, 2, 3]  # Passes even if service is broken!
+]]></code>
+      </example>
+
+      <example type="good" title="Real DB test — tests actual SQL behavior">
+        <code lang="python"><![CDATA[
+@pytest.mark.django_db
+def test_get_active_users(user_factory):
+    active = user_factory(is_active=True)
+    inactive = user_factory(is_active=False)
+    result = get_active_user_ids()
+    assert active.id in result
+    assert inactive.id not in result
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Patching apps.emails.utils.send_mail instead of apps.orders.services.send_mail — patching where the function is defined rather than where it is used.</description>
+        <reason>Python's patch() replaces a name in a module's namespace. If orders.services does from emails.utils import send_mail, the reference is already bound. Patching emails.utils.send_mail has no effect. Patch the use site: patch('apps.orders.services.send_mail').</reason>
+      </antipattern>
+
+      <example type="good" title="Patch the use site, not the definition site">
+        <code lang="python"><![CDATA[
+# orders/services.py:  from emails.utils import send_mail
+# Correct: patch where it's used
+@patch("apps.orders.services.send_mail")
+def test_order_confirmation_sends_email(mock_send, order_factory):
+    order = order_factory(status="pending")
+    confirm_order(order)
+    mock_send.assert_called_once()
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using @pytest.mark.django_db(transaction=True) on all tests as a default instead of only for tests that specifically test on_commit behavior.</description>
+        <reason>transaction=True requires full table truncation after each test instead of savepoint rollback — 5-10x slower. A test suite of 500 tests using transaction=True adds minutes to CI for no benefit. Use it only for code paths relying on connection.on_commit(), post-transaction signals, or Celery task visibility.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/conftest.py" purpose="Shared conftest.py: api_client, authed_client, staff_client, factory registration"/>
+      <template path="templates/test_api.py" purpose="DRF API integration test template with authentication and validation"/>
+    </templates>
+
+    <see-also>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://factoryboy.readthedocs.io/"/>
+      <link href="https://pytest-factoryboy.readthedocs.io/"/>
+      <link href="https://www.django-rest-framework.org/api-guide/testing/"/>
+      <link href="https://github.com/pytest-dev/pytest-xdist"/>
+      <link href="https://github.com/pytest-dev/pytest-cov"/>
+    </see-also>
+  </content>
+</methodology>

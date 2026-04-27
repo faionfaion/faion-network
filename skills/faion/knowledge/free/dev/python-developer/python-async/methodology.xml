@@ -1,0 +1,511 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-async">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>asyncio patterns for I/O-bound Python services: TaskGroup (3.11+) for structured fan-out, asyncio.timeout for per-call deadlines, Semaphore for concurrency caps, and httpx.AsyncClient as a singleton.</summary>
+    <tags>
+      <tag>asyncio</tag>
+      <tag>async-await</tag>
+      <tag>concurrency</tag>
+      <tag>httpx</tag>
+      <tag>structured-concurrency</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Python Async Patterns</title>
+
+    <summary>asyncio patterns for I/O-bound Python services: TaskGroup (3.11+) for structured fan-out, asyncio.timeout() for per-call deadlines, Semaphore for concurrency caps, and httpx.AsyncClient as a singleton. Core rules: use TaskGroup over gather for all-or-nothing fan-out; never block the event loop with time.sleep, sync DB drivers, or requests; always store task references to prevent GC.</summary>
+
+    <why>
+      <p>A single blocking call inside async def stalls the entire event loop — all other concurrent coroutines freeze until it returns. Ruff ASYNC rules catch most blocking patterns statically, but structured concurrency (TaskGroup) is the runtime guarantee: if any subtask fails, siblings are cancelled automatically, preventing the orphan-task resource leaks that asyncio.gather leaves behind.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building or extending an async API server (FastAPI, aiohttp, Litestar).</item>
+        <item>Concurrent network I/O — many HTTP/DB/queue operations within one request or worker tick.</item>
+        <item>WebSocket / SSE / long-lived connection handlers.</item>
+        <item>Async ORM/driver work — asyncpg, aiosqlite, motor, redis-py async.</item>
+        <item>Replacing threading-based concurrency that exists only for I/O parallelism.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>CPU-bound work — use multiprocessing or ProcessPoolExecutor; asyncio gives no speedup.</item>
+        <item>Linear scripts with one or two I/O calls — overhead exceeds benefit.</item>
+        <item>Codebases where critical libs are sync-only (heavy ML stacks) — run_in_executor for each call adds friction.</item>
+        <item>Mixing sync Django ORM inside async def handlers without sync_to_async — blocks the loop.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-async-patterns">
+      <rule testable="true">
+        <statement>Use asyncio.TaskGroup (Python 3.11+) for fan-out where all subtasks must succeed or none. Use asyncio.gather() only when you need ordered results or return_exceptions=True behavior.</statement>
+        <rationale>TaskGroup provides structured concurrency: if any subtask raises, all siblings are cancelled automatically before the exception propagates. gather() leaves failed siblings running as orphan tasks unless return_exceptions=True is set, which then requires manual error inspection per result.</rationale>
+      </rule>
+
+      <example type="good" title="TaskGroup for all-or-nothing fan-out (3.11+)">
+        <code lang="python"><![CDATA[
+import asyncio
+
+async def fetch_user_data(user_id: int) -> dict:
+    async with asyncio.TaskGroup() as tg:
+        profile_task = tg.create_task(get_profile(user_id))
+        orders_task = tg.create_task(get_orders(user_id))
+        prefs_task = tg.create_task(get_preferences(user_id))
+    # All three complete here, or all are cancelled on first failure
+    return {
+        "profile": profile_task.result(),
+        "orders": orders_task.result(),
+        "prefs": prefs_task.result(),
+    }
+]]></code>
+      </example>
+    </section>
+
+    <section name="semaphore-concurrency-caps">
+      <rule testable="true">
+        <statement>Use asyncio.Semaphore to cap the number of concurrent I/O operations when processing a large list. Always acquire the semaphore inside the task coroutine, not outside it.</statement>
+        <rationale>Without a concurrency cap, creating 10,000 tasks to fetch 10,000 URLs overwhelms the target server and the local connection pool. Acquiring the semaphore inside the task allows all tasks to be created (cheap) while limiting concurrent execution.</rationale>
+      </rule>
+
+      <example type="good" title="Bounded concurrent fetch with Semaphore inside coroutine">
+        <code lang="python"><![CDATA[
+import asyncio
+import httpx
+
+async def fetch_one(
+    client: httpx.AsyncClient,
+    url: str,
+    sem: asyncio.Semaphore,
+) -> dict:
+    async with sem:  # Semaphore acquired inside the task
+        response = await client.get(url)
+        response.raise_for_status()
+        return response.json()
+
+async def fetch_all(urls: list[str], concurrency: int = 10) -> list[dict]:
+    sem = asyncio.Semaphore(concurrency)
+    async with httpx.AsyncClient() as client:
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(fetch_one(client, url, sem))
+                for url in urls
+            ]
+    return [task.result() for task in tasks]
+]]></code>
+      </example>
+
+      <reference path="templates/concurrent-fetch.py">Bounded concurrent HTTP fan-out: TaskGroup + Semaphore + timeout</reference>
+    </section>
+
+    <section name="asyncio-timeout">
+      <rule testable="true">
+        <statement>Use asyncio.timeout(seconds) (Python 3.11+) to add per-call deadlines. Never use asyncio.wait_for() for new code — it is the 3.10 predecessor that asyncio.timeout() supersedes.</statement>
+        <rationale>asyncio.timeout() is a context manager that can be extended or rescheduled within the block. It raises TimeoutError (not asyncio.TimeoutError) on expiry, which integrates with standard exception handling. wait_for() wraps a single coroutine and cannot be extended.</rationale>
+      </rule>
+
+      <example type="good" title="Per-call timeout with asyncio.timeout (Python 3.11+)">
+        <code lang="python"><![CDATA[
+import asyncio
+
+async def call_external_api(url: str) -> dict:
+    try:
+        async with asyncio.timeout(5.0):  # 5-second deadline
+            return await fetch(url)
+    except TimeoutError:
+        raise ExternalServiceTimeout(f"API call to {url} timed out after 5s")
+]]></code>
+      </example>
+    </section>
+
+    <section name="async-generators">
+      <rule testable="true">
+        <statement>Use async generators (async def with yield) for streaming large datasets — avoid accumulating all items in memory with await asyncio.gather(...) on unbounded inputs.</statement>
+        <rationale>Async generators produce items lazily, allowing the consumer to process each item as it arrives without buffering the full result set. For paginated APIs or database cursor results, this reduces peak memory from O(n) to O(page_size).</rationale>
+      </rule>
+
+      <example type="good" title="Async generator for paginated API streaming">
+        <code lang="python"><![CDATA[
+import httpx
+from collections.abc import AsyncGenerator
+
+async def iter_pages(
+    client: httpx.AsyncClient,
+    url: str,
+) -> AsyncGenerator[list[dict], None]:
+    cursor: str | None = None
+    while True:
+        params = {"cursor": cursor} if cursor else {}
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        yield data["items"]
+        cursor = data.get("next_cursor")
+        if not cursor:
+            break
+
+# Consumer processes items without buffering all pages
+async for page in iter_pages(client, "/api/orders"):
+    for order in page:
+        await process_order(order)
+]]></code>
+      </example>
+    </section>
+
+    <section name="run-in-executor">
+      <rule testable="true">
+        <statement>Wrap blocking sync library calls with loop.run_in_executor(None, func, *args) when async alternatives are not available. Never call blocking I/O directly inside async def.</statement>
+        <rationale>A blocking call inside async def (e.g., requests.get(), time.sleep(), sync DB driver) stalls the entire event loop. run_in_executor offloads the call to a thread pool, allowing other coroutines to run while it completes.</rationale>
+      </rule>
+
+      <example type="good" title="run_in_executor for sync legacy library">
+        <code lang="python"><![CDATA[
+import asyncio
+from functools import partial
+
+async def read_file_async(path: str) -> bytes:
+    loop = asyncio.get_running_loop()
+    # Offload blocking file I/O to thread pool
+    return await loop.run_in_executor(None, Path(path).read_bytes)
+]]></code>
+      </example>
+    </section>
+
+    <section name="http-clients">
+      <rule testable="true">
+        <statement>Use httpx for new async HTTP client code. Use aiohttp only when HTTP/2 server-side, WebSocket server capabilities, or maximum-throughput scraping scenarios are needed.</statement>
+        <rationale>httpx provides sync + async in one library, HTTP/2 client support, full type annotations, and a requests-compatible API. aiohttp is async-only but offers higher throughput in extreme concurrency scenarios (10,000+ simultaneous connections) and WebSocket server support. Most applications need httpx.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Create httpx.AsyncClient once per application (not per request). Pass it via dependency injection or module-level singleton. Never instantiate a new client inside a hot path.</statement>
+        <rationale>Creating a new AsyncClient per request discards the connection pool and TCP connection reuse. Each new client creates a fresh pool, turning every HTTP call into a full TCP handshake + TLS negotiation — 3-10x slower than reusing an established connection.</rationale>
+      </rule>
+
+      <example type="bad" title="Per-request client — kills connection reuse">
+        <code lang="python"><![CDATA[
+async def get_user(user_id: int) -> dict:
+    async with httpx.AsyncClient() as client:  # New client per call!
+        resp = await client.get(f"https://api.example.com/users/{user_id}")
+        return resp.json()
+]]></code>
+      </example>
+
+      <example type="good" title="Module-level singleton with lifespan context management">
+        <code lang="python"><![CDATA[
+import httpx
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+
+# Module-level singleton (initialized in app lifespan)
+_http_client: httpx.AsyncClient | None = None
+
+@asynccontextmanager
+async def lifespan() -> AsyncGenerator[None, None]:
+    global _http_client
+    _http_client = httpx.AsyncClient(
+        timeout=httpx.Timeout(10.0, connect=3.0),
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+    )
+    try:
+        yield
+    finally:
+        await _http_client.aclose()
+
+def get_http_client() -> httpx.AsyncClient:
+    assert _http_client is not None, "HTTP client not initialized"
+    return _http_client
+
+# Usage
+async def get_user(user_id: int) -> dict:
+    client = get_http_client()
+    resp = await client.get(f"https://api.example.com/users/{user_id}")
+    resp.raise_for_status()
+    return resp.json()
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use respx to mock httpx calls in tests. Never mock httpx.AsyncClient.get directly — respx intercepts at the transport layer and validates that routes are actually called.</statement>
+        <rationale>Mocking client.get directly bypasses httpx's request-building logic (URL construction, headers, timeouts). respx intercepts at the ASGI transport layer, meaning the full httpx request-building pipeline runs — only the network call is mocked. This catches URL/header bugs that direct patching hides.</rationale>
+      </rule>
+
+      <example type="good" title="respx mock for httpx in pytest">
+        <code lang="python"><![CDATA[
+import pytest
+import respx
+import httpx
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_user() -> None:
+    respx.get("https://api.example.com/users/1").mock(
+        return_value=httpx.Response(200, json={"id": 1, "name": "Alice"})
+    )
+    user = await get_user(1)
+    assert user["name"] == "Alice"
+]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Calling blocking I/O or CPU-bound operations directly inside async def: requests.get(), time.sleep(), open(), sync database drivers, heavy computation.</description>
+        <reason>The asyncio event loop is single-threaded. A blocking call inside async def prevents all other coroutines from executing until it returns. Under load, one blocking call can stall the entire server for the duration of the call. Use httpx.AsyncClient, asyncio.sleep, aiofiles, async DB drivers, or run_in_executor for sync code.</reason>
+      </antipattern>
+
+      <example type="bad" title="Blocking calls inside async def">
+        <code lang="python"><![CDATA[
+import requests
+import time
+
+async def bad_handler() -> dict:
+    time.sleep(1)                   # Blocks event loop!
+    resp = requests.get(url)        # Blocks event loop!
+    return resp.json()
+]]></code>
+      </example>
+
+      <example type="good" title="Async equivalents — non-blocking">
+        <code lang="python"><![CDATA[
+import asyncio
+import httpx
+
+async def good_handler(client: httpx.AsyncClient) -> dict:
+    await asyncio.sleep(1)          # Yields control to event loop
+    resp = await client.get(url)    # Non-blocking HTTP
+    return resp.json()
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Creating tasks with asyncio.create_task() without storing the reference or awaiting them, allowing them to be garbage-collected before completion.</description>
+        <reason>Python's garbage collector can collect a task object if no reference exists, silently cancelling the task before it finishes. The task disappears without an error or log — a hard-to-debug data loss scenario.</reason>
+      </antipattern>
+
+      <example type="bad" title="Fire-and-forget without reference — task may be GC'd">
+        <code lang="python"><![CDATA[
+async def handler(event: dict) -> None:
+    asyncio.create_task(background_job(event))  # No reference! May be GC'd
+    return
+]]></code>
+      </example>
+
+      <example type="good" title="Store reference or use TaskGroup for lifecycle management">
+        <code lang="python"><![CDATA[
+# Option 1: module-level task set
+_background_tasks: set[asyncio.Task] = set()
+
+async def handler(event: dict) -> None:
+    task = asyncio.create_task(background_job(event))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+# Option 2: TaskGroup for scoped fan-out (preferred when caller waits)
+async def handler_batch(events: list[dict]) -> None:
+    async with asyncio.TaskGroup() as tg:
+        for event in events:
+            tg.create_task(background_job(event))
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Catching asyncio.CancelledError (or bare Exception) in except blocks without re-raising it.</description>
+        <reason>CancelledError is how asyncio implements task cancellation (e.g., from TaskGroup on failure, timeout context exit, or explicit task.cancel()). Swallowing it breaks the cancellation chain — parent tasks block forever waiting for a subtask that believes it completed normally.</reason>
+      </antipattern>
+
+      <example type="good" title="Correct handling: cleanup then re-raise CancelledError">
+        <code lang="python"><![CDATA[
+async def worker() -> None:
+    try:
+        await long_running_operation()
+    except asyncio.CancelledError:
+        await cleanup_resources()   # Cleanup is allowed
+        raise                       # MUST re-raise!
+    except Exception as e:
+        logger.error("Worker error: %s", e)
+        raise
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Calling asyncio.timeout(None) believing it disables the timeout. It does disable the timeout, but it also silences the fact that no deadline is set, hiding missing timeout configurations.</description>
+        <reason>A timeout(None) context manager is a no-op — no deadline, no cancellation. Code paths that reach external services without a deadline hang indefinitely on network partition or slow responses. Make every external call have an explicit numeric timeout.</reason>
+      </antipattern>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Greenfield async service: (1) pick framework (FastAPI default), (2) pin Python ≥ 3.11 to access TaskGroup/timeout, (3) wire httpx AsyncClient as a singleton in app state, (4) write each endpoint as async def, (5) use TaskGroup for fan-out within a request, (6) test with pytest-asyncio (asyncio_mode = "auto"). Sync→async migration: incremental at the boundary — convert one entry point, then services it calls, then DB layer (with async driver swap). Don't half-convert; partial async with sync DB blocks the loop. CI gate: ruff ASYNC rules detect blocking calls inside coroutines.</p>
+    </section>
+
+    <section name="best-practices">
+      <checklist>
+        <check>TaskGroup is the default for fan-out in 3.11+. Reach for gather only when you genuinely want partial results (return_exceptions=True).</check>
+        <check>One httpx.AsyncClient per app, not per request. Connection pooling is its main perf win; per-call clients destroy it.</check>
+        <check>Timeouts are non-negotiable. Wrap every external call: async with asyncio.timeout(N): .... Default httpx timeout is 5s — fine, but be explicit.</check>
+        <check>Semaphore bounds concurrency. Without one, a fan-out over 10k URLs DDoSes both you and the target.</check>
+        <check>Never block the loop. No time.sleep, requests.*, sync DB drivers inside async def. Use asyncio.to_thread() (3.9+) for unavoidable sync calls.</check>
+        <check>Exceptions from TaskGroup come as ExceptionGroup. Use try: ... except* ValueError as eg: ... to handle by type.</check>
+        <check>CancelledError must propagate. Never except Exception: swallow it; if you catch it for cleanup, re-raise after.</check>
+        <check>Use asyncio.Runner (3.11+) when you need to run multiple run()-equivalent contexts in one process.</check>
+        <check>Test with pytest-asyncio mode auto — every async def test_ auto-marked. Reduces boilerplate.</check>
+        <check>Mock at the transport layer: respx (httpx) / aioresponses (aiohttp) > monkeypatching the call site.</check>
+        <check>Profile with aiomonitor or py-spy --idle — async stalls hide in callbacks blocking the loop.</check>
+      </checklist>
+    </section>
+
+    <section name="common-gotchas">
+      <antipattern>
+        <description>Forgetting await — coroutine never runs, returns a &lt;coroutine object&gt; that warns at GC time.</description>
+        <reason>Ruff ASYNC230/pyflakes catches some cases, but missing await on non-obvious calls (callbacks, return values) slip through. Always validate async function calls are awaited.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using requests inside async def — silently blocks the loop.</description>
+        <reason>Ruff ASYNC210 flags it, but grep for requests.get in async functions to catch false negatives.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>time.sleep in async — same issue; use asyncio.sleep.</description>
+        <reason>Ruff ASYNC251 detects it; always replace time.sleep with asyncio.sleep in async context.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Running blocking DB queries (Django sync ORM) in async def — works but blocks the event loop.</description>
+        <reason>Either use sync_to_async wrapper (Django) or migrate to async ORM (django-async, tortoise-orm, sqlalchemy async).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>asyncio.create_task(...) without storing the task — task may be GC'd mid-execution.</description>
+        <reason>Always retain the reference. TaskGroup does this for you automatically; prefer TaskGroup when possible.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Fire-and-forget tasks in module scope — asyncio.create_task requires a running loop; hits "no running event loop" at import time.</description>
+        <reason>Defer task creation to coroutines or use a background task manager (e.g., celery, arq).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>asyncio.gather swallows the first exception unless return_exceptions=True — other tasks keep running but are then ignored.</description>
+        <reason>TaskGroup cancels siblings instead, making all-or-nothing semantics explicit. Use TaskGroup over gather in 3.11+.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>async for on a non-async iterator — TypeError.</description>
+        <reason>Use async for only on async generators / async iterables. If wrapping sync code, convert to async generator first.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>async with on a sync context manager — AttributeError: __aenter__.</description>
+        <reason>Mostly handled by libs, but custom CMs need both __aenter__/__aexit__. Use sync context managers with sync code blocks only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing trio and asyncio code — only via anyio.</description>
+        <reason>Pure asyncio code in trio runtime crashes at first await. If you must use both, wrap via anyio.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>event_loop = asyncio.get_event_loop() is deprecated for top-level use.</description>
+        <reason>Use asyncio.run() or asyncio.get_running_loop() (must be inside a coroutine).</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>pytest-asyncio mode mismatch — strict (default) requires @pytest.mark.asyncio; auto runs all async def tests.</description>
+        <reason>Agents flipping modes break test collection. Standardize on one mode per project and lock it in pyproject.toml.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>asyncio.timeout(None) disables the timeout — agents pass None thinking it means "no override" and then wonder why hangs persist.</description>
+        <reason>Always pass an explicit timeout value (seconds). Omit the context manager entirely if no deadline is needed.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>run_in_executor with default executor exhausts under load — default ThreadPoolExecutor(max_workers=32) fills up with blocked threads.</description>
+        <reason>Bind a custom ThreadPoolExecutor(max_workers=...) for heavy sync-bridge use; or refactor to async-only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>WebSockets in FastAPI require websocket_disconnect handling; agents leak connections by not catching WebSocketDisconnect.</description>
+        <reason>Always wrap WebSocket handlers in try/except WebSocketDisconnect and clean up resources on disconnect.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Sync wrappers around async code (asyncio.run inside library function) break when called from an existing loop.</description>
+        <reason>Use anyio.from_thread.run or expose async-only. Never nest asyncio.run inside a coroutine.</reason>
+      </antipattern>
+    </section>
+
+    <section name="ecosystem-tools-and-services">
+      <p>Core async libraries and frameworks:</p>
+      <list>
+        <item>httpx — Async + sync HTTP client, HTTP/2 support, requests-compatible API.</item>
+        <item>aiohttp — High-perf async HTTP client + server, WebSocket support, peak-concurrency champion.</item>
+        <item>asyncpg — Fastest PostgreSQL async driver, used in production high-throughput systems.</item>
+        <item>psycopg (v3) — Postgres async with sync compatibility; flexible pool management.</item>
+        <item>aiosqlite — sqlite3 async wrapper; lightweight, no external dependencies.</item>
+        <item>redis-py — Redis async client (built-in async since 4.x); pubsub, streams, queues.</item>
+        <item>anyio — Structured concurrency lib over asyncio/trio; FastAPI uses it internally.</item>
+        <item>trio — Alternative async lib focused on structured concurrency and cancellation; excellent docs.</item>
+      </list>
+
+      <p>Testing and debugging:</p>
+      <list>
+        <item>pytest-asyncio — Pytest plugin for async tests; modes: strict (default) or auto.</item>
+        <item>respx — httpx mocking at transport layer; validates routes are actually called.</item>
+        <item>aioresponses — aiohttp mocking; similar concept to respx.</item>
+        <item>ruff --select ASYNC — Lint blocking calls in async code; catches requests, time.sleep, sync DB drivers.</item>
+        <item>aiomonitor — Inspect running asyncio tasks via REPL; debug task hangs.</item>
+        <item>aiodebug — Detect slow callbacks blocking the loop; sampling profiler.</item>
+      </list>
+
+      <p>Frameworks and runtimes:</p>
+      <list>
+        <item>FastAPI — OSS async-native framework; first choice for new async APIs; OpenAPI auto-gen.</item>
+        <item>aiohttp — When you need WS/streaming server or maximum-throughput scraping.</item>
+        <item>Starlette — FastAPI's foundation; lower-level, more control.</item>
+        <item>Sanic — Async framework; less mature ecosystem than FastAPI.</item>
+        <item>Litestar — Modern async-first framework; strong typing, dependency injection.</item>
+        <item>Celery — Task queue; async support is recent (5.x). For async-only, prefer arq or taskiq.</item>
+        <item>arq — Lightweight async task queue (Redis-backed); minimal setup.</item>
+        <item>taskiq — Modern async task queue (multi-broker); arq-compatible API.</item>
+      </list>
+
+      <p>Observability and APM:</p>
+      <list>
+        <item>Sentry — APM and error tracking; sentry_sdk.integrations.asyncio support.</item>
+        <item>Datadog APM — Distributed tracing; ddtrace.patch(asyncio=True) integration.</item>
+        <item>Pyroscope — OSS profiler; async-aware sampling; integrates with FastAPI.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/concurrent-fetch.py" purpose="Bounded concurrent HTTP fan-out: TaskGroup + Semaphore + per-call timeout + ordered results."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.python.org/3.11/library/asyncio.html"/>
+      <link href="https://docs.python.org/3/library/asyncio-task.html#task-groups"/>
+      <link href="https://peps.python.org/pep-0654/"/>
+      <link href="https://www.python-httpx.org/"/>
+      <link href="https://docs.aiohttp.org"/>
+      <link href="https://anyio.readthedocs.io/"/>
+      <link href="https://trio.readthedocs.io/"/>
+      <link href="https://pytest-asyncio.readthedocs.io/"/>
+      <link href="https://docs.astral.sh/ruff/rules/#flake8-async-async"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-review-basics">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>A structured approach to examining code changes before merge: reviewer reads the diff plus touched files, categorizes findings using Conventional Comments labels (blocking/suggestion/nit/question/praise), and emits at most 20 comments prioritized correctness → security → maintainability → nits. PR size cap: 400 changed lines. Agent is never the sole approver on a merge to main.</summary>
+    <tags>
+      <tag>code-review</tag>
+      <tag>pr-review</tag>
+      <tag>conventional-comments</tag>
+      <tag>review-checklist</tag>
+      <tag>beginner</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Review Basics</title>
+
+    <summary>A structured approach to examining code changes before merge: reviewer reads the diff plus touched files, categorizes findings using Conventional Comments labels (blocking/suggestion/nit/question/praise), and emits at most 20 comments prioritized correctness → security → maintainability → nits. PR size cap: 400 changed lines. Agent is never the sole approver on a merge to main.</summary>
+
+    <why>
+      <p>Empirical studies (SmartBear) confirm that code review quality degrades past 400 LoC and 60 minutes. Conventional Comments labels let authors distinguish blockers from nits without ambiguity. Running linters/tests before the agent review eliminates duplicate findings and focuses LLM judgment on what static analysis cannot catch.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Pre-review pass on every PR before a human reviewer is assigned.</item>
+        <item>Self-review automation for agent-authored diffs before pushing.</item>
+        <item>Mentoring junior contributors: agent leaves educational comments with explanations.</item>
+        <item>Bulk review of mechanical PRs (dependabot, renovate) where breaking-change risk varies.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Architecture/design PRs needing product context the agent does not have — humans only.</item>
+        <item>Security-sensitive merges where regulatory sign-off (PCI, HIPAA) is required — agent advises but cannot approve.</item>
+        <item>Trivial single-line fixes already covered by lint + CI — agent comment is noise.</item>
+        <item>Repos where rubber-stamping is already the failure mode — adding another approval signal worsens it.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="review-checklist">
+      <p>Six review dimensions — correctness, design, maintainability, testing, performance, security — each with concrete, testable checks.</p>
+
+      <subsection title="Correctness">
+        <list>
+          <item>Does the code do what the ticket/spec says?</item>
+          <item>Are all edge cases handled (empty input, null, max values)?</item>
+          <item>Is error handling present and appropriate for each failure mode?</item>
+          <item>Are there obvious bugs visible from reading the diff?</item>
+        </list>
+      </subsection>
+
+      <subsection title="Design">
+        <list>
+          <item>Is the code well-organized and consistent with project patterns?</item>
+          <item>Is there unnecessary complexity or over-abstraction?</item>
+          <item>Are responsibilities properly separated (no leaky abstractions)?</item>
+          <item>Does it follow the project's module/layer conventions?</item>
+        </list>
+      </subsection>
+
+      <subsection title="Maintainability">
+        <list>
+          <item>Are names meaningful and self-documenting?</item>
+          <item>Would a new team member understand the code in isolation?</item>
+          <item>Is complex logic documented with inline comments explaining why, not what?</item>
+        </list>
+      </subsection>
+
+      <subsection title="Testing">
+        <list>
+          <item>Are there sufficient tests for the changed code?</item>
+          <item>Do tests cover edge cases and error paths?</item>
+          <item>Are tests readable — do they document intent?</item>
+          <item>Do tests actually verify behavior, not just execute code?</item>
+        </list>
+      </subsection>
+
+      <subsection title="Performance">
+        <list>
+          <item>Any obvious O(n^2) or worse algorithms on unbounded input?</item>
+          <item>N+1 query patterns in loops over ORM results?</item>
+          <item>Missing database indexes for new query patterns?</item>
+          <item>Unnecessary memory allocations or copies in hot paths?</item>
+        </list>
+      </subsection>
+
+      <subsection title="Security">
+        <list>
+          <item>Input validation on all external inputs?</item>
+          <item>No hardcoded secrets or credentials?</item>
+          <item>SQL queries parameterized (no string concatenation)?</item>
+          <item>Proper authentication and authorization checks?</item>
+          <item>XSS prevention for user-generated content rendered in HTML?</item>
+        </list>
+      </subsection>
+
+      <rule>
+        <statement>Cap PR size at 400 changed lines before the agent reviews; above that, ask the author to split the PR first.</statement>
+        <rationale>SmartBear empirical research shows review quality degrades significantly past 400 LoC and 60 minutes; agents silently truncate large diffs.</rationale>
+      </rule>
+    </section>
+
+    <section name="comments-and-workflow">
+      <p>Conventional Comments label system, good/bad comment examples, reviewer/author rules, and agent-specific gotchas.</p>
+
+      <subsection title="Conventional Comments Labels">
+        <rule>
+          <statement>Every review comment must carry one of: blocking, suggestion, nit, question, or praise. No unlabeled comments.</statement>
+          <rationale>Authors cannot distinguish a blocker from a style preference without explicit labels; unlabeled comments cause PR stalls.</rationale>
+        </rule>
+        <list>
+          <item>blocking: must fix before merge — bugs, security issues, standard violations.</item>
+          <item>suggestion: should consider — improvements that would make code better but are not required.</item>
+          <item>nit: minor style or preference — mark explicitly as non-blocking.</item>
+          <item>question: reviewer does not understand — ask before flagging as a problem.</item>
+          <item>praise: acknowledge good code — required, not optional.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Comment Quality">
+        <rule>
+          <statement>Every blocking comment must quote the offending lines and provide a concrete suggested fix or explain the exact failure scenario.</statement>
+          <rationale>Vague blocking comments ("this is wrong") waste author time and create friction; specific comments with fixes are immediately actionable.</rationale>
+        </rule>
+        <example type="bad">
+          <code lang="text"><![CDATA[blocking: This is wrong.]]></code>
+          <note>Vague: no explanation, no fix, no quoted line.</note>
+        </example>
+        <example type="good">
+          <code lang="text"><![CDATA[
+blocking: Line 47 will raise KeyError when `user` is None because
+`user['id']` is accessed unconditionally. Add a guard:
+
+  if not user:
+      return None
+          ]]></code>
+          <note>Specific: quotes the exact line, explains the failure scenario, provides the fix.</note>
+        </example>
+      </subsection>
+
+      <subsection title="Reviewer Rules">
+        <list>
+          <item>Review within 4 hours; never delay more than 24 hours.</item>
+          <item>Approve when code is good enough, not only when perfect.</item>
+          <item>Do not block on nits; mark them and approve.</item>
+          <item>Do not rewrite the author's code in comments; suggest, don't replace.</item>
+          <item>Always include at least one praise comment per PR.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Author Rules">
+        <list>
+          <item>Keep PRs under 400 changed lines.</item>
+          <item>Self-review the diff before requesting review.</item>
+          <item>Respond to every comment, even if only "Done" or "Won't fix — see reason."</item>
+          <item>Never submit untested or uncompiled code for review.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Agent Gotchas">
+        <antipattern>
+          <description>Hallucinated bugs: agent flags an NPE on code that already null-checks.</description>
+          <reason>Require the agent to cite the exact line and explain the concrete failing input; reject blocking comments that cannot demonstrate the failure.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Context truncation: agent reviews files 1-3 fully, rubber-stamps files 4-12 of a large PR.</description>
+          <reason>Force the agent to enumerate files reviewed; if it had to skip any, it must refuse to approve and ask for a PR split.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Self-review bias: agent reviewing a Claude-authored diff tends to agree with itself.</description>
+          <reason>Always require a human review pass after agent review on agent-authored code.</reason>
+        </antipattern>
+        <rule>
+          <statement>The agent is never the sole approver for a merge to main; branch protection must require a human reviewer regardless of bot approval.</statement>
+          <rationale>Autonomous approval removes the human quality gate; even a high-precision agent will miss intent-level errors.</rationale>
+        </rule>
+      </subsection>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Run review as a CI step on every PR. The pipeline: (1) lint/type/tests must pass first — no agent review on red CI; (2) reviewer subagent reads the diff plus the touched files (not the whole repo), grouped by file; (3) it emits Conventional Comments (blocking:, suggestion:, nit:, question:, praise:) with line anchors; (4) blocking items become required-changes via the GitHub API; suggestions and nits are inline comments; (5) human reviewer is auto-requested only after the agent pass.</p>
+
+      <subsection title="Recommended Subagents">
+        <list>
+          <item>review skill (built-in) — reviews PR; pair with security-review for sec-sensitive PRs.</item>
+          <item>faion-sdd-executor-agent — when the PR comes from an SDD task, it already knows the spec and can verify acceptance criteria.</item>
+          <item>Reviewer subagent (Sonnet) — line-level comments per file.</item>
+          <item>Security-review subagent (Opus) — only triggered on diffs touching auth, crypto, IO boundaries, secrets.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Prompt Pattern">
+        <prompt purpose="pr-review"><![CDATA[
+Review the diff at <PR URL>. Constraints:
+- Only comment on changed lines (+ ±3 lines context).
+- Use Conventional Comments labels (blocking/suggestion/nit/question/praise).
+- Skip style nits already enforced by the linter config in .eslintrc / pyproject.toml.
+- Output JSON list: [{"path","line","label","body"}].
+- Max 20 comments; prioritise correctness > security > maintainability > nits.
+        ]]></prompt>
+
+        <p>Self-review prompt:</p>
+        <prompt purpose="self-review"><![CDATA[
+Self-review the patch you just produced before requesting human review.
+For each hunk, answer: bug? edge case? test coverage? security? perf?
+If unsure, mark `question:` and ask the human, do not silently ship.
+        ]]></prompt>
+      </subsection>
+
+      <subsection title="CLI Tools">
+        <list>
+          <item>gh pr diff / gh pr view — Pull diff + metadata for the agent. From: https://cli.github.com</item>
+          <item>glab mr diff — Same for GitLab. From: https://gitlab.com/gitlab-org/cli</item>
+          <item>git diff --merge-base origin/main — Local pre-push self-review surface. From: git docs</item>
+          <item>reviewdog — Posts agent/linter findings as PR review comments. From: https://github.com/reviewdog/reviewdog</item>
+          <item>danger / danger-js — Custom PR rules (CHANGELOG, PR size, missing tests). From: https://danger.systems</item>
+          <item>pr-agent (CodiumAI) — Open-source LLM PR reviewer; useful as reference impl. From: https://github.com/Codium-ai/pr-agent</item>
+          <item>pre-commit — Block bad diffs before they reach review. From: https://pre-commit.com</item>
+          <item>semgrep — Rule-driven static analysis; agent can author rules. From: https://semgrep.dev</item>
+        </list>
+      </subsection>
+
+      <subsection title="Services &amp; Apps">
+        <list>
+          <item>GitHub Copilot Code Review — SaaS. Native LLM PR review; complements custom agents.</item>
+          <item>CodiumAI PR-Agent — OSS + SaaS, CLI + GitHub App. Drop-in LLM reviewer; can be self-hosted.</item>
+          <item>Graphite — SaaS, CLI + API. Stacked-PR workflow ideal for small reviewable diffs.</item>
+          <item>Reviewable — SaaS. Rich review UX; API for posting agent comments.</item>
+          <item>Sourcery — SaaS, GitHub App. Suggests refactors inline.</item>
+          <item>GitHub / GitLab REST API — SaaS. Authoritative way to post review comments + required-changes.</item>
+          <item>gerrit — OSS, REST API. Common in regulated/large orgs.</item>
+          <item>Conventional Comments — spec. Standard label set the agent should always emit.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Best Practices">
+        <list>
+          <item>Cap PR size at 400 changed lines before the agent reviews — beyond that, ask the author to split. Track the cap with danger.</item>
+          <item>Always run linters/tests first; never let the agent comment on code that the linter would flag — duplicates noise.</item>
+          <item>Use Conventional Comments labels in every agent comment so authors can filter by severity.</item>
+          <item>Require evidence: the agent must quote the offending lines and cite the rule/principle. No "this seems wrong".</item>
+          <item>Combine LLM review with semgrep rules for known anti-patterns; semgrep handles deterministic checks, LLM handles judgement calls.</item>
+          <item>Track agent precision/recall: sample 20 reviews/week, mark each comment as true-positive / false-positive. Below 70% precision → tighten prompt or shrink scope.</item>
+          <item>The agent's praise: comments are not filler — they teach style and reduce author defensiveness.</item>
+        </list>
+      </subsection>
+
+      <subsection title="AI-Agent Gotchas">
+        <list>
+          <item>Hallucinated bugs. LLMs invent NPEs/race conditions in code that's safe. Mitigation: require the agent to cite the exact line and explain the trigger; reject blocking: comments without a concrete failing input.</item>
+          <item>Approval drift. Agent learns "approve" is the default response. Audit approval rate; if &gt; 90% on real PRs, the prompt is too lenient.</item>
+          <item>Context truncation. Big PRs → silent truncation → review of file 1, rubber-stamp on file 12. Force the agent to enumerate files reviewed and to refuse if it had to skip.</item>
+          <item>Conflicting personas. Don't run two LLM reviewers with different prompt styles — authors get whiplash. Pick one.</item>
+          <item>Self-review bias. When Claude reviews a Claude-authored diff, it tends to agree with itself. Always run the human review pass after.</item>
+          <item>Human-in-loop checkpoint. Agent can never be the sole approver on a merge to main. Configure branch protection to require a human reviewer regardless of bot approval.</item>
+          <item>Secret leakage. Don't pass full repo context to a third-party SaaS reviewer; use self-hosted Claude or scrub secrets first.</item>
+        </list>
+      </subsection>
+    </section>
+
+    <templates>
+      <template path="templates/pr-context.sh" purpose="Fetch PR metadata, changed files, failing CI checks, and diff (truncated) for the agent."/>
+      <template path="templates/review-prompt.txt" purpose="Agent prompt: diff-scoped comments, Conventional Comments labels, max 20, JSON output."/>
+    </templates>
+
+    <see-also>
+      <link href="https://google.github.io/eng-practices/review/"/>
+      <link href="https://conventionalcomments.org/"/>
+      <link href="https://docs.github.com/en/rest/pulls/reviews"/>
+      <link href="https://github.com/Codium-ai/pr-agent"/>
+      <link href="https://smartbear.com/learn/code-review/best-practices-for-peer-code-review/"/>
+    </see-also>
+  </content>
+</methodology>

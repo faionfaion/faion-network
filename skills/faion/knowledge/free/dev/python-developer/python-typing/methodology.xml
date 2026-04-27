@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-typing">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Type annotation rules for Python 3.10+ using mypy and pyright. Use built-in generics, PEP 695 syntax on 3.12+, never bare type: ignore without rule code.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>typing</tag>
+      <tag>mypy</tag>
+      <tag>pep-695</tag>
+      <tag>static-analysis</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Python Type Hints and Static Typing</title>
+    <summary>Rules for adding and maintaining type annotations in Python 3.10+ codebases using mypy (CI) and pyright (IDE). Core rules: use built-in generics (list[int], X | None), use PEP 695 syntax (class Foo[T]:) on 3.12+ floors, never add bare # type: ignore without a rule code, never silence with cast() when a narrowing guard works.</summary>
+    <why>
+      <p>Type annotations catch shape mismatches before runtime, make IDE navigation reliable, and give LLMs accurate context for code generation. Without a strict discipline (# type: ignore[code] with justification, no stray Any), the annotation coverage erodes silently — future errors are hidden rather than flagged.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Adding type hints to an untyped or partially-typed module (run mypy --strict to find gaps).</item>
+        <item>Migrating from typing import List, Dict, Optional, Union to 3.10+ built-ins.</item>
+        <item>Migrating to PEP 695 generic syntax (class Repo[T]:) from legacy TypeVar/Generic.</item>
+        <item>Designing a public API surface with Protocol-based duck typing.</item>
+        <item>Hardening a payload boundary with TypedDict + Required/NotRequired.</item>
+        <item>CI quality gate: mypy --strict blocking PRs that introduce Any.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Throwaway scripts and one-off notebooks — setup cost exceeds benefit.</item>
+        <item>Codebases supporting Python less than 3.10 — X | Y syntax breaks on 3.9.</item>
+        <item>Cython/PyO3 extension modules — types live in .pyi stubs.</item>
+        <item>Bridging dynamic libraries without stubs (legacy ML libs) — fighting Untyped errors yields no signal.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="built-in-generics">
+      <rule>
+        <statement>Use built-in generic forms: list[int], dict[str, int], set[str], tuple[int, ...], type[T]. Never import List, Dict, Set, Tuple, Type from typing.</statement>
+        <rationale>PEP 585 (Python 3.9+) made built-in types subscriptable. The typing module aliases are deprecated and will be removed. ruff rule UP006 auto-fixes them with --fix. Removing them reduces import noise.</rationale>
+      </rule>
+      <rule>
+        <statement>Use X | None for nullable types and X | Y for unions. Never use Optional[X] or Union[X, Y] in new code on Python 3.10+.</statement>
+        <rationale>PEP 604 pipe syntax reads as English "X or None". Optional[X] hides the nullable nature behind a name; X | None is explicit. ruff UP007 auto-upgrades Optional to the pipe form.</rationale>
+      </rule>
+    </section>
+
+    <section name="pep-695-generic-syntax-python-312">
+      <rule>
+        <statement>On Python 3.12+ floor, use PEP 695 type parameter syntax (class Repo[T]:, def first[T](items: list[T]) -> T:) instead of TypeVar/Generic boilerplate.</statement>
+        <rationale>PEP 695 eliminates the T = TypeVar('T') declaration, reduces noise, and integrates with type alias statements. The old form still works but is visually heavier and requires separate import management.</rationale>
+      </rule>
+      <example type="good" title="PEP 695 generic class and function (Python 3.12+)">
+        <code lang="python"><![CDATA[
+# Python 3.12+ — no TypeVar import needed
+class Repository[T]:
+    def get(self, id: int) -> T | None: ...
+    def list(self) -> list[T]: ...
+    def create(self, item: T) -> T: ...
+
+def first[T](items: list[T]) -> T | None:
+    return items[0] if items else None
+
+# Type alias with PEP 695
+type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+type Callback[T] = Callable[[T], bool]
+]]></code>
+      </example>
+      <example type="bad" title="Legacy TypeVar/Generic boilerplate — replaced by PEP 695 on 3.12+">
+        <code lang="python"><![CDATA[
+from typing import TypeVar, Generic  # Unnecessary on 3.12+
+T = TypeVar('T')
+
+class Repository(Generic[T]):  # Verbose, extra import
+    def get(self, id: int) -> T | None: ...
+]]></code>
+      </example>
+    </section>
+
+    <section name="typeddict">
+      <rule>
+        <statement>Use TypedDict to type dictionary shapes at cross-boundary points (API responses, config dicts, queue payloads). Use Required/NotRequired to annotate optional fields explicitly.</statement>
+        <rationale>TypedDict is zero-overhead at runtime (it's just a type) and makes shape contracts explicit for dict-heavy code. Unlike Pydantic, it requires no instantiation cost — ideal for annotating existing dict-returning functions without migrating them to dataclasses.</rationale>
+      </rule>
+      <example type="good" title="TypedDict with NotRequired for optional fields">
+        <code lang="python"><![CDATA[
+from typing import TypedDict, NotRequired, Required
+
+class UserPayload(TypedDict):
+    id: int
+    email: str
+    name: str
+    bio: NotRequired[str]
+    avatar_url: NotRequired[str | None]
+
+# total=False with Required for inversion pattern
+class PatchPayload(TypedDict, total=False):
+    name: str
+    bio: str
+    avatar_url: str | None
+    # Override: email is always required even in total=False dict
+    email: Required[str]
+]]></code>
+      </example>
+    </section>
+
+    <section name="protocol">
+      <rule>
+        <statement>Use Protocol for structural duck-typing contracts instead of ABC inheritance. Reserve ABC for class hierarchies where super() call chains are needed.</statement>
+        <rationale>Protocol satisfies the Open/Closed principle: any class with the right methods satisfies the Protocol, without importing or subclassing it. ABC requires explicit inheritance, creating import coupling between modules.</rationale>
+      </rule>
+      <rule>
+        <statement>Add @runtime_checkable only when the Protocol is used in isinstance() checks at runtime. Avoid it on Protocols used purely as type annotations — it adds per-call overhead.</statement>
+        <rationale>@runtime_checkable checks only structural presence of methods, not their signatures. On hot paths, the overhead is measurable. Only add it when isinstance(obj, MyProtocol) is needed in production code.</rationale>
+      </rule>
+      <example type="good" title="Protocol for structural typing — no ABC inheritance">
+        <code lang="python"><![CDATA[
+from typing import Protocol
+
+class Sendable(Protocol):
+    def send(self, recipient: str, message: str) -> bool: ...
+
+class Closeable(Protocol):
+    def close(self) -> None: ...
+
+# Both classes satisfy Sendable without importing or subclassing it
+class EmailBackend:
+    def send(self, recipient: str, message: str) -> bool: ...
+
+class SMSBackend:
+    def send(self, recipient: str, message: str) -> bool: ...
+
+def dispatch(backend: Sendable, to: str, msg: str) -> bool:
+    return backend.send(to, msg)
+]]></code>
+      </example>
+    </section>
+
+    <section name="mypy-strict-configuration">
+      <rule>
+        <statement>Use strict = true in [tool.mypy]. For legacy codebases, add per-module overrides to opt modules in one by one — never reduce strictness repo-wide to fix a count of errors.</statement>
+        <rationale>strict = true enables: disallow_untyped_defs, disallow_any_generics, warn_return_any, no_implicit_optional, check_untyped_defs, and others. Reducing it repo-wide re-hides exactly the bugs mypy was meant to catch.</rationale>
+      </rule>
+      <rule>
+        <statement>Add [[tool.mypy.overrides]] entries to exclude migrations.* (generated code) and relax tests.* (dynamic fixtures). Exclude packages without stubs via ignore_missing_imports = true scoped to those packages.</statement>
+        <rationale>Django migrations trigger false positives under strict mode — they use dynamic field references mypy cannot resolve. Tests use pytest fixtures that produce untyped-def noise. Scoped ignores keep signal high for production code.</rationale>
+      </rule>
+      <reference path="templates/mypy-config.toml">Full mypy strict config with Django-stubs and override sections</reference>
+      <example type="good" title="mypy strict config with scoped overrides">
+        <code lang="toml"><![CDATA[
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+
+plugins = ["mypy_django_plugin.main"]
+
+[tool.mypy.plugins.django-stubs]
+django_settings_module = "myproject.settings"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "migrations.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
+ignore_missing_imports = true
+]]></code>
+      </example>
+    </section>
+
+    <section name="pyright-configuration">
+      <rule>
+        <statement>Use pyright in VS Code via the Pylance extension (IDE-time feedback). Use mypy in CI for strict gate. Running both on the same codebase catches the union of both checkers' error sets.</statement>
+        <rationale>pyright is 3-5x faster than mypy and runs incrementally in the editor. mypy is stricter on some PEPs and has the django-stubs plugin ecosystem. Both together find more errors than either alone.</rationale>
+      </rule>
+      <example type="good" title="pyright strict config in pyproject.toml">
+        <code lang="toml"><![CDATA[
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingImports = true
+reportMissingTypeStubs = false
+reportUnusedImport = true
+reportUnusedVariable = true
+]]></code>
+      </example>
+    </section>
+
+    <section name="ruff-annotation-rules">
+      <rule>
+        <statement>Enable ruff rule groups ANN (annotation coverage), TCH (type-checking imports), and UP (pyupgrade) in CI. Use UP with --fix in pre-commit to auto-upgrade deprecated typing syntax.</statement>
+        <rationale>ANN flags functions missing return or argument annotations. TCH moves runtime-unnecessary imports into if TYPE_CHECKING: blocks (reduces startup time). UP auto-converts Optional[X] → X | None, List[X] → list[X], etc.</rationale>
+      </rule>
+    </section>
+
+    <section name="django-stubs-wiring">
+      <rule>
+        <statement>Install django-stubs and djangorestframework-stubs and wire the mypy plugin. Without the plugin, mypy cannot understand Model.objects, QuerySet generics, or DRF serializer field resolution.</statement>
+        <rationale>The django-stubs mypy plugin transforms Django's dynamic ORM API into statically-typed equivalents. Without it, every Model.objects.filter() call has type Any, eliminating mypy's coverage of the entire data layer.</rationale>
+      </rule>
+      <example type="good" title="Django-stubs installation and QuerySet typing">
+        <code lang="bash"><![CDATA[
+uv add --dev django-stubs djangorestframework-stubs
+]]></code>
+      </example>
+      <example type="good" title="Typed QuerySet return from service function">
+        <code lang="python"><![CDATA[
+from django.db import models
+
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+
+# django-stubs makes this fully typed
+def get_active_products() -> models.QuerySet[Product]:
+    return Product.objects.filter(is_active=True)
+]]></code>
+      </example>
+    </section>
+
+    <section name="any-overuse">
+      <antipattern>
+        <description>Using Any as a shortcut to silence mypy errors on unknown types instead of properly annotating the shape.</description>
+        <reason>Every Any annotation is a gap in type coverage. mypy treats Any as compatible with every type, meaning errors flow through silently. A function returning Any propagates the gap to all callers — one Any can suppress errors across an entire call chain.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Importing Any at module level and using it for dict payloads instead of defining TypedDict or Pydantic models.</description>
+        <reason>Dict-typed returns (dict[str, Any]) are the most common Any sink. Replacing them with TypedDict definitions costs little and gives mypy visibility into key access patterns.</reason>
+      </antipattern>
+    </section>
+
+    <section name="type-ignore-discipline">
+      <antipattern>
+        <description>Adding # type: ignore without a specific error code, e.g., # type: ignore instead of # type: ignore[attr-defined].</description>
+        <reason>Bare # type: ignore silences all mypy errors on the line, including future ones unrelated to the original issue. A scoped code silences only the specific error class. warn_unused_ignores = true in mypy config flags stale ignores when the underlying issue is fixed.</reason>
+      </antipattern>
+      <example type="bad" title="Bare ignore — silences future unrelated errors">
+        <code lang="python"><![CDATA[
+result = some_dynamic_call()  # type: ignore  # Bad: too broad
+]]></code>
+      </example>
+      <example type="good" title="Scoped ignore with justification comment">
+        <code lang="python"><![CDATA[
+result = some_dynamic_call()  # type: ignore[no-any-return]  # dynamic ORM result
+]]></code>
+      </example>
+    </section>
+
+    <section name="cast-misuse">
+      <antipattern>
+        <description>Using cast(SomeType, value) to satisfy mypy instead of adding a proper narrowing guard (isinstance, assert, or TypeIs function).</description>
+        <reason>cast() is a lie to the type checker — it makes no runtime assertion. If the actual type differs, the bug propagates silently. A narrowing guard (if isinstance(x, SomeType): ...) is both a type assertion and a runtime safety check.</reason>
+      </antipattern>
+      <example type="bad" title="cast() as a mypy silencer">
+        <code lang="python"><![CDATA[
+from typing import cast
+
+def process(value: int | str) -> str:
+    # Bad: cast does not check at runtime
+    return cast(str, value).upper()
+]]></code>
+      </example>
+      <example type="good" title="Narrowing guard — type-safe and runtime-safe">
+        <code lang="python"><![CDATA[
+def process(value: int | str) -> str:
+    if isinstance(value, str):
+        return value.upper()
+    return str(value)
+]]></code>
+      </example>
+    </section>
+
+    <section name="mixed-union-styles">
+      <antipattern>
+        <description>Mixing Optional[X] and X | None in the same codebase, or mixing Union[X, Y] and X | Y.</description>
+        <reason>Mixed styles produce inconsistent grep results and confuse ruff --fix idempotency. Pick X | None / X | Y for all new code and enforce with ruff UP007. Existing Optional imports can be batch-migrated with ruff check --select UP --fix.</reason>
+      </antipattern>
+    </section>
+
+    <section name="runtime-checkable-on-hot-paths">
+      <antipattern>
+        <description>Applying @runtime_checkable to a Protocol that is checked with isinstance() in a tight loop or frequently-called middleware.</description>
+        <reason>isinstance(obj, SomeProtocol) with @runtime_checkable checks only method presence, not signatures, and does so on every call. The overhead is measurable on hot paths. Use it only when the check is infrequent and the dynamic dispatch is genuinely needed.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/mypy-config.toml" purpose="Strict mypy configuration with Django-stubs plugin and per-module overrides for tests and migrations"/>
+      <template path="templates/no-new-any.sh" purpose="Pre-commit script to fail if a touched .py file introduces a new Any annotation"/>
+    </templates>
+
+    <see-also>
+      <ref slug="python-web-frameworks"/>
+      <ref slug="python-async"/>
+      <link href="https://docs.python.org/3/library/typing.html"/>
+      <link href="https://typing.python.org/en/latest/"/>
+      <link href="https://peps.python.org/pep-0484/"/>
+      <link href="https://peps.python.org/pep-0544/"/>
+      <link href="https://peps.python.org/pep-0604/"/>
+      <link href="https://peps.python.org/pep-0695/"/>
+      <link href="https://mypy.readthedocs.io/"/>
+      <link href="https://github.com/microsoft/pyright"/>
+      <link href="https://github.com/typeddjango/django-stubs"/>
+    </see-also>
+  </content>
+</methodology>

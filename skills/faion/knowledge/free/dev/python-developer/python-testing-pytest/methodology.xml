@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-testing-pytest">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Comprehensive pytest patterns for testing Python applications using fixtures, parametrization, plugins (pytest-cov, pytest-xdist, pytest-asyncio, pytest-mock), and modern testing practices for 2025-2026.</summary>
+    <tags>
+      <tag>pytest</tag>
+      <tag>testing</tag>
+      <tag>fixtures</tag>
+      <tag>parametrize</tag>
+      <tag>coverage</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-01-01</created>
+  </metadata>
+
+  <content>
+    <title>Python Testing with pytest</title>
+
+    <summary>pytest is the de facto standard testing framework for Python, offering powerful features like fixtures, parametrization, and a rich plugin ecosystem. This methodology covers modern pytest patterns for 2025-2026, including async testing, parallel execution, coverage analysis, and integration with Django. pytest is preferred over unittest because simple assert statements replace setUp/tearDown boilerplate, fixtures provide dependency injection, parametrization eliminates manual loops, and 1000+ plugins extend capabilities from coverage to mocking to benchmarking.</summary>
+
+    <why>
+      <p>pytest's fixture system (setup/teardown with dependency injection) and parametrization (run one test with multiple inputs) are demonstrably faster to write and maintain than unittest's xUnit-style TestCase classes. Fixtures scale to complex scenarios (database transactions, file handles, async event loops) without callback nesting. Parametrize replaces hand-written loops, making test matrices explicit and readable.</p>
+      <p>The plugin ecosystem solves real testing problems: pytest-cov integrates coverage into the test run (no separate tool call); pytest-xdist parallelizes across CPU cores (typically 3-5x speedup); pytest-asyncio removes the ceremony of wrapping async tests; pytest-mock wraps unittest.mock with saner syntax. This breadth lets teams adopt pytest once and scale from unit to integration to property-based testing without switching runners.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>New Python project — use pytest as the only test runner; never use stdlib unittest for new code.</item>
+        <item>Async applications (FastAPI, aiohttp, pure asyncio) — pytest-asyncio eliminates boilerplate and integrates with fixtures.</item>
+        <item>Large test suites (100+ tests) — pytest-xdist parallelizes across cores and can reduce run time 3-5x.</item>
+        <item>Django projects — pytest-django provides database fixtures and settings module management.</item>
+        <item>Coverage gates in CI — pytest --cov reports coverage within the test run; --cov-fail-under=80 gates PRs on threshold.</item>
+        <item>Parametrized input matrices — @pytest.mark.parametrize beats hand-written loops for maintainability.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Doctest-only libraries — pytest can run doctests but adds setup; pure stdlib python -m doctest is fine for tiny libs.</item>
+        <item>Single-script tools where overhead dominates — manual assert + run is sufficient.</item>
+        <item>Hard real-time or hardware-in-loop tests — pytest's fixture discovery adds latency; use a dedicated harness.</item>
+        <item>BDD/Gherkin-first teams — pytest-bdd exists but behave is more idiomatic for feature-file-driven development.</item>
+        <item>Serious performance benchmarks — pytest-benchmark works for microbenchmarks, but asv (airspeed velocity) or vendor profilers are better for production perf analysis.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-concepts">
+      <p>pytest's core concepts are fixtures (reusable setup/teardown), parametrization (multiple inputs per test), and markers (test categorization). Mastery of these three allows writing concise, maintainable test suites at scale.</p>
+
+      <rule testable="true">
+        <statement>Use pytest.fixture (not setUp/tearDown) for test setup. Use dependency injection: list fixture names as function parameters. Use yield for cleanup. Use @pytest.mark.parametrize for input matrices; always provide ids= for readable test names.</statement>
+        <rationale>Fixtures are composable — a test can depend on multiple fixtures with explicit dependencies. Parametrize with ids replaces hand-written loops and produces clear failure reports (test_x[my_case_name] instead of test_x[arg0]).</rationale>
+      </rule>
+
+      <example type="good" title="Fixtures with parametrize">
+        <code lang="python"><![CDATA[
+import pytest
+
+@pytest.fixture
+def database():
+    conn = create_connection()
+    yield conn
+    conn.close()
+
+@pytest.mark.parametrize("input,expected", [
+    ("hello", 5),
+    ("world", 5),
+    ("", 0),
+], ids=["word", "word2", "empty"])
+def test_length(database, input, expected):
+    result = database.query(f"SELECT LENGTH('{input}')")
+    assert result == expected
+        ]]></code>
+        <note>Fixture yields for cleanup; parametrize with ids for clarity.</note>
+      </example>
+
+      <example type="bad" title="Old unittest style">
+        <code lang="python"><![CDATA[
+import unittest
+
+class TestDatabase(unittest.TestCase):
+    def setUp(self):
+        self.conn = create_connection()
+
+    def tearDown(self):
+        self.conn.close()
+
+    def test_length_hello(self):
+        result = self.conn.query("SELECT LENGTH('hello')")
+        self.assertEqual(result, 5)
+
+    def test_length_world(self):
+        result = self.conn.query("SELECT LENGTH('world')")
+        self.assertEqual(result, 5)
+        ]]></code>
+        <note>Repeated setUp/tearDown; manual parametrize duplication; verbose assertions.</note>
+      </example>
+    </section>
+
+    <section name="fixtures-and-scope">
+      <p>Fixtures have scopes that control when they are created and torn down. Choosing the right scope prevents inter-test dependencies and unnecessary reinit overhead.</p>
+
+      <rule testable="true">
+        <statement>Use function scope (default) for isolated tests. Use module scope for expensive setup (database migrations) shared within a file. Use session scope sparingly; it can hide flaky tests that depend on global state. Avoid class scope; use function + parametrize instead.</statement>
+        <rationale>Function scope ensures tests do not bleed state into each other (critical for --randomly). Module scope reduces setup overhead for shared data. Session scope is a footgun — tests can interact via session fixtures and fail randomly in different orders.</rationale>
+      </rule>
+
+      <example type="good" title="Module-scope database, function-scope transactions">
+        <code lang="python"><![CDATA[
+@pytest.fixture(scope="module")
+def database():
+    # Expensive: connect once per test file
+    conn = create_connection()
+    yield conn
+    conn.close()
+
+@pytest.fixture
+def transaction(database):
+    # Fast: begin/rollback per test
+    database.begin()
+    yield database
+    database.rollback()
+
+def test_insert(transaction):
+    transaction.insert("users", {"name": "Alice"})
+    assert transaction.count("users") == 1
+        ]]></code>
+        <note>Database created once; transactions per test ensure isolation.</note>
+      </example>
+
+      <example type="bad" title="Session-scoped fixture hiding state leaks">
+        <code lang="python"><![CDATA[
+@pytest.fixture(scope="session")
+def shared_counter():
+    return {"count": 0}
+
+def test_a(shared_counter):
+    shared_counter["count"] += 1
+
+def test_b(shared_counter):
+    # depends on test_a running first; fails with --randomly
+    assert shared_counter["count"] == 1
+        ]]></code>
+        <note>Session-scoped mutable fixture creates inter-test dependency; --randomly exposes it.</note>
+      </example>
+    </section>
+
+    <section name="markers-and-test-categorization">
+      <p>Markers (decorators) categorize tests for filtering. Essential markers: slow (long-running), integration (requires services), unit (pure). Custom markers enable filtering by feature or team.</p>
+
+      <rule testable="true">
+        <statement>Define all markers in pyproject.toml. Use @pytest.mark.slow, @pytest.mark.integration, @pytest.mark.unit consistently. Use pytest -m "not slow" to skip slow tests in local runs; use pytest -m "integration" only in CI with services available.</statement>
+        <rationale>Defined markers prevent typos and auto-document test categorization. Filtering allows fast local feedback (unit only) and full CI (all). Prevents agents from adding undefined markers that get silently ignored.</rationale>
+      </rule>
+
+      <example type="good" title="Markers with filtering">
+        <code lang="python"><![CDATA[
+# pyproject.toml
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow",
+    "integration: requires external services",
+    "unit: pure unit tests",
+]
+
+# test_api.py
+@pytest.mark.unit
+def test_parse_json():
+    assert parse_json('{"x": 1}') == {"x": 1}
+
+@pytest.mark.integration
+async def test_api_call():
+    response = await fetch("https://api.example.com")
+    assert response.status == 200
+
+@pytest.mark.slow
+@pytest.mark.integration
+def test_large_data_import():
+    # Takes 30 seconds; skip in local runs
+    ...
+        ]]></code>
+        <note>Run locally: pytest -m "not slow"; in CI: pytest -m integration.</note>
+      </example>
+    </section>
+
+    <section name="async-testing">
+      <p>pytest-asyncio enables testing async code (FastAPI, aiohttp, pure asyncio). Auto mode (asyncio_mode = "auto" in pyproject) detects async tests and marks them implicitly.</p>
+
+      <rule testable="true">
+        <statement>Set asyncio_mode = "auto" in [tool.pytest.ini_options]. Use async def test_foo() syntax; no @pytest.mark.asyncio needed. Use pytest-mock with AsyncMock for mocking async functions. Use respx for httpx mocking; freezegun for time mocking.</statement>
+        <rationale>Auto mode removes boilerplate markers. AsyncMock and respx integrate cleanly with fixtures. Freezegun isolates time-dependent tests from wall clock.</rationale>
+      </rule>
+
+      <example type="good" title="Async test with auto mode">
+        <code lang="python"><![CDATA[
+# pyproject.toml
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+# test_api.py
+async def test_fetch(mocker):
+    # No @pytest.mark.asyncio needed with asyncio_mode = "auto"
+    mock_client = mocker.AsyncMock()
+    mock_client.get.return_value = {"status": 200}
+
+    result = await fetch_data(mock_client)
+    assert result["status"] == 200
+        ]]></code>
+        <note>asyncio_mode = "auto" eliminates marker boilerplate.</note>
+      </example>
+    </section>
+
+    <section name="parametrization-and-edge-cases">
+      <p>Parametrization (@pytest.mark.parametrize) runs one test function with multiple input sets. Use it to cover happy path, edge cases (empty, None, max-size), and error paths systematically.</p>
+
+      <rule testable="true">
+        <statement>Parametrize input matrices with ids= for readability. Cover: happy path (typical input), edge cases (empty, None, boundary, off-by-one), error paths (each exception). Use pytest.param with marks=pytest.mark.xfail for expected failures.</statement>
+        <rationale>Explicit parametrize beats implicit loops; ids produce readable failure output. Systematic coverage (happy + edges + errors) prevents gaps. xfail marks known failures without skipping them.</rationale>
+      </rule>
+
+      <example type="good" title="Parametrize covering happy, edge, error">
+        <code lang="python"><![CDATA[
+@pytest.mark.parametrize("email,valid", [
+    # Happy path
+    ("alice@example.com", True),
+    ("bob.smith@example.co.uk", True),
+    # Edge cases
+    ("a@b.c", True),  # Minimal valid
+    ("", False),
+    ("no-at-sign.com", False),
+    ("@example.com", False),
+    ("alice@", False),
+    # Special chars
+    ("alice+tag@example.com", True),
+    pytest.param("alice@example.com \n", False, marks=pytest.mark.xfail),  # Known bug
+], ids=[
+    "standard", "subdomain", "minimal",
+    "empty", "no_at", "missing_local", "missing_domain",
+    "plus_tag", "newline_xfail"
+])
+def test_validate_email(email, valid):
+    assert is_valid_email(email) == valid
+        ]]></code>
+        <note>ids show exactly which case failed; xfail marks known issues.</note>
+      </example>
+    </section>
+
+    <section name="plugins-and-ecosystem">
+      <p>Key plugins: pytest-cov (coverage), pytest-xdist (parallel), pytest-asyncio (async), pytest-mock (mocking), pytest-django (Django), pytest-randomly (randomize order).</p>
+
+      <rule testable="true">
+        <statement>Always install pytest-cov, pytest-xdist, pytest-asyncio in dev group. Set addopts = ["--cov=src", "--cov-branch", "--cov-report=xml"] in pyproject to integrate coverage. Use pytest -n auto for parallel local runs; --cov-fail-under=80 gates CI.</statement>
+        <rationale>These plugins are industry standard and mature. Coverage integration into pytest run removes a separate tool call. --cov-fail-under enforces policy (no coverge drops). -n auto parallelizes without explicit config.</rationale>
+      </rule>
+
+      <example type="good" title="pyproject with essential plugins configured">
+        <code lang="toml"><![CDATA[
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3"
+pytest-cov = "^6.0"
+pytest-xdist = "^3.5"
+pytest-asyncio = "^0.24"
+pytest-mock = "^3.14"
+pytest-randomly = "^3.15"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--cov=src",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+]
+        ]]></code>
+        <note>Coverage integrated; randomize order; parallel ready.</note>
+      </example>
+    </section>
+
+    <section name="conftest-and-shared-fixtures">
+      <p>conftest.py files (at module or project root) hold shared fixtures accessible to all tests in that directory and below. Place database, HTTP mock, and time mock fixtures here.</p>
+
+      <rule testable="true">
+        <statement>Keep conftest.py focused: database fixture, auth fixtures, common mocks. Do not put test logic in conftest. Use multiple conftest files in deep hierarchies (tests/unit/conftest.py, tests/integration/conftest.py) for different scopes.</statement>
+        <rationale>Focused conftest is discoverable. Multiple conftest files prevent scope pollution (unit tests don't load database fixture). Keeps test files readable by delegating setup to fixture names.</rationale>
+      </rule>
+
+      <example type="good" title="Shared conftest.py">
+        <code lang="python"><![CDATA[
+# tests/conftest.py
+import pytest
+from app import create_app
+
+@pytest.fixture
+def app():
+    app = create_app(config="test")
+    app.config["TESTING"] = True
+    return app
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+@pytest.fixture
+def db(app):
+    with app.app_context():
+        db.create_all()
+        yield db
+        db.session.remove()
+        db.drop_all()
+        ]]></code>
+        <note>Fixtures defined once; used by all test files in tests/ and subdirs.</note>
+      </example>
+    </section>
+
+    <section name="coverage-goals-and-ci-integration">
+      <p>Coverage measures code execution during tests. Branch coverage (--cov-branch) is more stringent than line coverage. Use --cov-fail-under=80 to gate PRs on minimum threshold.</p>
+
+      <rule testable="true">
+        <statement>Aim for 80%+ line coverage; 70%+ branch coverage for critical paths. Use --cov-report=xml in CI; upload to Codecov or Coveralls for PR comments. Exclude migrations and test fixtures from coverage. Mark unreachable code (if TYPE_CHECKING:, raise NotImplementedError) with # pragma: no cover.</statement>
+        <rationale>80% line coverage catches most bugs without test bloat. Branch coverage finds hidden logic (e.g., both sides of if). XML reports integrate with GitHub PR comments. Excluding known-unreachable code prevents false gaps.</rationale>
+      </rule>
+
+      <example type="good" title="Coverage configured and gated">
+        <code lang="toml"><![CDATA[
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
+fail_under = 80
+        ]]></code>
+        <note>Branch enabled; migrations omitted; fail_under enforces gate.</note>
+      </example>
+
+      <example type="bad" title="No coverage integration">
+        <code lang="bash"><![CDATA[
+# Manual coverage run, no CI gate, no report upload
+$ coverage run -m pytest
+$ coverage report
+# Hope developers run this manually
+        ]]></code>
+        <note>No CI gate; coverage gaps slip through. No historical tracking.</note>
+      </example>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Agents that write tests should follow TDD: write failing test first, implement, expand with edge cases. Use conftest for fixtures; never hand-edit test ids or marker names.</p>
+
+      <rule testable="true">
+        <statement>Agent test-writing workflow: (1) write smallest failing test for a feature, (2) implement the feature, (3) expand with parametrize for edge cases, (4) run pytest --cov to check branch coverage, (5) fix uncovered branches. Never ignore test failures silently; paste error output.</statement>
+        <rationale>TDD exposes design issues early. Parametrize expansion is systematic. Branch coverage audit ensures hidden branches (error paths, boundary checks) are tested. Error output transparency prevents silent failures.</rationale>
+      </rule>
+
+      <example type="good" title="Agent TDD workflow">
+        <code lang="bash"><![CDATA[
+# 1. Write failing test
+# test_validate_email.py: test_validate_email_simple
+
+# 2. Implement
+# app.py: def is_valid_email(email):
+#     return "@" in email
+
+# 3. Expand with parametrize
+# Add edge cases: empty, no @, etc.
+
+# 4. Check coverage
+$ pytest --cov=src --cov-branch --cov-report=term-missing
+# Output shows uncovered branches
+
+# 5. Fix coverage gaps
+# Add test for each uncovered branch
+        ]]></code>
+        <note>TDD + coverage audit ensures complete testing.</note>
+      </example>
+    </section>
+
+    <templates>
+      <template path="templates/conftest.py" purpose="Shared fixtures: database, client, auth."/>
+      <template path="templates/test_module.py" purpose="Unit test file with fixtures, parametrize, and AAA pattern."/>
+      <template path="templates/pytest-pyproject.toml" purpose="pyproject.toml [tool.pytest.ini_options] and coverage config."/>
+      <template path="templates/pytest-github-actions.yml" purpose="GitHub Actions: install Poetry, run pytest -n auto --cov, upload coverage."/>
+      <template path="templates/pytest-django-conftest.py" purpose="Django-specific fixtures: db, client, user factory."/>
+      <template path="templates/pytest-async-test.py" purpose="Async test examples with pytest-asyncio and respx mocking."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.pytest.org/"/>
+      <link href="https://pytest-asyncio.readthedocs.io/"/>
+      <link href="https://pytest-django.readthedocs.io/"/>
+      <link href="https://pytest-xdist.readthedocs.io/"/>
+      <link href="https://pytest-cov.readthedocs.io/"/>
+      <link href="https://pytest-mock.readthedocs.io/"/>
+      <link href="https://coverage.readthedocs.io/"/>
+    </see-also>
+  </content>
+</methodology>

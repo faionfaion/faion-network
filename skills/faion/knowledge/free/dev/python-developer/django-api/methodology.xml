@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="django-api">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>REST API patterns for DRF and Ninja: ViewSet vs APIView, serializer design, JWT auth, throttling, pagination. Core: thin views, validate with serializers, delegate to services.</summary>
+    <tags>
+      <tag>django</tag>
+      <tag>rest-api</tag>
+      <tag>drf</tag>
+      <tag>django-ninja</tag>
+      <tag>jwt</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <frameworks>
+      <framework>django</framework>
+    </frameworks>
+    <languages>
+      <language>python</language>
+    </languages>
+  </metadata>
+
+  <content>
+    <title>Django API Development</title>
+
+    <summary>Patterns for building REST APIs with Django REST Framework (DRF 3.15+) or Django Ninja 1.x. Covers ViewSet vs APIView selection, serializer/schema design, JWT auth, throttling, pagination, filtering, and OpenAPI documentation. Core rule: keep views thin — validate input with serializers, delegate business logic to a service layer, return typed responses.</summary>
+
+    <why>
+      <p>Fat views that mix validation, business logic, and side effects are the single biggest source of Django API bugs and test failures. Separating concerns (serializer → service → view) makes each layer independently testable and reduces the surface area for security mistakes like `fields = "__all__"` leaking new columns.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Building new REST endpoints on an existing Django 5.x project.</item>
+        <item>Choosing between DRF and Ninja at project bootstrap.</item>
+        <item>Adding CRUD ViewSets or custom APIView actions to an existing DRF codebase.</item>
+        <item>Implementing or hardening JWT/OAuth2/API-key auth, throttling, or cursor pagination.</item>
+        <item>Generating OpenAPI specs for client SDKs via `drf-spectacular` or Ninja's built-in spec.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-Django Python APIs — use `python-fastapi/` instead.</item>
+        <item>Greenfield project with no Django code and no admin requirement — FastAPI is usually a better fit.</item>
+        <item>Pure GraphQL APIs — use `graphene-django` / `strawberry-django`; this covers REST only.</item>
+        <item>Internal RPC services — gRPC + protobuf; REST overhead is not justified.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="framework-selection">
+      <p>Decision rules for choosing DRF vs Django Ninja, and ViewSet vs APIView within DRF.</p>
+
+      <rule testable="true">
+        <statement>Choose DRF when the project requires a large ecosystem, complex permission hierarchies, or team familiarity with Django class-based views.</statement>
+        <rationale>DRF has 14 years of battle-testing, 1000+ third-party packages, built-in browsable API, and plugin stubs (django-stubs, djangorestframework-stubs) for mypy. Django Ninja has a smaller ecosystem (since 2021).</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Choose Django Ninja for new greenfield projects that require native async, Pydantic v2 validation, or FastAPI-like ergonomics.</statement>
+        <rationale>Ninja's async path is first-class; adding async to DRF via adrf is bolted-on and produces sync-looking code that can silently not be async. Ninja is ~2-3x faster in high-concurrency benchmarks due to async I/O, not request overhead.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never mix DRF and Ninja in the same Django app — URL conflicts and authentication context diverge.</statement>
+        <rationale>Lock the choice at project bootstrap. Mixing multiplies the failure surface and makes OpenAPI spec generation inconsistent.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use ModelViewSet for standard CRUD operations on a single model with DefaultRouter URLs.</statement>
+        <rationale>ViewSets reduce boilerplate: list/create/retrieve/update/partial_update/destroy are generated from a queryset and serializer class. DefaultRouter handles URL naming automatically.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use APIView for action verbs (activate, archive, retry) or endpoints that aggregate multiple models.</statement>
+        <rationale>APIView gives full control over HTTP method dispatch without forcing router URL patterns. Use when the endpoint doesn't map cleanly to a single model resource.</rationale>
+      </rule>
+
+      <example type="good" title="ViewSet for standard CRUD: list, create, retrieve, update, destroy on Product">
+        <code lang="python"><![CDATA[
+class ProductViewSet(viewsets.ModelViewSet):
+    queryset = Product.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return self.queryset.filter(
+            organization=self.request.user.organization
+        ).select_related('category').prefetch_related('tags')
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return CreateProductSerializer
+        if self.action in ['update', 'partial_update']:
+            return UpdateProductSerializer
+        if self.action == 'list':
+            return ProductListSerializer
+        return ProductDetailSerializer
+]]></code>
+      </example>
+
+      <example type="good" title="APIView for a custom action verb: publish">
+        <code lang="python"><![CDATA[
+class PublishProductView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk: int):
+        serializer = PublishProductSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            result = product_services.publish(pk=pk, user=request.user)
+        except product_services.ProductNotFound as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ProductSerializer(result).data, status=status.HTTP_200_OK)
+]]></code>
+      </example>
+    </section>
+
+    <section name="serializers-schemas">
+      <p>Rules for DRF serializer separation and Ninja schema design that prevent security leaks and testing friction.</p>
+
+      <rule testable="true">
+        <statement>Use separate input serializers (validation) and output serializers (representation) — never one serializer for both.</statement>
+        <rationale>A single serializer that handles both input and output forces compromises: write-only fields mix with read-only fields, and changing one breaks the other. Separate serializers also make permission-based field differences explicit.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Never use Meta.fields = "__all__" on any user-facing serializer.</statement>
+        <rationale>New columns added to the model are automatically exposed to API consumers. This has caused accidental password hash, token, and internal ID leaks in production systems.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>List fields explicitly in Meta.fields and declare read_only_fields for computed and auto-set fields.</statement>
+        <rationale>An allowlist prevents new columns from leaking. read_only_fields ensures id, uid, created_at, updated_at cannot be set via PATCH/PUT.</rationale>
+      </rule>
+
+      <example type="bad" title="Single serializer with __all__ — exposes every field including internal ones">
+        <code lang="python"><![CDATA[
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = '__all__'  # Security risk: exposes password_hash, tokens, etc.
+]]></code>
+      </example>
+
+      <example type="good" title="Separate input and output serializers with explicit field lists">
+        <code lang="python"><![CDATA[
+class CreateUserSerializer(serializers.Serializer):
+    """Input: validate registration data."""
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8, write_only=True)
+    first_name = serializers.CharField(max_length=100)
+
+    def validate_email(self, value: str) -> str:
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Email already registered")
+        return value.lower()
+
+
+class UserListSerializer(serializers.ModelSerializer):
+    """Output: minimal fields for list views."""
+    class Meta:
+        model = User
+        fields = ['id', 'uid', 'email', 'first_name', 'last_name']
+        read_only_fields = fields
+
+
+class UserDetailSerializer(serializers.ModelSerializer):
+    """Output: full fields for detail views."""
+    organization = OrganizationSerializer(read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'uid', 'email', 'first_name', 'last_name',
+                  'organization', 'role', 'created_at']
+        read_only_fields = fields
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use ModelSchema for output; use Schema (Pydantic) for input with explicit validators.</statement>
+        <rationale>ModelSchema auto-generates fields from the Django model for output, which is safe for read paths. Input schemas need explicit Pydantic validators to enforce business rules.</rationale>
+      </rule>
+
+      <example type="good" title="Ninja: separate Create schema (input) and ModelSchema (output)">
+        <code lang="python"><![CDATA[
+from ninja import Schema, ModelSchema
+from pydantic import Field, field_validator
+
+class CreateOrderSchema(Schema):
+    amount: Decimal = Field(..., ge=0)
+    item_id: int
+
+    @field_validator('amount')
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be positive")
+        return v
+
+class OrderSchema(ModelSchema):
+    class Meta:
+        model = Order
+        fields = ['id', 'uid', 'amount', 'status', 'created_at']
+]]></code>
+      </example>
+    </section>
+
+    <section name="auth-permissions-throttle">
+      <p>Configuration rules for JWT auth, object-level permissions, scoped throttling, and cursor pagination.</p>
+
+      <rule testable="true">
+        <statement>Configure simplejwt with 15-minute access tokens, 7-day refresh tokens, token rotation, and blacklisting enabled.</statement>
+        <rationale>Short access token lifetimes limit the blast radius of a leaked token. Rotation + blacklisting prevents refresh token replay after logout.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Store JWT tokens in HttpOnly cookies, not localStorage — or use dj-rest-auth for cookie middleware wiring.</statement>
+        <rationale>localStorage is accessible to JavaScript; XSS attacks can steal tokens. HttpOnly cookies are not accessible from JS and are sent automatically with same-origin requests.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set IsAuthenticated as the global default; never set AllowAny as the default permission class.</statement>
+        <rationale>AllowAny as default means any new endpoint is publicly accessible until explicitly protected. A locked-down default forces explicit opt-in to public access.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Object-level permissions go in has_object_permission; permission_classes handles only route-level (method + auth) checks.</statement>
+        <rationale>has_permission runs before the object is fetched — cheap. has_object_permission runs after get_object() — allows ownership/org membership checks per resource.</rationale>
+      </rule>
+
+      <example type="good" title="Object-level permission: user must belong to object's organization">
+        <code lang="python"><![CDATA[
+class IsOrganizationMember(permissions.BasePermission):
+    message = "You don't have access to this resource"
+
+    def has_object_permission(self, request, view, obj) -> bool:
+        if hasattr(obj, 'organization'):
+            return obj.organization == request.user.organization
+        if hasattr(obj, 'user'):
+            return obj.user.organization == request.user.organization
+        return False
+]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Throttle by scope, not only anon/user. Add a burst scope for write endpoints and a login scope for auth endpoints.</statement>
+        <rationale>A single anon/user rate limit cannot differentiate between a safe read flood and a brute-force login attempt. Scoped throttling applies tighter limits where it matters.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Use cursor pagination only on indexed ordering fields (e.g., (-created_at, -id)); always paginate list endpoints.</statement>
+        <rationale>Cursor pagination on an unindexed field causes full table scans. The -id tie-breaker is required for stable ordering when multiple rows share the same created_at timestamp.</rationale>
+      </rule>
+
+      <reference path="templates/drf-settings.py">Complete REST_FRAMEWORK + SIMPLE_JWT + SPECTACULAR_SETTINGS config</reference>
+      <reference path="templates/pagination.py">StandardPagination and TimelinePagination (cursor) classes</reference>
+    </section>
+
+    <section name="antipatterns">
+      <p>Concrete failure modes that agents and developers consistently introduce into Django REST APIs.</p>
+
+      <antipattern>
+        <description>Fat view: business logic (DB queries, balance checks, email sending) written directly in the view's post() method.</description>
+        <reason>Fat views cannot be unit-tested without an HTTP request. Business logic in views is also unreachable from management commands, Celery tasks, or other entry points.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Business logic placed in serializer validate_* methods instead of a service function.</description>
+        <reason>Serializers should validate shape and type only. Logic in validate_* is hard to test in isolation and creates hidden coupling between validation and business rules.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Meta.fields = "__all__" on a user-facing serializer.</description>
+        <reason>New model fields (passwords, tokens, internal IDs) are automatically exposed when the model changes. An explicit allowlist is the only safe approach.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using Serializer(data=request.data, partial=True) for PATCH without a separate UpdateSerializer.</description>
+        <reason>Reusing the create serializer with partial=True allows required fields to be cleared — violating invariants. A separate Update serializer makes all fields optional explicitly.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Enabling BrowsableAPIRenderer in production.</description>
+        <reason>The browsable API changes content negotiation behavior (returns HTML when Accept: */* is sent), turns CSRF into a surprise vector, and leaks API structure to unauthenticated users.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Writing async def methods in plain DRF views without adrf — the method runs synchronously.</description>
+        <reason>DRF's dispatch pipeline is synchronous. An async def view handler is called in a sync context; it appears to work but blocks the event loop in ASGI deployments.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Adding URLPathVersioning to REST_FRAMEWORK settings without adding &lt;version&gt; to the URL pattern.</description>
+        <reason>The versioning class is applied but request.version is None — no error, silent failure. Tests must assert request.version is populated, not just that the endpoint responds.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/drf-settings.py" purpose="Complete REST_FRAMEWORK + SIMPLE_JWT + SPECTACULAR_SETTINGS config block."/>
+      <template path="templates/viewset.py" purpose="ModelViewSet with action-specific serializers, get_queryset, @action."/>
+      <template path="templates/apiview.py" purpose="Thin APIView: validate → service → return pattern."/>
+      <template path="templates/ninja-routes.py" purpose="Ninja router with ModelSchema, AuthBearer, CRUD endpoints."/>
+      <template path="templates/permissions.py" purpose="IsOrganizationMember, IsOwnerOrReadOnly, IsOwnerOrAdmin."/>
+      <template path="templates/pagination.py" purpose="StandardPagination (page-number) and TimelinePagination (cursor)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://www.django-rest-framework.org/"/>
+      <link href="https://django-ninja.dev/"/>
+      <link href="https://drf-spectacular.readthedocs.io/"/>
+      <link href="https://django-rest-framework-simplejwt.readthedocs.io/"/>
+      <link href="https://django-filter.readthedocs.io/"/>
+      <link href="https://cheatsheetseries.owasp.org/cheatsheets/Django_REST_Framework_Cheat_Sheet.html"/>
+      <link href="https://docs.djangoproject.com/en/5.2/topics/security/"/>
+      <link href="https://github.com/em1208/adrf"/>
+    </see-also>
+  </content>
+</methodology>

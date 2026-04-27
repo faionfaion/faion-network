@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-overview">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Routing-layer methodology for classifying Python projects by domain (web/data/ML/automation), selecting toolchain (uv, ruff, mypy), and deciding optimization strategy. Use as first-pass router before loading framework-specific methodology.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>routing</tag>
+      <tag>toolchain</tag>
+      <tag>performance</tag>
+      <tag>profiling</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Python Ecosystem Overview</title>
+    <summary>A routing-layer methodology for classifying a Python project's domain (web / data / ML / automation / embedded), selecting the right toolchain (Python version, package manager, linter, type checker), and routing to the correct framework-specific methodology. Use this as a first-pass router — not as implementation instructions. Once domain and stack are locked, load the specific methodology.</summary>
+    <why>
+      <p>Python spans incompatible domains. Pulling all of PyTorch + Django + Celery into a simple API project is a common LLM over-reach. The right toolchain (uv, ruff, mypy) is not obvious from training data alone — agents default to outdated combos (pip + black + isort + flake8). Routing correctly at the start saves rework and prevents framework-mixing bugs.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Routing "we need a Python solution for X" to the correct domain and methodology</item>
+        <item>Onboarding a new repo: surveying imports to map them to a domain bucket</item>
+        <item>Picking Python version, package manager, and lint/typecheck stack at project bootstrap</item>
+        <item>Auditing a codebase for outdated tooling (black + isort + flake8 → ruff; pip → uv)</item>
+        <item>Deciding whether a hot loop should be rewritten in Rust (only after profiling)</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Inside a feature task already scoped to a specific framework — load the specific methodology instead</item>
+        <item>Non-Python work</item>
+        <item>Choosing between Python web frameworks — route to python-web-frameworks which has the decision matrix</item>
+        <item>Performance work where a real profile already exists — this overview's optimization table is qualitative only</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="toolchain">
+      <rule>
+        <statement>Use Python 3.12+ for new projects. Lock the version in pyproject.toml (requires-python = ">=3.12") AND in .python-version (for uv/pyenv).</statement>
+        <rationale>Python 3.12 is fully supported with performance improvements and cleaner f-strings. 3.13 free-threading is experimental and not production-ready as of 2026.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not recommend Python 3.13 free-threading for production. It is experimental — keep GIL-Python until 3.14+ default builds support it.</statement>
+        <rationale>Free-threaded Python 3.13 has known correctness issues in CPython extensions and is not stable enough for production workloads.</rationale>
+      </rule>
+      <rule>
+        <statement>Use uv for new projects. One package manager per project — never mix uv and poetry or pip-tools in the same repo.</statement>
+        <rationale>uv is 10-100x faster than pip for installs and handles virtualenvs automatically. Mixing managers creates conflicting lockfiles.</rationale>
+      </rule>
+      <rule>
+        <statement>Treat uv.lock and poetry.lock as source of truth. Regenerating without committing the lockfile breaks colleagues.</statement>
+        <rationale>Lockfiles pin exact transitive dependency versions; uncommitted changes mean different environments on different machines.</rationale>
+      </rule>
+      <example type="good" title="Modern Python project bootstrap">
+        <code lang="bash"><![CDATA[
+uv init my-project --python 3.12
+uv add fastapi uvicorn
+uv add --dev ruff mypy pytest pytest-cov
+uv run pytest -q
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use ruff for both linting and formatting. It replaces black, isort, and flake8. Configure rule set explicitly — never use select = ["ALL"].</statement>
+        <rationale>ruff ALL enables hundreds of rules including opinionated ones that produce false positives. Curated set per AGENTS.md: E, F, I, B, C4, UP, SIM, T20.</rationale>
+      </rule>
+      <rule>
+        <statement>Pick one type checker for CI (mypy or pyright). Both in CI wastes compute. Use the other optionally in the IDE.</statement>
+        <rationale>Running both in CI doubles type-check time for marginal benefit. The two tools have slightly different rule sets; CI needs a single pass/fail signal.</rationale>
+      </rule>
+    </section>
+
+    <section name="domains">
+      <rule>
+        <statement>Classify the project's primary domain before loading any framework-specific methodology. Use imports and dependency list as signals.</statement>
+        <rationale>Python spans incompatible domains. Loading the wrong methodology produces irrelevant patterns and wastes context.</rationale>
+      </rule>
+      <list>
+        <item>web-django — imports: django, rest_framework, drf. Admin panel, ORM, full-stack. Route to: django-models/, django-pytest/</item>
+        <item>web-fastapi — imports: fastapi, pydantic, sqlalchemy. Async API, ML serving. Route to: python-fastapi/</item>
+        <item>web-flask — imports: flask. Prototype, internal tool. Route to: python-web-frameworks for decision, then Flask specifics</item>
+        <item>data-science — imports: pandas, polars, numpy, jupyter. Route to: data science methodologies</item>
+        <item>ml — imports: torch, tensorflow, sklearn, transformers, langchain. Route to: ml-engineer skill</item>
+        <item>automation — imports: airflow, prefect, selenium, ansible. Route to: automation methodologies</item>
+        <item>embedded/system — Rust + PyO3, Cython, cffi. Route to: performance methodologies</item>
+      </list>
+      <rule>
+        <statement>For web projects: if framework is already chosen, load only the framework-specific methodology. Load python-web-frameworks only when the choice is still open.</statement>
+        <rationale>python-web-frameworks is a routing layer — it adds overhead when the choice is already made.</rationale>
+      </rule>
+      <p>Web landscape 2025-2026: FastAPI dominates new API projects; Django remains strong for admin-heavy apps. Flask for prototypes and internal tools.</p>
+      <p>Data landscape: pandas for manipulation; polars gaining for large datasets (Rust performance); NumPy for numeric computing.</p>
+      <p>ML/AI landscape: PyTorch for research; TensorFlow for production mobile; scikit-learn for classical ML; Hugging Face for NLP; pydantic-ai for type-safe LLM interactions.</p>
+      <p>Automation landscape: Apache Airflow for workflow orchestration; Prefect for modern workflow management; Selenium/PyAutoGUI for UI automation.</p>
+    </section>
+
+    <section name="performance">
+      <rule>
+        <statement>Always profile before optimizing. Use cProfile or py-spy to identify the actual bottleneck before choosing an optimization strategy.</statement>
+        <rationale>The optimization strategy table's speedup numbers are qualitative. Agents that quote "10-1000x" without a profile recommend the wrong strategy constantly. CPU-bound optimizations do nothing for I/O-bound code.</rationale>
+      </rule>
+      <example type="good" title="Profiling techniques">
+        <code lang="bash"><![CDATA[
+# CPU profiling
+python -m cProfile -s cumulative script.py | head -20
+
+# Line-level profiling
+pip install line_profiler
+kernproof -l -v script.py
+
+# Sampling profiler (minimal overhead, works on running processes)
+pip install py-spy
+py-spy top --pid <pid>
+        ]]></code>
+      </example>
+      <p>Optimization strategy table by speedup/complexity: Algorithm optimization (10-1000x, Low complexity) — always try first. NumPy vectorization (10-100x, Low) — numeric operations only. Numba JIT (10-100x, Low) — numeric, CPU-bound only. Cython (10-50x, Medium) — tight loops. Rust + PyO3 (10-100x, High) — critical paths with distribution complexity. PyPy (2-10x, Low) — pure Python; not compatible with all C extensions.</p>
+      <rule>
+        <statement>Rust+PyO3 integration is only justified after profiling confirms a CPU-bound hot path. Set up maturin with abi3 for a single wheel covering Python 3.10-3.14.</statement>
+        <rationale>Build and distribution complexity (manylinux wheels, maturin, ABI3) is substantial. FFI boundary overhead kills the win for small-payload functions.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not recommend Numba or Cython for I/O-bound code. They speed up CPU operations only — applying them to network or disk I/O loops yields zero improvement.</statement>
+        <rationale>Agents routinely recommend Numba for any "slow" code without checking whether it is CPU or I/O bound.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Swapping poetry/pip for uv in projects with corporate proxies or private indexes.</description>
+        <reason>uv's --index-url semantics differ from pip's; private Artifactory/Nexus/Azure Artifacts setups may require pip-specific config that uv does not support identically.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Upgrading an existing Python 3.10/3.11 codebase to 3.12+ without checking dependency compatibility.</description>
+        <reason>numpy<2, tensorflow, and psycopg2/psycopg3 have Python version lockstep issues. Always audit with pip-audit or safety before upgrading.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Enabling ruff select = ["ALL"] in pyproject.toml.</description>
+        <reason>ALL enables hundreds of opinionated rules producing false positives. Curate: E, F, I, B, C4, UP, SIM, T20 per project AGENTS.md.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Replacing requirements.txt with pyproject.toml + uv.lock without updating CI/Dockerfile to read the lockfile.</description>
+        <reason>CI keeps installing the old requirements.txt, ignoring the lockfile. Dependencies diverge silently.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Recommending Python 3.13 free-threading for production.</description>
+        <reason>Free-threaded Python 3.13 has known correctness issues. Not production-ready in 2026.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Applying Numba or Cython to I/O-bound loops.</description>
+        <reason>JIT/AOT compilation speeds up CPU execution. A loop blocked on network/disk I/O is not CPU-bound — optimization yields no improvement.</reason>
+      </antipattern>
+      <rule>
+        <statement>Any change to lockfile, CI workflow, Dockerfile, or pyproject.toml [project] section requires human review.</statement>
+        <rationale>These files define the environment for all contributors and CI. Incorrect lockfile regeneration propagates across all machines on next sync.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/bootstrap-python.sh" purpose="Bootstrap a modern Python project: uv + ruff + mypy + pytest wired up"/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.python.org/3/whatsnew/index.html"/>
+      <link href="https://docs.astral.sh/uv/"/>
+      <link href="https://docs.astral.sh/ruff/"/>
+      <link href="https://blog.jetbrains.com/pycharm/2025/08/the-state-of-python-2025/"/>
+      <link href="https://www.stuartellis.name/articles/python-modern-practices/"/>
+      <link href="https://pyo3.rs/"/>
+      <link href="https://numba.pydata.org/"/>
+      <link href="https://pydevtools.com/handbook/"/>
+      <ref slug="python-fastapi"/>
+      <ref slug="python-modern-2026"/>
+      <ref slug="python-web-frameworks"/>
+    </see-also>
+  </content>
+</methodology>

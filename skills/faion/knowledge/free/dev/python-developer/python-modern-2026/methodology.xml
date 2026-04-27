@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-modern-2026">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>Python 3.12/3.13/3.14 features (PEP 695 generics, PEP 701 f-strings, free-threading) and modern tooling (uv, ruff, hatchling, pyright). Pin one Python version per repo; keep requires-python, ruff target-version, and mypy python_version in sync.</summary>
+    <tags>
+      <tag>python-3.12</tag>
+      <tag>python-3.13</tag>
+      <tag>uv</tag>
+      <tag>ruff</tag>
+      <tag>pyright</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Modern Python 2026</title>
+    <summary>Python 3.12/3.13/3.14 feature guide and tooling stack (uv, ruff, hatchling, pyright). Covers PEP 695 generics, PEP 701 f-strings, free-threaded mode (3.13t/3.14), t-strings (3.14 only), deferred annotations, and uv-based project bootstrap. Core rule: pin one Python version per repo via .python-version; keep requires-python, ruff target-version, and mypy python_version in sync.</summary>
+    <why>
+      <p>Syntax from 3.14 (t-strings, lazy imports) pasted into a 3.12 project causes SyntaxError at import time — a silent failure that only manifests in CI or production. Consistent tooling alignment (uv + ruff + hatchling) eliminates the "works on my machine" class of environment bugs and cuts install time by 10-100x.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Bootstrapping a new Python project (uv init, pyproject.toml, ruff + mypy + pytest).</item>
+        <item>Migrating 3.10/3.11 code to 3.12+: built-in generics, PEP 695 type parameters, modern f-strings.</item>
+        <item>Switching from pip/poetry/venv to uv.</item>
+        <item>Replacing Black + Flake8 + isort + pyupgrade with a single Ruff config.</item>
+        <item>Setting up CI/CD with lockfile-aware caching and pinned Python versions.</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Locked legacy environments (Python 3.8, RHEL system Python, vendored interpreters).</item>
+        <item>Production free-threaded mode without a thread-safety audit of all C extensions (3.13 experimental, 3.14 stabilizes).</item>
+        <item>Pure data-science notebooks where conda/mamba is entrenched.</item>
+        <item>Existing healthy poetry/PDM project — switching costs more than the benefit.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="version-features">
+      <rule>
+        <statement>On Python 3.12+ floor, use PEP 695 type parameter syntax (class Box[T]:, def first[T]:(), type Alias = ...) instead of TypeVar/Generic boilerplate.</statement>
+        <rationale>PEP 695 eliminates T = TypeVar('T') declarations and the Generic[T] base class. It co-locates type parameters with their scope, removing TypeVar naming collision risks and reducing import noise.</rationale>
+      </rule>
+      <rule>
+        <statement>Use PEP 701 f-string features on 3.12+: quote reuse inside expressions, multiline expressions, and backslashes in expressions. Do not use % formatting or .format() for new code.</statement>
+        <rationale>PEP 701 removes all f-string restrictions that made them hard to use for complex expressions. Quote reuse (f"Hello {d['key']}") eliminates the awkward workarounds that pushed developers back to .format().</rationale>
+      </rule>
+      <example type="good" title="PEP 701 f-string features">
+        <code lang="python"><![CDATA[
+user = {"name": "Alice", "role": "admin"}
+
+# Quote reuse in expression (pre-3.12 required different quote type)
+greeting = f"Hello {user['name']}"
+
+# Multiline expression
+summary = f"User: {
+    user['name'].title()
+} ({user['role']})"
+
+# Nested f-strings
+price_fmt = f"{f'{price:.2f}'}"
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use TypeIs[T] (PEP 742, Python 3.13+) for bidirectional type narrowing functions. Do not use TypeGuard[T] for new narrowing functions on 3.13+ floors.</statement>
+        <rationale>TypeIs narrows both the True and False branches of an if-check. TypeGuard only narrows the True branch, leaving the else side unnarrowed. TypeIs is the strict upgrade and is preferred for all new narrowing functions.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not enable free-threaded mode (PYTHON_GIL=0, python3.13t) in production without first auditing all C extensions for GIL-free thread safety. Python 3.13 free-threading is experimental.</statement>
+        <rationale>Free-threaded Python 3.13 is labeled experimental. Many C extensions assume GIL protection. Enabling free-threading without an audit causes data races in C extension code that works correctly under the GIL.</rationale>
+      </rule>
+      <rule>
+        <statement>Use t-strings (PEP 750, Python 3.14+) for SQL queries, HTML templates, and other injection-risk string constructions. Never use f-strings for SQL or HTML — t-strings produce Template objects that renderers can sanitize.</statement>
+        <rationale>f-strings interpolate immediately, making SQL/HTML injection possible when user input is included. t-strings defer interpolation — the Template object carries the parts separately, allowing renderers to escape/parameterize before producing the final string.</rationale>
+      </rule>
+      <rule>
+        <statement>Do not use t-strings on Python 3.12 or 3.13 codebases — they are a syntax error. Verify the repo's requires-python floor before adopting any 3.14-only syntax.</statement>
+        <rationale>Syntax errors from version-mismatched features manifest at import time, not at the specific call site. On a 3.12 project with a 3.14 CI runner, the code "works" in CI but fails in production. requires-python + ruff target-version are the guardrails.</rationale>
+      </rule>
+      <example type="good" title="t-string for SQL-safe query construction (Python 3.14+)">
+        <code lang="python"><![CDATA[
+# t-strings (Python 3.14+) — returns Template object, not str
+user_input = "'; DROP TABLE users; --"
+
+# Safe: renderer sees the parts, can parameterize
+query = t"SELECT * FROM users WHERE name = {user_input}"
+# db.execute(query)  # DB adapter renders safely as parameterized query
+
+# vs f-string — UNSAFE for SQL
+# query = f"SELECT * FROM users WHERE name = {user_input}"  # SQL injection!
+        ]]></code>
+      </example>
+    </section>
+
+    <section name="tooling-stack">
+      <rule>
+        <statement>Use uv for Python version management, virtual environments, and package management. Do not mix uv with pip, venv, pyenv, or poetry in the same project.</statement>
+        <rationale>uv is 10-100x faster than pip (warm cache), manages Python versions itself, and uses a global cache. Running pip alongside uv produces environment state divergence — the lockfile (uv.lock) becomes unreliable.</rationale>
+      </rule>
+      <rule>
+        <statement>Commit uv.lock to version control. Run uv sync --frozen in CI to install exactly what the lockfile specifies.</statement>
+        <rationale>uv.lock is the reproducibility contract. --frozen fails if the lockfile is stale, catching accidental uv add commits that weren't also followed by uv lock. This prevents "works in CI, breaks in prod" dependency drift.</rationale>
+      </rule>
+      <example type="good" title="Essential uv commands">
+        <code lang="bash"><![CDATA[
+# Init
+uv init my-project --python 3.12
+uv python pin 3.12          # Creates .python-version
+
+# Deps
+uv add fastapi pydantic
+uv add --dev pytest ruff mypy pytest-cov
+
+# Run (no venv activation needed)
+uv run python main.py
+uv run pytest --cov=src
+uv run ruff check . --fix && uv run ruff format .
+
+# CI
+uv sync --frozen             # Install exact lockfile state
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Enable ruff rule groups: E F I B UP N S C4 PT. Run ruff check --fix before commit and ruff format in pre-commit hooks. Use target-version matching requires-python.</statement>
+        <rationale>Ruff replaces Black + Flake8 + isort + pyupgrade in a single millisecond-speed pass. UP auto-upgrades deprecated typing syntax. S catches security-relevant patterns (hardcoded secrets, subprocess shell=True). PT enforces pytest style.</rationale>
+      </rule>
+      <example type="good" title="Ruff config in pyproject.toml">
+        <code lang="toml"><![CDATA[
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "S", "C4", "PT", "T20"]
+ignore = ["S101"]  # assert allowed in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]  # Security rules relaxed in tests
+
+[tool.ruff.format]
+quote-style = "double"
+        ]]></code>
+      </example>
+      <rule>
+        <statement>Use hatchling as the build backend for new libraries and distributable packages. For application-only projects (no PyPI distribution), the build backend can be omitted.</statement>
+        <rationale>hatchling is the PEP 517/518 build backend recommended by the Python Packaging Authority (PyPA). It replaces setuptools for new projects and integrates cleanly with uv. It requires no setup.py or MANIFEST.in.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep requires-python, ruff target-version, mypy python_version, and pyright pythonVersion in sync. All four must reference the same minor version.</statement>
+        <rationale>Misalignment produces false CI passes: ruff may not flag syntax errors from a higher version if target-version is too low; mypy may allow features not available on the deployment Python if python_version is too high. Sync prevents silent version drift.</rationale>
+      </rule>
+    </section>
+
+    <section name="migration-path">
+      <rule>
+        <statement>Run ruff check --select UP --fix as the first step of any 3.12+ migration. This auto-migrates all deprecated typing imports (from typing import List → list, Optional[X] → X | None) and other pyupgrade fixes.</statement>
+        <rationale>The UP rule group covers the mechanical 3.12+ migration items that need no judgment: built-in generics, union syntax, removed aliases. Auto-fixing first eliminates noise so manual review focuses on structural changes.</rationale>
+      </rule>
+      <rule>
+        <statement>Migrate TypeVar/Generic classes to PEP 695 syntax when touching a file for another reason. Do not create a dedicated "PEP 695 migration" PR — it produces large diffs with low value per change.</statement>
+        <rationale>Opportunistic migration keeps the codebase moving forward without a big-bang rewrite that blocks other work. "Touch a file, modernize it" is a sustainable practice that fully migrates the codebase over time.</rationale>
+      </rule>
+      <example type="good" title="TypeVar to PEP 695 migration target">
+        <code lang="python"><![CDATA[
+# Before (3.11 and earlier)
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
+
+class Cache(Generic[K, V]):
+    def get(self, key: K) -> V | None: ...
+    def set(self, key: K, value: V) -> None: ...
+
+# After (3.12+)
+class Cache[K, V]:
+    def get(self, key: K) -> V | None: ...
+    def set(self, key: K, value: V) -> None: ...
+        ]]></code>
+      </example>
+      <rule>
+        <statement>When switching a poetry project to uv: export requirements.txt from poetry, then uv add each dependency. Do not manually copy pyproject.toml dependency lists — version constraint syntax differs.</statement>
+        <rationale>Poetry uses ^ and ~ constraints that do not translate directly to uv's PEP 440 syntax. Exporting requirements and re-adding via uv ensures the lockfile is generated fresh from the actual resolution, not inherited from a different resolver.</rationale>
+      </rule>
+      <rule>
+        <statement>Replace Black and Flake8 with ruff in pre-commit hooks in one commit. Keep the existing line-length setting to avoid a massive reformatting diff.</statement>
+        <rationale>Switching formatters with a different line length produces a diff that touches every file, making git blame useless for recent history. Keeping the existing line length in the ruff config produces a minimal diff from the formatter switch.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/pyproject.toml" purpose="Full pyproject.toml: uv, hatchling, ruff (E F I B UP N S C4 PT), mypy strict, pytest-asyncio auto mode."/>
+      <template path="templates/bootstrap.sh" purpose="One-shot project bootstrap: uv init, add deps, pre-commit with ruff + mypy hooks."/>
+    </templates>
+
+    <see-also>
+      <link href="https://docs.astral.sh/uv/"/>
+      <link href="https://docs.astral.sh/ruff/"/>
+      <link href="https://docs.python.org/3/whatsnew/3.12.html"/>
+      <link href="https://docs.python.org/3/whatsnew/3.13.html"/>
+      <link href="https://docs.python.org/3/whatsnew/3.14.html"/>
+      <link href="https://docs.python.org/3/howto/free-threading-python.html"/>
+      <link href="https://peps.python.org/pep-0695/"/>
+      <link href="https://peps.python.org/pep-0703/"/>
+      <link href="https://peps.python.org/pep-0750/"/>
+      <link href="https://peps.python.org/pep-0649/"/>
+      <link href="https://peps.python.org/pep-0734/"/>
+      <link href="https://hatch.pypa.io/latest/"/>
+    </see-also>
+  </content>
+</methodology>

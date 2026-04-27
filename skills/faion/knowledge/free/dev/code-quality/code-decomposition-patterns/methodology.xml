@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-decomposition-patterns">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Five named decomposition patterns (Extract Service, Component, Module, Configuration, Types) with size triggers, criteria, and language-specific layouts for Python, TypeScript, Go.</summary>
+    <tags>
+      <tag>refactoring</tag>
+      <tag>decomposition</tag>
+      <tag>patterns</tag>
+      <tag>architecture</tag>
+      <tag>code-organization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Decomposition Patterns</title>
+
+    <summary>Fat files (controllers >100 lines, React components >150 lines, settings >150 lines) reduce testability, increase merge conflicts, and obscure responsibility. Named patterns give agents and reviewers a shared vocabulary and precise post-conditions: view files stay thin, services are framework-free, components compose, config splits by environment.</summary>
+
+    <why>
+      <p>Fat files (controllers >100 lines, React components >150 lines, settings >150 lines) reduce testability, increase merge conflicts, and obscure responsibility. Named patterns give agents and reviewers a shared vocabulary and precise post-conditions: view files stay thin, services are framework-free, components compose, config splits by environment.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Controller/view exceeds 100 lines with mixed HTTP handling and business logic → Extract Service.</item>
+        <item>React/Vue component exceeds 150 lines with multiple UI concerns → Extract Component.</item>
+        <item>Flat directory exceeds 20 files or team ownership is unclear → Extract Module.</item>
+        <item>Settings file exceeds 150 lines or mixes environment-specific config → Extract Configuration.</item>
+        <item>TypeScript files mix types with logic or types are reused across multiple files → Extract Types.</item>
+        <item>New feature scaffolding where the agent must lay out files before writing code.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Features totalling ≤200 lines — applying a pattern creates more files than logic.</item>
+        <item>Framework-mandated single files (e.g., Django `urls.py`) — forced coupling is not a decomposition target.</item>
+        <item>Generated code or ORM migrations — structural changes break the generator contract.</item>
+        <item>Performance-critical hot loops where indirection has a measured cost.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="five-named-decomposition-patterns">
+      <p>Catalog of Extract Service, Extract Component, Extract Module, Extract Configuration, and Extract Types with triggers and acceptance criteria.</p>
+
+      <section name="extract-service">
+        <rule>
+          <statement>Move business logic from controllers/views into a dedicated service class when the controller exceeds 100 lines or mixes HTTP handling with domain logic.</statement>
+          <rationale>Services are testable without the HTTP layer and reusable across endpoints. Thin controllers become a translation layer only: deserialize input, call service, serialize output.</rationale>
+        </rule>
+        <rule>
+          <statement>Service methods must not accept framework-typed parameters (request, response, HttpContext). Accept plain domain types only.</statement>
+          <rationale>Framework types in service signatures create coupling that defeats the purpose of extraction — the service becomes untestable without a full HTTP stack.</rationale>
+        </rule>
+      </section>
+
+      <section name="extract-component">
+        <rule>
+          <statement>Split a React/Vue component that exceeds 150 lines into a parent composition component (&lt;50 lines) and focused child components (&lt;100 lines each).</statement>
+          <rationale>Single-responsibility components are easier to test, memoize, and reuse. Extract when multiple UI concerns coexist or when the component is difficult to test in isolation.</rationale>
+        </rule>
+        <rule>
+          <statement>Extract data-fetching hooks to separate files (e.g., useDashboardData.ts); keep components presentation-only.</statement>
+          <rationale>Separating data and presentation enables testing each concern independently and enables re-use of the hook across multiple views.</rationale>
+        </rule>
+      </section>
+
+      <section name="extract-module">
+        <rule>
+          <statement>Reorganize a flat directory with 20+ files into domain-based subdirectories when team ownership is unclear or related files are scattered.</statement>
+          <rationale>Domain modules create explicit boundaries, reduce cognitive load for new contributors, and enable independent deployment in the future.</rationale>
+        </rule>
+      </section>
+
+      <section name="extract-configuration">
+        <rule>
+          <statement>Split a settings file exceeding 150 lines into base.py + per-environment overrides (development.py, production.py, testing.py) and per-concern components (database.py, cache.py, security.py).</statement>
+          <rationale>Monolithic settings files make environment-specific overrides fragile and security settings hard to audit. Splitting makes each concern independently readable.</rationale>
+        </rule>
+        <rule>
+          <statement>__init__.py must determine which env file to import; env files must never import from each other (prevents circular imports).</statement>
+          <rationale>Circular imports in config cause import errors that are hard to diagnose. One-way load from __init__.py is the only safe pattern.</rationale>
+        </rule>
+      </section>
+
+      <section name="extract-types">
+        <rule>
+          <statement>Move TypeScript type/interface definitions to dedicated types/ files when types are reused across multiple files or when circular type dependencies appear.</statement>
+          <rationale>Centralized types create a single source of truth, make refactoring safer, and improve IDE go-to-definition accuracy.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="language-specific-directory-layouts">
+      <p>Reference directory trees for Python/Django, TypeScript/React, and Go after applying decomposition patterns.</p>
+
+      <section name="python-django">
+        <example type="good" title="Python/Django layout">
+          <code lang="text"><![CDATA[app/
+├── models/
+│   ├── __init__.py      # Export all models
+│   ├── user.py          # User model only
+│   └── profile.py       # Profile model only
+├── services/
+│   ├── __init__.py
+│   ├── user_service.py  # User business logic (no HTTP types)
+│   └── auth_service.py  # Auth business logic
+├── views/
+│   ├── __init__.py
+│   ├── user_views.py    # Thin: deserialize -> service -> serialize
+│   └── auth_views.py
+├── serializers/
+│   ├── user_serializers.py
+│   └── auth_serializers.py
+└── tests/
+    ├── test_models/
+    ├── test_services/   # Test services without HTTP layer
+    └── test_views/]]></code>
+          <note>Services imported by views; views import nothing from tests. Circular imports are structurally impossible.</note>
+        </example>
+      </section>
+
+      <section name="typescript-react">
+        <example type="good" title="TypeScript/React layout">
+          <code lang="text"><![CDATA[src/
+├── components/
+│   ├── ui/              # shadcn primitives (Button, Card, etc.)
+│   └── features/
+│       └── Dashboard/
+│           ├── Dashboard.tsx        # Composition only (<50 lines)
+│           ├── DashboardHeader.tsx
+│           ├── DashboardMetrics.tsx
+│           └── hooks/
+│               └── useDashboardData.ts
+├── hooks/               # Shared hooks
+├── services/            # API service functions
+├── stores/              # State management
+├── types/               # Interface definitions (Extract Types)
+└── utils/               # Pure utility functions]]></code>
+          <note>Parent Dashboard.tsx renders children only; data fetching lives in hooks/. Each child &lt;100 lines.</note>
+        </example>
+      </section>
+
+      <section name="go">
+        <example type="good" title="Go layout">
+          <code lang="text"><![CDATA[internal/
+├── domain/
+│   ├── user/
+│   │   ├── user.go          # Entity + value objects
+│   │   ├── repository.go    # Interface (no implementation)
+│   │   └── service.go       # Business logic
+│   └── order/
+│       ├── order.go
+│       ├── repository.go
+│       └── service.go
+├── infrastructure/
+│   ├── database/
+│   │   ├── postgres.go      # Implements domain repository interfaces
+│   │   └── migrations/
+│   └── http/
+│       ├── server.go
+│       └── handlers/        # Thin handlers calling domain services
+└── application/
+    ├── commands/
+    └── queries/]]></code>
+          <note>Domain packages depend on nothing in infrastructure; infrastructure depends on domain interfaces. Dependency arrow points inward.</note>
+        </example>
+      </section>
+    </section>
+
+    <section name="before-after-examples">
+      <p>Concrete code examples showing fat-to-thin transformations for the two most common patterns.</p>
+
+      <section name="extract-service-python">
+        <example type="bad" title="Fat controller (800 lines)">
+          <code lang="python"><![CDATA[# views.py (800 lines) - fat controller
+class ShopView:
+    def checkout(self, request):
+        # validation (30 lines)
+        # inventory check (20 lines)
+        # payment processing (40 lines)
+        # order creation (25 lines)
+        # email notification (15 lines)
+        # analytics tracking (10 lines)
+        pass]]></code>
+          <note>Single method with 6 responsibilities; untestable without HTTP stack; impossible to reuse logic.</note>
+        </example>
+
+        <example type="good" title="Extracted service">
+          <code lang="python"><![CDATA[# views/checkout_view.py (~30 lines)
+class CheckoutView:
+    def post(self, request):
+        checkout = CheckoutService.process(request.data)
+        return Response(CheckoutSerializer(checkout).data)
+
+# services/checkout_service.py (~50 lines)
+class CheckoutService:
+    @staticmethod
+    def process(data: dict) -> Checkout:
+        validated = CheckoutValidator.validate(data)
+        inventory = InventoryService.reserve(validated.items)
+        payment = PaymentService.charge(validated.card, inventory.total)
+        order = Order.objects.create(payment=payment)
+        events.publish(OrderCreated(order))
+        return order]]></code>
+          <note>CheckoutService accepts plain dict (no HTTP types), fully testable in unit tests without HTTP stack.</note>
+        </example>
+      </section>
+
+      <section name="extract-component-typescript">
+        <example type="bad" title="Fat component (500 lines)">
+          <code lang="typescript"><![CDATA[// Dashboard.tsx (500 lines)
+export function Dashboard() {
+  const [data, setData] = useState(null);
+  useEffect(() => { fetch('/api/dashboard').then(r => r.json()).then(setData); }, []);
+  // 50 lines of event handlers
+  // 400 lines of JSX mixing metrics, charts, and tables
+}]]></code>
+          <note>Data fetching, event handling, and rendering mixed. Impossible to test or memoize each concern separately.</note>
+        </example>
+
+        <example type="good" title="Extracted components">
+          <code lang="typescript"><![CDATA[// Dashboard.tsx (~40 lines) - composition only
+export function Dashboard() {
+  const { data, isLoading } = useDashboardData();
+  if (isLoading) return <Spinner />;
+  return (
+    <DashboardLayout>
+      <MetricsGrid metrics={data.metrics} />
+      <RevenueChart data={data.revenue} />
+      <RecentOrders orders={data.orders} />
+    </DashboardLayout>
+  );
+}
+
+// hooks/useDashboardData.ts (~50 lines) - data fetching
+// components/MetricsGrid.tsx (~60 lines) - presentation only
+// components/RevenueChart.tsx (~80 lines) - presentation only
+// components/RecentOrders.tsx (~70 lines) - presentation only]]></code>
+          <note>Parent is a composition contract; each child tests independently; hook is reusable across multiple pages.</note>
+        </example>
+      </section>
+    </section>
+
+    <section name="decomposition-antipatterns">
+      <p>Common failures when agents apply decomposition patterns: leaky abstractions, over-extraction, missed import updates, and barrel re-exports.</p>
+
+      <antipattern>
+        <description>Leaky service: extracted service method accepts request/response/HttpContext parameters.</description>
+        <reason>Framework types in service signatures tie the service to the HTTP layer, defeating testability. Services must accept only plain domain types.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Over-extraction: agent creates a micro-service for a 5-line helper with a single caller.</description>
+        <reason>Unnecessary files increase cognitive overhead without adding testability or reusability. Apply a minimum threshold: a service/component must be >=40 lines or have >=3 callers to justify extraction.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Import update misses: agent moves a file but only updates the moved file, not its importers.</description>
+        <reason>Broken imports cause runtime errors that only appear when the code path is exercised. Always run a grep pass on importers + `tsc --noEmit` or `python -c 'import app'` after each move.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Barrel re-export sprawl: agent adds `export *` in index.ts to make imports convenient after Extract Module.</description>
+        <reason>`export *` re-exports everything including internals, breaks tree-shaking, creates implicit public APIs, and causes circular dependency risks. Forbid `export *`; export named symbols only.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Settings circular import: env file (production.py) imports from base.py which imports from production.py.</description>
+        <reason>Circular imports in config fail at import time with an inscrutable error. Enforce one-way load: __init__.py imports env file; env file imports base; base imports nothing from the settings package.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Doc drift: pattern application without updating the directory's AGENTS.md in the same PR.</description>
+        <reason>AGENTS.md file tables go stale immediately after a structural change. Always update AGENTS.md in the same commit as the decomposition.</reason>
+      </antipattern>
+    </section>
+
+    <templates>
+      <template path="templates/pattern-guard.sh" purpose="CI script enforcing line-count invariants and detecting circular imports."/>
+    </templates>
+
+    <see-also>
+      <link href="https://refactoring.guru/refactoring/techniques/composing-methods"/>
+      <link href="https://refactoring.guru/refactoring/techniques/moving-features-between-objects"/>
+      <link href="https://martinfowler.com/books/refactoring.html"/>
+      <link href="https://addyosmani.com/blog/ai-coding-workflow/"/>
+      <link href="https://docs.openrewrite.org/"/>
+      <link href="https://ast-grep.github.io/"/>
+      <link href="https://comby.dev/"/>
+      <link href="https://ts-morph.com/"/>
+      <link href="https://github.com/python-rope/rope"/>
+    </see-also>
+  </content>
+</methodology>

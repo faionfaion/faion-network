@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-review">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>A systematic examination of source code before merging, using five comment types — BLOCKING (bugs, security, standard violations), SUGGESTION (improvements), NITPICK (style), QUESTION (unclear intent), PRAISE (good code) — and six review categories: correctness, design, maintainability, testing, performance, security. Keep PRs under 400 lines; agent review quality drops sharply above that threshold.</summary>
+    <tags>
+      <tag>code-review</tag>
+      <tag>pr-review</tag>
+      <tag>quality-gates</tag>
+      <tag>collaboration</tag>
+      <tag>agent-workflow</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Review</title>
+
+    <summary>A systematic examination of source code before merging, using five comment types — BLOCKING (bugs, security, standard violations), SUGGESTION (improvements), NITPICK (style), QUESTION (unclear intent), PRAISE (good code) — and six review categories: correctness, design, maintainability, testing, performance, security. Keep PRs under 400 lines; agent review quality drops sharply above that threshold.</summary>
+
+    <why>
+      <p>Code review catches bugs before production, distributes knowledge across the team, and enforces standards. Reviews prevent rework that costs 5-10x more to fix post-merge than pre-merge. The structured comment taxonomy (BLOCKING vs SUGGESTION vs NITPICK) eliminates ambiguity about what the author must fix versus what is optional, which is the primary source of review friction in teams.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All code changes before merging, with at least one human approval required.</item>
+        <item>Security-sensitive change classes: auth, data access, file uploads, deserialization — run a dedicated security pass.</item>
+        <item>Architectural changes requiring broader review.</item>
+        <item>Large refactors where reviewers lack bandwidth for line-by-line scan; agent flags hotspots for human attention.</item>
+        <item>Consistency enforcement: PR style, naming, test coverage thresholds.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Non-code reviews (design docs, RFCs, copy edits) — use a doc-review workflow instead.</item>
+        <item>Hotfixes during active incidents where speed outweighs review depth.</item>
+        <item>Closed-source third-party SDK code where source cannot be loaded.</item>
+        <item>One-line dependency bumps — Renovate/Dependabot plus automated tests is sufficient.</item>
+        <item>Subjective architecture debates without team context — agent will pick a side arbitrarily.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="core-principles">
+      <p>Five core principles, the five-type comment taxonomy with blocking rules, and six review categories with concrete checks per category.</p>
+
+      <subsection title="Core Principles">
+        <list>
+          <item>Review the code, not the author. Comment on the code behavior and design, never on the developer's choices as a person.</item>
+          <item>Keep PRs small and focused. Agent review quality drops sharply above 400 lines changed.</item>
+          <item>Provide timely feedback: first review within 4 hours of PR opening.</item>
+          <item>Be constructive and specific. Every BLOCKING comment must include a concrete suggested fix.</item>
+          <item>Use reviews as learning opportunities for both reviewer and author.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Comment Taxonomy">
+        <rule>
+          <statement>Use exactly five comment types in every code review: BLOCKING, SUGGESTION, NITPICK, QUESTION, PRAISE. Authors must resolve all BLOCKING comments before merge. SUGGESTION and NITPICK are non-blocking.</statement>
+          <rationale>Ambiguous comment intent is the primary source of review friction. When reviewers leave comments without explicit type, authors must guess whether a comment is blocking or advisory. This uncertainty delays merges and causes unnecessary back-and-forth.</rationale>
+        </rule>
+        <list>
+          <item>BLOCKING: bugs, security issues, standard violations — author must fix before merge.</item>
+          <item>SUGGESTION: improvements that would help but are not required — author decides.</item>
+          <item>NITPICK: style preferences, minor word choices — author can apply or dismiss, no discussion needed.</item>
+          <item>QUESTION: reviewer does not understand something — not blocking, but author should clarify.</item>
+          <item>PRAISE: good code that should be recognized and kept in future refactors — do not change this.</item>
+        </list>
+        <rule>
+          <statement>Cap NITPICK count at 5 per review. More than 5 nitpicks signal that linting rules are missing, not that the author needs more feedback.</statement>
+          <rationale>Excessive nitpicks overwhelm the author and bury the BLOCKING comments that actually matter. If reviewers are producing 20+ nitpicks, the solution is a lint rule, not more review comments.</rationale>
+        </rule>
+      </subsection>
+
+      <subsection title="Review Categories">
+        <rule>
+          <statement>Cover all six categories in every review: correctness, design, maintainability, testing, performance, security. Never review only the most interesting category.</statement>
+          <rationale>Reviewers naturally gravitate toward their domain of expertise. A developer focused on design may produce zero security findings. Explicit coverage of all six categories ensures systematic examination regardless of reviewer preference.</rationale>
+        </rule>
+        <list>
+          <item>Correctness: does it work? Edge cases handled? Business logic correct?</item>
+          <item>Design: well-organized? Follows project patterns? Single responsibility?</item>
+          <item>Maintainability: readable? Meaningful variable names? Adequate comments?</item>
+          <item>Testing: sufficient coverage? Tests edge cases? Tests behavior, not implementation?</item>
+          <item>Performance: N+1 queries? Unnecessary allocations? Blocking operations in hot paths?</item>
+          <item>Security: input validation? No secrets in code? SQL injection prevented? Auth checks present?</item>
+        </list>
+      </subsection>
+    </section>
+
+    <section name="agent-failure-modes">
+      <p>Six agent failure modes in code review: hallucinated APIs, diff truncation, phantom security warnings, style noise, tone issues, and secret leakage.</p>
+
+      <subsection title="Hallucinated APIs">
+        <antipattern>
+          <description>Agent suggests a fix calling a function or method that does not exist on the version of the library pinned in the project.</description>
+          <reason>LLMs have training data from many library versions. Without version-pinned context, the agent suggests APIs that existed in older or newer versions but not the one in use. The author spends time investigating a non-existent function.</reason>
+        </antipattern>
+        <rule>
+          <statement>Include a snippet of package.json or requirements.txt in the review prompt. This grounds the agent in the actual dependency versions and reduces hallucinated API suggestions.</statement>
+          <rationale>Providing explicit version context shifts the agent from generating from training data to generating constrained by the actual dependency set. It does not eliminate hallucinations but reduces them significantly.</rationale>
+        </rule>
+      </subsection>
+
+      <subsection title="Diff Truncation">
+        <antipattern>
+          <description>Agent silently reviews only the head of a large diff and produces findings that ignore the tail of the PR, with no indication that truncation occurred.</description>
+          <reason>PR diffs larger than the agent's context window are silently truncated. The agent produces a complete-looking review that misses the last 40% of changes. Reviewers trusting the agent output approve PRs with unreviewed code.</reason>
+        </antipattern>
+        <rule>
+          <statement>Enforce a 400-line PR size limit via CI. Fail loudly above 1500 lines. Never load a PR diff silently — if the diff exceeds token budget, the agent must report the truncation explicitly.</statement>
+          <rationale>Silent truncation is worse than no review because it provides false confidence. An explicit truncation error forces the team to split the PR or acknowledge that the tail was not reviewed.</rationale>
+        </rule>
+      </subsection>
+
+      <subsection title="Phantom Security Warnings">
+        <antipattern>
+          <description>Agent flags SQL injection on parameterized queries, CSRF on internal services, or XSS on sanitized inputs — generating false-positive security findings that erode reviewer trust.</description>
+          <reason>LLMs pattern-match on surface appearance rather than runtime behavior. A string that looks like a SQL fragment in a log message triggers injection warnings even when the actual query path is parameterized. After a few false positives, reviewers stop reading security findings.</reason>
+        </antipattern>
+        <rule>
+          <statement>Run Semgrep alongside the agent for security findings. Use Semgrep rules as the ground truth for deterministic security checks; use the agent only for design and correctness findings that rules cannot detect.</statement>
+          <rationale>Rule-based tools have low false-positive rates on the patterns they cover. Hybrid review (Semgrep for deterministic checks + agent for design) produces higher precision than either tool alone.</rationale>
+        </rule>
+      </subsection>
+
+      <subsection title="Style Noise">
+        <antipattern>
+          <description>Review output consists of 80% formatting and naming nitpicks from a mixed-formatter codebase, drowning out the BLOCKING correctness and design findings.</description>
+          <reason>Without a pre-agent lint pass, the agent sees formatting inconsistencies across the entire diff and produces a high-volume of style comments. These comments make the review appear thorough while hiding the findings that actually matter.</reason>
+        </antipattern>
+        <rule>
+          <statement>Run the linter and formatter before the agent review step in CI. The agent reviews code, not formatting. Style findings from pre-lint code are noise.</statement>
+          <rationale>A lint-clean diff focuses the agent on design and logic. The signal-to-noise ratio of the review output is the key metric for whether authors read and act on agent comments.</rationale>
+        </rule>
+      </subsection>
+
+      <subsection title="Secret Leakage">
+        <antipattern>
+          <description>Sending a full PR diff to a third-party LLM API without scanning for secrets first, potentially exposing API keys, passwords, or tokens in the diff.</description>
+          <reason>Developers occasionally commit secrets accidentally. Sending that diff to an external API creates a second exposure vector. The secret may appear in API logs, rate-limit tracking, or training data.</reason>
+        </antipattern>
+        <rule>
+          <statement>Run gitleaks or trufflehog as a pre-flight step before sending any diff to an external LLM. Block the review step if secrets are detected. Never log full diffs or prompts to stdout in public CI.</statement>
+          <rationale>Pre-flight secret scanning is the only reliable protection against accidentally sending credentials to external APIs. Blocking on detection (rather than just warning) prevents accidental bypass.</rationale>
+        </rule>
+      </subsection>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Bind a pr-reviewer agent to a CI workflow that fires on PR open/sync. The agent reads the PR description, the diff, and the touched files in full (not just diff context). It produces a comment block: blocking issues, suggestions, nitpicks, questions, praise — using the comment-type taxonomy from the README. A second pass: security-reviewer agent runs only on changes touching auth/data/IO code paths, scoped via path filters. Human reviewer reads agent output as a checklist, not a verdict. Block auto-merge until at least one human approval; agent comments are advisory.</p>
+
+      <subsection title="Recommended Subagents">
+        <list>
+          <item>pr-reviewer — generic correctness/design/maintainability pass; sonnet-class.</item>
+          <item>security-reviewer — auth, input validation, secret scanning, OWASP-class checks; opus-class on sensitive paths only.</item>
+          <item>test-coverage-reviewer — checks new code has tests, calls out untested branches.</item>
+          <item>style-reviewer — naming, structure, project conventions; haiku-class to keep cost low.</item>
+          <item>faion-sdd-executor-agent — when reviewing within an SDD task, ensures change matches spec/design/test-plan.</item>
+          <item>password-scrubber-agent — pre-review pass to redact secrets before sending diff to any external LLM.</item>
+        </list>
+      </subsection>
+
+      <subsection title="Prompt Pattern">
+        <prompt purpose="code-review"><![CDATA[
+You are reviewing a PR. Use these comment types: BLOCKING, SUGGESTION, NITPICK, QUESTION, PRAISE.
+For each finding: file:line, type, body, optional code suggestion.
+Categories to cover: correctness, design, maintainability, testing, performance, security.
+Hard rules:
+- Quote the exact lines you reference.
+- If unsure, ask a QUESTION; do not BLOCK on speculation.
+- Cap NITPICK count at 5.
+- End with one-line PRAISE if anything was well done.
+Diff: <<<UNIFIED DIFF>>>
+Repo conventions: <<<excerpt of CONTRIBUTING.md / .editorconfig / lint config>>>
+        ]]></prompt>
+      </subsection>
+
+      <subsection title="Best Practices">
+        <list>
+          <item>Keep PRs &lt;400 lines; agent quality drops sharply above that. Enforce with a CI warning.</item>
+          <item>Feed the agent the project's CONTRIBUTING.md, lint config, and CODEOWNERS — without conventions context, output is generic.</item>
+          <item>Run linter/formatter before agent. Style nits from a mixed-formatter codebase poison the agent's review.</item>
+          <item>Always run a non-LLM pass too (Semgrep, gitleaks, language linter). Agents miss what rules catch deterministically.</item>
+          <item>Cap nitpick count via prompt; otherwise reviews are 80% noise.</item>
+          <item>Track agent precision: % of BLOCKING comments humans agreed with. &lt;60% means tighten the prompt or change tier (haiku→sonnet→opus).</item>
+          <item>Never let agent auto-merge. Comments are advisory; human approval is required.</item>
+          <item>For monorepos, scope by changed paths. Don't load the whole repo every PR.</item>
+        </list>
+      </subsection>
+
+      <subsection title="CLI Tools">
+        <list>
+          <item>gh pr diff &lt;num&gt; — Pull diff for agent input. From: gh CLI</item>
+          <item>gh pr review --comment -F file — Post agent's comments back to PR. From: gh CLI</item>
+          <item>git diff --stat origin/main...HEAD — PR size guard. From: git</item>
+          <item>ruff / eslint / prettier / black — Pre-agent lint pass — agent reviews code, not formatting. Per language.</item>
+          <item>semgrep — Rule-based static analysis as non-LLM safety net. Install: `pip install semgrep`</item>
+          <item>gitleaks — Pre-flight secret scan before sending diff to LLM. From: github releases</item>
+          <item>trufflehog — Deep secret detection across history. Install: `pip install trufflehog3`</item>
+          <item>claude (Claude Code CLI) — claude -p headless review in CI. From: https://docs.anthropic.com/en/docs/claude-code</item>
+        </list>
+      </subsection>
+
+      <subsection title="Services &amp; Apps">
+        <list>
+          <item>GitHub PRs / Reviews API — SaaS, full REST/GraphQL. Standard sink for agent comments.</item>
+          <item>GitLab MRs — SaaS/OSS, REST API. Equivalent agent integration.</item>
+          <item>Gerrit — OSS, REST + SSH. For change-based review workflows.</item>
+          <item>CodeRabbit — SaaS, native AI reviewer. OOTB; check it doesn't conflict with your custom agent.</item>
+          <item>Greptile — SaaS, native AI reviewer. Codebase-aware; complement to per-PR LLM.</item>
+          <item>Reviewable — SaaS, webhooks. Granular line-level state machine.</item>
+          <item>Sourcegraph Cody — SaaS. Cross-repo context for monorepos.</item>
+          <item>Semgrep AppSec — SaaS/OSS, CLI + cloud. Run alongside agent for rule-based catches.</item>
+        </list>
+      </subsection>
+    </section>
+
+    <templates>
+      <template path="templates/agent-review.yml" purpose="GitHub Actions workflow: pre-flight secret scan, agent review on PR open/sync, post comment back to PR."/>
+    </templates>
+
+    <see-also>
+      <link href="https://google.github.io/eng-practices/review/"/>
+      <link href="https://conventionalcomments.org/"/>
+      <link href="https://docs.github.com/en/rest/pulls/reviews"/>
+      <link href="https://github.com/Codium-ai/pr-agent"/>
+      <link href="https://owasp.org/www-community/attacks/Code_Injection"/>
+    </see-also>
+  </content>
+</methodology>

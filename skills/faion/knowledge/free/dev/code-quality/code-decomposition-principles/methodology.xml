@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-decomposition-principles">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Split source files at 300 lines or ~10k tokens into 30–200 line single-responsibility units. Improves LLM context fit and human review. Use `git mv` to preserve history; run tests between moves.</summary>
+    <tags>
+      <tag>decomposition</tag>
+      <tag>refactoring</tag>
+      <tag>architecture</tag>
+      <tag>maintainability</tag>
+      <tag>code-organization</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Decomposition Principles</title>
+
+    <summary>LLMs produce partial or incorrect diffs when a file plus its tests exceed the effective context window (~20–50k tokens). Humans review poorly past ~300 lines. Modular architectures correlate with 973× higher deployment frequency (2024 DORA report). The DORA findings and Addy Osmani's LLM workflow both confirm that small, single-responsibility files unlock both human and agent productivity.</summary>
+
+    <why>
+      <p>LLMs produce partial or incorrect diffs when a file plus its tests exceed the effective context window (~20–50k tokens). Humans review poorly past ~300 lines.</p>
+      <p>Modular architectures correlate with 973× higher deployment frequency (2024 DORA report). The DORA findings and Addy Osmani's LLM workflow both confirm that small, single-responsibility files unlock both human and agent productivity.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>A target file exceeds ~300 lines and a subagent must edit it under a tight context budget.</item>
+        <item>LLM keeps producing partial/incorrect diffs because it cannot hold the full file plus tests in one window.</item>
+        <item>Designing a new module from a spec and laying out the file tree from the start.</item>
+        <item>Onboarding an LLM to an unfamiliar repo: split first, then have the agent read the new tree.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>File is under 100 lines and tightly cohesive — splitting adds indirection without context savings.</item>
+        <item>Hot path with a measured performance cost from indirection (rare in app code).</item>
+        <item>Generated code (migrations, protobuf stubs) — apply rules to the source, not the output.</item>
+        <item>Throwaway scripts and one-shot notebooks where the file is the unit of thought.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="decomposition-principles-and-size-rules">
+      <p>Concrete file-size thresholds, token-budget planning, and the when-to-split checklist for LLM-friendly code structure.</p>
+
+      <section name="single-file-responsibility">
+        <rule>
+          <statement>Each file must have one clear purpose; if you cannot name the file without using "and" or "utils", split it.</statement>
+          <rationale>Multi-purpose files grow indefinitely; single-purpose files have a natural size ceiling.</rationale>
+        </rule>
+        <example type="good" title="Layered decomposition">
+          <code lang="text"><![CDATA[
+users/
+  models.py        # Data structure only
+  serializers.py   # API representation
+  views.py         # HTTP handlers
+  permissions.py   # Access control
+  services.py      # Business logic
+  tests/
+    test_models.py
+    test_views.py
+    test_services.py
+]]></code>
+          <note>Django users module split by layer: models.py, serializers.py, views.py, permissions.py, services.py — each under 200 lines.</note>
+        </example>
+      </section>
+
+      <section name="file-size-table">
+        <rule>
+          <statement>Split any file that exceeds its type's max-lines threshold; target the ideal range to start.</statement>
+          <rationale>Files beyond ~300 lines require excessive scrolling for humans and exceed effective LLM context when combined with tests.</rationale>
+        </rule>
+        <list>
+          <item>Model/Entity: ideal 50-100 lines, max 200 — split by domain</item>
+          <item>Service: ideal 100-200 lines, max 300 — extract sub-services</item>
+          <item>View/Controller: ideal 50-150 lines, max 250 — extract handlers</item>
+          <item>React Component: ideal 50-150 lines, max 250 — extract sub-components</item>
+          <item>Test file: ideal 100-300 lines, max 500 — split by scenario</item>
+          <item>Config: ideal 50-100 lines, max 150 — split by environment</item>
+        </list>
+      </section>
+
+      <section name="token-budget-planning">
+        <rule>
+          <statement>If a single source file exceeds 500 lines (~15k tokens), split it before scheduling LLM-assisted edits.</statement>
+          <rationale>Effective LLM context is far smaller than nominal; a 500-line file plus its tests and task context saturates a 50k-token window.</rationale>
+        </rule>
+        <p>100k-token budget allocation: task context ~5k, existing code to read ~20k, generation ~30k, testing ~20k, buffer ~25k.</p>
+      </section>
+
+      <section name="when-to-split-checklist">
+        <list>
+          <item>Lines > 300</item>
+          <item>Multiple classes or components in one file</item>
+          <item>Multiple distinct responsibilities</item>
+          <item>Frequent merge conflicts (multiple people editing)</item>
+          <item>Hard to test (need to mock too much)</item>
+          <item>Hard to name (contains "utils", "helpers", "misc")</item>
+          <item>Circular imports present</item>
+          <item>LLM produces incomplete or wrong diffs for the file</item>
+        </list>
+      </section>
+
+      <section name="when-not-to-split">
+        <list>
+          <item>File is under 100 lines and tightly cohesive</item>
+          <item>Parts always change together</item>
+          <item>Splitting would only add indirection without context savings</item>
+          <item>Would break encapsulation by exposing internals</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="decomposition-anti-patterns">
+      <p>Four common failure modes when splitting code, with examples and corrective rules.</p>
+
+      <section name="god-file">
+        <antipattern>
+          <description>A single file (often named utils.py or helpers.ts) accumulating 1000+ lines of unrelated functions from across the domain.</description>
+          <reason>No single developer owns it; it becomes a dumping ground; every feature touches it causing conflicts.</reason>
+        </antipattern>
+        <rule>
+          <statement>Split by domain: string_utils.py, date_utils.py, currency_utils.py — not one catch-all utils file.</statement>
+          <rationale>Domain-split utilities have clear ownership and a natural scope that prevents further growth.</rationale>
+        </rule>
+      </section>
+
+      <section name="micro-files">
+        <antipattern>
+          <description>One function per file: add.py, subtract.py, multiply.py — each 3 lines.</description>
+          <reason>Navigation overhead exceeds the cognitive saving; import chains become deep and fragile.</reason>
+        </antipattern>
+        <rule>
+          <statement>Set a minimum file size of 30–50 lines; group related operations into a single module.</statement>
+          <rationale>Files below 30 lines add import overhead without context savings; group by semantic cohesion.</rationale>
+        </rule>
+      </section>
+
+      <section name="leaky-abstractions">
+        <antipattern>
+          <description>A service class receives an HTTP Request object and accesses request.query_params directly.</description>
+          <reason>The service is now coupled to the HTTP framework; testing requires a real or mocked request, not plain data.</reason>
+        </antipattern>
+        <example type="good">
+          <code lang="python"><![CDATA[
+class UserService:
+    def get_user(self, user_id: int) -> User:
+        return self.repository.find(user_id)
+]]></code>
+          <note>Service takes a plain user_id: int — framework-agnostic, testable with a simple integer.</note>
+        </example>
+      </section>
+
+      <section name="barrel-re-exports">
+        <antipattern>
+          <description>An index.ts that re-exports everything with export * from './UserService', './OrderService', etc.</description>
+          <reason>Wildcard re-exports break tree-shaking; bundlers cannot remove unused exports, inflating bundle size.</reason>
+        </antipattern>
+        <example type="good">
+          <code lang="typescript"><![CDATA[
+export { UserService } from './UserService';
+export type { User } from './types';
+]]></code>
+          <note>Explicit named exports only; tree-shaker can eliminate unused symbols.</note>
+        </example>
+        <rule>
+          <statement>Forbid export * in agent prompts; require explicit named exports.</statement>
+          <rationale>Agents generate barrel re-exports by default; the constraint must be in the prompt.</rationale>
+        </rule>
+      </section>
+
+      <section name="agent-specific-gotchas">
+        <antipattern>
+          <description>Mechanical line-count splits that ignore semantic cohesion: user_part1.py / user_part2.py.</description>
+          <reason>Arbitrary splits break logical units; require a responsibility-based target tree before any move.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent uses cat old &gt; new &amp;&amp; rm old instead of git mv.</description>
+          <reason>git blame and git log --follow break permanently; mandate git mv in the system prompt.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent edits only the moved file and forgets to update call sites in sibling packages.</description>
+          <reason>Cross-file refactors silently break imports; require grep-first + import-update + typecheck before committing.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="decomposition-workflow">
+      <p>Analyze-plan-execute-verify loop for splitting oversize files, with planner/executor subagent split and prompt patterns.</p>
+
+      <section name="four-step-loop">
+        <rule>
+          <statement>Stop the agent after the planning step and require explicit human approval before executing any moves; a wrong target tree cascades into many bad commits.</statement>
+          <rationale>Planning errors compound: 50 executor commits based on a flawed tree are far harder to revert than one rejected plan.</rationale>
+        </rule>
+        <list>
+          <item>Analyze: identify file size (lines, tokens), list responsibilities, map dependencies, find natural boundaries.</item>
+          <item>Plan: draw target structure, define interfaces between new modules, order moves so tests stay green after each step.</item>
+          <item>Execute: create new files with empty structure, move code piece by piece, update imports, run tests after each move, commit each logical step.</item>
+          <item>Verify: all tests pass, no circular imports, each file has single responsibility, sizes within limits, naming is clear.</item>
+        </list>
+      </section>
+
+      <section name="subagent-architecture">
+        <list>
+          <item>Planner (Opus): reads oversize file + direct importers, emits target tree (file → responsibility → est. lines) and move-order respecting tests.</item>
+          <item>Executor (Sonnet): performs each Extract-Service / Extract-Component / Extract-Module step; runs test suite between commits; uses git mv.</item>
+          <item>Reviewer (Sonnet): checks SRP, file size, naming after each step; runs madge --circular / pydeps --show-cycles.</item>
+        </list>
+        <reference path="templates/planner-prompt.txt"/>
+        <reference path="templates/decomp-candidates.sh"/>
+      </section>
+
+      <section name="quality-rules">
+        <rule>
+          <statement>Pin a minimum file size of 30–50 LOC in every executor prompt to prevent micro-files.</statement>
+          <rationale>Agents over-decompose by default; the minimum enforces meaningful units.</rationale>
+        </rule>
+        <rule>
+          <statement>Always pair a decomposition with a green test suite; if tests do not exist, write characterization tests before moving code.</statement>
+          <rationale>Without tests, any move can silently change behavior; characterization tests capture current behavior as a safety net.</rationale>
+        </rule>
+        <rule>
+          <statement>Track churn x complexity (CodeScene-style); refactor only the top 5–10 hotspots first, not the entire repo.</statement>
+          <rationale>DORA research shows high-churn high-complexity files disproportionately drive incidents; targeted decomposition yields the highest ROI.</rationale>
+        </rule>
+      </section>
+    </section>
+
+    <section name="tools-for-decomposition">
+      <rule>
+        <statement>Use tokei or scc to fast count lines of code per file; identify oversize files quickly before planning a decomposition.</statement>
+        <rationale>Line-count tools give the first signal for when a split is needed; they run in milliseconds and have no false positives.</rationale>
+      </rule>
+      <rule>
+        <statement>Use radon (Python) or lizard (multi-lang) to find high-complexity functions that should be candidates for extraction even if the file is under the line threshold.</statement>
+        <rationale>Cyclomatic complexity correlates with bug density; high-complexity functions are refactoring candidates even at modest file sizes.</rationale>
+      </rule>
+      <rule>
+        <statement>Use madge (JavaScript/TypeScript) or pydeps (Python) to detect circular imports after splitting; circular imports are a sign of improper boundaries.</statement>
+        <rationale>Circular imports indicate that the module boundaries are not clean; they must be resolved before the decomposition is complete.</rationale>
+      </rule>
+      <rule>
+        <statement>Use tiktoken to estimate token count for large files; split any file that exceeds 500 lines (~15k tokens) before LLM edits.</statement>
+        <rationale>Effective LLM context is smaller than nominal; splitting large files first prevents context saturation during refactoring.</rationale>
+      </rule>
+      <rule>
+        <statement>SonarQube / SonarCloud / CodeScene provide "hotspots" (high-churn × high-complexity intersection); prioritize decomposing top hotspots over systematic splitting.</statement>
+        <rationale>DORA research shows that high-churn high-complexity files disproportionately drive incidents; targeting them yields the highest ROI.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/decomp-candidates.sh" purpose="Lists oversize files, high-complexity functions, and high-churn hotspots for the planner agent."/>
+      <template path="templates/planner-prompt.txt" purpose="Agent prompt: produce target file tree + ordered move list as JSON."/>
+    </templates>
+
+    <see-also>
+      <link href="https://addyosmani.com/blog/ai-coding-workflow/"/>
+      <link href="https://microservices.io/post/architecture/2024/09/09/modular-monolith-patterns-for-fast-flow.html"/>
+      <link href="https://martinfowler.com/bliki/MonolithFirst.html"/>
+      <link href="https://refactoring.guru/refactoring/techniques/composing-methods"/>
+      <link href="https://github.com/pahen/madge"/>
+      <link href="https://github.com/terryyin/lizard"/>
+      <link href="https://radon.readthedocs.io"/>
+    </see-also>
+  </content>
+</methodology>

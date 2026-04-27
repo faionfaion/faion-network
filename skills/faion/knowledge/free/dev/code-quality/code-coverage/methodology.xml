@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-coverage">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Metric family for identifying untested code paths. Use branch coverage as minimum; combine with diff-coverage for new code. Target 80% global, 90%+ on critical paths.</summary>
+    <tags>
+      <tag>coverage</tag>
+      <tag>testing</tag>
+      <tag>quality</tag>
+      <tag>metrics</tag>
+      <tag>ci</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Coverage</title>
+
+    <summary>Coverage reports make untested branches visible so an agent or developer can write targeted tests. Branch coverage reveals untested else-branches that line coverage misses. Diff-coverage focuses the gate on new code, so accumulated legacy gaps do not block ongoing work. Martin Fowler's canonical note: coverage is a tool for finding gaps, not a goal — optimize for meaningful assertions, not numbers.</summary>
+
+    <why>
+      <p>Coverage reports make untested branches visible so an agent or developer can write targeted tests. Branch coverage reveals untested else-branches that line coverage misses.</p>
+      <p>Diff-coverage focuses the gate on new code, so accumulated legacy gaps do not block ongoing work. Martin Fowler's canonical note: coverage is a tool for finding gaps, not a goal — optimize for meaningful assertions, not numbers.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Feeding coverage reports back to an LLM test-author to know which branches still lack tests.</item>
+        <item>CI gate: enforce minimum diff-coverage on lines changed by a PR.</item>
+        <item>Onboarding a new repo: run coverage once to map what is and is not tested.</item>
+        <item>Targeted refactor planning: high-churn + low-coverage files are the first refactor candidates.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Tiny one-shot scripts with no test infrastructure — wiring coverage costs more than it returns.</item>
+        <item>UI/visual code where snapshot/visual tests give better signal than line coverage.</item>
+        <item>Generated/migration code — exclude from coverage, do not attempt to test.</item>
+        <item>As a single quality KPI for performance reviews — Goodhart's law applies.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="coverage-types-and-configuration">
+      <p>Line, branch, path, and condition coverage explained; why branch is the default; tool configuration for Python and JS/TS.</p>
+
+      <section name="coverage-hierarchy">
+        <rule>
+          <statement>Enable branch coverage as the minimum; line coverage alone misses untested else-branches and is a weaker signal.</statement>
+          <rationale>A test that hits an if-branch but never the else-branch shows 100% line coverage while leaving half the logic untested.</rationale>
+        </rule>
+        <list>
+          <item>Line coverage: which lines were executed. Weakest — a line is covered even if only one branch of an if is taken.</item>
+          <item>Branch coverage: both true and false branches of every conditional must be exercised. Required minimum.</item>
+          <item>Path coverage: all combinations of branches. Exponential — impractical for most code; use for safety-critical logic only.</item>
+          <item>Condition coverage: each boolean sub-expression. Use for complex compound conditions (a and b or c).</item>
+        </list>
+      </section>
+
+      <section name="python-configuration">
+        <rule>
+          <statement>Set branch = true in pyproject.toml coverage config and fail_under = 80 globally; raise per-directory thresholds for critical paths.</statement>
+          <rationale>Branch=true is opt-in in coverage.py; without it the gate is weaker than it appears.</rationale>
+        </rule>
+        <reference path="templates/coverage.pyproject.toml"/>
+      </section>
+
+      <section name="javascript-typescript-configuration">
+        <rule>
+          <statement>Set coverageProvider: 'v8' in Jest/Vitest for native branch coverage; set thresholds at global and per-directory levels.</statement>
+          <rationale>V8 provider is more accurate than Babel-instrumented coverage for modern ES modules and async code.</rationale>
+        </rule>
+        <reference path="templates/jest.coverage.config.js"/>
+      </section>
+
+      <section name="exclusion-rules">
+        <rule>
+          <statement>Exclude: auto-generated code, abstract base classes, TYPE_CHECKING blocks, CLI entry points, and simple property getters from coverage.</statement>
+          <rationale>Testing generated or structural code provides false assurance; each pragma: no cover must be justified, never added to silence a threshold.</rationale>
+        </rule>
+        <list>
+          <item>pragma: no cover on abstract method stubs and @abstractmethod</item>
+          <item>if TYPE_CHECKING: blocks</item>
+          <item>if __name__ == "__main__": entry points</item>
+          <item>raise NotImplementedError stubs</item>
+          <item>def __repr__: debug-only methods</item>
+        </list>
+      </section>
+    </section>
+
+    <section name="coverage-workflow-and-agent-gotchas">
+      <p>Coverage-driven test loop, diff-cover for PRs, CI integration, and agent failure modes with mitigations.</p>
+
+      <section name="coverage-driven-test-loop">
+        <rule>
+          <statement>Feed machine-readable coverage reports (coverage.xml, lcov.info) to the test-author subagent; do not paste the full XML — extract only uncovered lines per touched file.</statement>
+          <rationale>Full XML reports are hundreds of kilobytes; extracting uncovered lines reduces token cost and prevents context saturation.</rationale>
+        </rule>
+        <list>
+          <item>Step 1: run suite with branch coverage and machine-readable output.</item>
+          <item>Step 2: extract uncovered lines per touched file; feed to test-author subagent with the source file pinned in context.</item>
+          <item>Step 3: agent writes targeted tests, asserting behavior (not just calling the function).</item>
+          <item>Step 4: re-run coverage; if delta is less than expected, repeat or escalate to human.</item>
+        </list>
+      </section>
+
+      <section name="diff-coverage-for-prs">
+        <rule>
+          <statement>Enforce diff-coverage on changed lines (target 80–95%) rather than repo-wide percentage; legacy gaps must not block ongoing work.</statement>
+          <rationale>Repo-wide gates punish new work for historical debt; diff-coverage focuses the requirement on the changes being reviewed.</rationale>
+        </rule>
+        <reference path="templates/diff-cov-report.sh"/>
+      </section>
+
+      <section name="ci-integration">
+        <rule>
+          <statement>Combine coverage with mutation testing on critical modules (auth, billing, data integrity) quarterly; coverage measures execution, mutation measures assertion strength.</statement>
+          <rationale>A test that calls a function but asserts nothing shows 100% line coverage; mutation testing detects missing assertions.</rationale>
+        </rule>
+        <rule>
+          <statement>Persist HTML coverage reports as CI artifacts; do not require a SaaS coverage service for the core gate.</statement>
+          <rationale>SaaS dependency adds failure modes; artifacts are simpler and always available to the agent during post-mortem.</rationale>
+        </rule>
+      </section>
+
+      <section name="agent-gotchas">
+        <antipattern>
+          <description>Coverage gaming: agent writes tests that call functions and ignore return values.</description>
+          <reason>Require at least one explicit assert/expect per test; enforce with pytest-flake8-assertions or eslint-plugin-jest/expect-expect.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Threshold ratcheting: agent adds pragma: no cover to changed files to pass the gate.</description>
+          <reason>Fail the build if pragmas are added to changed files unless explicitly justified in the PR body.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Agent lowering a coverage threshold to make CI green.</description>
+          <reason>Threshold changes require a labelled PR with human sign-off; never let an agent modify thresholds autonomously.</reason>
+        </antipattern>
+        <antipattern>
+          <description>Async coverage gaps: pytest-asyncio or Jest fake timers need extra config; agent does not notice.</description>
+          <reason>Provide a complete coverage-config snippet in the test-writing prompt; do not rely on the agent inferring async requirements.</reason>
+        </antipattern>
+      </section>
+    </section>
+
+    <section name="best-practices">
+      <rule>
+        <statement>Track diff coverage on PRs (target 80-95%) instead of repo-wide percentage. Legacy gaps shouldn't block new work.</statement>
+        <rationale>Repo-wide gates punish new work for historical debt; diff-coverage focuses the requirement on the changes being reviewed.</rationale>
+      </rule>
+      <rule>
+        <statement>Always enable branch coverage, not just line. Set `branch = true` in coverage.py, `--branch` in nyc, `coverageProvider: 'v8'` for Vitest.</statement>
+        <rationale>Branch coverage is the minimum signal that catches untested else-branches and conditional paths.</rationale>
+      </rule>
+      <rule>
+        <statement>Combine coverage with mutation testing on critical modules (auth, billing, data integrity) — coverage measures execution, mutation measures assertion strength.</statement>
+        <rationale>Coverage alone shows which lines run; mutation testing shows whether assertions are strong enough to catch changes.</rationale>
+      </rule>
+      <rule>
+        <statement>Exclude carefully: `pragma: no cover` is OK for genuine no-test code (CLI entry, type-checking-only blocks). Forbid the agent from adding it to silence failing thresholds.</statement>
+        <rationale>Pragmas must be justified; they are not a tool for skipping test requirements without human approval.</rationale>
+      </rule>
+      <rule>
+        <statement>Per-directory thresholds beat a single global number (utility libs 90%, glue code 70%).</statement>
+        <rationale>Different file types have different risks; a one-size-fits-all number either over-specifies low-risk code or under-specifies critical paths.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin the coverage tool version; flaky/unreliable coverage tools cause "tests pass locally, fail in CI" loops that LLMs will keep retrying.</statement>
+        <rationale>Coverage tools themselves can have bugs; pinning versions ensures reproducibility.</rationale>
+      </rule>
+      <rule>
+        <statement>Persist HTML reports as CI artifacts so the agent (or human) can drill into specific lines.</statement>
+        <rationale>Machine-readable artifacts enable debugging and allow agents to investigate coverage gaps without parsing console output.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Bake coverage into every test-writing loop. Step 1: run the suite with branch coverage and a machine-readable report (coverage.xml, Jest lcov.info). Step 2: feed the missing lines/branches to a test-author subagent with the source of the affected file pinned in context. Step 3: agent writes targeted tests, asserting behaviour (not just calling the function). Step 4: re-run coverage; if delta &lt; expected, repeat or escalate to a human. Use diff-cover to enforce coverage only on changed lines so legacy gaps don't block PRs.</p>
+      <rule>
+        <statement>Recommended subagents: faion-feature-executor (sequential SDD task execution with coverage gates), faion-sdd-executor-agent (quality-gate-driven), test-author subagent (Sonnet, writes targeted tests), mutation-testing subagent (Opus, batch runs mutmut/stryker periodically).</statement>
+        <rationale>Decomposing coverage work into specialized subagents allows each to focus on its role — executor drives the gate, test-author writes tests, mutation-tester validates assertion strength.</rationale>
+      </rule>
+      <rule>
+        <statement>Prompt pattern: extract only uncovered lines per touched file; do not paste the full XML report. Provide coverage.xml location and a jq/grep snippet to extract uncovered lines for context.</statement>
+        <rationale>Full coverage XML reports are hundreds of kilobytes; extracting uncovered lines reduces token cost and focuses the agent on actionable gaps.</rationale>
+      </rule>
+    </section>
+
+    <section name="tools-and-services">
+      <rule>
+        <statement>Python: use coverage.py with pytest-cov for line and branch coverage. JavaScript: use Jest with --coverage and V8 provider (coverageProvider: 'v8').</statement>
+        <rationale>coverage.py and Jest are the de facto standards; they integrate with most CI systems and support machine-readable output formats.</rationale>
+      </rule>
+      <rule>
+        <statement>Use diff-cover to enforce coverage only on changed lines so legacy gaps don't block PRs.</statement>
+        <rationale>diff-cover compares coverage against a baseline branch and reports coverage metrics for touched files only.</rationale>
+      </rule>
+      <rule>
+        <statement>Mutation testing (mutmut for Python, stryker for JS) detects weak assertions; run quarterly on critical modules.</statement>
+        <rationale>Mutation testing is slower than coverage but reveals assertions that are too lenient to catch code changes.</rationale>
+      </rule>
+      <rule>
+        <statement>SaaS coverage services (Codecov, Coveralls, SonarCloud) optional for the core gate; use GitHub Actions artifacts as the baseline.</statement>
+        <rationale>SaaS services add value (per-PR diff coverage, trend tracking) but are not required; artifacts are always available without external dependencies.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/coverage.pyproject.toml" purpose="pyproject.toml coverage config: branch=true, omit list, fail_under=80, exclude_lines."/>
+      <template path="templates/jest.coverage.config.js" purpose="Jest coverage config: collectCoverageFrom, thresholds (global + per-dir), reporters."/>
+      <template path="templates/diff-cov-report.sh" purpose="Run pytest + diff-cover, emit per-file uncovered lines as agent-ready prompt fragments."/>
+    </templates>
+
+    <see-also>
+      <link href="https://coverage.readthedocs.io/"/>
+      <link href="https://pytest-cov.readthedocs.io/"/>
+      <link href="https://jestjs.io/docs/configuration#coveragethreshold-object"/>
+      <link href="https://martinfowler.com/bliki/TestCoverage.html"/>
+      <link href="https://github.com/Bachmann1234/diff_cover"/>
+      <link href="https://stryker-mutator.io/"/>
+      <link href="https://mutmut.readthedocs.io/"/>
+      <link href="https://docs.codecov.com/docs/quick-start"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="code-review">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>software-developer</domain>
+    <summary>PR size limits, automated gates, style delegation, and agentic review pipeline. PRs less than 400 lines, CI green before review, reviewers focus on correctness and design.</summary>
+    <tags>
+      <tag>code-review</tag>
+      <tag>pr-process</tag>
+      <tag>quality-assurance</tag>
+      <tag>team-practices</tag>
+      <tag>automation</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Code Review</title>
+
+    <summary>PRs less than 400 lines; CI green before review; style delegated to formatters. Reviewers focus on correctness, design, tests, security, observability. LLM-authored PRs need second review.</summary>
+
+    <why>
+      <p>Industry data from SmartBear and Cisco shows defect detection drops sharply above 400 changed lines and 60-90 minutes of review time. Mixing style feedback with logic review wastes both reviewer and author time; automated formatters eliminate the category entirely. LLM-authored PRs need a second review (human or agent) because agents pattern-match well but produce hallucinated APIs and missed edge cases.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>All PRs in a multi-engineer team — cheapest defect-detection layer.</item>
+        <item>Before merging LLM-authored PRs — agent code requires a second pass.</item>
+        <item>Security-sensitive paths (auth, payment, IAM, crypto) — mandatory dual review.</item>
+        <item>Libraries and SDKs where API surface is sticky and backward compatibility must be enforced.</item>
+        <item>Onboarding ramps where junior code benefits from senior review plus automated reviewer.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Trunk-based solo prototypes pre-MVP — review overhead outpaces signal.</item>
+        <item>Mechanical refactors from a codemod with green CI and full test coverage on touched code — skim, do not deep-review.</item>
+        <item>Vendored or generated code (proto stubs, OpenAPI clients) — review the generator config, not the output.</item>
+        <item>Documentation typos — accept fast, do not gate.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="pr-size-limits">
+      <rule>
+        <statement>PRs must contain less than 400 changed lines and fewer than 20 files. Larger PRs must be split.</statement>
+        <rationale>Industry data (SmartBear, Cisco) shows defect detection drops sharply above 400 lines and 60-90 minutes of review time. Reviewers rubber-stamp large PRs regardless of stated intent.</rationale>
+      </rule>
+      <rule>
+        <statement>CI must be green (lint, tests, types, coverage) before a PR is opened for review. Reviewers do not debug build failures.</statement>
+        <rationale>Reviewers focusing on a broken build miss logic issues. Green CI is the contract that allows the reviewer to focus on design and correctness.</rationale>
+      </rule>
+    </section>
+
+    <section name="review-categories">
+      <rule>
+        <statement>Review for: correctness, design, tests, security, naming, observability. Delegate style to the formatter (Prettier, ruff format, gofmt).</statement>
+        <rationale>Style debates in code review waste both reviewer and author time. Automated formatters decide style consistently without discussion. This frees reviewers for higher-value concerns.</rationale>
+      </rule>
+      <list>
+        <item>Correctness — logic errors, edge cases, off-by-ones, null dereferences</item>
+        <item>Design — single responsibility, coupling, API backward compatibility</item>
+        <item>Tests — coverage of the new behavior, not just existence of tests</item>
+        <item>Security — auth checks, injection, IDOR, data exposure</item>
+        <item>Naming — clarity and consistency with project conventions</item>
+        <item>Observability — logging, metrics, error messages</item>
+      </list>
+    </section>
+
+    <section name="reviewer-routing">
+      <rule>
+        <statement>Use CODEOWNERS to auto-assign reviewers by path. Do not rely on manual reviewer selection.</statement>
+        <rationale>Manual reviewer selection creates bottlenecks on popular engineers and means PRs in unfamiliar paths get no expert review. CODEOWNERS matches expertise to code automatically.</rationale>
+      </rule>
+      <reference path="templates/pr-balance.sh">Assigns least-loaded reviewer from CODEOWNERS via gh CLI</reference>
+    </section>
+
+    <section name="conversation-lifecycle">
+      <rule>
+        <statement>Every review comment is a blocker until the author resolves it and the reviewer confirms. No "ack" merges with open conversations.</statement>
+        <rationale>Unresolved conversations indicate disagreement or uncertainty. Merging without resolution treats every comment as optional, undermining the review process.</rationale>
+      </rule>
+    </section>
+
+    <section name="review-scenarios">
+      <p>Concrete examples of bug, design, security, and performance review comments with actionable patches.</p>
+
+      <example type="bad" title="Incorrect Calculation">
+        <code lang="python"><![CDATA[def calculate_discount(price, discount_percent):
+    return price - (price * discount_percent)
+# calculate_discount(100, 20) returns -1900 — wrong]]></code>
+        <note>discount_percent is treated as a multiplier (20x) instead of a percentage (20%).</note>
+      </example>
+
+      <example type="good" title="Correct Calculation with Type Hints">
+        <code lang="python"><![CDATA[def calculate_discount(price: float, discount_percent: float) -> float:
+    """
+    Args:
+        discount_percent: percentage as whole number (e.g., 20 for 20%)
+    """
+    return price - (price * discount_percent / 100)
+# calculate_discount(100, 20) returns 80]]></code>
+      </example>
+
+      <example type="bad" title="Security: Missing Auth">
+        <code lang="python"><![CDATA[@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: Session = Depends(get_db)):
+    return db.query(User).filter(User.id == user_id).first()
+# Anyone can access any user's data by guessing IDs (IDOR)]]></code>
+        <note>No authentication, no authorization. Sequential user IDs are trivially enumerable.</note>
+      </example>
+
+      <example type="good" title="Secured Endpoint with Auth Check">
+        <code lang="python"><![CDATA[@app.get("/users/{user_id}")
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.id != user_id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return db.query(User).filter(User.id == user_id).first()]]></code>
+      </example>
+
+      <example type="bad" title="Performance: N+1 Query">
+        <code lang="python"><![CDATA[def get_user_orders(user_id: int) -> list[dict]:
+    user = db.query(User).filter(User.id == user_id).first()
+    return [
+        {"id": o.id, "items": [i.name for i in o.items]}  # N+1: query per order
+        for o in user.orders
+    ]]]></code>
+      </example>
+
+      <example type="good" title="Optimized Query with Eager Loading">
+        <code lang="python"><![CDATA[def get_user_orders(user_id: int) -> list[dict]:
+    user = (
+        db.query(User)
+        .options(selectinload(User.orders).selectinload(Order.items))
+        .filter(User.id == user_id)
+        .first()
+    )
+    return [{"id": o.id, "items": [i.name for i in o.items]} for o in user.orders]
+    # Now: 1 user query + 1 orders query + 1 items query = 3 total]]></code>
+      </example>
+    </section>
+
+    <section name="agentic-pipeline">
+      <p>Layered review pipeline: automated gate, summary agent, diff-reviewer agent, then human reviewer.</p>
+
+      <rule>
+        <statement>Gate PRs with automated checks before human review: lint, format, typecheck, test, coverage, and security scan. Human reviewers see only green PRs.</statement>
+        <rationale>Automated checks catch the mechanical issues (style, type errors, known vulnerabilities) that would distract a human reviewer. Keeping reviewers focused on logic and design yields higher quality feedback.</rationale>
+      </rule>
+
+      <reference path="templates/pr-checks.yml">GitHub Actions workflow: lint, test, coverage, PR size warning</reference>
+
+      <list>
+        <item>Summary agent: posts 200-token PR summary (scope, files changed, risks, coverage gaps) on PR open.</item>
+        <item>Diff-reviewer agent: comments on hunks for missed nulls, hallucinated APIs, untested branches. Configured with project rubric. Never approves, only flags.</item>
+        <item>Human reviewer: focuses on architecture, API design, business logic — the concerns agents cannot judge.</item>
+      </list>
+
+      <rule>
+        <statement>Agent-reviewer must be configured with project conventions (`.agents/review-rubric.md`) to avoid false positives on project-specific patterns.</statement>
+        <rationale>Without a rubric, agent reviewers flag project-intentional patterns as bugs (e.g., "use type hints" on a project that deliberately avoids them), training engineers to ignore all agent feedback.</rationale>
+      </rule>
+
+      <example type="good" title="PR Summary Prompt Pattern">
+        <code lang="text"><![CDATA[PR summary prompt:
+You are a senior reviewer. Read the PR diff and post:
+- Scope: 1 sentence.
+- Files changed: count + risky files (auth/, payments/, migrations/).
+- Tests: which behaviors covered? gaps?
+- Risks: list each non-obvious risk + line reference.
+- Out of scope: anything that should be a follow-up PR.
+Do NOT approve. Do NOT request changes unless unbuildable.]]></code>
+      </example>
+
+      <example type="good" title="Diff Review Prompt Pattern">
+        <code lang="text"><![CDATA[Diff review prompt:
+Review the diff against .agents/review-rubric.md.
+For each hunk output:
+- file:line
+- severity: blocker | major | minor | nit | praise
+- finding (1 sentence)
+- suggested patch (<=5 lines)
+Skip style issues (Prettier/ruff handles those).
+Stop after 30 findings; ask for follow-up if more.]]></code>
+      </example>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>LGTM culture: reviewers approve without commenting, evidenced by zero review comments across many merged PRs.</description>
+        <reason>Zero-comment approvals indicate rubber-stamping. Counter: required review templates, checklists, or a team norm that silent approval is not valid for PRs above a certain size.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Style debates in review comments for formatting decisions that a linter could decide automatically.</description>
+        <reason>Style reviews waste reviewer and author time on zero-signal debates. Delegate all formatting to Prettier, ruff, gofmt; enforce in CI; review only logic.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>PRs sitting open for more than 3 days, becoming stale with conflicts and requiring reviewers to start over.</description>
+        <reason>Long-lived PRs accumulate merge conflicts and become unreviewable. Time-bound: stale-after-72h warning, auto-close-after-14d. Split large work into smaller sequential PRs.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent reviewer auto-approving PRs when CI passes.</description>
+        <reason>Green CI means the code is syntactically correct and tests pass, not that the design is sound. Configure agent reviewers to comment-only; require at least one human approval before merge.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent reviewer posting 100 or more comments on a single PR, causing engineers to ignore all agent feedback.</description>
+        <reason>Comment flooding trains engineers to dismiss agent reviews entirely. Cap output at 30 findings by severity; surface only blockers and majors in the summary.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Review-after-merge: GitHub allows merging without required reviews; team adopts this practice "temporarily".</description>
+        <reason>Defects merged this way ship. Enforce branch protection: `required_pull_request_reviews=1`, `dismiss_stale_reviews_on_push=true`, `require_code_owner_reviews=true`.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Agent reviewer operates from a stale checkout, reviewing HEAD~3 instead of the current branch tip.</description>
+        <reason>Reviewing old commits produces false findings about "missing" changes that are already present in newer commits. Always re-fetch latest before generating comments.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <p>The following practices reduce review overhead and increase effectiveness:</p>
+      <list>
+        <item>Pull less than 400 lines and fewer than 20 files per PR. Above that, defect detection drops sharply (industry data: SmartBear, Cisco studies).</item>
+        <item>PR template required. Description, linked issue, test evidence, screenshots prevent accidental empty descriptions.</item>
+        <item>CI must be green before review. Reviewers do not debug build failures.</item>
+        <item>Conversation is a blocker until resolved. Author resolves; reviewer re-checks. No "ack" merges.</item>
+        <item>Review for: correctness, design, tests, security, naming, observability. Skip style (formatter), spelling (linter), nits without impact.</item>
+        <item>Limit "request changes" to actual blockers. Use "comment" for nits. Reduces back-and-forth.</item>
+        <item>Self-review first. Author opens own diff in GH, walks through it, comments on weird parts. Cuts review time 40 percent.</item>
+        <item>Time-box the review. 30-60 minutes per session; resume after break for large PRs.</item>
+        <item>CODEOWNERS for routing. Auto-assigns by path; agents bias toward calmer humans only on critical paths.</item>
+        <item>Async by default, sync for stuck threads. A 5-minute huddle resolves what 2 days of comments don't.</item>
+        <item>Praise plus suggest patches. Comments without patches double the loop. "Suggested change" buttons on GitHub speed merges.</item>
+      </list>
+    </section>
+
+    <section name="gotchas">
+      <p>Common pitfalls when agents are involved in review workflows:</p>
+      <list>
+        <item>Approving without engagement. Agent reviewer hits "Approve" on green CI. Configure to comment-only; never auto-approve.</item>
+        <item>Drowning the diff in comments. Agent flags 100 minor issues; humans tune out. Cap output (top 30 by severity).</item>
+        <item>Hallucinating "missing" code. LLM "notices" a function isn't defined, but it's imported from another file. Always include neighboring file context.</item>
+        <item>Style-as-bug. Agent flags `let` vs `const` though linter ignores. Wire agent to read `.eslintrc`, `pyproject.toml` first.</item>
+        <item>Not reading the PR description. Agent flags "untested" code that the PR description explains as a follow-up. Feed PR description into prompt.</item>
+        <item>Test-coverage false positive. Agent says "no tests" when tests live in `__tests__/` it didn't see. Always pass full diff scope.</item>
+        <item>Re-reviewing identical force-push. Agent re-reviews from scratch on every push. Cache prior review by commit SHA; only diff new commits.</item>
+        <item>Cross-PR context blindness. Agent flags inconsistency that's deliberately rectified in a follow-up PR. Show open PRs in same module.</item>
+        <item>Secret leaks in suggested patches. Agent suggests committing a value from `.env.example`. Always pass through secret-scanner before posting.</item>
+        <item>Approve from same author. Agent-as-author plus agent-as-reviewer equals no real review. Enforce branch protection: `dismiss_stale_reviews_on_push=true`, `require_code_owner_reviews=true`, `required_review_count >= 1` from a different identity.</item>
+        <item>Time-of-check time-of-use. Agent reviews HEAD~3 because of stale checkout. Always re-fetch latest before generating comments.</item>
+        <item>Suggesting refactors that break public API. Agent doesn't know `function foo` is exported in a published package. Keep a `public-api.md` and feed it.</item>
+        <item>Ignoring the `## [Unreleased]` requirement. Project hooks block commits without a CHANGELOG entry; agents push and discover at hook fail. Enforce in agent prompt explicitly.</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/pr-description.md" purpose="PR description template with type checklist and test evidence sections."/>
+      <template path="templates/pr-checks.yml" purpose="GitHub Actions workflow: lint, test, coverage, PR size warning."/>
+      <template path="templates/pr-balance.sh" purpose="Assigns least-loaded reviewer from CODEOWNERS via gh CLI."/>
+    </templates>
+
+    <see-also>
+      <link href="https://google.github.io/eng-practices/review/"/>
+      <link href="https://smartbear.com/learn/code-review/best-practices-for-peer-code-review/"/>
+      <link href="https://www.conventionalcommits.org"/>
+      <link href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches"/>
+      <link href="https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners"/>
+      <link href="https://danger.systems/js/"/>
+      <link href="https://coderabbit.ai"/>
+    </see-also>
+  </content>
+</methodology>

@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="tech-debt-basics">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>code-quality</domain>
+    <summary>Make debt visible using Fowler's quadrant. Track in TECH_DEBT_REGISTER.md with type, severity, location, evidence, and interest cost. Cap register at 20–30 items; agents scan, humans approve.</summary>
+    <tags>
+      <tag>technical-debt</tag>
+      <tag>code-quality</tag>
+      <tag>risk-management</tag>
+      <tag>refactoring</tag>
+      <tag>monitoring</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+
+  <content>
+    <title>Technical Debt Basics</title>
+
+    <summary>A framework for making technical debt visible, typed, and actionable. Debt items are classified in Martin Fowler's quadrant (deliberate/inadvertent × reckless/prudent) and tracked in a TECH_DEBT_REGISTER.md with type, severity, location, evidence, and interest cost. Agents scan for candidates; humans approve before items are registered. Cap the register at 20–30 items.</summary>
+
+    <why>
+      <p>Invisible debt accumulates silently into deployment friction, production incidents, and velocity loss. Fowler's quadrant prevents the false binary of "all debt is bad" — prudent-deliberate debt is a legitimate trade-off when logged and paid. Tracking interest cost (hours/week lost) makes debt tangible to stakeholders and enables evidence-based prioritization.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Sprint/quarterly planning: surface debt before picking payoff items.</item>
+        <item>Post-incident review: register the debt that caused the incident with severity and evidence.</item>
+        <item>New-codebase onboarding: inventory existing debt before estimating work.</item>
+        <item>Feature trade-off: deliberately taking prudent debt and logging it in the same commit.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Greenfield prototypes likely to be thrown away — registering debt is overhead with no reader.</item>
+        <item>Sub-100-line scripts where the debt framework is heavier than the code.</item>
+        <item>Code under active full rewrite — log the rewrite, not item-level debt deleted next week.</item>
+        <item>Teams with no payoff process — registering debt no one will pay is theatre.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="fowler-quadrant">
+      <p>The foundational classification: two axes, four quadrants.</p>
+
+      <rule>
+        <statement>Classify every debt item on two axes: deliberate vs inadvertent, and reckless vs prudent — only then decide whether to register it.</statement>
+        <rationale>Not all debt is equal; prudent-deliberate debt is a legitimate trade-off; reckless-anything is a red flag for code review.</rationale>
+      </rule>
+
+      <list>
+        <item>Deliberate + Reckless: "We don't have time for design" — HIGH RISK; block in code review.</item>
+        <item>Deliberate + Prudent: "We must ship now and deal with consequences" — STRATEGIC; log and schedule payoff.</item>
+        <item>Inadvertent + Reckless: "What's layering?" — INCOMPETENCE; fix with training and review.</item>
+        <item>Inadvertent + Prudent: "Now we know how we should have done it" — LEARNING; log and pay when convenient.</item>
+      </list>
+    </section>
+
+    <section name="six-debt-types">
+      <p>Debt appears in six categories. Understand the type to know the payoff strategy.</p>
+
+      <list>
+        <item>Code Debt: messy code, duplication, poor naming.</item>
+        <item>Design Debt: poor architecture, tight coupling, violated SRP.</item>
+        <item>Test Debt: missing tests, flaky tests, tests without assertions.</item>
+        <item>Documentation Debt: outdated or missing docs, stale ADRs.</item>
+        <item>Infrastructure Debt: outdated dependencies, EOL runtimes, legacy deployment scripts.</item>
+        <item>Process Debt: missing CI/CD, manual deployments, no code review.</item>
+      </list>
+
+      <antipattern>
+        <description>Conflating code smells with debt: every TODO or long function gets flagged as high-severity debt.</description>
+        <reason>Without a business-impact filter the register becomes noise; require concrete evidence (incident IDs, churn data, slow-query logs).</reason>
+      </antipattern>
+    </section>
+
+    <section name="interest-cost-framing">
+      <p>The key insight: debt is measured not by severity but by interest — the cost of carrying it.</p>
+
+      <rule>
+        <statement>Each registered debt item must include an interest estimate: hours/week or hours/month of extra work caused by its presence.</statement>
+        <rationale>Interest cost converts abstract code quality into concrete business cost; enables stakeholder prioritization without technical jargon.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Require evidence for the interest estimate: incident IDs, PR latency data, slow-query traces, or churn statistics — no invented numbers.</statement>
+        <rationale>Agents default to high severity with confident numbers; without evidence the estimates are noise that erodes trust.</rationale>
+      </rule>
+    </section>
+
+    <section name="register-format">
+      <p>How to structure the debt register in markdown.</p>
+
+      <rule>
+        <statement>Cap the register at 20–30 items; anything below that is below the noise floor and will never be prioritized.</statement>
+        <rationale>Infinite registers demoralize teams; a capped list forces prioritization and keeps each item visible.</rationale>
+      </rule>
+
+      <reference path="templates/TECH_DEBT_REGISTER.md">Register template with all required fields.</reference>
+    </section>
+
+    <section name="measurement-metrics">
+      <p>Three dimensions track the health of debt management.</p>
+
+      <list>
+        <item>Code: cyclomatic complexity &lt; 10 per function, duplication &lt; 5%, coverage &gt; 80%.</item>
+        <item>Velocity: feature implementation time, bug fix time, deployment frequency — trending direction matters more than absolute value.</item>
+        <item>Operational: production incidents/month, MTTR, deployment failure rate, rollback frequency.</item>
+      </list>
+
+      <rule>
+        <statement>Track payoff velocity (debt items closed per sprint), not absolute count — the count grows and demoralises teams.</statement>
+        <rationale>A growing register count does not mean the team is failing; closed-per-sprint measures actual progress.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-workflow">
+      <p>How to run debt scanning and registration with agents.</p>
+
+      <p>Run debt collection as a periodic batch job. Scanner subagent walks repo + git history + linter output and emits candidates with evidence. Triager subagent (Opus) deduplicates against existing register and classifies by Fowler quadrant. Human approves before items are appended to TECH_DEBT_REGISTER.md.</p>
+
+      <rule>
+        <statement>Never let an autonomous agent close a debt item; closure requires human verification of test improvement and metric improvement.</statement>
+        <rationale>Debt payoff rewrite risk is high; the human review on the pre-merge gate is non-negotiable.</rationale>
+      </rule>
+
+      <reference path="templates/scan-debt.sh">Script to emit candidate debt items as JSONL for triage.</reference>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Common failure modes when using agents to discover and track debt.</p>
+
+      <antipattern>
+        <description>Severity inflation: LLMs default every item to "high".</description>
+        <reason>Require concrete impact metrics or automatically downgrade to "medium"; every "high" must cite an incident ID or quantified cost.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Phantom debt: agent invents items in code it never read.</description>
+        <reason>Force the agent to cite file:line and verify file existence; reject items without a resolvable path.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Mixing TODO with debt: TODO != debt.</description>
+        <reason>Filter on "has business impact" and "would not exist if redone today"; TODOs are implementation notes, not cost items.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Stale references: debt items pointing at moved or renamed files.</description>
+        <reason>Run a weekly link-check pass to verify all file:line references are still resolvable.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Recursive debt: "Refactor the debt tracker itself" loops.</description>
+        <reason>Cap recursion depth in the loop.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Human checkpoint: letting an autonomous agent merge a debt-payoff PR.</description>
+        <reason>The rewrite risk is high; require human review on the pre-merge gate.</reason>
+      </antipattern>
+    </section>
+
+    <section name="subagent-workflow">
+      <p>Recommended agents for debt scanning and management.</p>
+
+      <list>
+        <item>Scanner subagent (Sonnet): runs radon, lizard, jscpd, git log and emits candidates as JSON.</item>
+        <item>Triager subagent (Opus): applies Fowler quadrant (deliberate/inadvertent × reckless/prudent), severity, business-impact estimate.</item>
+        <item>faion-sdd-executor-agent: turns approved debt items into SDD tasks with quality gates.</item>
+        <item>faion-improver skill: fits the "investigate → brainstorm → apply" loop for paying down a single debt item.</item>
+      </list>
+    </section>
+
+    <section name="cli-tools-for-debt-scanning">
+      <p>Recommended tools to automate debt candidate discovery.</p>
+
+      <list>
+        <item>radon: Python complexity / maintainability index.</item>
+        <item>lizard: Multi-language complexity, oversize functions.</item>
+        <item>jscpd: Copy-paste detector across languages.</item>
+        <item>pip-audit: Python CVEs in dependencies (security debt).</item>
+        <item>npm audit / pnpm audit: JavaScript dependency CVEs.</item>
+        <item>dependabot / renovate: Outdated dependency detection (infra debt).</item>
+        <item>git-of-theseus: Code churn / age cohort plots.</item>
+        <item>tokei: Quick lines-of-code inventory.</item>
+      </list>
+    </section>
+
+    <section name="services-and-platforms">
+      <p>Commercial and open-source platforms for debt tracking and prioritization.</p>
+
+      <list>
+        <item>SonarQube / SonarCloud: Technical Debt metric in days, per-file hotspots via REST API.</item>
+        <item>CodeScene: Behavioural code analysis, hotspot prioritisation by churn.</item>
+        <item>CodeClimate Quality: Maintainability scores, debt remediation cost.</item>
+        <item>Stepsize: Built specifically as a debt tracker tied to Jira/Linear.</item>
+        <item>DebtMap (OSS): Lightweight markdown debt register tooling.</item>
+        <item>Linear / Jira: Use a tech-debt label + saved view; agent files items via API.</item>
+      </list>
+    </section>
+
+    <section name="prompt-patterns-for-agents">
+      <p>Example prompt structures to guide agent debt scanning and triage.</p>
+
+      <prompt purpose="Debt scanning">
+Scan &lt;repo&gt; for technical debt candidates. For each, output JSON:
+{ "id", "type": "code|design|test|doc|infra|process",
+  "severity": "low|med|high", "location": "&lt;file:line&gt;",
+  "evidence": "&lt;commit / linter rule / metric&gt;",
+  "estimated_payoff_tokens": &lt;int&gt; }
+Skip anything without concrete evidence. Max 30 items.
+      </prompt>
+
+      <prompt purpose="Debt triage">
+Triage candidates against existing register at TECH_DEBT_REGISTER.md.
+For each: dedupe (same root cause), classify in Fowler quadrant,
+estimate business impact (cite incidents/PR latency/etc.).
+Output diff of new register entries only.
+      </prompt>
+    </section>
+
+    <templates>
+      <template path="templates/TECH_DEBT_REGISTER.md" purpose="Register template with ID, type, severity, location, evidence, interest, estimated payoff."/>
+      <template path="templates/scan-debt.sh" purpose="Emit candidate debt items as JSONL (complexity via lizard, missing tests, outdated deps)."/>
+    </templates>
+
+    <see-also>
+      <link href="https://martinfowler.com/bliki/TechnicalDebt.html"/>
+      <link href="https://martinfowler.com/articles/is-quality-worth-cost.html"/>
+      <ref slug="refactoring-patterns"/>
+      <ref slug="code-quality-trends"/>
+      <ref slug="code-review"/>
+    </see-also>
+  </content>
+</methodology>

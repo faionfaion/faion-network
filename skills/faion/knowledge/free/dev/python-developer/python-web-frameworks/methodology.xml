@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="python-web-frameworks">
+  <metadata>
+    <tier>free</tier>
+    <group>dev</group>
+    <domain>python-developer</domain>
+    <summary>A routing-layer methodology for choosing between Django, FastAPI, and Flask. Lock the choice in constitution.md before writing any code — do not let agents switch frameworks mid-feature.</summary>
+    <tags>
+      <tag>python</tag>
+      <tag>django</tag>
+      <tag>fastapi</tag>
+      <tag>flask</tag>
+      <tag>framework-selection</tag>
+    </tags>
+    <difficulty>beginner</difficulty>
+    <created>2026-04-27</created>
+  </metadata>
+  <content>
+    <title>Python Web Frameworks</title>
+    <summary>A routing-layer methodology for choosing between Django, FastAPI, and Flask. Lock the choice in constitution.md before writing any code — do not let agents switch frameworks mid-feature. Use this methodology only for the framework decision; once the choice is made, load the framework-specific methodology (python-fastapi, django-models, etc.) and skip this one.</summary>
+    <why>
+      <p>The three frameworks serve distinct needs: Django for full-stack apps with admin panels and ORM, FastAPI for high-concurrency async APIs and ML serving, Flask for small tools and prototypes. Picking the wrong framework is expensive to reverse. Mixing idioms (@app.route in FastAPI, User.objects in FastAPI routes) is a common LLM failure mode that a locked framework choice prevents.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Greenfield Python web project where framework choice is still open</item>
+        <item>Migration planning: comparing an existing Flask/Django app against FastAPI</item>
+        <item>Hybrid review: FastAPI for public APIs + Django for admin sharing a DB schema</item>
+        <item>Tech-debt audit: deciding if a Flask app has outgrown its minimalism</item>
+        <item>Onboarding: routing "where do I add X?" to the right framework's conventions</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-framework codebase where team has already committed — load only that framework's specific methodology</item>
+        <item>Choosing between Litestar/Sanic/Quart/Starlette — this methodology covers only Django/FastAPI/Flask</item>
+        <item>Non-web Python work (ML batch jobs, scripts, CLIs) — wrong abstraction layer</item>
+        <item>Performance-critical pure async scenarios where FastAPI is already chosen</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="framework-selection-rules">
+      <rule>
+        <statement>Choose Django for full-stack apps with admin panels, ORM, and batteries-included security. Lock the choice in constitution.md before writing code.</statement>
+        <rationale>Django's built-in admin saves weeks of development for content management. Switching frameworks after models and migrations exist is extremely costly.</rationale>
+      </rule>
+      <rule>
+        <statement>Choose FastAPI for high-concurrency async APIs, ML model serving, and microservices where native async and auto-generated OpenAPI are priorities.</statement>
+        <rationale>FastAPI's async-native design and Pydantic validation pipeline yield faster throughput and automatic schema documentation that stays in sync with the code.</rationale>
+      </rule>
+      <rule>
+        <statement>Choose Flask for small internal tools, rapid prototypes, and cases where maximum flexibility and minimal overhead are priorities.</statement>
+        <rationale>Flask's minimal core means less startup cost, but security, validation, and structure must be added manually — avoid it for production APIs that will grow.</rationale>
+      </rule>
+    </section>
+
+    <section name="decision-table">
+      <list>
+        <item>Full-stack web app with HTML templates → Django</item>
+        <item>Admin panel or CMS needed → Django</item>
+        <item>High-performance async API → FastAPI</item>
+        <item>ML model serving / OpenAPI auto-docs → FastAPI</item>
+        <item>WebSocket-heavy application → FastAPI</item>
+        <item>Microservices with I/O concurrency → FastAPI</item>
+        <item>Quick prototype or internal tool → Flask</item>
+        <item>Maximum flexibility, custom architecture → Flask</item>
+        <item>Enterprise stability + large team → Django</item>
+        <item>Learning Python web development → Flask</item>
+      </list>
+    </section>
+
+    <section name="framework-core-characteristics">
+      <p>Django: MTV architecture, built-in ORM, admin, migrations, auth, CSRF/XSS protection, partial ASGI. Real-world: Instagram, Spotify, Dropbox.</p>
+      <p>FastAPI: dependency injection, native async, Pydantic v2 validation, auto OpenAPI, SQLAlchemy 2 async. Real-world: Netflix, Uber, Microsoft.</p>
+      <p>Flask: WSGI micro-framework, Jinja2, extension ecosystem. Real-world: Airbnb, Reddit (legacy).</p>
+    </section>
+
+    <section name="async-support">
+      <rule>
+        <statement>For Django async views, all ORM calls must use sync_to_async or the a-prefixed ORM methods (aall, aget, etc.). Not every ORM operation has an async alias — check per Django release.</statement>
+        <rationale>Calling sync ORM inside an async view blocks the event loop thread. Django does not detect this automatically.</rationale>
+      </rule>
+      <rule>
+        <statement>Flask async views run under WSGI — each request blocks a worker for the coroutine duration. Do not use async views in Flask expecting real concurrency.</statement>
+        <rationale>WSGI is synchronous; Flask's async view support wraps the coroutine in a sync call, providing no concurrency benefit.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[
+# Django 4.1+ async ORM
+async def get_users(request):
+    users = await User.objects.filter(active=True).aall()
+    return JsonResponse({"users": [u.email for u in users]})
+
+# FastAPI — native async, no wrapper needed
+@app.get("/users")
+async def get_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+    return result.scalars().all()
+]]></code>
+      </example>
+    </section>
+
+    <section name="fastapi-django-hybrid">
+      <rule>
+        <statement>In a FastAPI+Django hybrid, Django owns the database schema (all migrations run via manage.py). FastAPI reads from the same tables using SQLAlchemy in read-mostly mode.</statement>
+        <rationale>Two ORMs writing schema migrations to the same database causes conflicts. Single DDL owner (Django) eliminates them.</rationale>
+      </rule>
+      <p>Pattern: FastAPI handles high-throughput public API traffic; Django provides admin panel and content management. Both connect to the same database with clear read/write boundaries.</p>
+    </section>
+
+    <section name="production-deployment">
+      <example type="good">
+        <code lang="bash"><![CDATA[
+# Django ASGI (requires --lifespan off until Channels configured)
+gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker -w 4 --lifespan off
+
+# FastAPI
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# Flask WSGI
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+]]></code>
+      </example>
+      <rule>
+        <statement>Pin one ASGI server per app and one WSGI server per app. Never mix gunicorn workers for different frameworks in the same process.</statement>
+        <rationale>LLMs switch to whatever server they saw in the last training example; locking the server in constitution.md prevents this.</rationale>
+      </rule>
+    </section>
+
+    <section name="antipatterns">
+      <antipattern>
+        <description>Mixing framework idioms: @app.route in FastAPI, User.objects in FastAPI routes, Flask-Login in FastAPI projects.</description>
+        <reason>Each framework has its own routing, ORM, and auth primitives. Mixing causes silent failures (Flask imports in FastAPI are resolved but behave differently) or runtime errors (User.objects requires django.setup()).</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using @app.on_event("startup") / @app.on_event("shutdown") in FastAPI.</description>
+        <reason>Deprecated in FastAPI 0.93+. Use the lifespan context manager instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Quoting the unsourced RPS benchmark numbers (1,500/3,000+ RPS) as authoritative.</description>
+        <reason>These numbers are context-dependent and not from a named benchmark. Always run a project-specific load test before citing performance claims.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Starting with Flask for "simplicity" then adding Flask-RESTX, Flask-Migrate, Flask-Login, Flask-WTF until the dep list mirrors Django.</description>
+        <reason>At that point Flask adds friction without adding features. The decision matrix should have chosen Django upfront.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using Flask async views expecting real concurrency under WSGI.</description>
+        <reason>WSGI is synchronous. Async views run in a sync wrapper — no concurrency benefit, just added complexity.</reason>
+      </antipattern>
+    </section>
+
+    <section name="llm-gotchas">
+      <rule>
+        <statement>Any change to settings.py / main.py / app.py (middleware order, security headers, CORS) requires human review — small edits have global effect.</statement>
+        <rationale>LLMs edit these files for convenience but middleware ordering bugs are notoriously hard to diagnose.</rationale>
+      </rule>
+      <rule>
+        <statement>Never let an agent upgrade a framework version (Django 4 to 5, FastAPI 0.100 to 0.110) inside a feature task. That is its own audit task.</statement>
+        <rationale>Framework upgrades require testing all breaking changes; folding them into a feature task obscures regressions.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use this methodology as a routing layer, not as build instructions. Step 1: a sonnet/opus subagent reads the project brief and outputs a single framework choice with 5-bullet justification mapped to the decision matrix. Step 2: route to the framework-specific methodology (python-fastapi, django-api, or a Flask agent). Step 3: a verifier subagent reads the generated stub project and confirms it matches that framework's idioms (no @app.route in FastAPI, no DRF imports in Ninja code, no sync requests calls in async views).</p>
+      <rule>
+        <statement>Lock the framework choice in constitution.md of the SDD; the agent must not switch frameworks mid-feature.</statement>
+        <rationale>Framework switching mid-feature obscures architectural decisions and forces costly refactoring. The choice must be deliberate and human-approved.</rationale>
+      </rule>
+      <rule>
+        <statement>For "FastAPI + Django hybrid" deployments, share the database schema via Django migrations (Django owns DDL); FastAPI uses SQLAlchemy in read-mostly mode against the same tables.</statement>
+        <rationale>Two ORMs writing migrations to the same database causes conflicts. Single DDL owner eliminates them.</rationale>
+      </rule>
+      <rule>
+        <statement>Pin one ASGI server per app and one WSGI server per app — agents will switch to whatever they saw in the last training example otherwise.</statement>
+        <rationale>Server choice is architectural. Letting agents auto-select creates drift and deployment surprises.</rationale>
+      </rule>
+      <rule>
+        <statement>Always include a pytest smoke test that boots the app via TestClient/Client/test_client — catches import-time errors that lint passes miss.</statement>
+        <rationale>A misconfigured setting causes runtime failure; linting does not catch it. A one-import test catches it at test time.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep requirements.txt/pyproject.toml framework-pure — don't let Flask-* extensions leak into a Django project even "for the utility".</statement>
+        <rationale>Cross-framework dependencies cause hidden breakage when imports run at startup time.</rationale>
+      </rule>
+      <rule>
+        <statement>For Django async views, document which views are async and which are sync — mixed apps confuse middleware and DB connections.</statement>
+        <rationale>Django's async support is partial; undocumented mixing causes mysterious timeouts and connection leaks.</rationale>
+      </rule>
+    </section>
+
+    <section name="agent-gotchas">
+      <p>Performance numbers are unsourced (~1,500 RPS, ~3,000+ RPS); agents will quote them as fact. Strip or qualify them in prompts.</p>
+      <p>README claims FastAPI has "built-in" background tasks "and Celery" — true, but the built-in BackgroundTasks runs in-process and is unsuitable for long jobs. Easy to misread.</p>
+      <p>"Flask 2.0+ supports async views but remains WSGI-focused" — agents miss that running async views under WSGI is a footgun (each request blocks a worker for the duration of the coroutine). Restate explicitly.</p>
+      <p>The Django ASGI deployment line drops --lifespan off which Django requires until Channels lifespan is configured; agents will copy-paste and break startup.</p>
+      <p>ORM comparison says FastAPI has "None (use SQLAlchemy)" — agents take "None" literally and skip ORM choice entirely. Add SQLModel/Tortoise/Beanie as alternatives.</p>
+      <p>No mention of Pydantic v1 vs v2 in framework context — agents mix them.</p>
+      <p>"Django Async (2025) — Django 5.2 provides mature async support" overstates: ORM still has sync-only operations (signals, complex F-expressions), and middleware ordering is a frequent bug.</p>
+      <p>Decision matrix is binary (Django | FastAPI | Flask) and ignores Litestar, Starlette, BlackSheep, Sanic, AIOHTTP — for some workloads those are better fits.</p>
+      <p>Agents quote the unsourced RPS numbers as authoritative; benchmark numbers must be qualified or removed.</p>
+      <p>Mixing imports across frameworks: from flask import jsonify ends up in a FastAPI route. Lint with import-graph rules.</p>
+      <p>Agents add Flask-Login to FastAPI projects because they pattern-match "login extension". Force them to use FastAPI's Depends(get_current_user) instead.</p>
+      <p>Django ORM in FastAPI: agents copy User.objects.filter(...) into a FastAPI route — works only if django.setup() is called at startup, which is non-standard.</p>
+      <p>@app.on_event("startup") is deprecated in FastAPI; the README does not warn — agents emit deprecated lifespan code.</p>
+      <p>Async Django views without sync_to_async around ORM calls — agents skip the wrapper because the README shows await User.objects.filter(active=True).aall() (correct) but doesn't warn that not every ORM op has an a* alias.</p>
+      <p>Agents pick Flask because "minimalism" then bolt on Flask-RESTX, Flask-Migrate, Flask-Login, Flask-WTF until it's a Django clone — review the dep list before merging.</p>
+    </section>
+
+    <templates>
+      <template path="templates/pick-framework.sh" purpose="Keyword-scoring script: reads a project brief, outputs framework choice as JSON"/>
+    </templates>
+
+    <see-also>
+      <ref slug="python-typing"/>
+      <ref slug="python-async"/>
+      <link href="https://docs.djangoproject.com/en/5.2/"/>
+      <link href="https://fastapi.tiangolo.com/"/>
+      <link href="https://flask.palletsprojects.com/"/>
+    </see-also>
+  </content>
+</methodology>
