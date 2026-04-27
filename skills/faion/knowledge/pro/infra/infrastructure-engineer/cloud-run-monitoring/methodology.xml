@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cloud-run-monitoring">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>infrastructure-engineer</domain>
+    <summary>Cloud Run observability: structured JSON logging, Cloud Monitoring dashboards, SLO alerting, Cloud Trace propagation, gcloud log queries for services and jobs, and cost optimization monitoring.</summary>
+    <tags>
+      <tag>gcp</tag>
+      <tag>cloud-run</tag>
+      <tag>monitoring</tag>
+      <tag>logging</tag>
+      <tag>observability</tag>
+    </tags>
+    <category>infra</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-autoscaling"/>
+      <ref slug="cloud-run-vpc-access"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>Cloud Run Monitoring and Observability</title>
+
+    <summary>Cloud Run exports metrics to Cloud Monitoring automatically (request count, latency, instance count, CPU/memory utilization). Applications MUST emit structured JSON logs to stdout/stderr to enable Cloud Logging parsing. Cloud Trace integrates via OpenTelemetry or the Cloud Trace client library. Configure alerting policies on error rate and p99 latency for production SLOs.</summary>
+
+    <why>
+      <p>Cloud Run's built-in metrics cover infrastructure signals (instance count, CPU, memory) but not application-level signals (error rates per endpoint, business transaction latency, queue depth). Structured JSON logging enables field-based filtering and log-based metrics in Cloud Monitoring. Without structured logs, error investigation requires full-text search across unstructured output, which is slow and unreliable at scale.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Setting up structured logging for a Cloud Run service or job.</item>
+        <item>Creating Cloud Monitoring dashboards and alerting policies for Cloud Run.</item>
+        <item>Configuring Cloud Trace for distributed tracing across Cloud Run services.</item>
+        <item>Debugging service errors, latency spikes, or scaling issues via logs and metrics.</item>
+        <item>Defining SLOs and error budgets for production Cloud Run services.</item>
+        <item>Monitoring Cloud Run job executions and failed tasks.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>VPC and network configuration — see cloud-run-vpc-access.</item>
+        <item>Autoscaling tuning based on metrics — see cloud-run-autoscaling.</item>
+        <item>GKE workload monitoring — use Workload Identity + Prometheus instead.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="structured-logging">
+      <rule>
+        <statement>Cloud Run applications MUST write structured JSON logs to stdout (not stderr for normal operation). JSON logs MUST include at minimum: severity (matching Cloud Logging severity levels: DEBUG, INFO, WARNING, ERROR, CRITICAL), message, and a request trace ID for request correlation. Do NOT include sensitive data (credentials, PII) in logs. Set LOG_LEVEL via environment variable, not hardcoded.</statement>
+        <rationale>Cloud Logging auto-parses JSON from stdout and extracts fields into the structured log entry. Unstructured text logs require manual parsing, cannot be filtered by field, and cannot generate log-based metrics. Trace ID correlation lets Cloud Logging link log entries to Cloud Trace spans for distributed request tracing.</rationale>
+      </rule>
+
+      <example type="good" title="Python structured JSON logging">
+        <code lang="python"><![CDATA[
+import json
+import logging
+import os
+import sys
+from flask import Flask, request
+
+app = Flask(__name__)
+
+class StructuredFormatter(logging.Formatter):
+    def format(self, record):
+        log = {
+            "severity": record.levelname,
+            "message": record.getMessage(),
+            "logger": record.name,
+        }
+        # Attach trace ID from Cloud Trace header if present
+        trace_header = request.headers.get("X-Cloud-Trace-Context", "")
+        if trace_header:
+            trace_id = trace_header.split("/")[0]
+            log["logging.googleapis.com/trace"] = (
+                f"projects/{os.environ.get('GOOGLE_CLOUD_PROJECT', '')}/traces/{trace_id}"
+            )
+        return json.dumps(log)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(StructuredFormatter())
+logging.root.handlers = [handler]
+logging.root.setLevel(os.environ.get("LOG_LEVEL", "INFO"))
+logger = logging.getLogger(__name__)
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}
+
+@app.route("/process")
+def process():
+    logger.info("Processing request", extra={"user_id": "u123"})
+    return {"processed": True}
+]]></code>
+      </example>
+
+      <antipattern>
+        <description>Using print() statements or unstructured logger.info("user_id: " + user_id) for application logging.</description>
+        <reason>Unstructured logs cannot be filtered by field (e.g., user_id = "u123"), cannot generate log-based metrics, and are 10x slower to search in Cloud Logging. Structured JSON is parsed at ingest with zero extra cost.</reason>
+      </antipattern>
+    </section>
+
+    <section name="log-queries">
+      <example type="good" title="gcloud log queries for Cloud Run service">
+        <code lang="bash"><![CDATA[
+# Service logs (last 100 lines, formatted)
+gcloud logging read \
+    "resource.type=cloud_run_revision AND resource.labels.service_name=my-service" \
+    --limit=100 \
+    --format="table(timestamp, textPayload)"
+
+# Error logs only
+gcloud logging read \
+    "resource.type=cloud_run_revision AND resource.labels.service_name=my-service AND severity>=ERROR" \
+    --limit=50
+
+# Stream logs in real-time
+gcloud beta run services logs tail my-service --region=us-central1
+
+# Job task failure logs
+gcloud logging read \
+    "resource.type=cloud_run_job AND resource.labels.job_name=my-job" \
+    --limit=100
+
+# Log-based metric: error count in last 24h
+gcloud logging read \
+    "resource.type=cloud_run_revision AND resource.labels.service_name=my-service AND severity=ERROR" \
+    --freshness=24h \
+    --format="value(timestamp)" | wc -l
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloud-monitoring">
+      <rule>
+        <statement>Configure alerting policies on these key metrics for every production Cloud Run service: run.googleapis.com/request/count filtered by response_code_class=5xx (error rate), run.googleapis.com/request/latencies at 99th percentile, run.googleapis.com/container/instance_count (to detect scaling events), and run.googleapis.com/container/cpu/utilizations. Set notification channels to PagerDuty, email, or Pub/Sub before launch.</statement>
+        <rationale>Cloud Run emits these metrics without instrumentation. A 5xx rate spike is the primary signal for deployment failures. p99 latency captures tail latency which affects the worst 1% of users — often caused by cold starts, memory pressure, or downstream timeouts. Instance count spikes indicate unexpected traffic bursts that may need autoscaling limit adjustments.</rationale>
+      </rule>
+
+      <example type="good" title="Create alerting policy for 5xx error rate (gcloud)">
+        <code lang="bash"><![CDATA[
+gcloud alpha monitoring policies create \
+    --display-name="Cloud Run my-service 5xx rate > 1%" \
+    --condition-display-name="5xx rate" \
+    --condition-filter='resource.type="cloud_run_revision" AND resource.labels.service_name="my-service" AND metric.type="run.googleapis.com/request/count" AND metric.labels.response_code_class="5xx"' \
+    --condition-threshold-value=0.01 \
+    --condition-threshold-duration=60s \
+    --condition-comparison=COMPARISON_GT \
+    --notification-channels="projects/my-project/notificationChannels/my-channel"
+]]></code>
+      </example>
+
+      <example type="good" title="Key Cloud Monitoring metrics for Cloud Run">
+        <code lang="text"><![CDATA[
+# Request metrics
+run.googleapis.com/request/count              -- by response_code_class (2xx/3xx/4xx/5xx)
+run.googleapis.com/request/latencies          -- percentiles: p50, p95, p99
+run.googleapis.com/pending_queue/pending_requests  -- queued requests waiting for instances
+
+# Instance metrics
+run.googleapis.com/container/instance_count   -- active instances per revision
+run.googleapis.com/container/startup_latencies  -- cold start duration
+
+# Resource metrics
+run.googleapis.com/container/cpu/utilizations  -- CPU usage per instance
+run.googleapis.com/container/memory/utilizations  -- memory usage per instance
+
+# Job metrics
+run.googleapis.com/job/completed_task_attempt_count  -- by result (succeeded/failed)
+run.googleapis.com/job/running_task_attempt_count
+]]></code>
+      </example>
+    </section>
+
+    <section name="cloud-trace">
+      <rule>
+        <statement>Enable distributed tracing by propagating the X-Cloud-Trace-Context header through all service-to-service calls. Use the Cloud Trace client library or OpenTelemetry SDK to create custom spans for database queries, external API calls, and critical business logic. Set trace sampling to 1% for high-volume services, 100% for low-volume or during incident investigation.</statement>
+        <rationale>Cloud Run automatically instruments HTTP request spans in Cloud Trace when the X-Cloud-Trace-Context header is present. Without header propagation, cross-service traces break into disconnected spans, making root cause analysis of latency issues across microservices impossible.</rationale>
+      </rule>
+
+      <example type="good" title="Trace header propagation in Python">
+        <code lang="python"><![CDATA[
+import requests
+import os
+from flask import Flask, request
+
+app = Flask(__name__)
+
+def get_trace_headers():
+    """Extract and forward trace context from incoming request."""
+    headers = {}
+    trace_header = request.headers.get("X-Cloud-Trace-Context")
+    if trace_header:
+        headers["X-Cloud-Trace-Context"] = trace_header
+    return headers
+
+@app.route("/api/order")
+def create_order():
+    # Forward trace headers to downstream service calls
+    trace_headers = get_trace_headers()
+    response = requests.post(
+        "http://internal-payment-service/charge",
+        json={"amount": 100},
+        headers=trace_headers
+    )
+    return {"order_id": "123", "payment": response.json()}
+]]></code>
+      </example>
+    </section>
+
+    <section name="cost-monitoring">
+      <example type="good" title="Cloud Billing queries for Cloud Run cost analysis">
+        <code lang="bash"><![CDATA[
+# Get Cloud Run spend by service (BigQuery billing export required)
+bq query --use_legacy_sql=false '
+  SELECT
+    resource.labels.service_name AS service,
+    SUM(cost) AS total_cost,
+    SUM(usage.amount) AS total_usage,
+    usage.unit
+  FROM `my-project.billing.gcp_billing_export_resource_v1_XXXXX`
+  WHERE
+    service.description = "Cloud Run"
+    AND DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+  GROUP BY 1, 4
+  ORDER BY 2 DESC
+'
+
+# Identify services with high min-instance cost (idle instances)
+gcloud monitoring time-series list \
+    --filter='metric.type="run.googleapis.com/container/instance_count" AND resource.labels.service_name!=""' \
+    --format="table(resource.labels.service_name, points[0].value.int64Value)"
+]]></code>
+        <note>Services with instance_count greater than 0 during off-hours are incurring min-instance charges. Evaluate setting min-instances=0 for non-critical services.</note>
+      </example>
+    </section>
+
+    <section name="observability-checklist">
+      <checklist>
+        <check>Structured JSON logging implemented (all log entries are JSON to stdout).</check>
+        <check>Log levels appropriate (DEBUG for dev, INFO for prod; no DEBUG in prod default).</check>
+        <check>Request IDs and trace IDs propagated and included in log entries.</check>
+        <check>Sensitive data excluded from logs (no passwords, tokens, PII).</check>
+        <check>Cloud Monitoring dashboards created with key metrics.</check>
+        <check>Alerting policies configured for 5xx error rate and p99 latency.</check>
+        <check>SLOs defined and monitored in Cloud Monitoring.</check>
+        <check>Uptime checks configured for public service endpoints.</check>
+        <check>Cloud Trace enabled and X-Cloud-Trace-Context propagated.</check>
+        <check>Log-based metrics created for application-level error patterns.</check>
+        <check>Notification channels configured before service goes live.</check>
+      </checklist>
+    </section>
+
+    <see-also>
+      <ref slug="cloud-run-deployment"/>
+      <ref slug="cloud-run-autoscaling"/>
+      <ref slug="gcp-cloud-run-serverless"/>
+      <link href="https://cloud.google.com/run/docs/logging"/>
+      <link href="https://cloud.google.com/run/docs/monitoring"/>
+      <link href="https://cloud.google.com/trace/docs/setup/python-ot"/>
+    </see-also>
+  </content>
+</methodology>
