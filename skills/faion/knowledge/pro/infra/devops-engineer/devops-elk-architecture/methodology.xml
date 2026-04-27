@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="devops-elk-architecture">
+  <metadata>
+    <tier>pro</tier>
+    <group>infra</group>
+    <domain>devops-engineer</domain>
+    <summary>Design and deploy ELK/EFK/Elastic Stack clusters: node roles, hot-warm-cold tiers, capacity planning, and Docker/Kubernetes deployment patterns for production logging.</summary>
+    <tags>
+      <tag>elk</tag>
+      <tag>elasticsearch</tag>
+      <tag>logging</tag>
+      <tag>observability</tag>
+      <tag>devops</tag>
+    </tags>
+    <category>logging</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-27</created>
+    <related>
+      <ref slug="devops-elk-index-management"/>
+      <ref slug="devops-elk-logstash-pipeline"/>
+      <ref slug="devops-elk-beats-collection"/>
+    </related>
+  </metadata>
+
+  <content>
+    <title>ELK Stack Architecture and Deployment</title>
+
+    <summary>The ELK Stack (Elasticsearch, Logstash, Kibana) and its variants (EFK with Fluentd, Elastic Stack with Beats) provide centralized log management, search, and visualization. Architect node roles, hot-warm-cold tiers, and deploy via Docker Compose or Elastic Cloud on Kubernetes (ECK) for production workloads.</summary>
+
+    <why>
+      <p>A flat single-node Elasticsearch deployment collapses under production log volumes. Separating master, data-hot, data-warm, and coordinating node roles distributes CPU, memory, and I/O load correctly. Hot-warm-cold architecture reduces storage costs by migrating aging indices from fast SSD to cheaper spinning disk without losing searchability. Proper capacity planning prevents surprise cluster-red states from disk exhaustion or heap pressure.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Centralizing logs from multiple applications and services into one searchable store.</item>
+        <item>Building operational dashboards for troubleshooting across microservices.</item>
+        <item>Implementing compliance logging (GDPR, HIPAA, SOC2) requiring long retention with audit trails.</item>
+        <item>Setting up alerting based on log patterns or error rates.</item>
+        <item>Security analytics (SIEM) requiring full-text search across log events.</item>
+        <item>Business intelligence derived from structured application log data.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Single small application with low log volume — Loki+Grafana or a managed service (Datadog, CloudWatch) has lower operational overhead.</item>
+        <item>Cost-sensitive environments where Loki's label-based model provides sufficient query capability at a fraction of the storage cost.</item>
+        <item>Purely metrics-only observability — Prometheus+Grafana covers this without the ELK operational burden.</item>
+        <item>OpenSearch preference — use the AWS-native fork rather than Elastic when AWS-native integration and open licensing is a hard requirement.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="stack-variants">
+      <p>Choose the stack variant based on environment and processing needs.</p>
+      <list>
+        <item>ELK (Elasticsearch + Logstash + Kibana): traditional stack, heavy processing via Logstash pipelines, version 8.x for all components.</item>
+        <item>EFK (Elasticsearch + Fluentd + Kibana): Kubernetes-native; Fluentd integrates with the cloud-native ecosystem and has a richer plugin ecosystem than Filebeat for log routing.</item>
+        <item>Elastic Stack (Elasticsearch + Beats + Kibana): lightweight collection; Filebeat/Metricbeat ship directly to Elasticsearch, bypassing Logstash for simple use cases.</item>
+      </list>
+      <p>Data flow: Applications → Beats/Fluentd → Logstash (optional) → Elasticsearch → Kibana. Collection → Processing → Storage → Visualization.</p>
+    </section>
+
+    <section name="node-roles">
+      <p>Assign dedicated node roles in clusters with more than 3 nodes. Mixed-role nodes work only for dev/test.</p>
+      <list>
+        <item>Master: manages cluster state; 3 dedicated masters for quorum; small nodes (4 GB heap, 2 CPU) with fast SSD for cluster metadata.</item>
+        <item>Data: stores and searches indices; hot nodes on NVMe SSD, warm on HDD/object storage.</item>
+        <item>Ingest: pre-processes documents via ingest pipelines before indexing; separates CPU-heavy enrichment from data nodes.</item>
+        <item>Coordinating: routes client requests and reduces/merges search results; CPU and memory intensive for large aggregations; no data stored.</item>
+        <item>ML: machine learning jobs; isolated to prevent affecting search/index throughput.</item>
+      </list>
+      <rule testable="true">
+        <statement>Production clusters with more than 5 nodes MUST assign dedicated node roles. Master nodes MUST NOT hold data. Heap for master nodes MUST be set to 4 GB; data node heap MUST be 50% of RAM with a hard maximum of 32 GB.</statement>
+        <rationale>Mixed master-data nodes allow a data-heavy GC pause to delay cluster state updates, causing false node failures and shard reallocation storms. Heap above 32 GB disables the JVM's compressed ordinary object pointers (CompressedOops), doubling pointer size and wasting memory.</rationale>
+      </rule>
+    </section>
+
+    <section name="hot-warm-cold">
+      <p>Hot-warm-cold architecture automates cost-effective retention by migrating indices across storage tiers as they age.</p>
+      <list>
+        <item>Hot tier: NVMe SSD, high CPU; receives all new writes; index actively searched; ILM triggers rollover at 50 GB or 1 day.</item>
+        <item>Warm tier: SATA SSD or HDD; indices force-merged to 1 segment, shrunk to 1 shard; read-only; 7–30 days old.</item>
+        <item>Cold tier: object storage (S3/GCS) via searchable snapshots; minimal compute; 30–90 days old; query latency acceptable at seconds.</item>
+        <item>Delete phase: ILM deletes indices after retention expiry; no manual cleanup needed.</item>
+      </list>
+    </section>
+
+    <section name="shard-strategy">
+      <p>Shard sizing is the single most common source of Elasticsearch performance problems.</p>
+      <list>
+        <item>Target shard size: 20–40 GB. Shards smaller than 10 GB create overhead; shards larger than 50 GB make recovery slow.</item>
+        <item>Max shards per GB of heap: 20. A node with 16 GB heap can safely hold 320 shards.</item>
+        <item>Replicas: minimum 1 for HA; writes go to primary and are replicated; replicas double storage but enable parallel search.</item>
+      </list>
+      <rule testable="true">
+        <statement>Set number_of_shards based on (expected_index_size_gb / 30). Never set number_of_shards above 5 for indices smaller than 100 GB. Always set number_of_replicas to at least 1 in production.</statement>
+        <rationale>Over-sharding (many small shards) causes high per-shard overhead: each shard is a Lucene index with file handles, heap usage, and merge threads. Under-sharding (one massive shard) prevents horizontal search scaling and makes shard recovery on node failure extremely slow.</rationale>
+      </rule>
+    </section>
+
+    <section name="capacity-planning">
+      <p>Capacity planning formula for Elasticsearch storage.</p>
+      <list>
+        <item>Raw storage = daily_volume_gb * retention_days.</item>
+        <item>Replication overhead = raw_storage * (1 + replica_count).</item>
+        <item>Index overhead (Lucene segments, metadata) = replication_overhead * 1.15.</item>
+        <item>OS and buffer headroom = total * 1.20 (keep disks below 85% to avoid shard allocation failures).</item>
+        <item>JVM heap: set -Xms and -Xmx to the same value to prevent heap resizing pauses. Enable G1GC for heaps above 6 GB.</item>
+      </list>
+      <example type="good" title="Capacity calculation for 10 GB/day, 90 days, 1 replica">
+        <code lang="text"><![CDATA[
+daily_volume  = 10 GB
+retention     = 90 days
+raw           = 10 * 90 = 900 GB
+with replicas = 900 * 2 = 1,800 GB
+with overhead = 1,800 * 1.15 = 2,070 GB
+with headroom = 2,070 * 1.20 = 2,484 GB ≈ 2.5 TB provisioned
+]]></code>
+        <note>Always add 20% headroom — Elasticsearch stops allocating shards when any node crosses 85% disk usage, causing cluster yellow/red.</note>
+      </example>
+    </section>
+
+    <section name="deployment-patterns">
+      <p>Two primary deployment patterns: Docker Compose for local/small environments, ECK (Elastic Cloud on Kubernetes) for production Kubernetes.</p>
+      <p>Docker Compose: define elasticsearch, logstash, kibana, filebeat services with explicit health checks. Set bootstrap.memory_lock=true and ulimits.memlock=-1 to prevent swap. Use named volumes for data persistence.</p>
+      <p>ECK on Kubernetes: deploy the ECK operator, then Elasticsearch, Kibana, and Beat custom resources. ECK manages TLS certificates, cluster upgrades, and node set scaling automatically. Use nodeSets to define hot data nodes (fast-ssd StorageClass) and warm data nodes (standard StorageClass) with separate resource requests.</p>
+    </section>
+
+    <section name="alternatives">
+      <list>
+        <item>Loki + Grafana: cost-sensitive setups, Grafana ecosystem; label-based indexing costs far less storage than full-text inverted index.</item>
+        <item>OpenSearch: open-source Elastic fork, AWS-native; API-compatible drop-in for most ELK use cases.</item>
+        <item>Datadog Logs: managed, unified observability; no ops burden but significantly higher per-GB cost.</item>
+        <item>Splunk: enterprise, compliance-heavy environments; expensive but mature SIEM capabilities.</item>
+      </list>
+    </section>
+
+    <checklist>
+      <check>Define log retention requirements (days) and daily volume (GB/day) before sizing.</check>
+      <check>Calculate storage with formula: daily_gb * days * (1 + replicas) * 1.15 * 1.20.</check>
+      <check>Assign dedicated node roles for clusters with more than 5 nodes.</check>
+      <check>Set heap to 50% of RAM, max 32 GB; use same value for -Xms and -Xmx.</check>
+      <check>Enable bootstrap.memory_lock: true and configure OS ulimits.</check>
+      <check>Create ILM policy with hot/warm/cold/delete phases before first index write.</check>
+      <check>Provision fast SSD (NVMe) for hot nodes; standard storage for warm/cold nodes.</check>
+      <check>Configure Elasticsearch on a private network; never expose port 9200/9300 publicly.</check>
+      <check>Set up minimum 3 dedicated master nodes for production clusters.</check>
+    </checklist>
+
+    <see-also>
+      <ref slug="devops-elk-index-management"/>
+      <ref slug="devops-elk-logstash-pipeline"/>
+      <ref slug="devops-elk-beats-collection"/>
+      <ref slug="devops-elk-queries-alerting"/>
+      <link href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html"/>
+      <link href="https://www.elastic.co/guide/en/cloud-on-k8s/current/index.html"/>
+    </see-also>
+  </content>
+</methodology>
