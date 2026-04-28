@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="vui-accessibility-inclusivity">
+  <metadata>
+    <tier>pro</tier>
+    <group>ux</group>
+    <domain>ux-ui-designer</domain>
+    <summary>Design voice interfaces for diverse populations with WER fairness evaluation, grade-8 prompts, and visual transcripts to serve non-native speakers and users with disabilities.</summary>
+    <tags>
+      <tag>vui</tag>
+      <tag>accessibility</tag>
+      <tag>inclusivity</tag>
+      <tag>asr</tag>
+      <tag>fairness</tag>
+    </tags>
+    <category>vui</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+  <content>
+    <title>VUI Accessibility and Inclusivity</title>
+    <summary>A methodology for designing voice interfaces that serve diverse user populations: non-native speakers, accented speech, elderly users, and those with motor or visual impairments. Apply word-error-rate (WER) fairness evaluation across demographic slices, keep prompt language at reading grade 8 or below, and always provide a visual transcript alternative. Voice is an accessibility modality, not an add-on feature.</summary>
+    <why>
+      <p>Major ASR engines show 1.5-2x higher error rates for non-white-male speakers (Stanford 2020; directionally confirmed with 2025 models). Switching the LLM does not fix ASR bias. Failure to test across accents produces voice flows that exclude the populations they claim to serve, violating the inclusive design intent and creating legal exposure under ADA/AODA/EAA.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building voice agents or IVR for diverse user bases: non-native speakers, elderly users, motor- or visually-impaired users.</item>
+        <item>Auditing an existing voice product for ASR error rate by demographic group.</item>
+        <item>Localizing a voice agent into a new language or regional dialect.</item>
+        <item>Designing voice as the accessibility alternative to a touch UI (kiosk, automotive, hands-busy context).</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single-locale, single-accent, narrow-demographic prototype — full diversity testing can wait until validation.</item>
+        <item>Heavy ambient-noise contexts where ASR fails for everyone — fix the audio pipeline (echo cancel, beamforming) first.</item>
+        <item>Phone-tree IVR with rigid menu prompts — touch-tone fallback is the inclusive design path; accent-handling is secondary.</item>
+      </list>
+    </when-not-to-use>
+    <section name="ASR Fairness">
+      <rule>
+        <statement>Measure word error rate (WER) by demographic slice (accent, age group) before launch; flag any subgroup with WER more than 1.5x the overall average for remediation.</statement>
+        <rationale>Major ASR engines show 1.5-2x higher error rates for non-white-male speakers. Without per-group measurement, systemic bias is invisible until users complain — at which point reputational damage is already done.</rationale>
+      </rule>
+      <rule>
+        <statement>Test with real user recordings from each target demographic; do not rely solely on synthesized or cloned voice data for fairness evaluation.</statement>
+        <rationale>Voice clones flatten prosody and underestimate failure rates for real-world accented speech. Synthetic data is a supplement, not a substitute for real user testing.</rationale>
+      </rule>
+      <reference path="templates/vui_fairness.py">WER-by-demographic evaluator: groups utterances by accent and age, reports disparity</reference>
+    </section>
+    <section name="Prompt Language">
+      <rule>
+        <statement>Keep all voice prompts at or below Flesch-Kincaid grade 8; reject prompts with idioms, unexplained jargon, or contractions in critical instructions.</statement>
+        <rationale>Non-native speakers process idioms and contractions with additional cognitive load, increasing misinterpretation and intent-routing errors. Grade 8 language is accessible to the widest literate population without being condescending.</rationale>
+      </rule>
+      <example type="good">
+        <note>Say your account number, then say done. — short, no idioms, imperative voice.</note>
+      </example>
+      <example type="bad">
+        <note>Go ahead and rattle off your account number whenever you're ready. — idiom "rattle off", informal register, ambiguous completion signal.</note>
+      </example>
+      <rule>
+        <statement>Default ASR silence timeout to 3-5 seconds after end-of-speech for all users; reduce only after confirming a fast-talker user profile.</statement>
+        <rationale>Users who pause to think, have word-finding difficulty, or speak with non-native prosody need extra timeout. Premature cutoffs cause repeated failure and abandonment.</rationale>
+      </rule>
+    </section>
+    <section name="Visual Alternatives">
+      <rule>
+        <statement>Display a live transcript on every device that has a screen; do not gate this behind an "accessibility" opt-in — it is a universal default.</statement>
+        <rationale>Deaf users, users in noisy environments, and users who mishear TTS all benefit from a persistent transcript. Treating it as an accessibility option reduces its visibility and adoption.</rationale>
+      </rule>
+      <rule>
+        <statement>Confirm before acting on low-confidence ASR recognition; never silently route a misrecognized intent to a destructive action.</statement>
+        <rationale>ASR confidence scores are not equally calibrated across demographic groups — high-confidence misrecognitions occur more often for accented speech. Explicit confirmation prevents silent mis-routing.</rationale>
+      </rule>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Run an evaluation harness across a demographically representative test set (commercial corpora + synthetic + real user volunteers) measuring WER and intent accuracy by group. Use one subagent to generate synthetic accented test phrases via SSML, another to compute WER, a third to recommend accommodations. Human-in-the-loop required for fairness sign-off — synthetic data underestimates real bias.</p>
+      <rule>
+        <statement>Flag any subgroup with WER more than 1.5x the overall WER and require human review before launch; do not allow the agent to close the finding unilaterally.</statement>
+        <rationale>The 1.5x threshold is the industry-standard disparity threshold. Allowing agents to self-close disparity findings creates false compliance records.</rationale>
+      </rule>
+    </section>
+    <section name="Prompt Language Review Pattern">
+      <example type="good">
+        <note>For each VUI prompt, return: reading_grade_level (Flesch-Kincaid), idiom_count, jargon_terms[], non_native_friendly_rewrite (if grade&gt;8 or idioms&gt;0), estimated_intent_accuracy_drop_for_non_native (low/medium/high). Reject any prompt with grade &gt; 8 unless required by domain (medical, legal).</note>
+      </example>
+    </section>
+    <section name="AI-Agent Gotchas">
+      <antipattern>
+        <description>LLMs assuming English idioms and contractions are universally understood.</description>
+        <reason>Non-native speakers process idioms with additional cognitive load, increasing misinterpretation. Agents must be prompted to lint and rewrite for ESL users with explicit reading-level constraints.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Relying solely on synthesized accent test data for WER evaluation.</description>
+        <reason>Voice clones flatten real prosody. Synthetic data underestimates failure rates for real-world accented speech. Complement with Common Voice recordings or commissioned real-user samples.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Treating high ASR confidence scores as reliable for all demographic groups.</description>
+        <reason>Confidence scores are not equally calibrated across groups. High-confidence misrecognitions happen more often for accented speech, creating a false sense of reliability for exactly the population most at risk.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Designing accent calibration UX that prompts users to "speak more clearly."</description>
+        <reason>Such prompts are othering and damage user trust. Accommodation must be invisible: backend model selection, extended timeout, and fallback paths — not instructions directed at the user.</reason>
+      </antipattern>
+    </section>
+    <section name="Known Limitations and Constraints">
+      <p>Most major ASR engines have measurable bias: error rates 1.5-2x higher for non-white-male speakers (Stanford 2020 study still directionally true with 2025 models). LLM voice agents inherit the bias of underlying ASR + TTS; switching the LLM does not fix it. This bias is not a model-selection problem; it reflects deeper training data imbalance and platform differences.</p>
+      <p>"Accent calibration" prompts often feel othering ("please speak more clearly") — design must be invisible to the user. Accent accommodation happens via backend model selection, extended timeouts, and fallback paths, not through user-facing instructions. Speech variation (stutter, dysarthria, very fast/slow tempo) is rarely well-supported by off-the-shelf ASR; accommodation usually requires per-user tuning or custom acoustic models.</p>
+      <p>Visual alternatives are mandatory; deaf-blind users still need captions, and pure-voice flows exclude them. A screen-based visual transcript is not an accessibility "nice-to-have"; it is a core user experience feature for anyone in noisy environments or with hearing difficulty.</p>
+      <p>Tool calls that require exact spelling (names, addresses, credit card numbers) need spell-out fallback or visual confirmation, especially for non-native speakers. High ASR confidence does not guarantee correctness for accented speech; confidence scores are not equally calibrated across demographic groups.</p>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Test with real users, not just synthesized speech — clones flatten real prosody and underestimate failure.</item>
+        <item>Default to extended ASR timeouts (3-5s after end-of-speech) for users who pause; reduce only on confirmed fast-talker profile.</item>
+        <item>Keep grammar simple: short imperatives, no idioms, no contractions in critical instructions.</item>
+        <item>Provide always-on visual transcript on devices that have a screen — universal benefit, not "accessibility opt-in".</item>
+        <item>Confirm before acting on low-confidence ASR; never silently misroute.</item>
+      </list>
+    </section>
+    <section name="Tools and Services for Fairness Evaluation">
+      <p>Several commercial and open-source tools support WER evaluation and demographic testing. AssemblyAI and Deepgram offer REST APIs with fairness metrics and speaker diarization. Speechmatics is an industry leader on accent fairness and publishes transparency reports. OpenAI's Whisper API provides the best general accent support among major providers, though all models retain some bias. Mozilla Common Voice is a public, accent-tagged voice dataset suitable for supplementing proprietary test corpora.</p>
+      <list>
+        <item>whisper / whisper.cpp — Multi-lingual ASR baseline for evaluation</item>
+        <item>jiwer — Python library to compute WER and character error rate (CER)</item>
+        <item>Common Voice — Mozilla open accent-diverse corpus</item>
+        <item>pyttsx3 / edge-tts — TTS variation for synthetic test data</item>
+        <item>AssemblyAI, Deepgram, Speechmatics — SaaS ASR with fairness metrics published</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/vui_fairness.py" purpose="WER-by-demographic evaluator: reads CSV of utterances, groups by accent/age, prints disparity table"/>
+    </templates>
+    <see-also>
+      <link href="https://commonvoice.mozilla.org/">Mozilla Common Voice open dataset</link>
+      <link href="https://www.speechmatics.com/company/fairness">Speechmatics fairness report</link>
+      <link href="https://developer.apple.com/design/human-interface-guidelines/vui">Apple VUI Human Interface Guidelines</link>
+    </see-also>
+  </content>
+</methodology>
