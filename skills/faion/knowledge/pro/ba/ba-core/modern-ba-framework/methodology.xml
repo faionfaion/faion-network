@@ -4,7 +4,7 @@
     <tier>pro</tier>
     <group>ba</group>
     <domain>ba-core</domain>
-    <summary>Select one primary BA reference framework (BABOK v3, BA Standard 2025, IREB CPRE, PMI-PBA, BCS Diploma, SAFe BA, Agile Extension to BABOK v2, SWEBOK v4) for an engagement before producing any artifact. Score candidates on regulatory fit, team maturity, vocabulary overlap, tooling support, and agile friendliness. Persist the decision as ba-framework-decision.md with a vocabulary glossary.</summary>
+    <summary>Select one primary BA framework before producing artifacts. Score candidates on regulatory fit, team maturity, and agile friendliness. Persist decision as ba-framework-decision.md with glossary.</summary>
     <category>framework</category>
     <difficulty>intermediate</difficulty>
     <created>2026-04-28</created>
@@ -48,21 +48,26 @@
     </when-not-to-use>
 
     <section name="candidate-frameworks">
-      <rule>
-        <statement>Maintain awareness of eight candidate BA reference frameworks: BABOK v3 (IIBA, 2015), BA Standard 2025 (IIBA), IREB CPRE (Foundation + Advanced), PMI-PBA / Business Analysis for Practitioners, BCS Diploma in Business Analysis, SAFe Business Analyst, Agile Extension to BABOK v2 (IIBA), and SWEBOK v4 KA: Software Requirements (IEEE).</statement>
-        <rationale>Each framework has distinct strengths: BABOK is most comprehensive with 6 knowledge areas and dominates regulated/enterprise contexts; BA Standard 2025 modernizes BABOK with agile/hybrid/transformational org context; IREB CPRE is engineering-grade and strong in automotive (ASPICE), aerospace, medical; PMI-PBA bridges doc/waterfall with PMBOK alignment; BCS is practitioner-focused, common in UK public sector; SAFe maps BA competencies to SAFe roles for scaled agile; Agile Extension bridges BABOK KAs to Scrum/SAFe ceremonies; SWEBOK is engineering-centric for software-only programs.</rationale>
-      </rule>
-
       <list>
         <item>BABOK v3 (IIBA, 2015) — most comprehensive; 6 knowledge areas; dominant in regulated and enterprise contexts; ECBA/CCBA/CBAP certs</item>
         <item>BA Standard 2025 (IIBA) — modernizes BABOK v3 with agile, hybrid, and transformational org context; SFIA v9 integration; replaces some BABOK guidance</item>
         <item>IREB CPRE (Foundation + Advanced) — engineering-grade requirements; strong in automotive (ASPICE), aerospace, medical; CPRE-FL/AL certs</item>
-        <item>PMI-PBA / Business Analysis for Practitioners — bridging doc/waterfall; PMBOK-aligned; PMI-PBA cert</item>
+        <item>PMI-PBA / Business Analysis for Practitioners — bridging doc + waterfall; PMBOK-aligned; PMI-PBA cert</item>
         <item>BCS Diploma in Business Analysis — practitioner-focused; common in UK public sector; certificate ladder</item>
         <item>SAFe Business Analyst — maps BA competencies to SAFe roles; best for scaled agile (LeSS, PI planning); not audit-grade</item>
         <item>Agile Extension to BABOK v2 (IIBA) — bridge from BABOK KAs to Scrum/SAFe ceremonies; pairs with BABOK v3</item>
         <item>SWEBOK v4 KA: Software Requirements (IEEE) — engineering-centric; most useful for software-only programs; no certs</item>
       </list>
+    </section>
+
+    <section name="where-it-fails-limitations">
+      <p>Known limitations and failure modes when working with BA frameworks.</p>
+      <p><term name="vocabulary-churn">Vocabulary churn.</term> "BA Standard (2025)" partially supersedes parts of BABOK v3 (2015). The framework materials mix both eras; an agent quoting the file verbatim will conflate concepts. Always cross-check against current IIBA publications.</p>
+      <p><term name="no-selection-rubric">No selection rubric.</term> Framework materials enumerate frameworks but give no decision criteria for picking one. Agent must supply the rubric (regulation, contract, team maturity, delivery model) externally.</p>
+      <p><term name="certification-not-skill">Certification ≠ skill.</term> ECBA/CCBA/CBAP measure exam pass rate, not analyst quality with LLM tools, RAG, or evals. Treat the cert table as procurement signaling, not capability.</p>
+      <p><term name="tables-not-procedures">"Modern application" tables are descriptive.</term> No procedures, no acceptance tests, no inputs/outputs. Agents that treat them as instructions produce hand-wavy plans.</p>
+      <p><term name="iiba-centric">IIBA-centric.</term> Framework materials do not mention IREB CPRE-FL/AL, BCS, PMI-PBA, or SWEBOK at depth; an agent that defaults to BABOK in a non-IIBA shop creates friction.</p>
+      <p><term name="static-perspective-list">Static perspective list.</term> Five BABOK perspectives miss data-product, AI-product-ownership, platform-engineering — common in 2025-2026.</p>
     </section>
 
     <section name="selection-scoring-criteria">
@@ -82,21 +87,108 @@
       </rule>
     </section>
 
+    <section name="agentic-workflow-overview">
+      <p>Run a selector subagent that takes org context (industry, regulation, team size, delivery model, existing standards, contract obligations) and emits a ba-framework-decision.md: chosen primary framework, secondary/extension frameworks, rationale, vocabulary glossary, and a deviations log. This decision is upstream of the routing planner; selection picks the rulebook, then routing picks the plays. Persist the decision under .aidocs/&lt;feature&gt;/ba-framework-decision.md and require a human PO/BA sign-off; the file becomes the single source of truth that downstream methodologies (stakeholder-analysis, requirements-lifecycle, etc.) read for terminology.</p>
+
+      <p><term name="recommended-subagents">Recommended subagents:</term></p>
+      <list>
+        <item>faion-brainstorm — Diverge across candidate frameworks (BABOK v3, IREB CPRE, PMI-PBA, BCS, SAFe BA, Agile Extension) before converging on one. Forces the agent off its default-IIBA prior.</item>
+        <item>faion-feature-executor — After selection, executes the routing planner from sibling business-analyst/modern-ba-framework; the chosen framework's vocabulary is passed as context to every executor step.</item>
+        <item>faion-sdd-executor-agent — Wraps BA artifacts (requirements, validation, traceability) inside the SDD spec.md / design.md / test-plan.md lifecycle so the framework choice survives into delivery.</item>
+        <item>faion-improver — Periodic audit: compares produced artifacts vs. chosen framework's required deliverables; flags drift (e.g. team chose IREB but produces only loose stories with no glossary).</item>
+        <item>General Task subagent — One per candidate framework, summarizes that framework's mandatory artifacts and audit hooks; outputs feed the selector's converge step.</item>
+        <item>Routing per task: framework-comparison tables → haiku, decision rationale prose → sonnet, regulatory mapping (GxP/ASPICE/BCBS) → opus.</item>
+      </list>
+    </section>
+
+    <section name="prompt-pattern-selector">
+      <p>Selector pass with explicit scoring and no default to BABOK:</p>
+      <code lang="text"><![CDATA[
+Inputs: industry, regulation_set[], team_size, delivery_model, contract_clauses[],
+        existing_standards[], stakeholder_count, audit_required (bool).
+Candidates: BABOK_v3, BA_Standard_2025, IREB_CPRE, PMI_PBA, BCS_Diploma,
+            SAFe_BA, Agile_Extension_BABOK_v2, SWEBOK_v4_KA_Requirements.
+Score each on: regulatory_fit, team_maturity_fit, vocab_overlap_with_existing,
+              tooling_support, certification_availability, agile_friendliness.
+Pick ONE primary + up to 2 extensions. Produce vocabulary glossary
+(BA term -> chosen-framework term -> sibling-methodology slug).
+Emit ba-framework-decision.md. Halt for human sign-off.
+]]></code>
+
+      <p>Audit pass (after delivery):</p>
+      <code lang="text"><![CDATA[
+Inputs: ba-framework-decision.md, list of produced artifacts in .aidocs/<feature>/.
+For each mandatory deliverable in chosen framework, check presence + quality.
+Emit framework-conformance.md with PASS/FAIL per artifact and remediation.
+]]></code>
+    </section>
+
     <section name="framework-table-limitations">
       <antipattern>
         <description>Treating the "Modern Application" tables as procedures.</description>
         <reason>The tables are descriptive (e.g., "AI/ML literacy" under Analytical Thinking); they have no inputs, outputs, or acceptance tests. Agents that treat them as instructions produce hand-wavy plans.</reason>
       </antipattern>
-
       <antipattern>
         <description>Using certification tier (ECBA, CCBA, CBAP) as a capability proxy.</description>
         <reason>Certs measure exam pass rate, not analyst quality with LLM tools, RAG, or evals; treat the cert ladder as procurement signaling, not skill assurance.</reason>
       </antipattern>
-
       <antipattern>
         <description>Applying SAFe BA framework in regulated industries (pharma, automotive, aerospace).</description>
         <reason>SAFe BA is not audit-grade; ASPICE, IEC 62304, DO-178C auditors require IREB or BABOK-aligned artifact vocabulary.</reason>
       </antipattern>
+    </section>
+
+    <section name="ai-agent-gotchas-framework-selection">
+      <p>LLM failure modes specific to framework selection and how to prevent them.</p>
+      <antipattern>
+        <description>LLMs default to BABOK because it is the most-tokenized BA reference in training data.</description>
+        <reason>Force structured candidate scoring or you'll never see IREB / PMI-PBA / BCS picked. Without explicit scoring on all 8 frameworks, BABOK wins by default regardless of context fit.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Models confabulate clause numbers, KA boundaries, and IIBA version dates.</description>
+        <reason>Pin a fact-source file (cached BABOK ToC + BA Standard ToC + IREB CPRE syllabi) and require citations. Reject any structural claim not present in the cached files.</reason>
+      </antipattern>
+      <antipattern>
+        <description>"BA Standard (2025)" wording will go stale; agent must check current IIBA publication titles before quoting versions to humans.</description>
+        <reason>Update publication title checks when standards are released. Agents that quote outdated version numbers lose credibility in procurement.</reason>
+      </antipattern>
+      <antipattern>
+        <description>The Agent Selection table is advisory. Cost regressions appear when the planner downgrades opus → sonnet for "gap analysis" or regulatory mapping.</description>
+        <reason>Lock the model per task in the decision JSON. Do not let cost optimizations degrade output on critical signals like regulatory mapping.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Human-in-the-loop checkpoint is skipped; auto-execution bypasses the only place a real PO/BA can correct framework bias.</description>
+        <reason>The mandatory checkpoint between selection and routing is where humans correct the default-BABOK pull. Never auto-execute through this gate.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Vocabulary glossary is sensitive: in M&amp;A or vendor contexts it can leak commercial terms.</description>
+        <reason>Run password-scrubber-agent and tag the doc as confidential before persisting outside private repos.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent edits the README's tables; it tends to "modernize" them every run, churning git history.</description>
+        <reason>Confine edits to agent-integration.md and .aidocs/&lt;feature&gt;/. Pin the README tables as read-only.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Certification recommendations leak vendor bias (IIBA-only).</description>
+        <reason>Cross-reference IREB, PMI-PBA, BCS, and Scrum.org product-owner tracks before presenting to the user. Single-vendor lists mislead procurement.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Agent quotes CMMI-DEV process areas as "framework" peers without flagging that CMMI is a maturity model, not a BA reference.</description>
+        <reason>Mixing maturity models and BA references confuses procurement. Keep them in separate decision tracks.</reason>
+      </antipattern>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Pick one primary framework, list extensions explicitly. Two co-equal primaries always cause vocabulary thrash and audit ambiguity.</item>
+        <item>Build a vocabulary glossary mapping the chosen framework's terms to the org's existing terms before any artifact is produced; persist as glossary.md next to the decision file.</item>
+        <item>In regulated settings, score regulatory_fit first and let it veto agile-friendly frameworks. SAFe BA is a poor fit for ASPICE / BCBS 239 audits.</item>
+        <item>Cache PDFs of BABOK v3, BA Standard 2025, IREB CPRE-FL/AL, PMI-PBA into a read-only fact-source; force the agent to cite from the cache, not from training data.</item>
+        <item>Treat the IIBA cert ladder (ECBA → CCBA → CBAP, plus AAC/CBDA/CPOA) as procurement signaling — it satisfies RFP scorecards but does not predict LLM-era BA performance.</item>
+        <item>Record deviations from the chosen framework in a deviations[] log with rationale; never silently drop a mandatory artifact.</item>
+        <item>Re-run the selector when one of these changes: regulation set, contract, primary delivery model (waterfall ↔ agile ↔ hybrid), or M&amp;A integration. Otherwise the decision survives across sprints.</item>
+        <item>Pair this decision with the routing planner from sibling business-analyst/modern-ba-framework. Selection without routing produces a vocabulary doc nobody uses.</item>
+      </list>
     </section>
 
     <section name="vocabulary-glossary-requirement">
@@ -180,6 +272,40 @@ Emit framework-conformance.md with PASS/FAIL per artifact and remediation.
         <item>Between selection and routing — human BA or PO corrects framework bias before any artifact is produced</item>
         <item>At vocabulary glossary sign-off — confirms terms align with org language before downstream artifacts use them</item>
         <item>Re-run trigger: regulation set change, contract change, primary delivery model change, or M&amp;A integration</item>
+      </list>
+    </section>
+
+    <section name="cli-tools-and-services">
+      <p><term name="cli-tools">CLI tools for framework selection and conformance audit:</term></p>
+      <list>
+        <item>IIBA member portal — Authoritative BABOK v3 + BA Standard 2025 PDFs; https://www.iiba.org/standards-and-resources/babok/</item>
+        <item>IREB downloads — CPRE Foundation/Advanced syllabi (free PDFs); https://www.ireb.org/en/downloads</item>
+        <item>PMI Standards — Business Analysis for Practitioners (PMI-PBA reference); https://www.pmi.org/standards</item>
+        <item>BCS specifications — BCS Diploma in BA syllabi; https://www.bcs.org/qualifications-and-certifications/certifications-for-business/business-analysis/</item>
+        <item>SWEBOK v4 — KA: Software Requirements (IEEE); https://www.computer.org/education/bodies-of-knowledge/software-engineering</item>
+        <item>gh + gh project — Pull GitHub Issues/Projects to feed selector with current artifact inventory; https://cli.github.com</item>
+        <item>jira-cli / acli — Same for Jira / Jira Align portfolios; https://github.com/ankitpokhrel/jira-cli</item>
+        <item>pandoc — Render ba-framework-decision.md to DOCX/PDF for procurement/audit; apt install pandoc</item>
+        <item>mermaid-cli (mmdc) — Diagram framework coverage matrix; npm i -g @mermaid-js/mermaid-cli</item>
+        <item>yq / jq — Validate the decision JSON (if you also emit machine form); apt install yq jq</item>
+        <item>pre-commit — Reject .aidocs/&lt;feature&gt;/ commits missing ba-framework-decision.md; https://pre-commit.com</item>
+        <item>glow / mdcat — Terminal render decision doc for human review; https://github.com/charmbracelet/glow</item>
+      </list>
+
+      <p><term name="services-and-apps">Services and platforms:</term></p>
+      <list>
+        <item>IIBA KnowledgeHub — SaaS (paid); No public API; Cache PDFs locally; agent reads from cache to avoid hallucinating clause numbers.</item>
+        <item>IREB exam portal — SaaS; No API; Download CPRE syllabi PDFs; treat as ground truth for IREB vocabulary.</item>
+        <item>Jira / Jira Align — SaaS; Yes (REST + acli); Inventory existing artifacts as selector input; tag stories with chosen framework's term.</item>
+        <item>Linear — SaaS; Yes (GraphQL); Lighter-weight backlog source for solopreneur / small-team selection runs.</item>
+        <item>Azure DevOps — SaaS; Yes (az boards); Common in BCBS/ASPICE shops; query existing work-item types to detect implicit framework.</item>
+        <item>Confluence / Notion — SaaS; Yes (REST); Persist ba-framework-decision.md and glossary as canonical org doc.</item>
+        <item>Polarion / Jama Connect — SaaS; Yes (REST); Regulated-industry RM tools; presence implies IREB/ASPICE-style framework already in play.</item>
+        <item>DOORS Next — SaaS; Yes (OSLC); Banking/aerospace; same signal as Polarion.</item>
+        <item>Camunda / Signavio — SaaS/OSS; Yes (REST + BPMN); If org runs BPM heavily, BABOK BPM perspective + BPMN tooling is a strong selection signal.</item>
+        <item>LinkedIn Learning / Coursera — SaaS; Limited API; Map cert gap → curriculum once framework is chosen.</item>
+        <item>GitHub Projects v2 — SaaS; Yes (GraphQL); Lightweight inventory for small teams; agent infers de-facto framework from issue templates.</item>
+        <item>n8n / Airflow — OSS; Yes; Schedule audit pass on sprint cadence; alerts when conformance drops.</item>
       </list>
     </section>
 
