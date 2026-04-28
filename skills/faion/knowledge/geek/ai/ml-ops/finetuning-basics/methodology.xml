@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="finetuning-basics">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Fine-tuning techniques (LoRA, QLoRA, DoRA, full fine-tuning) and frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL). Covers selection by GPU budget, alignment (SFT, DPO, ORPO), and model merging.</summary>
+    <tags>
+      <tag>fine-tuning</tag>
+      <tag>llm</tag>
+      <tag>lora</tag>
+      <tag>qlora</tag>
+      <tag>frameworks</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Fine-tuning Basics — Techniques and Frameworks</title>
+    <summary>Comprehensive reference for open-model fine-tuning techniques (LoRA, QLoRA, DoRA, full fine-tuning) and training frameworks (LLaMA-Factory, Unsloth, Axolotl, TRL). Covers technique selection by GPU memory budget, alignment methods (SFT, DPO, ORPO), model merging strategies, and the agent-appropriate division of labor between data preparation (automatable) and GPU training (dispatched externally).</summary>
+    <why>
+      <p>Choosing the wrong technique wastes GPU budget: full fine-tuning on a 7B model requires 80GB+ VRAM while QLoRA achieves comparable results with 6-8GB. Framework selection determines training speed, configurability, and export options. LoRA rank and target module selection are the two highest-impact decisions and must be made before starting any training run.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Need a model to consistently follow a domain-specific format or writing style that prompting cannot enforce</item>
+        <item>Building a product where inference latency matters and a smaller fine-tuned model can replace a larger prompted one</item>
+        <item>Alignment work: converting DPO/ORPO preference data into a tuned model for controlled output behavior</item>
+        <item>Repeated task patterns (extraction, classification, rewriting) where a small fine-tuned model beats few-shot on cost</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Adding new factual knowledge — fine-tuning memorizes patterns, not facts; use RAG instead</item>
+        <item>Fewer than 100 high-quality examples — insufficient signal; use few-shot prompting</item>
+        <item>One-off tasks — fine-tuning overhead (data prep, training, eval, hosting) is not justified</item>
+        <item>Rapidly changing requirements — every dataset update requires a full retrain cycle</item>
+        <item>ORPO/DPO without collected chosen/rejected pairs — obtaining rejection data from production is non-trivial</item>
+      </list>
+    </when-not-to-use>
+    <section name="Technique Decision Matrix">
+      <rule>
+        <statement>Select technique by available VRAM: &lt;12GB → QLoRA; 16-24GB → LoRA; 80GB+ → full fine-tuning; no GPU → OpenAI API fine-tuning.</statement>
+        <rationale>Wrong technique selection causes OOM at training start. QLoRA reduces a 7B model's VRAM requirement from 28GB to 6-8GB with minimal quality loss.</rationale>
+      </rule>
+      <list>
+        <item>Full fine-tuning: 80GB+ VRAM, best quality, highest cost, risk of catastrophic forgetting</item>
+        <item>LoRA: 16-24GB VRAM, good quality, fast iteration, adapter-based — preserves base capabilities</item>
+        <item>QLoRA: 8-12GB VRAM, good quality, 4-bit base model + fp16 adapters, best for consumer GPUs</item>
+        <item>DoRA: 16-24GB VRAM, better than LoRA on style tasks, decomposes magnitude and direction separately</item>
+        <item>OpenAI API: no GPU needed, good quality, fast, no infra — see fine-tuning-openai-basics methodology</item>
+      </list>
+    </section>
+    <section name="LoRA Rank Selection">
+      <rule>
+        <statement>Start with rank 16 for most tasks; increase to 32-64 only if validation loss plateaus and you have more than 5k examples.</statement>
+        <rationale>Higher rank means more trainable parameters and slower training. Rank 16 provides sufficient capacity for the majority of format/style adaptation tasks.</rationale>
+      </rule>
+      <list>
+        <item>rank 8: minimal memory, simple tasks (classification, extraction), prototyping</item>
+        <item>rank 16: general fine-tuning, instruction following — default choice</item>
+        <item>rank 32: complex tasks requiring nuanced adaptation</item>
+        <item>rank 64+: rarely needed; diminishing returns above rank 32 for most tasks</item>
+      </list>
+    </section>
+    <section name="Target Modules by Model Family">
+      <rule>
+        <statement>Always include at minimum q_proj and v_proj; add k_proj, o_proj, and MLP layers (gate_proj, up_proj, down_proj) for complex tasks.</statement>
+        <rationale>q_proj and v_proj are the most impactful attention components for style adaptation. MLP layers matter for knowledge-intensive tasks.</rationale>
+      </rule>
+      <list>
+        <item>LLaMA/Mistral: q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj</item>
+        <item>Qwen: c_attn, c_proj</item>
+        <item>Phi: q_proj, k_proj, v_proj, dense</item>
+        <item>GPT-NeoX: query_key_value, dense</item>
+      </list>
+      <rule>
+        <statement>Verify trainable parameter count immediately after applying LoRA — if it is 0, stop and fix target_modules before starting training.</statement>
+        <rationale>Wrong module names cause 0 trainable parameters; training proceeds silently for hours producing a model identical to the base.</rationale>
+      </rule>
+    </section>
+    <section name="Framework Selection">
+      <rule>
+        <statement>Use Unsloth for speed and memory efficiency on a single GPU; use Axolotl for complex multi-GPU scenarios with YAML-driven configuration; use TRL directly for DPO/ORPO alignment.</statement>
+        <rationale>Unsloth's custom CUDA kernels provide 2x speed and 80% less VRAM than vanilla HF training. Axolotl's YAML config enables reproducible multi-GPU runs. TRL owns the alignment trainer implementations.</rationale>
+      </rule>
+      <list>
+        <item>Unsloth: 2x faster, 80% less VRAM, GGUF export, consumer GPU first — best for quick experiments</item>
+        <item>LLaMA-Factory: WebUI available, 100+ model families, all training methods — best for no-code iteration</item>
+        <item>Axolotl: YAML config, sample packing, Flash Attention, DeepSpeed — best for reproducible production runs</item>
+        <item>TRL: SFTTrainer, DPOTrainer, ORPOTrainer — use when alignment method is the primary concern</item>
+      </list>
+    </section>
+    <section name="Key Commands">
+      <example type="good">
+        <code lang="bash"><![CDATA[# LLaMA-Factory: LoRA fine-tuning
+llamafactory-cli train \
+    --stage sft --model_name_or_path meta-llama/Llama-3.1-8B \
+    --finetuning_type lora --lora_rank 16 \
+    --lora_target q_proj,v_proj --output_dir output/llama3-lora \
+    --per_device_train_batch_size 2 --gradient_accumulation_steps 4 \
+    --learning_rate 5e-5 --num_train_epochs 3 --fp16
+
+# LLaMA-Factory: merge LoRA adapter
+llamafactory-cli export \
+    --model_name_or_path meta-llama/Llama-3.1-8B \
+    --adapter_name_or_path output/llama3-lora \
+    --finetuning_type lora --export_dir merged_model
+
+# Axolotl: single GPU training
+accelerate launch -m axolotl.cli.train config.yaml
+
+# Axolotl: multi-GPU with DeepSpeed
+accelerate launch --config_file deepspeed.yaml -m axolotl.cli.train config.yaml]]></code>
+        <note>Always merge adapters before deploying to vLLM or TGI.</note>
+      </example>
+    </section>
+    <section name="Framework Fragility Warning">
+      <rule>
+        <statement>Pin dependency versions for Unsloth, Axolotl, and LLaMA-Factory — they update frequently and new model releases can break compatibility on unpinned installs.</statement>
+        <rationale>Framework updates often break existing configs or require new model-specific parameters; unpinned installs break silently on `pip install --upgrade`.</rationale>
+      </rule>
+    </section>
+    <section name="Alignment Method Selection">
+      <rule>
+        <statement>Start with SFT; use DPO or ORPO only when you have chosen/rejected preference pairs and need to align for human preference beyond instruction following.</statement>
+        <rationale>SFT requires only demonstration data (easier to collect). DPO/ORPO require paired preference data — collecting rejection examples from production is non-trivial.</rationale>
+      </rule>
+      <list>
+        <item>SFT (Supervised Fine-tuning): instruction + response pairs, simplest, most common baseline</item>
+        <item>DPO (Direct Preference Optimization): chosen/rejected pairs, no reward model needed, beta=0.1 KL penalty</item>
+        <item>ORPO (Odds Ratio Preference Optimization): 2024 method, even simpler than DPO, no reference model needed</item>
+        <item>RLHF: reward model + PPO training — complex, use only for safety-critical alignment</item>
+      </list>
+      <rule>
+        <statement>For DPO training, provide the exact same base model as the reference model — using a different model invalidates the KL divergence calculation.</statement>
+        <rationale>DPO measures distance from the reference model's distribution; a mismatched reference produces nonsensical KL penalties and unstable training.</rationale>
+      </rule>
+    </section>
+    <section name="DPO and ORPO Code">
+      <example type="good">
+        <code lang="python"><![CDATA[from trl import DPOTrainer, DPOConfig
+
+# Dataset format: {"prompt": "...", "chosen": "preferred", "rejected": "worse"}
+dpo_config = DPOConfig(
+    beta=0.1,  # KL penalty strength
+    learning_rate=5e-7,
+    per_device_train_batch_size=4,
+    gradient_accumulation_steps=4,
+    num_train_epochs=1,
+)
+trainer = DPOTrainer(
+    model=model, ref_model=ref_model,
+    args=dpo_config, train_dataset=dataset, tokenizer=tokenizer,
+)
+trainer.train()]]></code>
+        <note>ref_model must be the same base model as model before any LoRA is applied.</note>
+      </example>
+    </section>
+    <section name="Model Merging with mergekit">
+      <rule>
+        <statement>Merge LoRA adapter into base model weights before deploying to vLLM or TGI using model.merge_and_unload() — PEFT adapters are not natively supported by all inference servers.</statement>
+        <rationale>vLLM and older TGI versions require a standard HF model, not a PEFT-wrapped model. Merge has zero quality loss and removes adapter overhead at inference.</rationale>
+      </rule>
+      <example type="good">
+        <code lang="python"><![CDATA[from peft import PeftModel
+from transformers import AutoModelForCausalLM
+
+base = AutoModelForCausalLM.from_pretrained(
+    "meta-llama/Llama-3.1-8B", torch_dtype=torch.float16, device_map="auto"
+)
+model = PeftModel.from_pretrained(base, "path/to/lora")
+merged = model.merge_and_unload()
+merged.save_pretrained("merged_model")]]></code>
+        <note>merge_and_unload() produces a standard HF model with no PEFT dependency.</note>
+      </example>
+    </section>
+    <section name="Agentic Workflow">
+      <p>Claude subagents are effective for data preparation and experiment configuration, not for running training loops (those are long-running GPU jobs). An agent can generate training examples from a seed dataset, format them into the correct JSONL schema, validate format compliance, and produce an Axolotl or LLaMA-Factory config. The actual training job runs outside the agent via CLI; the agent can poll job status via the Weights &amp; Biases API or cloud provider API and summarize results.</p>
+      <p>Recommended subagents:</p>
+      <list>
+        <item>faion-sdd-execution — generate and validate training dataset from existing examples or documents</item>
+        <item>Custom eval agent — after training completes, run lm-eval on benchmarks and compare to baseline</item>
+      </list>
+      <p>Prompt pattern:</p>
+      <example type="good">
+        <code lang="text"><![CDATA[Convert the following support ticket Q&A pairs into OpenAI fine-tuning JSONL format.
+System prompt: "You are a customer support agent for {product}."
+Output one JSON object per line. Include only pairs where the answer is complete and accurate.
+Input: {raw_pairs}]]></code>
+      </example>
+      <example type="good">
+        <code lang="text"><![CDATA[Given this LLaMA-Factory training config template, fill in the correct values for:
+base_model={model}, dataset_path={path}, lora_rank={rank}, output_dir={dir}.
+Return only the completed YAML, no explanation.]]></code>
+      </example>
+    </section>
+    <section name="Limitations and Failure Modes">
+      <list>
+        <item>Catastrophic forgetting: full fine-tuning and high LoRA ranks degrade general capabilities on tasks not in the training set</item>
+        <item>Data leakage: PII or proprietary content in training data persists in model weights indefinitely</item>
+        <item>Evaluation gap: training loss decreasing does not guarantee downstream task improvement — requires task-specific eval</item>
+        <item>Framework fragility: Unsloth, Axolotl, LLaMA-Factory update frequently; pinned dependency versions break on new model releases</item>
+        <item>ORPO/DPO requires chosen/rejected pairs — collecting rejection data from production is non-trivial for agents</item>
+      </list>
+      <p>AI-agent gotchas:</p>
+      <list>
+        <item>Training jobs run for hours — agents cannot poll synchronously; use async job dispatch + webhook or file-based completion signal</item>
+        <item>Dataset generation by LLM produces systematically biased examples (same phrasing, same edge-case coverage gaps) — mix with human-curated data</item>
+        <item>Merging LoRA adapters before serving is mandatory for vLLM/TGI — PEFT adapters are not natively supported by all inference servers</item>
+        <item>ORPO/DPO training requires the base model as reference; if the agent selects a wrong reference model, KL divergence calculation is invalid</item>
+        <item>Model registry versioning is a human checkpoint: the agent should tag and store each fine-tuned model but not auto-deploy without review</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Start with LoRA rank 8-16; only increase if validation loss plateaus and you have &gt;5k examples</item>
+        <item>Use DoRA over LoRA for tasks requiring nuanced style adaptation (it decomposes magnitude and direction separately)</item>
+        <item>Always hold out 10% for validation and monitor validation loss independently — training loss alone is misleading</item>
+        <item>Target all attention projections (q, k, v, o) plus MLP layers (gate, up, down) for complex tasks; q+v only for simple ones</item>
+        <item>Use `bfloat16` over `float16` on A100/H100 — avoids NaN loss without quality loss</item>
+        <item>Set `train_on_inputs: false` in Axolotl to avoid the model learning to repeat instructions</item>
+        <item>Export to GGUF q4_k_m for local serving via Ollama; q8_0 for quality-critical deployments</item>
+      </list>
+    </section>
+    <section name="CLI Tools">
+      <list>
+        <item>llamafactory-cli: Train, export, chat with LLMs via CLI or WebUI. Install: pip install llamafactory · github.com/hiyouga/LLaMA-Factory</item>
+        <item>accelerate: Multi-GPU/CPU training launcher for HF Trainer. Install: pip install accelerate · huggingface.co/docs/accelerate</item>
+        <item>axolotl: YAML-configured fine-tuning for complex scenarios. Install: pip install axolotl · github.com/OpenAccess-AI-Collective/axolotl</item>
+        <item>unsloth: 2x faster LoRA training with 80% less VRAM. Install: pip install unsloth · github.com/unslothai/unsloth</item>
+        <item>mergekit: Merge multiple fine-tuned models (SLERP, TIES, DARE). Install: pip install mergekit · github.com/arcee-ai/mergekit</item>
+        <item>lm-eval: Benchmark fine-tuned models on standard tasks. Install: pip install lm-eval · github.com/EleutherAI/lm-evaluation-harness</item>
+        <item>wandb: Experiment tracking, loss curves, artifact storage. Install: pip install wandb · wandb.ai</item>
+      </list>
+    </section>
+    <section name="Services &amp; Apps">
+      <list>
+        <item>Hugging Face Hub (SaaS/OSS): Model hosting, dataset storage, AutoTrain for no-code fine-tuning. Agent-friendly via Python SDK.</item>
+        <item>Weights &amp; Biases (SaaS): Training metrics, model registry, sweep orchestration. Agent-friendly via REST API.</item>
+        <item>RunPod (SaaS): On-demand GPU rental; no managed training but full control. Partial agent support via API for pod launch.</item>
+        <item>Lambda Labs (SaaS): GPU cloud; cheaper than AWS for long runs. Partial agent support.</item>
+        <item>Modal (SaaS): Serverless GPU; good for short training jobs triggered by agents. Agent-friendly via Python SDK.</item>
+        <item>Vast.ai (SaaS): Cheapest GPUs via auction; reliability varies. Partial agent support via REST API.</item>
+        <item>Google Colab (SaaS): Suitable for prototyping; not agent-drivable (browser-only).</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/axolotl-config.yaml" purpose="Axolotl YAML config for LoRA fine-tuning of a 7B LLaMA-family model"/>
+      <template path="templates/validate-jsonl.py" purpose="JSONL format validator for any training API"/>
+    </templates>
+    <see-also>
+      <link href="https://arxiv.org/abs/2106.09685">LoRA paper</link>
+      <link href="https://arxiv.org/abs/2305.14314">QLoRA paper</link>
+      <link href="https://arxiv.org/abs/2403.07691">ORPO paper</link>
+      <link href="https://huggingface.co/docs/peft">Hugging Face PEFT docs</link>
+      <link href="https://huggingface.co/docs/trl">Hugging Face TRL docs</link>
+      <link href="https://github.com/hiyouga/LLaMA-Factory">LLaMA-Factory GitHub</link>
+      <link href="https://github.com/unslothai/unsloth">Unsloth GitHub</link>
+      <link href="https://github.com/OpenAccess-AI-Collective/axolotl">Axolotl GitHub</link>
+      <link href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI fine-tuning docs</link>
+    </see-also>
+  </content>
+</methodology>
