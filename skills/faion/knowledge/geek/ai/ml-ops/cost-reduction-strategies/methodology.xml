@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="cost-reduction-strategies">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-ops</domain>
+    <summary>Production LLM cost optimization: response caching, prompt compression, async batching, model routing. Cut costs 50-80% without quality loss.</summary>
+    <tags>
+      <tag>cost-optimization</tag>
+      <tag>llm-cost</tag>
+      <tag>prompt-caching</tag>
+      <tag>model-routing</tag>
+      <tag>batching</tag>
+    </tags>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Cost Reduction Strategies</title>
+    <summary>Production LLM cost optimization through four orthogonal techniques: response caching (SHA-256 content hash key, Redis or in-memory TTL), prompt compression (whitespace normalization, redundant phrase removal), async batching, and model routing (default cheap model with fallback). The `CostOptimizedLLM` class composes all four into a single production-ready service layer.</summary>
+    <why>
+      <p>LLM API cost scales linearly with request volume. At &gt;1000 calls/day the bill becomes significant, and most workloads have substantial caching potential (deterministic outputs at temperature=0). Combining caching, compression, and routing can cut costs 50-80% without degrading output quality for the right task types.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Production LLM apps with high request volume (&gt;1000 calls/day) where API costs are significant</item>
+        <item>Budget-constrained projects that need to scale without proportional cost increase</item>
+        <item>Multi-tenant SaaS where per-request costs must be predictable</item>
+        <item>Pipelines running batch classification, extraction, or summarization at scale</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Low-volume prototypes — premature optimization adds complexity with no payoff</item>
+        <item>Tasks requiring temperature &gt; 0 (non-deterministic outputs) — caching is ineffective</item>
+        <item>Latency-critical real-time systems where cache lookup adds unacceptable overhead</item>
+        <item>Workflows where output freshness is mandatory (live data, personalized responses)</item>
+      </list>
+    </when-not-to-use>
+    <section name="Response Caching for LLM Cost Reduction">
+      <rule>
+        <statement>Cache only deterministic outputs: set temperature=0 as a precondition before writing to cache; never cache outputs from temperature &gt; 0.</statement>
+        <rationale>Non-deterministic outputs at temperature &gt; 0 produce different correct answers for the same input; caching them returns stale stochastic results.</rationale>
+      </rule>
+      <rule>
+        <statement>Use SHA-256 of (model + messages + relevant kwargs) as the cache key, not the raw prompt string.</statement>
+        <rationale>Including model in the key prevents cross-model cache hits. Including max_tokens prevents returning truncated cached responses for requests with higher limits.</rationale>
+      </rule>
+      <example type="good" title="Cache key construction with SHA-256">
+        <code lang="python"><![CDATA[def _make_key(self, model: str, messages: list, **kwargs) -> str:
+    key_data = {
+        "model": model,
+        "messages": messages,
+        "temperature": kwargs.get("temperature", 1.0),
+        "max_tokens": kwargs.get("max_tokens"),
+    }
+    return hashlib.sha256(
+        json.dumps(key_data, sort_keys=True).encode()
+    ).hexdigest()]]></code>
+        <note>sort_keys=True ensures dict ordering does not affect the hash.</note>
+      </example>
+      <rule>
+        <statement>Set TTL relative to content volatility: static documentation → 7 days; user queries → 1-4 hours; real-time data summaries → do not cache.</statement>
+        <rationale>A 7-day TTL on a prompt that references live prices serves stale data. A 1-hour TTL on FAQ answers misses most of the cache savings opportunity.</rationale>
+      </rule>
+      <rule>
+        <statement>Invalidate cache entries when the model version changes — Redis TTL alone does not handle this; add model version to the cache key or flush on version deploy.</statement>
+        <rationale>Responses cached under model vX may be stylistically or factually different from vX+1; serving old responses after a model update degrades quality silently.</rationale>
+      </rule>
+      <rule>
+        <statement>Track cache hit rate per endpoint; if hit rate is below 20%, the cache key is too specific or TTL is too short.</statement>
+        <rationale>Below 20% hit rate the cache adds latency overhead without meaningful cost savings; diagnose key specificity or TTL before scaling.</rationale>
+      </rule>
+      <antipattern>
+        <description>Caching inside an agentic loop using session-scoped keys.</description>
+        <reason>Agents in a loop must observe state changes between turns; session-scoped cache keys return stale tool-call results and cause the agent to act on outdated information.</reason>
+      </antipattern>
+    </section>
+    <section name="Prompt Optimization for Token Reduction">
+      <rule>
+        <statement>Compress only user-facing inputs and system prompts; never compress few-shot examples, agent scratchpad, or chain-of-thought steps.</statement>
+        <rationale>Few-shot examples depend on precise phrasing and spacing to demonstrate the target format. Compressing them produces a model that learns from corrupted demonstrations. CoT compression breaks reasoning chains.</rationale>
+      </rule>
+      <rule>
+        <statement>Run compression on the system prompt first, where savings are largest — a 500-token system prompt that compresses to 350 saves 150 tokens on every request.</statement>
+        <rationale>System prompt tokens are paid on every call; user message tokens are paid once per turn. System prompt optimization has higher ROI.</rationale>
+      </rule>
+      <antipattern>
+        <description>Aggressive compression that strips semantic information from instructions (e.g., removing examples or detail from JSON schemas).</description>
+        <reason>Losing constraint details produces outputs that do not match the required format; quality loss outweighs token savings.</reason>
+      </antipattern>
+      <rule>
+        <statement>Count tokens with tiktoken before sending any expensive call; fall back to a cheaper model if the prompt exceeds a budget threshold.</statement>
+        <rationale>Token count determines cost and latency; routing before the call is cheaper than paying for an oversized request and then retrying with a smaller model.</rationale>
+      </rule>
+      <example type="good" title="Token budget check before routing">
+        <code lang="python"><![CDATA[import tiktoken
+
+def is_within_budget(text: str, model: str = "gpt-4o", max_tokens: int = 4000) -> bool:
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text)) <= max_tokens
+
+# Route by token budget before calling
+model = "gpt-4o" if is_within_budget(prompt, max_tokens=2000) else "gpt-4o-mini"]]></code>
+        <note>Rule-based routing — no LLM call needed for the routing decision itself.</note>
+      </example>
+      <rule>
+        <statement>Use Anthropic prompt caching (cache_control) for system prompts exceeding 1024 tokens — the 90% read discount is immediate with no code changes beyond adding the header.</statement>
+        <rationale>Anthropic caches up to 4 system prompt breakpoints; repeated calls reuse the cached prefix at 90% cost reduction, making this the highest-ROI optimization for Claude-based apps.</rationale>
+      </rule>
+    </section>
+    <section name="Model Routing and Async Batching">
+      <rule>
+        <statement>Use rule-based routing (token count thresholds, task type keyword matching) — never use an LLM call to decide which model to call.</statement>
+        <rationale>Routing via another LLM call is circular (costs money, adds latency) and creates a dependency that can fail. Rule-based routing is deterministic, free, and instant.</rationale>
+      </rule>
+      <rule>
+        <statement>After implementing model routing, evaluate quality on a held-out test set — model downgrade silently degrades quality without A/B evaluation.</statement>
+        <rationale>Routing to a cheaper model saves cost only if quality is acceptable; routing without evaluation trades hidden quality loss for visible cost savings.</rationale>
+      </rule>
+      <antipattern>
+        <description>Using an LLM to classify prompt complexity and select the routing model.</description>
+        <reason>The routing call itself costs money and adds 200-500ms latency; for tasks shorter than 500 tokens the routing overhead exceeds the savings.</reason>
+      </antipattern>
+      <rule>
+        <statement>Use AsyncOpenAI with asyncio.gather to parallelize multiple independent prompts; never call completions.create sequentially in a for loop for batch work.</statement>
+        <rationale>Sequential calls at 1s latency each make batch pipelines 10-100x slower than necessary; async gather reduces wall-clock time to the latency of a single call.</rationale>
+      </rule>
+      <example type="good" title="Async batching with parallelization">
+        <code lang="python"><![CDATA[import asyncio
+from openai import AsyncOpenAI
+
+async def batch_complete(prompts: list, model: str = "gpt-4o-mini") -> list:
+    client = AsyncOpenAI()
+    tasks = [
+        client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": p}],
+        )
+        for p in prompts
+    ]
+    responses = await asyncio.gather(*tasks, return_exceptions=True)
+    return [
+        r.choices[0].message.content if not isinstance(r, Exception) else f"Error: {r}"
+        for r in responses
+    ]]]></code>
+        <note>return_exceptions=True prevents one API error from aborting the entire batch.</note>
+      </example>
+      <rule>
+        <statement>Use OpenAI Batch API for any pipeline that tolerates 24-hour latency (nightly reports, bulk classification, offline annotation) — it provides a 50% cost discount.</statement>
+        <rationale>Batch API queues requests for async processing; the 50% discount is OpenAI's standard pricing for offline workloads that do not require real-time response.</rationale>
+      </rule>
+    </section>
+    <section name="Best Practices and Agentic Gotchas">
+      <p>Best practices: Cache only at temperature=0; use content hash (SHA-256 of model + messages + kwargs) as key. Set TTL relative to content volatility: static docs → 7 days; user queries → 1-4 hours. Use Anthropic prompt caching for system prompts &gt;1024 tokens — the 90% read discount is immediate. Apply OpenAI Batch API for any pipeline that tolerates 24h latency (nightly reports, bulk classification). Route by task complexity: pattern-match keywords to select cheap/expensive model, then evaluate quality on a held-out set. Track cache hit rate per endpoint; below 20% hit rate means the cache key is too specific or TTL too short. Never compress few-shot examples — the quality loss is disproportionate to the token saving.</p>
+      <p>Agentic gotchas: Caching inside an agentic loop can cause the agent to miss state changes between turns — use turn-scoped (not session-scoped) cache keys or disable cache for tool-call results. Model routing decisions made by an LLM are circular — use rule-based routing (token count thresholds, task type) not another LLM call. Budget guards must be checked synchronously before the LLM call, not after; async checks lead to overruns. Prompt compression applied to agent scratchpad or chain-of-thought steps breaks reasoning — only compress user-facing inputs. Semantic similarity caches (embedding-based) require a human-in-loop validation step when first deployed; false hit rate is non-obvious.</p>
+    </section>
+    <section name="Agentic Workflow">
+      <p>A cost-reduction agent runs as a pre-processing layer before any LLM call: check cache → route to cheapest capable model → compress prompt → call API → write cache. Claude subagents can own the routing decision by receiving task metadata (complexity score, required capabilities) and returning a model name. The caching layer and budget guard are best implemented as Python middleware, not inside the agent itself.</p>
+      <p>Recommended subagents: `faion-sdd-execution` — audit existing LLM call sites and score each for caching eligibility and model downgrade potential. Custom cost-analysis agent — given a list of API call logs, compute per-endpoint cost breakdown and recommend optimizations.</p>
+    </section>
+    <section name="Tools and Services">
+      <list>
+        <item>tiktoken: Count tokens for OpenAI models before sending | `pip install tiktoken` | github.com/openai/tiktoken</item>
+        <item>litellm: Unified API + cost tracking across 100+ providers | `pip install litellm` | litellm.ai</item>
+        <item>openai CLI: Batch API, usage stats, file management | `pip install openai` | platform.openai.com/docs/guides/batch</item>
+        <item>redis-cli: Inspect/flush response cache in production | Ships with Redis | redis.io</item>
+        <item>anthropic: Prompt caching (cache_control) for Claude | `pip install anthropic` | docs.anthropic.com/en/docs/build-with-claude/prompt-caching</item>
+      </list>
+      <p>OpenAI Batch API: SaaS, async job ID, 50% cost discount, 24h turnaround, ideal for offline pipelines.</p>
+      <p>Anthropic Prompt Caching: SaaS, `cache_control` header, Caches up to 4 system prompt breakpoints, 90% read discount.</p>
+      <p>LiteLLM Proxy: OSS, OpenAI-compatible, Centralizes routing, cost tracking, fallbacks across providers.</p>
+      <p>Helicone: SaaS, proxy layer, Request logging, cost dashboard, caching layer.</p>
+      <p>Portkey: SaaS, gateway, Multi-provider routing, semantic cache, budget alerts.</p>
+      <p>Redis: OSS, Python client, Response cache backend, supports TTL, cluster mode.</p>
+    </section>
+    <templates>
+      <template path="templates/response-cache.py" purpose="ResponseCache + CachedLLMClient with Redis + memory-fallback (~60 lines)"/>
+      <template path="templates/cost-analysis-prompt.txt" purpose="Prompt for classifying LLM call sites as cacheable/downgradeable/batch-eligible"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/batch"/>
+      <link href="https://platform.openai.com/docs/guides/prompt-caching"/>
+      <link href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching"/>
+      <link href="https://docs.litellm.ai/docs/proxy/cost_tracking"/>
+      <link href="https://helicone.ai/docs"/>
+      <link href="https://github.com/openai/tiktoken"/>
+    </see-also>
+  </content>
+</methodology>
