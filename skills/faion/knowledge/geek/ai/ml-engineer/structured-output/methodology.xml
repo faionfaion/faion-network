@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="structured-output">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>LLMs return consistent parseable data via schemas. Use native structured output for OpenAI, instructor for Claude. Never raw JSON mode — syntax is not schema.</summary>
+    <tags>
+      <tag>structured-output</tag>
+      <tag>json-schema</tag>
+      <tag>pydantic</tag>
+      <tag>validation</tag>
+      <tag>type-safety</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-26</created>
+  </metadata>
+  <content>
+    <title>Structured Output for LLMs</title>
+    <summary>Structured output ensures LLMs return data in consistent, parseable formats (JSON matching a schema). Define output schemas as Pydantic models. For OpenAI: use `client.beta.chat.completions.parse()` (native structured output). For Claude: use tool-calling via `instructor` library. For local models: use `outlines` for token-level grammar constraints. Never use raw JSON mode — it guarantees valid JSON syntax but NOT schema compliance.</summary>
+    <why>
+      <p>Unstructured LLM output cannot be reliably parsed — models add prose, omit fields, or use wrong types. Typed contracts at agent boundaries prevent silent data corruption. Without structured output, every downstream consumer needs brittle regex-based parsing that fails on format variations. Pydantic models generate JSON Schema automatically and provide IDE autocompletion, validation, and retry-on-failure.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Agent tool calls return typed data consumed by downstream code</item>
+        <item>Extracting structured records from unstructured documents (invoices, forms, emails)</item>
+        <item>Building pipelines where each stage's input is the previous stage's validated output</item>
+        <item>Any place where a parsing failure would silently corrupt downstream state</item>
+        <item>Multi-model workflows where one model's output feeds into another model's prompt</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Free-form creative generation where schema over-constrains the response</item>
+        <item>Exploratory research where the output structure is unknown in advance</item>
+        <item>Very long outputs (&gt;2K tokens) with complex nested schemas — reliability degrades</item>
+        <item>Streaming responses where structured output cannot be validated until complete</item>
+      </list>
+    </when-not-to-use>
+    <section name="JSON Mode vs Structured Output">
+      <rule>
+        <statement>Never use raw JSON mode for production. JSON mode guarantees valid JSON syntax only — fields can be missing, wrong types, or extra. Use native structured output (OpenAI, Gemini) or tool-calling with instructor (Claude).</statement>
+        <rationale>JSON mode failures are silent: the response parses as JSON but fails schema validation downstream. Native structured output enforces schema at the model level, making violations impossible.</rationale>
+      </rule>
+    </section>
+    <section name="OpenAI">
+      <rule>
+        <statement>Use `client.beta.chat.completions.parse(response_format=MyModel)` for native structured output. Pass a Pydantic model class directly — the SDK handles JSON Schema generation and parsing.</statement>
+        <rationale>Native structured output guarantees schema compliance at the API level. The response's `.choices[0].message.parsed` is a typed Python object, not a string.</rationale>
+      </rule>
+      <example type="good" title="OpenAI native structured output">
+        <code lang="python"><![CDATA[from openai import OpenAI
+from pydantic import BaseModel
+
+class ExtractionResult(BaseModel):
+    entities: list[str]
+    summary: str
+    confidence: float
+
+client = OpenAI()
+response = client.beta.chat.completions.parse(
+    model="gpt-4o-2024-08-06",
+    messages=[{"role": "user", "content": "Extract from: ..."}],
+    response_format=ExtractionResult,
+)
+result: ExtractionResult = response.choices[0].message.parsed]]></code>
+      </example>
+    </section>
+    <section name="Claude (Anthropic)">
+      <rule>
+        <statement>For Claude, use `instructor.from_anthropic(anthropic.Anthropic())` for automatic retry and Pydantic validation. Claude has no native `response_format` parameter — tool-calling is the mechanism.</statement>
+        <rationale>Instructor wraps Claude's tool-calling API to produce typed Pydantic objects with automatic retry on ValidationError. It adds 50-200 extra prompt tokens but eliminates parsing glue code.</rationale>
+      </rule>
+      <example type="good" title="Claude with instructor">
+        <code lang="python"><![CDATA[import anthropic
+import instructor
+from pydantic import BaseModel
+
+client = instructor.from_anthropic(anthropic.Anthropic())
+
+class Summary(BaseModel):
+    points: list[str]
+    verdict: str
+
+result = client.messages.create(
+    model="claude-opus-4-5",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Summarize: ..."}],
+    response_model=Summary,
+)
+# result is a typed Summary object]]></code>
+      </example>
+    </section>
+    <section name="Schema Design Rules">
+      <rule>
+        <statement>Add `Field(description="...")` on every field. Use `str` enums for controlled vocabularies. Mark uncertain data as `Optional[str] = None`. Keep required fields minimal.</statement>
+        <rationale>Models read field descriptions, not just type names. Without descriptions, the model guesses field semantics from the name alone, producing wrong values. Enums prevent the model from inventing values outside the allowed set.</rationale>
+      </rule>
+      <rule>
+        <statement>Keep Pydantic models under 20 fields. Split large schemas into sub-models. Nesting beyond 3 levels significantly increases hallucinated field values.</statement>
+        <rationale>Large schemas with deep nesting exceed the model's working context for schema compliance. Flat or shallow schemas with sub-models are more reliable and easier to debug.</rationale>
+      </rule>
+    </section>
+    <section name="Validation and Retry">
+      <rule>
+        <statement>Use `instructor` with `max_retries=3` for automatic retry. On each retry, inject the ValidationError as additional context — never retry with the same prompt at temperature=0.</statement>
+        <rationale>If validation fails once at temperature=0, it will fail again with the same input. The error message tells the model exactly what was wrong, enabling a corrective attempt.</rationale>
+      </rule>
+      <rule>
+        <statement>Log every validation error with the raw model output. After 3 consecutive failures, escalate — the schema may be wrong, not the model.</statement>
+        <rationale>Persistent validation failures usually indicate a schema that is ambiguous, too complex, or misaligned with the task. Without raw output logs, you cannot diagnose whether the issue is in the prompt, schema, or model.</rationale>
+      </rule>
+      <rule>
+        <statement>In multi-agent pipelines, always re-validate on receipt even if the sending agent validated on emit. Serialization can corrupt data between agent boundaries.</statement>
+        <rationale>JSON serialization/deserialization across agent boundaries can introduce type coercions (int to float), None handling differences, or encoding issues. Validate both sides of every boundary.</rationale>
+      </rule>
+    </section>
+    <section name="Production Rules">
+      <rule>
+        <statement>Never put schema JSON into user messages — put it in tool definitions or system prompt only. Version schemas in code (`class OutputV2(BaseModel)`) to track changes across deployments.</statement>
+        <rationale>Schema in user messages increases input token count and can be overridden by user-injected content. Tool definitions are processed separately from the conversation, making schema injection attacks impossible.</rationale>
+      </rule>
+      <rule>
+        <statement>For extraction tasks, add a `raw_quote: str` field — forces the model to ground its answer in source text and dramatically reduces hallucinated extractions.</statement>
+        <rationale>Without a source quote, the model may invent plausible-sounding field values that are not present in the source. Requiring a verbatim quote creates a self-checking mechanism.</rationale>
+      </rule>
+    </section>
+    <section name="Failure Modes">
+      <antipattern>
+        <description>Using JSON mode instead of structured output for production extraction pipelines.</description>
+        <reason>JSON mode returns valid JSON syntax but may omit required fields, add unexpected fields, or use wrong types. These are silent failures that corrupt downstream state.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Streaming responses with structured output: trying to parse the response incrementally.</description>
+        <reason>Structured output validation requires the complete response. Streaming cannot be validated until the stream completes. Buffer the full response before parsing.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Schema complexity compounds with context length: testing schema on short toy examples then deploying on production-length contexts.</description>
+        <reason>A schema that works on 100-token inputs may produce validation errors on 8K-token inputs where the model's attention is spread across a much larger context. Always test at production context length.</reason>
+      </antipattern>
+    </section>
+    <section name="Agent Integration">
+      <p>Agents should define output schemas as Pydantic models and pass them as tools (via `instructor` or native SDK `beta.chat.completions.parse`). Each agent boundary becomes a typed contract: if parsing fails, the agent retries with the validation error in the prompt rather than propagating bad data. Use `instructor` with `max_retries=3` for automatic retry; log all failures for schema refinement. For Claude, always use tool-call-based structured output over prompt injection — it's more reliable.</p>
+      <note>Recommended subagents: faion-sdd-execution (uses structured output for quality gate results and task state), faion-feature-executor (each task step returns a typed status/result schema)</note>
+    </section>
+    <section name="Tools and Services">
+      <list>
+        <item>instructor: Structured output for any LLM provider with auto-retry (pip install instructor / python.useinstructor.com)</item>
+        <item>pydantic: Schema definition and validation (pip install pydantic / docs.pydantic.dev)</item>
+        <item>outlines: Grammar-constrained generation for local models (pip install outlines / github.com/outlines-dev/outlines)</item>
+        <item>jsonschema: Validate arbitrary JSON against schema (pip install jsonschema / python-jsonschema.readthedocs.io)</item>
+        <item>tiktoken: Count tokens before sending large schemas (pip install tiktoken / github.com/openai/tiktoken)</item>
+      </list>
+      <list>
+        <item>OpenAI API: SaaS; Native structured output via `beta.chat.completions.parse`; best reliability</item>
+        <item>Anthropic API: SaaS; Via tool-calling or instructor; no native `response_format`</item>
+        <item>Google Gemini: SaaS; Native JSON schema support via `response_schema`</item>
+        <item>Ollama: OSS; JSON format flag available; schema compliance varies by model</item>
+        <item>Langfuse: OSS; Logs structured output calls with schema info for debugging</item>
+      </list>
+    </section>
+    <section name="Best Practices">
+      <list>
+        <item>Define `Field(description="...")` on every field — models read descriptions, not just type names</item>
+        <item>Use `str` enums for controlled vocabularies: model must pick from your list, not invent values</item>
+        <item>Keep required fields minimal; mark uncertain data `Optional[str] = None`</item>
+        <item>Never put schema JSON into user messages — put it in tool definitions or system prompt only</item>
+        <item>Log every validation error with the raw model output for offline schema refinement</item>
+        <item>Version schemas in code (`class OutputV2(BaseModel)`) to track changes across deployments</item>
+        <item>For extraction tasks, add a `raw_quote: str` field — forces model to ground its answer in source text</item>
+        <item>Retry loops are a human-in-loop breakpoint: if validation fails &gt;3 times, escalate — the schema may be wrong, not the model</item>
+        <item>Never retry with `temperature=0` on the same prompt — if it failed once, it will fail again; inject the error message as additional context</item>
+        <item>Schema complexity compounds with context length — test schema reliability at your actual production context length, not on toy examples</item>
+      </list>
+    </section>
+    <templates>
+      <template path="templates/entity-extraction.py" purpose="Entity extraction Pydantic schema (Entity, EntityExtractionResult)"/>
+      <template path="templates/safe-parse.py" purpose="Safe extraction with markdown stripping and retry logic"/>
+    </templates>
+    <see-also>
+      <link href="https://platform.openai.com/docs/guides/structured-outputs">OpenAI Structured Outputs docs</link>
+      <link href="https://docs.anthropic.com/en/docs/tool-use">Anthropic Tool Use documentation</link>
+      <link href="https://python.useinstructor.com/">Instructor library docs</link>
+      <link href="https://docs.pydantic.dev/">Pydantic documentation</link>
+      <link href="https://github.com/outlines-dev/outlines">Outlines GitHub</link>
+      <link href="https://ai.google.dev/gemini-api/docs/json-mode">Google Gemini JSON mode</link>
+    </see-also>
+  </content>
+</methodology>
