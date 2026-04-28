@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="facebook-ads">
+  <metadata>
+    <tier>pro</tier>
+    <group>marketing</group>
+    <domain>ppc-manager</domain>
+    <summary>Meta Marketing API v20+ campaign hierarchy: objectives, CBO, bid strategies, creative upload flow, status lifecycle, and budget in cents not dollars.</summary>
+    <tags>
+      <tag>facebook-ads</tag>
+      <tag>meta-ads</tag>
+      <tag>api-integration</tag>
+      <tag>campaign-management</tag>
+      <tag>creative-upload</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+  </metadata>
+
+  <content>
+    <title>Facebook Ads API</title>
+
+    <summary>Meta Marketing API v20+ campaign hierarchy: objectives, CBO, bid strategies, creative upload flow, status lifecycle, and budget in cents not dollars.</summary>
+
+    <why>
+      <p>The Meta API has a 4-level hierarchy (Campaign → Ad Set → Creative → Ad) where each level has its own budget/bidding knobs. Misplacing budget at the wrong level or using a mismatched optimization_goal/billing_event combination causes delivery failure or overspend.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Creating or managing Facebook/Instagram ad campaigns via the Meta Marketing API</item>
+        <item>Implementing CBO (Campaign Budget Optimization) or ad set-level budgets</item>
+        <item>Building image, video, or dynamic creative programmatically</item>
+        <item>Setting up retargeting funnels with audience-based targeting</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Instagram-specific placement optimization — refer to instagram-ads methodology</item>
+        <item>Audience research and lookalike creation — use meta-audience-targeting methodology</item>
+        <item>Attribution modeling — use ads-attribution-models methodology</item>
+        <item>Active learning phase (first 50 conversions per ad set) — automated bid/budget tweaks reset learning and burn money</item>
+        <item>Tiny budgets under $30/day per ad set — Meta has minimum-spend signal floors and API adds operational risk</item>
+        <item>Special Ad Categories (housing, employment, credit, social issues) without explicit category flag</item>
+        <item>One-off creative judgement calls (which hero image wins) — humans still beat agents on visual taste</item>
+      </list>
+    </when-not-to-use>
+
+    <note>Graph API versions deprecate after 2 years; v20.0 today, v21.0 next. Hard-coded versions silently break on sunset. Budget fields are in account currency MINOR units (USD cents). Setting daily_budget: 50 = $0.50, not $50 — common LLM bug. Targeting flexible_spec with too many interests or behaviors triggers "Audience too narrow" and the ad set never delivers. iOS 14+ ATT crushed pixel-only attribution; without CAPI + Advanced Matching, optimization signal is unreliable. Rate limits are per-app, per-user, AND per-ad-account (BUC). Async video upload requires polling status=ready before creative creation — race conditions break naive scripts. Special Ad Categories disable lookalike, custom-age, location-radius targeting — agents must branch on category.</note>
+
+    <section name="agentic-workflow">
+      <p>Spawn a single Meta-ads agent that holds the System User access token (long-lived) and the Business Manager / ad-account ID list. For reads, use Insights API with breakdowns and time_increment; for writes, batch creates via the JSON Batch API (up to 50 ops per call). Always upload images first, then video (poll for ready), then creative, then ad — these are sequential dependencies. Use the dry-run pattern: serialize the would-be POST body and have a human approve before sending. Pin SDK version AND Graph version and bump on a calendar, not by accident. Use a System User token (non-expiring) for agents — never a personal user token. Always supply event_id on both pixel and CAPI for the same conversion; missing dedup inflates counts 30%. Use is_dynamic_creative=true with asset feeds instead of writing 50 ads. Minimum 50 conversions per ad set per week to escape Learning Limited. Validate objective enum on the v20+ list; old codes are gone.</p>
+    </section>
+
+    <section name="campaign-management">
+      <p>Campaign objectives, CBO budget setup, status lifecycle, and update patterns using Meta Marketing API v20+.</p>
+      <p>Available campaign objectives:</p>
+      <list>
+        <item>OUTCOME_AWARENESS — brand reach, video views</item>
+        <item>OUTCOME_TRAFFIC — website visits</item>
+        <item>OUTCOME_ENGAGEMENT — post engagement, page likes</item>
+        <item>OUTCOME_LEADS — lead forms, instant forms</item>
+        <item>OUTCOME_APP_PROMOTION — app installs</item>
+        <item>OUTCOME_SALES — conversions, catalog sales</item>
+      </list>
+      <rule testable="true">
+        <statement>All budget values are in cents: daily_budget of 10000 equals $100.00. Always verify the unit before setting budgets.</statement>
+        <rationale>Setting budget in dollars instead of cents causes 100x overspend. This is the most common Meta API mistake.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always create campaigns with status PAUSED. Activate only after reviewing all ad sets and creatives are correctly configured.</statement>
+        <rationale>A campaign set to ACTIVE immediately starts spending. PAUSED allows review without risk.</rationale>
+      </rule>
+      <p>Campaign status lifecycle:</p>
+      <list>
+        <item>ACTIVE: running and delivering</item>
+        <item>PAUSED: manually stopped, recoverable</item>
+        <item>DELETED: soft-deleted, still recoverable via API</item>
+        <item>ARCHIVED: completed campaign, read-only</item>
+      </list>
+      <p>Campaign Budget Optimization (CBO) — Meta distributes the campaign-level budget across ad sets automatically based on performance. Use when running multiple ad sets to find the best audience.</p>
+      <rule testable="true">
+        <statement>Use LOWEST_COST_WITHOUT_CAP for initial campaigns without a known target CPA. Switch to COST_CAP or LOWEST_COST_WITH_MIN_ROAS only after establishing baseline performance.</statement>
+        <rationale>Cap-based strategies require accurate cost knowledge to set. Without baseline data, caps that are too low starve the algorithm of learning budget.</rationale>
+      </rule>
+      <templates>
+        <template path="templates/create-campaign.sh" purpose="cURL example for creating a campaign with objective and budget"/>
+      </templates>
+    </section>
+
+    <section name="ad-set-targeting">
+      <p>Ad set structure with geo/demographic targeting, bid strategy options, optimization goals, and Facebook placement configuration.</p>
+      <p>Available bid strategies:</p>
+      <list>
+        <item>LOWEST_COST_WITHOUT_CAP: maximize results within budget — use for learning phase</item>
+        <item>COST_CAP: control cost per result — use when CAC target is known</item>
+        <item>LOWEST_COST_WITH_BID_CAP: maximum bid per auction — use for strict cost control</item>
+        <item>LOWEST_COST_WITH_MIN_ROAS: minimum return on ad spend — use for e-commerce with known ROAS target</item>
+      </list>
+      <p>Available optimization goals:</p>
+      <list>
+        <item>OFFSITE_CONVERSIONS: website sales or leads — requires Pixel with conversion events</item>
+        <item>LINK_CLICKS: traffic campaigns</item>
+        <item>IMPRESSIONS: reach or awareness</item>
+        <item>LANDING_PAGE_VIEWS: quality traffic — filters bot clicks</item>
+        <item>LEAD_GENERATION: Meta instant lead forms</item>
+      </list>
+      <rule testable="true">
+        <statement>Match optimization_goal to billing_event: OFFSITE_CONVERSIONS uses IMPRESSIONS billing; LINK_CLICKS uses IMPRESSIONS billing. Mismatched pairs cause ad set rejection.</statement>
+        <rationale>Meta validates goal/billing combinations server-side. Rejected ad sets fail silently unless you check the API error response.</rationale>
+      </rule>
+      <p>Facebook placement options: feed, right_hand_column, instant_article, marketplace, video_feeds, story, search, instream_video, facebook_reels. Specify publisher_platforms as ["facebook"] to limit to Facebook only.</p>
+      <antipattern>
+        <description>Using Advantage+ Placements (automatic) when creative is only sized for feed (1:1 ratio).</description>
+        <reason>Automatic placements will show the ad in Stories (9:16) and Reels where a 1:1 creative is cropped, degrading performance and brand appearance.</reason>
+      </antipattern>
+      <templates>
+        <template path="templates/create-adset.sh" purpose="cURL example for creating an ad set with full targeting configuration"/>
+      </templates>
+    </section>
+
+    <section name="creative-and-ads">
+      <p>Image and video creative upload flow, call-to-action types, image specifications per placement, dynamic creative setup, and naming convention for campaigns/ad sets/ads.</p>
+      <p>Creative upload flow:</p>
+      <list>
+        <item>Image ad: 1) upload image to /adimages (returns hash), 2) create creative with image_hash, 3) create ad referencing creative_id</item>
+        <item>Video ad: 1) upload video to /advideos (async), 2) poll status until "ready", 3) create creative with video_id, 4) create ad</item>
+      </list>
+      <rule testable="true">
+        <statement>Check video upload status before creating the creative. Creating a creative with a video in non-ready state returns a validation error.</statement>
+        <rationale>Video processing is asynchronous and can take minutes. Polling is required; there is no webhook for upload completion in the basic API.</rationale>
+      </rule>
+      <p>Image specifications per placement:</p>
+      <list>
+        <item>Feed: 1080x1080px (1:1 ratio)</item>
+        <item>Stories: 1080x1920px (9:16 ratio)</item>
+        <item>Right Column: 1200x628px (1.91:1 ratio)</item>
+        <item>Carousel: 1080x1080px per card (1:1 ratio)</item>
+      </list>
+      <p>Call-to-action types:</p>
+      <list>
+        <item>SHOP_NOW — e-commerce product pages</item>
+        <item>LEARN_MORE — information or content pages</item>
+        <item>SIGN_UP — lead generation or registration</item>
+        <item>BOOK_NOW — appointments or reservations</item>
+        <item>DOWNLOAD — app or asset downloads</item>
+        <item>GET_OFFER — promotions and discounts</item>
+        <item>GET_QUOTE — service inquiries</item>
+        <item>CONTACT_US — direct contact</item>
+      </list>
+      <rule testable="true">
+        <statement>Name campaigns, ad sets, and ads with a consistent pattern that encodes objective, audience, and date so performance can be compared across periods without pulling metadata.</statement>
+        <rationale>Ad account naming chaos makes bulk optimization and historical comparison extremely slow.</rationale>
+      </rule>
+      <example type="good">
+        <note>Campaign: Sales_Lookalike-US-1%_2026-01. Ad Set: LAL-US-1%_FB-Feed_$50d. Ad: Video-15s_v1_2026-01-20. This encodes enough context to know audience, placement, budget type, creative format, version, and date from the name alone.</note>
+      </example>
+      <p>Common workflows:</p>
+      <list>
+        <item>Launch: Campaign → Ad Set → Upload Media → Creative → Ad → Review → ACTIVE</item>
+        <item>A/B test: 2+ ad sets with one variable different (audience/placement/bid), equal budgets, 7+ days</item>
+        <item>Retargeting funnel: cold → website visitors (7d) → product viewers (14d) → cart abandoners (7d) → exclude purchasers</item>
+      </list>
+    </section>
+
+    <see-also>
+      <link href="https://developers.facebook.com/docs/marketing-apis/"/>
+      <link href="https://developers.facebook.com/docs/marketing-api/conversions-api"/>
+      <link href="https://developers.facebook.com/docs/graph-api/changelog"/>
+      <link href="https://developers.facebook.com/docs/marketing-api/insights/breakdowns"/>
+      <link href="https://github.com/facebook/facebook-python-business-sdk"/>
+    </see-also>
+  </content>
+</methodology>
