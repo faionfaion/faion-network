@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed
+- migrate: 3/3 pro/marketing/gtm-strategist methodologies → methodology.xml (ops-legal-compliance, ops-legal-compliance-checklist, ops-partnership-strategy; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager Google Ads methodologies → methodology.xml (ads-google-creative, ads-google-keywords, ads-google-reporting; feature-045 batch)
 - migrate: 3/3 pro/marketing/ppc-manager methodologies → methodology.xml (ads-budget-optimization, ads-conversion-tracking, ads-google-campaign-setup; feature-045 batch)
 - migrate: 2/2 pro/marketing/growth-marketer methodologies → methodology.xml (growth-referral-programs, growth-viral-loops; feature-045 batch)
