@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="langchain">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>LCEL pipes and LangGraph state machines for building production AI chains and agents with durable state, checkpointing, and human-in-the-loop.</summary>
+    <tags>
+      <tag>langchain</tag>
+      <tag>langgraph</tag>
+      <tag>agents</tag>
+      <tag>lcel</tag>
+      <tag>chains</tag>
+    </tags>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-25</created>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+  <content>
+    <title>LangChain and LangGraph: Building Production AI Agents</title>
+    <summary>LangChain (LCEL pipe syntax) and LangGraph (state machine framework) for building production AI chains and agents. LangChain handles standard tool-calling agents via `create_react_agent()` and composable pipelines via `prompt | model | parser`. LangGraph adds durable state, checkpointing, human-in-the-loop interrupts, and multi-agent Supervisor patterns for complex control flow.</summary>
+    <why>
+      <p>LangChain provides provider-agnostic wiring, built-in retry/fallback, and LangSmith observability out of the box. LangGraph's state machine model solves the hardest agent problems: surviving process restarts, pausing for human approval before irreversible actions, and debugging non-linear workflows via time-travel replay.</p>
+    </why>
+    <when-to-use>
+      <list>
+        <item>Building multi-step AI workflows where each step's output feeds the next (LCEL pipe chains)</item>
+        <item>Standard ReAct tool-calling agent with 3-10 tools — `create_react_agent()` covers 80% of use cases</item>
+        <item>Complex control flow requiring state machines: human-in-the-loop approval, conditional branching, retry logic (LangGraph)</item>
+        <item>Long-running workflows that must survive process restarts — LangGraph checkpointing persists state to disk/DB</item>
+        <item>Multi-agent orchestration: Supervisor → Worker patterns with role specialization</item>
+        <item>RAG pipelines requiring custom retrieval → reranking → synthesis chains</item>
+      </list>
+    </when-to-use>
+    <when-not-to-use>
+      <list>
+        <item>Single LLM call — use the provider SDK directly (anthropic, openai); LangChain adds 50-200ms overhead</item>
+        <item>Document-centric RAG with complex index types — LlamaIndex has better RAG abstractions</item>
+        <item>Browser or desktop agents — LangChain's tools don't wrap browser automation well; use Playwright directly</item>
+        <item>Simple prompt templates — Python f-strings or Jinja2 avoid the dependency</item>
+        <item>High-throughput inference (greater than 100 RPS) — LangChain's Python overhead becomes measurable; use vLLM or direct SDK</item>
+      </list>
+    </when-not-to-use>
+    <section name="lcel-fundamentals">
+      <p>LCEL (LangChain Expression Language) provides a syntax for composing chains using Python's pipe operator.</p>
+      <rule testable="true">
+        <statement>Use `langchain-core` only in production agents, not the full `langchain` package — core is stable; full langchain pulls 200+ transitive dependencies.</statement>
+        <rationale>Dependency bloat creates version conflicts and larger container images. Core contains everything needed for LCEL chains and structured output.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use `.with_structured_output(PydanticModel)` instead of output parsers; structured output is enforced by the API, not fragile string parsing.</statement>
+        <rationale>String parsers break silently when the model changes its output format. Structured output fails with a clear error that is easier to debug.</rationale>
+      </rule>
+      <example type="good" title="LCEL pipe chain patterns">
+        <code lang="python"><![CDATA[
+# Basic chain
+chain = prompt | model | StrOutputParser()
+
+# With structured output
+chain = prompt | model.with_structured_output(MySchema)
+
+# With retry on transient errors
+chain = (prompt | model | parser).with_retry(stop_after_attempt=3)
+
+# With fallback model
+chain = primary_chain.with_fallbacks([fallback_chain])
+        ]]></code>
+      </example>
+      <antipattern>
+        <description>Using `.with_retry()` on chains without distinguishing transient errors from logic errors.</description>
+        <reason>Blind retry amplifies costs without fixing root cause. Rate limit errors need backoff; logic errors need prompt fixes, not retries.</reason>
+      </antipattern>
+    </section>
+    <section name="chain-patterns">
+      <p>Common architectural patterns for composing chains: Sequential, Router, MapReduce, Fallback, and Parallel execution.</p>
+      <p>Sequential: `prompt | model | parser`. Router: classifier → branch to chain_a or chain_b. MapReduce: `[doc1, doc2] → map → reduce`. Fallback: `primary_chain.with_fallbacks([fallback])`. RunnableParallel: run independent chains concurrently.</p>
+      <rule testable="true">
+        <statement>Test chains by invoking each component individually before wiring with `|`; isolates bugs before they compound in full chain traces.</statement>
+        <rationale>LCEL `|` produces hard-to-debug stack traces when intermediate steps fail; error messages point to internal chain internals rather than your code.</rationale>
+      </rule>
+    </section>
+    <section name="observability">
+      <p>Understanding what happens inside chains is critical for debugging and production reliability.</p>
+      <rule testable="true">
+        <statement>Enable LangSmith tracing from day 1 on new projects; retrofitting observability into existing chains is painful.</statement>
+        <rationale>LangSmith traces every `|` step with full input/output. Without it, debugging unexpected chain outputs requires print-statement archaeology.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Disable LangSmith tracing (`LANGCHAIN_TRACING_V2=false`) in latency-critical paths; tracing adds ~30ms per chain call.</statement>
+        <rationale>At high throughput, 30ms per call compounds. In a 10-step chain, tracing adds 300ms — measurable in user-facing endpoints.</rationale>
+      </rule>
+    </section>
+    <section name="langgraph-state-management">
+      <p>LangGraph extends LCEL with state machines, checkpointing, and human-in-the-loop capabilities.</p>
+      <rule testable="true">
+        <statement>Store LangGraph state as flat JSON-serializable dicts — nested custom objects silently fail serialization in checkpoint backends.</statement>
+        <rationale>Checkpoint backends (PostgreSQL, Redis) require JSON serialization. Custom Python objects cause silent serialization failures; the state appears to persist but is actually lost on process restart.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Always set `max_iterations` on agents using `RunnableConfig` or graph loop bounds — the default is unlimited.</statement>
+        <rationale>`create_react_agent()` has no built-in iteration cap. Agents loop indefinitely on ambiguous tasks without custom `stop_sequence` or `max_iterations` config.</rationale>
+      </rule>
+      <example type="good" title="Minimal LangGraph agent with persistence">
+        <code lang="python"><![CDATA[
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+checkpointer = MemorySaver()
+agent = create_react_agent(model, tools, checkpointer=checkpointer)
+
+config = {"configurable": {"thread_id": "session-123"}}
+result = agent.invoke({"messages": [("user", task)]}, config=config)
+        ]]></code>
+      </example>
+    </section>
+    <section name="conditional-edges-and-routing">
+      <p>Routing between graph nodes enables conditional control flow and multi-agent patterns.</p>
+      <rule testable="true">
+        <statement>Use `with_structured_output(PydanticModel)` for routing decisions in conditional edge functions; return the next node name as a typed field.</statement>
+        <rationale>String parsing of free-text routing decisions fails silently when the model produces unexpected phrasing. Structured output enforces exact node name values.</rationale>
+      </rule>
+    </section>
+    <section name="human-in-the-loop">
+      <p>Interrupts allow humans to approve or override decisions before irreversible actions are taken.</p>
+      <rule testable="true">
+        <statement>Use `interrupt_before=["action_node"]` for nodes that perform irreversible actions (send email, write to DB, call payment API); never rely on agent self-restraint.</statement>
+        <rationale>Agents cannot undo executed side effects. A misrouted task dispatched to a worker that calls an external API is irreversible without a human checkpoint.</rationale>
+      </rule>
+    </section>
+    <section name="multi-agent-supervisor-pattern">
+      <p>The Supervisor pattern coordinates multiple worker agents with a central routing node.</p>
+      <rule testable="true">
+        <statement>Use `Annotated[list, operator.add]` for accumulated results fields in SupervisorState; direct list assignment discards previous worker outputs.</statement>
+        <rationale>LangGraph merges partial state updates with the accumulator. Plain list assignment replaces the list on every update, causing earlier worker results to be lost.</rationale>
+      </rule>
+    </section>
+    <section name="deprecated-patterns">
+      <p>LangChain has evolved rapidly. Older patterns are still documented but should not be used in new projects.</p>
+      <antipattern>
+        <description>Using LLMChain, AgentExecutor, ConversationChain, or SequentialChain from legacy LangChain.</description>
+        <reason>These are deprecated but still widely documented on Stack Overflow. Agents trained on web data will suggest them. Use LCEL equivalents: `prompt | model | parser`, `create_react_agent`, `RunnableWithMessageHistory`, LCEL pipe chain.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LCEL operator (`|`) produces hard-to-debug stack traces when intermediate steps fail; error messages point to internal chain internals, not your code.</description>
+        <reason>Always test components individually first to isolate bugs.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`create_react_agent()` has no built-in iteration cap — agents loop indefinitely on ambiguous tasks without custom `stop_sequence` or max_iterations config.</description>
+        <reason>Always configure max_iterations explicitly.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LangGraph state serialization fails silently for custom non-serializable objects in state.</description>
+        <reason>Always use JSON-serializable types in StateGraph.</reason>
+      </antipattern>
+      <antipattern>
+        <description>LangSmith tracing adds ~30ms latency per chain call.</description>
+        <reason>Disable in latency-critical paths.</reason>
+      </antipattern>
+    </section>
+    <section name="async-and-threading">
+      <p>LangChain supports async execution but has pitfalls when mixing sync and async code.</p>
+      <antipattern>
+        <description>Using a custom `CallbackHandler` with blocking I/O in an async chain.</description>
+        <reason>LangChain callbacks execute synchronously in async chains by default. A blocking callback stalls the entire chain. Use `AsyncCallbackHandler` instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>Using `batch()` with tools that are not thread-safe.</description>
+        <reason>LCEL `batch()` runs in a thread pool by default. Non-thread-safe tools cause race conditions. Use `abatch()` with async tools instead.</reason>
+      </antipattern>
+      <antipattern>
+        <description>`create_react_agent` internally uses `MessagesState` — adding custom state fields requires a custom graph, not the prebuilt agent.</description>
+        <reason>If you need custom state, define your own StateGraph instead of extending create_react_agent.</reason>
+      </antipattern>
+    </section>
+    <section name="tool-routing-and-selection">
+      <p>Agents select and call tools based on descriptions. Poor descriptions lead to wrong tool selection.</p>
+      <antipattern>
+        <description>Providing ambiguous or overlapping tool descriptions without testing tool selection explicitly.</description>
+        <reason>The LLM reads tool descriptions verbatim. Ambiguous descriptions cause the agent to select wrong tools without error. Wrong tool selection fails silently.</reason>
+      </antipattern>
+      <rule testable="true">
+        <statement>Test tool routing explicitly: invoke the agent with a sample query, inspect which tool was selected, and verify it's the expected one.</statement>
+        <rationale>Tool selection errors compound silently through the rest of the pipeline.</rationale>
+      </rule>
+    </section>
+    <section name="security">
+      <p>Agents that retrieve external content or take user input need input sanitization.</p>
+      <rule testable="true">
+        <statement>Sanitize user input before injecting into prompts; validate retrieved content before including in RAG chains to prevent prompt injection.</statement>
+        <rationale>A malicious document in the corpus or a crafted user input can override agent instructions. Retrieved content must be treated as untrusted data, not trusted instructions.</rationale>
+      </rule>
+    </section>
+    <section name="best-practices">
+      <list>
+        <item>Use `langchain-core` only (not `langchain`) for production agents — core is stable; full langchain pulls 200+ transitive deps</item>
+        <item>Always set `max_iterations` on agents using `RunnableConfig` or graph loop bounds — default is unlimited</item>
+        <item>Use `.with_structured_output(PydanticModel)` instead of output parsers — structured output is enforced by the API, not fragile string parsing</item>
+        <item>Store LangGraph state as flat JSON-serializable dicts — nested custom objects silently fail serialization in checkpoint backends</item>
+        <item>Test chains by invoking each component individually before wiring with `|` — isolates bugs before they compound in full chain traces</item>
+        <item>Enable LangSmith from day 1 on new projects; retrofitting observability into existing chains is painful</item>
+      </list>
+    </section>
+    <section name="agentic-workflow">
+      <p>Integrating LangChain into multi-agent systems requires careful design of subagent responsibilities.</p>
+      <rule testable="true">
+        <statement>Use `create_react_agent(model, tools, checkpointer=MemorySaver())` for simple agent tasks driven by Claude subagents.</statement>
+        <rationale>This covers the common case and requires minimal boilerplate.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>For complex workflows, define a LangGraph `StateGraph` where each node is a Claude subagent call with a specific role (planner, executor, critic).</statement>
+        <rationale>This separates concerns and makes the workflow explicit and testable.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Route between nodes with `add_conditional_edges` based on structured output from the previous node.</statement>
+        <rationale>Structured routing prevents silent failures from ambiguous or unparseable outputs.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Use `interrupt_before` for human-in-the-loop checkpoints at high-risk action nodes.</statement>
+        <rationale>This prevents irreversible actions without human approval.</rationale>
+      </rule>
+      <rule testable="true">
+        <statement>Chain observability through LangSmith by setting `LANGCHAIN_TRACING_V2=true` — every subagent call is automatically traced with full input/output.</statement>
+        <rationale>This provides visibility into the entire workflow for debugging and optimization.</rationale>
+      </rule>
+    </section>
+    <templates>
+      <template path="templates/langgraph-router-node.py" purpose="Structured-output routing node using with_structured_output"/>
+      <template path="templates/langgraph-supervisor.py" purpose="Supervisor pattern with conditional edge routing and state accumulation"/>
+    </templates>
+    <see-also>
+      <link href="https://python.langchain.com/docs/">LangChain Python docs</link>
+      <link href="https://langchain-ai.github.io/langgraph/">LangGraph docs</link>
+      <link href="https://docs.smith.langchain.com/">LangSmith docs</link>
+      <link href="https://python.langchain.com/docs/how_to/#langchain-expression-language-lcel">LCEL primitives</link>
+      <link href="https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/">LangGraph human-in-the-loop</link>
+      <link href="https://smith.langchain.com/hub">LangChain Hub</link>
+    </see-also>
+  </content>
+</methodology>

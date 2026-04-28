@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="graph-rag">
+  <metadata>
+    <tier>geek</tier>
+    <group>ai</group>
+    <domain>ml-engineer</domain>
+    <summary>Knowledge graph + vector retrieval for multi-hop reasoning and global queries. Entity extraction, resolution, and Leiden community detection with hierarchical summaries.</summary>
+    <category>rag</category>
+    <difficulty>advanced</difficulty>
+    <created>2026-04-26</created>
+    <tags>
+      <tag>graph-rag</tag>
+      <tag>knowledge-graph</tag>
+      <tag>entity-extraction</tag>
+      <tag>neo4j</tag>
+      <tag>multi-hop</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+    <languages>
+      <language>python</language>
+      <language>cypher</language>
+    </languages>
+    <frameworks>
+      <framework>graphrag</framework>
+      <framework>neo4j</framework>
+      <framework>lightrag</framework>
+      <framework>networkx</framework>
+      <framework>llamaindex</framework>
+    </frameworks>
+  </metadata>
+
+  <content>
+    <title>GraphRAG</title>
+
+    <summary>GraphRAG combines knowledge graph construction with vector retrieval to answer multi-hop and global questions. It extracts entity-relationship graphs from documents, runs community detection (Leiden algorithm), and builds hierarchical summaries — enabling local (entity-subgraph) and global (theme-overview) search strategies that standard vector RAG cannot perform.</summary>
+
+    <why>
+      <p>Standard RAG uses semantic similarity over flat chunks; it breaks on "How does entity A relate to B through C?" and cannot answer "What are the main themes across the entire corpus?" GraphRAG solves both by maintaining structured graph state. Multi-hop accuracy improves from ~45% to ~73%; global sensemaking goes from impossible to a first-class operation.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Questions require multi-hop entity reasoning (A relates to B, B relates to C)</item>
+        <item>Need global "theme overview" answers across a large corpus</item>
+        <item>Knowledge base has structured relationships: org charts, legal hierarchies, medical ontologies</item>
+        <item>Users ask cross-document questions where the answer spans sources connected by shared entities</item>
+        <item>Entity co-occurrence and relationship strength matter for answers</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Simple factual lookup — standard vector RAG is 5-10x cheaper and faster</item>
+        <item>Single-document Q&amp;A — no graph structure to exploit</item>
+        <item>Real-time queries under 500ms required — global search runs map-reduce over all community summaries</item>
+        <item>Corpus under ~500 documents — graph construction cost (5-10x tokens vs standard RAG) outweighs gain</item>
+        <item>Frequently updated corpora — incremental graph updates require re-running entity resolution and community detection</item>
+        <item>Teams without Neo4j/NetworkX operational experience</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="entity-extraction-methods">
+      <rule>
+        <statement>Use traditional NER (SpaCy, GliNER) for entity detection and LLMs only for relationship extraction — reduces indexing cost by ~60% with comparable entity recall.</statement>
+        <rationale>LLM-based entity extraction is the primary cost driver during indexing. NER models run locally and fast; relationships require semantic understanding that LLMs provide.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Define an explicit entity type ontology before extraction; constrain the LLM to that ontology in every extraction prompt.</statement>
+        <rationale>Unconstrained extraction produces thousands of unique entity types that defeat community detection and make graph traversal unpredictable.</rationale>
+      </rule>
+
+      <note>Schema-guided extraction prompt — entity types explicitly listed, JSON output required</note>
+      <reference path="templates/prompt-entity-extraction.txt">Entity extraction prompt with schema constraints and gleaning</reference>
+    </section>
+
+    <section name="entity-resolution">
+      <rule>
+        <statement>Run embedding-based entity resolution (cosine similarity &gt; 0.9) before graph construction to merge duplicate nodes.</statement>
+        <rationale>Duplicate entities fragment communities and corrupt multi-hop reasoning. "OpenAI" and "Open AI" as separate nodes break relationship traversal.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Skipping entity resolution and inserting raw extracted entities directly into the graph.</description>
+        <reason>Duplicate nodes receive separate community assignments; queries against one node miss relationships attached to the duplicate.</reason>
+      </antipattern>
+    </section>
+
+    <section name="community-detection">
+      <rule>
+        <statement>Use the Leiden algorithm hierarchically with max_cluster_size=10 as the default starting point; tune resolution parameter for granularity.</statement>
+        <rationale>Microsoft GraphRAG uses Leiden for its proven convergence properties. Hierarchical detection produces multiple abstraction levels for global queries.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Cache community summaries at index time; regenerate only when community membership changes (delta indexing).</statement>
+        <rationale>Global search costs 2000+ tokens per community summary. Regenerating all summaries on each query exhausts token budgets in 3-5 iterations of a ReAct loop.</rationale>
+      </rule>
+
+      <p>Community levels: Level 0 = fine-grained (original graph), Level 1 = aggregated themes, Level 2+ = higher abstractions, Root = entire corpus summary.</p>
+    </section>
+
+    <section name="technology-stack">
+      <list>
+        <item>Microsoft GraphRAG — full pipeline with community detection; best for batch indexing</item>
+        <item>Neo4j + neo4j-graphrag-python — production-ready hybrid (vector + graph) search</item>
+        <item>LlamaIndex PropertyGraph — flexible extraction; multiple extractor support</item>
+        <item>LightRAG — 10x token reduction; trades relationship granularity for cost</item>
+        <item>NetworkX — in-memory prototyping; no ops overhead</item>
+      </list>
+
+      <reference path="templates/graphrag-settings.yaml">Microsoft GraphRAG settings.yaml with key parameters</reference>
+      <reference path="templates/entity-schema.py">Generic and domain-specific entity/relationship schema definitions</reference>
+    </section>
+
+    <section name="query-classification">
+      <rule>
+        <statement>Classify every query as LOCAL, GLOBAL, or HYBRID before retrieval; route to the corresponding strategy.</statement>
+        <rationale>Local and global searches use fundamentally different backends. Misrouting a global query to local search returns an empty or irrelevant subgraph; misrouting a local query to global wastes 2000+ tokens per community on summaries that don't contain the answer.</rationale>
+      </rule>
+
+      <reference path="templates/prompt-query-classification.txt">Query classification prompt returning LOCAL / GLOBAL / HYBRID</reference>
+    </section>
+
+    <section name="local-search">
+      <rule>
+        <statement>Cap graph traversal depth at 2 hops for agent tool calls; 3-hop queries return too much context for reliable synthesis.</statement>
+        <rationale>At 3 hops, subgraph size grows exponentially. The LLM context fills with tangentially related entities, reducing synthesis precision.</rationale>
+      </rule>
+
+      <example type="good">
+        <note>Minimal local search using Neo4j APOC path expansion</note>
+        <code lang="python"><![CDATA[
+from neo4j import GraphDatabase
+
+def local_search(driver, entity_name: str, hops: int = 2) -> list[dict]:
+    with driver.session() as session:
+        result = session.run(
+            """
+            MATCH (e:Entity {name: $name})
+            CALL apoc.path.subgraphNodes(e, {maxLevel: $hops}) YIELD node
+            MATCH (node)-[r]-(neighbor)
+            RETURN node.name, type(r), neighbor.name, r.description
+            LIMIT 50
+            """,
+            name=entity_name, hops=hops,
+        )
+        return [dict(record) for record in result]
+        ]]></code>
+      </example>
+
+      <reference path="templates/cypher-queries.cypher">Traversal patterns including 1-hop, 2-hop, weighted, path-finding, and hybrid vector+graph</reference>
+    </section>
+
+    <section name="global-search">
+      <rule>
+        <statement>Always cache global search results; regenerate only when corpus changes. Global search is too expensive to run per-query in real time.</statement>
+        <rationale>Map-reduce over 1000 community summaries at 2000 tokens each = 2M tokens per query. Without caching, a single global search in a ReAct loop can exhaust a session's token budget.</rationale>
+      </rule>
+
+      <antipattern>
+        <description>Running global search inside a ReAct agent loop without result caching.</description>
+        <reason>Each iteration burns 2000+ tokens per community summary. Three loop iterations on a corpus with 500 communities costs 3M tokens.</reason>
+      </antipattern>
+    </section>
+
+    <section name="hybrid-search">
+      <rule>
+        <statement>For hybrid search, start vector search, then expand matched nodes by 1-2 hops in the graph to capture related entities missed by semantic similarity.</statement>
+        <rationale>Vector search finds semantically similar text; graph traversal finds structurally connected entities. Combined, they surface entities mentioned in context but not in the query vocabulary.</rationale>
+      </rule>
+    </section>
+
+    <section name="entity-name-normalization">
+      <rule>
+        <statement>Normalize entity names before every graph lookup; graph databases return empty results without error when names don't match exactly.</statement>
+        <rationale>An agent interpreting empty results as "no relevant information" will hallucinate. Silent empty returns are the #1 cause of GraphRAG agent hallucination in practice.</rationale>
+      </rule>
+    </section>
+
+    <section name="implementation-phases">
+      <list>
+        <item>Phase 1 — Planning: define entity ontology, choose graph DB, select extraction method, set accuracy vs cost trade-offs</item>
+        <item>Phase 2 — Graph construction: entity extraction → entity resolution → relationship extraction → graph write</item>
+        <item>Phase 3 — Community detection: Leiden algorithm → hierarchical summarization → cache summaries</item>
+        <item>Phase 4 — Retrieval: query classifier → local/global router → context assembler</item>
+        <item>Phase 5 — Production: incremental indexing, query latency monitoring, community refresh strategy</item>
+      </list>
+    </section>
+
+    <section name="validation-thresholds">
+      <rule testable="true">
+        <statement>After graph construction: entity extraction F1 must exceed 0.75; relationship accuracy must exceed 0.70; zero duplicate entities.</statement>
+        <rationale>Below these thresholds, community detection produces semantically incoherent clusters that degrade global search quality.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>After community detection: communities must be semantically coherent; hierarchical levels must be meaningful; summaries must capture key themes.</statement>
+        <rationale>Incoherent communities cause global queries to return irrelevant summaries; the LLM synthesizes from noise.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Production readiness: P95 query latency under 3s, error rate under 1%, hallucination rate under 10%.</statement>
+        <rationale>GraphRAG is inherently slower than vector RAG; 3s is the practical ceiling for interactive use cases.</rationale>
+      </rule>
+    </section>
+
+    <section name="cost-model">
+      <p>Indexing: entity extraction ~500 tokens/chunk, relationship extraction ~300 tokens/chunk, community summarization ~1000 tokens/community. Query: global ~2000 tokens, local ~500 tokens.</p>
+
+      <rule>
+        <statement>Batch entity extraction chunks in groups of 10-20 per LLM call to reduce API overhead by 5-8x.</statement>
+        <rationale>Single-chunk extraction calls are the primary cost driver. Batching keeps extraction cost proportional to corpus size rather than chunk count.</rationale>
+      </rule>
+
+      <rule>
+        <statement>Use LightRAG for cost-sensitive workloads where 10x token reduction is worth the trade-off in relationship granularity.</statement>
+        <rationale>LightRAG uses dual-level graph retrieval with significantly fewer LLM calls. Not suitable for legal/medical precision requirements.</rationale>
+      </rule>
+    </section>
+
+    <section name="agentic-workflow">
+      <p>Use a two-phase agentic workflow: an offline index-builder subagent runs entity extraction, relationship extraction, and Leiden clustering (can take hours for large corpora — run as a background task); an online query-router subagent classifies each user question as local (entity-specific) or global (theme/overview), routes to the corresponding retrieval strategy, assembles context, and calls the synthesis LLM. For real-time agent tool use, wrap local search as a tool that accepts entity names and returns subgraph context; global search is a separate tool returning community summaries. Always cache global search results — they change only when the corpus changes.</p>
+
+      <note>Recommended subagents: graph-builder (entity extraction + relationship extraction + graph construction + community detection, offline batch), query-classifier (classifies question as local/global/hybrid), local-searcher (traverses entity subgraph, assembles 1-2 hop context), global-searcher (selects relevant community summaries via map-reduce), synthesis-agent (takes context from searcher, generates final answer with citations)</note>
+
+      <note>Entity extraction prompt: Extract all entities and relationships from this text chunk. Return as JSON with entities (name, type, description) and relationships (source, target, type, description, weight). Allowed entity types and relationship types must be listed. Do not invent relationships not stated in the text.</note>
+
+      <note>Query routing decision helper:
+def route_query(question: str, llm) -&gt; str:
+    prompt = f"""Classify this question:
+- LOCAL: asks about specific entities, people, places, or direct facts
+- GLOBAL: asks about themes, patterns, summaries, or cross-cutting topics
+
+Question: {question}
+Return only: LOCAL or GLOBAL"""
+    return llm(prompt).strip()
+      </note>
+    </section>
+
+    <section name="cli-tools">
+      <list>
+        <item>graphrag: Microsoft GraphRAG — full pipeline, community detection. Install: pip install graphrag. Docs: github.com/microsoft/graphrag</item>
+        <item>neo4j-graphrag: Neo4j GraphRAG Python library. Install: pip install neo4j-graphrag. Docs: github.com/neo4j/neo4j-graphrag-python</item>
+        <item>lightrag: Lightweight GraphRAG with 10x token reduction. Install: pip install lightrag-hku. Docs: github.com/HKUDS/LightRAG</item>
+        <item>networkx: In-memory graph for prototyping. Install: pip install networkx. Docs: networkx.org</item>
+        <item>neo4j: Neo4j Python driver. Install: pip install neo4j. Docs: neo4j.com/docs/python-manual</item>
+        <item>graspologic: Leiden algorithm + graph statistics. Install: pip install graspologic</item>
+      </list>
+    </section>
+
+    <section name="services-and-apps">
+      <list>
+        <item>Neo4j AuraDB (SaaS): Managed Neo4j; Cypher API; GraphRAG-ready with vector index support</item>
+        <item>Weaviate (SaaS/OSS): Built-in knowledge graph + vector hybrid; less Cypher-centric</item>
+        <item>Amazon Neptune (SaaS): Gremlin/SPARQL; slower to integrate than Neo4j for Python agents</item>
+        <item>Memgraph (OSS): Cypher-compatible, high throughput; good for real-time graph updates</item>
+        <item>Diffbot (SaaS): Auto-builds knowledge graphs from web content; expensive but turnkey</item>
+        <item>Qdrant (OSS/SaaS): External graph integration; use alongside NetworkX for vector + graph</item>
+      </list>
+    </section>
+
+    <section name="agent-gotchas">
+      <antipattern>
+        <description>Deploying GraphRAG without a human review checkpoint for graph writes from unverified sources.</description>
+        <reason>One hallucinated relationship from entity extraction can corrupt multi-hop reasoning for all subsequent queries across the affected entities.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Relying on Leiden community detection to be deterministic across rebuilds.</description>
+        <reason>Leiden is non-deterministic; rebuilding the index with identical data produces different community structures. Do not use community IDs as stable references.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using LightRAG for legal or medical knowledge graphs requiring precise relationship granularity.</description>
+        <reason>LightRAG's 10x token reduction compresses relationship metadata. Fine-grained distinctions between relationship types are lost.</reason>
+      </antipattern>
+
+      <list>
+        <item>Microsoft GraphRAG global search costs 2000+ tokens per community summary — agents running global search in a ReAct loop will exhaust token budgets in 3-5 iterations; use caching aggressively</item>
+        <item>Entity extraction LLM calls are the primary cost driver during indexing — batch chunks (10-20 per call) to reduce API overhead by 5-8x</item>
+        <item>Graph databases return empty results without error when entity names don't match exactly — agents interpret silence as "no relevant information" and hallucinate; normalize entity names before graph lookup</item>
+        <item>Human-in-the-loop checkpoint: for high-stakes knowledge graph modifications (adding new relationships from unverified sources), require human review before writing to the graph — one hallucinated relationship can corrupt multi-hop reasoning for all subsequent queries</item>
+      </list>
+    </section>
+
+    <section name="best-practices">
+      <list>
+        <item>Use traditional NER (SpaCy, GliNER) for entity extraction and LLMs only for relationship extraction — reduces cost by 60% with comparable entity recall</item>
+        <item>Cache community summaries at index time; regenerate only when community membership changes (delta indexing)</item>
+        <item>Cap graph traversal depth at 2 hops for agent tool calls — 3-hop queries return too much context for reliable synthesis</item>
+        <item>Define explicit relationship type ontology before extraction — unconstrained relationship types produce thousands of unique types that defeat community detection</item>
+        <item>Run entity resolution with embedding similarity (cosine &gt; 0.9) before graph construction — duplicate entities fragment communities</item>
+        <item>For LightRAG, tune working_dir chunking strategy to match your domain; default chunk size underperforms on long technical documents</item>
+      </list>
+    </section>
+
+    <templates>
+      <template path="templates/graphrag-settings.yaml" purpose="Microsoft GraphRAG settings.yaml with key parameters"/>
+      <template path="templates/neo4j-schema.cypher" purpose="Neo4j constraints, vector index, fulltext index, traversal index setup"/>
+      <template path="templates/entity-schema.py" purpose="Generic entity/relationship schema + domain-specific variants"/>
+      <template path="templates/cypher-queries.cypher" purpose="Traversal patterns: 1-hop, 2-hop, weighted, path finding, hybrid vector+graph"/>
+      <template path="templates/prompt-entity-extraction.txt" purpose="Schema-guided entity extraction prompt with gleaning support"/>
+      <template path="templates/prompt-query-classification.txt" purpose="Query classification prompt: LOCAL / GLOBAL / HYBRID"/>
+    </templates>
+
+    <see-also>
+      <link href="https://arxiv.org/abs/2404.16130">Microsoft GraphRAG paper</link>
+      <link href="https://github.com/microsoft/graphrag">Microsoft GraphRAG repository</link>
+      <link href="https://github.com/neo4j/neo4j-graphrag-python">Neo4j GraphRAG Python</link>
+      <link href="https://github.com/HKUDS/LightRAG">LightRAG GitHub</link>
+      <link href="https://docs.llamaindex.ai/en/stable/examples/property_graph/">LlamaIndex Property Graphs</link>
+      <link href="https://weaviate.io/blog/graph-rag">Weaviate GraphRAG</link>
+    </see-also>
+  </content>
+</methodology>
