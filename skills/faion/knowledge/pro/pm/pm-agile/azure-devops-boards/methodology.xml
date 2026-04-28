@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<methodology slug="azure-devops-boards">
+  <metadata>
+    <tier>pro</tier>
+    <group>pm</group>
+    <domain>pm-agile</domain>
+    <summary>Microsoft's enterprise PM solution with four process templates, tight Azure stack integration, and AB# commit traceability. Use Inherited processes, pin one per org, skip customization.</summary>
+    <category>pm-tool</category>
+    <difficulty>intermediate</difficulty>
+    <created>2026-04-28</created>
+    <tags>
+      <tag>azure-devops</tag>
+      <tag>project-management</tag>
+      <tag>microsoft-stack</tag>
+      <tag>enterprise</tag>
+      <tag>wiql</tag>
+    </tags>
+    <tools>
+      <tool>claude-code</tool>
+    </tools>
+  </metadata>
+
+  <content>
+    <title>Azure DevOps Boards</title>
+
+    <summary>Azure DevOps Boards is Microsoft's enterprise project management solution supporting four process templates (Basic, Agile, Scrum, CMMI) with tight integration to Azure Pipelines, Repos, and Test Plans. The critical constraint: use Inherited processes only, pin one process per organization, and tie commits to work items via AB#1234 in commit messages — this gives automatic traceability from requirement to build to release without third-party glue.</summary>
+
+    <why>
+      <p>Microsoft-stack organizations gain the most from ADO Boards because Entra ID (AAD), Azure Pipelines, and Repos integrate at the identity layer — PAT scopes, area-path security, and pipeline environments all share the same permission model. The Analytics OData feed enables Power BI dashboards that WIQL cannot produce for multi-sprint trends without a separate data warehouse.</p>
+    </why>
+
+    <when-to-use>
+      <list>
+        <item>Microsoft-stack organizations already on Azure (Entra, Azure Pipelines, Repos, Test Plans).</item>
+        <item>Regulated industries (CMMI process template) needing audit trails on every state transition.</item>
+        <item>Teams wanting work-item to commit to build to release traceability without third-party glue.</item>
+        <item>Enterprise portfolios where Epic → Feature → Story → Task hierarchy maps to OKRs or quarterly planning.</item>
+        <item>Organizations standardizing on a single vendor to consolidate tool sprawl.</item>
+      </list>
+    </when-to-use>
+
+    <when-not-to-use>
+      <list>
+        <item>Pure SaaS or non-Microsoft ecosystem — ADO is heavyweight outside the Azure stack.</item>
+        <item>Small / fast-moving startups — Linear, Shortcut, or GitHub Projects feel significantly lighter.</item>
+        <item>Open-source projects with external contributors — onboarding to ADO creates friction.</item>
+        <item>Teams needing a modern mobile UX — ADO Boards trails Linear, Jira, and Shortcut on UI quality.</item>
+        <item>Heavy process customization beyond inheritance — XML "Hosted XML" is deprecated in cloud.</item>
+      </list>
+    </when-not-to-use>
+
+    <section name="process-setup">
+      <p>Process template selection, work-item hierarchy design, board configuration, and area/iteration path setup.</p>
+
+      <rule testable="true">
+        <statement>Use Inherited processes only; never customize system fields; pin one process per organization across all projects.</statement>
+        <rationale>XML "Hosted XML" process customization is deprecated in ADO cloud. Mixing Agile and Scrum across projects breaks cross-project WIQL queries because work-item type names differ (User Story vs PBI).</rationale>
+      </rule>
+
+      <p>Process template options:</p>
+      <list>
+        <item>Basic: Issue, Task — for simple non-engineering projects with minimal hierarchy.</item>
+        <item>Agile: Epic, Feature, User Story, Task, Bug — for agile software teams; most agent-friendly due to widespread training data.</item>
+        <item>Scrum: Epic, Feature, PBI, Task, Bug, Impediment — for Scrum teams; PBI instead of User Story.</item>
+        <item>CMMI: Epic, Feature, Requirement, Task, Bug, Change Request, Review, Risk — for regulated industries requiring full audit trail on every transition.</item>
+      </list>
+
+      <p>Work item hierarchy structure:</p>
+      <list>
+        <item>Epic: large initiative; business value and time criticality fields; maps to OKRs for portfolio reporting.</item>
+        <item>Feature: shippable capability within an Epic; must have acceptance criteria and story points.</item>
+        <item>User Story (or PBI): unit of user value; Gherkin-format acceptance criteria recommended.</item>
+        <item>Task: technical work item with remaining work hours for sprint burndown.</item>
+        <item>Bug: defect that can exist at any hierarchy level.</item>
+      </list>
+
+      <rule testable="true">
+        <statement>Tie commits to work items via "AB#1234" in commit message — ADO auto-links the commit, build, and release to the work item without any additional configuration.</statement>
+        <rationale>AB# linking is the only zero-configuration traceability mechanism in ADO. It creates the commit-to-work-item-to-build-to-release chain that justifies ADO over standalone PM tools.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Set up a "definition of ready" board column rule to block User Stories without Acceptance Criteria from entering the sprint; enforce this at the board, not in team norms.</statement>
+        <rationale>Board-level enforcement is applied universally; team norms are inconsistently applied under sprint pressure.</rationale>
+      </rule>
+
+      <example type="good" title="Board configuration with WIP limits">
+        <code lang="yaml"><![CDATA[board_settings:
+  columns:
+    - name: "New"
+      state_mapping: ["New"]
+    - name: "Active"
+      state_mapping: ["Active"]
+      wip_limit: 5
+      split: true  # Doing/Done split within column
+    - name: "Resolved"
+      state_mapping: ["Resolved"]
+      wip_limit: 3
+    - name: "Closed"
+      state_mapping: ["Closed"]
+  swimlanes:
+    - name: "Expedite"
+      default: false
+    - name: "Default"
+      default: true
+  card_styles:
+    - name: "Blocked"
+      condition: "Tags Contains 'Blocked'"
+      background_color: "#FF0000"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Use iteration path strings exactly as configured — they are case-sensitive and use backslash separators; "Project/Sprint 1" and "Project\Sprint 1" are different paths.</statement>
+        <rationale>ADO iteration paths fail silently when the separator or casing is wrong, producing empty assignment results with no error message.</rationale>
+      </rule>
+
+      <example type="good" title="Iteration path with proper escaping">
+        <code lang="yaml"><![CDATA[iteration_path: "MyProject\\Release 1\\Sprint 1"
+area_path: "MyProject\\Backend"]]></code>
+        <note>Always escape backslashes in code; use double backslash in strings.</note>
+      </example>
+    </section>
+
+    <section name="queries-automation">
+      <p>WIQL query design, automation rule patterns, pipeline integration, and when to use Analytics OData instead of WIQL.</p>
+
+      <rule testable="true">
+        <statement>Use WIQL for live queries on current sprint and board state; use Analytics OData for any report spanning more than 2 sprints — WIQL is slow and times out on historical trend queries.</statement>
+        <rationale>WIQL executes against the live work-item store; it is optimized for current-state lookups. Analytics OData is a pre-aggregated columnar store designed for historical analysis and Power BI integration.</rationale>
+      </rule>
+
+      <example type="good" title="WIQL queries for live board state">
+        <code lang="sql"><![CDATA[-- My active items (WIQL)
+SELECT [System.Id], [System.Title], [System.State]
+FROM WorkItems
+WHERE [System.AssignedTo] = @Me
+  AND [System.State] IN ('New', 'Active')
+ORDER BY [Microsoft.VSTS.Common.Priority]
+
+-- Current sprint burndown (WIQL)
+SELECT [System.Id], [System.Title],
+       [Microsoft.VSTS.Scheduling.RemainingWork]
+FROM WorkItems
+WHERE [System.IterationPath] = @CurrentIteration
+  AND [System.WorkItemType] IN ('User Story', 'Bug', 'Task')
+
+-- Features without child stories (WIQL)
+SELECT [System.Id], [System.Title]
+FROM WorkItems
+WHERE [System.WorkItemType] = 'Feature'
+  AND [System.State] <> 'Closed'
+  AND NOT [System.Id] IN (
+    SELECT [System.Parent]
+    FROM WorkItems
+    WHERE [System.WorkItemType] = 'User Story'
+  )]]></code>
+      </example>
+
+      <antipattern>
+        <description>WIQL WAS queries on large issue sets for historical analysis.</description>
+        <reason>WAS queries on transition history time out above approximately 10,000 issues. Use Analytics WorkItemRevisions entity via OData for historical state analysis.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Write automation rules that set the iteration path on activation only when the field is currently empty; unconditional iteration-set rules override manual assignments.</statement>
+        <rationale>Unconditional iteration assignment on state change silently moves manually-placed items to the current sprint, losing planned placement.</rationale>
+      </rule>
+
+      <example type="good" title="Safe automation rule patterns">
+        <code lang="yaml"><![CDATA[rules:
+  - name: "Auto-close children when parent done"
+    trigger: child_state_changed
+    conditions:
+      - all_children_state: "Closed"
+    actions:
+      - set_state: "Closed"
+
+  - name: "Set iteration on first activation"
+    trigger: state_changed_to_active
+    conditions:
+      - iteration_is_empty: true
+    actions:
+      - set_iteration: "@CurrentIteration"]]></code>
+      </example>
+
+      <rule testable="true">
+        <statement>Always re-fetch a work item after creating it via REST and validate required fields are set — ADO returns 200 OK on partial creation when a custom field value is invalid.</statement>
+        <rationale>Silent partial creation is ADO's most dangerous API behavior for agents. Re-fetching and validating catches the failure before downstream steps depend on corrupt state.</rationale>
+      </rule>
+
+      <rule testable="true">
+        <statement>Rotate PATs via Azure Key Vault; never embed PAT values in agent system prompts, environment variables in code, or configuration files checked into source control.</statement>
+        <rationale>PATs have broad scopes. Embedded PATs are leaked via logs, process lists, and prompt injection. Key Vault provides rotation without code changes.</rationale>
+      </rule>
+
+      <example type="good" title="Pipeline integration with work items">
+        <code lang="yaml"><![CDATA[# azure-pipelines.yml
+stages:
+  - stage: UpdateWorkItem
+    jobs:
+      - job: LinkToBoard
+        steps:
+          - task: UpdateWorkItem@1
+            inputs:
+              workItemId: $(Build.SourceVersionMessage)
+              updateRule: "AddComment"
+              comment: "Build $(Build.BuildNumber) completed"]]></code>
+      </example>
+    </section>
+
+    <section name="agent-integration">
+      <p>Recommended subagents, prompt patterns, and failure modes for agent-driven Azure DevOps Boards operations.</p>
+
+      <p>Recommended subagents:</p>
+      <list>
+        <item>ado-work-item-creator — converts spec.md or design.md into hierarchical work items with parent-child links via REST API.</item>
+        <item>ado-query-runner — executes WIQL queries, returns results as Markdown table for human review.</item>
+        <item>ado-board-auditor — checks WIP limit breaches, missing definition-of-done items, orphan tasks, and stale active work items.</item>
+        <item>ado-pipeline-bridge — links commits and PRs to work items via AB# convention; validates traceability on pre-merge check.</item>
+        <item>faion-feature-executor — already in repo; can drive ADO tasks once they exist.</item>
+      </list>
+
+      <example type="good" title="Work-item creator prompt pattern">
+        <code lang="text"><![CDATA[You are ado-work-item-creator. Inputs: spec.md (markdown),
+area_path (string), iteration_path (string), parent_epic_id (int|null).
+Output: JSON array of work-item objects with:
+{ type, title, description (HTML — not Markdown), acceptance_criteria,
+  story_points, parent_id }
+Use process Agile (Story, not PBI).
+Do not invent fields outside the Agile process schema.
+Iteration path separates levels with backslash: "Project\\Sprint 1"]]></code>
+      </example>
+
+      <p>Failure modes and gotchas:</p>
+
+      <antipattern>
+        <description>Writing Markdown in ADO description or comment fields from an agent.</description>
+        <reason>ADO description accepts HTML, not Markdown. Agent-written Markdown displays as literal syntax or empty content. Convert to HTML using pandoc or a sanitizer before writing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Bulk-creating more than 50 work items per batch in parallel.</description>
+        <reason>ADO throttles bulk creation; unthrottled parallel batches trigger 429s. Chunk in batches of 50 with exponential backoff and check for the Retry-After header.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>WIQL queries with dropped trailing brackets or misquoted field names.</description>
+        <reason>WIQL is whitespace-sensitive and returns empty results (200 OK, zero items) for malformed queries. Always validate WIQL syntax against a known-good schema before executing.</reason>
+      </antipattern>
+
+      <antipattern>
+        <description>Using display names instead of identity SIDs in @mention comments.</description>
+        <reason>ADO @mentions require the user identity SID, not the display name. Display names are non-unique and produce invalid mentions. Resolve via the Identities API first.</reason>
+      </antipattern>
+
+      <rule testable="true">
+        <statement>Human-in-the-loop checkpoints are mandatory at: work-item hierarchy approval before creation, bulk-transition approval, schema changes, and any pipeline configuration change.</statement>
+        <rationale>These operations affect all team members or the CI/CD pipeline simultaneously and are expensive to reverse.</rationale>
+      </rule>
+    </section>
+
+    <templates>
+      <template path="templates/create-story.sh" purpose="Bash script to create a User Story work item via REST API with title, iteration, and area path."/>
+      <template path="templates/user-story.md" purpose="User Story template with Gherkin acceptance criteria and dependency fields."/>
+    </templates>
+
+    <see-also>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/boards/"/>
+      <link href="https://learn.microsoft.com/en-us/rest/api/azure/devops/wit/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/boards/queries/wiql-syntax"/>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/report/powerbi/"/>
+      <link href="https://learn.microsoft.com/en-us/azure/devops/organizations/settings/work/customize-process"/>
+    </see-also>
+  </content>
+</methodology>
