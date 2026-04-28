@@ -1,6 +1,7 @@
 # Changelog
 
 ## [Unreleased]
+- migrate: 3/3 pro/product/product-planning methodologies → methodology.xml (competitive-positioning, continuous-discovery-habits, portfolio-strategy; feature-045 batch 199)
 - migrate: 3/3 pro/product/product-operations methodologies → methodology.xml (product-led-growth, product-operations, stakeholder-management; feature-045 batch 198)
 - migrate: 3/3 pro/product/product-operations methodologies → methodology.xml (experimentation-at-scale, learning-speed-competitive-moat, product-explainability; feature-045 batch 197)
 - migrate: 3/3 pro/product/product-manager methodologies → methodology.xml (product-explainability, product-led-growth, product-lifecycle; feature-045 batch 194)
